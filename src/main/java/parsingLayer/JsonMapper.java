@@ -149,40 +149,40 @@ public class JsonMapper {
     //The exact schema text we want the LLM to output each batch.
     private static String getRequiredBatchSchemaText() {
         return """
-                Return ONLY a single JSON object (no code fences, no explanation).
-                Output schema:
+            Return ONLY a single JSON object (no code fences, no explanation).
+            Output schema:
+            {
+              "type": "PlannerBatch",
+              "stopTesting": false,
+              "batchDetails": "short description",
+              "finalSummary": "",
+              "currentObservation": "",
+              "steps": [
                 {
-                  "type": "PlannerBatch",
-                  "stopTesting": false,
-                  "batchDetails": "short description",
-                  "finalSummary": "",
-                  "currentObservation": "",
-                  "steps": [
-                    {
-                      "stepId": 1,
-                      "stepDetails": "very short details about what we will do on this step",
-                      "actionType": "browserAction|elementAction|frameAction",
-                      "action": "click|type|clear|select|getText|getAttr|scroll|upload|navigate|refresh|back|maximize|getUrl|close|openNewWindow|getCustomTab|switchFrameById|switchFrameByName|switchFrameByIndex|switchToParent",
-                      "selector": "id:<...> OR name:<...> OR cssSelector:<...> OR xpath:<...> OR className:<...> OR linkText:<...> OR partialLinkText:<...> (empty allowed for pure browser actions)",
-                      "value": "STRING. IMPORTANT: use it for ALL extra parameters. Empty if not needed.",
-                      "generalWait": give integer value to use in explicit wait,
-                      "screenshotWait": give integer value to use after the action to take screenshot,
-                      "screenshot": true,
-                      "stopTesting": false
-                    }
-                  ]
+                  "stepId": 1,
+                  "stepDetails": "very short details about what we will do on this step",
+                  "actionType": "browserAction|elementAction|frameAction",
+                  "action": "click|type|clear|select|getText|getAttr|scroll|upload|navigate|refresh|back|maximize|getUrl|close|openNewWindow|getCustomTab|switchFrameById|switchFrameByName|switchFrameByIndex|switchFrameByCssSelector|switchToParent|switchToDefaultContent",
+                  "selector": "id:<...> OR name:<...> OR cssSelector:<...> OR xpath:<...> OR className:<...> OR linkText:<...> OR partialLinkText:<...> (empty allowed for pure browser actions)",
+                  "value": "STRING. IMPORTANT: use it for ALL extra parameters. Empty if not needed.",
+                  "generalWait": give integer value to use in explicit wait (max =15),
+                  "screenshotWait": give integer value to use after the action to take screenshot(max =15),
+                  "screenshot": true,
+                  "stopTesting": false
                 }
-                
-                Rules:
-                - Output valid JSON only.
-                - steps MUST contain 1 to %d items (maxSteps=%d).
-                - Steps must be tightly related and safe to execute in sequence on the current page.
-                - If finished, set stopTesting=true and steps=[] and you MUST fill finalSummary and currentObservation.
-                - finalSummary and currentObservation MUST be empty strings unless stopTesting=true.
-                - If stopTesting=true and steps is not empty, stop AFTER executing the returned steps.
-                """.formatted(MAX_STEPS_PER_BATCH,
-                MAX_STEPS_PER_BATCH);
+              ]
+            }
+
+            Rules:
+            - Output valid JSON only.
+            - steps MUST contain 1 to %d items (maxSteps=%d).
+            - Steps must be tightly related and safe to execute in sequence on the current page.
+            - If finished, set stopTesting=true and steps=[] and you MUST fill finalSummary and currentObservation.
+            - finalSummary and currentObservation MUST be empty strings unless stopTesting=true.
+            - If stopTesting=true and steps is not empty, stop AFTER executing the returned steps.
+            """.formatted(MAX_STEPS_PER_BATCH, MAX_STEPS_PER_BATCH);
     }
+
 
 
 }

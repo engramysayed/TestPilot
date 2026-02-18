@@ -1,0 +1,35 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Attempting to open the dashboard dropdown and click 'Add New Dashboard'. The previous steps failed, so retrying with a short wait to ensure the elements are interactable.",
+  "finalSummary": "",
+  "currentObservation": "The main dashboard view is displayed.",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click on the dropdown arrow next to the 'Dashboard' title to reveal dashboard options.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:h2.text-gray-800 > i.fas.fa-angle-down",
+      "value": "",
+      "generalWait": 2,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Click on 'Add New Dashboard' link from the opened dropdown menu.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:a.menu-link.px-3:contains('Add New Dashboard')",
+      "value": "",
+      "generalWait": 1,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

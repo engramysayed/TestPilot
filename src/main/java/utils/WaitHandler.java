@@ -67,6 +67,16 @@ public class WaitHandler {
         }
     }
 
+
+    public void waitFrameByCss(By css) {
+        try {
+            waitDriver().until(ExpectedConditions.frameToBeAvailableAndSwitchToIt(css));
+        } catch (Exception e) {
+            LogsManager.error("Failed to switch to frame css " + css + " within " + waitSeconds + "s");
+        }
+    }
+
+
     public void waitFrameByElement(By locator) {
         try {
             waitDriver().until(ExpectedConditions.frameToBeAvailableAndSwitchToIt(locator));

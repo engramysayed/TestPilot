@@ -1,0 +1,21 @@
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Clicking the 'Add New Dashboard' button to open the dashboard creation modal.",
+  "finalSummary": "",
+  "currentObservation": "",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click on the 'Add New Dashboard' button to open the modal for creating a new dashboard.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:button[data-bs-target=\"#kt_modal_add_dashboard\"]",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 3,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}

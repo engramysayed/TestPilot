@@ -1,0 +1,21 @@
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Click on 'Create Dashboard' to initiate the new dashboard creation process.",
+  "finalSummary": "",
+  "currentObservation": "",
+  "steps": [
+    {
+      "stepId": 3,
+      "stepDetails": "Click on the 'Create Dashboard' link from the opened dropdown menu.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:a.menu-link.px-3:contains('Create Dashboard')",
+      "value": "",
+      "generalWait": 0,
+      "screenshotWait": 0,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}

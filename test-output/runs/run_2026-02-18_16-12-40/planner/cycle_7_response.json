@@ -1,0 +1,23 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Attempting to click 'Create Dashboard' from the opened dropdown menu to initiate the creation of a new dashboard.",
+  "finalSummary": "",
+  "currentObservation": "The dashboard page is displayed, and a dropdown menu, from which 'Create Dashboard' is visible and highlighted, is open.",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click on the 'Create Dashboard' option in the currently open dashboard dropdown menu.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "xpath://*[normalize-space(text())='Create Dashboard']",
+      "value": "",
+      "generalWait": 0,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

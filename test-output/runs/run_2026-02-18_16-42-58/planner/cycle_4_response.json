@@ -1,0 +1,33 @@
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Filling in the dashboard name and clicking create.",
+  "finalSummary": "",
+  "currentObservation": "",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Type 'test dashboard' into the 'Name' input field.",
+      "actionType": "elementAction",
+      "action": "type",
+      "selector": "id:name",
+      "value": "test dashboard",
+      "generalWait": 0,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Click the 'create' button to confirm the new dashboard.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:button.modal-button.modal-button-create",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 3,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}

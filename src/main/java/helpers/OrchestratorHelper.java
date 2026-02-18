@@ -8,7 +8,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openqa.selenium.By;
 import parsingLayer.JsonMapper;
-import utils.HtmlSlimmer;
+import parsingLayer.HtmlSlimmer;
 import utils.LogsManager;
 import utils.PropertyReader;
 
@@ -53,6 +53,9 @@ public class OrchestratorHelper {
 
         executor.takeScreenshot(runFolder, 0);
         lastScreenshotRef = "step_0.png";
+
+        //if in iframe switch back to default
+        driver.frames().switchToDefaultContent();
 
         stateJson = JsonMapper.buildPlannerStart(
                 scenario,

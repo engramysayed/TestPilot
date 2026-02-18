@@ -1,0 +1,23 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Click on 'Create Dashboard' to initiate the creation process.",
+  "finalSummary": "",
+  "currentObservation": "",
+  "steps": [
+    {
+      "stepId": 2,
+      "stepDetails": "Click on 'create dashboard' option in the dropdown menu.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:div.dashboard-dropdown-value-new",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

@@ -38,6 +38,18 @@ public class FramesHandler {
         }
     }
 
+    public String switchToFrameByCssSelector(By locator) {
+        try{
+            waitHandler.waitFrameByCss(locator);
+            driver.switchTo().frame(driver.findElement(locator));
+            LogsManager.info("Frame switched to by css: " + locator);
+            return "true";
+        } catch (Exception e) {
+            LogsManager.error("Frame not found by css: " + locator);
+            return "false";
+        }
+    }
+
     public String switchToFrameByElement(By locator){
         try{
             waitHandler.waitFrameByElement(locator);

@@ -1,0 +1,23 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Clicking on 'Add New Dashboard' from the dropdown menu to initiate the creation of a new dashboard.",
+  "finalSummary": "",
+  "currentObservation": "The dashboard dropdown menu is open, displaying options including 'Add New Dashboard'.",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click 'Add New Dashboard' from the dropdown menu to proceed with creating a new dashboard.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "xpath://div[contains(text(),'Add New Dashboard')]",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

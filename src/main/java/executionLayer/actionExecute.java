@@ -66,6 +66,8 @@ public class actionExecute {
                     driver.frames().switchToFrameByIndex(parseInt(frameValue));
             case "switchFrameByName" ->
                      driver.frames().switchToFrameByElement(locator);
+            case "switchFrameByCssSelector" ->
+                     driver.frames().switchToFrameByCssSelector(locator);
             case "switchToParent" ->
                     driver.frames().switchToDefaultContent();
             default -> null;

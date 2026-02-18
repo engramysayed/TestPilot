@@ -1,0 +1,458 @@
+[DEBUG] - [18-02-2026 16:07:03] [main] [org.testng.TestNG] - suiteXmlPath: "C:\Users\Administrator\AppData\Local\JetBrains\IntelliJIdea2025.2\temp-testng-customsuite.xml"
+[INFO] - [18-02-2026 16:07:04] [main] [org.testng.internal.Utils] - [TestNG] Running:
+  C:\Users\Administrator\AppData\Local\JetBrains\IntelliJIdea2025.2\temp-testng-customsuite.xml
+
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\logs
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\screenshots
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\planner
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\llm
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\logs
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\screenshots
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\llm
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\logs
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\screenshots
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\planner
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\llm
+[INFO] - [18-02-2026 16:07:04] [main] [utils.LogsManager] - Starting Driver for Browser Type: EDGE
+[INFO] - [18-02-2026 16:07:05] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\planner
+[INFO] - [18-02-2026 16:07:10] [main] [utils.LogsManager] - Navigated to URL https://rainy.nasam.net/auth/login
+[INFO] - [18-02-2026 16:07:10] [main] [utils.LogsManager] - Text typed into element: By.cssSelector: input[placeholder='Username']
+[INFO] - [18-02-2026 16:07:10] [main] [utils.LogsManager] - Text typed into element: By.cssSelector: input[placeholder='Password']
+[INFO] - [18-02-2026 16:07:15] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\screenshots\step_0.png
+[INFO] - [18-02-2026 16:07:15] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:07:15] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=1
+[INFO] - [18-02-2026 16:07:15] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\screenshots\step_0.png
+[INFO] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - LLM Batch details: Click on the dropdown next to 'Rains Dashboard' and then select 'Add New Dashboard' to proceed with creating a new dashboard.
+[INFO] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - LLM Batch size: 2
+[ERROR] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: div.col-sm-6.d-flex > div.dropdown.nav-item > a.nav-link
+[ERROR] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - Element not visible within 0s: By.cssSelector: div.col-sm-6.d-flex > div.dropdown.nav-item > a.nav-link
+[ERROR] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: div.col-sm-6.d-flex > div.dropdown.nav-item > a.nav-link no such element: Unable to locate element: {"method":"css selector","selector":"div.col-sm-6.d-flex > div.dropdown.nav-item > a.nav-link"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [b08b6856cb623a55778fe77c83b2e714, findElement {using=css selector, value=div.col-sm-6.d-flex > div.dropdown.nav-item > a.nav-link}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 8520, ms:edgeOptions: {debuggerAddress: localhost:56750}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56750/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: b08b6856cb623a55778fe77c83b2e714
+[INFO] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\screenshots\cycle_1_step_1.png
+[ERROR] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: div.dropdown-menu.dashboard-dropdown > div.list-group > div.list-group-item > a
+[ERROR] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - Element not visible within 0s: By.cssSelector: div.dropdown-menu.dashboard-dropdown > div.list-group > div.list-group-item > a
+[ERROR] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: div.dropdown-menu.dashboard-dropdown > div.list-group > div.list-group-item > a no such element: Unable to locate element: {"method":"css selector","selector":"div.dropdown-menu.dashboard-dropdown > div.list-group > div.list-group-item > a"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [b08b6856cb623a55778fe77c83b2e714, findElement {using=css selector, value=div.dropdown-menu.dashboard-dropdown > div.list-group > div.list-group-item > a}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 8520, ms:edgeOptions: {debuggerAddress: localhost:56750}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56750/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: b08b6856cb623a55778fe77c83b2e714
+[INFO] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\screenshots\cycle_1_step_2.png
+[INFO] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=2
+[INFO] - [18-02-2026 16:07:40] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\screenshots\cycle_1_step_2.png
+[INFO] - [18-02-2026 16:07:53] [main] [utils.LogsManager] - LLM Batch details: Click the Dashboard dropdown and then select 'Add New Dashboard' to open the creation form.
+[INFO] - [18-02-2026 16:07:53] [main] [utils.LogsManager] - LLM Batch size: 2
+[ERROR] - [18-02-2026 16:07:53] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: div.col-sm-6.d-flex > div.dropdown.nav-item > a.nav-link
+[ERROR] - [18-02-2026 16:07:56] [main] [utils.LogsManager] - Element not visible within 3s: By.cssSelector: div.col-sm-6.d-flex > div.dropdown.nav-item > a.nav-link
+[ERROR] - [18-02-2026 16:07:56] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: div.col-sm-6.d-flex > div.dropdown.nav-item > a.nav-link no such element: Unable to locate element: {"method":"css selector","selector":"div.col-sm-6.d-flex > div.dropdown.nav-item > a.nav-link"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [b08b6856cb623a55778fe77c83b2e714, findElement {using=css selector, value=div.col-sm-6.d-flex > div.dropdown.nav-item > a.nav-link}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 8520, ms:edgeOptions: {debuggerAddress: localhost:56750}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56750/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: b08b6856cb623a55778fe77c83b2e714
+[INFO] - [18-02-2026 16:07:57] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\screenshots\cycle_2_step_1.png
+[ERROR] - [18-02-2026 16:07:57] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: div.dropdown-menu.dashboard-dropdown > div.list-group > div.list-group-item:nth-of-type(2) > a.small-text
+[ERROR] - [18-02-2026 16:08:00] [main] [utils.LogsManager] - Element not visible within 3s: By.cssSelector: div.dropdown-menu.dashboard-dropdown > div.list-group > div.list-group-item:nth-of-type(2) > a.small-text
+[ERROR] - [18-02-2026 16:08:00] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: div.dropdown-menu.dashboard-dropdown > div.list-group > div.list-group-item:nth-of-type(2) > a.small-text no such element: Unable to locate element: {"method":"css selector","selector":"div.dropdown-menu.dashboard-dropdown > div.list-group > div.list-group-item:nth-of-type(2) > a.small-text"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [b08b6856cb623a55778fe77c83b2e714, findElement {using=css selector, value=div.dropdown-menu.dashboard-dropdown > div.list-group > div.list-group-item:nth-of-type(2) > a.small-text}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 8520, ms:edgeOptions: {debuggerAddress: localhost:56750}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56750/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: b08b6856cb623a55778fe77c83b2e714
+[INFO] - [18-02-2026 16:08:01] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\screenshots\cycle_2_step_2.png
+[INFO] - [18-02-2026 16:08:01] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:08:01] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:08:01] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=3
+[INFO] - [18-02-2026 16:08:01] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-07-04\screenshots\cycle_2_step_2.png
+[DEBUG] - [18-02-2026 16:12:40] [main] [org.testng.TestNG] - suiteXmlPath: "C:\Users\Administrator\AppData\Local\JetBrains\IntelliJIdea2025.2\temp-testng-customsuite.xml"
+[INFO] - [18-02-2026 16:12:40] [main] [org.testng.internal.Utils] - [TestNG] Running:
+  C:\Users\Administrator\AppData\Local\JetBrains\IntelliJIdea2025.2\temp-testng-customsuite.xml
+
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\logs
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\planner
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\llm
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\logs
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\llm
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\logs
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\planner
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\llm
+[INFO] - [18-02-2026 16:12:40] [main] [utils.LogsManager] - Starting Driver for Browser Type: EDGE
+[INFO] - [18-02-2026 16:12:41] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\planner
+[INFO] - [18-02-2026 16:12:46] [main] [utils.LogsManager] - Navigated to URL https://rainy.nasam.net/auth/login
+[INFO] - [18-02-2026 16:12:46] [main] [utils.LogsManager] - Text typed into element: By.cssSelector: input[placeholder='Username']
+[INFO] - [18-02-2026 16:12:47] [main] [utils.LogsManager] - Text typed into element: By.cssSelector: input[placeholder='Password']
+[INFO] - [18-02-2026 16:12:52] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\step_0.png
+[INFO] - [18-02-2026 16:12:52] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:12:52] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=1
+[INFO] - [18-02-2026 16:12:52] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\step_0.png
+[INFO] - [18-02-2026 16:13:01] [main] [utils.LogsManager] - LLM Batch details: Clicking the 'Add New Dashboard' button to open the dashboard creation modal.
+[INFO] - [18-02-2026 16:13:01] [main] [utils.LogsManager] - LLM Batch size: 1
+[ERROR] - [18-02-2026 16:13:01] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: button[data-bs-target="#kt_modal_add_dashboard"]
+[ERROR] - [18-02-2026 16:13:06] [main] [utils.LogsManager] - Element not visible within 5s: By.cssSelector: button[data-bs-target="#kt_modal_add_dashboard"]
+[ERROR] - [18-02-2026 16:13:06] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: button[data-bs-target="#kt_modal_add_dashboard"] no such element: Unable to locate element: {"method":"css selector","selector":"button[data-bs-target="#kt_modal_add_dashboard"]"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, findElement {using=css selector, value=button[data-bs-target="#kt_modal_add_dashboard"]}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[INFO] - [18-02-2026 16:13:09] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_1_step_1.png
+[INFO] - [18-02-2026 16:13:09] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:13:09] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:13:09] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=2
+[INFO] - [18-02-2026 16:13:09] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_1_step_1.png
+[INFO] - [18-02-2026 16:13:20] [main] [utils.LogsManager] - LLM Batch details: Open the dashboard dropdown and click on 'Add New Dashboard' to initiate the creation of a new dashboard.
+[INFO] - [18-02-2026 16:13:20] [main] [utils.LogsManager] - LLM Batch size: 2
+[ERROR] - [18-02-2026 16:13:20] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: h2.text-gray-800 > i.fas.fa-angle-down
+[ERROR] - [18-02-2026 16:13:20] [main] [utils.LogsManager] - Element not visible within 0s: By.cssSelector: h2.text-gray-800 > i.fas.fa-angle-down
+[ERROR] - [18-02-2026 16:13:20] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: h2.text-gray-800 > i.fas.fa-angle-down no such element: Unable to locate element: {"method":"css selector","selector":"h2.text-gray-800 > i.fas.fa-angle-down"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, findElement {using=css selector, value=h2.text-gray-800 > i.fas.fa-angle-down}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[INFO] - [18-02-2026 16:13:22] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_2_step_1.png
+[ERROR] - [18-02-2026 16:13:22] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: div.add-dashboard-link > a.menu-link.px-3
+[ERROR] - [18-02-2026 16:13:22] [main] [utils.LogsManager] - Element not visible within 0s: By.cssSelector: div.add-dashboard-link > a.menu-link.px-3
+[ERROR] - [18-02-2026 16:13:22] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: div.add-dashboard-link > a.menu-link.px-3 no such element: Unable to locate element: {"method":"css selector","selector":"div.add-dashboard-link > a.menu-link.px-3"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, findElement {using=css selector, value=div.add-dashboard-link > a.menu-link.px-3}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[INFO] - [18-02-2026 16:13:23] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_2_step_2.png
+[INFO] - [18-02-2026 16:13:23] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:13:23] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:13:23] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=3
+[INFO] - [18-02-2026 16:13:23] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_2_step_2.png
+[INFO] - [18-02-2026 16:13:31] [main] [utils.LogsManager] - LLM Batch details: Clicking on the Dashboard dropdown and then selecting 'Add New Dashboard' to initiate the creation of a new dashboard.
+[INFO] - [18-02-2026 16:13:31] [main] [utils.LogsManager] - LLM Batch size: 2
+[ERROR] - [18-02-2026 16:13:31] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: h2.text-gray-800 > i.fas.fa-angle-down
+[ERROR] - [18-02-2026 16:13:34] [main] [utils.LogsManager] - Element not visible within 3s: By.cssSelector: h2.text-gray-800 > i.fas.fa-angle-down
+[ERROR] - [18-02-2026 16:13:34] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: h2.text-gray-800 > i.fas.fa-angle-down no such element: Unable to locate element: {"method":"css selector","selector":"h2.text-gray-800 > i.fas.fa-angle-down"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, findElement {using=css selector, value=h2.text-gray-800 > i.fas.fa-angle-down}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[INFO] - [18-02-2026 16:13:35] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_3_step_1.png
+[ERROR] - [18-02-2026 16:13:35] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: a.menu-link.px-3:contains('Add New Dashboard')
+[ERROR] - [18-02-2026 16:13:35] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: a.menu-link.px-3:contains('Add New Dashboard') invalid selector: An invalid or illegal selector was specified
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidselectorexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, findElement {using=css selector, value=a.menu-link.px-3:contains('Add New Dashboard')}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[INFO] - [18-02-2026 16:13:36] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_3_step_2.png
+[INFO] - [18-02-2026 16:13:36] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:13:36] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:13:36] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=4
+[INFO] - [18-02-2026 16:13:36] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_3_step_2.png
+[INFO] - [18-02-2026 16:13:51] [main] [utils.LogsManager] - LLM Batch details: Attempting to open the dashboard dropdown and click 'Add New Dashboard'. The previous steps failed, so retrying with a short wait to ensure the elements are interactable.
+[INFO] - [18-02-2026 16:13:51] [main] [utils.LogsManager] - LLM Batch size: 2
+[ERROR] - [18-02-2026 16:13:51] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: h2.text-gray-800 > i.fas.fa-angle-down
+[ERROR] - [18-02-2026 16:13:53] [main] [utils.LogsManager] - Element not visible within 2s: By.cssSelector: h2.text-gray-800 > i.fas.fa-angle-down
+[ERROR] - [18-02-2026 16:13:53] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: h2.text-gray-800 > i.fas.fa-angle-down no such element: Unable to locate element: {"method":"css selector","selector":"h2.text-gray-800 > i.fas.fa-angle-down"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, findElement {using=css selector, value=h2.text-gray-800 > i.fas.fa-angle-down}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[INFO] - [18-02-2026 16:13:54] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_4_step_1.png
+[ERROR] - [18-02-2026 16:13:54] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: a.menu-link.px-3:contains('Add New Dashboard')
+[ERROR] - [18-02-2026 16:13:54] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: a.menu-link.px-3:contains('Add New Dashboard') invalid selector: An invalid or illegal selector was specified
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidselectorexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, findElement {using=css selector, value=a.menu-link.px-3:contains('Add New Dashboard')}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[INFO] - [18-02-2026 16:13:56] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_4_step_2.png
+[INFO] - [18-02-2026 16:13:56] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:13:56] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:13:56] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=5
+[INFO] - [18-02-2026 16:13:56] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_4_step_2.png
+[INFO] - [18-02-2026 16:14:01] [main] [utils.LogsManager] - LLM Batch details: Click on 'Create Dashboard' to initiate the new dashboard creation process.
+[INFO] - [18-02-2026 16:14:01] [main] [utils.LogsManager] - LLM Batch size: 1
+[ERROR] - [18-02-2026 16:14:01] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: a.menu-link.px-3:contains('Create Dashboard')
+[ERROR] - [18-02-2026 16:14:01] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: a.menu-link.px-3:contains('Create Dashboard') invalid selector: An invalid or illegal selector was specified
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidselectorexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, findElement {using=css selector, value=a.menu-link.px-3:contains('Create Dashboard')}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[INFO] - [18-02-2026 16:14:02] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_5_step_1.png
+[INFO] - [18-02-2026 16:14:02] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:14:02] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:14:02] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=6
+[INFO] - [18-02-2026 16:14:02] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_5_step_1.png
+[INFO] - [18-02-2026 16:14:14] [main] [utils.LogsManager] - LLM Batch details: Retry clicking 'Create Dashboard' link from the opened dropdown menu to navigate to the dashboard creation page.
+[INFO] - [18-02-2026 16:14:14] [main] [utils.LogsManager] - LLM Batch size: 1
+[ERROR] - [18-02-2026 16:14:22] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: a.menu-link.px-3:contains('Create Dashboard')
+[ERROR] - [18-02-2026 16:14:23] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: a.menu-link.px-3:contains('Create Dashboard') invalid selector: An invalid or illegal selector was specified
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidselectorexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, findElement {using=css selector, value=a.menu-link.px-3:contains('Create Dashboard')}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[INFO] - [18-02-2026 16:14:26] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_6_step_1.png
+[INFO] - [18-02-2026 16:14:26] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:14:26] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:14:26] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=7
+[INFO] - [18-02-2026 16:14:26] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_6_step_1.png
+[INFO] - [18-02-2026 16:14:44] [main] [utils.LogsManager] - LLM Batch details: Attempting to click 'Create Dashboard' from the opened dropdown menu to initiate the creation of a new dashboard.
+[INFO] - [18-02-2026 16:14:44] [main] [utils.LogsManager] - LLM Batch size: 1
+[ERROR] - [18-02-2026 16:14:44] [main] [utils.LogsManager] - Failed to scroll to element: By.xpath: //*[normalize-space(text())='Create Dashboard']
+[ERROR] - [18-02-2026 16:14:44] [main] [utils.LogsManager] - Element not visible within 0s: By.xpath: //*[normalize-space(text())='Create Dashboard']
+[ERROR] - [18-02-2026 16:14:44] [main] [utils.LogsManager] - Failed to click element: By.xpath: //*[normalize-space(text())='Create Dashboard'] no such element: Unable to locate element: {"method":"xpath","selector":"//*[normalize-space(text())='Create Dashboard']"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, findElement {using=xpath, value=//*[normalize-space(text())='Create Dashboard']}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[INFO] - [18-02-2026 16:14:45] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_7_step_1.png
+[INFO] - [18-02-2026 16:14:45] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:14:45] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:14:45] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=8
+[INFO] - [18-02-2026 16:14:45] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_7_step_1.png
+[INFO] - [18-02-2026 16:14:57] [main] [utils.LogsManager] - LLM Batch details: Attempting to open the new dashboard creation modal by clicking 'Create Dashboard'.
+[INFO] - [18-02-2026 16:14:57] [main] [utils.LogsManager] - LLM Batch size: 1
+[ERROR] - [18-02-2026 16:14:57] [main] [utils.LogsManager] - Failed to scroll to element: By.cssSelector: a[data-target="#addDashboardModal"]
+[ERROR] - [18-02-2026 16:14:57] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: a[data-target="#addDashboardModal"] invalid session id
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, findElement {using=css selector, value=a[data-target="#addDashboardModal"]}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[ERROR] - [18-02-2026 16:14:59] [main] [utils.LogsManager] - Failed to capture screenshot: invalid session id
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, screenshot {}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[ERROR] - [18-02-2026 16:14:59] [main] [utils.LogsManager] - Failed to get current url invalid session id
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, getCurrentUrl {}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[ERROR] - [18-02-2026 16:14:59] [main] [utils.LogsManager] - Failed to get page source invalid session id
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [2ba12e28770084fad6081f5f61d842fb, getPageSource {}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 23088, ms:edgeOptions: {debuggerAddress: localhost:51254}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:51254/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 2ba12e28770084fad6081f5f61d842fb
+[INFO] - [18-02-2026 16:14:59] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:14:59] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=9
+[WARN] - [18-02-2026 16:14:59] [main] [utils.LogsManager] - Screenshot not found, sending text-only: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-12-40\screenshots\cycle_8_step_1.png
+[DEBUG] - [18-02-2026 16:37:12] [main] [org.testng.TestNG] - suiteXmlPath: "C:\Users\Administrator\AppData\Local\JetBrains\IntelliJIdea2025.2\temp-testng-customsuite.xml"
+[INFO] - [18-02-2026 16:37:12] [main] [org.testng.internal.Utils] - [TestNG] Running:
+  C:\Users\Administrator\AppData\Local\JetBrains\IntelliJIdea2025.2\temp-testng-customsuite.xml
+
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\logs
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\screenshots
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\planner
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\llm
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\logs
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\screenshots
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\llm
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\logs
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\screenshots
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\planner
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\llm
+[INFO] - [18-02-2026 16:37:12] [main] [utils.LogsManager] - Starting Driver for Browser Type: EDGE
+[INFO] - [18-02-2026 16:37:13] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\planner
+[INFO] - [18-02-2026 16:37:21] [main] [utils.LogsManager] - Navigated to URL https://rainy.nasam.net/auth/login
+[INFO] - [18-02-2026 16:37:21] [main] [utils.LogsManager] - Text typed into element: By.cssSelector: input[placeholder='Username']
+[INFO] - [18-02-2026 16:37:21] [main] [utils.LogsManager] - Text typed into element: By.cssSelector: input[placeholder='Password']
+[INFO] - [18-02-2026 16:37:27] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-37-12\screenshots\step_0.png
+[INFO] - [18-02-2026 16:37:27] [main] [utils.LogsManager] - Switched back to default content
+[INFO] - [18-02-2026 16:37:27] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/auth/login
+[DEBUG] - [18-02-2026 16:39:38] [main] [org.testng.TestNG] - suiteXmlPath: "C:\Users\Administrator\AppData\Local\JetBrains\IntelliJIdea2025.2\temp-testng-customsuite.xml"
+[INFO] - [18-02-2026 16:39:38] [main] [org.testng.internal.Utils] - [TestNG] Running:
+  C:\Users\Administrator\AppData\Local\JetBrains\IntelliJIdea2025.2\temp-testng-customsuite.xml
+
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\logs
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\screenshots
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\planner
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\llm
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\logs
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\screenshots
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\llm
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\logs
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\screenshots
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\planner
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\llm
+[INFO] - [18-02-2026 16:39:38] [main] [utils.LogsManager] - Starting Driver for Browser Type: EDGE
+[INFO] - [18-02-2026 16:39:39] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\planner
+[INFO] - [18-02-2026 16:39:45] [main] [utils.LogsManager] - Navigated to URL https://rainy.nasam.net/auth/login
+[INFO] - [18-02-2026 16:39:45] [main] [utils.LogsManager] - Text typed into element: By.cssSelector: input[placeholder='Username']
+[INFO] - [18-02-2026 16:39:45] [main] [utils.LogsManager] - Text typed into element: By.cssSelector: input[placeholder='Password']
+[INFO] - [18-02-2026 16:39:50] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-39-38\screenshots\step_0.png
+[INFO] - [18-02-2026 16:39:50] [main] [utils.LogsManager] - Switched back to default content
+[INFO] - [18-02-2026 16:39:50] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[DEBUG] - [18-02-2026 16:42:57] [main] [org.testng.TestNG] - suiteXmlPath: "C:\Users\Administrator\AppData\Local\JetBrains\IntelliJIdea2025.2\temp-testng-customsuite.xml"
+[INFO] - [18-02-2026 16:42:57] [main] [org.testng.internal.Utils] - [TestNG] Running:
+  C:\Users\Administrator\AppData\Local\JetBrains\IntelliJIdea2025.2\temp-testng-customsuite.xml
+
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\logs
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\planner
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\llm
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\logs
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\llm
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\logs
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\planner
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\llm
+[INFO] - [18-02-2026 16:42:58] [main] [utils.LogsManager] - Starting Driver for Browser Type: EDGE
+[INFO] - [18-02-2026 16:42:59] [main] [utils.LogsManager] - File exist D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\planner
+[INFO] - [18-02-2026 16:43:04] [main] [utils.LogsManager] - Navigated to URL https://rainy.nasam.net/auth/login
+[INFO] - [18-02-2026 16:43:04] [main] [utils.LogsManager] - Text typed into element: By.cssSelector: input[placeholder='Username']
+[INFO] - [18-02-2026 16:43:04] [main] [utils.LogsManager] - Text typed into element: By.cssSelector: input[placeholder='Password']
+[INFO] - [18-02-2026 16:43:09] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\step_0.png
+[INFO] - [18-02-2026 16:43:09] [main] [utils.LogsManager] - Switched back to default content
+[INFO] - [18-02-2026 16:43:09] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:43:10] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=1
+[INFO] - [18-02-2026 16:43:10] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\step_0.png
+[INFO] - [18-02-2026 16:43:34] [main] [utils.LogsManager] - LLM Batch details: Switching to the iframe that contains the dashboard content to proceed with adding a new dashboard.
+[INFO] - [18-02-2026 16:43:34] [main] [utils.LogsManager] - LLM Batch size: 1
+[ERROR] - [18-02-2026 16:43:34] [main] [utils.LogsManager] - Frame not found by css: By.cssSelector: iframe[src*="/dash/"]
+[INFO] - [18-02-2026 16:43:35] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_1_step_1.png
+[INFO] - [18-02-2026 16:43:35] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:43:35] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:43:35] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=2
+[INFO] - [18-02-2026 16:43:35] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_1_step_1.png
+[INFO] - [18-02-2026 16:43:39] [main] [utils.LogsManager] - LLM Batch details: Clicking on the Dashboard dropdown to reveal options for managing or adding dashboards.
+[INFO] - [18-02-2026 16:43:39] [main] [utils.LogsManager] - LLM Batch size: 1
+[INFO] - [18-02-2026 16:43:40] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_2_step_1.png
+[INFO] - [18-02-2026 16:43:40] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:43:40] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:43:40] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=3
+[INFO] - [18-02-2026 16:43:40] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_2_step_1.png
+[INFO] - [18-02-2026 16:43:44] [main] [utils.LogsManager] - LLM Batch details: Click on 'Create Dashboard' to initiate the creation process.
+[INFO] - [18-02-2026 16:43:44] [main] [utils.LogsManager] - LLM Batch size: 1
+[INFO] - [18-02-2026 16:43:46] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_3_step_1.png
+[INFO] - [18-02-2026 16:43:46] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:43:46] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:43:46] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=4
+[INFO] - [18-02-2026 16:43:46] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_3_step_1.png
+[INFO] - [18-02-2026 16:43:50] [main] [utils.LogsManager] - LLM Batch details: Filling in the dashboard name and clicking create.
+[INFO] - [18-02-2026 16:43:50] [main] [utils.LogsManager] - LLM Batch size: 2
+[INFO] - [18-02-2026 16:43:50] [main] [utils.LogsManager] - Text typed into element: By.id: name
+[INFO] - [18-02-2026 16:43:51] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_4_step_1.png
+[INFO] - [18-02-2026 16:43:54] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_4_step_2.png
+[INFO] - [18-02-2026 16:43:54] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:43:54] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:43:54] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=5
+[INFO] - [18-02-2026 16:43:54] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_4_step_2.png
+[INFO] - [18-02-2026 16:44:01] [main] [utils.LogsManager] - LLM Batch details: Click 'Add Widget' to begin populating the newly created dashboard.
+[INFO] - [18-02-2026 16:44:01] [main] [utils.LogsManager] - LLM Batch size: 1
+[ERROR] - [18-02-2026 16:44:02] [main] [utils.LogsManager] - Failed to click element: By.cssSelector: div.dashboard-cancel-btn element click intercepted: Element <div class="dashboard-cancel-btn pe-none opacity-75">...</div> is not clickable at point (713, 277). Other element would receive the click: <div class="react-grid-item empty-dashboard static cssTransforms react-resizable-hide react-resizable" data-grid="[object Object]" style="transform: translate(20px, 20px); width: 1386px; height: 400px; position: absolute;">...</div>
+  (Session info: MicrosoftEdge=145.0.3800.58)
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [0d8cf20a3dc62bbe7946617714de2074, clickElement {id=f.38FE4A1C29FED20B76303A2806FA31EB.d.11ACCC01EF8BA4A32EC16A748C490D66.e.140}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 27812, ms:edgeOptions: {debuggerAddress: localhost:52686}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52686/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Element: [[EdgeDriver: MicrosoftEdge on windows (0d8cf20a3dc62bbe7946617714de2074)] -> css selector: div.dashboard-cancel-btn]
+Session ID: 0d8cf20a3dc62bbe7946617714de2074
+[INFO] - [18-02-2026 16:44:04] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_5_step_1.png
+[INFO] - [18-02-2026 16:44:04] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:44:04] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:44:04] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=6
+[INFO] - [18-02-2026 16:44:04] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_5_step_1.png
+[INFO] - [18-02-2026 16:44:11] [main] [utils.LogsManager] - LLM Batch details: The 'Add Widget' button is currently disabled. The scenario is to add a new dashboard named 'test dashboard'. Since 'test dashboard' is already displayed, we will click the dropdown next to 'Test Dashboard' to find an option to manage or add new dashboards.
+[INFO] - [18-02-2026 16:44:11] [main] [utils.LogsManager] - LLM Batch size: 1
+[INFO] - [18-02-2026 16:44:12] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_6_step_1.png
+[INFO] - [18-02-2026 16:44:12] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:44:12] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:44:12] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=7
+[INFO] - [18-02-2026 16:44:12] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_6_step_1.png
+[INFO] - [18-02-2026 16:44:25] [main] [utils.LogsManager] - LLM Batch details: Clicking on 'Add New Dashboard' from the dropdown menu to initiate the creation of a new dashboard.
+[INFO] - [18-02-2026 16:44:25] [main] [utils.LogsManager] - LLM Batch size: 1
+[ERROR] - [18-02-2026 16:44:25] [main] [utils.LogsManager] - Failed to scroll to element: By.xpath: //div[contains(text(),'Add New Dashboard')]
+[ERROR] - [18-02-2026 16:44:30] [main] [utils.LogsManager] - Element not visible within 5s: By.xpath: //div[contains(text(),'Add New Dashboard')]
+[ERROR] - [18-02-2026 16:44:30] [main] [utils.LogsManager] - Failed to click element: By.xpath: //div[contains(text(),'Add New Dashboard')] no such element: Unable to locate element: {"method":"xpath","selector":"//div[contains(text(),'Add New Dashboard')]"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [0d8cf20a3dc62bbe7946617714de2074, findElement {value=//div[contains(text(),'Add New Dashboard')], using=xpath}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 27812, ms:edgeOptions: {debuggerAddress: localhost:52686}, msedge: {msedgedriverVersion: 145.0.3800.58 (64ad1900648f..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52686/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 0d8cf20a3dc62bbe7946617714de2074
+[INFO] - [18-02-2026 16:44:31] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_7_step_1.png
+[INFO] - [18-02-2026 16:44:31] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
+[INFO] - [18-02-2026 16:44:31] [main] [utils.LogsManager] - stopTesting=false , Looping..
+[INFO] - [18-02-2026 16:44:31] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=8
+[INFO] - [18-02-2026 16:44:31] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-02-18_16-42-58\screenshots\cycle_7_step_1.png

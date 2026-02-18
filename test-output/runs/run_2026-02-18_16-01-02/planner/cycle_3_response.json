@@ -1,0 +1,23 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Attempting to click the 'Dashboard' dropdown to reveal options for managing dashboards.",
+  "finalSummary": "",
+  "currentObservation": "The current page is the main dashboard. The previous attempt to click the 'Dashboard' dropdown failed, so re-attempting to click it to expose dashboard management options.",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click the 'Dashboard' dropdown button to display the dashboard management options.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:div.page-header-title > div.dropdown > a.dropdown-toggle",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 3,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

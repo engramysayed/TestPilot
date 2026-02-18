@@ -1,0 +1,21 @@
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Click 'Add Widget' to begin populating the newly created dashboard.",
+  "finalSummary": "",
+  "currentObservation": "The 'test dashboard' is currently empty, displaying a prominent 'Add Widget' button in the center.",
+  "steps": [
+    {
+      "stepId": 3,
+      "stepDetails": "Click the 'Add Widget' button to open the widget selection interface.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:div.dashboard-cancel-btn",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
