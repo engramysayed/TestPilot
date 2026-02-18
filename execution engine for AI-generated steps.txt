@@ -1,0 +1,125 @@
+Project Flow
+
+
+Scenario
+   ↓
+PlannerStart (scenario + slim HTML)
+   ↓
+LLM returns ONE STEP JSON
+   ↓
+parseStep()
+   ↓
+execute step
+   ↓
+screenshot
+   ↓
+HtmlSlimmer.slim()
+   ↓
+PlannerUpdate
+   ↓
+(loop until stopTesting=true)
+
+
+
+============================================================================================================
+
+Message #1 (first request): PlannerStart
+Send scenario + goal + rules + output schema.
+
+{
+  "type": "PlannerStart",
+  "scenario": "Test login flow: open site, fill email+password, submit, verify dashboard loads.",
+  "constraints": {
+    "oneStepOnly": true,
+    "useOnlySelectorsFromHtml": true,
+    "preferCssSelector": true,
+    "avoidBrittleXpath": true
+  },
+  "outputSchema": {
+    "stepId": "int",
+    "stepDetails": "string",
+    "actionType": "browserAction|elementAction|frameAction",
+    "action": "click|type|clear|select|getText|getAttr|scroll|upload|navigate|refresh|back|maximize|getUrl|close|openNewWindow|getCustomTab|switchFrameById|switchFrameByName|switchFrameByIndex|switchToParent",
+    "selector": "cssSelector:<...> OR xpath:<...> OR id:<...> (empty string allowed for pure browser actions like refresh/back/maximize)",
+    "value": "string (For Type in input field or for select from dropdown , empty if not needed)",
+    "generalWait": number (explicit wait for elements ,int seconds, default 5),
+    "screenshotWait": number (wait after execute the action to take screenshot must be accurate ,int seconds, default 1),
+    "screenshot": boolean (true usually to send always a screenshot showing the progress and the current page ui),
+    "stopTesting": boolean (true only when finished)
+  },
+  "rules": [
+    "Return ONLY a single JSON object",
+    "All keys required",
+    "ONE step only",
+    "If finished: stopTesting=true and keep fields empty/default"
+  ],
+  "currentState": {
+    "currentUrl": "https://example.com/login",
+    "currentHtmlSlim": "<html>...</html>",
+    "currentScreenshotRef": "step_0.png"
+  }
+}
+
+============================================================================================================
+ Message #2 (loop): PlannerUpdate
+
+Send: last step + result + short state.
+
+{
+  "type": "PlannerUpdate",
+  "lastStepId": 1,
+  "lastStepDetails": "Clicked login button",
+  "lastStepResult": {
+    "success": true,
+    "error": ""
+  },
+  "currentUrl": "https://example.com/login",
+  "currentHtmlSlim": "<html>...</html>",
+  "currentScreenshotRef": "step_1.png"
+}
+
+============================================================================================================
+PlannerStart
+
+String startJson = JsonMapper.buildPlannerStart(
+        "Test login flow: open site, fill email/password, submit, verify dashboard.",
+        driver.getCurrentUrl(),
+        slimHtml,
+        "step_0.png"
+);
+============================================================================================================
+PlannerUpdate
+
+String updateJson = JsonMapper.buildPlannerUpdate(
+        lastStepId,
+        lastStepDetails,
+        lastSuccess,
+        lastMessage,
+        driver.getCurrentUrl(),
+        slimHtml,
+        "step_" + lastStepId + ".png"
+);
+
+============================================================================================================
+use the Html Slimmer
+
+String fullHtml = driver.getPageSource();
+
+String slimHtml = HtmlSlimmer.slim(
+        fullHtml,
+        20_000   // safe size for prompts
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
