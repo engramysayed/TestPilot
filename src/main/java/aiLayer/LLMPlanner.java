@@ -17,7 +17,6 @@ public class LLMPlanner {
         this.runFolder = runFolder;
         FilesManager.createDirectory(runFolder.resolve("planner").toString());
         this.client = new LLMClient();
-        //free model -> gemini-3-flash-preview
     }
 
     public String getNextBatch(int cycleId, String plannerMessageJson, String screenshotRef) throws Exception{
@@ -63,44 +62,89 @@ public class LLMPlanner {
     }
 
 
-
-
     private String buildPrompt(String plannerMessageJson) {
 
         return """
-        You are a test automation planner.
+            You are a professional test automation planner.
 
-        You will receive a JSON message (PlannerStart or PlannerUpdate) that includes:
-        - the scenario
-        - the current state (url + slim html + screenshotRef)
-        - and the REQUIRED output schema.
+            You will receive a JSON message (PlannerStart or PlannerUpdate) that includes:
+            - the scenario
+            - the current state (url + slim html + screenshotRef)
+            - and the REQUIRED output schema.
 
-        Your job:
-        - Output ONLY ONE JSON object (no markdown, no explanations)
-        - It MUST match the requiredOutputSchema inside the message
-        - Produce NEXT steps that are tightly related and safe to execute on the CURRENT page only
-        - steps array length MUST be 1 to %d (maxSteps=%d).
+            Your job:
+            - Produce the NEXT batch of steps that are tightly related and safe to execute on the CURRENT page only.
+            - steps array length MUST be between 1 and %d (maxSteps=%d).
+            - Follow ALL schema rules strictly.
 
-        CRITICAL OUTPUT RULES:
-        - Output raw JSON only.
-        - Do NOT wrap the response in triple backticks.
-        - Do NOT include the word "json".
-        - Do NOT include explanations.
-        - The response must begin with '{' and end with '}'.
-        - If you violate this format, the system will fail.
+            ========================
+            CRITICAL OUTPUT RULES
+            ========================
+            - Output RAW JSON only.
+            - Do NOT wrap the response in triple backticks.
+            - Do NOT include the word "json".
+            - Do NOT include explanations.
+            - Do NOT include markdown.
+            - The response MUST start with '{' and end with '}'.
+            - IMPORTANT: stopTesting=true means STOP AFTER executing the returned steps. steps may be non-empty.
+            - If finished, return:
+              {
+                "type": "PlannerBatch",
+                "stopTesting": true,
+                "batchDetails": "",
+                "finalSummary": "short summary of what you did",
+                "currentObservation": "what is visible now on the page",
+                "steps": []
+              }
 
-        IMPORTANT RULE ABOUT "value":
-        - Put ALL non-selector parameters inside "value":
-          - If action=navigate -> value MUST be the URL
-          - If action=getCustomTab -> value MUST be the tab handle/index
-          - If action is frame switching -> value MUST be frame id/name/index
-          - If action=type/select/upload -> value MUST be the input value/path
+            ========================
+            SELECTOR PRIORITY RULE (STRICT)
+            ========================
+            When choosing selectors:
+            1) ALWAYS try id:<...> first (if available).
+            2) If no id exists -> use name:<...>.
+            3) If no name exists -> use cssSelector:<...>.
+            4) Don't use xpath.
 
-        PLANNER_MESSAGE_JSON:
-        %s
+            Avoid xpath unless:
+            - There is no stable id.
+            - There is no name.
+            - A CSS selector cannot uniquely identify the element.
 
-        YOUR OUTPUT (JSON only):
-        """.formatted(
+            Selectors MUST be:
+            - Stable
+            - Not dynamic
+            - Not index-based
+            - Not text-based unless no other option exists.
+
+            If you violate selector priority, the step will be rejected.
+
+            ========================
+            FORM DATA RULE
+            ========================
+            If typing into a form:
+            - Always use realistic valid dummy data.
+            - Do NOT leave value empty.
+            - Do NOT use random garbage strings.
+            ========================
+            VALUE FIELD RULE
+            ========================
+            Put ALL non-selector parameters inside "value":
+            - If action=navigate -> value MUST be the URL.
+            - If action=getCustomTab -> value MUST be the tab handle/index.
+            - If action is frame switching -> value MUST be frame id/name/index.
+            - If action=type/select/upload -> value MUST be the input value/path.
+            - Leave empty ONLY if not required.
+
+            ========================
+            PLANNER MESSAGE
+            ========================
+            %s
+
+            ========================
+            YOUR OUTPUT (JSON ONLY)
+            ========================
+            """.formatted(
                 MAX_STEPS_PER_BATCH,
                 MAX_STEPS_PER_BATCH,
                 plannerMessageJson

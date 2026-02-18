@@ -7,6 +7,7 @@ import executionLayer.actionExecute;
 import helpers.OrchestratorHelper;
 import org.openqa.selenium.WebDriver;
 import org.testng.annotations.BeforeSuite;
+import utils.LogsManager;
 import utils.PropertyReader;
 import java.nio.file.Path;
 public class BaseOrchestrator implements WebDriverProvider {
@@ -28,6 +29,13 @@ public class BaseOrchestrator implements WebDriverProvider {
     @BeforeSuite
     public void initialize() {
         PropertyReader.loadProperties();
+
+        runFolder = OrchestratorHelper.createNewRunFolder(); // e.g. test-output/runs/run-...
+
+        System.setProperty("basePath", runFolder.toString());
+
+        LogsManager.createRunDirs(runFolder.toString());
+
 
         HTML_MAX_CHARS = Integer.parseInt(PropertyReader.getProperty("HTML_MAX_CHARS"));
 

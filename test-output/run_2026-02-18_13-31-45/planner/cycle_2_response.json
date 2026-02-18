@@ -1,0 +1,79 @@
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Fill out registration form details including first name, surname, date of birth, gender, email, and password.",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Type 'John' into the First name field.",
+      "actionType": "elementAction",
+      "action": "type",
+      "selector": "name:firstname",
+      "value": "John",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Type 'Doe' into the Surname field.",
+      "actionType": "elementAction",
+      "action": "type",
+      "selector": "name:lastname",
+      "value": "Doe",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 3,
+      "stepDetails": "Select the year '1990' for Date of birth.",
+      "actionType": "elementAction",
+      "action": "select",
+      "selector": "id:year",
+      "value": "1990",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 4,
+      "stepDetails": "Select 'Male' gender option.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "xpath://label[text()='Male']/input[@name='sex']",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 5,
+      "stepDetails": "Type 'john.doe@example.com' into the Mobile number or email address field.",
+      "actionType": "elementAction",
+      "action": "type",
+      "selector": "name:reg_email__",
+      "value": "john.doe@example.com",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 6,
+      "stepDetails": "Type a strong password into the New password field.",
+      "actionType": "elementAction",
+      "action": "type",
+      "selector": "id:password_step_input",
+      "value": "Password123!",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}

@@ -11,50 +11,18 @@ public class JsonMapper {
     public static final int MAX_STEPS_PER_BATCH = Integer.parseInt(PropertyReader.getProperty("MaxSteps"));
 
 
-    //Parse LLM JSON response into simple String[]
-    public static String[] parseStep(String response) {
-
-        JSONObject o = new JSONObject(response);
-
-        int stepId = o.optInt("stepId", 0);
-        String stepDetails = o.optString("stepDetails", "");
-        String actionType = o.optString("actionType", "");
-        String action = o.optString("action", "");
-        String selector = o.optString("selector", "");
-        String value = o.optString("value", "");
-
-        int generalWait = o.optInt("generalWait", 5);
-        int screenshotWait = o.optInt("screenshotWait", 1);
-
-        boolean screenshot = o.optBoolean("screenshot", true);
-        boolean stopTesting = o.optBoolean("stopTesting", false);
-
-        return new String[]{
-                String.valueOf(stepId),
-                stepDetails,
-                actionType,
-                action,
-                selector,
-                value,
-                String.valueOf(generalWait),
-                String.valueOf(screenshotWait),
-                String.valueOf(screenshot),
-                String.valueOf(stopTesting)
-        };
-    }
-
-
+    //Parse LLM JSON response into simple List[] of strings
     public static List<String[]> parseBatchToArrays(String rawResponse) {
 
         String response = buildResult(rawResponse);
 
         JSONObject root = new JSONObject(response);
 
-        boolean stop = root.optBoolean("stopTesting", false);
         JSONArray arr = root.optJSONArray("steps");
-
         List<String[]> steps = new ArrayList<>();
-        if (stop || arr == null) return steps;
+
+        //stop early if completed
+        if (arr == null) return steps;
 
 
         int limit = Math.min(arr.length(), MAX_STEPS_PER_BATCH);
@@ -178,60 +146,42 @@ public class JsonMapper {
 
 
 
-    //The exact schema text we want the LLM to output each step.
-    private static String getRequiredStepSchemaText() {
-        return """
-                Return ONLY Array of object in JSON format (no code fences, no explanation).
-                Schema (ALL keys required):
-                [{
-                  "stepId": 1,
-                  "stepDetails": "very short details about what we will do on this step",
-                  "actionType": "browserAction|elementAction|frameAction",
-                  "action": "click|type|clear|select|getText|getAttr|scroll|upload|navigate|refresh|back|maximize|getUrl|close|openNewWindow|getCustomTab|switchFrameById|switchFrameByName|switchFrameByIndex|switchToParent",
-                  "selector": "cssSelector:<...> OR xpath:<...> OR id:<...> OR name:<...> OR className:<...> OR linkText:<...> OR partialLinkText:<...> (empty allowed for pure browser actions)",
-                  "value": "STRING. IMPORTANT: use it for ALL extra parameters: URL for navigate, tab for getCustomTab, frame id/name/index for switchFrame*, text for type, option for select, path for upload. Empty if not needed.",
-                  "generalWait": 5,
-                  "screenshotWait": 1,
-                  "screenshot": true,
-                  "stopTesting": false
-                }]
-                Rules:
-                - Output valid JSON only.
-                - Give steps that are related and compatible with each others in the current page only.
-                - If finished, set stopTesting=true and keep other fields empty/defaults.
-                """;
-    }
+    //The exact schema text we want the LLM to output each batch.
     private static String getRequiredBatchSchemaText() {
         return """
-        Return ONLY a single JSON object (no code fences, no explanation).
-        Output schema:
-        {
-          "type": "PlannerBatch",
-          "stopTesting": false,
-          "batchDetails": "short description",
-          "steps": [
-            {
-              "stepId": 1,
-              "stepDetails": "very short details about what we will do on this step",
-              "actionType": "browserAction|elementAction|frameAction",
-              "action": "click|type|clear|select|getText|getAttr|scroll|upload|navigate|refresh|back|maximize|getUrl|close|openNewWindow|getCustomTab|switchFrameById|switchFrameByName|switchFrameByIndex|switchToParent",
-              "selector": "cssSelector:<...> OR xpath:<...> OR id:<...> OR name:<...> OR className:<...> OR linkText:<...> OR partialLinkText:<...> (empty allowed for pure browser actions)",
-              "value": "STRING. IMPORTANT: use it for ALL extra parameters. Empty if not needed.",
-              "generalWait": 5,
-              "screenshotWait": 1,
-              "screenshot": true,
-              "stopTesting": false
-            }
-          ]
-        }
-
-        Rules:
-        - Output valid JSON only.
-        - steps MUST contain 1 to %d items (maxSteps=%d).
-        - Steps must be tightly related and safe to execute in sequence on the current page.
-        - If finished, set stopTesting=true and steps=[].
-        """
-                .formatted(MAX_STEPS_PER_BATCH, MAX_STEPS_PER_BATCH);
+                Return ONLY a single JSON object (no code fences, no explanation).
+                Output schema:
+                {
+                  "type": "PlannerBatch",
+                  "stopTesting": false,
+                  "batchDetails": "short description",
+                  "finalSummary": "",
+                  "currentObservation": "",
+                  "steps": [
+                    {
+                      "stepId": 1,
+                      "stepDetails": "very short details about what we will do on this step",
+                      "actionType": "browserAction|elementAction|frameAction",
+                      "action": "click|type|clear|select|getText|getAttr|scroll|upload|navigate|refresh|back|maximize|getUrl|close|openNewWindow|getCustomTab|switchFrameById|switchFrameByName|switchFrameByIndex|switchToParent",
+                      "selector": "id:<...> OR name:<...> OR cssSelector:<...> OR xpath:<...> OR className:<...> OR linkText:<...> OR partialLinkText:<...> (empty allowed for pure browser actions)",
+                      "value": "STRING. IMPORTANT: use it for ALL extra parameters. Empty if not needed.",
+                      "generalWait": give integer value to use in explicit wait,
+                      "screenshotWait": give integer value to use after the action to take screenshot,
+                      "screenshot": true,
+                      "stopTesting": false
+                    }
+                  ]
+                }
+                
+                Rules:
+                - Output valid JSON only.
+                - steps MUST contain 1 to %d items (maxSteps=%d).
+                - Steps must be tightly related and safe to execute in sequence on the current page.
+                - If finished, set stopTesting=true and steps=[] and you MUST fill finalSummary and currentObservation.
+                - finalSummary and currentObservation MUST be empty strings unless stopTesting=true.
+                - If stopTesting=true and steps is not empty, stop AFTER executing the returned steps.
+                """.formatted(MAX_STEPS_PER_BATCH,
+                MAX_STEPS_PER_BATCH);
     }
 
 

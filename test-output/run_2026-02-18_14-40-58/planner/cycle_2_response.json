@@ -1,0 +1,105 @@
+{
+  "type": "PlannerBatch",
+  "stopTesting": true,
+  "batchDetails": "Filling out the Facebook registration form with dummy data.",
+  "finalSummary": "Successfully filled out the first name, surname, date of birth, gender, email, and password fields for Facebook registration.",
+  "currentObservation": "The Facebook registration form is filled with dummy data, awaiting the 'Sign up' button click.",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Type first name into the 'First name' field.",
+      "actionType": "elementAction",
+      "action": "type",
+      "selector": "name:firstname",
+      "value": "Test",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Type surname into the 'Surname' field.",
+      "actionType": "elementAction",
+      "action": "type",
+      "selector": "name:lastname",
+      "value": "User",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 3,
+      "stepDetails": "Select a day for date of birth.",
+      "actionType": "elementAction",
+      "action": "select",
+      "selector": "id:day",
+      "value": "1",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 4,
+      "stepDetails": "Select a month for date of birth.",
+      "actionType": "elementAction",
+      "action": "select",
+      "selector": "id:month",
+      "value": "1",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 5,
+      "stepDetails": "Select a year for date of birth.",
+      "actionType": "elementAction",
+      "action": "select",
+      "selector": "id:year",
+      "value": "1990",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 6,
+      "stepDetails": "Select 'Female' for gender.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "xpath://label[contains(text(), 'Female')]/input[@name='sex'][@value='1']",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 7,
+      "stepDetails": "Type mobile number or email address.",
+      "actionType": "elementAction",
+      "action": "type",
+      "selector": "name:reg_email__",
+      "value": "testuser@example.com",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 8,
+      "stepDetails": "Type new password.",
+      "actionType": "elementAction",
+      "action": "type",
+      "selector": "id:password_step_input",
+      "value": "Test@12345",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}

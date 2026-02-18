@@ -23,18 +23,21 @@ public class Orchestrator extends BaseOrchestrator {
         while (!stopTesting) {
 
             helper
-                    .askLLM(planner, cycleCounter) //stepCounter acts as batchId
-                    .parsingBatch(DEFAULT_WAIT, DEFAULT_SCREENSHOT_WAIT);
-
-            stopTesting = helper.isStopTesting();
-            if (stopTesting) break;
+                    .askLLM(planner, cycleCounter)
+                    .parsingBatch();
 
             helper
                     .executeBatch(executor, runFolder, cycleCounter, DEFAULT_WAIT, DEFAULT_SCREENSHOT_WAIT)
                     .buildUpdateState();
 
+            stopTesting = helper.isStopTesting();
+            if (stopTesting) break;
+
+
             cycleCounter++; //increment cycle counter
         }
+        LogsManager.info("FINAL SUMMARY: " + helper.getFinalSummary());
+        LogsManager.info("CURRENT OBSERVATION: " + helper.getCurrentObservation());
     }
 
 
@@ -42,7 +45,7 @@ public class Orchestrator extends BaseOrchestrator {
     @AfterSuite
     public void closeDriver() {
         try {
-            driver.quit();
+          //  driver.quit();
         } catch (Exception e) {
             LogsManager.error("error closing driver "+e);
         }

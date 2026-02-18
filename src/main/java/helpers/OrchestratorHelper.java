@@ -23,13 +23,16 @@ public class OrchestratorHelper {
 
     private final WebDriverFactory driver;
     private String llmResponse , stateJson , stepDetails , actionType , action , selector , value , scenario;
-    private String message = "OK" , urlParam = "" , tabParam = "" , result;
+    private String message = "OK" , urlParam = "" , tabParam = "" , result
+                               ,batchDetails = "" ,currentObservation = "",finalSummary = "";
     private int stepId , HTML_MAX_CHARS , generalWait , screenshotWait;
-    private  boolean screenshot , stopTesting ,success = true , started = false;
+    private  boolean screenshot , stopTesting ,success = true , started = false, stopAfterBatch = false;
     private String lastScreenshotRef = "step_0.png";
     private List<String[]> plannedSteps = new ArrayList<>();
     private JSONArray executedStepsJson = new org.json.JSONArray();
-    private String batchDetails = "";
+
+
+
 
     public OrchestratorHelper(WebDriverFactory driver,int stepId,
                               String scenario ,int HTML_MAX_CHARS){
@@ -69,20 +72,28 @@ public class OrchestratorHelper {
         return this;
     }
 
-    public void parsingBatch(int DEFAULT_WAIT, int DEFAULT_SCREENSHOT_WAIT) {
-
+    public void parsingBatch() {
+        stopAfterBatch = false;
+        if (llmResponse == null || llmResponse.isBlank()) {
+            stopTesting = true;
+            return;
+        }
         String clean = JsonMapper.buildResult(llmResponse);
-
-        plannedSteps = JsonMapper.parseBatchToArrays(clean);
         JSONObject root = new JSONObject(clean);
 
+        plannedSteps = JsonMapper.parseBatchToArrays(clean);
+
+
         boolean batchStop = root.optBoolean("stopTesting", false);
-        if (batchStop || plannedSteps.isEmpty()) {
+        stopAfterBatch = batchStop;
+        if (batchStop && plannedSteps.isEmpty()) {
             stopTesting = true;
             return;
         }
 
         batchDetails = root.optString("batchDetails", "");
+        finalSummary = root.optString("finalSummary", "");
+        currentObservation = root.optString("currentObservation", "");
         LogsManager.info("LLM Batch details: " + batchDetails);
         LogsManager.info("LLM Batch size: " + plannedSteps.size());
     }
@@ -175,9 +186,15 @@ public class OrchestratorHelper {
             if (stopTesting) break;
             i++;
         }
-
+        if (stopAfterBatch) {
+            stopTesting = true;
+        }
         return this;
     }
+
+
+
+
 
 
     //minor functions
@@ -194,11 +211,6 @@ public class OrchestratorHelper {
             LogsManager.error("Error taking screenshot " + e);
         }
     }
-
-
-
-
-
 
     private By getSelector(String selectors){
 
@@ -235,13 +247,24 @@ public class OrchestratorHelper {
     }
 
     public static Path createNewRunFolder() {
+
         String ts = getTimeStamp();
 
-        Path runPath = Path.of(System.getProperty("user.dir"), "test-output", "run_" + ts);
+        Path runPath = Path.of(
+                System.getProperty("user.dir"),
+                "test-output",
+                "runs",
+                "run_" + ts
+        );
 
+        //Create main run directory
         createDirectory(runPath.toString());
+
+        //Subfolders
+        createDirectory(runPath.resolve("logs").toString());
         createDirectory(runPath.resolve("screenshots").toString());
         createDirectory(runPath.resolve("planner").toString());
+        createDirectory(runPath.resolve("llm").toString());
 
         return runPath;
     }
@@ -272,6 +295,12 @@ public class OrchestratorHelper {
         executor.browserAction("navigate",PropertyReader.getProperty("BASE_WEB"),"");
     }
 
+    public String getFinalSummary() {
+        return finalSummary;
+    }
 
+    public String getCurrentObservation() {
+        return currentObservation;
+    }
 
 }
