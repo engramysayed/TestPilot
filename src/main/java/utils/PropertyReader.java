@@ -18,13 +18,13 @@ public class PropertyReader {
                 try {
                     properties.load(FileUtils.openInputStream(file));
                 } catch (Exception e) {
-                    LogsManager.error("Error loading properties file: " + file.getName() + " - " + e.getMessage());
+                  LogsManager.error("Error loading properties file: " + file.getName() + " - " + e.getMessage());
                 }
                 properties.putAll(System.getProperties());
                 System.getProperties().putAll(properties);
             });
          } catch (Exception e) {
-            LogsManager.error("Error loading properties "+ e.getMessage());
+          LogsManager.error("Error loading properties "+ e.getMessage());
         }
 
      }

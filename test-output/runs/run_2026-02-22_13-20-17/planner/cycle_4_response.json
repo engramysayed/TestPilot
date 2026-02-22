@@ -1,0 +1,35 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Closing the widget addition panel and re-opening the dashboard dropdown to create a new dashboard as per scenario step 1, which was previously missed.",
+  "finalSummary": "",
+  "currentObservation": "Currently, the 'Add Widget' panel is likely open in 'Edit Mode' for 'DashboardtestDash'. The immediate next step is to close this panel to allow for navigation to the 'Create New Dashboard' option.",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click the 'cancel' button to close the widget addition panel and return to the main dashboard view.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "xpath://div[@class='dashboard-cancel-btn' and text()='cancel']",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Click the main dashboard dropdown to reveal options, including the ability to create a new dashboard.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:div.dashboard-dropdown-layout",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

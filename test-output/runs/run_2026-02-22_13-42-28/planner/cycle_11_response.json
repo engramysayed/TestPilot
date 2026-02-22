@@ -1,0 +1,35 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": true,
+  "batchDetails": "Closing the widget selection sidebar using the Escape key, then saving the dashboard changes to complete the dashboard update.",
+  "finalSummary": "Successfully created a new dashboard named 'test Dash', added a widget to it, and saved the changes, completing the dashboard customization process.",
+  "currentObservation": "The dashboard 'test Dash' is currently in 'Edit Mode'. The 'Reusable Widgets' sidebar is open on the right, and the main dashboard canvas now displays a 'Counts Overview' widget. The 'Save Changes' button at the top right is present but was previously unclickable due to the open sidebar.",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Sending the Escape key to the browser to close the currently open 'Reusable Widgets' sidebar, which is intercepting clicks on other dashboard elements.",
+      "actionType": "browserAction",
+      "action": "sendKeys",
+      "selector": "",
+      "value": "Keys.ESCAPE",
+      "generalWait": 3,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Clicking the 'Save Changes' button to finalize and persist all modifications made to the 'test Dash' dashboard.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:div.dashboard-save-widget button",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

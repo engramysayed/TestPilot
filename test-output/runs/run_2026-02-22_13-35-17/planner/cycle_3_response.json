@@ -1,0 +1,59 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Create a new dashboard named 'test Dash 6' and then open the 'Manage Widget' section.",
+  "finalSummary": "",
+  "currentObservation": "",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click 'create dashboard' from the open dropdown menu.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:.dashboard-dropdown-value-new",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Type 'test Dash 6' into the new dashboard name input field.",
+      "actionType": "elementAction",
+      "action": "type",
+      "selector": "cssSelector:div.p-dialog .p-inputtext[type='text']",
+      "value": "test Dash 6",
+      "generalWait": 1,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 3,
+      "stepDetails": "Click the 'Create' or 'Save' button in the dialog to finalize dashboard creation.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:div.p-dialog-footer button.p-button-success",
+      "value": "",
+      "generalWait": 8,
+      "screenshotWait": 3,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 4,
+      "stepDetails": "Click the 'Manage Widgets' button to open the widget management sidebar.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:.dashboard-add-widget",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 3,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

@@ -1,1 +1,0 @@
-{"type": "PlannerBatch", "stopTesting": true, "batchDetails": "Click the Sign up button to complete the registration data entry.", "steps": [{"stepId": 7, "stepDetails": "Click the 'Sign up' button.", "actionType": "elementAction", "action": "click", "selector": "name:websubmit", "value": "", "generalWait": 5, "screenshotWait": 1, "screenshot": true, "stopTesting": true}]}

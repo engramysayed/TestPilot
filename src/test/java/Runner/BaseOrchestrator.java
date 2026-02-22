@@ -1,6 +1,6 @@
 package Runner;
 
-import aiLayer.LLMPlanner;
+import llmLayer.LLMPlanner;
 import drivers.WebDriverFactory;
 import drivers.WebDriverProvider;
 import executionLayer.actionExecute;
@@ -28,34 +28,21 @@ public class BaseOrchestrator implements WebDriverProvider {
 
     @BeforeSuite
     public void initialize() {
+        LogsManager.cleanRunLog();
+
         PropertyReader.loadProperties();
 
-        runFolder = OrchestratorHelper.createNewRunFolder(); // e.g. test-output/runs/run-...
-
-        System.setProperty("basePath", runFolder.toString());
-
-        LogsManager.createRunDirs(runFolder.toString());
-
-
         HTML_MAX_CHARS = Integer.parseInt(PropertyReader.getProperty("HTML_MAX_CHARS"));
-
         DEFAULT_WAIT = Integer.parseInt(PropertyReader.getProperty("DEFAULT_WAIT"));
-
         DEFAULT_SCREENSHOT_WAIT = Integer.parseInt(PropertyReader.getProperty("DEFAULT_SCREENSHOT_WAIT"));
-
         scenario = PropertyReader.getProperty("SCENARIO");
 
         runFolder = OrchestratorHelper.createNewRunFolder();
 
         driver = new WebDriverFactory();
-
         planner = new LLMPlanner(runFolder);
-
         executor = new actionExecute(driver);
-
         helper = new OrchestratorHelper(driver, 0, scenario, HTML_MAX_CHARS);
-
-
     }
 
 

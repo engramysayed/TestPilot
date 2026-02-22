@@ -23,56 +23,19 @@ public class FilesManager {
                 file.mkdirs();
                 LogsManager.info("File created "+file);
             }else{
-                LogsManager.info("File exist "+file);
+              LogsManager.info("File exist "+file);
 
             }
 
         } catch (Exception e) {
 
-LogsManager.error(" Error creating file:"+e.getMessage());
+          LogsManager.error(" Error creating file:"+e.getMessage());
 
 
         }
 
     }
 
-
-    public static void  cleanDirectory(File file){
-            try{
-                FileUtils.deleteQuietly(file);
-                LogsManager.info("File deleted "+file);
-            } catch (Exception e) {
-                LogsManager.error("Error cleanDirectory :"+e.getMessage());
-            }
-
-    }
-
-
-    public static void forceDelete(File file){
-        try{
-            FileUtils.forceDelete(file);
-            LogsManager.info("File deleted "+file);
-        } catch (Exception e) {
-            LogsManager.error(" Error forceDelete file:"+e.getMessage());
-        }
-
-    }
-
-    public static void  renameDirectory(String oldName , String newName){
-        try{
-           var targetFile= new File(oldName);
-            String targetDir=targetFile.getParentFile().getAbsolutePath();
-            File newFile=new File(targetDir+File.separator+newName);
-            if(!targetFile.getPath().equals(newFile.getPath())){
-                copyFile(targetFile,newFile);
-                deleteQuietly(targetFile);
-                LogsManager.info("File renamed from "+targetFile+" to "+newFile);
-            }
-
-        } catch (Exception e) {
-            LogsManager.error(" Error renaming file:"+e.getMessage());
-        }
-    }
 
     public static void writeFile(Path path, String content) {
         try {

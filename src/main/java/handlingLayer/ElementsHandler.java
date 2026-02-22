@@ -1,6 +1,7 @@
 package handlingLayer;
 
 import org.openqa.selenium.*;
+import org.openqa.selenium.interactions.Actions;
 import utils.LogsManager;
 import org.openqa.selenium.support.ui.Select;
 import utils.WaitHandler;
@@ -28,7 +29,7 @@ public class ElementsHandler {
             return "true";
         } catch (Exception e) {
             LogsManager.error("Failed to scroll to element: " + locator);
-            return "false";
+            return "false -> Failed to scroll to element: " + locator;
         }
     }
 
@@ -44,8 +45,8 @@ public class ElementsHandler {
             LogsManager.info("Option selected successfully from dropdown: " + locator + " option: " + option);
             return "true";
         } catch (Exception e) {
-            LogsManager.error("Failed to select option from dropdown: " + locator + " " + e.getMessage());
-            return "false";
+            LogsManager.error("Failed to select option from dropdown: " + locator + " " + e);
+            return "false -> Failed to select option from dropdown: " + locator + " " + e;
         }
     }
 
@@ -57,8 +58,8 @@ public class ElementsHandler {
             LogsManager.info("File uploaded successfully: " + path);
             return "true";
         } catch (Exception e) {
-            LogsManager.error("Failed to upload file: " + path + " " + e.getMessage());
-            return "false";
+            LogsManager.error("Failed to upload file: " + path + " " + e);
+            return "false -> Failed to upload file: " + path + " " + e;
         }
     }
 
@@ -69,8 +70,8 @@ public class ElementsHandler {
             findElement(locator).click();
             return "true";
         } catch (Exception e) {
-            LogsManager.error("Failed to click element: " + locator + " " + e.getMessage());
-            return "false";
+            LogsManager.error("Failed to click element: " + locator + " " + e);
+            return "false -> Failed to click element: " + locator + " " + e;
         }
     }
 
@@ -83,8 +84,8 @@ public class ElementsHandler {
             LogsManager.info("Text typed into element: " + locator);
             return "true";
         } catch (Exception e) {
-            LogsManager.error("Failed to type into element: " + locator + " " + e.getMessage());
-            return "false";
+            LogsManager.error("Failed to type into element: " + locator + " " + e);
+            return "false -> Failed to type into element: " + locator + " " + e;
         }
     }
 
@@ -94,8 +95,8 @@ public class ElementsHandler {
             String text = findElement(locator).getText();
             return (text != null && !text.isEmpty()) ? text : null;
         } catch (Exception e) {
-            LogsManager.error("Failed to get text from: " + locator + " " + e.getMessage());
-            return "false";
+            LogsManager.error("Failed to get text from: " + locator + " " + e);
+            return "false -> Failed to get text from: " + locator + " " + e;
         }
     }
 
@@ -105,8 +106,8 @@ public class ElementsHandler {
             findElement(locator).clear();
             return "true";
         } catch (Exception e) {
-            LogsManager.error("Failed to clear element: " + locator + " " + e.getMessage());
-            return "false";
+            LogsManager.error("Failed to clear element: " + locator + " " + e);
+            return "false -> Failed to clear element: " + locator + " " + e;
         }
     }
 
@@ -116,8 +117,8 @@ public class ElementsHandler {
             String val = findElement(locator).getAttribute(attributeName);
             return (val != null && !val.isEmpty()) ? val : "";
         } catch (Exception e) {
-            LogsManager.error("Failed to get attribute value: " + locator + " " + e.getMessage());
-            return "false";
+            LogsManager.error("Failed to get attribute value: " + locator + " " + e);
+            return "false -> Failed to get attribute value: " + locator + " " + e;
         }
     }
 
@@ -137,8 +138,41 @@ public class ElementsHandler {
             LogsManager.info("Screenshot saved: " + target.toAbsolutePath());
 
         } catch (Exception e) {
-            LogsManager.error("Failed to capture screenshot: " + e.getMessage());
+            LogsManager.error("Failed to capture screenshot: " + e);
         }
     }
+
+
+
+    public String dragDrop(By sourceLocator, By targetLocator) {
+        try {
+            scrollToElement(sourceLocator);
+            waitHandler.waitForElementToBeVisible(sourceLocator);
+            waitHandler.waitForElementToBeVisible(targetLocator);
+
+            WebElement source = findElement(sourceLocator);
+            WebElement target = findElement(targetLocator);
+
+            Actions actions = new Actions(driver);
+            actions
+                    .moveToElement(source)
+                    .clickAndHold(source)
+                    .pause(200)
+                    .moveToElement(target)
+                    .pause(200)
+                    .release(target)
+                    .build()
+                    .perform();
+
+            LogsManager.info("DragDrop success: " + sourceLocator + " -> " + targetLocator);
+            return "true";
+        } catch (Exception e) {
+            LogsManager.error("DragDrop failed: " + sourceLocator + " -> " + targetLocator + " " + e);
+            return "false -> DragDrop failed: " + sourceLocator + " -> " + targetLocator + " " + e;
+        }
+    }
+
+
+
 
 }

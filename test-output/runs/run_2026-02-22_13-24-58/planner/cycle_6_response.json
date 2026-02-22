@@ -1,0 +1,23 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Clicking the central 'Add Widget' button to open the widget selection sidebar.",
+  "finalSummary": "",
+  "currentObservation": "The dashboard 'test Dash 1' is in edit mode. There is a central '+ Add Widget' button on the canvas.",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click the central 'Add Widget' button on the dashboard canvas to open the widget selection sidebar.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:.react-grid-item.empty-dashboard .dashboard-cancel-btn",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

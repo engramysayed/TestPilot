@@ -1,0 +1,23 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Clicking the 'Create' button to finalize dashboard creation.",
+  "finalSummary": "",
+  "currentObservation": "",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click the 'Create' button in the 'create dashboard' modal.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:button.modal-button.modal-button-create",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

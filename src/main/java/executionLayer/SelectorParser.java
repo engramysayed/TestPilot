@@ -24,6 +24,9 @@ public class SelectorParser {
             case "xpath" ->By.xpath(value);
             case "id" ->By.id(value);
             case "name" ->By.name(value);
+            case "linkText" -> By.linkText(value);
+            case "partialLinkText" -> By.partialLinkText(value);
+            case "tagName" -> By.tagName(value);
             default -> throw new IllegalArgumentException("Unsupported selector type: " + type);
         };
 

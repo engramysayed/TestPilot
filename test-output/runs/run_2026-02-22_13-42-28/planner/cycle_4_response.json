@@ -1,0 +1,35 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Typing the new dashboard name and clicking create.",
+  "finalSummary": "",
+  "currentObservation": "A modal to create a new dashboard is open, asking for a name.",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Type 'test Dash' into the Dashboard Name input field.",
+      "actionType": "elementAction",
+      "action": "type",
+      "selector": "id:name",
+      "value": "test Dash",
+      "generalWait": 1,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Click the 'create' button to finalize dashboard creation.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:.modal-button.modal-button-create",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 3,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

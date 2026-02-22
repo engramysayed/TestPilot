@@ -95,7 +95,8 @@ public class JsonMapper {
     //Build the FIRST message to the LLM (PlannerStart).
     public static String buildPlannerStart(
             String scenario, String currentUrl,
-            String currentHtmlSlim, String currentScreenshotRef)
+            String currentHtmlSlim, String currentScreenshotRef
+    ,String historySummary)
     {
         JSONObject output = new JSONObject();
         output.put("type", "PlannerStart");
@@ -116,33 +117,9 @@ public class JsonMapper {
         state.put("currentHtmlSlim",  currentHtmlSlim);
         state.put("currentScreenshotRef",  currentScreenshotRef);
         output.put("currentState", state);
-
+        output.put("historySummary", historySummary);
         return output.toString();
     }
-
-     //Build LOOP message to the LLM after each step (PlannerUpdate).
-     public static String buildPlannerUpdate(
-             String scenario,
-             JSONArray executedSteps,
-             String currentUrl,
-             String currentHtmlSlim,
-             String currentScreenshotRef
-     ) {
-         JSONObject output = new JSONObject();
-         output.put("type", "PlannerUpdate");
-         output.put("scenario", scenario);
-
-         output.put("requiredOutputSchema", getRequiredBatchSchemaText());
-         output.put("executedSteps", executedSteps);
-
-         JSONObject state = new JSONObject();
-         state.put("currentUrl", currentUrl);
-         state.put("currentHtmlSlim", currentHtmlSlim);
-         state.put("currentScreenshotRef", currentScreenshotRef);
-         output.put("currentState", state);
-
-         return output.toString();
-     }
 
 
 
@@ -162,8 +139,7 @@ public class JsonMapper {
                   "stepId": 1,
                   "stepDetails": "very short details about what we will do on this step",
                   "actionType": "browserAction|elementAction|frameAction",
-                  "action": "click|type|clear|select|getText|getAttr|scroll|upload|navigate|refresh|back|maximize|getUrl|close|openNewWindow|getCustomTab|switchFrameById|switchFrameByName|switchFrameByIndex|switchFrameByCssSelector|switchToParent|switchToDefaultContent",
-                  "selector": "id:<...> OR name:<...> OR cssSelector:<...> OR xpath:<...> OR className:<...> OR linkText:<...> OR partialLinkText:<...> (empty allowed for pure browser actions)",
+                  "action": "click|type|clear|select|getText|getAttr|scroll|upload|dragDrop|navigate|refresh|back|maximize|getUrl|close|openNewWindow|getCustomTab|switchFrameById|switchFrameByName|switchFrameByIndex|switchFrameByCssSelector|switchToParent|switchToDefaultContent",                  "selector": "id:<...> OR name:<...> OR cssSelector:<...> OR xpath:<...> OR className:<...> OR linkText:<...> OR partialLinkText:<...> (empty allowed for pure browser actions)",
                   "value": "STRING. IMPORTANT: use it for ALL extra parameters. Empty if not needed.",
                   "generalWait": give integer value to use in explicit wait (max =15),
                   "screenshotWait": give integer value to use after the action to take screenshot(max =15),

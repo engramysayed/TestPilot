@@ -1,0 +1,136 @@
+Cycle 1 | Batch: Switching to the dashboard iframe to prepare for dashboard interactions.
+ - Step 1 switchFrameByCssSelector cssSelector:iframe[src*="/dash/"] => FAIL | Action returned failure: false
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_1_step_1.png
+--------------------------------------------------
+Cycle 2 | Batch: Clicking the dashboard dropdown arrow to reveal dashboard options.
+ - Step 1 click cssSelector:.dashboard-dropdown-layout .dropdown-arrow => OK | Action executed: true
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_2_step_1.png
+--------------------------------------------------
+Cycle 3 | Batch: Creating a new dashboard by clicking the 'create dashboard' option in the dropdown.
+ - Step 1 click cssSelector:.dashboard-dropdown-value-new => OK | Action executed: true
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_3_step_1.png
+--------------------------------------------------
+Cycle 4 | Batch: Typing the new dashboard name and clicking create.
+ - Step 1 type id:name => OK | Action executed: true
+ - Step 2 click cssSelector:.modal-button.modal-button-create => OK | Action executed: true
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_4_step_2.png
+--------------------------------------------------
+Cycle 5 | Batch: Clicking the 'Manage Widgets' button to prepare for adding widgets.
+ - Step 1 click cssSelector:.dashboard-add-widget => OK | Action executed: true
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_5_step_1.png
+--------------------------------------------------
+Cycle 6 | Batch: Clicking the 'Add Widget' button to open the widget selection sidebar.
+ - Step 1 click cssSelector:div.dashboard-header-options > div.d-flex.align-items-center > div.dashboard-cancel-btn.false => OK | Action executed: true
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_6_step_1.png
+--------------------------------------------------
+Cycle 7 | Batch: Dragging a widget from the sidebar to the dashboard, then closing the sidebar and saving changes.
+ - Step 1 dragDrop cssSelector:div.row.py-3 > div:nth-child(1) div.dashboard-widget-types-card[draggable="true"] => OK | Action executed: true
+ - Step 2 click cssSelector:.offcanvas-end.show .offcanvas-header button.btn-close => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: .offcanvas-end.show .offcanvas-header button.btn-close no such element: Unable to locate element: {"method":"css selector","selector":".offcanvas-end.show .offcanvas-header button.btn-close"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [c841bd87c278d991a9f2d75a6e0493b4, findElement {using=css selector, value=.offcanvas-end.show .offcanvas-header button.btn-close}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 22796, ms:edgeOptions: {debuggerAddress: localhost:56237}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56237/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: c841bd87c278d991a9f2d75a6e0493b4
+ - Step 3 click cssSelector:div.dashboard-save-widget button => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: div.dashboard-save-widget button element click intercepted: Element <button class="text  bg-transparent border-0 text-muted " disabled="">...</button> is not clickable at point (2111, 29). Other element would receive the click: <div class="offcanvas-header">...</div>
+  (Session info: MicrosoftEdge=145.0.3800.58)
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [c841bd87c278d991a9f2d75a6e0493b4, clickElement {id=f.66C1E2AB977C2B1C605534A2C9F79495.d.0EAB24CDF9DE9113E8D850966FC60868.e.311}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 22796, ms:edgeOptions: {debuggerAddress: localhost:56237}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56237/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Element: [[EdgeDriver: MicrosoftEdge on windows (c841bd87c278d991a9f2d75a6e0493b4)] -> css selector: div.dashboard-save-widget button]
+Session ID: c841bd87c278d991a9f2d75a6e0493b4
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_7_step_3.png
+--------------------------------------------------
+Cycle 8 | Batch: Re-attempting to drag a widget to the dashboard with an explicit target, then closing the sidebar and saving changes.
+ - Step 1 dragDrop cssSelector:div.row.py-3 > div:nth-child(1) div.dashboard-widget-types-card[draggable="true"] => FAIL | Action returned failure: false -> DragDrop failed: By.cssSelector: div.row.py-3 > div:nth-child(1) div.dashboard-widget-types-card[draggable="true"] -> By.cssSelector: .react-grid-item.empty-dashboard no such element: Unable to locate element: {"method":"css selector","selector":"div.row.py-3 > div:nth-child(1) div.dashboard-widget-types-card[draggable="true"]"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [c841bd87c278d991a9f2d75a6e0493b4, findElement {using=css selector, value=div.row.py-3 > div:nth-child(1) div.dashboard-widget-types-card[draggable="true"]}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 22796, ms:edgeOptions: {debuggerAddress: localhost:56237}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56237/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: c841bd87c278d991a9f2d75a6e0493b4
+ - Step 2 click cssSelector:.offcanvas-end.show .btn-close => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: .offcanvas-end.show .btn-close no such element: Unable to locate element: {"method":"css selector","selector":".offcanvas-end.show .btn-close"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [c841bd87c278d991a9f2d75a6e0493b4, findElement {using=css selector, value=.offcanvas-end.show .btn-close}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 22796, ms:edgeOptions: {debuggerAddress: localhost:56237}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56237/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: c841bd87c278d991a9f2d75a6e0493b4
+ - Step 3 click cssSelector:div.dashboard-save-widget button => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: div.dashboard-save-widget button element click intercepted: Element <button class="text  bg-transparent border-0 text-muted " disabled="">...</button> is not clickable at point (2111, 29). Other element would receive the click: <div class="offcanvas-header">...</div>
+  (Session info: MicrosoftEdge=145.0.3800.58)
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [c841bd87c278d991a9f2d75a6e0493b4, clickElement {id=f.66C1E2AB977C2B1C605534A2C9F79495.d.0EAB24CDF9DE9113E8D850966FC60868.e.311}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 22796, ms:edgeOptions: {debuggerAddress: localhost:56237}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56237/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Element: [[EdgeDriver: MicrosoftEdge on windows (c841bd87c278d991a9f2d75a6e0493b4)] -> css selector: div.dashboard-save-widget button]
+Session ID: c841bd87c278d991a9f2d75a6e0493b4
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_8_step_3.png
+--------------------------------------------------
+Cycle 9 | Batch: Dragging a widget to the dashboard, then closing the sidebar and saving changes.
+ - Step 1 dragDrop cssSelector:div.dashboard-widget-types-card[draggable="true"] => OK | Action executed: true
+ - Step 2 click cssSelector:.dashboard-menu-back-bottom => OK | Action executed: true
+ - Step 3 click cssSelector:div.dashboard-save-widget button => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: div.dashboard-save-widget button element click intercepted: Element <button class="text  bg-transparent border-0 text-white ">...</button> is not clickable at point (2111, 29). Other element would receive the click: <div class="offcanvas-header">...</div>
+  (Session info: MicrosoftEdge=145.0.3800.58)
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [c841bd87c278d991a9f2d75a6e0493b4, clickElement {id=f.66C1E2AB977C2B1C605534A2C9F79495.d.0EAB24CDF9DE9113E8D850966FC60868.e.311}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 22796, ms:edgeOptions: {debuggerAddress: localhost:56237}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56237/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Element: [[EdgeDriver: MicrosoftEdge on windows (c841bd87c278d991a9f2d75a6e0493b4)] -> css selector: div.dashboard-save-widget button]
+Session ID: c841bd87c278d991a9f2d75a6e0493b4
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_9_step_3.png
+--------------------------------------------------
+Cycle 10 | Batch: Close the widget sidebar and save the dashboard changes after adding a widget.
+ - Step 1 click cssSelector:div.dashboard-header-options > div.d-flex.align-items-center > div.dashboard-cancel-btn.false => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: div.dashboard-header-options > div.d-flex.align-items-center > div.dashboard-cancel-btn.false element click intercepted: Element <div class="dashboard-cancel-btn false">...</div> is not clickable at point (1850, 29). Other element would receive the click: <div class="dashboard-menu-head-title">...</div>
+  (Session info: MicrosoftEdge=145.0.3800.58)
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [c841bd87c278d991a9f2d75a6e0493b4, clickElement {id=f.66C1E2AB977C2B1C605534A2C9F79495.d.0EAB24CDF9DE9113E8D850966FC60868.e.298}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 22796, ms:edgeOptions: {debuggerAddress: localhost:56237}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56237/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Element: [[EdgeDriver: MicrosoftEdge on windows (c841bd87c278d991a9f2d75a6e0493b4)] -> css selector: div.dashboard-header-options > div.d-flex.align-items-center > div.dashboard-cancel-btn.false]
+Session ID: c841bd87c278d991a9f2d75a6e0493b4
+ - Step 2 click cssSelector:div.dashboard-save-widget button => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: div.dashboard-save-widget button element click intercepted: Element <button class="text  bg-transparent border-0 text-white ">...</button> is not clickable at point (2111, 29). Other element would receive the click: <div class="offcanvas-header">...</div>
+  (Session info: MicrosoftEdge=145.0.3800.58)
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [c841bd87c278d991a9f2d75a6e0493b4, clickElement {id=f.66C1E2AB977C2B1C605534A2C9F79495.d.0EAB24CDF9DE9113E8D850966FC60868.e.311}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 22796, ms:edgeOptions: {debuggerAddress: localhost:56237}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56237/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Element: [[EdgeDriver: MicrosoftEdge on windows (c841bd87c278d991a9f2d75a6e0493b4)] -> css selector: div.dashboard-save-widget button]
+Session ID: c841bd87c278d991a9f2d75a6e0493b4
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_10_step_2.png
+--------------------------------------------------
+Cycle 11 | Batch: Closing the widget selection sidebar using the Escape key, then saving the dashboard changes to complete the dashboard update.
+ - Step 1 sendKeys  => FAIL | Invalid selector format: 
+ - Step 2 click cssSelector:div.dashboard-save-widget button => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: div.dashboard-save-widget button element click intercepted: Element <button class="text  bg-transparent border-0 text-white ">...</button> is not clickable at point (2111, 29). Other element would receive the click: <div class="offcanvas-header">...</div>
+  (Session info: MicrosoftEdge=145.0.3800.58)
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [c841bd87c278d991a9f2d75a6e0493b4, clickElement {id=f.66C1E2AB977C2B1C605534A2C9F79495.d.0EAB24CDF9DE9113E8D850966FC60868.e.311}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 22796, ms:edgeOptions: {debuggerAddress: localhost:56237}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:56237/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Element: [[EdgeDriver: MicrosoftEdge on windows (c841bd87c278d991a9f2d75a6e0493b4)] -> css selector: div.dashboard-save-widget button]
+Session ID: c841bd87c278d991a9f2d75a6e0493b4
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_11_step_2.png
+--------------------------------------------------

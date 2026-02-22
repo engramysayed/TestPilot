@@ -1,0 +1,47 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Dragging and dropping a 'Tracking Widget' onto the dashboard, then closing the sidebar and saving changes.",
+  "finalSummary": "",
+  "currentObservation": "",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Drag the 'Tracking Widgets' card from the sidebar and drop it onto the empty dashboard area.",
+      "actionType": "elementAction",
+      "action": "dragDrop",
+      "selector": "xpath:(//div[contains(@class, 'dashboard-widget-types-card') and .//img[@alt='Tracking']])[1]",
+      "value": "cssSelector:.react-grid-item.empty-dashboard",
+      "generalWait": 5,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Close the 'Reusable Widgets' sidebar.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:.offcanvas-header button.btn-close",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 3,
+      "stepDetails": "Click the 'Save Changes' button to apply the new widget.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:.dashboard-save-widget button",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": true
+    }
+  ]
+}
+```

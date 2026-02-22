@@ -38,8 +38,9 @@ public class actionExecute {
             case "select" -> driver.element().selectFromDD(locator, value);
             case "getText" -> driver.element().getText(locator);
             case "getAttr" -> driver.element().getAttributeValue(locator, value);
-            case "scroll" -> driver.element().scrollToElement(locator); // no wait needed
+            case "scroll" -> driver.element().scrollToElement(locator);
             case "upload" -> driver.element().uploadFile(locator, value);
+            case "dragDrop" -> driver.element().dragDrop(locator, SelectorParser.toBy(value));
             default -> null;
         };
     }

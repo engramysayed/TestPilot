@@ -1,0 +1,84 @@
+Cycle 1 | Batch: Switching to the dashboard iframe to begin creating a new dashboard.
+ - Step 1 switchFrameByCssSelector cssSelector:iframe[src*="/dash/"] => FAIL | Action returned failure: false
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_1_step_1.png
+--------------------------------------------------
+Cycle 2 | Batch: Clicking the current dashboard dropdown to access options for creating or managing dashboards.
+ - Step 1 click cssSelector:div.dashboard-dropdown-layout => OK | Action executed: true
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_2_step_1.png
+--------------------------------------------------
+Cycle 3 | Batch: Opening the 'Manage Widgets' section as the next explicit step in the scenario, hoping to find an option to create a new dashboard within this interface since it was not available after clicking the dashboard dropdown.
+ - Step 1 click cssSelector:div.dashboard-add-widget => OK | Action executed: true
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_3_step_1.png
+--------------------------------------------------
+Cycle 4 | Batch: Closing the widget addition panel and re-opening the dashboard dropdown to create a new dashboard as per scenario step 1, which was previously missed.
+ - Step 1 click xpath://div[@class='dashboard-cancel-btn' and text()='cancel'] => OK | Action executed: true
+ - Step 2 click cssSelector:div.dashboard-dropdown-layout => OK | Action executed: true
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_4_step_2.png
+--------------------------------------------------
+Cycle 5 | Batch: Creating a new dashboard named 'test Dash 1' by selecting the 'New Dashboard' option from the dropdown, entering the dashboard name, and saving.
+ - Step 1 click xpath://div[text()='New Dashboard'] => FAIL | Action returned failure: false -> Failed to click element: By.xpath: //div[text()='New Dashboard'] no such element: Unable to locate element: {"method":"xpath","selector":"//div[text()='New Dashboard']"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [1d03fb28a291890b217f9a70341a59fc, findElement {using=xpath, value=//div[text()='New Dashboard']}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 14140, ms:edgeOptions: {debuggerAddress: localhost:59042}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:59042/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 1d03fb28a291890b217f9a70341a59fc
+ - Step 2 type cssSelector:input[type='text'] => FAIL | Action returned failure: false -> Failed to type into element: By.cssSelector: input[type='text'] no such element: Unable to locate element: {"method":"css selector","selector":"input[type='text']"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [1d03fb28a291890b217f9a70341a59fc, findElement {using=css selector, value=input[type='text']}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 14140, ms:edgeOptions: {debuggerAddress: localhost:59042}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:59042/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 1d03fb28a291890b217f9a70341a59fc
+ - Step 3 click xpath://button[text()='Save'] => FAIL | Action returned failure: false -> Failed to click element: By.xpath: //button[text()='Save'] no such element: Unable to locate element: {"method":"xpath","selector":"//button[text()='Save']"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [1d03fb28a291890b217f9a70341a59fc, findElement {using=xpath, value=//button[text()='Save']}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 14140, ms:edgeOptions: {debuggerAddress: localhost:59042}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:59042/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 1d03fb28a291890b217f9a70341a59fc
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_5_step_3.png
+--------------------------------------------------
+Cycle 6 | Batch: Attempting to create a new dashboard named 'test Dash 1' by interacting with the dashboard dropdown, selecting the 'New Dashboard' option, typing the dashboard name, and saving it.
+ - Step 1 click cssSelector:div.dashboard-dropdown-layout => OK | Action executed: true
+ - Step 2 click xpath://div[text()='New Dashboard'] => FAIL | Action returned failure: false -> Failed to click element: By.xpath: //div[text()='New Dashboard'] no such element: Unable to locate element: {"method":"xpath","selector":"//div[text()='New Dashboard']"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [1d03fb28a291890b217f9a70341a59fc, findElement {using=xpath, value=//div[text()='New Dashboard']}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 14140, ms:edgeOptions: {debuggerAddress: localhost:59042}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:59042/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 1d03fb28a291890b217f9a70341a59fc
+ - Step 3 type cssSelector:input[type='text'] => FAIL | Action returned failure: false -> Failed to type into element: By.cssSelector: input[type='text'] no such element: Unable to locate element: {"method":"css selector","selector":"input[type='text']"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [1d03fb28a291890b217f9a70341a59fc, findElement {using=css selector, value=input[type='text']}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 14140, ms:edgeOptions: {debuggerAddress: localhost:59042}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:59042/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 1d03fb28a291890b217f9a70341a59fc
+ - Step 4 click xpath://button[text()='Save'] => FAIL | Action returned failure: false -> Failed to click element: By.xpath: //button[text()='Save'] no such element: Unable to locate element: {"method":"xpath","selector":"//button[text()='Save']"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [1d03fb28a291890b217f9a70341a59fc, findElement {using=xpath, value=//button[text()='Save']}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 14140, ms:edgeOptions: {debuggerAddress: localhost:59042}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:59042/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 1d03fb28a291890b217f9a70341a59fc
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_6_step_4.png
+--------------------------------------------------

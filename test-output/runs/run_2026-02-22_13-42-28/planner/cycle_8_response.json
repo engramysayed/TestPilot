@@ -1,0 +1,47 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Re-attempting to drag a widget to the dashboard with an explicit target, then closing the sidebar and saving changes.",
+  "finalSummary": "",
+  "currentObservation": "",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Dragging the 'Tracking Widgets' card from the sidebar to the dashboard canvas.",
+      "actionType": "elementAction",
+      "action": "dragDrop",
+      "selector": "cssSelector:div.row.py-3 > div:nth-child(1) div.dashboard-widget-types-card[draggable=\"true\"]",
+      "value": "cssSelector:.react-grid-item.empty-dashboard",
+      "generalWait": 5,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Closing the 'Reusable Widgets' sidebar after dropping a widget.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:.offcanvas-end.show .btn-close",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 3,
+      "stepDetails": "Clicking 'Save Changes' to persist the dashboard update.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:div.dashboard-save-widget button",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

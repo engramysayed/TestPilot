@@ -1,0 +1,21 @@
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Open the 'Manage Widgets' section to add widgets to the dashboard.",
+  "finalSummary": "",
+  "currentObservation": "",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click the 'Manage Widgets' button to open the widget sidebar.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:.dashboard-add-widget",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}

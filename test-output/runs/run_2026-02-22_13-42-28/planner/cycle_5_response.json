@@ -1,0 +1,21 @@
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Clicking the 'Manage Widgets' button to prepare for adding widgets.",
+  "finalSummary": "",
+  "currentObservation": "The dashboard 'test Dash' is displayed and is currently empty.",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click on the 'Manage Widgets' button.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:.dashboard-add-widget",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}

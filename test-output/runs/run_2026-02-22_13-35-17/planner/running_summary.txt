@@ -1,0 +1,157 @@
+Cycle 1 | Batch: Create a new dashboard named 'test Dash 6' and then open the 'Manage Widget' section.
+ - Step 1 switchFrameByCssSelector cssSelector:iframe[src*="/dash/"] => FAIL | Action returned failure: false
+ - Step 2 click cssSelector:div.col-md-auto .p-dropdown .p-dropdown-trigger => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: div.col-md-auto .p-dropdown .p-dropdown-trigger no such element: Unable to locate element: {"method":"css selector","selector":"div.col-md-auto .p-dropdown .p-dropdown-trigger"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=css selector, value=div.col-md-auto .p-dropdown .p-dropdown-trigger}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+ - Step 3 click cssSelector:.p-dropdown-panel li.p-dropdown-item:last-child => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: .p-dropdown-panel li.p-dropdown-item:last-child no such element: Unable to locate element: {"method":"css selector","selector":".p-dropdown-panel li.p-dropdown-item:last-child"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=css selector, value=.p-dropdown-panel li.p-dropdown-item:last-child}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+ - Step 4 type cssSelector:div.p-dialog .p-inputtext[type='text'] => FAIL | Action returned failure: false -> Failed to type into element: By.cssSelector: div.p-dialog .p-inputtext[type='text'] no such element: Unable to locate element: {"method":"css selector","selector":"div.p-dialog .p-inputtext[type='text']"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=css selector, value=div.p-dialog .p-inputtext[type='text']}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+ - Step 5 click cssSelector:div.p-dialog-footer button.p-button-success => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: div.p-dialog-footer button.p-button-success no such element: Unable to locate element: {"method":"css selector","selector":"div.p-dialog-footer button.p-button-success"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=css selector, value=div.p-dialog-footer button.p-button-success}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+ - Step 6 click cssSelector:button.btn-primary.px-3.py-2 => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: button.btn-primary.px-3.py-2 no such element: Unable to locate element: {"method":"css selector","selector":"button.btn-primary.px-3.py-2"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=css selector, value=button.btn-primary.px-3.py-2}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_1_step_6.png
+--------------------------------------------------
+Cycle 2 | Batch: Create a new dashboard named 'test Dash 6' by interacting with the dashboard dropdown, selecting 'New Dashboard', typing the name, and saving.
+ - Step 1 click cssSelector:div.dashboard-dropdown-layout .dropdown-arrow => OK | Action executed: true
+ - Step 2 click xpath://li[contains(@class, 'p-dropdown-item') and contains(span/text(), 'New Dashboard')] => FAIL | Action returned failure: false -> Failed to click element: By.xpath: //li[contains(@class, 'p-dropdown-item') and contains(span/text(), 'New Dashboard')] no such element: Unable to locate element: {"method":"xpath","selector":"//li[contains(@class, 'p-dropdown-item') and contains(span/text(), 'New Dashboard')]"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=xpath, value=//li[contains(@class, 'p-dropdown-item') and contains(span/text(), 'New Dashboard')]}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+ - Step 3 type cssSelector:div.p-dialog .p-inputtext[type='text'] => FAIL | Action returned failure: false -> Failed to type into element: By.cssSelector: div.p-dialog .p-inputtext[type='text'] no such element: Unable to locate element: {"method":"css selector","selector":"div.p-dialog .p-inputtext[type='text']"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=css selector, value=div.p-dialog .p-inputtext[type='text']}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+ - Step 4 click cssSelector:div.p-dialog-footer button.p-button-success => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: div.p-dialog-footer button.p-button-success no such element: Unable to locate element: {"method":"css selector","selector":"div.p-dialog-footer button.p-button-success"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=css selector, value=div.p-dialog-footer button.p-button-success}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_2_step_4.png
+--------------------------------------------------
+Cycle 3 | Batch: Create a new dashboard named 'test Dash 6' and then open the 'Manage Widget' section.
+ - Step 1 click cssSelector:.dashboard-dropdown-value-new => OK | Action executed: true
+ - Step 2 type cssSelector:div.p-dialog .p-inputtext[type='text'] => FAIL | Action returned failure: false -> Failed to type into element: By.cssSelector: div.p-dialog .p-inputtext[type='text'] no such element: Unable to locate element: {"method":"css selector","selector":"div.p-dialog .p-inputtext[type='text']"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=css selector, value=div.p-dialog .p-inputtext[type='text']}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+ - Step 3 click cssSelector:div.p-dialog-footer button.p-button-success => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: div.p-dialog-footer button.p-button-success no such element: Unable to locate element: {"method":"css selector","selector":"div.p-dialog-footer button.p-button-success"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=css selector, value=div.p-dialog-footer button.p-button-success}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+ - Step 4 click cssSelector:.dashboard-add-widget => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: .dashboard-add-widget element click intercepted: Element <div class="dashboard-add-widget">...</div> is not clickable at point (1370, 28). Other element would receive the click: <div role="dialog" aria-modal="true" class="fade modal show" tabindex="-1" aria-labelledby="contained-modal-title-vcenter" style="display: block; padding-right: 4px;">...</div>
+  (Session info: MicrosoftEdge=145.0.3800.58)
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, clickElement {id=f.524D32880341E2857D5F7E3A473BF042.d.6D7910554609DA4F23050A3E582ADB52.e.233}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Element: [[EdgeDriver: MicrosoftEdge on windows (9f93446bb5e768e66144f19ac754e898)] -> css selector: .dashboard-add-widget]
+Session ID: 9f93446bb5e768e66144f19ac754e898
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_3_step_4.png
+--------------------------------------------------
+Cycle 4 | Batch: Type the dashboard name and click the create button in the modal to finalize dashboard creation.
+ - Step 1 type id:name => OK | Action executed: true
+ - Step 2 click cssSelector:div.modal-footer button.modal-button-create => OK | Action executed: true
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_4_step_2.png
+--------------------------------------------------
+Cycle 5 | Batch: Open the 'Manage Widgets' section to add widgets to the dashboard.
+ - Step 1 click cssSelector:.dashboard-add-widget => OK | Action executed: true
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_5_step_1.png
+--------------------------------------------------
+Cycle 6 | Batch: Select a widget category, drag a widget to the dashboard, close the sidebar, and save changes.
+ - Step 1 click xpath://div[contains(@class, 'p-sidebar')]//span[text()='Charts'] => FAIL | Action returned failure: false -> Failed to click element: By.xpath: //div[contains(@class, 'p-sidebar')]//span[text()='Charts'] no such element: Unable to locate element: {"method":"xpath","selector":"//div[contains(@class, 'p-sidebar')]//span[text()='Charts']"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=xpath, value=//div[contains(@class, 'p-sidebar')]//span[text()='Charts']}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+ - Step 2 dragDrop xpath://div[contains(@class, 'p-sidebar')]//div[contains(@class, 'p-card') and .//span[text()='Bar Chart']] => FAIL | Action returned failure: false -> DragDrop failed: By.xpath: //div[contains(@class, 'p-sidebar')]//div[contains(@class, 'p-card') and .//span[text()='Bar Chart']] -> By.cssSelector: div.react-grid-item.empty-dashboard no such element: Unable to locate element: {"method":"xpath","selector":"//div[contains(@class, 'p-sidebar')]//div[contains(@class, 'p-card') and .//span[text()='Bar Chart']]"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=xpath, value=//div[contains(@class, 'p-sidebar')]//div[contains(@class, 'p-card') and .//span[text()='Bar Chart']]}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+ - Step 3 click cssSelector:button.p-sidebar-close => FAIL | Action returned failure: false -> Failed to click element: By.cssSelector: button.p-sidebar-close no such element: Unable to locate element: {"method":"css selector","selector":"button.p-sidebar-close"}
+  (Session info: MicrosoftEdge=145.0.3800.58)
+For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Build info: version: '4.38.0', revision: '6b412e825c*'
+System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
+Driver info: org.openqa.selenium.edge.EdgeDriver
+Command: [9f93446bb5e768e66144f19ac754e898, findElement {using=css selector, value=button.p-sidebar-close}]
+Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.58, fedcm:accounts: true, goog:processID: 13680, ms:edgeOptions: {debuggerAddress: localhost:52887}, msedge: {msedgedriverVersion: 145.0.3800.70 (57ed5ba8de27..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:52887/devtoo..., se:cdpVersion: 145.0.3800.58, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
+Session ID: 9f93446bb5e768e66144f19ac754e898
+ - Step 4 click cssSelector:div.dashboard-save-widget button => OK | Action executed: true
+URL: https://rainy.nasam.net/home/dashboard
+LastScreenshot: cycle_6_step_4.png
+--------------------------------------------------

@@ -1,0 +1,57 @@
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Select a widget category, drag a widget to the dashboard, close the sidebar, and save changes.",
+  "finalSummary": "",
+  "currentObservation": "",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click the 'Charts' category in the 'Manage Widget' sidebar to reveal available chart widgets.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "xpath://div[contains(@class, 'p-sidebar')]//span[text()='Charts']",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Drag the 'Bar Chart' widget from the sidebar onto the main dashboard canvas.",
+      "actionType": "elementAction",
+      "action": "dragDrop",
+      "selector": "xpath://div[contains(@class, 'p-sidebar')]//div[contains(@class, 'p-card') and .//span[text()='Bar Chart']]",
+      "value": "cssSelector:div.react-grid-item.empty-dashboard",
+      "generalWait": 1,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 3,
+      "stepDetails": "Close the 'Manage Widget' sidebar.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:button.p-sidebar-close",
+      "value": "",
+      "generalWait": 1,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 4,
+      "stepDetails": "Click 'Save Changes' to persist the newly added widget to the dashboard.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:div.dashboard-save-widget button",
+      "value": "",
+      "generalWait": 1,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": true
+    }
+  ]
+}

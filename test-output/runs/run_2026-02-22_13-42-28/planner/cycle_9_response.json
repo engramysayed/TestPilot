@@ -1,0 +1,45 @@
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Dragging a widget to the dashboard, then closing the sidebar and saving changes.",
+  "finalSummary": "",
+  "currentObservation": "",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Drag the 'Counts Overview' widget from the sidebar to the empty dashboard area.",
+      "actionType": "elementAction",
+      "action": "dragDrop",
+      "selector": "cssSelector:div.dashboard-widget-types-card[draggable=\"true\"]",
+      "value": "cssSelector:.react-grid-item.empty-dashboard",
+      "generalWait": 3,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Click the back arrow to close the tracking widgets sidebar.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:.dashboard-menu-back-bottom",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    },
+    {
+      "stepId": 3,
+      "stepDetails": "Click the 'Save Changes' button to persist the new dashboard layout.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:div.dashboard-save-widget button",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}

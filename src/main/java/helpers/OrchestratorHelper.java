@@ -1,6 +1,6 @@
 package helpers;
 
-import aiLayer.LLMPlanner;
+import llmLayer.LLMPlanner;
 import drivers.WebDriverFactory;
 import executionLayer.SelectorParser;
 import executionLayer.actionExecute;
@@ -30,8 +30,8 @@ public class OrchestratorHelper {
     private String lastScreenshotRef = "step_0.png";
     private List<String[]> plannedSteps = new ArrayList<>();
     private JSONArray executedStepsJson = new org.json.JSONArray();
-
-
+    private final StringBuilder runningSummary = new StringBuilder();
+    private Path summaryFile;
 
 
     public OrchestratorHelper(WebDriverFactory driver,int stepId,
@@ -50,6 +50,7 @@ public class OrchestratorHelper {
             return;
         }
         started = true;
+        summaryFile = runFolder.resolve("planner").resolve("running_summary.txt");
 
         executor.takeScreenshot(runFolder, 0);
         lastScreenshotRef = "step_0.png";
@@ -61,7 +62,8 @@ public class OrchestratorHelper {
                 scenario,
                 driver.browser().getCurrentUrl(),
                 HtmlSlimmer.slim(driver.browser().getPageSource(), HTML_MAX_CHARS),
-                lastScreenshotRef
+                lastScreenshotRef,
+                runningSummary.toString()
         );
     }
 
@@ -102,12 +104,12 @@ public class OrchestratorHelper {
     }
 
     public void buildUpdateState(){
-        stateJson = JsonMapper.buildPlannerUpdate(
+        stateJson = JsonMapper.buildPlannerStart(
                 scenario,
-                executedStepsJson,
                 driver.browser().getCurrentUrl(),
                 HtmlSlimmer.slim(driver.browser().getPageSource(), HTML_MAX_CHARS),
-                lastScreenshotRef
+                lastScreenshotRef,
+                runningSummary.toString()
         );
     }
 
@@ -155,7 +157,7 @@ public class OrchestratorHelper {
                         value
                 );
 
-                if (result == null || "false".equalsIgnoreCase(result)) {
+                if (result == null || result.contains("false")) {
                     success = false;
                     message = "Action returned failure: " + result;
                 } else {
@@ -192,6 +194,9 @@ public class OrchestratorHelper {
         if (stopAfterBatch) {
             stopTesting = true;
         }
+        appendCycleSummary(cycleId);
+        saveRunningSummary();
+
         return this;
     }
 
@@ -250,7 +255,6 @@ public class OrchestratorHelper {
     }
 
     public static Path createNewRunFolder() {
-
         String ts = getTimeStamp();
 
         Path runPath = Path.of(
@@ -264,11 +268,8 @@ public class OrchestratorHelper {
         createDirectory(runPath.toString());
 
         //Subfolders
-        createDirectory(runPath.resolve("logs").toString());
         createDirectory(runPath.resolve("screenshots").toString());
         createDirectory(runPath.resolve("planner").toString());
-        createDirectory(runPath.resolve("llm").toString());
-
         return runPath;
     }
 
@@ -287,7 +288,7 @@ public class OrchestratorHelper {
                 ,PropertyReader.getProperty("PASSWORD"));
         executor.elementAction("click",getSelector(PropertyReader.getProperty("clickLocator")),"");
 
-        TimeUnit.SECONDS.sleep(5);
+        TimeUnit.SECONDS.sleep(40);
         } catch (Exception e) {
             LogsManager.error("Error in preActions "+e);
         }
@@ -306,4 +307,35 @@ public class OrchestratorHelper {
         return currentObservation;
     }
 
+    private void appendCycleSummary(int cycleId) {
+        StringBuilder cycle = new StringBuilder();
+        cycle.append("Cycle ").append(cycleId).append(" | ")
+                .append("Batch: ").append(batchDetails).append("\n");
+
+        for (int i = 0; i < executedStepsJson.length(); i++) {
+            JSONObject s = executedStepsJson.getJSONObject(i);
+            JSONObject r = s.getJSONObject("result");
+
+            cycle.append(" - Step ").append(s.optInt("stepId"))
+                    .append(" ").append(s.optString("action"))
+                    .append(" ").append(s.optString("selector"))
+                    .append(" => ").append(r.optBoolean("success") ? "OK" : "FAIL")
+                    .append(" | ").append(r.optString("message"))
+                    .append("\n");
+        }
+
+        cycle.append("URL: ").append(driver.browser().getCurrentUrl()).append("\n")
+                .append("LastScreenshot: ").append(lastScreenshotRef).append("\n")
+                .append("--------------------------------------------------\n");
+
+        runningSummary.append(cycle);
+    }
+
+    private void saveRunningSummary() {
+        try {
+            utils.FilesManager.writeFile(summaryFile, runningSummary.toString());
+        } catch (Exception e) {
+            LogsManager.error("Failed to save running summary: " + e.getMessage());
+        }
+    }
 }

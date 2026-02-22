@@ -1,0 +1,23 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Clicking the current dashboard dropdown to access options for creating or managing dashboards.",
+  "finalSummary": "",
+  "currentObservation": "The dashboard page is displayed, showing various data widgets. The current dashboard name 'DashboardtestDash' is visible at the top left.",
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Click the dashboard dropdown to open the dashboard management menu.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:div.dashboard-dropdown-layout",
+      "value": "",
+      "generalWait": 5,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```
