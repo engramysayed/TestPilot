@@ -12,6 +12,7 @@ public class LLMPlanner {
     private final Path runFolder;
     private final LLMClient client;
     public static final int MAX_STEPS_PER_BATCH = Integer.parseInt(PropertyReader.getProperty("MaxSteps"));
+    public static final int MAX_CYCLES = Integer.parseInt(PropertyReader.getProperty("MaxCycles"));
 
     public LLMPlanner(Path runFolder) {
         this.runFolder = runFolder;
@@ -96,7 +97,19 @@ public class LLMPlanner {
             "currentObservation": "what is visible now on the page",
             "steps": []
           }
-
+        ========================
+        MAX CYCLES SAFETY
+        ========================
+        - You have a hard limit of MAX_CYCLES which is %d cycles only.
+        - Avoid repeating attempts. If you cannot progress after 2 different strategies, set stopTesting=true and report why.   
+        ========================
+        BUG REPORTING (MANDATORY)
+        ========================
+        - You MUST NOT report bugs during execution batches.
+        - Set "bugs": [] for all batches where stopTesting=false.
+        - Only when stopTesting=true (final batch), you may include "bugs" items.
+        - Only report a bug if you have evidence from executedSteps failures, screenshots, or clear UI observations.
+        - If no bugs found, return "bugs": [] in the final batch.
         ========================
         SELECTOR PRIORITY RULE (STRICT)
         ========================
@@ -203,6 +216,7 @@ public class LLMPlanner {
         """.formatted(
                 MAX_STEPS_PER_BATCH,
                 MAX_STEPS_PER_BATCH,
+                MAX_CYCLES,
                 plannerMessageJson
         );
     }

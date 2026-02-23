@@ -134,6 +134,18 @@ public class JsonMapper {
               "batchDetails": "short description",
               "finalSummary": "",
               "currentObservation": "",
+              "bugs": [
+                 {
+                   "id": "BUG-001",
+                   "title": "short title",
+                   "severity": "low|medium|high|critical",
+                   "type": "bug|security|ui",
+                   "stepsToReproduce": ["step 1", "step 2"],
+                   "expected": "expected result",
+                   "actual": "actual result",
+                   "evidence": "screenshotRef & executed step reference"
+                }
+              ],
               "steps": [
                 {
                   "stepId": 1,
@@ -154,8 +166,10 @@ public class JsonMapper {
             - steps MUST contain 1 to %d items (maxSteps=%d).
             - Steps must be tightly related and safe to execute in sequence on the current page.
             - If finished, set stopTesting=true and steps=[] and you MUST fill finalSummary and currentObservation.
-            - finalSummary and currentObservation MUST be empty strings unless stopTesting=true.
-            - If stopTesting=true and steps is not empty, stop AFTER executing the returned steps.
+            - finalSummary/currentObservation MUST be empty unless stopTesting=true.
+            - BUG REPORTING RULE (MANDATORY):
+             * bugs MUST be [] unless stopTesting=true (final batch).
+             * When stopTesting=true, bugs may contain 0..N items based on evidence
             """.formatted(MAX_STEPS_PER_BATCH, MAX_STEPS_PER_BATCH);
     }
 

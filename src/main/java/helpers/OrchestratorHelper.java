@@ -28,11 +28,11 @@ public class OrchestratorHelper {
     private int stepId , HTML_MAX_CHARS , generalWait , screenshotWait;
     private  boolean screenshot , stopTesting ,success = true , started = false, stopAfterBatch = false;
     private String lastScreenshotRef = "step_0.png";
-    private List<String[]> plannedSteps = new ArrayList<>();
+    private List<String[]> plannedSteps = new ArrayList<>() ;
+    private List<JSONObject> finalBugs = new ArrayList<>();
     private JSONArray executedStepsJson = new org.json.JSONArray();
     private final StringBuilder runningSummary = new StringBuilder();
-    private Path summaryFile;
-
+    private Path summaryFile,bugsFile;
 
     public OrchestratorHelper(WebDriverFactory driver,int stepId,
                               String scenario ,int HTML_MAX_CHARS){
@@ -51,6 +51,8 @@ public class OrchestratorHelper {
         }
         started = true;
         summaryFile = runFolder.resolve("planner").resolve("running_summary.txt");
+        bugsFile = runFolder.resolve("planner").resolve("bugs.txt");
+
 
         executor.takeScreenshot(runFolder, 0);
         lastScreenshotRef = "step_0.png";
@@ -91,6 +93,17 @@ public class OrchestratorHelper {
 
         boolean batchStop = root.optBoolean("stopTesting", false);
         stopAfterBatch = batchStop;
+        JSONArray bugsArr = root.optJSONArray("bugs");
+        if (stopAfterBatch) {
+            finalBugs.clear();
+            if (bugsArr != null) {
+                for (int i = 0; i < bugsArr.length(); i++) {
+                    finalBugs.add(bugsArr.getJSONObject(i));
+                }
+            }
+        }
+
+
         if (batchStop && plannedSteps.isEmpty()) {
             stopTesting = true;
             return;
@@ -99,6 +112,9 @@ public class OrchestratorHelper {
         batchDetails = root.optString("batchDetails", "");
         finalSummary = root.optString("finalSummary", "");
         currentObservation = root.optString("currentObservation", "");
+
+
+
         LogsManager.info("LLM Batch details: " + batchDetails);
         LogsManager.info("LLM Batch size: " + plannedSteps.size());
     }
@@ -173,7 +189,7 @@ public class OrchestratorHelper {
             }
 
             // build executed step json
-            org.json.JSONObject executed = new org.json.JSONObject();
+            JSONObject executed = new JSONObject();
             executed.put("stepId", stepId);
             executed.put("stepDetails", stepDetails);
             executed.put("actionType", actionType);
@@ -181,7 +197,7 @@ public class OrchestratorHelper {
             executed.put("selector", selector);
             executed.put("value", value);
 
-            org.json.JSONObject res = new org.json.JSONObject();
+            JSONObject res = new JSONObject();
             res.put("success", success);
             res.put("message", message);
             executed.put("result", res);
@@ -338,4 +354,44 @@ public class OrchestratorHelper {
             LogsManager.error("Failed to save running summary: " + e.getMessage());
         }
     }
+
+    public void recordBugs() {
+        try {
+            if (bugsFile == null) return;
+
+            if (finalBugs.isEmpty()) {
+                utils.FilesManager.writeFile(bugsFile, "No bugs reported by agent in this run.\n");
+                return;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("Bugs reported by agent:\n\n");
+
+            for (JSONObject b : finalBugs) {
+                sb.append("====================================\n");
+                sb.append("ID: ").append(b.optString("id")).append("\n");
+                sb.append("Title: ").append(b.optString("title")).append("\n");
+                sb.append("Type: ").append(b.optString("type")).append("\n");
+                sb.append("Severity: ").append(b.optString("severity")).append("\n");
+                sb.append("Expected: ").append(b.optString("expected")).append("\n");
+                sb.append("Actual: ").append(b.optString("actual")).append("\n");
+                sb.append("Evidence: ").append(b.optString("evidence")).append("\n");
+                JSONArray steps = b.optJSONArray("stepsToReproduce");
+                if (steps != null) {
+                    sb.append("StepsToReproduce:\n");
+                    for (int i = 0; i < steps.length(); i++) {
+                        sb.append("  - ").append(steps.getString(i)).append("\n");
+                    }
+                }
+                sb.append("====================================\n\n");
+            }
+
+            utils.FilesManager.writeFile(bugsFile, sb.toString());
+
+        } catch (Exception e) {
+            utils.LogsManager.error("Failed writing bugs file: " + e.getMessage());
+        }
+    }
+
+
 }

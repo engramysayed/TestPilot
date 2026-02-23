@@ -36,6 +36,7 @@ public class Orchestrator extends BaseOrchestrator {
 
             cycleCounter++; //increment cycle counter
         }
+        helper.recordBugs();
         LogsManager.info("FINAL SUMMARY: " + helper.getFinalSummary());
         LogsManager.info("CURRENT OBSERVATION: " + helper.getCurrentObservation());
     }
