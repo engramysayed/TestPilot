@@ -324,27 +324,47 @@ public class OrchestratorHelper {
     }
 
     private void appendCycleSummary(int cycleId) {
-        StringBuilder cycle = new StringBuilder();
-        cycle.append("Cycle ").append(cycleId).append(" | ")
-                .append("Batch: ").append(batchDetails).append("\n");
+        try {
+            StringBuilder sb = new StringBuilder();
 
-        for (int i = 0; i < executedStepsJson.length(); i++) {
-            JSONObject s = executedStepsJson.getJSONObject(i);
-            JSONObject r = s.getJSONObject("result");
+            sb.append("==================================================\n");
+            sb.append("Cycle ").append(cycleId)
+                    .append(" | Batch: ").append(safe(batchDetails)).append("\n");
 
-            cycle.append(" - Step ").append(s.optInt("stepId"))
-                    .append(" ").append(s.optString("action"))
-                    .append(" ").append(s.optString("selector"))
-                    .append(" => ").append(r.optBoolean("success") ? "OK" : "FAIL")
-                    .append(" | ").append(r.optString("message"))
-                    .append("\n");
+            for (int i = 0; i < executedStepsJson.length(); i++) {
+                JSONObject step = executedStepsJson.getJSONObject(i);
+                JSONObject res = step.optJSONObject("result");
+
+                boolean ok = res != null && res.optBoolean("success", false);
+                String msg = (res == null) ? "" : res.optString("message", "");
+
+                sb.append("  ")
+                        .append(icon(ok)).append(" Step ").append(step.optInt("stepId", i + 1))
+                        .append(" | ").append(safe(step.optString("actionType", "")))
+                        .append(" -> ").append(safe(step.optString("action", "")))
+                        .append(" | ").append(safe(step.optString("selector", "")));
+
+                // show value only when it matters (type, upload, dragDrop, frame switch)
+                String v = step.optString("value", "");
+                if (v != null && !v.isBlank()) {
+                    sb.append(" | value=").append(safe(v));
+                }
+
+                if (!ok) {
+                    sb.append("\n      ↳ ").append(shortenError(msg));
+                }
+
+                sb.append("\n");
+            }
+
+            sb.append("URL: ").append(safe(driver.browser().getCurrentUrl())).append("\n");
+            sb.append("LastScreenshot: ").append(safe(lastScreenshotRef)).append("\n");
+
+            runningSummary.append(sb);
+
+        } catch (Exception e) {
+            LogsManager.error("Failed to append cycle summary: " + e.getMessage());
         }
-
-        cycle.append("URL: ").append(driver.browser().getCurrentUrl()).append("\n")
-                .append("LastScreenshot: ").append(lastScreenshotRef).append("\n")
-                .append("--------------------------------------------------\n");
-
-        runningSummary.append(cycle);
     }
 
     private void saveRunningSummary() {
@@ -392,6 +412,27 @@ public class OrchestratorHelper {
             utils.LogsManager.error("Failed writing bugs file: " + e.getMessage());
         }
     }
+    private static String icon(boolean ok) { return ok ? "PASS " : "FAIL "; }
 
+    private static String safe(String s) {
+        return (s == null) ? "" : s.replaceAll("\\s+", " ").trim();
+    }
 
+    private static String shortenError(String msg) {
+        if (msg == null) return "";
+        String m = msg.replaceAll("\\s+", " ").trim();
+
+        String[] cutMarkers = {
+                "(Session info:", "Build info:", "System info:", "Driver info:",
+                "Capabilities", "Command:", "For documentation"
+        };
+        for (String marker : cutMarkers) {
+            int idx = m.indexOf(marker);
+            if (idx > 0) { m = m.substring(0, idx).trim(); }
+        }
+
+        int max = 220;
+        if (m.length() > max) m = m.substring(0, max) + "...";
+        return m;
+    }
 }
