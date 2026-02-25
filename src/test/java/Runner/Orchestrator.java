@@ -1,8 +1,10 @@
 package Runner;
+import helpers.utilsBuilders.OutputBuilder;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.Test;
 import utils.LogsManager;
-import utils.PropertyReader;
+
+import static helpers.utilsBuilders.OutputBuilder.recordBugs;
 
 public class Orchestrator extends BaseOrchestrator {
 
@@ -10,15 +12,11 @@ public class Orchestrator extends BaseOrchestrator {
     @Test
     public void runScenario() throws Exception {
 
-        //prepare pre steps -> open website -> login to prevent leaking data
-        helper.preStepsUrl(executor);
-        if ((PropertyReader.getProperty("ISLOGIN").toLowerCase()).equalsIgnoreCase("true")) {
-            helper.preStepsActions(executor);
-        }
-
-
-        //build starting prompt
-        helper.buildStartState(executor, runFolder);
+        //prepare pre steps -> take initial screenshot -> open website -> login to prevent leaking data
+        //then building the start prompt
+            helper
+                .beforeStart(runFolder)
+                .buildStartState();
 
         while (!stopTesting) {
 
@@ -27,18 +25,16 @@ public class Orchestrator extends BaseOrchestrator {
                     .parsingBatch();
 
             helper
-                    .executeBatch(executor, runFolder, cycleCounter, DEFAULT_WAIT, DEFAULT_SCREENSHOT_WAIT)
+                    .executeBatch( runFolder, cycleCounter, DEFAULT_WAIT, DEFAULT_SCREENSHOT_WAIT)
                     .buildUpdateState();
 
-            stopTesting = helper.isStopTesting();
+            stopTesting = helper.getStopTesting();
             if (stopTesting) break;
 
 
             cycleCounter++; //increment cycle counter
         }
-        helper.recordBugs();
-        LogsManager.info("FINAL SUMMARY: " + helper.getFinalSummary());
-        LogsManager.info("CURRENT OBSERVATION: " + helper.getCurrentObservation());
+        recordBugs();
     }
 
 

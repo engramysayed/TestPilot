@@ -3,10 +3,11 @@ package executionLayer;
 import drivers.WebDriverFactory;
 import org.openqa.selenium.By;
 import utils.LogsManager;
-
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
+import helpers.stateBuilders.StateVars;
 
+import static helpers.stateBuilders.StateVars.setLastScreenshotRef;
 import static java.lang.Integer.parseInt;
 
 public class actionExecute {
@@ -29,6 +30,8 @@ public class actionExecute {
             default -> null;
         };
     }
+
+
 
     public String elementAction(String type, By locator, String value) {
         return switch (type) {
@@ -75,13 +78,29 @@ public class actionExecute {
         };
     }
 
+
+
+
     public void takeScreenshot(Path runFolder, int stepId){
         driver.element().capture(runFolder, stepId);
     }
 
-    public void takeScreenshot(Path runFolder, String nameWithoutExtension){
-        driver.element().capture(runFolder, nameWithoutExtension);
+    public void takeScreenshot(boolean screenshot,int screenshotWait, Path runFolder, String nameWithoutExtension){
+            try {
+                if (screenshot) {
+                    if (screenshotWait > 0) {
+                        TimeUnit.SECONDS.sleep(screenshotWait);
+                    }
+                    driver.element().capture(runFolder, nameWithoutExtension);
+                    setLastScreenshotRef(nameWithoutExtension + ".png");
+                    LogsManager.info("Screenshot taken: " + nameWithoutExtension + ".png");
+                }
+            } catch (Exception e) {
+                LogsManager.error("Error taking screenshot " + e);
+            }
     }
 
+    public String getUrl(){return driver.browser().getCurrentUrl();}
 
+    public String getHtml(){return driver.browser().getPageSource();}
 }
