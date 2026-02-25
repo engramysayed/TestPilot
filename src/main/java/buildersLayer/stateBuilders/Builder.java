@@ -1,8 +1,8 @@
-package helpers.stateBuilders;
+package buildersLayer.stateBuilders;
 import executionLayer.actionExecute;
 import parsingLayer.HtmlSlimmer;
 import parsingLayer.JsonMapper;
-import static helpers.stateBuilders.StateVars.*;
+import static buildersLayer.stateBuilders.StateVars.*;
 
 public class Builder {
 

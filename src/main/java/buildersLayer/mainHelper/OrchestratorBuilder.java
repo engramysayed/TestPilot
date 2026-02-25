@@ -1,4 +1,4 @@
-package helpers.mainHelper;
+package buildersLayer.mainHelper;
 import llmLayer.LLMPlanner;
 import drivers.WebDriverFactory;
 import executionLayer.actionExecute;
@@ -12,11 +12,11 @@ import java.util.ArrayList;
 import java.util.List;
 import static executionLayer.PreStartActions.preStepsActions;
 import static executionLayer.SelectorParser.toBy;
-import static helpers.stateBuilders.Builder.*;
-import static helpers.stateBuilders.StateVars.*;
-import static helpers.utilsBuilders.OutputBuilder.*;
+import static buildersLayer.stateBuilders.Builder.*;
+import static buildersLayer.stateBuilders.StateVars.*;
+import static buildersLayer.utilsBuilders.OutputBuilder.*;
 
-public class OrchestratorHelper {
+public class OrchestratorBuilder {
     private  WebDriverFactory driver;
     private String llmResponse,batchDetails = "",currentObservation = "",finalSummary = "";
     private int stepId;
@@ -27,7 +27,7 @@ public class OrchestratorHelper {
     private final actionExecute executor=new actionExecute(driver);
 
 
-    public OrchestratorHelper(WebDriverFactory driver, int stepId){
+    public OrchestratorBuilder(WebDriverFactory driver, int stepId){
         this.driver = driver;
         this.stepId=stepId;
     }
@@ -36,14 +36,14 @@ public class OrchestratorHelper {
 
 
     //Main loop functions
-    public OrchestratorHelper beforeStart(Path runFolder) {
+    public OrchestratorBuilder beforeStart(Path runFolder) {
         preStepsActions(runFolder,executor);
         return this;
     }
 
     public void buildStartState(){startState(executor);}
 
-    public OrchestratorHelper askLLM(LLMPlanner planner, int cycleId) {
+    public OrchestratorBuilder askLLM(LLMPlanner planner, int cycleId) {
         try {
             LogsManager.info("Requesting next batch from LLM. cycleId=" + cycleId);
             llmResponse = planner.getNextBatch(cycleId , getStateJson() , getLastScreenshotRef());
@@ -93,12 +93,12 @@ public class OrchestratorHelper {
         LogsManager.info("LLM Batch size: " + plannedSteps.size());
     }
 
-    public OrchestratorHelper setStepId(int stepId) {
+    public OrchestratorBuilder setStepId(int stepId) {
         this.stepId = stepId;
         return this;
     }
 
-    public OrchestratorHelper executeBatch(
+    public OrchestratorBuilder executeBatch(
                                            Path runFolder,
                                            int cycleId,
                                            int DEFAULT_WAIT,

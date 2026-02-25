@@ -1,19 +1,19 @@
-package helpers.utilsBuilders;
+package buildersLayer.utilsBuilders;
 import executionLayer.actionExecute;
-import helpers.mainHelper.OrchestratorHelper;
+import buildersLayer.mainHelper.OrchestratorBuilder;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import utils.LogsManager;
 
 import java.nio.file.Path;
 
-import static helpers.stateBuilders.StateVars.*;
+import static buildersLayer.stateBuilders.StateVars.*;
 import static utils.FilesManager.createDirectory;
 import static utils.FilesManager.writeFile;
 
 public class OutputBuilder {
     public static Path summaryFile,bugsFile;
-    private static OrchestratorHelper helper;
+    private static OrchestratorBuilder helper;
 
 
     public static void recordBugs() {

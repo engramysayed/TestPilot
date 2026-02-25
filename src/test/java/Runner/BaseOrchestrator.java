@@ -2,13 +2,13 @@ package Runner;
 import llmLayer.LLMPlanner;
 import drivers.WebDriverFactory;
 import drivers.WebDriverProvider;
-import helpers.mainHelper.OrchestratorHelper;
+import buildersLayer.mainHelper.OrchestratorBuilder;
 import org.openqa.selenium.WebDriver;
 import org.testng.annotations.BeforeSuite;
 import utils.LogsManager;
 import utils.PropertyReader;
 import java.nio.file.Path;
-import static helpers.utilsBuilders.OutputBuilder.createNewRunFolder;
+import static buildersLayer.utilsBuilders.OutputBuilder.createNewRunFolder;
 
 public class BaseOrchestrator implements WebDriverProvider {
 
@@ -17,7 +17,7 @@ public class BaseOrchestrator implements WebDriverProvider {
     protected Path runFolder;
     protected boolean stopTesting = false;
     protected LLMPlanner planner;
-    protected OrchestratorHelper helper;
+    protected OrchestratorBuilder helper;
 
     @Override
     public WebDriver getWebDriver() {
@@ -37,7 +37,7 @@ public class BaseOrchestrator implements WebDriverProvider {
 
         driver = new WebDriverFactory();
         planner = new LLMPlanner(runFolder);
-        helper = new OrchestratorHelper(driver, 0);
+        helper = new OrchestratorBuilder(driver, 0);
     }
 
 

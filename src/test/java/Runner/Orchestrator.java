@@ -1,10 +1,8 @@
 package Runner;
-import helpers.utilsBuilders.OutputBuilder;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.Test;
 import utils.LogsManager;
-
-import static helpers.utilsBuilders.OutputBuilder.recordBugs;
+import static buildersLayer.utilsBuilders.OutputBuilder.recordBugs;
 
 public class Orchestrator extends BaseOrchestrator {
 

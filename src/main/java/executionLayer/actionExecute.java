@@ -5,9 +5,8 @@ import org.openqa.selenium.By;
 import utils.LogsManager;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
-import helpers.stateBuilders.StateVars;
 
-import static helpers.stateBuilders.StateVars.setLastScreenshotRef;
+import static buildersLayer.stateBuilders.StateVars.setLastScreenshotRef;
 import static java.lang.Integer.parseInt;
 
 public class actionExecute {
