@@ -122,7 +122,7 @@ public class OutputBuilder {
         createDirectory(runPath.resolve("screenshots").toString());
         createDirectory(runPath.resolve("planner").toString());
 
-        //set summary and bugs file path (use runPath, not parameter runFolder which may be null)
+        //set summary and bugs file path
         summaryFile = runPath.resolve("planner").resolve("running_summary.txt");
         bugsFile = runPath.resolve("planner").resolve("bugs.txt");
         return runPath;

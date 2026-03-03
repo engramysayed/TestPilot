@@ -23,14 +23,11 @@ public class LLMPlanner {
 
         String prompt = buildPrompt(plannerMessageJson);
 
-        // save prompt
         Path promptFile = runFolder.resolve("planner").resolve("cycle_" + cycleId + "_prompt.txt");
-
 
 
         FilesManager.writeFile(promptFile, prompt);
 
-        // load screenshot bytes (optional)
         byte[] screenshotBytes = null;
         Path screenshotPath = runFolder.resolve("screenshots").resolve(screenshotRef);
 
@@ -46,7 +43,6 @@ public class LLMPlanner {
             LogsManager.warn("Failed to read screenshot, sending text-only. " + e.getMessage());
         }
 
-        // call Gemini (image + text if available)
         String responseText = client.generateTextWithOptionalImage(
                 prompt,
                 screenshotBytes,
@@ -54,7 +50,6 @@ public class LLMPlanner {
         );
 
 
-        // save response
         Path responseFile = runFolder.resolve("planner").resolve("cycle_" + cycleId + "_response.json");
         FilesManager.writeFile(responseFile, responseText);
 

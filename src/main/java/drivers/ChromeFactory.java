@@ -42,9 +42,9 @@ public class ChromeFactory extends AbstractDriver{
             return new ChromeDriver(getOptions());
         }else{
             try {
-               // return new RemoteWebDriver(
-                    //    new URI("http://" + remoteHost + ":" + remotePort + "/wd/hub").toURL(), getOptions()
-               // );
+               //return new RemoteWebDriver(
+                    //new URI("http://" + remoteHost + ":" + remotePort + "/wd/hub").toURL(), getOptions()
+               //);
             } catch (Exception e) {
                 LogsManager.error("Error creating RemoteWebDriver: " + e.getMessage());
                 throw new RuntimeException("Failed to create RemoteWebDriver", e);

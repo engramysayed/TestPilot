@@ -127,7 +127,6 @@ public class OrchestratorBuilder {
             String message = "";
             storeVars(generalWait, screenshotWait);
 
-            // Only parse selector when non-empty (browser/frame-only actions may have empty selector)
             By locator = (selector != null && !selector.isBlank()) ? toBy(selector) : null;
 
             //execute
