@@ -4,7 +4,7 @@ An **AI-driven browser testing agent** that uses an LLM (Google Gemini) to plan 
 
 ## What it does
 
-- **Scenario in plain language** — Define test goals in `webapp.properties` (e.g. “log in, create dashboard, add widget, drag-and-drop, save”).
+- **Scenario in plain language** — Define test goals in `src/main/resources/scenario.txt` (e.g. “log in, create dashboard, add widget, drag-and-drop, save”).
 - **LLM planning** — Gemini receives current page state (current HTML, screenshot, URL, execution history) and returns the next batch of steps in a strict JSON schema.
 - **Selenium execution** — Steps are executed in a real browser (Chrome/Edge): clicks, typing, navigation, iframe switching, drag-and-drop, etc.
 - **State feedback loop** — After each batch, the agent slims the DOM, takes screenshots, and sends updated state back to the LLM for the next batch.
@@ -36,7 +36,7 @@ An **AI-driven browser testing agent** that uses an LLM (Google Gemini) to plan 
 
 ## Configuration
 
-Edit `src/main/resources/webapp.properties`:
+Main config is loaded from `src/main/resources/webapp.properties`:
 
 | Key | Description |
 |-----|-------------|
@@ -47,9 +47,19 @@ Edit `src/main/resources/webapp.properties`:
 | `userNameLocator`, `passwordLocator`, `clickLocator` | Selectors for login (e.g. `cssSelector:input[placeholder='Username']`) |
 | `GEMINI_API_KEY` | Your Gemini API key |
 | `GEMINI_MODEL` | Model name (e.g. `gemini-2.5-flash`) |
+| `HTML_MAX_CHARS` | Max characters for slimmed HTML sent to planner |
+| `DEFAULT_WAIT`, `DEFAULT_SCREENSHOT_WAIT` | Default waits for actions and screenshots |
 | `MaxSteps` | Max steps per LLM batch (e.g. `3`) |
 | `MaxCycles` | Max planner cycles (e.g. `25`) |
-| `SCENARIO` | Natural-language test scenario (multi-line supported) |
+
+Scenario is loaded from:
+
+- `src/main/resources/scenario.txt`
+
+Configuration notes:
+
+- The project uses a typed Owner-based config layer for most values.
+- `GEMINI_API_KEY` is read via `PropertyReader` (old-style properties loading), as requested.
 
 ## How to run
 
