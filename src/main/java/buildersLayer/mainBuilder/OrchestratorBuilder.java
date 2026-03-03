@@ -1,9 +1,10 @@
-package buildersLayer.mainHelper;
+package buildersLayer.mainBuilder;
 import llmLayer.LLMPlanner;
 import drivers.WebDriverFactory;
 import executionLayer.actionExecute;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.openqa.selenium.By;
 import parsingLayer.JsonMapper;
 import utils.LogsManager;
 import utils.PropertyReader;
@@ -24,12 +25,13 @@ public class OrchestratorBuilder {
     private List<String[]> plannedSteps = new ArrayList<>() ;
     private final List<JSONObject> finalBugs = new ArrayList<>();
     private JSONArray executedStepsJson = new JSONArray();
-    private final actionExecute executor=new actionExecute(driver);
+    private final actionExecute executor;
 
 
     public OrchestratorBuilder(WebDriverFactory driver, int stepId){
         this.driver = driver;
         this.stepId=stepId;
+        this.executor = new actionExecute(driver);
     }
 
 
@@ -49,6 +51,7 @@ public class OrchestratorBuilder {
             llmResponse = planner.getNextBatch(cycleId , getStateJson() , getLastScreenshotRef());
         } catch (Exception e) {
             LogsManager.error("Error in LLM request " + e);
+            llmResponse = null;
         }
         return this;
     }
@@ -124,6 +127,9 @@ public class OrchestratorBuilder {
             String message = "";
             storeVars(generalWait, screenshotWait);
 
+            // Only parse selector when non-empty (browser/frame-only actions may have empty selector)
+            By locator = (selector != null && !selector.isBlank()) ? toBy(selector) : null;
+
             //execute
             try {
                 String result = executor.checkAction(
@@ -131,7 +137,7 @@ public class OrchestratorBuilder {
                         action,
                         value,
                         value,
-                        toBy(selector),
+                        locator,
                         value
                 );
 

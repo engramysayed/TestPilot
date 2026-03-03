@@ -19,6 +19,12 @@ public class actionExecute {
     public String checkAction(String option, String type,
                               String url, String tab, By locator, String value)
     {
+        if ("elementAction".equals(option) && locator == null) {
+            return "false -> selector required for element action";
+        }
+        if ("frameAction".equals(option) && ("switchFrameByName".equals(type) || "switchFrameByCssSelector".equals(type)) && locator == null) {
+            return "false -> selector required for frame switch";
+        }
         return switch (option) {
             case "browserAction" -> browserAction(type, url, tab);
 
@@ -72,6 +78,8 @@ public class actionExecute {
             case "switchFrameByCssSelector" ->
                      driver.frames().switchToFrameByCssSelector(locator);
             case "switchToParent" ->
+                    driver.frames().switchToDefaultContent();
+            case "switchToDefaultContent" ->
                     driver.frames().switchToDefaultContent();
             default -> null;
         };

@@ -32,7 +32,7 @@ public class Orchestrator extends BaseOrchestrator {
 
             cycleCounter++; //increment cycle counter
         }
-        recordBugs();
+        recordBugs(helper);
     }
 
 

@@ -1,6 +1,6 @@
 package buildersLayer.utilsBuilders;
 import executionLayer.actionExecute;
-import buildersLayer.mainHelper.OrchestratorBuilder;
+import buildersLayer.mainBuilder.OrchestratorBuilder;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import utils.LogsManager;
@@ -13,12 +13,11 @@ import static utils.FilesManager.writeFile;
 
 public class OutputBuilder {
     public static Path summaryFile,bugsFile;
-    private static OrchestratorBuilder helper;
 
 
-    public static void recordBugs() {
+    public static void recordBugs(OrchestratorBuilder helper) {
         try {
-            if (bugsFile == null) {return;}
+            if (bugsFile == null || helper == null) {return;}
 
             if (helper.getBugs().isEmpty()) {
                 writeFile(bugsFile, "No bugs reported by agent.\n");
@@ -123,9 +122,9 @@ public class OutputBuilder {
         createDirectory(runPath.resolve("screenshots").toString());
         createDirectory(runPath.resolve("planner").toString());
 
-        //set summary and bugs file path
-        summaryFile = runFolder.resolve("planner").resolve("running_summary.txt");
-        bugsFile = runFolder.resolve("planner").resolve("bugs.txt");
+        //set summary and bugs file path (use runPath, not parameter runFolder which may be null)
+        summaryFile = runPath.resolve("planner").resolve("running_summary.txt");
+        bugsFile = runPath.resolve("planner").resolve("bugs.txt");
         return runPath;
     }
 
