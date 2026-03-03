@@ -1,12 +1,13 @@
 package buildersLayer.stateBuilders;
 
-import utils.PropertyReader;
+import utils.AppConfigProvider;
+import utils.ScenarioReader;
 
 public class StateVars {
     private  static String lastScreenshotRef="step_0.png";
     private static String stateJson;
-    private static final String scenario=PropertyReader.getProperty("SCENARIO");
-    private static final int HTML_MAX_CHARS=Integer.parseInt(PropertyReader.getProperty("HTML_MAX_CHARS"));
+    private static final String scenario = ScenarioReader.getScenario();
+    private static final int HTML_MAX_CHARS = AppConfigProvider.get().htmlMaxChars();
     private  static final StringBuilder runningSummary = new StringBuilder();
 
     //getters

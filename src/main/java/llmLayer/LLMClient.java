@@ -2,6 +2,8 @@ package llmLayer;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import utils.AppConfig;
+import utils.AppConfigProvider;
 import utils.PropertyReader;
 
 import java.net.URI;
@@ -17,8 +19,9 @@ public class LLMClient {
     private final String model;
 
     public LLMClient() {
-        this.apiKey = PropertyReader.getProperty("GEMINI_API_KEY");
-        this.model = PropertyReader.getProperty("GEMINI_MODEL");
+        AppConfig config = AppConfigProvider.get();
+        this.apiKey = PropertyReader.getGeminiApiKey();
+        this.model = config.geminiModel();
     }
 
     public String generateTextWithOptionalImage(String prompt, byte[] imageBytes, String mimeType) throws Exception {

@@ -1,16 +1,15 @@
 package Runner;
 import llmLayer.LLMPlanner;
 import drivers.WebDriverFactory;
-import drivers.WebDriverProvider;
 import buildersLayer.mainBuilder.OrchestratorBuilder;
-import org.openqa.selenium.WebDriver;
 import org.testng.annotations.BeforeSuite;
+import utils.AppConfig;
+import utils.AppConfigProvider;
 import utils.LogsManager;
-import utils.PropertyReader;
 import java.nio.file.Path;
 import static buildersLayer.utilsBuilders.OutputBuilder.createNewRunFolder;
 
-public class BaseOrchestrator implements WebDriverProvider {
+public class BaseOrchestrator {
 
     protected WebDriverFactory driver;
     protected int   DEFAULT_WAIT , DEFAULT_SCREENSHOT_WAIT , cycleCounter = 1;
@@ -19,19 +18,12 @@ public class BaseOrchestrator implements WebDriverProvider {
     protected LLMPlanner planner;
     protected OrchestratorBuilder helper;
 
-    @Override
-    public WebDriver getWebDriver() {
-        return driver.get();
-    }
-
     @BeforeSuite
     public void initialize() {
         LogsManager.cleanRunLog();
-
-        PropertyReader.loadProperties();
-
-        DEFAULT_WAIT = Integer.parseInt(PropertyReader.getProperty("DEFAULT_WAIT"));
-        DEFAULT_SCREENSHOT_WAIT = Integer.parseInt(PropertyReader.getProperty("DEFAULT_SCREENSHOT_WAIT"));
+        AppConfig config = AppConfigProvider.get();
+        DEFAULT_WAIT = config.defaultWait();
+        DEFAULT_SCREENSHOT_WAIT = config.defaultScreenshotWait();
 
         runFolder = createNewRunFolder(runFolder);
 

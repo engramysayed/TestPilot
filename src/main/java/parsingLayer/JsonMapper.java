@@ -2,13 +2,13 @@ package parsingLayer;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-import utils.PropertyReader;
+import utils.AppConfigProvider;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class JsonMapper {
-    public static final int MAX_STEPS_PER_BATCH = Integer.parseInt(PropertyReader.getProperty("MaxSteps"));
+    public static final int MAX_STEPS_PER_BATCH = AppConfigProvider.get().maxSteps();
 
 
     //Parse LLM JSON response into simple List[] of strings

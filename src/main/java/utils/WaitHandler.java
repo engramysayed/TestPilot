@@ -16,7 +16,8 @@ public class WaitHandler {
      }
 
     private int getWaitSeconds() {
-        return waitSeconds=Integer.parseInt(PropertyReader.getProperty("globalWait"));
+        waitSeconds = RuntimeSettings.getGlobalWait();
+        return waitSeconds;
     }
 
 

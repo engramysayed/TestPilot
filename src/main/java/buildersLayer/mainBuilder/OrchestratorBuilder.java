@@ -7,7 +7,7 @@ import org.json.JSONObject;
 import org.openqa.selenium.By;
 import parsingLayer.JsonMapper;
 import utils.LogsManager;
-import utils.PropertyReader;
+import utils.RuntimeSettings;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -216,8 +216,8 @@ public class OrchestratorBuilder {
         }
     }
     public static void storeVars(int time, int screenWaitTime){
-        PropertyReader.setProperty("globalWait", String.valueOf(time));
-        PropertyReader.setProperty("screenShotWait", String.valueOf(screenWaitTime));
+        RuntimeSettings.setGlobalWait(time);
+        RuntimeSettings.setScreenshotWait(screenWaitTime);
     }
 
     public String getFinalSummary() {

@@ -2,7 +2,7 @@ package llmLayer;
 
 import utils.FilesManager;
 import utils.LogsManager;
-import utils.PropertyReader;
+import utils.AppConfigProvider;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,8 +11,8 @@ public class LLMPlanner {
 
     private final Path runFolder;
     private final LLMClient client;
-    public static final int MAX_STEPS_PER_BATCH = Integer.parseInt(PropertyReader.getProperty("MaxSteps"));
-    public static final int MAX_CYCLES = Integer.parseInt(PropertyReader.getProperty("MaxCycles"));
+    public static final int MAX_STEPS_PER_BATCH = AppConfigProvider.get().maxSteps();
+    public static final int MAX_CYCLES = AppConfigProvider.get().maxCycles();
 
     public LLMPlanner(Path runFolder) {
         this.runFolder = runFolder;

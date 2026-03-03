@@ -1,19 +1,11 @@
 package utils;
-
-import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-
-import static org.apache.commons.io.FileUtils.copyFile;
-import static org.apache.commons.io.FileUtils.deleteQuietly;
-
 public class FilesManager {
-
-    private static final String userDir= System.getProperty("user.dir")+File.separator;
 
 
     public static void  createDirectory(String path){

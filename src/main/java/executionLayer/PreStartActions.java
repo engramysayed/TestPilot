@@ -1,6 +1,7 @@
 package executionLayer;
 import utils.LogsManager;
-import utils.PropertyReader;
+import utils.AppConfig;
+import utils.AppConfigProvider;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import static executionLayer.SelectorParser.toBy;
@@ -8,11 +9,12 @@ import static buildersLayer.mainBuilder.OrchestratorBuilder.storeVars;
 import static buildersLayer.stateBuilders.StateVars.setLastScreenshotRef;
 
 public class PreStartActions {
+    private static final AppConfig CONFIG = AppConfigProvider.get();
 
     public static void preStepsActions(Path runFolder , actionExecute executor ){
         firstScreen(executor,runFolder);
         preStepsUrl(executor);
-        if ((PropertyReader.getProperty("ISLOGIN").toLowerCase()).equalsIgnoreCase("true")) {
+        if (CONFIG.isLogin()) {
             preStepsLogin(executor);
         }
     }
@@ -27,11 +29,11 @@ public class PreStartActions {
         try {
             storeVars(5,1);
 
-            executor.elementAction("type",toBy(PropertyReader.getProperty("userNameLocator"))
-                    ,PropertyReader.getProperty("USERNAME"));
-            executor.elementAction("type",toBy(PropertyReader.getProperty("passwordLocator"))
-                    ,PropertyReader.getProperty("PASSWORD"));
-            executor.elementAction("click",toBy(PropertyReader.getProperty("clickLocator")),"");
+            executor.elementAction("type",toBy(CONFIG.userNameLocator())
+                    ,CONFIG.username());
+            executor.elementAction("type",toBy(CONFIG.passwordLocator())
+                    ,CONFIG.password());
+            executor.elementAction("click",toBy(CONFIG.clickLocator()),"");
 
             TimeUnit.SECONDS.sleep(40);
         } catch (Exception e) {
@@ -41,7 +43,7 @@ public class PreStartActions {
     }
 
     private static void preStepsUrl(actionExecute executor){
-        executor.browserAction("navigate",PropertyReader.getProperty("BASE_WEB"),"");
+        executor.browserAction("navigate", CONFIG.baseWeb(),"");
     }
 
 

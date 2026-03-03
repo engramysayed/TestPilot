@@ -6,9 +6,10 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.edge.EdgeDriver;
 import org.openqa.selenium.edge.EdgeOptions;
 import org.openqa.selenium.remote.CapabilityType;
-import utils.PropertyReader;
+import utils.AppConfigProvider;
 
 public class EdgeFactory extends AbstractDriver {
+    private static final String EXECUTION_TYPE = AppConfigProvider.get().executionType();
 
 
     private EdgeOptions getOptions(){
@@ -23,7 +24,7 @@ public class EdgeFactory extends AbstractDriver {
         options.setCapability(CapabilityType.UNHANDLED_PROMPT_BEHAVIOUR, UnexpectedAlertBehaviour.IGNORE);
         options.setCapability(CapabilityType.ENABLE_DOWNLOADS, true);
         options.setAcceptInsecureCerts(true);
-        switch (PropertyReader.getProperty("EXECUTION_TYPE")) {
+        switch (EXECUTION_TYPE) {
             case "LocalHeadless" -> options.addArguments("--headless=new");
             case "Remote" -> {
                 options.addArguments("--disable-gpu");
@@ -37,8 +38,8 @@ public class EdgeFactory extends AbstractDriver {
 
     @Override
     public WebDriver createDriver() {
-        if(PropertyReader.getProperty("EXECUTION_TYPE").equalsIgnoreCase("HEADLESS")
-                ||PropertyReader.getProperty("EXECUTION_TYPE").equalsIgnoreCase("LOCAL")) {
+        if(EXECUTION_TYPE.equalsIgnoreCase("HEADLESS")
+                ||EXECUTION_TYPE.equalsIgnoreCase("LOCAL")) {
             return new EdgeDriver(getOptions());
         }else{
             //todo to work remote

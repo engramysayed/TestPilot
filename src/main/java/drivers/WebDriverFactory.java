@@ -6,11 +6,11 @@ import handlingLayer.ElementsHandler;
 import handlingLayer.FramesHandler;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.ThreadGuard;
-import utils.PropertyReader;
+import utils.AppConfigProvider;
 
 public class WebDriverFactory {
 
-    public final static String browser = PropertyReader.getProperty("BROWSER_TYPE");
+    public final static String browser = AppConfigProvider.get().browserType();
     private static ThreadLocal<WebDriver> driverThreadLocal = new ThreadLocal<>();
 
     public WebDriverFactory() {

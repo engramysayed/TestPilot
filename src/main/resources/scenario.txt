@@ -1,0 +1,17 @@
+You are testing the Rainy website dashboard as a valid logged-in user.
+
+Objective:
+1) Click the dropdown arrow next to the current dashboard name and create a new dashboard named 'test Dash'.
+2) After the new dashboard is created and loaded, click on the "Manage Widget" button and click on "Add Widgets".
+3) In the sidebar, select any available widget category. The sidebar will display draggable widget cards.
+4) Select one draggable widget card and drag it from the sidebar.
+5) Drop the widget into the main dashboard canvas area (the drop zone).
+6) Close the sidebar and click "Save Changes" to persist the dashboard update.
+
+Rules:
+- Do not repeat actions that were already completed successfully.
+- Ensure the dashboard is fully created before opening Manage Widget.
+- Apply iframe switching if required before interacting with elements inside it.
+- For dragDrop: "selector" MUST be the source widget element and "value" MUST be the target drop area selector.
+- Use stable selectors only (prefer id, then name, then cssSelector).
+- Do not use dynamic, index-based, or unstable selectors.
