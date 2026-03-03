@@ -2,7 +2,7 @@ package Runner;
 import llmLayer.LLMPlanner;
 import drivers.WebDriverFactory;
 import drivers.WebDriverProvider;
-import buildersLayer.mainHelper.OrchestratorBuilder;
+import buildersLayer.mainBuilder.OrchestratorBuilder;
 import org.openqa.selenium.WebDriver;
 import org.testng.annotations.BeforeSuite;
 import utils.LogsManager;

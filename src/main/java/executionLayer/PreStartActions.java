@@ -4,7 +4,7 @@ import utils.PropertyReader;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import static executionLayer.SelectorParser.toBy;
-import static buildersLayer.mainHelper.OrchestratorBuilder.storeVars;
+import static buildersLayer.mainBuilder.OrchestratorBuilder.storeVars;
 import static buildersLayer.stateBuilders.StateVars.setLastScreenshotRef;
 
 public class PreStartActions {
