@@ -1,5 +1,7 @@
 package utils;
 
+import utils.Config.AppConfigProvider;
+
 public final class RuntimeSettings {
     private static volatile int globalWait = AppConfigProvider.get().defaultWait();
     private static volatile int screenshotWait = AppConfigProvider.get().defaultScreenshotWait();

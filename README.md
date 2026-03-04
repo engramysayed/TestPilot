@@ -8,6 +8,7 @@ An **AI-driven browser testing agent** that uses an LLM (Google Gemini) to plan 
 - **LLM planning** — Gemini receives current page state (current HTML, screenshot, URL, execution history) and returns the next batch of steps in a strict JSON schema.
 - **Selenium execution** — Steps are executed in a real browser (Chrome/Edge): clicks, typing, navigation, iframe switching, drag-and-drop, etc.
 - **State feedback loop** — After each batch, the agent slims the DOM, takes screenshots, and sends updated state back to the LLM for the next batch.
+- **Structured execution memory** — The planner receives compact `historySummary` memory (recent cycles, completed steps, failed attempts, last URL/screenshot) to reduce repetition while keeping prompts efficient.
 - **Bug reporting** — On completion, the LLM can report bugs (with evidence) in the final batch.
 
 ## High-level flow
@@ -59,8 +60,10 @@ Scenario is loaded from:
 Configuration notes:
 
 - The project uses a typed Owner-based config layer for most values.
-- `GEMINI_API_KEY` is read via `PropertyReader` (old-style properties loading), as requested.
+- `GEMINI_API_KEY` is read via `PropertyReader` .
 
 ## How to run
 
+```bash
 mvn clean test
+```

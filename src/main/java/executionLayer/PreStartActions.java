@@ -1,7 +1,7 @@
 package executionLayer;
 import utils.LogsManager;
-import utils.AppConfig;
-import utils.AppConfigProvider;
+import utils.Config.AppConfig;
+import utils.Config.AppConfigProvider;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import static executionLayer.SelectorParser.toBy;

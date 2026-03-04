@@ -2,7 +2,7 @@ package llmLayer;
 
 import utils.FilesManager;
 import utils.LogsManager;
-import utils.AppConfigProvider;
+import utils.Config.AppConfigProvider;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -62,53 +62,50 @@ public class LLMPlanner {
         return """
         You are a professional test automation planner.
 
-        You will receive a JSON message (PlannerStart or PlannerUpdate) that includes:
-        - the scenario
-        - the current state (url + slim html + screenshotRef)
-        - and the REQUIRED output schema.
+        You will receive one planner JSON message containing:
+        - scenario
+        - currentState (currentUrl, currentHtmlSlim, currentScreenshotRef)
         - historySummary
+        - requiredOutputSchema
 
-        Your job:
-        - Produce the NEXT batch of steps that are tightly related and safe to execute on the CURRENT page only.
-        - steps array length MUST be between 1 and %d (maxSteps=%d).
-        - Follow ALL schema rules strictly.
+        Your task:
+        - Produce the NEXT batch of steps that are tightly related and safe for the CURRENT page only.
+        - steps length MUST be 1..%d (maxSteps=%d).
+        - Follow requiredOutputSchema strictly.
 
         ========================
         CRITICAL OUTPUT RULES
         ========================
-        - Output RAW JSON only.
-        - Do NOT wrap the response in triple backticks.
-        - Do NOT include the word "json".
-        - Do NOT include explanations.
-        - Do NOT include markdown.
-        - The response MUST start with '{' and end with '}'.
+        - Output RAW JSON only (no markdown, no code fences, no explanations).
+        - Response MUST start with '{' and end with '}'.
+        - ALL required keys must exist and types must match schema.
         - IMPORTANT: stopTesting=true means STOP AFTER executing the returned steps. steps may be non-empty.
-        - If finished, return:
+        - If fully finished, return exactly:
           {
             "type": "PlannerBatch",
             "stopTesting": true,
             "batchDetails": "",
             "finalSummary": "short summary of what you did",
             "currentObservation": "what is visible now on the page",
+            "bugs": [],
             "steps": []
           }
         ========================
         MAX CYCLES SAFETY
         ========================
-        - You have a hard limit of MAX_CYCLES which is %d cycles only.
-        - Avoid repeating attempts. If you cannot progress after 2 different strategies, set stopTesting=true and report why.   
+        - Hard limit: %d cycles.
+        - If no progress after 2 different strategies, set stopTesting=true and explain why in finalSummary/currentObservation.
         ========================
         BUG REPORTING (MANDATORY)
         ========================
-        - You MUST NOT report bugs during execution batches.
-        - Set "bugs": [] for all batches where stopTesting=false.
-        - Only when stopTesting=true (final batch), you may include "bugs" items.
+        - For stopTesting=false: "bugs" MUST be [].
+        - Only for stopTesting=true: "bugs" may contain 0..N items.
         - Only report a bug if you have evidence from executedSteps failures, screenshots, or clear UI observations.
         - If no bugs found, return "bugs": [] in the final batch.
         ========================
         SELECTOR PRIORITY RULE (STRICT)
         ========================
-        When choosing selectors and Iframe:
+        When choosing selectors:
         1) ALWAYS try id:<...> first (if available).
         2) If no id exists -> use name:<...>.
         3) If no name exists -> use cssSelector:<...>.
@@ -119,18 +116,14 @@ public class LLMPlanner {
         - There is no name.
         - A standard Selenium CSS selector cannot uniquely identify the element.
 
-        Selectors MUST be:
-        - Stable
-        - Not dynamic
-        - Not index-based
-        - Not text-based unless no other option exists.
-
-        If you violate selector priority, the step will be rejected.
+        Selectors MUST be stable, non-dynamic, and non-index-based.
+        Avoid text-based selectors unless no other option exists.
+        Violating selector priority may cause step rejection.
 
         ========================
         OPTION B (MANDATORY): FORBID TEXT-BASED CSS
         ========================
-        - NEVER use non-standard CSS or jQuery selectors.
+        - NEVER use non-standard CSS/jQuery selectors.
         - Forbidden in CSS (these WILL FAIL in Selenium):
           :contains(...)
           :has(...)
@@ -148,14 +141,15 @@ public class LLMPlanner {
           Example: cssSelector:iframe[src*="/dash/"]
         - Use action= switchFrameByCssSelector when possible.
         - After switching, then return steps for click/type inside the iframe.
-        - If you finish iframe actions and need the main page again, use switchToDefaultContent.
+        - If finished with iframe and main page is needed, use switchToDefaultContent.
+        - Do not issue elementAction inside iframe before a frame switch step.
 
         ========================
         DRAG & DROP RULE (MANDATORY)
         ========================
-        - If action=dragDrop:
-        - "selector" MUST be the SOURCE element.
-        - "value" MUST contain the TARGET selector (same selector format: id:<...> OR cssSelector:<...> etc).
+        - For action=dragDrop:
+          - selector MUST be source selector.
+          - value MUST be target selector (same selector format).
         - Do NOT leave value empty.
         - Do NOT invent target without verifying it exists in currentHtmlSlim.
         - Apply selector priority rules for BOTH source and target.
@@ -165,7 +159,7 @@ public class LLMPlanner {
         ========================
         - If currentUrl is empty/invalid OR currentHtmlSlim is empty:
           DO NOT invent selectors.
-          Return a safe browserAction first (refresh or getUrl) and then proceed.
+          Return one safe browserAction first (refresh or getUrl), then proceed.
 
         ========================
         WAIT RULE (DYNAMIC UI)
@@ -181,6 +175,7 @@ public class LLMPlanner {
         - Do NOT repeat any step that already succeeded.
         - Do NOT retry the same failing selector again.
         - You may retry ONLY if strategy changes (switch iframe, different stable selector, increased wait).
+        - Prefer continuing from latest successful sub-goal, not re-validating old completed steps.
         ========================
         FORM DATA RULE
         ========================
@@ -206,7 +201,7 @@ public class LLMPlanner {
         %s
 
         ========================
-        YOUR OUTPUT (JSON ONLY)
+        RETURN JSON ONLY
         ========================
         """.formatted(
                 MAX_STEPS_PER_BATCH,

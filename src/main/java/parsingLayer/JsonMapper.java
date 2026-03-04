@@ -2,7 +2,7 @@ package parsingLayer;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-import utils.AppConfigProvider;
+import utils.Config.AppConfigProvider;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -100,7 +100,7 @@ public class JsonMapper {
     {
         JSONObject output = new JSONObject();
         output.put("type", "PlannerStart");
-        output.put("scenario", scenario);
+        output.put("scenario", normalizeScenario(scenario));
 
         JSONArray rules = new JSONArray();
         rules.put("Return ONLY a single JSON object (no code fences, no explanation).");
@@ -117,8 +117,26 @@ public class JsonMapper {
         state.put("currentHtmlSlim",  currentHtmlSlim);
         state.put("currentScreenshotRef",  currentScreenshotRef);
         output.put("currentState", state);
-        output.put("historySummary", historySummary);
+        output.put("historySummary", toJsonOrString(historySummary));
         return output.toString();
+    }
+
+    private static Object toJsonOrString(String value) {
+        if (value == null || value.isBlank()) {
+            return new JSONObject();
+        }
+        try {
+            return new JSONObject(value);
+        } catch (Exception ignore) {
+            return value;
+        }
+    }
+
+    private static String normalizeScenario(String scenario) {
+        if (scenario == null) {
+            return "";
+        }
+        return scenario.replaceAll("\\s+", " ").trim();
     }
 
 

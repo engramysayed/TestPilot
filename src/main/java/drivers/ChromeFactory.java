@@ -7,7 +7,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.CapabilityType;
-import utils.AppConfigProvider;
+import utils.Config.AppConfigProvider;
 
 public class ChromeFactory extends AbstractDriver{
     private static final String EXECUTION_TYPE = AppConfigProvider.get().executionType();

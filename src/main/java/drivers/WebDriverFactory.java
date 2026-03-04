@@ -6,7 +6,7 @@ import handlingLayer.ElementsHandler;
 import handlingLayer.FramesHandler;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.ThreadGuard;
-import utils.AppConfigProvider;
+import utils.Config.AppConfigProvider;
 
 public class WebDriverFactory {
 

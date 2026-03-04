@@ -6,7 +6,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.edge.EdgeDriver;
 import org.openqa.selenium.edge.EdgeOptions;
 import org.openqa.selenium.remote.CapabilityType;
-import utils.AppConfigProvider;
+import utils.Config.AppConfigProvider;
 
 public class EdgeFactory extends AbstractDriver {
     private static final String EXECUTION_TYPE = AppConfigProvider.get().executionType();

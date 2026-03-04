@@ -13,7 +13,7 @@ public class Builder {
                 executor.getUrl(),
                 HtmlSlimmer.slim(executor.getHtml(), getHTML_MAX_CHARS()),
                 getLastScreenshotRef(),
-                getRunningSummary().toString()
+                getHistorySummaryForPlanner()
         ));
     }
 
@@ -23,7 +23,7 @@ public class Builder {
                 executor.getUrl(),
                 HtmlSlimmer.slim(executor.getHtml(), getHTML_MAX_CHARS()),
                 getLastScreenshotRef(),
-                getRunningSummary().toString()
+                getHistorySummaryForPlanner()
         ));
     }
 

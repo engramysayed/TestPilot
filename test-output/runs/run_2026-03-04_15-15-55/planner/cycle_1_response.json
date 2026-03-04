@@ -1,0 +1,24 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Switching to the dashboard iframe to interact with its content.",
+  "finalSummary": "",
+  "currentObservation": "The current page contains an iframe displaying the dashboard. I need to switch to this iframe to interact with dashboard elements.",
+  "bugs": [],
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Switch to the dashboard iframe.",
+      "actionType": "frameAction",
+      "action": "switchFrameByCssSelector",
+      "selector": "cssSelector:iframe[src*=\"/dash/\"]",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 1,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

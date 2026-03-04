@@ -2,8 +2,8 @@ package llmLayer;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-import utils.AppConfig;
-import utils.AppConfigProvider;
+import utils.Config.AppConfig;
+import utils.Config.AppConfigProvider;
 import utils.PropertyReader;
 
 import java.net.URI;

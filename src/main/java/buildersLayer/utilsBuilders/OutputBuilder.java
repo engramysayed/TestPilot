@@ -91,6 +91,13 @@ public class OutputBuilder {
             sb.append("LastScreenshot: ").append(safe(getLastScreenshotRef())).append("\n");
 
             setRunningSummary(sb);
+            updateHistoryMemory(
+                    cycleId,
+                    batchDetails,
+                    executedStepsJson,
+                    executor.getUrl(),
+                    getLastScreenshotRef()
+            );
 
         } catch (Exception e) {
             LogsManager.error("Failed to append cycle summary: " + e.getMessage());
