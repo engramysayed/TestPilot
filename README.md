@@ -1,4 +1,4 @@
-# Manual Testing Agent
+# TestPilot AI
 
 An **AI-driven browser testing agent** that uses an LLM (Google Gemini) to plan test steps and Selenium to execute them. You describe a scenario in natural language; the agent runs the flow in a real browser, captures state (HTML + screenshots), and continues until the scenario is complete or a cycle limit is reached.
 
