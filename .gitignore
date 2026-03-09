@@ -4,6 +4,7 @@ target/
 !**/src/test/**/target/
 .kotlin
 src/main/resources/resources/*.properties
+src/main/resources/webapp.properties
 
 
 
