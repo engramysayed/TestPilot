@@ -38,14 +38,22 @@ public class LLMClient {
         JSONArray parts = new JSONArray();
 
         //IMAGE part
-        if (imageBytes != null && imageBytes.length > 0) {
-            JSONObject inlineData = new JSONObject();
-            inlineData.put("mimeType", (mimeType == null || mimeType.isBlank()) ? "image/png" : mimeType);
-            inlineData.put("data", Base64.getEncoder().encodeToString(imageBytes));
+        if (imageBytes != null) {
+            if (imageBytes.length > 0) {
+                JSONObject inlineData = new JSONObject();
+                String finalMimeType = "image/png";
+                if (mimeType != null) {
+                    if (!mimeType.isBlank()) {
+                        finalMimeType = mimeType;
+                    }
+                }
+                inlineData.put("mimeType", finalMimeType);
+                inlineData.put("data", Base64.getEncoder().encodeToString(imageBytes));
 
-            JSONObject imagePart = new JSONObject();
-            imagePart.put("inlineData", inlineData);
-            parts.put(imagePart);
+                JSONObject imagePart = new JSONObject();
+                imagePart.put("inlineData", inlineData);
+                parts.put(imagePart);
+            }
         }
 
         //TEXT prompt
@@ -77,13 +85,19 @@ public class LLMClient {
         if (candidates == null || candidates.isEmpty()) return "";
 
         JSONObject c0 = candidates.optJSONObject(0);
-        if (c0 == null) return "";
+        if (c0 == null){
+            return "";
+        }
 
         JSONObject content = c0.optJSONObject("content");
-        if (content == null) return "";
+        if (content == null){
+            return "";
+        }
 
         JSONArray parts = content.optJSONArray("parts");
-        if (parts == null || parts.isEmpty()) return "";
+        if (parts == null || parts.isEmpty()){
+            return "";
+        }
 
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < parts.length(); i++) {

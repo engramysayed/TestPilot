@@ -3,6 +3,8 @@ package executionLayer;
 import drivers.WebDriverFactory;
 import org.openqa.selenium.By;
 import utils.LogsManager;
+import utils.RuntimeSettings;
+
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 
@@ -92,9 +94,10 @@ public class actionExecute {
         driver.element().capture(runFolder, stepId);
     }
 
-    public void takeScreenshot(boolean screenshot,int screenshotWait, Path runFolder, String nameWithoutExtension){
+    public void takeScreenshot(boolean screenshot, Path runFolder, String nameWithoutExtension){
             try {
                 if (screenshot) {
+                    int screenshotWait=RuntimeSettings.getScreenshotWait();
                     if (screenshotWait > 0) {
                         TimeUnit.SECONDS.sleep(screenshotWait);
                     }

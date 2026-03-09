@@ -1,6 +1,0 @@
-==================================================
-Cycle 1 | Batch: Switching to the dashboard iframe to interact with its content.
-  FAIL  Step 1 | frameAction -> switchFrameByCssSelector | cssSelector:iframe[src*="/dash/"]
-      ↳ Action returned failure: false
-URL: false
-LastScreenshot: cycle_1_step_1.png

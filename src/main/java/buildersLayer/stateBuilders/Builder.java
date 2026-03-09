@@ -3,6 +3,7 @@ import executionLayer.actionExecute;
 import parsingLayer.HtmlSlimmer;
 import parsingLayer.JsonMapper;
 import static buildersLayer.stateBuilders.StateVars.*;
+import static buildersLayer.stateBuilders.HistoryMemory.getHistorySummaryForPlanner;
 
 public class Builder {
 

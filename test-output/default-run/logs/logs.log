@@ -1,64 +1,87 @@
-[INFO] - [04-03-2026 15:15:55] [main] [utils.LogsManager] - File cleared successfully: D:\New folder\ManualTestingAgent\test-output\default-run\logs\logs.log
-[INFO] - [04-03-2026 15:15:55] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-04_15-15-55
-[INFO] - [04-03-2026 15:15:55] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-04_15-15-55\screenshots
-[INFO] - [04-03-2026 15:15:55] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-04_15-15-55\planner
-[INFO] - [04-03-2026 15:15:55] [main] [utils.LogsManager] - Starting Driver for Browser Type: EDGE
-[INFO] - [04-03-2026 15:16:03] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-04_15-15-55\screenshots\step_0.png
-[INFO] - [04-03-2026 15:16:34] [main] [utils.LogsManager] - Navigated to URL https://rainy.nasam.net/auth/login
-[INFO] - [04-03-2026 15:16:34] [main] [utils.LogsManager] - Text typed into element: By.cssSelector: input[placeholder='Username']
-[INFO] - [04-03-2026 15:16:34] [main] [utils.LogsManager] - Text typed into element: By.cssSelector: input[placeholder='Password']
-[INFO] - [04-03-2026 15:17:22] [main] [utils.LogsManager] - Current URL https://rainy.nasam.net/home/dashboard
-[INFO] - [04-03-2026 15:17:22] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=1
-[INFO] - [04-03-2026 15:17:22] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-04_15-15-55\screenshots\step_0.png
-[INFO] - [04-03-2026 15:17:31] [main] [utils.LogsManager] - LLM Batch details: Switching to the dashboard iframe to interact with its content.
-[INFO] - [04-03-2026 15:17:31] [main] [utils.LogsManager] - LLM Batch size: 1
-[ERROR] - [04-03-2026 15:17:50] [main] [utils.LogsManager] - Frame not found by css: By.cssSelector: iframe[src*="/dash/"]
-[ERROR] - [04-03-2026 15:17:51] [main] [utils.LogsManager] - Failed to capture screenshot: org.openqa.selenium.NoSuchWindowException: no such window: target window already closed
-from unknown error: web view not found
-  (Session info: MicrosoftEdge=145.0.3800.82)
-Build info: version: '4.38.0', revision: '6b412e825c*'
-System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
-Driver info: org.openqa.selenium.edge.EdgeDriver
-Command: [ed23b8f04403728bba771c66f091ef82, screenshot {}]
-Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.82, fedcm:accounts: true, goog:processID: 31544, ms:edgeOptions: {debuggerAddress: localhost:53360}, msedge: {msedgedriverVersion: 145.0.3800.82 (de59ede99663..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:53360/devtoo..., se:cdpVersion: 145.0.3800.82, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
-Session ID: ed23b8f04403728bba771c66f091ef82
-[INFO] - [04-03-2026 15:17:51] [main] [utils.LogsManager] - Screenshot taken: cycle_1_step_1.png
-[ERROR] - [04-03-2026 15:17:51] [main] [utils.LogsManager] - Failed to get current url no such window: target window already closed
-from unknown error: web view not found
-  (Session info: MicrosoftEdge=145.0.3800.82)
-Build info: version: '4.38.0', revision: '6b412e825c*'
-System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
-Driver info: org.openqa.selenium.edge.EdgeDriver
-Command: [ed23b8f04403728bba771c66f091ef82, getCurrentUrl {}]
-Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.82, fedcm:accounts: true, goog:processID: 31544, ms:edgeOptions: {debuggerAddress: localhost:53360}, msedge: {msedgedriverVersion: 145.0.3800.82 (de59ede99663..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:53360/devtoo..., se:cdpVersion: 145.0.3800.82, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
-Session ID: ed23b8f04403728bba771c66f091ef82
-[ERROR] - [04-03-2026 15:17:51] [main] [utils.LogsManager] - Failed to get current url no such window: target window already closed
-from unknown error: web view not found
-  (Session info: MicrosoftEdge=145.0.3800.82)
-Build info: version: '4.38.0', revision: '6b412e825c*'
-System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
-Driver info: org.openqa.selenium.edge.EdgeDriver
-Command: [ed23b8f04403728bba771c66f091ef82, getCurrentUrl {}]
-Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.82, fedcm:accounts: true, goog:processID: 31544, ms:edgeOptions: {debuggerAddress: localhost:53360}, msedge: {msedgedriverVersion: 145.0.3800.82 (de59ede99663..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:53360/devtoo..., se:cdpVersion: 145.0.3800.82, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
-Session ID: ed23b8f04403728bba771c66f091ef82
-[ERROR] - [04-03-2026 15:17:51] [main] [utils.LogsManager] - Failed to get current url no such window: target window already closed
-from unknown error: web view not found
-  (Session info: MicrosoftEdge=145.0.3800.82)
-Build info: version: '4.38.0', revision: '6b412e825c*'
-System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
-Driver info: org.openqa.selenium.edge.EdgeDriver
-Command: [ed23b8f04403728bba771c66f091ef82, getCurrentUrl {}]
-Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.82, fedcm:accounts: true, goog:processID: 31544, ms:edgeOptions: {debuggerAddress: localhost:53360}, msedge: {msedgedriverVersion: 145.0.3800.82 (de59ede99663..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:53360/devtoo..., se:cdpVersion: 145.0.3800.82, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
-Session ID: ed23b8f04403728bba771c66f091ef82
-[ERROR] - [04-03-2026 15:17:51] [main] [utils.LogsManager] - Failed to get page source no such window: target window already closed
-from unknown error: web view not found
-  (Session info: MicrosoftEdge=145.0.3800.82)
-Build info: version: '4.38.0', revision: '6b412e825c*'
-System info: os.name: 'Windows 11', os.arch: 'amd64', os.version: '10.0', java.version: '24.0.2'
-Driver info: org.openqa.selenium.edge.EdgeDriver
-Command: [ed23b8f04403728bba771c66f091ef82, getPageSource {}]
-Capabilities {acceptInsecureCerts: true, browserName: MicrosoftEdge, browserVersion: 145.0.3800.82, fedcm:accounts: true, goog:processID: 31544, ms:edgeOptions: {debuggerAddress: localhost:53360}, msedge: {msedgedriverVersion: 145.0.3800.82 (de59ede99663..., userDataDir: C:\Windows\SystemTemp\scope...}, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(), se:cdp: ws://localhost:53360/devtoo..., se:cdpVersion: 145.0.3800.82, setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: ignore, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}
-Session ID: ed23b8f04403728bba771c66f091ef82
-[INFO] - [04-03-2026 15:17:51] [main] [utils.LogsManager] - Looping..
-[INFO] - [04-03-2026 15:17:51] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=2
-[WARN] - [04-03-2026 15:17:51] [main] [utils.LogsManager] - Screenshot not found, sending text-only: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-04_15-15-55\screenshots\cycle_1_step_1.png
+[INFO] - [09-03-2026 12:21:13] [main] [utils.LogsManager] - File cleared successfully: D:\New folder\ManualTestingAgent\test-output\default-run\logs\logs.log
+[INFO] - [09-03-2026 12:21:13] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13
+[INFO] - [09-03-2026 12:21:13] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots
+[INFO] - [09-03-2026 12:21:13] [main] [utils.LogsManager] - File created D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\planner
+[INFO] - [09-03-2026 12:21:13] [main] [utils.LogsManager] - Starting Driver for Browser Type: EDGE
+[INFO] - [09-03-2026 12:21:18] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\step_0.png
+[INFO] - [09-03-2026 12:21:18] [main] [utils.LogsManager] - Navigated to URL https://www.saucedemo.com/
+[INFO] - [09-03-2026 12:21:18] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/
+[INFO] - [09-03-2026 12:21:18] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=1
+[INFO] - [09-03-2026 12:21:18] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\step_0.png
+[INFO] - [09-03-2026 12:21:24] [main] [utils.LogsManager] - LLM Batch details: Login to the application with the provided credentials.
+[INFO] - [09-03-2026 12:21:24] [main] [utils.LogsManager] - LLM Batch size: 3
+[INFO] - [09-03-2026 12:21:24] [main] [utils.LogsManager] - Text typed into element: By.id: user-name
+[INFO] - [09-03-2026 12:21:25] [main] [utils.LogsManager] - Text typed into element: By.id: password
+[INFO] - [09-03-2026 12:21:28] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_1_step_3.png
+[INFO] - [09-03-2026 12:21:28] [main] [utils.LogsManager] - Screenshot taken: cycle_1_step_3.png
+[INFO] - [09-03-2026 12:21:28] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/inventory.html
+[INFO] - [09-03-2026 12:21:28] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/inventory.html
+[INFO] - [09-03-2026 12:21:28] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/inventory.html
+[INFO] - [09-03-2026 12:21:28] [main] [utils.LogsManager] - Looping..
+[INFO] - [09-03-2026 12:21:28] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=2
+[INFO] - [09-03-2026 12:21:28] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_1_step_3.png
+[INFO] - [09-03-2026 12:21:34] [main] [utils.LogsManager] - LLM Batch details: Add Sauce Labs Backpack and Sauce Labs Bike Light to the cart, then open the cart.
+[INFO] - [09-03-2026 12:21:34] [main] [utils.LogsManager] - LLM Batch size: 3
+[INFO] - [09-03-2026 12:21:36] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_2_step_3.png
+[INFO] - [09-03-2026 12:21:36] [main] [utils.LogsManager] - Screenshot taken: cycle_2_step_3.png
+[INFO] - [09-03-2026 12:21:36] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/cart.html
+[INFO] - [09-03-2026 12:21:36] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/cart.html
+[INFO] - [09-03-2026 12:21:36] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/cart.html
+[INFO] - [09-03-2026 12:21:36] [main] [utils.LogsManager] - Looping..
+[INFO] - [09-03-2026 12:21:36] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=3
+[INFO] - [09-03-2026 12:21:36] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_2_step_3.png
+[INFO] - [09-03-2026 12:21:41] [main] [utils.LogsManager] - LLM Batch details: Verify both products are in the cart, then remove 'Sauce Labs Bike Light' and proceed to checkout.
+[INFO] - [09-03-2026 12:21:41] [main] [utils.LogsManager] - LLM Batch size: 3
+[INFO] - [09-03-2026 12:21:42] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_3_step_2.png
+[INFO] - [09-03-2026 12:21:42] [main] [utils.LogsManager] - Screenshot taken: cycle_3_step_2.png
+[INFO] - [09-03-2026 12:21:43] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_3_step_3.png
+[INFO] - [09-03-2026 12:21:43] [main] [utils.LogsManager] - Screenshot taken: cycle_3_step_3.png
+[INFO] - [09-03-2026 12:21:43] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-step-one.html
+[INFO] - [09-03-2026 12:21:43] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-step-one.html
+[INFO] - [09-03-2026 12:21:43] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-step-one.html
+[INFO] - [09-03-2026 12:21:43] [main] [utils.LogsManager] - Looping..
+[INFO] - [09-03-2026 12:21:43] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=4
+[INFO] - [09-03-2026 12:21:43] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_3_step_3.png
+[INFO] - [09-03-2026 12:21:49] [main] [utils.LogsManager] - LLM Batch details: Fill in the checkout information fields and proceed to the next step.
+[INFO] - [09-03-2026 12:21:49] [main] [utils.LogsManager] - LLM Batch size: 3
+[INFO] - [09-03-2026 12:21:49] [main] [utils.LogsManager] - Text typed into element: By.id: first-name
+[INFO] - [09-03-2026 12:21:49] [main] [utils.LogsManager] - Text typed into element: By.id: last-name
+[INFO] - [09-03-2026 12:21:49] [main] [utils.LogsManager] - Text typed into element: By.id: postal-code
+[INFO] - [09-03-2026 12:21:51] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_4_step_3.png
+[INFO] - [09-03-2026 12:21:51] [main] [utils.LogsManager] - Screenshot taken: cycle_4_step_3.png
+[INFO] - [09-03-2026 12:21:51] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-step-one.html
+[INFO] - [09-03-2026 12:21:52] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-step-one.html
+[INFO] - [09-03-2026 12:21:52] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-step-one.html
+[INFO] - [09-03-2026 12:21:52] [main] [utils.LogsManager] - Looping..
+[INFO] - [09-03-2026 12:21:52] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=5
+[INFO] - [09-03-2026 12:21:52] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_4_step_3.png
+[INFO] - [09-03-2026 12:21:55] [main] [utils.LogsManager] - LLM Batch details: Click the 'Continue' button to proceed to the checkout overview.
+[INFO] - [09-03-2026 12:21:55] [main] [utils.LogsManager] - LLM Batch size: 1
+[INFO] - [09-03-2026 12:21:58] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_5_step_1.png
+[INFO] - [09-03-2026 12:21:58] [main] [utils.LogsManager] - Screenshot taken: cycle_5_step_1.png
+[INFO] - [09-03-2026 12:21:58] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-step-two.html
+[INFO] - [09-03-2026 12:21:58] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-step-two.html
+[INFO] - [09-03-2026 12:21:58] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-step-two.html
+[INFO] - [09-03-2026 12:21:58] [main] [utils.LogsManager] - Looping..
+[INFO] - [09-03-2026 12:21:58] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=6
+[INFO] - [09-03-2026 12:21:58] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_5_step_1.png
+[INFO] - [09-03-2026 12:22:06] [main] [utils.LogsManager] - LLM Batch details: Verify checkout overview page elements and click the 'Finish' button.
+[INFO] - [09-03-2026 12:22:06] [main] [utils.LogsManager] - LLM Batch size: 2
+[INFO] - [09-03-2026 12:22:08] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_6_step_1.png
+[INFO] - [09-03-2026 12:22:08] [main] [utils.LogsManager] - Screenshot taken: cycle_6_step_1.png
+[INFO] - [09-03-2026 12:22:10] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_6_step_2.png
+[INFO] - [09-03-2026 12:22:10] [main] [utils.LogsManager] - Screenshot taken: cycle_6_step_2.png
+[INFO] - [09-03-2026 12:22:10] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-complete.html
+[INFO] - [09-03-2026 12:22:10] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-complete.html
+[INFO] - [09-03-2026 12:22:10] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-complete.html
+[INFO] - [09-03-2026 12:22:10] [main] [utils.LogsManager] - Looping..
+[INFO] - [09-03-2026 12:22:10] [main] [utils.LogsManager] - Requesting next batch from LLM. cycleId=7
+[INFO] - [09-03-2026 12:22:10] [main] [utils.LogsManager] - Loaded screenshot: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_6_step_2.png
+[INFO] - [09-03-2026 12:22:14] [main] [utils.LogsManager] - LLM Batch details: Verify the success message and complete the test.
+[INFO] - [09-03-2026 12:22:14] [main] [utils.LogsManager] - LLM Batch size: 1
+[INFO] - [09-03-2026 12:22:15] [main] [utils.LogsManager] - Screenshot saved: D:\New folder\ManualTestingAgent\test-output\runs\run_2026-03-09_12-21-13\screenshots\cycle_7_step_1.png
+[INFO] - [09-03-2026 12:22:15] [main] [utils.LogsManager] - Screenshot taken: cycle_7_step_1.png
+[INFO] - [09-03-2026 12:22:15] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-complete.html
+[INFO] - [09-03-2026 12:22:15] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-complete.html
+[INFO] - [09-03-2026 12:22:15] [main] [utils.LogsManager] - Current URL https://www.saucedemo.com/checkout-complete.html
+[INFO] - [09-03-2026 12:22:15] [main] [utils.LogsManager] - Ending loop.

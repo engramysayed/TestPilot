@@ -23,11 +23,11 @@ public interface AppConfig extends Config {
     String executionType();
 
     @Key("ISLOGIN")
-    @DefaultValue("True")
+    @DefaultValue("false")
     boolean isLogin();
 
     @Key("BASE_WEB")
-    @DefaultValue("https://rainy.nasam.net/auth/login")
+    @DefaultValue("https://www.saucedemo.com/")
     String baseWeb();
 
     @Key("USERNAME")

@@ -1,17 +1,30 @@
-You are testing the Rainy website dashboard as a valid logged-in user.
+Test website: https://www.saucedemo.com/
 
 Objective:
-1) Click the dropdown arrow next to the current dashboard name and create a new dashboard named 'test Dash'.
-2) After the new dashboard is created and loaded, click on the "Manage Widget" button and click on "Add Widgets".
-3) In the sidebar, select any available widget category. The sidebar will display draggable widget cards.
-4) Select one draggable widget card and drag it from the sidebar.
-5) Drop the widget into the main dashboard canvas area (the drop zone).
-6) Close the sidebar and click "Save Changes" to persist the dashboard update.
+1) Open the login page.
+2) Login with:
+   - username: standard_user
+   - password: secret_sauce
+3) Verify we are on the Products page.
+4) Add these two products to cart:
+   - Sauce Labs Backpack
+   - Sauce Labs Bike Light
+5) Open cart.
+6) Verify both products are present in cart.
+7) Remove "Sauce Labs Bike Light" from cart.
+8) Click Checkout.
+9) Fill checkout info:
+   - First Name: John
+   - Last Name: Doe
+   - Postal Code: 12345
+10) Continue checkout.
+11) Verify overview page is displayed (items and total section visible).
+12) Click Finish.
+13) Verify success message "Thank you for your order!".
+14) Set stopTesting=true only after success confirmation is visible.
 
 Rules:
-- Do not repeat actions that were already completed successfully.
-- Ensure the dashboard is fully created before opening Manage Widget.
-- Apply iframe switching if required before interacting with elements inside it.
-- For dragDrop: "selector" MUST be the source widget element and "value" MUST be the target drop area selector.
-- Use stable selectors only (prefer id, then name, then cssSelector).
-- Do not use dynamic, index-based, or unstable selectors.
+- Do not repeat successful steps.
+- Prefer stable selectors (id > name > cssSelector > xpath).
+- If a step fails, change strategy before retrying.
+- Take screenshots after major transitions (login, cart, checkout, finish).

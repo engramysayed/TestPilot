@@ -22,7 +22,7 @@
                 <groupId>org.testng</groupId>
                 <artifactId>testng</artifactId>
                 <version>7.11.0</version>
-                <scope>java</scope>
+                <scope>test</scope>
             </dependency>
 
             <!-- https://mvnrepository.com/artifact/org.json/json -->

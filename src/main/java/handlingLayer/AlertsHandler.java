@@ -48,7 +48,12 @@ public class AlertsHandler {
             waitHandler.waitForAlert();
             String text = driver.switchTo().alert().getText();
             LogsManager.info("Alert Text.. " + text);
-            return (text != null && !text.isEmpty()) ? text : null;
+            if (text != null) {
+                if (!text.isEmpty()) {
+                    return text;
+                }
+            }
+            return null;
         } catch (Exception e) {
             LogsManager.error("Alert has no text. " + e.getMessage());
             return null;

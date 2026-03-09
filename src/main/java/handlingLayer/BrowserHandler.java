@@ -63,7 +63,10 @@ public class BrowserHandler {
       try{
           String text=driver.getCurrentUrl();
           LogsManager.info("Current URL "+text);
-          return !(text.isEmpty())?text:null;
+          if (!text.isEmpty()) {
+              return text;
+          }
+          return null;
              } catch (Exception e) {
         LogsManager.error("Failed to get current url "+e.getMessage());
         return "false";

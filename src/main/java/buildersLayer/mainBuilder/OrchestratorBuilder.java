@@ -36,15 +36,16 @@ public class OrchestratorBuilder {
 
 
 
-
-    //Main loop functions
+    //open url + login (if required)
     public OrchestratorBuilder beforeStart(Path runFolder) {
         preStepsActions(runFolder,executor);
         return this;
     }
 
+    //building the start state prompt
     public void buildStartState(){startState(executor);}
 
+    //calling the llm
     public OrchestratorBuilder askLLM(LLMPlanner planner, int cycleId) {
         try {
             LogsManager.info("Requesting next batch from LLM. cycleId=" + cycleId);
@@ -56,6 +57,7 @@ public class OrchestratorBuilder {
         return this;
     }
 
+    //parse the LLM response into steps and other details
     public void parsingBatch() {
         stopAfterBatch = false;
         if (llmResponse == null || llmResponse.isBlank()) {
@@ -96,11 +98,7 @@ public class OrchestratorBuilder {
         LogsManager.info("LLM Batch size: " + plannedSteps.size());
     }
 
-    public OrchestratorBuilder setStepId(int stepId) {
-        this.stepId = stepId;
-        return this;
-    }
-
+    //execute the steps for current batch
     public OrchestratorBuilder executeBatch(
                                            Path runFolder,
                                            int cycleId,
@@ -127,7 +125,12 @@ public class OrchestratorBuilder {
             String message = "";
             storeVars(generalWait, screenshotWait);
 
-            By locator = (selector != null && !selector.isBlank()) ? toBy(selector) : null;
+            By locator = null;
+            if (selector != null) {
+                if (!selector.isBlank()) {
+                    locator = toBy(selector);
+                }
+            }
 
             //execute
             try {
@@ -147,7 +150,7 @@ public class OrchestratorBuilder {
                     message = "Action executed: " + result;
                 }
                 String shotName = "cycle_" + cycleId + "_step_" + (i + 1);
-                executor.takeScreenshot(screenshot, screenshotWait,runFolder,shotName);
+                executor.takeScreenshot(screenshot,runFolder,shotName);
 
 
             } catch (Exception e) {
@@ -183,6 +186,7 @@ public class OrchestratorBuilder {
         return this;
     }
 
+    //build the update state prompt
     public void buildUpdateState(){updateState(executor);}
 
     public boolean getStopTesting() {
@@ -201,7 +205,7 @@ public class OrchestratorBuilder {
 
 
 
-
+    //check if the time given from the step is null and store it if not
     public static int validateTime(String givenTime, int defaultTime) {
         try {
             if (givenTime == null || givenTime.isBlank())
@@ -219,6 +223,7 @@ public class OrchestratorBuilder {
         RuntimeSettings.setGlobalWait(time);
         RuntimeSettings.setScreenshotWait(screenWaitTime);
     }
+
 
     public String getFinalSummary() {
         return finalSummary;

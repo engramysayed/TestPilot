@@ -8,16 +8,43 @@ import utils.LogsManager;
 import java.nio.file.Path;
 
 import static buildersLayer.stateBuilders.StateVars.*;
+import static buildersLayer.stateBuilders.HistoryMemory.updateHistoryMemory;
 import static utils.FilesManager.createDirectory;
 import static utils.FilesManager.writeFile;
 
 public class OutputBuilder {
     public static Path summaryFile,bugsFile;
 
+    public static void appendFinalInsights(OrchestratorBuilder helper) {
+        try {
+            String finalSummary = safe(helper.getFinalSummary());
+            String currentObservation = safe(helper.getCurrentObservation());
+            if (finalSummary.isBlank() && currentObservation.isBlank()) {
+                return;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("==================================================\n");
+            sb.append("Final LLM Insights\n");
+            if (!finalSummary.isBlank()) {
+                sb.append("FinalSummary: ").append(finalSummary).append("\n");
+            }
+            if (!currentObservation.isBlank()) {
+                sb.append("CurrentObservation: ").append(currentObservation).append("\n");
+            }
+            setRunningSummary(sb);
+            saveSummary();
+        } catch (Exception e) {
+            LogsManager.error("Failed appending final insights: " + e.getMessage());
+        }
+    }
+
 
     public static void recordBugs(OrchestratorBuilder helper) {
         try {
-            if (bugsFile == null || helper == null) {return;}
+            if (bugsFile == null || helper == null) {
+                return;
+            }
 
             if (helper.getBugs().isEmpty()) {
                 writeFile(bugsFile, "No bugs reported by agent.\n");
@@ -66,8 +93,12 @@ public class OutputBuilder {
                 JSONObject step = executedStepsJson.getJSONObject(i);
                 JSONObject res = step.optJSONObject("result");
 
-                boolean ok = res != null && res.optBoolean("success", false);
-                String msg = (res == null) ? "" : res.optString("message", "");
+                boolean ok = false;
+                String msg = "";
+                if (res != null) {
+                    ok = res.optBoolean("success", false);
+                    msg = res.optString("message", "");
+                }
 
                 sb.append("  ")
                         .append(icon(ok)).append(" Step ").append(step.optInt("stepId", i + 1))
@@ -76,12 +107,12 @@ public class OutputBuilder {
                         .append(" | ").append(safe(step.optString("selector", "")));
 
                 String v = step.optString("value", "");
-                if (v != null && !v.isBlank()) {
+                if (!v.isBlank()) {
                     sb.append(" | value=").append(safe(v));
                 }
 
                 if (!ok) {
-                    sb.append("\n      ↳ ").append(shortenError(msg));
+                    sb.append("\n      -> ").append(shortenError(msg));
                 }
 
                 sb.append("\n");
@@ -139,14 +170,25 @@ public class OutputBuilder {
 
 
 
-    private static String icon(boolean ok) { return ok ? "PASS " : "FAIL "; }
+    private static String icon(boolean ok) {
+        if (ok) {
+            return "PASS ";
+        }
+        return "FAIL ";
+    }
 
+    //avoids NullPointerException when building logs/JSON
     private static String safe(String s) {
-        return (s == null) ? "" : s.replaceAll("\\s+", " ").trim();
+        if (s == null) {
+            return "";
+        }
+        return s.replaceAll("\\s+", " ").trim();
     }
 
     private static String shortenError(String msg) {
-        if (msg == null) return "";
+        if (msg == null) {
+            return "";
+        }
         String m = msg.replaceAll("\\s+", " ").trim();
 
         String[] cutMarkers = {
@@ -154,12 +196,16 @@ public class OutputBuilder {
                 "Capabilities", "Command:", "For documentation"
         };
         for (String marker : cutMarkers) {
-            int idx = m.indexOf(marker);
-            if (idx > 0) { m = m.substring(0, idx).trim(); }
+            int i = m.indexOf(marker);
+            if (i > 0) {
+                m = m.substring(0, i).trim();
+            }
         }
 
         int max = 220;
-        if (m.length() > max) m = m.substring(0, max) + "...";
+        if (m.length() > max){
+            m = m.substring(0, max) + "...";
+        }
         return m;
     }
 

@@ -2,6 +2,7 @@ package Runner;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.Test;
 import utils.LogsManager;
+import static buildersLayer.utilsBuilders.OutputBuilder.appendFinalInsights;
 import static buildersLayer.utilsBuilders.OutputBuilder.recordBugs;
 
 public class Orchestrator extends BaseOrchestrator {
@@ -18,20 +19,26 @@ public class Orchestrator extends BaseOrchestrator {
 
         while (!stopTesting) {
 
+            //ask the llm for the next batch of actions to execute
+            //parse them into readable data
             helper
                     .askLLM(planner, cycleCounter)
                     .parsingBatch();
 
+            //execute the steps for current batch
+            //build the update state prompt
             helper
                     .executeBatch( runFolder, cycleCounter, DEFAULT_WAIT, DEFAULT_SCREENSHOT_WAIT)
                     .buildUpdateState();
 
+            //if stop testing =true means we finished the test
             stopTesting = helper.getStopTesting();
             if (stopTesting) break;
 
 
             cycleCounter++; //increment cycle counter
         }
+        appendFinalInsights(helper);
         recordBugs(helper);
     }
 
@@ -40,7 +47,7 @@ public class Orchestrator extends BaseOrchestrator {
     @AfterSuite
     public void closeDriver() {
         try {
-          //  driver.quit();
+                driver.quit();
         } catch (Exception e) {
             LogsManager.error("error closing driver "+e);
         }

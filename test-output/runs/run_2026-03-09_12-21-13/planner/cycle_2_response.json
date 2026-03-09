@@ -1,0 +1,48 @@
+```json
+{
+  "type": "PlannerBatch",
+  "stopTesting": false,
+  "batchDetails": "Add Sauce Labs Backpack and Sauce Labs Bike Light to the cart, then open the cart.",
+  "finalSummary": "",
+  "currentObservation": "",
+  "bugs": [],
+  "steps": [
+    {
+      "stepId": 1,
+      "stepDetails": "Add Sauce Labs Backpack to the cart.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "id:add-to-cart-sauce-labs-backpack",
+      "value": "",
+      "generalWait": 0,
+      "screenshotWait": 1,
+      "screenshot": false,
+      "stopTesting": false
+    },
+    {
+      "stepId": 2,
+      "stepDetails": "Add Sauce Labs Bike Light to the cart.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "id:add-to-cart-sauce-labs-bike-light",
+      "value": "",
+      "generalWait": 0,
+      "screenshotWait": 1,
+      "screenshot": false,
+      "stopTesting": false
+    },
+    {
+      "stepId": 3,
+      "stepDetails": "Open the shopping cart.",
+      "actionType": "elementAction",
+      "action": "click",
+      "selector": "cssSelector:a[data-test=\"shopping-cart-link\"]",
+      "value": "",
+      "generalWait": 3,
+      "screenshotWait": 2,
+      "screenshot": true,
+      "stopTesting": false
+    }
+  ]
+}
+```

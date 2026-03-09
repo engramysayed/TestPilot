@@ -93,7 +93,12 @@ public class ElementsHandler {
         try {
             waitHandler.waitForElementToBeVisible(locator);
             String text = findElement(locator).getText();
-            return (text != null && !text.isEmpty()) ? text : null;
+            if (text != null) {
+                if (!text.isEmpty()) {
+                    return text;
+                }
+            }
+            return null;
         } catch (Exception e) {
             LogsManager.error("Failed to get text from: " + locator + " " + e);
             return "false -> Failed to get text from: " + locator + " " + e;
@@ -115,7 +120,12 @@ public class ElementsHandler {
         try {
             waitHandler.waitForElementToBeVisible(locator);
             String val = findElement(locator).getAttribute(attributeName);
-            return (val != null && !val.isEmpty()) ? val : "";
+            if (val != null) {
+                if (!val.isEmpty()) {
+                    return val;
+                }
+            }
+            return "";
         } catch (Exception e) {
             LogsManager.error("Failed to get attribute value: " + locator + " " + e);
             return "false -> Failed to get attribute value: " + locator + " " + e;
