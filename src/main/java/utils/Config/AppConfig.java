@@ -52,7 +52,7 @@ public interface AppConfig extends Config {
 
     //free model->gemini-3-flash-preview
     @Key("GEMINI_MODEL")
-    @DefaultValue("gemini-2.5-flash")
+    @DefaultValue("gemini-2.5-pro")
     String geminiModel();
 
     @Key("HTML_MAX_CHARS")
