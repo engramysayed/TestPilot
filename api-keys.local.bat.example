@@ -1,0 +1,4 @@
+@echo off
+REM Copy to api-keys.local.bat and paste real keys (gitignored).
+set "AGENTROUTER_API_KEY=PASTE_AGENTROUTER_KEY_HERE"
+set "CURSOR_API_KEY=PASTE_CURSOR_KEY_HERE"

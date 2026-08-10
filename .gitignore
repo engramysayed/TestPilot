@@ -5,6 +5,17 @@ target/
 .kotlin
 src/main/resources/resources/*.properties
 src/main/resources/webapp.properties
+delivery-store/
+*.class
+*.jar
+!**/maven-wrapper.jar
+.DS_Store
+Thumbs.db
+delivery.properties
+tools/cursor-heal/node_modules/
+cursor-api-key.local.bat
+api-keys.local.bat
+
 
 
 
