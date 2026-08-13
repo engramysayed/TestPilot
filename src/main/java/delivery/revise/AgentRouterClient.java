@@ -92,10 +92,17 @@ public class AgentRouterClient {
         String model = firstNonBlank(
                 System.getProperty("delivery.heal.invent.agentrouter.model"),
                 utils.PropertyReader.getProperty("delivery.heal.invent.agentrouter.model"),
-                System.getenv("AGENTROUTER_MODEL"),
-                System.getProperty("delivery.final-revise.model"),
-                utils.PropertyReader.getProperty("delivery.final-revise.model"),
-                "claude-opus-4-8");
+                System.getenv("AGENTROUTER_INVENT_MODEL"));
+        if (model == null || model.isBlank()) {
+            // Heal runs per failed step; the audit model is priced for one call per delivery.
+            model = firstNonBlank(
+                    System.getenv("AGENTROUTER_MODEL"),
+                    System.getProperty("delivery.final-revise.model"),
+                    utils.PropertyReader.getProperty("delivery.final-revise.model"),
+                    "claude-opus-4-8");
+            utils.LogsManager.warn("HEAL_INVENT: delivery.heal.invent.agentrouter.model is not set; "
+                    + "each invent call will bill at the audit model " + model);
+        }
         return key == null || key.isBlank() ? null : new AgentRouterClient(base, key, model);
     }
 

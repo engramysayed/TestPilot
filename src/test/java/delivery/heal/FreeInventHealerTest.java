@@ -37,7 +37,12 @@ public class FreeInventHealerTest {
         Optional<List<ProvenStep>> result = healer.invent(
                 "TC1",
                 new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, "Click Save"),
-                "<button id=\"save\">Save</button>",
+                """
+                        <button id="save">Save</button>
+                        <button id="save2">Save 2</button>
+                        <button id="save3">Save 3</button>
+                        <button id="save4">Save 4</button>
+                        """,
                 null,
                 "shortlist exhausted",
                 List.of("type id title = Draft"),
@@ -73,6 +78,31 @@ public class FreeInventHealerTest {
                 "empty_candidates", null);
 
         Assert.assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void rejectsLocatorsAbsentFromThePage() {
+        CursorHealClient cursor = new CursorHealClient(false, "unused", 1) {
+            @Override
+            public String inventSteps(String intentText, String failureReason, List<String> priorSteps,
+                                      String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull) {
+                return """
+                        {"steps":[
+                          {"action":"click","locatorStrategy":"id","locatorValue":"imagined-save","value":""}
+                        ]}
+                        """;
+            }
+        };
+        FreeInventHealer healer = new FreeInventHealer(
+                cursor, null, new LocatorValidator(), "cursor", true);
+
+        Optional<List<ProvenStep>> result = healer.invent(
+                "TC1",
+                new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, "Click Save"),
+                "<button id=\"save\">Save</button>", null, "shortlist exhausted",
+                List.of(), "post_cursor", null);
+
+        Assert.assertTrue(result.isEmpty(), "invented id is not in the page HTML");
     }
 
     @Test

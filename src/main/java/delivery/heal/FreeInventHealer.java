@@ -1,5 +1,6 @@
 package delivery.heal;
 
+import delivery.authoring.HtmlLocatorPresence;
 import delivery.authoring.LocatorCandidate;
 import delivery.authoring.LocatorPolicy;
 import delivery.authoring.LocatorValidator;
@@ -96,7 +97,7 @@ public class FreeInventHealer {
             return Optional.empty();
         }
 
-        List<ProvenStep> steps = parseAndValidate(tcId, intent, raw);
+        List<ProvenStep> steps = parseAndValidate(tcId, intent, raw, html);
         if (steps.isEmpty()) {
             LogsManager.info("HEAL_INVENT_REJECTED: no valid intent-matching steps");
             return Optional.empty();
@@ -107,7 +108,7 @@ public class FreeInventHealer {
     }
 
     private List<ProvenStep> parseAndValidate(
-            String tcId, StepIntentBinder.IntentLine intent, String raw) {
+            String tcId, StepIntentBinder.IntentLine intent, String raw, String slimHtml) {
         JSONObject root;
         try {
             String text = raw == null ? "" : raw.trim();
@@ -139,6 +140,11 @@ public class FreeInventHealer {
             LocatorValidator.ValidationResult validation = validator.validate(
                     new LocatorCandidate(strategy, locatorValue, "Page", "free-invent"));
             if (!validation.valid()) {
+                continue;
+            }
+            if (!HtmlLocatorPresence.present(strategy, locatorValue, slimHtml)) {
+                LogsManager.info("HEAL_INVENT_REJECTED: locator absent from page → "
+                        + strategy + "=" + locatorValue);
                 continue;
             }
             result.add(new ProvenStep(
