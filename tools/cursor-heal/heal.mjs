@@ -58,8 +58,12 @@ async function main() {
 
   let screenshotNote = "";
   if (screenshotPath && existsSync(screenshotPath)) {
-    const pngBase64 = readFileSync(screenshotPath).toString("base64");
-    screenshotNote = `\nFailure screenshot PNG (base64, read from ${screenshotPath}):\n${pngBase64}`;
+    // Stateless context: give path + small preview only. Full PNG base64 blows context.
+    const buf = readFileSync(screenshotPath);
+    const preview = buf.length <= 24_000
+      ? buf.toString("base64")
+      : "(screenshot larger than 24KB — open the file at screenshotPath; do not invent without looking)";
+    screenshotNote = `\nscreenshotPath: ${screenshotPath}\nFailure screenshot PNG preview/base64:\n${preview}\nUse this visual evidence with the HTML/history above. This request has NO prior chat memory.`;
   }
 
   const history = priorSteps.length ? priorSteps.map((step) => `- ${step}`).join("\n") : "(none)";

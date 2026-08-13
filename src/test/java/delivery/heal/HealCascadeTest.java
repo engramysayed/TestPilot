@@ -215,7 +215,12 @@ public class HealCascadeTest {
                         .id();
             }
         };
-        HealCascade cascade = new HealCascade(authoring, cursor);
+        // Invent disabled: this test asserts shortlist wrong-entity rejection only
+        HealCascade cascade = new HealCascade(
+                authoring,
+                cursor,
+                new FreeInventHealer(cursor, null, new LocatorValidator(), "cursor", false),
+                true);
         StepIntentBinder.IntentLine intent = new StepIntentBinder.IntentLine(
                 StepIntentBinder.IntentKind.CLICK, "Add the red backpack");
         HealResult result = cascade.heal("TC_ENT", intent, catalogHtml, new byte[]{1},

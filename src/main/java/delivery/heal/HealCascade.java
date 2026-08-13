@@ -13,8 +13,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Heal stack for one failed intent: Ollama vision (once) → Cursor Auto sidecar (once).
- * Every layer may only return a candidateId from the live shortlist.
+ * Heal stack for one failed intent:
+ * shortlist Ollama/Cursor (candidateId) → optional vision widen → last-hope invent (Cursor or AgentRouter).
  */
 public class HealCascade {
     private final AuthoringService authoring;
