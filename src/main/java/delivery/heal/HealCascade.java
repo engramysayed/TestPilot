@@ -17,10 +17,16 @@ import java.util.Optional;
  * shortlist Ollama/Cursor (candidateId) → optional vision widen → last-hope invent (Cursor or AgentRouter).
  */
 public class HealCascade {
+    private static final java.util.Set<String> INTERACTIVE_TAGS = java.util.Set.of(
+            "button", "a", "input", "select", "textarea", "summary", "option", "label");
+
     private final AuthoringService authoring;
     private final CursorHealClient cursor;
     private final FreeInventHealer freeInvent;
     private final boolean visionWidenEnabled;
+    private final int maxInventPerTc;
+    private final java.util.Map<String, Integer> inventAttemptsByTc =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     public HealCascade(AuthoringService authoring, CursorHealClient cursor) {
         this(authoring, cursor, FreeInventHealer.fromConfig(
@@ -37,6 +43,7 @@ public class HealCascade {
         this.cursor = cursor == null ? new CursorHealClient() : cursor;
         this.freeInvent = freeInvent == null ? FreeInventHealer.fromConfig(this.cursor) : freeInvent;
         this.visionWidenEnabled = visionWidenEnabled;
+        this.maxInventPerTc = resolveMaxInventPerTc();
     }
 
     public HealCascade(AuthoringService authoring) {
@@ -133,12 +140,10 @@ public class HealCascade {
 
         if (tryOllama) {
             List<ProvenStep> ollamaSteps = authoring.healIntentWithOllama(
-                    tcId, intent, candidates, shortlist, pngOrNull, reason, priorSteps);
-            if (validHealSteps(intent, candidates, ollamaSteps)) {
+                    tcId, intent, candidates, shortlist, pngOrNull, reason, priorSteps, widened);
+            if (validHealSteps(intent, candidates, ollamaSteps, widened)) {
                 LogsManager.info("HEAL_OLLAMA: resolved " + tcId + " intent=" + trim(intent.text(), 40));
-                String tier = widened && pngOrNull != null && pngOrNull.length > 0
-                        ? "vision" : "ollama";
-                return HealResult.success(ollamaSteps, tier);
+                return HealResult.success(ollamaSteps, widened ? "vision" : "ollama");
             }
             LogsManager.info("HEAL_OLLAMA: no valid pick for " + tcId + " — escalating to Cursor");
         }
@@ -150,10 +155,10 @@ public class HealCascade {
         if (chosen != null && !chosen.isBlank()
                 && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(chosen))) {
             List<ProvenStep> cursorSteps =
-                    authoring.stepsPreferringCandidate(tcId, intent, candidates, chosen);
-            if (validHealSteps(intent, candidates, cursorSteps)) {
+                    authoring.stepsPreferringCandidate(tcId, intent, candidates, chosen, widened);
+            if (validHealSteps(intent, candidates, cursorSteps, widened)) {
                 LogsManager.info("HEAL_CURSOR: resolved " + tcId + " candidateId=" + chosen);
-                return HealResult.success(cursorSteps, "cursor");
+                return HealResult.success(cursorSteps, widened ? "vision" : "cursor");
             }
         }
 
@@ -193,10 +198,15 @@ public class HealCascade {
                 .toList();
     }
 
+    /**
+     * @param relaxed widened pools reached the AI precisely because no candidate carried the
+     *                intent tokens, so the token rule is replaced by an interactive-control rule.
+     */
     private static boolean validHealSteps(
             StepIntentBinder.IntentLine intent,
             List<DomCandidate> candidates,
-            List<ProvenStep> steps
+            List<ProvenStep> steps,
+            boolean relaxed
     ) {
         if (steps == null || steps.isEmpty() || steps.stream().anyMatch(s -> !s.validated())) {
             return false;
@@ -213,6 +223,14 @@ public class HealCascade {
                             && c.value().equals(step.locatorValue()))
                     .findFirst()
                     .orElse(null);
+            if (relaxed) {
+                if (match != null && !isInteractive(match)) {
+                    LogsManager.info("HEAL_REJECT: widened pick is not an interactive control → "
+                            + match.id());
+                    return false;
+                }
+                continue;
+            }
             if (match != null
                     && !StepIntentBinder.candidateCarriesDistinctiveTokens(intent.text(), match, candidates)) {
                 LogsManager.info("HEAL_REJECT: distinctive-token mismatch for "
@@ -246,13 +264,85 @@ public class HealCascade {
             Path screenshotPathOrNull,
             boolean allowInvent
     ) {
-        if (!allowInvent) {
+        if (!allowInvent || !claimInventBudget(tcId)) {
             return null;
         }
         Optional<List<ProvenStep>> steps = freeInvent.invent(
                 tcId, intent, slimHtml, pngOrNull, failureReason, priorSteps,
                 whyInvoked, screenshotPathOrNull);
-        return steps.map(value -> HealResult.success(value, "invent")).orElse(null);
+        if (steps.isEmpty()) {
+            return null;
+        }
+        if (!inventedStepsCarryIntentTokens(intent, steps.get(), extractOrEmpty(slimHtml))) {
+            return null;
+        }
+        return HealResult.success(steps.get(), "invent");
+    }
+
+    /** Invent runs at most {@code maxInventPerTc} times per test case, however often heal is called. */
+    private boolean claimInventBudget(String tcId) {
+        String key = tcId == null ? "" : tcId;
+        int used = inventAttemptsByTc.merge(key, 1, Integer::sum);
+        if (used > maxInventPerTc) {
+            LogsManager.info("HEAL_INVENT_SKIPPED: budget exhausted for " + key
+                    + " (max=" + maxInventPerTc + ")");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Invented locators skip the shortlist, so the distinctive-token rule is applied to the
+     * locator value itself — otherwise a click could land on a same-shaped wrong control.
+     */
+    private static boolean inventedStepsCarryIntentTokens(
+            StepIntentBinder.IntentLine intent,
+            List<ProvenStep> steps,
+            List<DomCandidate> corpus
+    ) {
+        if (intent == null || intent.kind() != StepIntentBinder.IntentKind.CLICK) {
+            return true;
+        }
+        List<String> tokens = StepIntentBinder.discriminatingTokens(intent.text(), corpus);
+        if (tokens.isEmpty()) {
+            return true;
+        }
+        for (ProvenStep step : steps) {
+            if (!"click".equalsIgnoreCase(step.action())) {
+                continue;
+            }
+            String hay = (step.locatorValue() == null ? "" : step.locatorValue())
+                    .toLowerCase(java.util.Locale.ROOT);
+            for (String token : tokens) {
+                if (!hay.contains(token.toLowerCase(java.util.Locale.ROOT))) {
+                    LogsManager.info("HEAL_INVENT_REJECTED: locator misses intent token '" + token
+                            + "' → " + step.locatorValue());
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private static List<DomCandidate> extractOrEmpty(String slimHtml) {
+        try {
+            return DomCandidateExtractor.extract(slimHtml);
+        } catch (RuntimeException e) {
+            return List.of();
+        }
+    }
+
+    private static boolean isInteractive(DomCandidate candidate) {
+        if (candidate == null) {
+            return false;
+        }
+        String tag = candidate.tag() == null ? "" : candidate.tag().toLowerCase(java.util.Locale.ROOT);
+        if (INTERACTIVE_TAGS.contains(tag)) {
+            return true;
+        }
+        String hay = (candidate.value() + " " + candidate.label()).toLowerCase(java.util.Locale.ROOT);
+        return hay.contains("role=button") || hay.contains("role=link")
+                || hay.contains("role=tab") || hay.contains("role=menuitem");
     }
 
     private static List<DomCandidate> widenedShortlist(
@@ -260,6 +350,19 @@ public class HealCascade {
         List<DomCandidate> ranked = StepIntentBinder.rankedCandidates(intent, candidates);
         List<DomCandidate> source = ranked.isEmpty() ? new ArrayList<>(candidates) : ranked;
         return source.stream().limit(limit).toList();
+    }
+
+    private static int resolveMaxInventPerTc() {
+        String value = System.getProperty("delivery.heal.invent.max-per-tc");
+        if (value == null || value.isBlank()) {
+            value = utils.PropertyReader.getProperty("delivery.heal.invent.max-per-tc");
+        }
+        try {
+            int parsed = Integer.parseInt(value == null ? "" : value.trim());
+            return parsed > 0 ? parsed : 2;
+        } catch (NumberFormatException e) {
+            return 2;
+        }
     }
 
     private static boolean resolveVisionWidenEnabled() {

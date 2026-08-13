@@ -148,6 +148,20 @@ public class AuthoringService {
             String failureReason,
             List<String> priorStepSummaries
     ) {
+        return healIntentWithOllama(tcId, intent, candidates, shortlist, pngOrNull,
+                failureReason, priorStepSummaries, false);
+    }
+
+    public List<ProvenStep> healIntentWithOllama(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            List<DomCandidate> candidates,
+            List<DomCandidate> shortlist,
+            byte[] pngOrNull,
+            String failureReason,
+            List<String> priorStepSummaries,
+            boolean relaxDistinctive
+    ) {
         if (shortlist == null || shortlist.isEmpty() || candidates == null || candidates.isEmpty()) {
             return List.of();
         }
@@ -184,7 +198,7 @@ public class AuthoringService {
             if (!shortlistContains(shortlist, chosenId)) {
                 return List.of();
             }
-            return stepsPreferringCandidate(tcId, intent, candidates, chosenId);
+            return stepsPreferringCandidate(tcId, intent, candidates, chosenId, relaxDistinctive);
         } catch (Exception e) {
             if (hasImage) {
                 try {
@@ -197,7 +211,8 @@ public class AuthoringService {
                     if (!shortlistContains(shortlist, chosenId)) {
                         return List.of();
                     }
-                    return stepsPreferringCandidate(tcId, intent, candidates, chosenId);
+                    return stepsPreferringCandidate(
+                            tcId, intent, candidates, chosenId, relaxDistinctive);
                 } catch (Exception ignored) {
                     return List.of();
                 }
@@ -219,6 +234,20 @@ public class AuthoringService {
             StepIntentBinder.IntentLine intent,
             List<DomCandidate> candidates,
             String candidateId
+    ) {
+        return stepsPreferringCandidate(tcId, intent, candidates, candidateId, false);
+    }
+
+    /**
+     * @param relaxDistinctive widened heal pools contain no token match by definition, so the
+     *                         distinctive/named-action rejections are left to the caller
+     */
+    public List<ProvenStep> stepsPreferringCandidate(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            List<DomCandidate> candidates,
+            String candidateId,
+            boolean relaxDistinctive
     ) {
         if (candidateId == null || candidateId.isBlank() || intent == null) {
             return List.of();
@@ -248,12 +277,14 @@ public class AuthoringService {
         if (chosen == null) {
             return List.of(rejectStep(tcId, "candidateId not in table: " + candidateId));
         }
-        if (intent.kind() == StepIntentBinder.IntentKind.CLICK
+        if (!relaxDistinctive
+                && intent.kind() == StepIntentBinder.IntentKind.CLICK
                 && !StepIntentBinder.candidateCarriesDistinctiveTokens(intent.text(), chosen, candidates)) {
             return List.of(rejectStep(tcId,
                     "heal rejected: candidate lacks distinctive tokens for intent: " + intent.text()));
         }
-        if (intent.kind() == StepIntentBinder.IntentKind.CLICK
+        if (!relaxDistinctive
+                && intent.kind() == StepIntentBinder.IntentKind.CLICK
                 && StepIntentBinder.intentRequiresNamedActionControl(intent.text())
                 && !StepIntentBinder.candidateMatchesNamedAction(intent.text(), chosen, candidates)) {
             return List.of(rejectStep(tcId,

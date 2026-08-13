@@ -214,12 +214,22 @@ public class HealCascadeTest {
                         .orElseThrow()
                         .id();
             }
+
+            @Override
+            public String inventSteps(String intentText, String failureReason, List<String> priorSteps,
+                                      String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull) {
+                // Last hope tries the wrong entity too — the invent guard must reject it
+                return """
+                        {"thought":"try the other button","steps":[{"action":"click",
+                        "locatorStrategy":"id","locatorValue":"add-blue-lantern","value":"",
+                        "assertionType":"","assertionExpected":""}]}
+                        """;
+            }
         };
-        // Invent disabled: this test asserts shortlist wrong-entity rejection only
         HealCascade cascade = new HealCascade(
                 authoring,
                 cursor,
-                new FreeInventHealer(cursor, null, new LocatorValidator(), "cursor", false),
+                new FreeInventHealer(cursor, null, new LocatorValidator(), "cursor", true),
                 true);
         StepIntentBinder.IntentLine intent = new StepIntentBinder.IntentLine(
                 StepIntentBinder.IntentKind.CLICK, "Add the red backpack");
@@ -318,9 +328,12 @@ public class HealCascadeTest {
                 return "Thought: visible primary action.\n{\"candidateId\":\"" + candidate.id() + "\"}";
             }
         };
+        CursorHealClient noCursor = new CursorHealClient(false, "unused", 1);
         HealCascade cascade = new HealCascade(
                 new AuthoringService(llm, new LocatorValidator()),
-                new CursorHealClient(false, "unused", 1));
+                noCursor,
+                new FreeInventHealer(noCursor, null, new LocatorValidator(), "cursor", false),
+                true);
 
         HealResult result = cascade.heal(
                 "TC_WIDEN",
@@ -328,8 +341,74 @@ public class HealCascadeTest {
                 weakHtml, new byte[]{1}, "bind failed", null, true, List.of());
 
         Assert.assertTrue(llmCalls.get() > 0, "weak distinctive pool must still reach AI");
-        Assert.assertFalse(result.reason().contains("no DOM candidate matches distinctive tokens"),
-                result.reason());
+        Assert.assertTrue(result.ok(), result.reason());
+        Assert.assertEquals(result.tierUsed(), "vision");
+        Assert.assertEquals(result.steps().get(0).locatorValue(), "continue-control");
+    }
+
+    @Test
+    public void widenedPickMustBeAnInteractiveControl() {
+        String weakHtml = "<body><div id=\"banner-text\">Proceed</div>"
+                + "<span id=\"note-text\">Other</span></body>";
+        LocalLlmClient llm = new LocalLlmClient("http://127.0.0.1:9", "dummy") {
+            @Override
+            public String completeJson(String system, String user, byte[] imagePng) {
+                DomCandidate candidate = DomCandidateExtractor.extract(weakHtml).get(0);
+                return "{\"candidateId\":\"" + candidate.id() + "\"}";
+            }
+        };
+        CursorHealClient noCursor = new CursorHealClient(false, "unused", 1);
+        HealCascade cascade = new HealCascade(
+                new AuthoringService(llm, new LocatorValidator()),
+                noCursor,
+                new FreeInventHealer(noCursor, null, new LocatorValidator(), "cursor", false),
+                true);
+
+        HealResult result = cascade.heal(
+                "TC_WIDEN_DIV",
+                new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, "Click Hyperdrive"),
+                weakHtml, new byte[]{1}, "bind failed", null, true, List.of());
+
+        Assert.assertFalse(result.ok(), "widened heal must not click a non-interactive element");
+    }
+
+    @Test
+    public void inventBudgetCapsAttemptsPerTestCase() {
+        AtomicInteger inventCalls = new AtomicInteger();
+        LocalLlmClient llm = new LocalLlmClient("http://127.0.0.1:9", "dummy") {
+            @Override
+            public String completeJson(String system, String user) {
+                return "{\"candidateId\":\"not-present\"}";
+            }
+        };
+        CursorHealClient cursor = new CursorHealClient(false, "unused", 1) {
+            @Override
+            public String pickCandidateId(String intentText, String failureReason, String shortlistTable,
+                                          String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
+                                          List<String> priorSteps) {
+                return "";
+            }
+
+            @Override
+            public String inventSteps(String intentText, String failureReason, List<String> priorSteps,
+                                      String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull) {
+                inventCalls.incrementAndGet();
+                return "{\"steps\":[]}";
+            }
+        };
+        HealCascade cascade = new HealCascade(
+                new AuthoringService(llm, new LocatorValidator()),
+                cursor,
+                new FreeInventHealer(cursor, null, new LocatorValidator(), "cursor", true),
+                true);
+        StepIntentBinder.IntentLine intent = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK, "Click Submit");
+
+        for (int i = 0; i < 5; i++) {
+            cascade.heal("TC_BUDGET", intent, HTML, null, "pick failed", null, true, List.of());
+        }
+
+        Assert.assertEquals(inventCalls.get(), 2, "invent must be capped per test case");
     }
 
     @Test

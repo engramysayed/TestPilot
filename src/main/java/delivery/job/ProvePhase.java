@@ -739,7 +739,7 @@ public class ProvePhase {
                 .toList();
     }
 
-    /** invent > cursor > vision > ollama > none */
+    /** invent > vision > cursor > ollama > none (riskiest tier wins the draft label) */
     private static String mergeHealTier(String a, String b) {
         return healTierRank(b) > healTierRank(a) ? (b == null ? "none" : b) : (a == null ? "none" : a);
     }
@@ -750,8 +750,8 @@ public class ProvePhase {
         }
         return switch (tier.toLowerCase()) {
             case "invent" -> 4;
-            case "cursor" -> 3;
-            case "vision" -> 2;
+            case "vision" -> 3;
+            case "cursor" -> 2;
             case "ollama" -> 1;
             default -> 0;
         };
