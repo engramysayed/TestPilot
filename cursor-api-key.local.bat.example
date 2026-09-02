@@ -1,0 +1,5 @@
+@echo off
+REM Copy this file to: cursor-api-key.local.bat  (gitignored)
+REM Then put your real key below. Optional — you can also edit
+REM start-portal-with-cursor-heal.bat directly.
+set "CURSOR_API_KEY=PASTE_YOUR_KEY_HERE"

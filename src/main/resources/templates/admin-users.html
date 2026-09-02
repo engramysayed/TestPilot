@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Users')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell">
+    <div class="page-title">
+        <div>
+            <h1>Users &amp; invites</h1>
+            <p class="lede">Admin only — manage accounts.</p>
+        </div>
+    </div>
+
+    <section class="stats" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
+        <div class="stat-card"><span id="userCount">0</span><label>Users</label></div>
+        <div class="stat-card"><span id="accessCount">0</span><label>Access requests</label></div>
+        <div class="stat-card"><span id="pendingCount">0</span><label>Pending invites</label></div>
+        <div class="stat-card"><span id="mailStatus">…</span><label>Email invites</label></div>
+    </section>
+
+    <section class="panel access-panel">
+        <header class="access-panel-head">
+            <div>
+                <h2>Access requests</h2>
+                <p class="panel-intro">From the login page. Approve emails a set-password link.</p>
+            </div>
+            <span class="access-badge" id="accessBadge" hidden>0 waiting</span>
+        </header>
+        <div id="access-list" class="access-list" aria-live="polite"></div>
+        <div id="access-empty" class="access-empty" hidden>
+            <div class="access-empty-icon" aria-hidden="true">✓</div>
+            <p>No pending requests</p>
+            <span class="muted">New asks from Request access will show up here.</span>
+        </div>
+        <p id="access-flash" class="access-flash hidden" role="status"></p>
+    </section>
+
+    <section class="panel">
+        <h2>Invite someone by email</h2>
+        <p class="panel-intro">Creates a token link; optionally emails it when SMTP is configured.</p>
+        <form id="invite-form">
+            <label>Email address
+                <input type="email" name="email" required placeholder="colleague@company.com"/>
+            </label>
+            <label class="check">
+                <input type="checkbox" name="sendEmail" checked/>
+                Send invite email now (needs SMTP configured)
+            </label>
+            <button type="submit">Create invite</button>
+        </form>
+        <p id="invite-out" class="ok" hidden></p>
+        <p id="invite-err" class="error" hidden></p>
+    </section>
+
+    <section class="panel">
+        <h2>Registered users</h2>
+        <table class="table" id="users-table">
+            <thead>
+            <tr><th>Email</th><th>Role</th><th>Enabled</th><th>Projects</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </section>
+
+    <section class="panel">
+        <h2>Pending invites</h2>
+        <table class="table" id="invites-table">
+            <thead>
+            <tr><th>Email</th><th>Expires</th><th>Link</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <p id="err" class="error" hidden></p>
+    </section>
+</main>
+</div>
+<script>
+    async function load() {
+        const res = await fetch('/api/admin/users');
+        const err = document.getElementById('err');
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = 'Admin only — sign in as admin.';
+            return;
+        }
+        const data = await res.json();
+        document.getElementById('userCount').textContent = data.userCount;
+        document.getElementById('pendingCount').textContent = data.pendingInviteCount;
+        document.getElementById('accessCount').textContent = data.pendingAccessRequestCount || 0;
+        document.getElementById('mailStatus').textContent = data.mailConfigured ? 'ON' : 'OFF';
+
+        const accessList = document.getElementById('access-list');
+        const accessEmpty = document.getElementById('access-empty');
+        const accessBadge = document.getElementById('accessBadge');
+        const accessFlash = document.getElementById('access-flash');
+        accessList.innerHTML = '';
+        const accessRows = data.pendingAccessRequests || [];
+        accessEmpty.hidden = accessRows.length > 0;
+        if (accessRows.length > 0) {
+            accessBadge.hidden = false;
+            accessBadge.textContent = accessRows.length + (accessRows.length === 1 ? ' waiting' : ' waiting');
+        } else {
+            accessBadge.hidden = true;
+        }
+
+        function formatWhen(iso) {
+            if (!iso) return { relative: '—', absolute: '' };
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) {
+                const s = String(iso).slice(0, 19).replace('T', ' ');
+                return { relative: s, absolute: s };
+            }
+            const diffMs = Date.now() - d.getTime();
+            const mins = Math.round(diffMs / 60000);
+            let relative;
+            if (mins < 1) relative = 'Just now';
+            else if (mins < 60) relative = mins + ' min ago';
+            else if (mins < 60 * 24) relative = Math.round(mins / 60) + 'h ago';
+            else relative = Math.round(mins / (60 * 24)) + 'd ago';
+            const absolute = d.toLocaleString(undefined, {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+            return { relative, absolute };
+        }
+
+        function flash(msg, isError) {
+            accessFlash.textContent = msg;
+            accessFlash.classList.toggle('error', !!isError);
+            accessFlash.classList.toggle('ok', !isError);
+            accessFlash.classList.remove('hidden');
+        }
+
+        accessRows.forEach(r => {
+            const when = formatWhen(r.createdAt);
+            const card = document.createElement('article');
+            card.className = 'access-card';
+            card.innerHTML =
+                '<div class="access-card-main">'
+                + '<div class="access-avatar" aria-hidden="true">' + (r.email || '?').charAt(0).toUpperCase() + '</div>'
+                + '<div class="access-meta">'
+                + '<p class="access-email">' + r.email + '</p>'
+                + '<p class="access-when" title="' + when.absolute + '">' + when.relative
+                + (when.absolute ? ' · ' + when.absolute : '') + '</p>'
+                + '</div></div>'
+                + '<div class="access-actions">'
+                + '<button type="button" class="btn-approve" data-approve="' + r.id + '">Approve</button>'
+                + '<button type="button" class="btn-deny" data-deny="' + r.id + '">Deny</button>'
+                + '</div>';
+            accessList.appendChild(card);
+        });
+
+        accessList.querySelectorAll('[data-approve]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                const r = await fetch('/api/admin/access-requests/' + btn.getAttribute('data-approve') + '/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel' },
+                    body: JSON.stringify({ sendEmail: true })
+                });
+                const d = await r.json();
+                if (!r.ok) {
+                    btn.disabled = false;
+                    flash(d.message || 'Approve failed', true);
+                    return;
+                }
+                flash(d.message || 'Approved');
+                load();
+            });
+        });
+        accessList.querySelectorAll('[data-deny]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (!confirm('Deny this access request?')) return;
+                btn.disabled = true;
+                const r = await fetch('/api/admin/access-requests/' + btn.getAttribute('data-deny') + '/deny', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel' },
+                    body: '{}'
+                });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok) {
+                    btn.disabled = false;
+                    flash(d.message || 'Deny failed', true);
+                    return;
+                }
+                flash('Request denied');
+                load();
+            });
+        });
+
+        const ub = document.querySelector('#users-table tbody');
+        ub.innerHTML = '';
+        (data.users || []).forEach(u => {
+            const tr = document.createElement('tr');
+            const del = u.self
+                ? '<span class="muted">you</span>'
+                : '<button type="button" class="danger" data-del-user="' + u.id + '">Delete</button>';
+            tr.innerHTML = '<td>' + u.email + '</td><td>' + u.role + '</td><td>'
+                + (u.enabled ? 'yes' : 'no') + '</td><td>' + u.projectCount + '</td><td>' + del + '</td>';
+            ub.appendChild(tr);
+        });
+        ub.querySelectorAll('[data-del-user]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (!confirm('Delete this user and their projects/jobs from the portal DB?')) return;
+                const r = await fetch('/api/admin/users/' + btn.getAttribute('data-del-user'), { method: 'DELETE', headers: { 'X-Keel-Requested-With': 'Keel' } });
+                const d = await r.json();
+                if (!r.ok) { alert(d.message || 'Delete failed'); return; }
+                load();
+            });
+        });
+
+        const ib = document.querySelector('#invites-table tbody');
+        ib.innerHTML = '';
+        (data.pendingInvites || []).forEach(i => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td>' + i.email + '</td><td>' + i.expiresAt
+                + '</td><td><a href="' + i.acceptPath + '">Open accept page</a></td>'
+                + '<td><button type="button" class="danger" data-del-invite="' + i.id + '">Remove</button></td>';
+            ib.appendChild(tr);
+        });
+        ib.querySelectorAll('[data-del-invite]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const r = await fetch('/api/admin/invites/' + btn.getAttribute('data-del-invite'), { method: 'DELETE', headers: { 'X-Keel-Requested-With': 'Keel' } });
+                if (!r.ok) { const d = await r.json(); alert(d.message || 'Failed'); return; }
+                load();
+            });
+        });
+    }
+
+    document.getElementById('invite-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = e.target.email.value;
+        const sendEmail = e.target.sendEmail.checked;
+        const out = document.getElementById('invite-out');
+        const ierr = document.getElementById('invite-err');
+        out.hidden = true; ierr.hidden = true;
+        const res = await fetch('/api/admin/invites', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel'},
+            body: JSON.stringify({ email, sendEmail })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            ierr.hidden = false;
+            ierr.textContent = data.message || 'Invite failed';
+            return;
+        }
+        out.hidden = false;
+        out.textContent = data.message + (data.acceptUrl ? ' Link: ' + data.acceptUrl : '');
+        e.target.reset();
+        e.target.sendEmail.checked = true;
+        load();
+    });
+
+    load();
+</script>
+</body>
+</html>

@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Project')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell" id="project-root"
+      th:attr="data-project-id=${projectId},data-last-job-username=${lastJobUsername}">
+    <div class="page-title">
+        <div>
+            <p class="muted" style="margin:0 0 0.35rem"><a href="/projects">← Projects</a></p>
+            <h1 id="project-name-heading" th:text="${project.name}">Project</h1>
+            <p class="lede mono" th:text="${project.projectId}">prj_</p>
+            <p class="muted" style="margin:0.35rem 0 0">
+                Last modified:
+                <span th:text="${project.lastModifiedLabel}">—</span>
+                <span id="archived-badge" class="badge muted" hidden>Archived</span>
+            </p>
+        </div>
+    </div>
+
+    <nav class="project-tabs" aria-label="Project sections">
+        <a th:href="@{/projects/{id}(id=${projectId}, tab='settings')}"
+           th:classappend="${activeTab == 'settings'} ? ' active' : ''">Settings</a>
+        <a th:href="@{/projects/{id}(id=${projectId}, tab='automation')}"
+           th:classappend="${activeTab == 'automation'} ? ' active' : ''">Automation</a>
+        <a th:href="@{/projects/{id}(id=${projectId}, tab='tcs')}"
+           th:classappend="${activeTab == 'tcs'} ? ' active' : ''">Test cases</a>
+    </nav>
+
+    <!-- Settings tab -->
+    <section id="tab-settings" class="tab-panel" th:classappend="${activeTab != 'settings'} ? ' hidden' : ''">
+        <section class="panel">
+            <h2>Project settings</h2>
+            <p class="panel-intro">Name and target base URL used for uploads.</p>
+            <form id="settings-form" class="settings-form">
+                <label>Project name
+                    <input type="text" name="name" required id="settings-name"/>
+                </label>
+                <label>Base URL
+                    <input type="url" name="baseUrl" id="settings-base-url" placeholder="https://app.example.com"/>
+                </label>
+                <p id="settings-msg" class="muted" hidden></p>
+                <button type="submit">Save settings</button>
+            </form>
+        </section>
+
+        <section class="panel">
+            <div class="panel-head-row">
+                <div>
+                    <h2>Credential profiles</h2>
+                    <p class="panel-intro">Named login profiles for uploads. Passwords are write-only.</p>
+                </div>
+                <button type="button" class="button" id="cred-add-btn">Add profile</button>
+            </div>
+            <p id="cred-err" class="error" hidden></p>
+            <table class="table" id="cred-table">
+                <thead>
+                <tr>
+                    <th>Profile</th>
+                    <th>Username</th>
+                    <th>Password</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody id="cred-body"></tbody>
+            </table>
+            <p id="cred-empty" class="muted" hidden>No credential profiles yet.</p>
+        </section>
+
+        <section class="panel">
+            <h2>Design mockups (Execute)</h2>
+            <p class="panel-intro">
+                Optional PNG of the final screen design per test case ID (e.g. export from Figma).
+                Execute compares that image to the live screenshot.
+                This is separate from the Excel <strong>VisualAssertion</strong> column,
+                which is text only — you cannot attach Figma or image files in the TC sheet.
+            </p>
+            <ul id="design-ref-list" class="artifact-list"></ul>
+            <p id="design-ref-empty" class="muted" hidden>No design mockups uploaded yet.</p>
+            <form id="design-ref-settings-form" class="design-ref-form">
+                <label>TC ID
+                    <input type="text" id="design-ref-settings-tcId" name="tcId" placeholder="TC_001" required/>
+                </label>
+                <label>Design PNG
+                    <input type="file" id="design-ref-settings-file" name="file" accept="image/png" required/>
+                </label>
+                <button type="submit">Upload design</button>
+            </form>
+            <p id="design-ref-settings-msg" class="muted" hidden></p>
+            <p id="design-ref-settings-err" class="error" hidden></p>
+        </section>
+
+        <section class="panel danger-zone">
+            <h3>Danger zone</h3>
+            <p class="muted">Archive hides this project from the default list. Delete permanently removes all jobs and stored files.</p>
+            <div class="danger-actions">
+                <button type="button" class="button ghost" id="archive-btn">Archive project</button>
+                <button type="button" class="button danger" id="delete-btn">Delete permanently</button>
+            </div>
+        </section>
+    </section>
+
+    <!-- Automation tab -->
+    <section id="tab-automation" class="tab-panel" th:classappend="${activeTab != 'automation'} ? ' hidden' : ''">
+        <p id="auto-running-hint" class="hint hidden">A job is running for this project — artifact delete is disabled until it finishes.</p>
+        <p id="auto-err" class="error" hidden></p>
+        <div class="auto-layout">
+            <div class="auto-tree">
+                <section class="panel">
+                    <h2>Packages</h2>
+                    <p class="panel-intro">Version ZIP archives from conversions.</p>
+                    <ul id="auto-packages" class="artifact-list"></ul>
+                    <p id="auto-packages-empty" class="muted">No packages yet.</p>
+                </section>
+                <section class="panel">
+                    <h2>Pages</h2>
+                    <p class="panel-intro">Generated page object classes.</p>
+                    <ul id="auto-pages" class="artifact-list"></ul>
+                    <p id="auto-pages-empty" class="muted">No page classes yet.</p>
+                </section>
+                <section class="panel">
+                    <h2>Tests</h2>
+                    <p class="panel-intro">Generated and todo test classes.</p>
+                    <h3 class="auto-subhead">Generated</h3>
+                    <ul id="auto-tests-gen" class="artifact-list"></ul>
+                    <p id="auto-tests-gen-empty" class="muted">No generated tests yet.</p>
+                    <h3 class="auto-subhead">Todo</h3>
+                    <ul id="auto-tests-todo" class="artifact-list"></ul>
+                    <p id="auto-tests-todo-empty" class="muted">No todo tests yet.</p>
+                </section>
+            </div>
+            <aside class="panel auto-preview-panel">
+                <h2>Preview</h2>
+                <p class="panel-intro">Select a Java file to view source.</p>
+                <p id="auto-preview-path" class="mono muted">—</p>
+                <pre id="auto-preview-content" class="code-preview muted">No file selected.</pre>
+            </aside>
+        </div>
+    </section>
+
+    <!-- Test cases tab -->
+    <section id="tab-tcs" class="tab-panel" th:classappend="${activeTab != 'tcs'} ? ' hidden' : ''">
+        <section class="panel">
+            <h2>Test cases</h2>
+            <p class="panel-intro">
+                From the last successful <strong>Automate</strong> conversion (proven IR), not from Generate alone.
+                <span id="run-at-label"></span>
+                Expand any case to see proven steps.
+            </p>
+            <p id="empty" class="muted" hidden>Nothing stored yet — run Automate (conversion) so proven cases appear here. Generate saves under the project’s generated workbook (use Generate / Execute “latest generated workbook”).</p>
+            <p id="err" class="error" hidden></p>
+            <div id="tc-list" class="tc-accordion"></div>
+        </section>
+    </section>
+</main>
+</div>
+
+<!-- Credential add modal -->
+<div id="credAddModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+        <h3>Add credential profile</h3>
+        <form id="cred-add-form">
+            <label>Profile name
+                <input type="text" name="profileName" required placeholder="default"/>
+            </label>
+            <label>Username
+                <input type="text" name="username" required id="cred-add-username"/>
+            </label>
+            <button type="button" class="button ghost import-username-btn" id="cred-add-import">Import from last job</button>
+            <label>Password
+                <input type="password" name="password" required autocomplete="new-password"/>
+            </label>
+            <p id="cred-add-err" class="error hidden"></p>
+            <div class="modal-actions">
+                <button type="button" class="button ghost" id="credAddCancel">Cancel</button>
+                <button type="submit" class="button">Create</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Credential edit modal -->
+<div id="credEditModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+        <h3 id="cred-edit-title">Edit credential</h3>
+        <form id="cred-edit-form">
+            <input type="hidden" name="profileName" id="cred-edit-profile"/>
+            <label>Username
+                <input type="text" name="username" required id="cred-edit-username"/>
+            </label>
+            <button type="button" class="button ghost import-username-btn" id="cred-edit-import">Import from last job</button>
+            <label>New password <span class="muted">(leave blank to keep)</span>
+                <input type="password" name="password" autocomplete="new-password"/>
+            </label>
+            <p id="cred-edit-err" class="error hidden"></p>
+            <div class="modal-actions">
+                <button type="button" class="button ghost" id="credEditCancel">Cancel</button>
+                <button type="submit" class="button">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Credential delete modal -->
+<div id="credDeleteModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+        <h3>Delete credential profile?</h3>
+        <p class="muted" id="cred-delete-body">This cannot be undone.</p>
+        <p id="cred-delete-err" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="credDeleteCancel">Cancel</button>
+            <button type="button" class="button danger" id="credDeleteConfirm">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Archive modal -->
+<div id="archiveModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+        <h3>Archive project?</h3>
+        <p class="muted">Archived projects are hidden from the default list and cannot start new jobs.</p>
+        <p id="archiveError" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="archiveCancel">Cancel</button>
+            <button type="button" class="button" id="archiveConfirm">Archive</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete project modal -->
+<div id="deleteModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+        <h3>Delete project permanently?</h3>
+        <p class="muted">This removes all jobs and stored framework. This cannot be undone.</p>
+        <p id="deleteError" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="deleteCancel">Cancel</button>
+            <button type="button" class="button danger" id="deleteConfirm">Delete permanently</button>
+        </div>
+    </div>
+</div>
+
+<!-- Artifact delete modal -->
+<div id="artifactDeleteModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+        <h3>Delete artifact?</h3>
+        <p class="muted" id="artifact-delete-body">This cannot be undone.</p>
+        <p id="artifact-delete-err" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="artifactDeleteCancel">Cancel</button>
+            <button type="button" class="button danger" id="artifactDeleteConfirm">Delete</button>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+(function () {
+    const root = document.getElementById('project-root');
+    const projectId = root.getAttribute('data-project-id');
+    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+    const activeTab = /*[[${activeTab}]]*/ 'settings';
+    let jobRunning = false;
+    let jobPollTimer = null;
+    let pendingCredDelete = null;
+    let pendingArtifactPath = null;
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function apiUrl(path) {
+        return '/api/projects/' + encodeURIComponent(projectId) + path;
+    }
+
+    async function fetchLastJobUsername() {
+        const cached = root.getAttribute('data-last-job-username') || '';
+        if (cached.trim()) return cached.trim();
+        const res = await fetch('/api/jobs', { credentials: 'same-origin', headers: API_HEADERS });
+        if (!res.ok) return '';
+        const jobs = await res.json();
+        const match = jobs.find(j => j.projectId === projectId);
+        return (match && match.username) ? String(match.username).trim() : '';
+    }
+
+    function importUsernameTo(inputId) {
+        fetchLastJobUsername().then(u => {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            if (u) {
+                input.value = u;
+            } else {
+                input.focus();
+                input.placeholder = 'No username found in job history';
+            }
+        });
+    }
+
+    /* —— Settings —— */
+    async function loadProjectSettings() {
+        const res = await fetch(apiUrl(''), { credentials: 'same-origin', headers: API_HEADERS });
+        if (!res.ok) return;
+        const p = await res.json();
+        document.getElementById('settings-name').value = p.name || '';
+        document.getElementById('settings-base-url').value = p.baseUrl || '';
+        const heading = document.getElementById('project-name-heading');
+        if (heading && p.name) heading.textContent = p.name;
+        const badge = document.getElementById('archived-badge');
+        if (badge) badge.hidden = !p.archived;
+        const archiveBtn = document.getElementById('archive-btn');
+        if (archiveBtn) archiveBtn.hidden = !!p.archived;
+    }
+
+    document.getElementById('settings-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('settings-msg');
+        msg.hidden = false;
+        const body = {
+            name: e.target.name.value.trim(),
+            baseUrl: e.target.baseUrl.value.trim()
+        };
+        const res = await fetch(apiUrl(''), {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        let data = {};
+        try { data = await res.json(); } catch (err) { /* ignore */ }
+        if (!res.ok) {
+            msg.className = 'error';
+            msg.textContent = (data && data.message) || 'Save failed';
+            return;
+        }
+        msg.className = 'ok';
+        msg.textContent = 'Settings saved.';
+        if (data.name) document.getElementById('project-name-heading').textContent = data.name;
+    });
+
+    async function loadDesignReferences() {
+        const list = document.getElementById('design-ref-list');
+        const empty = document.getElementById('design-ref-empty');
+        const err = document.getElementById('design-ref-settings-err');
+        err.hidden = true;
+        list.innerHTML = '';
+        const res = await fetch(apiUrl('/design-references'), {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = 'Could not load design mockups.';
+            return;
+        }
+        const items = await res.json();
+        empty.hidden = items.length > 0;
+        items.forEach(item => {
+            const tcId = item.tcId;
+            const li = document.createElement('li');
+            const thumbUrl = apiUrl('/design-references/' + encodeURIComponent(tcId));
+            li.innerHTML =
+                '<code class="mono">' + escapeHtml(tcId) + '</code> ' +
+                '<a href="' + escapeHtml(thumbUrl) + '" target="_blank" rel="noopener">Preview</a>';
+            list.appendChild(li);
+        });
+    }
+
+    document.getElementById('design-ref-settings-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('design-ref-settings-msg');
+        const err = document.getElementById('design-ref-settings-err');
+        msg.hidden = true;
+        err.hidden = true;
+        const tcId = document.getElementById('design-ref-settings-tcId').value.trim();
+        const fileInput = document.getElementById('design-ref-settings-file');
+        if (!tcId || !fileInput.files || !fileInput.files[0]) {
+            err.hidden = false;
+            err.textContent = 'Enter a TC ID and select a PNG file.';
+            return;
+        }
+        const body = new FormData();
+        body.append('tcId', tcId);
+        body.append('file', fileInput.files[0]);
+        try {
+            const res = await fetch(apiUrl('/design-references'), {
+                method: 'POST',
+                headers: API_HEADERS,
+                credentials: 'same-origin',
+                body
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                err.hidden = false;
+                err.textContent = (data.error || 'ERROR') + ': ' + (data.message || 'Upload failed');
+                return;
+            }
+            msg.hidden = false;
+            msg.textContent = 'Uploaded design for ' + (data.tcId || tcId) + '.';
+            e.target.reset();
+            loadDesignReferences();
+        } catch (uploadErr) {
+            err.hidden = false;
+            err.textContent = 'Network error uploading reference.';
+        }
+    });
+
+    async function loadCredentials() {
+        const err = document.getElementById('cred-err');
+        err.hidden = true;
+        const res = await fetch(apiUrl('/credentials'), { credentials: 'same-origin', headers: API_HEADERS });
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = 'Could not load credentials.';
+            return;
+        }
+        const rows = await res.json();
+        const tbody = document.getElementById('cred-body');
+        const empty = document.getElementById('cred-empty');
+        tbody.innerHTML = '';
+        empty.hidden = rows.length > 0;
+        rows.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td>' + escapeHtml(c.profileName) + '</td>' +
+                '<td class="mono">' + escapeHtml(c.username) + '</td>' +
+                '<td class="muted">' + (c.hasPassword ? '••••••' : '—') + '</td>' +
+                '<td class="actions"></td>';
+            const actions = tr.querySelector('.actions');
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'button ghost';
+            editBtn.textContent = 'Edit';
+            editBtn.addEventListener('click', () => openCredEdit(c));
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'danger';
+            delBtn.textContent = 'Delete';
+            delBtn.addEventListener('click', () => openCredDelete(c.profileName));
+            actions.append(editBtn, delBtn);
+            tbody.appendChild(tr);
+        });
+    }
+
+    function openCredEdit(c) {
+        document.getElementById('cred-edit-profile').value = c.profileName;
+        document.getElementById('cred-edit-title').textContent = 'Edit "' + c.profileName + '"';
+        document.getElementById('cred-edit-username').value = c.username || '';
+        document.getElementById('cred-edit-form').password.value = '';
+        document.getElementById('cred-edit-err').classList.add('hidden');
+        openModal('credEditModal');
+    }
+
+    function openCredDelete(profileName) {
+        pendingCredDelete = profileName;
+        document.getElementById('cred-delete-body').textContent =
+            'Delete profile "' + profileName + '"? This cannot be undone.';
+        document.getElementById('cred-delete-err').classList.add('hidden');
+        openModal('credDeleteModal');
+    }
+
+    document.getElementById('cred-add-btn').addEventListener('click', () => {
+        document.getElementById('cred-add-form').reset();
+        document.getElementById('cred-add-err').classList.add('hidden');
+        openModal('credAddModal');
+    });
+    document.getElementById('credAddCancel').addEventListener('click', () => closeModal('credAddModal'));
+    document.getElementById('credAddModal').addEventListener('click', e => {
+        if (e.target.id === 'credAddModal') closeModal('credAddModal');
+    });
+    document.getElementById('cred-add-import').addEventListener('click', () => importUsernameTo('cred-add-username'));
+    document.getElementById('cred-add-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const err = document.getElementById('cred-add-err');
+        err.classList.add('hidden');
+        const body = {
+            profileName: e.target.profileName.value.trim(),
+            username: e.target.username.value.trim(),
+            password: e.target.password.value
+        };
+        const res = await fetch(apiUrl('/credentials'), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        let data = {};
+        try { data = await res.json(); } catch (err2) { /* ignore */ }
+        if (!res.ok) {
+            err.textContent = (data && data.message) || 'Create failed';
+            err.classList.remove('hidden');
+            return;
+        }
+        closeModal('credAddModal');
+        await loadCredentials();
+    });
+
+    document.getElementById('credEditCancel').addEventListener('click', () => closeModal('credEditModal'));
+    document.getElementById('credEditModal').addEventListener('click', e => {
+        if (e.target.id === 'credEditModal') closeModal('credEditModal');
+    });
+    document.getElementById('cred-edit-import').addEventListener('click', () => importUsernameTo('cred-edit-username'));
+    document.getElementById('cred-edit-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const err = document.getElementById('cred-edit-err');
+        err.classList.add('hidden');
+        const profileName = e.target.profileName.value;
+        const body = { username: e.target.username.value.trim() };
+        if (e.target.password.value) body.password = e.target.password.value;
+        const res = await fetch(apiUrl('/credentials/' + encodeURIComponent(profileName)), {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        let data = {};
+        try { data = await res.json(); } catch (err2) { /* ignore */ }
+        if (!res.ok) {
+            err.textContent = (data && data.message) || 'Save failed';
+            err.classList.remove('hidden');
+            return;
+        }
+        closeModal('credEditModal');
+        await loadCredentials();
+    });
+
+    document.getElementById('credDeleteCancel').addEventListener('click', () => closeModal('credDeleteModal'));
+    document.getElementById('credDeleteModal').addEventListener('click', e => {
+        if (e.target.id === 'credDeleteModal') closeModal('credDeleteModal');
+    });
+    document.getElementById('credDeleteConfirm').addEventListener('click', async () => {
+        if (!pendingCredDelete) return;
+        const btn = document.getElementById('credDeleteConfirm');
+        btn.disabled = true;
+        const res = await fetch(apiUrl('/credentials/' + encodeURIComponent(pendingCredDelete)), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        btn.disabled = false;
+        let data = {};
+        try { data = await res.json(); } catch (err) { /* ignore */ }
+        if (!res.ok) {
+            const errEl = document.getElementById('cred-delete-err');
+            errEl.textContent = (data && data.message) || 'Delete failed';
+            errEl.classList.remove('hidden');
+            return;
+        }
+        closeModal('credDeleteModal');
+        pendingCredDelete = null;
+        await loadCredentials();
+    });
+
+    document.getElementById('archive-btn').addEventListener('click', () => {
+        document.getElementById('archiveError').classList.add('hidden');
+        openModal('archiveModal');
+    });
+    document.getElementById('archiveCancel').addEventListener('click', () => closeModal('archiveModal'));
+    document.getElementById('archiveModal').addEventListener('click', e => {
+        if (e.target.id === 'archiveModal') closeModal('archiveModal');
+    });
+    document.getElementById('archiveConfirm').addEventListener('click', async () => {
+        const btn = document.getElementById('archiveConfirm');
+        btn.disabled = true;
+        const res = await fetch(apiUrl(''), {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ archived: true })
+        });
+        btn.disabled = false;
+        let data = {};
+        try { data = await res.json(); } catch (err) { /* ignore */ }
+        if (!res.ok) {
+            const errEl = document.getElementById('archiveError');
+            errEl.textContent = (data && data.message) || 'Archive failed';
+            errEl.classList.remove('hidden');
+            return;
+        }
+        window.location.href = '/projects';
+    });
+
+    document.getElementById('delete-btn').addEventListener('click', () => {
+        document.getElementById('deleteError').classList.add('hidden');
+        openModal('deleteModal');
+    });
+    document.getElementById('deleteCancel').addEventListener('click', () => closeModal('deleteModal'));
+    document.getElementById('deleteModal').addEventListener('click', e => {
+        if (e.target.id === 'deleteModal') closeModal('deleteModal');
+    });
+    document.getElementById('deleteConfirm').addEventListener('click', async () => {
+        const btn = document.getElementById('deleteConfirm');
+        btn.disabled = true;
+        const res = await fetch(apiUrl(''), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        btn.disabled = false;
+        let data = {};
+        try { data = await res.json(); } catch (err) { /* ignore */ }
+        if (!res.ok) {
+            const errEl = document.getElementById('deleteError');
+            errEl.textContent = (data && data.message) || 'Delete failed';
+            errEl.classList.remove('hidden');
+            return;
+        }
+        window.location.href = '/projects';
+    });
+
+    /* —— Automation —— */
+    function formatBytes(n) {
+        if (n == null || n < 0) return '';
+        if (n < 1024) return n + ' B';
+        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+        return (n / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function renderArtifactItem(item, opts) {
+        const li = document.createElement('li');
+        li.className = 'artifact-item';
+        const isZip = item.path && item.path.endsWith('.zip');
+        li.innerHTML =
+            '<span class="artifact-label">' + escapeHtml(item.label || item.path) + '</span>' +
+            '<span class="mono muted artifact-path">' + escapeHtml(item.path) + '</span>' +
+            (item.sizeBytes != null ? '<span class="muted artifact-size">' + formatBytes(item.sizeBytes) + '</span>' : '') +
+            '<span class="artifact-actions"></span>';
+        const actions = li.querySelector('.artifact-actions');
+        if (!isZip) {
+            const previewBtn = document.createElement('button');
+            previewBtn.type = 'button';
+            previewBtn.className = 'button ghost';
+            previewBtn.textContent = 'Preview';
+            previewBtn.addEventListener('click', () => previewArtifact(item.path));
+            actions.appendChild(previewBtn);
+        }
+        if (isZip) {
+            const dl = document.createElement('a');
+            dl.className = 'button ghost';
+            dl.textContent = 'Download';
+            dl.href = apiUrl('/artifacts/download?path=' + encodeURIComponent(item.path));
+            actions.appendChild(dl);
+        }
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'danger artifact-delete-btn';
+        delBtn.textContent = 'Delete';
+        delBtn.disabled = jobRunning;
+        delBtn.addEventListener('click', () => openArtifactDelete(item.path, item.label || item.path));
+        actions.appendChild(delBtn);
+        return li;
+    }
+
+    function renderArtifactList(listEl, emptyEl, items, opts) {
+        listEl.innerHTML = '';
+        const arr = items || [];
+        emptyEl.hidden = arr.length > 0;
+        listEl.hidden = arr.length === 0;
+        arr.forEach(item => listEl.appendChild(renderArtifactItem(item, opts)));
+    }
+
+    async function loadArtifacts() {
+        const err = document.getElementById('auto-err');
+        err.hidden = true;
+        const res = await fetch(apiUrl('/artifacts'), { credentials: 'same-origin', headers: API_HEADERS });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = (data && data.message) || 'Failed to load artifacts';
+            return;
+        }
+        renderArtifactList(
+            document.getElementById('auto-packages'),
+            document.getElementById('auto-packages-empty'),
+            data.packages
+        );
+        renderArtifactList(
+            document.getElementById('auto-pages'),
+            document.getElementById('auto-pages-empty'),
+            data.pages
+        );
+        renderArtifactList(
+            document.getElementById('auto-tests-gen'),
+            document.getElementById('auto-tests-gen-empty'),
+            (data.tests && data.tests.generated) || []
+        );
+        renderArtifactList(
+            document.getElementById('auto-tests-todo'),
+            document.getElementById('auto-tests-todo-empty'),
+            (data.tests && data.tests.todo) || []
+        );
+    }
+
+    async function previewArtifact(path) {
+        const pathEl = document.getElementById('auto-preview-path');
+        const contentEl = document.getElementById('auto-preview-content');
+        pathEl.textContent = path;
+        contentEl.textContent = 'Loading…';
+        contentEl.className = 'code-preview';
+        const res = await fetch(apiUrl('/artifacts/preview?path=' + encodeURIComponent(path)), {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            let data = {};
+            try { data = await res.json(); } catch (e) { /* ignore */ }
+            contentEl.textContent = (data && data.message) || 'Preview failed';
+            contentEl.className = 'code-preview error';
+            return;
+        }
+        contentEl.textContent = await res.text();
+        contentEl.className = 'code-preview';
+    }
+
+    function openArtifactDelete(path, label) {
+        pendingArtifactPath = path;
+        document.getElementById('artifact-delete-body').textContent =
+            'Delete "' + label + '"? This cannot be undone.';
+        document.getElementById('artifact-delete-err').classList.add('hidden');
+        openModal('artifactDeleteModal');
+    }
+
+    document.getElementById('artifactDeleteCancel').addEventListener('click', () => closeModal('artifactDeleteModal'));
+    document.getElementById('artifactDeleteModal').addEventListener('click', e => {
+        if (e.target.id === 'artifactDeleteModal') closeModal('artifactDeleteModal');
+    });
+    document.getElementById('artifactDeleteConfirm').addEventListener('click', async () => {
+        if (!pendingArtifactPath) return;
+        const btn = document.getElementById('artifactDeleteConfirm');
+        btn.disabled = true;
+        const res = await fetch(apiUrl('/artifacts?path=' + encodeURIComponent(pendingArtifactPath)), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        btn.disabled = false;
+        let data = {};
+        try { data = await res.json(); } catch (err) { /* ignore */ }
+        if (!res.ok) {
+            const errEl = document.getElementById('artifact-delete-err');
+            errEl.textContent = (data && data.message) || 'Delete failed';
+            errEl.classList.remove('hidden');
+            return;
+        }
+        closeModal('artifactDeleteModal');
+        pendingArtifactPath = null;
+        await loadArtifacts();
+    });
+
+    function updateJobRunningState(running) {
+        jobRunning = running;
+        const hint = document.getElementById('auto-running-hint');
+        if (hint) hint.hidden = !running;
+        document.querySelectorAll('.artifact-delete-btn').forEach(btn => {
+            btn.disabled = running;
+        });
+    }
+
+    async function pollJobs() {
+        const res = await fetch('/api/jobs', { credentials: 'same-origin', headers: API_HEADERS });
+        if (!res.ok) return;
+        const jobs = await res.json();
+        const running = jobs.some(j =>
+            j.projectId === projectId && (j.status === 'RUNNING' || j.status === 'QUEUED')
+        );
+        updateJobRunningState(running);
+    }
+
+    function startJobPoll() {
+        pollJobs();
+        if (jobPollTimer) clearInterval(jobPollTimer);
+        jobPollTimer = setInterval(pollJobs, 5000);
+    }
+
+    function stopJobPoll() {
+        if (jobPollTimer) {
+            clearInterval(jobPollTimer);
+            jobPollTimer = null;
+        }
+    }
+
+    /* —— Test cases —— */
+    const listEl = document.getElementById('tc-list');
+    const emptyEl = document.getElementById('empty');
+    const errEl = document.getElementById('err');
+
+    function badgeClass(status) {
+        if (status === 'PASSED' || status === 'REUSED') return 'ok';
+        if (status === 'FAILED') return 'err';
+        if (status === 'PARTIAL' || status === 'TODO') return 'warn';
+        return 'muted';
+    }
+
+    function stateClass(state) {
+        if (state === 'passed') return 'step-ok';
+        if (state === 'failed') return 'step-fail';
+        return 'step-remain';
+    }
+
+    async function loadTcList() {
+        if (!listEl) return;
+        errEl.hidden = true;
+        const res = await fetch(apiUrl('/tcs'), {
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Accept': 'application/json' }
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            errEl.hidden = false;
+            errEl.textContent = (data && data.message) || 'Failed to load TCs';
+            return;
+        }
+        const tcs = data.tcs || [];
+        const runLabel = document.getElementById('run-at-label');
+        if (runLabel && data.lastRunAt) {
+            runLabel.textContent = ' Last run: ' + data.lastRunAt + '.';
+        }
+        emptyEl.hidden = tcs.length > 0;
+        listEl.innerHTML = '';
+        tcs.forEach(tc => {
+            const item = document.createElement('details');
+            item.className = 'tc-item';
+            item.dataset.tcId = tc.tcId;
+            const summary = document.createElement('summary');
+            summary.innerHTML =
+                '<span class="tc-title">' + escapeHtml(tc.title || tc.tcId) + '</span>' +
+                '<span class="mono muted">' + escapeHtml(tc.tcId) + '</span>' +
+                '<span class="badge ' + badgeClass(tc.status) + '">' + escapeHtml(tc.status) + '</span>' +
+                '<span class="muted">' + (tc.provenCount || 0) + ' proven</span>' +
+                (tc.runAtLabel ? '<span class="muted">Ran ' + escapeHtml(tc.runAtLabel) + '</span>' : '');
+            item.appendChild(summary);
+            const body = document.createElement('div');
+            body.className = 'tc-body';
+            body.innerHTML = '<p class="muted">Loading steps…</p>';
+            item.addEventListener('toggle', () => {
+                if (item.open && !item.dataset.loaded) {
+                    loadTcDetail(tc.tcId, body, item);
+                }
+            });
+            item.appendChild(body);
+            listEl.appendChild(item);
+        });
+    }
+
+    async function loadTcDetail(tcId, body, item) {
+        item.dataset.loaded = '1';
+        const res = await fetch(apiUrl('/tcs/' + encodeURIComponent(tcId)), {
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Accept': 'application/json' }
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            body.innerHTML = '<p class="error">' + escapeHtml((data && data.message) || 'Failed to load TC') + '</p>';
+            return;
+        }
+        let html = '';
+        if (data.failureReason) {
+            html += '<p class="hint"><strong>Failure:</strong> ' + escapeHtml(data.failureReason) + '</p>';
+        }
+        if (data.runAtLabel) {
+            html += '<p class="muted"><strong>Run:</strong> ' + escapeHtml(data.runAtLabel) + '</p>';
+        }
+        if (data.expectedResult) {
+            html += '<p class="muted"><strong>Expected:</strong> ' + escapeHtml(data.expectedResult) + '</p>';
+        }
+        html += '<ol class="step-timeline">';
+        (data.timeline || []).forEach(step => {
+            html += '<li class="' + stateClass(step.state) + '">';
+            html += '<div class="step-main">';
+            html += '<span class="step-state">' + escapeHtml(step.state) + '</span> ';
+            html += '<span>' + escapeHtml(step.label || '') + '</span>';
+            if (step.pageName) {
+                html += ' <span class="mono muted">@' + escapeHtml(step.pageName) + '</span>';
+            }
+            if (step.reason) {
+                html += '<div class="error">' + escapeHtml(step.reason) + '</div>';
+            }
+            html += '</div></li>';
+        });
+        html += '</ol>';
+        body.innerHTML = html;
+    }
+
+    /* —— Init —— */
+    if (activeTab === 'settings') {
+        loadProjectSettings();
+        loadCredentials();
+        loadDesignReferences();
+    } else if (activeTab === 'automation') {
+        loadArtifacts();
+        startJobPoll();
+    } else if (activeTab === 'tcs') {
+        loadTcList();
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (activeTab === 'automation') {
+            if (document.hidden) stopJobPoll();
+            else startJobPoll();
+        }
+    });
+})();
+</script>
+</body>
+</html>

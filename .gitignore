@@ -6,6 +6,7 @@ target/
 src/main/resources/resources/*.properties
 src/main/resources/webapp.properties
 delivery-store/
+delivery-work/
 *.class
 *.jar
 !**/maven-wrapper.jar
@@ -16,15 +17,27 @@ tools/cursor-heal/node_modules/
 cursor-api-key.local.bat
 api-keys.local.bat
 
+# IDE / agent / local tooling
+.idea/
+.vscode/
+.cursor/
+.claude/
+.specify/
+.superpowers/
+*.iws
+*.iml
+*.ipr
 
-
+# Generated / local artifacts
+graphify-out/
+models/
+test-output/
+*.log
+canvases/
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
 .idea/jarRepositories.xml
 .idea/compiler.xml
 .idea/libraries/
-*.iws
-*.iml
-*.ipr
 

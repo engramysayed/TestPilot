@@ -1,0 +1,10 @@
+#EDGE - CHROME
+BROWSER_TYPE=CHROME
+
+# LOCAL = visible window; HEADLESS = no Chrome/Edge UI
+# Or set BROWSER_HEADLESS=true (overrides to headless while still using a local driver)
+EXECUTION_TYPE=LOCAL
+BROWSER_HEADLESS=false
+
+# Application under test (filled by conversion job; no secrets here)
+BASE_WEB=

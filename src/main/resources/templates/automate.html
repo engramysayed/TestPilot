@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Automate')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell">
+    <div class="page-title">
+        <div>
+            <h1>Automate</h1>
+            <p class="lede">Turn manual test cases into automation packages.</p>
+        </div>
+    </div>
+
+    <section class="panel">
+        <label>Project
+            <select id="project-select">
+                <option value="">— Loading projects —</option>
+            </select>
+        </label>
+        <p id="project-err" class="error" hidden></p>
+        <p id="no-projects" class="muted" hidden>
+            No projects yet —
+            <a href="/projects">create one</a> to start converting.
+        </p>
+    </section>
+
+    <div class="automate-cards" id="automate-cards" hidden>
+        <a class="automate-card" id="card-upload" href="/upload">
+            <h2>New conversion</h2>
+            <p>Upload an Excel workbook and start a conversion job for the selected project.</p>
+            <span class="automate-card-cta">Upload Excel →</span>
+        </a>
+        <a class="automate-card" id="card-jobs" href="/jobs">
+            <h2>Job history</h2>
+            <p>View all past conversions, re-open status, or download completed ZIPs.</p>
+            <span class="automate-card-cta">View all jobs →</span>
+        </a>
+    </div>
+
+    <section class="panel" id="recent-jobs-panel" hidden>
+        <h2>Recent jobs</h2>
+        <p class="panel-intro">Last five conversions for the selected project.</p>
+        <table class="table" id="recent-jobs-table">
+            <thead>
+            <tr>
+                <th>Job</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Score</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody id="recent-jobs-body"></tbody>
+        </table>
+        <div id="recent-jobs-empty" class="automate-empty" hidden>
+            <p class="muted">No jobs for this project yet.</p>
+            <a class="button" id="empty-upload-link" href="/upload">Start a conversion</a>
+        </div>
+        <p id="jobs-err" class="error" hidden></p>
+    </section>
+</main>
+</div>
+<script>
+(function () {
+    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+    const STORAGE_KEY = 'keel.automateProjectId';
+
+    const projectSel = document.getElementById('project-select');
+    const projectErr = document.getElementById('project-err');
+    const noProjects = document.getElementById('no-projects');
+    const cards = document.getElementById('automate-cards');
+    const cardUpload = document.getElementById('card-upload');
+    const recentPanel = document.getElementById('recent-jobs-panel');
+    const jobsBody = document.getElementById('recent-jobs-body');
+    const jobsEmpty = document.getElementById('recent-jobs-empty');
+    const emptyUploadLink = document.getElementById('empty-upload-link');
+    const jobsErr = document.getElementById('jobs-err');
+
+    function badgeClass(status) {
+        if (status === 'COMPLETED') return 'badge ok';
+        if (status === 'COMPLETED_WITH_BLOCK') return 'badge warn';
+        if (status === 'FAILED') return 'badge err';
+        return 'badge muted';
+    }
+
+    function updateLinks(projectId) {
+        const q = projectId ? '?projectId=' + encodeURIComponent(projectId) : '';
+        cardUpload.href = '/upload' + q;
+        emptyUploadLink.href = '/upload' + q;
+    }
+
+    async function loadProjects() {
+        projectErr.hidden = true;
+        const res = await fetch('/api/projects', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            projectErr.hidden = false;
+            projectErr.textContent = 'Could not load projects.';
+            return;
+        }
+        const projects = await res.json();
+        projectSel.innerHTML = '';
+        if (projects.length === 0) {
+            noProjects.hidden = false;
+            cards.hidden = true;
+            recentPanel.hidden = true;
+            return;
+        }
+        noProjects.hidden = true;
+        cards.hidden = false;
+        recentPanel.hidden = false;
+
+        projects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.projectId;
+            opt.textContent = (p.name || p.projectId) + ' (' + p.projectId + ')';
+            projectSel.appendChild(opt);
+        });
+
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const match = saved && projects.some(p => p.projectId === saved);
+        projectSel.value = match ? saved : projects[0].projectId;
+        onProjectChange();
+    }
+
+    function renderJobs(jobs) {
+        jobsBody.innerHTML = '';
+        const recent = jobs.slice(0, 5);
+        jobsEmpty.hidden = recent.length > 0;
+        document.getElementById('recent-jobs-table').hidden = recent.length === 0;
+
+        recent.forEach(j => {
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td><code class="mono">' + escapeHtml(j.jobId) + '</code></td>' +
+                '<td><span class="' + badgeClass(j.status) + '">' + escapeHtml(j.status) + '</span></td>' +
+                '<td>' + (j.progressCurrent ?? 0) + ' / ' + (j.progressTotal ?? 0) + '</td>' +
+                '<td>' + (j.passedCount ?? 0) + 'P / ' + (j.todoCount ?? 0) + 'T</td>' +
+                '<td class="actions"><a href="/status?jobId=' + encodeURIComponent(j.jobId) + '">Status</a></td>';
+            jobsBody.appendChild(tr);
+        });
+    }
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    async function loadJobs(projectId) {
+        jobsErr.hidden = true;
+        if (!projectId) {
+            renderJobs([]);
+            return;
+        }
+        const res = await fetch('/api/jobs?projectId=' + encodeURIComponent(projectId) + '&kind=CONVERT', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            jobsErr.hidden = false;
+            jobsErr.textContent = 'Could not load jobs.';
+            return;
+        }
+        renderJobs(await res.json());
+    }
+
+    function onProjectChange() {
+        const projectId = projectSel.value;
+        if (projectId) {
+            sessionStorage.setItem(STORAGE_KEY, projectId);
+        }
+        updateLinks(projectId);
+        loadJobs(projectId);
+    }
+
+    projectSel.addEventListener('change', onProjectChange);
+    loadProjects();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Account')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell">
+    <div class="page-title">
+        <div>
+            <h1>My account</h1>
+            <p class="lede">Signed in as <strong id="email">…</strong> (<span id="role">…</span>)</p>
+        </div>
+    </div>
+
+    <div class="dash-grid">
+        <section class="panel">
+            <h2>Change password</h2>
+            <p class="panel-intro">Use at least 8 characters.</p>
+            <form id="password-form">
+                <label>Current password
+                    <input type="password" name="currentPassword" required autocomplete="current-password"/>
+                </label>
+                <label>New password (min 8)
+                    <input type="password" name="newPassword" minlength="8" required autocomplete="new-password"/>
+                </label>
+                <button type="submit">Update password</button>
+            </form>
+            <p id="pw-msg" class="ok" hidden></p>
+            <p id="pw-err" class="error" hidden></p>
+        </section>
+
+        <section class="panel">
+            <h2>Change email</h2>
+            <p class="panel-intro">You’ll sign in again after a successful change.</p>
+            <form id="email-form">
+                <label>New email
+                    <input type="email" name="newEmail" required/>
+                </label>
+                <label>Confirm with current password
+                    <input type="password" name="currentPassword" required autocomplete="current-password"/>
+                </label>
+                <button type="submit">Update email</button>
+            </form>
+            <p id="em-msg" class="ok" hidden></p>
+            <p id="em-err" class="error" hidden></p>
+        </section>
+    </div>
+</main>
+</div>
+<script>
+    async function loadMe() {
+        const res = await fetch('/api/account');
+        const data = await res.json();
+        document.getElementById('email').textContent = data.email;
+        document.getElementById('role').textContent = data.role;
+    }
+    loadMe();
+
+    document.getElementById('password-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = {
+            currentPassword: e.target.currentPassword.value,
+            newPassword: e.target.newPassword.value
+        };
+        const res = await fetch('/api/account/password', {
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel'}, body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        document.getElementById('pw-msg').hidden = true;
+        document.getElementById('pw-err').hidden = true;
+        if (!res.ok) {
+            document.getElementById('pw-err').hidden = false;
+            document.getElementById('pw-err').textContent = data.message || 'Update failed';
+            return;
+        }
+        document.getElementById('pw-msg').hidden = false;
+        document.getElementById('pw-msg').textContent = data.message || 'Password updated';
+        e.target.reset();
+    });
+
+    document.getElementById('email-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = {
+            newEmail: e.target.newEmail.value,
+            currentPassword: e.target.currentPassword.value
+        };
+        const res = await fetch('/api/account/email', {
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel'}, body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        document.getElementById('em-msg').hidden = true;
+        document.getElementById('em-err').hidden = true;
+        if (!res.ok) {
+            document.getElementById('em-err').hidden = false;
+            document.getElementById('em-err').textContent = data.message || 'Update failed';
+            return;
+        }
+        window.location.href = '/login?registered';
+    });
+</script>
+</body>
+</html>

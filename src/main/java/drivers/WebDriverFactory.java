@@ -26,7 +26,21 @@ public class WebDriverFactory {
     }
 
     public void quit(){
-        driverThreadLocal.get().quit();
+        WebDriver d = driverThreadLocal.get();
+        if (d != null) {
+            d.quit();
+        }
+        driverThreadLocal.remove();
+    }
+
+    /** Tear down and create a fresh browser — clears in-memory app session state. */
+    public void restart() {
+        quit();
+        Browser browserType = Browser.valueOf(browser.toUpperCase());
+        AbstractDriver abstractDriver = browserType.getDriverFactory();
+        LogsManager.info("Restarting Driver for Browser Type: " + browserType);
+        WebDriver driver = ThreadGuard.protect(abstractDriver.createDriver());
+        driverThreadLocal.set(driver);
     }
 
     public ElementsHandler element(){

@@ -1,0 +1,10 @@
+{
+  "name": "cursor-heal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TestPilot Cursor Auto heal sidecar — picks candidateId from DOM shortlist",
+  "dependencies": {
+    "@cursor/sdk": "^1.0.27"
+  }
+}

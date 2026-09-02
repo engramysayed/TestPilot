@@ -1,6 +1,7 @@
 package delivery.authoring;
 
 import delivery.codegen.ProvenStep;
+import delivery.excel.ExcelStepText;
 import delivery.excel.ManualTestCase;
 
 import java.util.ArrayList;
@@ -18,13 +19,28 @@ import java.util.stream.Collectors;
  * Ollama is only for shortlist ties.
  */
 public final class StepIntentBinder {
-    private static final Pattern LINE = Pattern.compile("(?m)^\\s*(?:\\d+[.)]\\s*)?(.*\\S)\\s*$");
+    /** Near-tie honesty gate: different controls within this many points → AMBIGUOUS. */
+    static final int NEAR_TIE_SCORE_WINDOW = 1;
+
+    private static final Pattern AUTH_ENTRY_HREF = Pattern.compile(
+            "(?i)(/login|/signin|/sign-in)(/|\\?|#|'|\"|$)|href\\s*=\\s*['\"][^'\"]*(/login|/signin|/sign-in)");
+    private static final Pattern AUTH_ENTRY_LABEL = Pattern.compile("(?i)log\\s*in|sign\\s*in|sign\\s*on");
+    private static final Pattern REGISTER_PATH_HREF = Pattern.compile(
+            "(?i)(/reg|/register)(/|\\?|#|'|\"|$)|href\\s*=\\s*['\"][^'\"]*(/reg|/register)(/|\\?|#|'|\"|$)");
 
     public enum IntentKind {
         TYPE_USER, TYPE_PASS, CLICK_LOGIN, TYPE_FIELD, ASSERT_VISIBLE, CLICK
     }
 
-    public record IntentLine(IntentKind kind, String text) {
+    public record IntentLine(IntentKind kind, String text, String testData) {
+        public IntentLine {
+            text = text == null ? "" : text;
+            testData = testData == null ? "" : testData;
+        }
+
+        public IntentLine(IntentKind kind, String text) {
+            this(kind, text, "");
+        }
     }
 
     public record BindResult(List<ProvenStep> steps, String rejectReason) {
@@ -38,13 +54,16 @@ public final class StepIntentBinder {
 
     public static List<IntentLine> parseIntents(ManualTestCase tc) {
         List<IntentLine> out = new ArrayList<>();
-        String steps = tc == null || tc.steps() == null ? "" : tc.steps();
-        var m = LINE.matcher(steps);
-        while (m.find()) {
-            String line = m.group(1).trim();
+        String steps = tc == null || tc.steps() == null ? "" : ExcelStepText.normalizeMultiline(tc.steps());
+        String[] stepLines = steps.split("\n", -1);
+        String testDataRaw = tc == null || tc.testData() == null ? "" : tc.testData();
+        String[] dataLines = ExcelStepText.normalizeMultiline(testDataRaw).split("\n", -1);
+        for (int i = 0; i < stepLines.length; i++) {
+            String line = stripStepNumber(stepLines[i]);
             if (line.isBlank()) {
                 continue;
             }
+            String data = i < dataLines.length ? dataLines[i].trim() : "";
             String lower = line.toLowerCase(Locale.ROOT);
             if (lower.startsWith("post-login") || lower.startsWith("do not ")) {
                 continue;
@@ -54,15 +73,55 @@ public final class StepIntentBinder {
             }
             IntentKind kind = classify(lower);
             if (kind != null) {
-                out.add(new IntentLine(kind, line));
+                out.add(new IntentLine(kind, line, data));
             }
         }
         String expected = tc == null || tc.expectedResult() == null ? "" : tc.expectedResult();
         if (out.stream().noneMatch(i -> i.kind() == IntentKind.ASSERT_VISIBLE)
                 && looksLikeAssert(expected.toLowerCase(Locale.ROOT))) {
-            out.add(new IntentLine(IntentKind.ASSERT_VISIBLE, expected));
+            out.add(new IntentLine(IntentKind.ASSERT_VISIBLE, expected, ""));
         }
         return out;
+    }
+
+    private static String stripStepNumber(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        return raw.trim().replaceFirst("^\\d+[.)]\\s*", "").trim();
+    }
+
+    /**
+     * Body intents for prove / honesty / revise. Credential kinds stay when this case is the
+     * form under test (registration, negative login, public pages). They are stripped only when
+     * a login prelude already typed them.
+     */
+    public static List<IntentLine> bodyIntents(ManualTestCase tc, boolean loginPreludeOwnsCredentials) {
+        boolean negativeLogin = LoginStepDetector.isLoginFailureCase(tc);
+        return parseIntents(tc).stream()
+                .filter(i -> keepInBody(i, loginPreludeOwnsCredentials, negativeLogin))
+                .filter(i -> !isNavigationalLoginOrUrl(i.text() == null ? "" : i.text().toLowerCase(Locale.ROOT)))
+                .filter(i -> !isOpenPathNavigateIntent(i.text()))
+                .toList();
+    }
+
+    static boolean isPreludeCredentialKind(IntentKind kind) {
+        return kind == IntentKind.TYPE_USER
+                || kind == IntentKind.TYPE_PASS
+                || kind == IntentKind.CLICK_LOGIN;
+    }
+
+    private static boolean keepInBody(
+            IntentLine intent,
+            boolean loginPreludeOwnsCredentials,
+            boolean negativeLogin) {
+        if (intent == null || intent.kind() == null) {
+            return false;
+        }
+        if (negativeLogin || !loginPreludeOwnsCredentials) {
+            return true;
+        }
+        return !isPreludeCredentialKind(intent.kind());
     }
 
     /** True for "open/go to login page" / visit app URL — handled by job navigate + login prelude. */
@@ -132,11 +191,6 @@ public final class StepIntentBinder {
         String tcId = tc.tcId();
         List<String> tieBreak = preferOnTie == null ? List.of() : preferOnTie;
         for (IntentLine intent : intents) {
-            if (intent.kind() == IntentKind.TYPE_USER
-                    || intent.kind() == IntentKind.TYPE_PASS
-                    || intent.kind() == IntentKind.CLICK_LOGIN) {
-                continue;
-            }
             BindResult one = bindSingle(intent, tcId, candidates, tieBreak);
             if (!one.ok()) {
                 return one;
@@ -168,11 +222,10 @@ public final class StepIntentBinder {
         if (intent.kind() == IntentKind.TYPE_USER
                 || intent.kind() == IntentKind.TYPE_PASS
                 || intent.kind() == IntentKind.CLICK_LOGIN) {
-            return bindLoginFieldIntent(intent, tcId, candidates);
+            return bindLoginFieldIntent(intent, tcId, candidates, preferOnTie);
         }
         List<String> tieBreak = preferOnTie == null ? List.of() : preferOnTie;
         OrdinalControl ordinal = parseOrdinalControl(intent.text());
-        List<Scored> scored = scoreCandidates(intent, candidates, ordinal);
 
         String stateAssert = intent.kind() == IntentKind.ASSERT_VISIBLE
                 ? extractStateAssertion(intent.text())
@@ -185,7 +238,7 @@ public final class StepIntentBinder {
             String name = extractDisappearedControlName(intent.text());
             if (name != null && !name.isBlank()) {
                 String xpath = "//*[self::button or self::a or self::input or @role='button']"
-                        + "[contains(normalize-space(.),'" + name.replace("'", "") + "')]";
+                        + "[contains(normalize-space(.)," + XpathLiterals.quote(name) + ")]";
                 boolean ok = new LocatorValidator().validate(
                         new LocatorCandidate("xpath", xpath, "Page", "")).valid();
                 return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "assert",
@@ -194,7 +247,8 @@ public final class StepIntentBinder {
             }
         }
 
-        if (scored.isEmpty() && assertText != null && !assertText.isBlank()) {
+        // "Confirm the text X is visible" is a page-phrase check — never score chrome candidates.
+        if (assertText != null && !assertText.isBlank()) {
             String xpath = xpathContainsText(assertText);
             boolean ok = new LocatorValidator().validate(
                     new LocatorCandidate("xpath", xpath, "Page", "")).valid();
@@ -203,26 +257,37 @@ public final class StepIntentBinder {
                     ok ? "intent:ASSERT_VISIBLE:text" : "xpath allowlist rejected")), "");
         }
 
+        List<Scored> scored = scoreCandidates(intent, candidates, ordinal);
         if (scored.isEmpty()) {
             return new BindResult(List.of(),
                     "No DOM candidate for intent " + intent.kind() + ": " + intent.text());
         }
         Scored best = scored.get(0);
-        if (best.score < 2) {
-            if (assertText != null && !assertText.isBlank()) {
-                String xpath = xpathContainsText(assertText);
-                boolean ok = new LocatorValidator().validate(
-                        new LocatorCandidate("xpath", xpath, "Page", "")).valid();
-                return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "assert",
-                        "xpath", xpath, "", "textContains", assertText, ok,
-                        ok ? "intent:ASSERT_VISIBLE:text" : "xpath allowlist rejected")), "");
+        if (wantsFormSubmit(intent.text())) {
+            Scored submitBest = scored.stream()
+                    .filter(s -> looksLikeFormSubmitControl(s.candidate)
+                            && !looksLikeNonSubmitNavigation(s.candidate))
+                    .max(Comparator.comparingInt((Scored s) -> formSubmitPreference(s.candidate))
+                            .thenComparingInt(Scored::score))
+                    .orElse(null);
+            if (submitBest != null) {
+                best = submitBest;
+            } else if (intent.kind() == IntentKind.CLICK) {
+                return new BindResult(List.of(),
+                        "No form-submit control for intent " + intent.kind() + ": " + intent.text());
             }
+        }
+        if (best.score < 2) {
             return new BindResult(List.of(),
                     "Weak candidate match for intent " + intent.kind() + ": " + intent.text());
         }
 
         // Named action + entity (e.g. "Add Red Backpack"): resolve BEFORE near-tie AMBIGUOUS
         boolean namedActionResolved = false;
+        if (wantsFormSubmit(intent.text()) && looksLikeFormSubmitControl(best.candidate)
+                && !looksLikeNonSubmitNavigation(best.candidate)) {
+            namedActionResolved = true;
+        }
         // An explicit ordinal ("checkbox 2") is a stronger selector than verb-on-label matching.
         if (intent.kind() == IntentKind.CLICK && ordinal == null
                 && intentRequiresNamedActionControl(intent.text())) {
@@ -246,7 +311,9 @@ public final class StepIntentBinder {
             namedActionResolved = true;
         }
 
-        if (!namedActionResolved && scored.size() >= 2 && scored.get(1).score >= best.score - 1) {
+        Scored runnerUp = firstDifferentControl(scored, best);
+        if (!namedActionResolved && runnerUp != null
+                && runnerUp.score >= best.score - NEAR_TIE_SCORE_WINDOW) {
             Scored preferred = scored.stream()
                     .filter(s -> tieBreak.stream().anyMatch(id -> id.equalsIgnoreCase(s.candidate.id())))
                     .findFirst()
@@ -277,9 +344,16 @@ public final class StepIntentBinder {
             }
         }
         if (intent.kind() == IntentKind.CLICK && !namedActionResolved
+                && !(wantsFormSubmit(intent.text()) && looksLikeFormSubmitControl(best.candidate))
                 && !candidateCarriesDistinctiveTokens(intent.text(), best.candidate, candidates)) {
             return new BindResult(List.of(),
                     "No distinctive-token match for intent " + intent.kind() + ": " + intent.text());
+        }
+        if ((intent.kind() == IntentKind.TYPE_FIELD || intent.kind() == IntentKind.ASSERT_VISIBLE)
+                && stateAssert == null
+                && !candidateSharesFieldToken(intent.text(), best.candidate)) {
+            return new BindResult(List.of(),
+                    "No field-name match for intent " + intent.kind() + ": " + intent.text());
         }
 
         if (intent.kind() == IntentKind.ASSERT_VISIBLE) {
@@ -291,24 +365,25 @@ public final class StepIntentBinder {
                 return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "assert",
                         best.candidate.strategy(), best.candidate.value(),
                         "", stateAssert, expected == null ? "" : expected, true,
-                        "intent:" + intent.kind() + ":" + stateAssert)), "");
-            }
-            if (assertText != null && !assertText.isBlank()) {
-                return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "assert",
-                        best.candidate.strategy(), best.candidate.value(),
-                        "", "textContains", assertText, true, "intent:" + intent.kind())), "");
+                        intentRationale(intent) + ":" + stateAssert)), "");
             }
             return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "assert",
                     best.candidate.strategy(), best.candidate.value(),
-                    "", "visible", "", true, "intent:" + intent.kind())), "");
+                    "", "visible", "", true, intentRationale(intent))), "");
         }
 
         if (intent.kind() == IntentKind.TYPE_FIELD) {
+            if (isLeaveOrKeepEmptyStep(intent.text())) {
+                return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "clear",
+                        best.candidate.strategy(), best.candidate.value(),
+                        "", "", "", true, intentRationale(intent))), "");
+            }
             String action = resolveFieldAction(best.candidate);
             String value = "";
             if ("type".equals(action) || "select".equals(action)) {
                 value = DummyValueInventor.fromStepOrInvent(
                         intent.text(),
+                        intent.testData(),
                         best.candidate.tag(),
                         inferInputType(best.candidate),
                         best.candidate.value(),
@@ -317,12 +392,12 @@ public final class StepIntentBinder {
             }
             return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", action,
                     best.candidate.strategy(), best.candidate.value(),
-                    value, "", "", true, "intent:" + intent.kind())), "");
+                    value, "", "", true, intentRationale(intent))), "");
         }
 
         return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "click",
                 best.candidate.strategy(), best.candidate.value(),
-                "", "", "", true, "intent:" + intent.kind())), "");
+                "", "", "", true, intentRationale(intent))), "");
     }
 
     public static BindResult bindPreferring(ManualTestCase tc, List<DomCandidate> candidates,
@@ -355,9 +430,13 @@ public final class StepIntentBinder {
                 && (lower.contains("enter") || lower.contains("type") || lower.contains("fill"))) {
             return IntentKind.TYPE_PASS;
         }
-        if ((lower.contains("login") || lower.contains("sign in") || lower.contains("submit"))
+        if ((lower.contains("login") || lower.contains("sign in") || lower.contains("signin"))
                 && (lower.contains("click") || lower.contains("press") || lower.contains("button"))) {
             return IntentKind.CLICK_LOGIN;
+        }
+        if (lower.contains("submit")
+                && (lower.contains("click") || lower.contains("press") || lower.contains("button"))) {
+            return IntentKind.CLICK;
         }
         if (looksLikeAssert(lower)) {
             return IntentKind.ASSERT_VISIBLE;
@@ -365,7 +444,11 @@ public final class StepIntentBinder {
         // Generic field fill — any enter/type/fill/select/choose for non-login data
         if (lower.contains("enter") || lower.contains("type") || lower.contains("fill")
                 || lower.contains("input") || lower.startsWith("select ")
-                || lower.contains("choose") || lower.contains("pick ")) {
+                || lower.contains("choose") || lower.contains("pick ")
+                || ((lower.contains("leave") || lower.contains("keep")) && lower.contains("empty"))
+                || (lower.contains("leave") && lower.contains("blank"))
+                || lower.contains("do not fill") || lower.contains("don't fill") || lower.contains("dont fill")
+                || (lower.contains("skip the") && lower.contains("field"))) {
             if (!(lower.contains("click") || lower.contains("press"))) {
                 return IntentKind.TYPE_FIELD;
             }
@@ -403,8 +486,17 @@ public final class StepIntentBinder {
             if (!DomCandidateExtractor.isBindableStrategy(c.strategy())) {
                 continue;
             }
+            if (looksLikeRevealOrMaskToggle(c) && isFieldTargetIntent(intent.text())) {
+                continue;
+            }
+            if (wantsFormSubmit(intent.text()) && looksLikeNonSubmitNavigation(c)) {
+                continue;
+            }
             String hay = (c.value() + " " + c.label() + " " + c.tag()).toLowerCase(Locale.ROOT);
             int score = tokenOverlapScore(tokens, hay);
+            if (wantsFormSubmit(intent.text()) && looksLikeFormSubmitControl(c)) {
+                score += 18 + formSubmitPreference(c);
+            }
             if (intent.kind() == IntentKind.TYPE_FIELD) {
                 if (!isFormControl(c)) {
                     continue;
@@ -418,6 +510,10 @@ public final class StepIntentBinder {
                     } else {
                         continue;
                     }
+                } else {
+                    // The field the step names must clear the soft floor that every sibling gets,
+                    // otherwise Day and Month look equally good and the step reads as ambiguous.
+                    score += score * 2;
                 }
                 score += 2; // prefer form controls for TYPE_FIELD
             } else if (score <= 0 && ordinal == null) {
@@ -521,7 +617,9 @@ public final class StepIntentBinder {
                         }
                     }
                 }
-                if (score > 0 && ("a".equals(c.tag()) || hay.contains("link"))) {
+                // Do not boost bare anchors for Excel "Submit" — buttons must win Sign-up CTAs.
+                if (score > 0 && ("a".equals(c.tag()) || hay.contains("link"))
+                        && !wantsFormSubmit(intent.text())) {
                     score += 1;
                 }
                 // Images are rarely the click target named in Excel steps
@@ -548,15 +646,52 @@ public final class StepIntentBinder {
 
     /** Bind username / password / submit-login intents from live candidates (negative login body). */
     private static BindResult bindLoginFieldIntent(
-            IntentLine intent, String tcId, List<DomCandidate> candidates) {
+            IntentLine intent, String tcId, List<DomCandidate> candidates, List<String> preferOnTie) {
+        if (preferOnTie != null) {
+            for (String id : preferOnTie) {
+                if (id == null || id.isBlank()) {
+                    continue;
+                }
+                DomCandidate preferred = DomCandidateExtractor.findById(candidates, id);
+                if (preferred == null || !DomCandidateExtractor.isBindableStrategy(preferred.strategy())) {
+                    continue;
+                }
+                if (wantsFormSubmit(intent.text()) && looksLikeNonSubmitNavigation(preferred)) {
+                    continue;
+                }
+                if (intent.kind() == IntentKind.CLICK_LOGIN) {
+                    return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "click",
+                            preferred.strategy(), preferred.value(), "", "", "", true,
+                            "intent:CLICK_LOGIN")), "");
+                }
+                if (isLeaveOrKeepEmptyStep(intent.text())) {
+                    return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "clear",
+                            preferred.strategy(), preferred.value(),
+                            "", "", "", true, "intent:" + intent.kind())), "");
+                }
+                String prefValue = intent.kind() == IntentKind.TYPE_USER
+                        ? DummyValueInventor.fromStepOrInvent(intent.text(), intent.testData(),
+                        preferred.tag(), "text",
+                        preferred.value(), preferred.label(), preferred.label())
+                        : DummyValueInventor.fromStepOrInvent(intent.text(), intent.testData(),
+                        preferred.tag(), "password",
+                        preferred.value(), preferred.label(), preferred.label());
+                return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "type",
+                        preferred.strategy(), preferred.value(), prefValue, "", "", true,
+                        "intent:" + intent.kind())), "");
+            }
+        }
         String[] needles = switch (intent.kind()) {
             case TYPE_USER -> new String[]{"username", "user-name", "user", "email"};
             case TYPE_PASS -> new String[]{"password"};
-            case CLICK_LOGIN -> new String[]{"login-button", "submit", "sign-in", "signin", "login"};
+            case CLICK_LOGIN -> wantsFormSubmit(intent.text())
+                    ? new String[]{"submit", "websubmit", "sign up", "sign-up", "signup",
+                    "create account", "create new", "register"}
+                    : new String[]{"login-button", "submit", "sign-in", "signin", "login"};
             default -> new String[]{};
         };
-        DomCandidate best = findFieldByNeedles(candidates, needles);
-        if (best == null) {
+        DomCandidate best = findFieldByNeedles(candidates, needles, intent.text());
+        if (best == null || (wantsFormSubmit(intent.text()) && looksLikeNonSubmitNavigation(best))) {
             return new BindResult(List.of(),
                     "No DOM candidate for intent " + intent.kind() + ": " + intent.text());
         }
@@ -564,10 +699,15 @@ public final class StepIntentBinder {
             return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "click",
                     best.strategy(), best.value(), "", "", "", true, "intent:CLICK_LOGIN")), "");
         }
+        if (isLeaveOrKeepEmptyStep(intent.text())) {
+            return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "clear",
+                    best.strategy(), best.value(),
+                    "", "", "", true, "intent:" + intent.kind())), "");
+        }
         String value = intent.kind() == IntentKind.TYPE_USER
-                ? DummyValueInventor.fromStepOrInvent(intent.text(), best.tag(), "text",
+                ? DummyValueInventor.fromStepOrInvent(intent.text(), intent.testData(), best.tag(), "text",
                 best.value(), best.label(), best.label())
-                : DummyValueInventor.fromStepOrInvent(intent.text(), best.tag(), "password",
+                : DummyValueInventor.fromStepOrInvent(intent.text(), intent.testData(), best.tag(), "password",
                 best.value(), best.label(), best.label());
         // Prefer explicit Excel token over invent; job secrets still used at codegen via ${}
         if (intent.kind() == IntentKind.TYPE_USER && (value == null || value.isBlank()
@@ -582,13 +722,152 @@ public final class StepIntentBinder {
                 best.strategy(), best.value(), value, "", "", true, "intent:" + intent.kind())), "");
     }
 
-    private static DomCandidate findFieldByNeedles(List<DomCandidate> candidates, String[] needles) {
+    /**
+     * Excel "Click the Submit button" is a form submit, not "go to the login page".
+     * "Click the Login button" still binds an auth control.
+     */
+    public static boolean wantsFormSubmit(String intentText) {
+        if (intentText == null || intentText.isBlank()) {
+            return false;
+        }
+        String t = intentText.toLowerCase(Locale.ROOT);
+        if (!t.contains("submit")) {
+            return false;
+        }
+        return !(t.contains("log in") || t.contains("login") || t.contains("sign in")
+                || t.contains("signin"));
+    }
+
+    /**
+     * Anchors whose href is an auth entry path. A real submit/login-button id must not match.
+     */
+    public static boolean looksLikeAuthNavigation(DomCandidate candidate) {
+        if (candidate == null) {
+            return false;
+        }
+        String tag = candidate.tag() == null ? "" : candidate.tag().toLowerCase(Locale.ROOT);
+        String value = candidate.value() == null ? "" : candidate.value().toLowerCase(Locale.ROOT);
+        String label = candidate.label() == null ? "" : candidate.label().toLowerCase(Locale.ROOT).trim();
+        boolean hrefToAuth = AUTH_ENTRY_HREF.matcher(value).find();
+        boolean anchor = "a".equals(tag) || value.contains("a[href") || value.startsWith("a[");
+        if (hrefToAuth && anchor) {
+            return true;
+        }
+        return "a".equals(tag) && AUTH_ENTRY_LABEL.matcher(label).matches();
+    }
+
+    /**
+     * Login/signin hrefs, “already have an account”, and register-path anchors that are not
+     * a form-submit CTA. Site-agnostic path tokens only — not a product host.
+     */
+    public static boolean looksLikeNonSubmitNavigation(DomCandidate candidate) {
+        if (candidate == null) {
+            return false;
+        }
+        if (looksLikeAuthNavigation(candidate)) {
+            return true;
+        }
+        String label = candidate.label() == null ? "" : candidate.label().toLowerCase(Locale.ROOT);
+        if (label.contains("already have")) {
+            return true;
+        }
+        return looksLikeRegisterPathHref(candidate);
+    }
+
+    public static boolean looksLikeNonSubmitNavigationLocator(String locatorValue) {
+        if (locatorValue == null || locatorValue.isBlank()) {
+            return false;
+        }
+        String loc = locatorValue.toLowerCase(Locale.ROOT);
+        if (AUTH_ENTRY_HREF.matcher(loc).find()) {
+            return true;
+        }
+        boolean registerHref = REGISTER_PATH_HREF.matcher(loc).find();
+        return registerHref;
+    }
+
+    private static boolean looksLikeRegisterPathHref(DomCandidate candidate) {
+        if (candidate == null) {
+            return false;
+        }
+        String tag = candidate.tag() == null ? "" : candidate.tag().toLowerCase(Locale.ROOT);
+        String value = candidate.value() == null ? "" : candidate.value().toLowerCase(Locale.ROOT);
+        boolean anchor = "a".equals(tag) || value.contains("a[href") || value.startsWith("a[");
+        return anchor && REGISTER_PATH_HREF.matcher(value).find();
+    }
+
+    public static boolean looksLikeFormSubmitControl(DomCandidate candidate) {
+        if (candidate == null) {
+            return false;
+        }
+        if (looksLikeRegisterPathHref(candidate) || looksLikeAuthNavigation(candidate)) {
+            return false;
+        }
+        String hay = ((candidate.value() == null ? "" : candidate.value())
+                + " " + (candidate.label() == null ? "" : candidate.label()))
+                .toLowerCase(Locale.ROOT);
+        return hay.contains("submit") || hay.contains("websubmit")
+                || hay.contains("sign up") || hay.contains("signup") || hay.contains("sign-up")
+                || hay.contains("create account") || hay.contains("create new")
+                || hayContainsToken(hay, "register");
+    }
+
+    /**
+     * Prefer literal Submit / buttonish CTAs over bare {@code <a>Sign up</a>} when Excel says Submit.
+     */
+    static int formSubmitPreference(DomCandidate candidate) {
+        if (candidate == null) {
+            return 0;
+        }
+        String tag = candidate.tag() == null ? "" : candidate.tag().toLowerCase(Locale.ROOT);
+        String value = candidate.value() == null ? "" : candidate.value().toLowerCase(Locale.ROOT);
+        String label = candidate.label() == null ? "" : candidate.label().toLowerCase(Locale.ROOT);
+        String hay = value + " " + label;
+        int rank = 0;
+        if (hay.contains("submit") || hay.contains("websubmit")) {
+            rank += 40;
+        }
+        if ("button".equals(tag) || "input".equals(tag)
+                || value.contains("button") || value.contains("[type='submit']")
+                || value.contains("[type=\"submit\"]")) {
+            rank += 20;
+        }
+        if (looksLikeBareSignUpAnchor(candidate)) {
+            rank -= 25;
+        }
+        return rank;
+    }
+
+    static boolean looksLikeBareSignUpAnchor(DomCandidate candidate) {
+        if (candidate == null) {
+            return false;
+        }
+        String tag = candidate.tag() == null ? "" : candidate.tag().toLowerCase(Locale.ROOT);
+        String value = candidate.value() == null ? "" : candidate.value().toLowerCase(Locale.ROOT);
+        boolean anchor = "a".equals(tag) || value.contains("//a[") || value.startsWith("a[")
+                || value.startsWith("a ") || "a".equals(value.trim());
+        if (!anchor) {
+            return false;
+        }
+        String hay = value + " " + (candidate.label() == null ? "" : candidate.label().toLowerCase(Locale.ROOT));
+        return hay.contains("sign up") || hay.contains("signup") || hay.contains("sign-up");
+    }
+
+    private static DomCandidate findFieldByNeedles(List<DomCandidate> candidates, String[] needles,
+                                                   String intentText) {
         DomCandidate best = null;
         int bestRank = -1;
+        boolean formSubmit = wantsFormSubmit(intentText);
         for (String n : needles) {
             String needle = n.toLowerCase(Locale.ROOT);
             for (DomCandidate c : candidates) {
                 if (!DomCandidateExtractor.isBindableStrategy(c.strategy())) {
+                    continue;
+                }
+                if (looksLikeRevealOrMaskToggle(c)) {
+                    continue;
+                }
+                if (formSubmit && looksLikeNonSubmitNavigation(c)) {
                     continue;
                 }
                 String hay = (c.value() + " " + c.label() + " " + c.tag()).toLowerCase(Locale.ROOT);
@@ -596,6 +875,13 @@ public final class StepIntentBinder {
                     int rank = DomCandidateExtractor.strategyRank(c.strategy());
                     if (needle.equals(c.value().toLowerCase(Locale.ROOT))) {
                         rank += 50;
+                    }
+                    String tag = c.tag() == null ? "" : c.tag().toLowerCase(Locale.ROOT);
+                    if ("input".equals(tag) || "textarea".equals(tag)) {
+                        rank += 20;
+                    }
+                    if (formSubmit && ("button".equals(tag) || "input".equals(tag))) {
+                        rank += 25;
                     }
                     if (rank > bestRank) {
                         bestRank = rank;
@@ -684,9 +970,76 @@ public final class StepIntentBinder {
         return controlType != null && hay.contains(controlType) && !"input".equals(tag);
     }
 
+    /**
+     * The extractor emits a CSS and an XPath form of the same attribute selector, so the runner-up
+     * is usually the winner wearing a different hat. Comparing against it would report every such
+     * control as ambiguous and send a perfectly bindable step into heal.
+     */
+    private static Scored firstDifferentControl(List<Scored> scored, Scored best) {
+        for (Scored s : scored) {
+            if (s != best && !describesSameControl(s.candidate, best.candidate)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    static boolean describesSameControl(DomCandidate a, DomCandidate b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        return selectorFingerprint(a).equals(selectorFingerprint(b));
+    }
+
+    private static final Pattern ATTR_ID = Pattern.compile(
+            "(?:\\[#?id\\s*=\\s*['\"]([^'\"]+)['\"]\\]|\\[@id\\s*=\\s*['\"]([^'\"]+)['\"]\\]"
+                    + "|\\[id=['\"]([^'\"]+)['\"]\\])",
+            Pattern.CASE_INSENSITIVE);
+
+    private static String selectorFingerprint(DomCandidate c) {
+        String tag = c.tag() == null ? "" : c.tag().toLowerCase(Locale.ROOT);
+        String strategy = c.strategy() == null ? "" : c.strategy().toLowerCase(Locale.ROOT);
+        String value = c.value() == null ? "" : c.value();
+        if ("id".equals(strategy) && !value.isBlank()) {
+            return tag + "|id:" + value.toLowerCase(Locale.ROOT);
+        }
+        Matcher idMatch = ATTR_ID.matcher(value);
+        if (idMatch.find()) {
+            String id = firstNonBlank(idMatch.group(1), idMatch.group(2), idMatch.group(3));
+            if (id != null && !id.isBlank()) {
+                return tag + "|id:" + id.toLowerCase(Locale.ROOT);
+            }
+        }
+        String normalized = value.toLowerCase(Locale.ROOT)
+                .replace("//", "")
+                .replace("@", "")
+                .replace(" and ", " ")
+                .replaceAll("[\\[\\]'\"]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return tag + "|" + normalized;
+    }
+
+    private static String firstNonBlank(String... parts) {
+        if (parts == null) {
+            return null;
+        }
+        for (String p : parts) {
+            if (p != null && !p.isBlank()) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+    private static final java.util.Set<String> FORM_CONTROL_KINDS = java.util.Set.of(
+            "input", "select", "textarea",
+            "combobox", "listbox", "textbox", "searchbox", "checkbox", "radio", "switch",
+            "spinbutton", "slider");
+
     private static boolean isFormControl(DomCandidate c) {
         String tag = c.tag() == null ? "" : c.tag().toLowerCase(Locale.ROOT);
-        if ("input".equals(tag) || "select".equals(tag) || "textarea".equals(tag)) {
+        if (FORM_CONTROL_KINDS.contains(tag)) {
             return true;
         }
         String hay = (c.value() + " " + c.label()).toLowerCase(Locale.ROOT);
@@ -694,10 +1047,28 @@ public final class StepIntentBinder {
                 || hay.contains("checkbox") || hay.contains("radio") || hay.contains("dropdown");
     }
 
+    static boolean isLeaveOrKeepEmptyStep(String stepText) {
+        if (stepText == null || stepText.isBlank()) {
+            return false;
+        }
+        String lower = stepText.toLowerCase(Locale.ROOT);
+        if ((lower.contains("leave") || lower.contains("keep")) && lower.contains("empty")) {
+            return true;
+        }
+        if (lower.contains("leave") && lower.contains("blank")) {
+            return true;
+        }
+        if (lower.contains("do not fill") || lower.contains("don't fill") || lower.contains("dont fill")) {
+            return true;
+        }
+        return lower.contains("skip the") && lower.contains("field");
+    }
+
     private static String resolveFieldAction(DomCandidate c) {
         String tag = c.tag() == null ? "" : c.tag().toLowerCase(Locale.ROOT);
         String hay = (c.value() + " " + c.label()).toLowerCase(Locale.ROOT);
-        if ("select".equals(tag) || hay.contains("select") || hay.contains("dropdown")) {
+        if ("select".equals(tag) || "combobox".equals(tag) || "listbox".equals(tag)
+                || hay.contains("select") || hay.contains("dropdown")) {
             return "select";
         }
         if (hay.contains("radio") || hay.contains("checkbox") || "checkbox".equals(inferInputType(c))
@@ -733,7 +1104,7 @@ public final class StepIntentBinder {
             if (t.length() < 3) {
                 continue;
             }
-            if (hay.contains(t)) {
+            if (hayContainsToken(hay, t)) {
                 score += t.length() >= 6 ? 3 : 2;
             }
         }
@@ -837,15 +1208,300 @@ public final class StepIntentBinder {
         return longOnes.isEmpty() ? distinctive : longOnes;
     }
 
+    /** Words that name the kind of widget rather than which one the step means. */
+    private static final java.util.Set<String> WIDGET_NOUNS = java.util.Set.of(
+            "dropdown", "combobox", "listbox", "field", "box", "input", "textbox", "list",
+            "menu", "option", "options", "value", "values", "selector", "picker", "control", "area");
+
     /**
-     * Token present as substring, or as part of a hyphen/underscore compound
-     * (e.g. intent token {@code bike} matches {@code bike-light}).
+     * Possessives left over after the option value is stripped ("Select Female from the Select
+     * your gender dropdown" → "your gender"). They match nothing useful and must not satisfy
+     * every "Select …" combobox on the page.
+     */
+    private static final java.util.Set<String> FIELD_PRONOUNS = java.util.Set.of(
+            "your", "my", "our", "their", "its");
+
+    private static final Pattern IN_THE_FIELD = Pattern.compile(
+            "(?i)\\bin\\s+the\\s+(.+?)\\s+field\\b");
+    private static final Pattern FROM_THE_WIDGET = Pattern.compile(
+            "(?i)\\bfrom\\s+the\\s+(.+?)\\s+(?:dropdown|combobox|listbox|menu|select)\\b");
+    private static final Pattern THE_WIDGET = Pattern.compile(
+            "(?i)\\bthe\\s+(.+?)\\s+(?:dropdown|combobox|listbox|field|menu)\\b");
+
+    /**
+     * Best-effort field name from Excel wording, e.g. {@code First name} or {@code gender}.
+     * Used to stamp {@code field=} on ProvenStep rationale for codegen when locators lack labels.
+     */
+    public static String intentFieldPhrase(String intentText) {
+        if (intentText == null || intentText.isBlank()) {
+            return null;
+        }
+        String named = intentText;
+        String value = DummyValueInventor.extractExplicitValue(intentText);
+        if (value != null && !value.isBlank()) {
+            named = named.replace(value, " ");
+        }
+        String phrase = firstGroup(IN_THE_FIELD, named);
+        if (phrase == null) {
+            phrase = firstGroup(FROM_THE_WIDGET, named);
+        }
+        if (phrase == null) {
+            phrase = firstGroup(THE_WIDGET, named);
+        }
+        if (phrase == null) {
+            return null;
+        }
+        phrase = phrase.trim().replaceAll("\\s+", " ");
+        // Drop leading "Select your" / action verbs / pronouns left in the capture.
+        phrase = phrase.replaceAll("(?i)^(select|choose|pick)\\s+", "");
+        phrase = phrase.replaceAll("(?i)^(your|my|our|their|its)\\s+", "");
+        phrase = phrase.replaceAll("(?i)^(select|choose|pick)\\s+", "");
+        phrase = phrase.trim();
+        if (phrase.isBlank() || WIDGET_NOUNS.contains(phrase.toLowerCase(Locale.ROOT))) {
+            return null;
+        }
+        if (INTENT_FILLER_TOKENS.contains(phrase.toLowerCase(Locale.ROOT))
+                || INTENT_ACTION_VERBS.contains(phrase.toLowerCase(Locale.ROOT))) {
+            return null;
+        }
+        return phrase;
+    }
+
+    private static String firstGroup(Pattern pattern, String text) {
+        Matcher m = pattern.matcher(text);
+        return m.find() ? m.group(1) : null;
+    }
+
+    static String intentRationale(IntentLine intent) {
+        if (intent == null) {
+            return "intent:UNKNOWN";
+        }
+        String base = "intent:" + intent.kind();
+        String field = intentFieldPhrase(intent.text());
+        if (field == null || field.isBlank()) {
+            return base;
+        }
+        String slug = field.trim().replaceAll("\\s+", "_");
+        return base + ":field=" + slug;
+    }
+
+    /**
+     * Drop controls this TC already typed into or selected. Asserts keep the original table so
+     * "confirm Day shows 15" can still see the dropdown that was just filled.
+     */
+    public static List<DomCandidate> withoutSpentControls(
+            List<DomCandidate> candidates, List<ProvenStep> spent) {
+        if (candidates == null || candidates.isEmpty()) {
+            return candidates == null ? List.of() : candidates;
+        }
+        if (spent == null || spent.isEmpty()) {
+            return candidates;
+        }
+        List<DomCandidate> used = spent.stream()
+                .filter(StepIntentBinder::isMutation)
+                .map(StepIntentBinder::asCandidate)
+                .toList();
+        if (used.isEmpty()) {
+            return candidates;
+        }
+        return candidates.stream()
+                .filter(c -> used.stream().noneMatch(u -> sameSpentTarget(c, u)))
+                .toList();
+    }
+
+    /**
+     * Drop locators that already failed for this intent, including same-control twins
+     * (css vs xpath of the same node).
+     */
+    public static List<DomCandidate> withoutFailedLocators(
+            List<DomCandidate> candidates, List<delivery.heal.FailedLocator> failed) {
+        if (candidates == null || candidates.isEmpty()) {
+            return candidates == null ? List.of() : candidates;
+        }
+        if (failed == null || failed.isEmpty()) {
+            return candidates;
+        }
+        List<DomCandidate> banned = failed.stream()
+                .filter(f -> f != null && f.value() != null && !f.value().isBlank())
+                .map(f -> new DomCandidate(
+                        "failed",
+                        f.strategy() == null ? "" : f.strategy(),
+                        f.value(),
+                        "",
+                        f.value()))
+                .toList();
+        if (banned.isEmpty()) {
+            return candidates;
+        }
+        return candidates.stream()
+                .filter(c -> banned.stream().noneMatch(b ->
+                        locatorEquals(c, b) || describesSameControl(c, b) || sameSpentTarget(c, b)))
+                .toList();
+    }
+
+    public static boolean isSpentLocator(DomCandidate candidate, List<ProvenStep> spent) {
+        if (candidate == null || spent == null || spent.isEmpty()) {
+            return false;
+        }
+        return spent.stream()
+                .filter(StepIntentBinder::isMutation)
+                .map(StepIntentBinder::asCandidate)
+                .anyMatch(u -> sameSpentTarget(candidate, u));
+    }
+
+    /** Proven steps have no tag, so spent matching is on the locator text, not the tag prefix. */
+    private static boolean sameSpentTarget(DomCandidate live, DomCandidate spent) {
+        if (live == null || spent == null) {
+            return false;
+        }
+        if (locatorEquals(live, spent)) {
+            return true;
+        }
+        String a = selectorFingerprint(live);
+        String b = selectorFingerprint(spent);
+        int aBar = a.indexOf('|');
+        int bBar = b.indexOf('|');
+        String aBody = aBar >= 0 ? a.substring(aBar + 1) : a;
+        String bBody = bBar >= 0 ? b.substring(bBar + 1) : b;
+        return !aBody.isBlank() && aBody.equals(bBody);
+    }
+
+    private static boolean isMutation(ProvenStep step) {
+        if (step == null || step.action() == null) {
+            return false;
+        }
+        String action = step.action().toLowerCase(Locale.ROOT);
+        return "type".equals(action) || "select".equals(action);
+    }
+
+    private static DomCandidate asCandidate(ProvenStep step) {
+        return new DomCandidate(
+                "spent",
+                step.locatorStrategy() == null ? "" : step.locatorStrategy(),
+                step.locatorValue() == null ? "" : step.locatorValue(),
+                "",
+                step.locatorValue() == null ? "" : step.locatorValue());
+    }
+
+    private static boolean locatorEquals(DomCandidate a, DomCandidate b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        String av = a.value() == null ? "" : a.value();
+        String bv = b.value() == null ? "" : b.value();
+        return av.equalsIgnoreCase(bv);
+    }
+
+    /**
+     * A field intent names its target ("… in the First name field"), so the control must carry at
+     * least one of those words. Without this, every field intent on a page of anonymous inputs
+     * binds to whichever input scores first and the value lands in the wrong box.
+     * The typed value is excluded — it never appears in a locator.
+     * Selected/checked state asserts are different: they target the control just filled, so a
+     * select/combobox (or a row that still shows the expected option text) is enough.
+     */
+    public static boolean candidateSharesFieldToken(String intentText, DomCandidate candidate) {
+        if (intentText == null || intentText.isBlank() || candidate == null) {
+            return true;
+        }
+        String state = extractStateAssertion(intentText);
+        if ("selected".equals(state) || "checked".equals(state) || "unchecked".equals(state)) {
+            return candidateMatchesStateAssert(intentText, candidate, state);
+        }
+        String named = intentText;
+        String value = DummyValueInventor.extractExplicitValue(intentText);
+        if (value != null && !value.isBlank()) {
+            named = named.replace(value, " ");
+        }
+        List<String> wanted = tokens(named).stream()
+                .filter(t -> !WIDGET_NOUNS.contains(t))
+                .filter(t -> !FIELD_PRONOUNS.contains(t))
+                .toList();
+        if (wanted.isEmpty()) {
+            return true;
+        }
+        if (looksLikeRevealOrMaskToggle(candidate) && isFieldTargetIntent(intentText)) {
+            return false;
+        }
+        String hay = (candidate.value() + " " + candidate.label() + " " + candidate.tag())
+                .toLowerCase(Locale.ROOT);
+        return wanted.stream().anyMatch(t -> hayContainsToken(hay, t));
+    }
+
+    /**
+     * Show/hide/reveal controls name the field they mask, so token overlap alone would steal
+     * TYPE/ASSERT_VISIBLE binds from the actual input.
+     */
+    public static boolean looksLikeRevealOrMaskToggle(DomCandidate candidate) {
+        if (candidate == null) {
+            return false;
+        }
+        String hay = (safeHay(candidate.value()) + " " + safeHay(candidate.label()))
+                .toLowerCase(Locale.ROOT);
+        return REVEAL_TOGGLE.matcher(hay).find();
+    }
+
+    static boolean isFieldTargetIntent(String intentText) {
+        if (intentText == null || intentText.isBlank()) {
+            return false;
+        }
+        String lower = intentText.toLowerCase(Locale.ROOT);
+        if ((lower.contains("click") || lower.contains("press"))
+                && REVEAL_TOGGLE.matcher(lower).find()) {
+            return false;
+        }
+        return lower.contains("field")
+                || lower.contains("enter")
+                || lower.contains("type")
+                || lower.contains("fill")
+                || lower.contains("input")
+                || (lower.contains("visible") && !lower.contains("click"));
+    }
+
+    private static final Pattern REVEAL_TOGGLE = Pattern.compile(
+            "(?i)\\b(show|hide|reveal|unhide|toggle|mask|unmask)\\b.{0,48}"
+                    + "\\b(password|pin|secret|passcode|credential)s?\\b"
+                    + "|\\b(password|pin|secret|passcode|credential)s?\\b.{0,48}"
+                    + "\\b(show|hide|reveal|unhide|toggle|mask|unmask)\\b");
+
+    private static String safeHay(String value) {
+        return value == null ? "" : value;
+    }
+
+    private static boolean candidateMatchesStateAssert(
+            String intentText, DomCandidate candidate, String state) {
+        String hay = (candidate.value() + " " + candidate.label() + " " + candidate.tag())
+                .toLowerCase(Locale.ROOT);
+        if ("selected".equals(state)) {
+            String expected = extractSelectedValuePhrase(intentText);
+            if (expected != null && !expected.isBlank()
+                    && hay.contains(expected.toLowerCase(Locale.ROOT))) {
+                return true;
+            }
+            String tag = candidate.tag() == null ? "" : candidate.tag().toLowerCase(Locale.ROOT);
+            return "select".equals(tag) || "combobox".equals(tag) || "listbox".equals(tag)
+                    || hayContainsToken(hay, "select") || hayContainsToken(hay, "dropdown")
+                    || hayContainsToken(hay, "combobox");
+        }
+        // checked / unchecked — any checkbox/radio-shaped control
+        String tag = candidate.tag() == null ? "" : candidate.tag().toLowerCase(Locale.ROOT);
+        return "input".equals(tag) || "checkbox".equals(tag) || "radio".equals(tag)
+                || hayContainsToken(hay, "checkbox") || hayContainsToken(hay, "radio");
+    }
+
+    /**
+     * Token present as a whole word or hyphen/underscore compound
+     * (e.g. {@code bike} matches {@code bike-light}), but not as a prefix of a longer word
+     * ({@code element} does not match {@code elemental}).
      */
     static boolean hayContainsToken(String hay, String token) {
         if (hay == null || token == null || token.isBlank()) {
             return false;
         }
-        return hay.contains(token);
+        String h = hay.toLowerCase(Locale.ROOT);
+        String t = token.toLowerCase(Locale.ROOT);
+        Pattern word = Pattern.compile("(^|[^a-z0-9])" + Pattern.quote(t) + "([^a-z0-9]|$)");
+        return word.matcher(h).find();
     }
 
     /**
@@ -1092,28 +1748,15 @@ public final class StepIntentBinder {
             return "//body//*[not(self::script)][not(self::style)][not(self::noscript)]"
                     + "[contains(normalize-space(.),'')]";
         }
-        String lit = text.contains("'") ? escapeXpathLiteral(text) : "'" + text + "'";
-        // Prefer body content — head/title/json-ld match contains() but Selenium getText() is empty
+        String lit = XpathLiterals.quote(text);
+        // Prefer body content — head/title/json-ld match contains() but Selenium getText() is empty.
+        // The trailing predicate keeps the innermost match; every ancestor also contains the text.
         return "//body//*[not(self::script)][not(self::style)][not(self::noscript)]"
-                + "[contains(normalize-space(.)," + lit + ")]";
+                + "[contains(normalize-space(.)," + lit + ")]"
+                + "[not(.//*[contains(normalize-space(.)," + lit + ")])]";
     }
 
     static String escapeXpathLiteral(String text) {
-        if (text == null) {
-            return "''";
-        }
-        if (!text.contains("'")) {
-            return "'" + text + "'";
-        }
-        String[] parts = text.split("'", -1);
-        StringBuilder sb = new StringBuilder("concat(");
-        for (int i = 0; i < parts.length; i++) {
-            if (i > 0) {
-                sb.append(",\"'\",");
-            }
-            sb.append("'").append(parts[i]).append("'");
-        }
-        sb.append(")");
-        return sb.toString();
+        return XpathLiterals.quote(text);
     }
 }

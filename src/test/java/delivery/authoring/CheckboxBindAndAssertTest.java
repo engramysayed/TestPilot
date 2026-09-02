@@ -23,11 +23,17 @@ public class CheckboxBindAndAssertTest {
     public void extractorEmitsIndexedCheckboxCandidates() {
         List<DomCandidate> c = DomCandidateExtractor.extract(CHECKBOX_HTML);
         Assert.assertTrue(c.stream().anyMatch(x ->
-                x.value().contains("type='checkbox'") && x.value().contains("[1]")),
+                "xpath".equals(x.strategy())
+                        && "(//input[@type='checkbox'])[1]".equals(x.value())),
                 "expected xpath for checkbox 1");
         Assert.assertTrue(c.stream().anyMatch(x ->
-                x.value().contains("type='checkbox'") && x.value().contains("[2]")),
+                "xpath".equals(x.strategy())
+                        && "(//input[@type='checkbox'])[2]".equals(x.value())),
                 "expected xpath for checkbox 2");
+        Assert.assertTrue(c.stream().noneMatch(x ->
+                "css".equals(x.strategy()) && x.value().contains("nth-of-type")),
+                "must not emit nth-of-type css for checkboxes: "
+                        + DomCandidateExtractor.formatTable(c));
     }
 
     @Test

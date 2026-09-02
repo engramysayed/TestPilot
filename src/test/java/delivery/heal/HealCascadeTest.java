@@ -46,11 +46,11 @@ public class HealCascadeTest {
         AuthoringService authoring = new AuthoringService(fakeLlm, new LocatorValidator());
         CursorHealClient cursor = new CursorHealClient(true, "node -e \"process.exit(1)\"", 5) {
             @Override
-            public String pickCandidateId(String intentText, String failureReason, String shortlistTable,
-                                          String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
-                                          List<String> priorSteps) {
+            public String solve(String intentText, String failureReason, String shortlistTable,
+                                String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
+                                List<String> priorSteps) {
                 cursorCalls.incrementAndGet();
-                return super.pickCandidateId(intentText, failureReason, shortlistTable,
+                return super.solve(intentText, failureReason, shortlistTable,
                         slimHtmlExcerpt, screenshotPathOrNull, priorSteps);
             }
         };
@@ -86,13 +86,13 @@ public class HealCascadeTest {
                 .orElseThrow();
         CursorHealClient cursor = new CursorHealClient(false, "unused", 5) {
             @Override
-            public String pickCandidateId(String intentText, String failureReason, String shortlistTable,
-                                          String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
-                                          List<String> priorSteps) {
-                return submit.id();
+            public String solve(String intentText, String failureReason, String shortlistTable,
+                                String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
+                                List<String> priorSteps) {
+                return "{\"candidateId\":\"" + submit.id() + "\"}";
             }
         };
-        // Force enabled path via override only — constructor enabled=false unused because we override pick
+        // Force enabled path via override only — constructor enabled=false unused because we override solve
         HealCascade cascade = new HealCascade(authoring, cursor);
         StepIntentBinder.IntentLine intent = new StepIntentBinder.IntentLine(
                 StepIntentBinder.IntentKind.CLICK_LOGIN, "Click the Submit button");
@@ -153,12 +153,12 @@ public class HealCascadeTest {
                 .orElse(all.get(0));
         CursorHealClient cursor = new CursorHealClient(true, "unused", 5) {
             @Override
-            public String pickCandidateId(String intentText, String failureReason, String shortlistTable,
-                                          String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
-                                          List<String> priorSteps) {
+            public String solve(String intentText, String failureReason, String shortlistTable,
+                                String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
+                                List<String> priorSteps) {
                 cursorCalls.incrementAndGet();
                 cursorHistory.set(priorSteps);
-                return submit.id();
+                return "{\"candidateId\":\"" + submit.id() + "\"}";
             }
         };
         HealCascade cascade = new HealCascade(authoring, cursor);
@@ -202,17 +202,18 @@ public class HealCascadeTest {
         AtomicInteger cursorCalls = new AtomicInteger();
         CursorHealClient cursor = new CursorHealClient(true, "unused", 5) {
             @Override
-            public String pickCandidateId(String intentText, String failureReason, String shortlistTable,
-                                          String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
-                                          List<String> priorSteps) {
+            public String solve(String intentText, String failureReason, String shortlistTable,
+                                String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
+                                List<String> priorSteps) {
                 cursorCalls.incrementAndGet();
                 // Also try wrong entity — must be rejected
                 List<DomCandidate> all = DomCandidateExtractor.extract(catalogHtml);
-                return all.stream()
+                String wrong = all.stream()
                         .filter(c -> c.value().toLowerCase().contains("lantern"))
                         .findFirst()
                         .orElseThrow()
                         .id();
+                return "{\"candidateId\":\"" + wrong + "\"}";
             }
 
             @Override
@@ -271,11 +272,11 @@ public class HealCascadeTest {
         AtomicInteger cursorCalls = new AtomicInteger();
         CursorHealClient cursor = new CursorHealClient(true, "unused", 5) {
             @Override
-            public String pickCandidateId(String intentText, String failureReason, String shortlistTable,
-                                          String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
-                                          List<String> priorSteps) {
+            public String solve(String intentText, String failureReason, String shortlistTable,
+                                String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
+                                List<String> priorSteps) {
                 cursorCalls.incrementAndGet();
-                return "should-not-run";
+                return "{\"candidateId\":\"should-not-run\"}";
             }
         };
         HealCascade cascade = new HealCascade(authoring, cursor);
@@ -383,9 +384,9 @@ public class HealCascadeTest {
         };
         CursorHealClient cursor = new CursorHealClient(false, "unused", 1) {
             @Override
-            public String pickCandidateId(String intentText, String failureReason, String shortlistTable,
-                                          String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
-                                          List<String> priorSteps) {
+            public String solve(String intentText, String failureReason, String shortlistTable,
+                                String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
+                                List<String> priorSteps) {
                 return "";
             }
 
@@ -408,7 +409,50 @@ public class HealCascadeTest {
             cascade.heal("TC_BUDGET", intent, HTML, null, "pick failed", null, true, List.of());
         }
 
-        Assert.assertEquals(inventCalls.get(), 2, "invent must be capped per test case");
+        Assert.assertEquals(inventCalls.get(), 5,
+                "empty invent JSON must not burn invent budget");
+    }
+
+    @Test
+    public void inventBudgetCapsSuccessfulUsableParses() {
+        AtomicInteger inventCalls = new AtomicInteger();
+        LocalLlmClient llm = new LocalLlmClient("http://127.0.0.1:9", "dummy") {
+            @Override
+            public String completeJson(String system, String user) {
+                return "{\"candidateId\":\"not-present\"}";
+            }
+        };
+        CursorHealClient cursor = new CursorHealClient(false, "unused", 1) {
+            @Override
+            public String solve(String intentText, String failureReason, String shortlistTable,
+                                String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
+                                List<String> priorSteps) {
+                return "";
+            }
+
+            @Override
+            public String inventSteps(String intentText, String failureReason, List<String> priorSteps,
+                                      String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull) {
+                inventCalls.incrementAndGet();
+                return """
+                        {"steps":[{"action":"click","locatorStrategy":"id",
+                        "locatorValue":"submit","value":"","assertionType":"","assertionExpected":""}]}
+                        """;
+            }
+        };
+        HealCascade cascade = new HealCascade(
+                new AuthoringService(llm, new LocatorValidator()),
+                cursor,
+                new FreeInventHealer(cursor, null, new LocatorValidator(), "cursor", true),
+                true);
+        StepIntentBinder.IntentLine intent = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK, "Click Submit");
+
+        for (int i = 0; i < 5; i++) {
+            cascade.heal("TC_BUDGET_OK", intent, HTML, null, "pick failed", null, true, List.of());
+        }
+
+        Assert.assertEquals(inventCalls.get(), 2, "usable invent must be capped per test case");
     }
 
     @Test
@@ -421,9 +465,9 @@ public class HealCascadeTest {
         };
         CursorHealClient cursor = new CursorHealClient(false, "unused", 1) {
             @Override
-            public String pickCandidateId(String intentText, String failureReason, String shortlistTable,
-                                          String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
-                                          List<String> priorSteps) {
+            public String solve(String intentText, String failureReason, String shortlistTable,
+                                String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
+                                List<String> priorSteps) {
                 return "";
             }
 
@@ -450,5 +494,197 @@ public class HealCascadeTest {
         Assert.assertTrue(result.ok(), result.reason());
         Assert.assertEquals(result.tierUsed(), "invent");
         Assert.assertEquals(result.steps().get(0).locatorValue(), "submit");
+    }
+
+    @Test
+    public void ollamaCannotReuseAComboboxThisTcAlreadySelected() {
+        String form = """
+                <html><body><form>
+                  <div role="combobox" aria-label="Select day"></div>
+                  <div role="combobox" aria-label="Select month"></div>
+                  <div role="combobox" aria-label="Select year"></div>
+                  <div role="combobox" aria-label="Select your gender"></div>
+                </form></body></html>
+                """;
+        LocalLlmClient llm = new LocalLlmClient("http://127.0.0.1:9", "dummy") {
+            @Override
+            public String completeJson(String system, String user) {
+                List<DomCandidate> all = DomCandidateExtractor.extract(form);
+                String dayId = all.stream()
+                        .filter(c -> c.value().toLowerCase().contains("day"))
+                        .findFirst()
+                        .orElseThrow()
+                        .id();
+                return "{\"candidateId\":\"" + dayId + "\"}";
+            }
+
+            @Override
+            public String completeJson(String system, String user, byte[] imagePng) {
+                return completeJson(system, user);
+            }
+        };
+        CursorHealClient cursor = new CursorHealClient(false, "unused", 5) {
+            @Override
+            public String solve(String intentText, String failureReason, String shortlistTable,
+                                String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
+                                List<String> priorSteps) {
+                List<DomCandidate> all = DomCandidateExtractor.extract(form);
+                String genderId = all.stream()
+                        .filter(c -> c.value().toLowerCase().contains("gender"))
+                        .findFirst()
+                        .orElseThrow()
+                        .id();
+                return "{\"candidateId\":\"" + genderId + "\"}";
+            }
+        };
+        HealCascade cascade = new HealCascade(
+                new AuthoringService(llm, new LocatorValidator()), cursor);
+        List<ProvenStep> spent = List.of(new ProvenStep(
+                "TC1", "Page", "elementAction", "select",
+                "css", "div[aria-label='Select day']", "15", "", "", true, "prior"));
+
+        HealResult result = cascade.heal(
+                "TC1",
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.TYPE_FIELD,
+                        "Select Female from the Select your gender dropdown"),
+                form, new byte[]{1}, "bind failed", null, true, List.of(), true, spent);
+
+        Assert.assertTrue(result.ok(), result.reason());
+        Assert.assertTrue(result.steps().get(0).locatorValue().toLowerCase().contains("gender"),
+                "heal reused a spent locator: " + result.steps().get(0).locatorValue());
+    }
+
+    @Test
+    public void submitHealRejectsALoginHrefPick() {
+        String html = """
+                <body>
+                  <a id="login-link" href="https://web.example.com/login/">Log in</a>
+                  <button id="submit">Submit</button>
+                </body>
+                """;
+        LocalLlmClient picksLogin = new LocalLlmClient("http://127.0.0.1:9", "dummy") {
+            @Override
+            public String completeJson(String system, String user) {
+                List<DomCandidate> all = DomCandidateExtractor.extract(html);
+                String loginId = all.stream()
+                        .filter(c -> c.value().toLowerCase().contains("login")
+                                || (c.label() != null && c.label().toLowerCase().contains("log in")))
+                        .findFirst()
+                        .orElseThrow()
+                        .id();
+                return "{\"candidateId\":\"" + loginId + "\"}";
+            }
+
+            @Override
+            public String completeJson(String system, String user, byte[] imagePng) {
+                return completeJson(system, user);
+            }
+        };
+        CursorHealClient noCursor = new CursorHealClient(false, "unused", 1);
+        HealCascade cascade = new HealCascade(
+                new AuthoringService(picksLogin, new LocatorValidator()),
+                noCursor,
+                new FreeInventHealer(noCursor, null, new LocatorValidator(), "cursor", false),
+                false);
+        HealResult result = cascade.heal(
+                "TC_SUBMIT",
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.CLICK_LOGIN, "Click the Submit button"),
+                html, new byte[]{1}, "bind failed", null, true);
+        Assert.assertFalse(
+                result.ok() && result.steps().get(0).locatorValue().toLowerCase().contains("/login"),
+                "heal must not click a login href for Submit, got " + (result.ok()
+                        ? result.steps().get(0).locatorValue() : result.reason()));
+    }
+
+    @Test
+    public void submitHealRejectsASelfPathHrefPick() {
+        String html = """
+                <body>
+                  <a id="already" href="https://web.example.com/reg/">I already have an account</a>
+                  <button id="websubmit" name="websubmit">Sign Up</button>
+                </body>
+                """;
+        LocalLlmClient picksSelfPath = new LocalLlmClient("http://127.0.0.1:9", "dummy") {
+            @Override
+            public String completeJson(String system, String user) {
+                List<DomCandidate> all = DomCandidateExtractor.extract(html);
+                String selfId = all.stream()
+                        .filter(c -> c.value().toLowerCase().contains("/reg/")
+                                || (c.label() != null && c.label().toLowerCase().contains("already")))
+                        .findFirst()
+                        .orElseThrow()
+                        .id();
+                return "{\"candidateId\":\"" + selfId + "\"}";
+            }
+
+            @Override
+            public String completeJson(String system, String user, byte[] imagePng) {
+                return completeJson(system, user);
+            }
+        };
+        CursorHealClient noCursor = new CursorHealClient(false, "unused", 1);
+        HealCascade cascade = new HealCascade(
+                new AuthoringService(picksSelfPath, new LocatorValidator()),
+                noCursor,
+                new FreeInventHealer(noCursor, null, new LocatorValidator(), "cursor", false),
+                false);
+        HealResult result = cascade.heal(
+                "TC_SUBMIT",
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.CLICK, "Click the Submit button"),
+                html, new byte[]{1}, "bind failed", null, true);
+        Assert.assertFalse(
+                result.ok() && result.steps().get(0).locatorValue().toLowerCase().contains("/reg/"),
+                "heal must not click the Excel path href for Submit, got " + (result.ok()
+                        ? result.steps().get(0).locatorValue() : result.reason()));
+    }
+
+    @Test
+    public void inventRecoveryReturnsRecoveryTier() {
+        LocalLlmClient llm = new LocalLlmClient("http://127.0.0.1:9", "dummy") {
+            @Override
+            public String completeJson(String system, String user) {
+                return "{\"candidateId\":\"not-present\"}";
+            }
+        };
+        String html = "<input id=\"email\" name=\"email\" value=\"filled\" />"
+                + "<button id=\"login\">Log in</button>";
+        CursorHealClient cursor = new CursorHealClient(false, "unused", 1) {
+            @Override
+            public String solve(String intentText, String failureReason, String shortlistTable,
+                                String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
+                                List<String> priorSteps) {
+                return "";
+            }
+
+            @Override
+            public String inventSteps(String intentText, String failureReason, List<String> priorSteps,
+                                      String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull) {
+                return """
+                        {"mode":"recovery","thought":"email filled","recoverySteps":[
+                          {"action":"clear","locatorStrategy":"id","locatorValue":"email","value":""},
+                          {"action":"click","locatorStrategy":"id","locatorValue":"login","value":""}
+                        ],"automationNotes":["Keep Leave-empty on step 2"]}
+                        """;
+            }
+        };
+        HealCascade cascade = new HealCascade(
+                new AuthoringService(llm, new LocatorValidator()),
+                cursor,
+                new FreeInventHealer(cursor, null, new LocatorValidator(), "cursor", true),
+                true);
+        HealResult result = cascade.heal(
+                "TC_RECOVERY",
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.ASSERT_VISIBLE,
+                        "Verify empty email validation"),
+                html, null, "assert failed", null, true, List.of());
+        Assert.assertTrue(result.ok(), result.reason());
+        Assert.assertEquals(result.tierUsed(), "recovery");
+        Assert.assertEquals(result.steps().size(), 2);
+        Assert.assertEquals(result.steps().get(0).action(), "clear");
+        Assert.assertFalse(result.automationNotes().isEmpty());
     }
 }

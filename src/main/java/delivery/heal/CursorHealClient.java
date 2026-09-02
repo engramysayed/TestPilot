@@ -83,6 +83,7 @@ public class CursorHealClient {
         req.put("shortlist", shortlistTable == null ? "" : shortlistTable);
         req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
         req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
+        putVisionAttempts(req);
         if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
             req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
         }
@@ -94,6 +95,34 @@ public class CursorHealClient {
             LogsManager.info("CURSOR_HEAL: Auto picked candidateId=" + id);
         }
         return id;
+    }
+
+    /**
+     * Escalation after the local pick failed: Cursor sees the shortlist, the HTML and the
+     * screenshot, and may answer with a row or with a locator of its own. Returns the raw JSON so
+     * both shapes go through the same validation as any other healed step.
+     */
+    public String solve(
+            String intentText,
+            String failureReason,
+            String shortlistTable,
+            String slimHtmlExcerpt,
+            Path screenshotPathOrNull,
+            List<String> priorSteps
+    ) {
+        JSONObject req = new JSONObject();
+        req.put("mode", "solve");
+        req.put("intent", intentText == null ? "" : intentText);
+        req.put("failureReason", failureReason == null ? "" : failureReason);
+        req.put("shortlist", shortlistTable == null ? "" : shortlistTable);
+        req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
+        req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
+        putVisionAttempts(req);
+        putExcelOpenPath(req, failureReason);
+        if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
+            req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
+        }
+        return invoke(req);
     }
 
     /** One-shot free-invent request. Returns the raw JSON response for validation by FreeInventHealer. */
@@ -110,10 +139,58 @@ public class CursorHealClient {
         req.put("failureReason", failureReason == null ? "" : failureReason);
         req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
         req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
+        putVisionAttempts(req);
+        putExcelOpenPath(req, failureReason);
         if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
             req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
         }
         return invoke(req);
+    }
+
+    public String inventSteps(
+            String intentText,
+            String failureReason,
+            List<String> priorSteps,
+            String slimHtmlExcerpt,
+            Path screenshotPathOrNull,
+            String excelOpenPath
+    ) {
+        String reason = failureReason == null ? "" : failureReason;
+        if (excelOpenPath != null && !excelOpenPath.isBlank()
+                && !reason.contains("Excel open-path")) {
+            reason = reason + "\nExcel open-path (only allowed navigation target): " + excelOpenPath.trim();
+        }
+        return inventSteps(intentText, reason, priorSteps, slimHtmlExcerpt, screenshotPathOrNull);
+    }
+
+    static void putVisionAttempts(JSONObject req) {
+        if (req == null) {
+            return;
+        }
+        List<String> lines = delivery.vision.VisionAttemptLog.linesForHeal();
+        if (!lines.isEmpty()) {
+            req.put("visionAttempts", lines);
+        }
+    }
+
+    static void putExcelOpenPath(JSONObject req, String failureReason) {
+        if (req == null) {
+            return;
+        }
+        String path = extractExcelOpenPath(failureReason);
+        if (!path.isBlank()) {
+            req.put("excelOpenPath", path);
+        }
+    }
+
+    static String extractExcelOpenPath(String failureReason) {
+        if (failureReason == null || failureReason.isBlank()) {
+            return "";
+        }
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("Excel open-path[^:]*:\\s*(\\S+)")
+                .matcher(failureReason);
+        return m.find() ? m.group(1).trim() : "";
     }
 
     private String invoke(JSONObject req) {

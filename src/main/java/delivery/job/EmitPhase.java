@@ -1,6 +1,7 @@
 package delivery.job;
 
 import delivery.codegen.CodeWriter;
+import delivery.codegen.DomainCatalogWriter;
 import delivery.codegen.PageClusterer;
 import delivery.codegen.ProvenStep;
 import delivery.excel.ManualTestCase;
@@ -28,10 +29,25 @@ import java.util.Set;
  * Phase 2: load IR drafts, cluster pages, write POM/tests, pack ZIP, persist locator map.
  */
 public class EmitPhase {
+    /** Fixed emit steps after prove: load, cluster, final revise slot, write, compile, static revise, zip. */
+    public static final int PROGRESS_UNITS = 7;
+
     private final JobProgressTracker progress;
+    private int proveBase;
+    private int emitStep;
 
     public EmitPhase(JobProgressTracker progress) {
         this.progress = progress == null ? new JobProgressTracker() : progress;
+    }
+
+    /** Package-visible for progress reserve tests. */
+    void bumpProgress(String message) {
+        if (emitStep == 0) {
+            proveBase = progress.current();
+        }
+        int jobTotal = progress.effectiveTotal(proveBase);
+        emitStep++;
+        progress.update(proveBase + emitStep, jobTotal, message);
     }
 
     public ConversionJobResult emit(
@@ -42,14 +58,16 @@ public class EmitPhase {
             String workFolder,
             String mode
     ) throws Exception {
-        progress.update(0, 1, "Phase2 emit: loading IR drafts");
+        proveBase = progress.current();
+        emitStep = 0;
+        bumpProgress("Phase2 emit: loading IR drafts");
         TcDraftStore draftStore = new TcDraftStore(workDir);
         List<TcDraft> drafts = draftStore.readAll();
         if (drafts.isEmpty()) {
             throw new IllegalStateException("Phase2 emit: no IR drafts under " + draftStore.irDir());
         }
 
-        progress.update(0, 1, "Phase2 emit: clustering pages");
+        bumpProgress("Phase2 emit: clustering pages");
         List<TcDraft> clustered = new ArrayList<>();
         for (TcDraft d : drafts) {
             clustered.add(PageClusterer.reclusterDraft(d));
@@ -58,8 +76,10 @@ public class EmitPhase {
         clustered = FinalRevisePhase.applyHonestyForClientDelivery(clustered, allCases, clientDelivery);
 
         FinalReviseResult reviseResult = FinalReviseResult.skipped(clustered);
+        bumpProgress(clientDelivery
+                ? "Phase2 emit: final revise (AgentRouter)"
+                : "Phase2 emit: final revise (skipped)");
         if (clientDelivery) {
-            progress.update(0, 1, "Phase2 emit: final revise (AgentRouter)");
             AgentRouterClient reviseClient = AgentRouterClient.fromConfigOrNull();
             reviseResult = new FinalRevisePhase(reviseClient)
                     .revise(clustered, allCases, projectDir, true);
@@ -81,8 +101,9 @@ public class EmitPhase {
             }
         }
 
-        progress.update(0, 1, "Phase2 emit: writing pages and tests");
+        bumpProgress("Phase2 emit: writing pages and tests");
         new CodeWriter(request.templateRoot().resolve("templates")).write(projectDir, toCodegen);
+        DomainCatalogWriter.write(projectDir, outcomes);
 
         FrameworkPackager packager = new FrameworkPackager();
         packager.writeScoreReport(projectDir, outcomes);
@@ -90,10 +111,10 @@ public class EmitPhase {
         appendHealMetrics(projectDir, clustered);
         packager.writeTargetConfig(projectDir, request.baseUrl(), request.username(), request.password());
 
-        progress.update(0, 1, "Phase2 emit: compile smoke check");
+        bumpProgress("Phase2 emit: compile smoke check");
         EmitCompileCheck.runIfEnabled(projectDir);
 
-        progress.update(0, 1, "Phase3 revise: static Excel vs emit check");
+        bumpProgress("Phase3 revise: static Excel vs emit check");
         new RevisePhase().revise(projectDir, clustered, allCases);
 
         JSONObject locatorMap = LocatorMapBuilder.build(clustered);
@@ -101,7 +122,7 @@ public class EmitPhase {
         Files.createDirectories(mapInProject.getParent());
         Files.writeString(mapInProject, locatorMap.toString(2));
 
-        ProjectStore store = new ProjectStore(request.storeRoot());
+        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl());
         new LocatorMapStore(store.projectRoot(request.projectId()).resolve("locator-map.json"))
                 .save(locatorMap);
 
@@ -121,7 +142,7 @@ public class EmitPhase {
         }
 
         Path zip = workDir.resolve("package.zip");
-        progress.update(0, 1, "Phase2 emit: packaging ZIP");
+        bumpProgress("Phase2 emit: packaging ZIP");
         packager.zip(projectDir, zip);
 
         TcDiffService diffService = new TcDiffService();
@@ -153,14 +174,15 @@ public class EmitPhase {
         lastJob.put("completedAt", java.time.Instant.now().toString());
         store.writeLastJob(request.projectId(), lastJob);
 
-        progress.update(1, 1, reviseResult.softBlocked()
+        int jobTotal = progress.effectiveTotal(proveBase);
+        progress.update(jobTotal, jobTotal, reviseResult.softBlocked()
                 ? "Phase2 emit complete (soft block — not client-ready)"
                 : "Phase2 emit complete");
         String message = reviseResult.ran() ? reviseResult.summaryMessage() : "ok";
         return new ConversionJobResult(zip, passed, todo, score, message, portalStatus, reviseVerdict);
     }
 
-    static TcOutcome toOutcome(TcDraft d) {
+    public static TcOutcome toOutcome(TcDraft d) {
         TcStatus status = switch (d.status()) {
             case PASSED, REUSED -> TcStatus.PASSED;
             case PARTIAL -> TcStatus.PARTIAL;

@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Generate')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell">
+    <div class="page-title">
+        <div>
+            <h1>Generate test cases</h1>
+            <p class="lede">Generate Keel-format CSV from user stories with local Ollama, or copy a prompt into any AI chat.</p>
+        </div>
+    </div>
+
+    <section class="panel">
+        <label>Project
+            <select id="project-select">
+                <option value="">— Loading projects —</option>
+            </select>
+        </label>
+        <p class="muted generate-project-hint">Keel uses the project <strong>name</strong> and <strong>base URL</strong> in the Ollama prompt so generated steps match your app. Downloaded CSV is tied to this project for Automate.</p>
+        <p id="project-err" class="error" hidden></p>
+        <p id="no-projects" class="muted" hidden>
+            No projects yet —
+            <a href="/projects">create one</a> to generate test cases.
+        </p>
+    </section>
+
+    <section class="panel" id="generate-workflow" hidden>
+        <div class="generate-primary">
+            <div class="generate-primary-head">
+                <div>
+                    <h2>Generate with Ollama</h2>
+                    <p class="panel-intro">Paste user stories or acceptance criteria. Keel assigns each case a <strong>KeelPath</strong> (AUTOMATE, EXECUTE, VISION_ONLY, or MANUAL). Saved to the project for Automate and Execute.</p>
+                </div>
+            </div>
+
+            <div class="generate-model-row">
+                <label for="generate-model-select">Ollama model
+                    <select id="generate-model-select" aria-describedby="generate-model-hint">
+                        <option value="">Loading models…</option>
+                    </select>
+                </label>
+                <p class="muted generate-option-hint" id="generate-model-hint">Used for Generate and bulk jobs. Default: Gemma 4.</p>
+            </div>
+
+            <div class="generate-model-row">
+                <label for="compare-model-b-select">Compare with (model B)
+                    <select id="compare-model-b-select" aria-describedby="compare-model-hint">
+                        <option value="">Loading models…</option>
+                    </select>
+                </label>
+                <p class="muted generate-option-hint" id="compare-model-hint">Optional second model for side-by-side counts — nothing is saved until you pick one.</p>
+            </div>
+
+            <label for="stories-input">Stories / acceptance criteria</label>
+            <textarea id="stories-input" rows="10" placeholder="As a shopper I want to add items to my cart so that I can check out…"></textarea>
+
+            <div class="generate-options">
+                <label class="generate-check">
+                    <input type="checkbox" id="review-pass"/>
+                    <span>Second pass — fix mistakes and add missing coverage (slower)</span>
+                </label>
+                <p class="muted generate-option-hint">Runs Ollama twice: first generates TCs, then asks the model to fix authoring mistakes and add only gaps vs your stories. Roughly doubles wait time. Keel also auto-repairs known empty-field TestData mistakes even when this is off.</p>
+            </div>
+
+            <div class="generate-actions">
+                <button type="button" class="button" id="generate-btn" disabled
+                        title="Queue a background generate job and open the status page. Respects Second pass checkbox. Safe for long Ollama runs.">Generate</button>
+                <button type="button" class="button btn-compare" id="compare-btn" disabled
+                        title="Run two models side by side, then pick which workbook to keep.">Compare two models</button>
+                <button type="button" class="button btn-all-in-one" id="run-pipeline-btn" disabled
+                        title="All in one: Generate with a second coverage pass (revise), then Automate, then Execute. Slower but more complete — confirm before starting.">All in one</button>
+                <span id="generate-status" class="generate-status" role="status" aria-live="polite"></span>
+            </div>
+            <p class="muted generate-option-hint" id="generate-actions-hint">
+                <strong>Generate</strong> always runs in the background and opens the status page (avoids browser timeouts on long Ollama runs).
+                <strong>All in one</strong> always Generate (with second coverage pass) → Automate → Execute — confirm carefully; watch stage links below.
+            </p>
+            <section class="pipeline-status panel" id="pipeline-status" hidden aria-live="polite">
+                <h3>Pipeline progress</h3>
+                <p class="muted" id="pipeline-status-summary">No pipeline running.</p>
+                <ul class="pipeline-stage-list" id="pipeline-stage-list"></ul>
+                <p class="muted" id="pipeline-status-hint">Results: generated workbook stays on Generate; Automate jobs open under Automate / Status; Execute runs open under Execute.</p>
+            </section>
+
+            <section class="generate-loading panel" id="generate-loading" hidden aria-live="polite" aria-busy="false">
+                <div class="generate-loading-head">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <div>
+                        <h3 id="generate-loading-title">Generating test cases…</h3>
+                        <p class="muted" id="generate-loading-detail">Calling Ollama — this usually takes 30 seconds to 2 minutes.</p>
+                    </div>
+                </div>
+                <div class="progress-track progress-track--indeterminate" id="generate-progress-track" aria-hidden="true">
+                    <div class="progress-fill progress-fill--indeterminate" id="generate-progress-bar"></div>
+                </div>
+                <p class="generate-loading-elapsed muted" id="generate-elapsed"></p>
+            </section>
+        </div>
+
+        <section class="generate-results" id="generate-results" hidden>
+            <div class="generate-results-head">
+                <h3>Preview</h3>
+                <div class="generate-counts" id="generate-counts"></div>
+            </div>
+
+            <div class="generate-filters">
+                <label>KeelPath
+                    <select id="keel-filter">
+                        <option value="">All paths</option>
+                        <option value="AUTOMATE">AUTOMATE</option>
+                        <option value="EXECUTE">EXECUTE</option>
+                        <option value="VISION_ONLY">VISION_ONLY</option>
+                        <option value="MANUAL">MANUAL</option>
+                    </select>
+                </label>
+            </div>
+            <p class="muted generate-option-hint" id="keelpath-help">
+                <strong>KeelPath</strong> is a label for later steps (saving the workbook only — it does not start a run).
+                <strong>Execute</strong> can run AUTOMATE / EXECUTE / VISION_ONLY (skips MANUAL only).
+                <strong>Automate</strong> builds framework code from AUTOMATE rows (skips EXECUTE / VISION_ONLY / MANUAL).
+                Click a row to edit all fields before Automate or Execute. KeelPath dropdown saves immediately; other fields save from the editor.
+                After changing a dropdown, still open Automate or Execute (or All in one) when you want a real run.
+            </p>
+
+            <div class="generate-table-wrap">
+                <table class="table generate-table" id="preview-table">
+                    <thead>
+                    <tr>
+                        <th>TC ID</th>
+                        <th>Title</th>
+                        <th>KeelPath</th>
+                        <th>Priority</th>
+                        <th>Tags</th>
+                    </tr>
+                    </thead>
+                    <tbody id="preview-body"></tbody>
+                </table>
+            </div>
+
+            <details class="panel-details generate-coverage" id="coverage-panel">
+                <summary>Coverage notes</summary>
+                <textarea id="coverage-notes" class="generate-coverage-text" rows="6"
+                          placeholder="Coverage notes from Generate/Import (editable in this session)"></textarea>
+                <p class="muted">Edits stay with this browser session’s result payload until you re-generate or re-import.</p>
+            </details>
+
+            <div class="ai-tip-actions">
+                <button type="button" class="button" id="download-csv-btn">Download CSV</button>
+                <a class="button ghost" id="open-automate" href="/automate">Open Automate</a>
+            </div>
+        </section>
+
+        <section class="generate-results" id="compare-results" hidden>
+            <div class="generate-results-head">
+                <h3>Model comparison</h3>
+                <p class="muted">Same stories, two AI models. Read the test cases side by side, then save the better one as this project’s generated workbook.</p>
+            </div>
+            <div class="compare-grid" id="compare-grid">
+                <div class="compare-pane good" id="compare-pane-a">
+                    <div class="compare-head">
+                        <h3 id="compare-title-a">Model A</h3>
+                        <div class="generate-counts" id="compare-counts-a"></div>
+                    </div>
+                    <p class="compare-summary" id="compare-summary-a"></p>
+                    <div class="compare-preview" id="compare-preview-a" aria-label="Model A preview rows"></div>
+                    <button type="button" class="button" id="save-compare-a-btn">Save model A</button>
+                </div>
+                <div class="compare-pane good" id="compare-pane-b">
+                    <div class="compare-head">
+                        <h3 id="compare-title-b">Model B</h3>
+                        <div class="generate-counts" id="compare-counts-b"></div>
+                    </div>
+                    <p class="compare-summary" id="compare-summary-b"></p>
+                    <div class="compare-preview" id="compare-preview-b" aria-label="Model B preview rows"></div>
+                    <button type="button" class="button" id="save-compare-b-btn">Save model B</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="generate-bulk" id="generate-bulk">
+            <div class="generate-primary-head">
+                <div>
+                    <h2>Bulk upload (queued)</h2>
+                    <p class="panel-intro">Upload a CSV of user stories. Keel processes them <strong>one-by-one</strong> in a background job queue — like Automate jobs.</p>
+                </div>
+            </div>
+
+            <div class="hint generate-format-hint">
+                <strong>Format:</strong> CSV with header <code>US_ID,Title,Story</code> — one row per user story.
+                <a href="/prompts/keel-user-stories-bulk-template.csv" download>Download template</a>
+            </div>
+
+            <label for="bulk-file">Bulk stories file (.csv)
+                <input type="file" id="bulk-file" accept=".csv,text/csv"/>
+            </label>
+
+            <div class="generate-options">
+                <label class="generate-check">
+                    <input type="checkbox" id="bulk-review-pass"/>
+                    <span>Second pass per story — fix mistakes and coverage (slower)</span>
+                </label>
+            </div>
+
+            <div class="generate-actions">
+                <button type="button" class="button" id="bulk-queue-btn" disabled>Queue bulk generate</button>
+                <span id="bulk-status" class="generate-status" role="status" aria-live="polite"></span>
+            </div>
+
+            <section class="generate-loading panel" id="bulk-loading" hidden aria-live="polite" aria-busy="false">
+                <div class="generate-loading-head">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <div>
+                        <h3 id="bulk-loading-title">Queuing bulk job…</h3>
+                        <p class="muted" id="bulk-loading-detail">Uploading your CSV and starting the background queue.</p>
+                    </div>
+                </div>
+                <div class="progress-track progress-track--indeterminate" aria-hidden="true">
+                    <div class="progress-fill progress-fill--indeterminate"></div>
+                </div>
+            </section>
+
+            <section class="generate-batch-jobs" id="batch-jobs-panel" hidden>
+                <h3>Recent bulk jobs</h3>
+                <table class="table" id="batch-jobs-table">
+                    <thead>
+                    <tr>
+                        <th>Job</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>TCs</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody id="batch-jobs-body"></tbody>
+                </table>
+            </section>
+        </section>
+
+        <section class="generate-import" id="generate-import">
+            <div class="generate-primary-head">
+                <div>
+                    <h2>Paste from external AI</h2>
+                    <p class="panel-intro">Paste CSV or JSON from ChatGPT, Claude, Cursor, or any AI. Keel detects the format and saves test cases to this project for Automate and Execute.</p>
+                </div>
+            </div>
+
+            <label for="import-raw">AI output (CSV or JSON)</label>
+            <textarea id="import-raw" rows="10" placeholder="Paste CSV or JSON test cases here…"></textarea>
+
+            <div class="generate-actions">
+                <button type="button" class="button" id="import-btn" disabled>Import into project</button>
+                <span id="import-status" class="generate-status" role="status" aria-live="polite"></span>
+            </div>
+        </section>
+
+        <details class="panel-details generate-fallback">
+            <summary>Copy-prompt workflow (external AI)</summary>
+            <ol class="guide-howto">
+                <li>Click <strong>Copy prompt</strong> (includes your project's name and base URL).</li>
+                <li>Paste into any AI chat (ChatGPT, Claude, Cursor, etc.).</li>
+                <li>Paste <strong>one batch</strong> of user stories (about <strong>5–15</strong> cases worth).</li>
+                <li>Copy the AI's <strong>CSV or JSON</strong> output and paste it into <strong>Import into project</strong> above.</li>
+            </ol>
+            <div class="ai-prompt-card">
+                <div class="ai-prompt-card-head">
+                    <h3>Prompt</h3>
+                    <button type="button" class="button ghost" id="generate-copy-btn" disabled>Copy prompt</button>
+                </div>
+                <pre id="generate-prompt-preview" class="ai-prompt-preview" aria-live="polite">Loading prompt…</pre>
+                <p id="generate-prompt-status" class="ai-prompt-status" role="status"></p>
+            </div>
+        </details>
+    </section>
+</main>
+</div>
+
+<div id="tc-edit-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="tc-edit-title">
+    <div class="modal-card tc-edit-modal-card">
+        <h3 id="tc-edit-title">Edit test case</h3>
+        <p id="tc-edit-error" class="error hidden" role="alert"></p>
+        <form id="tc-edit-form" class="tc-edit-form" onsubmit="return false;">
+            <label>TC ID
+                <input type="text" id="tc-edit-id" class="mono" readonly aria-readonly="true"/>
+            </label>
+            <label>Title
+                <input type="text" id="tc-edit-title-field"/>
+            </label>
+            <label>Preconditions
+                <input type="text" id="tc-edit-preconditions"/>
+            </label>
+            <div class="tc-edit-grid-block">
+                <div class="tc-edit-grid-head">
+                    <span>Steps × Test data</span>
+                    <button type="button" class="button ghost small" id="tc-edit-add-row">Add row</button>
+                </div>
+                <div class="tc-edit-grid-scroll">
+                    <table class="table tc-edit-step-grid" id="tc-edit-step-grid">
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Step</th>
+                            <th>Test data</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody id="tc-edit-step-body"></tbody>
+                    </table>
+                </div>
+                <p id="tc-edit-grid-fallback" class="muted hidden">Could not parse numbered steps — editing as free text.</p>
+                <label id="tc-edit-steps-label" class="hidden">Steps
+                    <textarea id="tc-edit-steps" rows="6"></textarea>
+                </label>
+                <label id="tc-edit-testdata-label" class="hidden">Test data
+                    <textarea id="tc-edit-testdata" rows="3"></textarea>
+                </label>
+            </div>
+            <label>Expected result
+                <textarea id="tc-edit-expected" rows="4"></textarea>
+            </label>
+            <div class="tc-edit-inline">
+                <label>Priority
+                    <input type="text" id="tc-edit-priority"/>
+                </label>
+                <label>Tags
+                    <input type="text" id="tc-edit-tags"/>
+                </label>
+            </div>
+            <label>Visual assertion
+                <input type="text" id="tc-edit-visual"/>
+            </label>
+            <label>KeelPath
+                <select id="tc-edit-keelpath">
+                    <option value="AUTOMATE">AUTOMATE</option>
+                    <option value="EXECUTE">EXECUTE</option>
+                    <option value="VISION_ONLY">VISION_ONLY</option>
+                    <option value="MANUAL">MANUAL</option>
+                </select>
+            </label>
+        </form>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="tc-edit-cancel">Cancel</button>
+            <button type="button" class="button" id="tc-edit-save">Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+    const STORAGE_KEY = 'keel.generateProjectId';
+    const MODEL_STORAGE_KEY = 'keel.generateModel';
+    const PROMPT_URL = '/prompts/keel-tc-generate-from-stories-to-json.txt';
+
+    const projectSel = document.getElementById('project-select');
+    const projectErr = document.getElementById('project-err');
+    const noProjects = document.getElementById('no-projects');
+    const workflow = document.getElementById('generate-workflow');
+    const preview = document.getElementById('generate-prompt-preview');
+    const copyBtn = document.getElementById('generate-copy-btn');
+    const promptStatusEl = document.getElementById('generate-prompt-status');
+    const openAutomate = document.getElementById('open-automate');
+    const storiesInput = document.getElementById('stories-input');
+    const reviewPass = document.getElementById('review-pass');
+    const generateBtn = document.getElementById('generate-btn');
+    const runPipelineBtn = document.getElementById('run-pipeline-btn');
+    const pipelineStatusPanel = document.getElementById('pipeline-status');
+    const pipelineStatusSummary = document.getElementById('pipeline-status-summary');
+    const pipelineStageList = document.getElementById('pipeline-stage-list');
+    let pipelinePollTimer = null;
+    let activePipelineId = null;
+    const generateStatus = document.getElementById('generate-status');
+    const resultsSection = document.getElementById('generate-results');
+    const previewBody = document.getElementById('preview-body');
+    const keelFilter = document.getElementById('keel-filter');
+    const countsEl = document.getElementById('generate-counts');
+    const coverageNotes = document.getElementById('coverage-notes');
+    const downloadCsvBtn = document.getElementById('download-csv-btn');
+    const bulkFile = document.getElementById('bulk-file');
+    const bulkReviewPass = document.getElementById('bulk-review-pass');
+    const bulkQueueBtn = document.getElementById('bulk-queue-btn');
+    const bulkStatus = document.getElementById('bulk-status');
+    const batchJobsPanel = document.getElementById('batch-jobs-panel');
+    const batchJobsBody = document.getElementById('batch-jobs-body');
+    const generateLoading = document.getElementById('generate-loading');
+    const generateLoadingTitle = document.getElementById('generate-loading-title');
+    const generateLoadingDetail = document.getElementById('generate-loading-detail');
+    const generateElapsed = document.getElementById('generate-elapsed');
+    const bulkLoading = document.getElementById('bulk-loading');
+    const bulkLoadingTitle = document.getElementById('bulk-loading-title');
+    const bulkLoadingDetail = document.getElementById('bulk-loading-detail');
+    const generateModelSelect = document.getElementById('generate-model-select');
+    const compareModelBSelect = document.getElementById('compare-model-b-select');
+    const compareBtn = document.getElementById('compare-btn');
+    const compareResults = document.getElementById('compare-results');
+    const compareCountsA = document.getElementById('compare-counts-a');
+    const compareCountsB = document.getElementById('compare-counts-b');
+    const compareTitleA = document.getElementById('compare-title-a');
+    const compareTitleB = document.getElementById('compare-title-b');
+    const compareSummaryA = document.getElementById('compare-summary-a');
+    const compareSummaryB = document.getElementById('compare-summary-b');
+    const comparePreviewA = document.getElementById('compare-preview-a');
+    const comparePreviewB = document.getElementById('compare-preview-b');
+    const saveCompareABtn = document.getElementById('save-compare-a-btn');
+    const saveCompareBBtn = document.getElementById('save-compare-b-btn');
+    const importRaw = document.getElementById('import-raw');
+    const importBtn = document.getElementById('import-btn');
+    const importStatus = document.getElementById('import-status');
+    const tcEditModal = document.getElementById('tc-edit-modal');
+    const tcEditError = document.getElementById('tc-edit-error');
+    const tcEditId = document.getElementById('tc-edit-id');
+    const tcEditTitleField = document.getElementById('tc-edit-title-field');
+    const tcEditPreconditions = document.getElementById('tc-edit-preconditions');
+    const tcEditSteps = document.getElementById('tc-edit-steps');
+    const tcEditExpected = document.getElementById('tc-edit-expected');
+    const tcEditTestdata = document.getElementById('tc-edit-testdata');
+    const tcEditPriority = document.getElementById('tc-edit-priority');
+    const tcEditTags = document.getElementById('tc-edit-tags');
+    const tcEditVisual = document.getElementById('tc-edit-visual');
+    const tcEditKeelpath = document.getElementById('tc-edit-keelpath');
+    const tcEditCancel = document.getElementById('tc-edit-cancel');
+    const tcEditSave = document.getElementById('tc-edit-save');
+    const tcEditStepBody = document.getElementById('tc-edit-step-body');
+    const tcEditAddRow = document.getElementById('tc-edit-add-row');
+    const tcEditGridFallback = document.getElementById('tc-edit-grid-fallback');
+    const tcEditStepsLabel = document.getElementById('tc-edit-steps-label');
+    const tcEditTestdataLabel = document.getElementById('tc-edit-testdata-label');
+    let tcEditUseGrid = true;
+
+    let promptText = '';
+    let projects = [];
+    let selectedProject = null;
+    let lastResult = null;
+    let lastCompareResult = null;
+    let generateModels = [];
+    let defaultGenerateModel = '';
+    let generateElapsedTimer = null;
+    let generateStartedAt = 0;
+
+    function setGenerateStatus(msg, isError) {
+        generateStatus.textContent = msg || '';
+        generateStatus.classList.toggle('is-error', !!isError);
+        generateStatus.classList.toggle('is-busy', !isError && !!msg);
+    }
+
+    function formatElapsed(seconds) {
+        if (seconds < 60) return seconds + 's';
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return mins + 'm ' + secs + 's';
+    }
+
+    function stopGenerateElapsed() {
+        if (generateElapsedTimer) {
+            clearInterval(generateElapsedTimer);
+            generateElapsedTimer = null;
+        }
+    }
+
+    function showGenerateLoading(active, title, detail) {
+        generateLoading.hidden = !active;
+        generateLoading.setAttribute('aria-busy', active ? 'true' : 'false');
+        if (title) generateLoadingTitle.textContent = title;
+        if (detail) generateLoadingDetail.textContent = detail;
+        if (active) {
+            generateStartedAt = Date.now();
+            stopGenerateElapsed();
+            generateElapsed.textContent = 'Elapsed: 0s';
+            generateElapsedTimer = setInterval(function () {
+                const secs = Math.floor((Date.now() - generateStartedAt) / 1000);
+                generateElapsed.textContent = 'Elapsed: ' + formatElapsed(secs);
+            }, 1000);
+            generateLoading.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            stopGenerateElapsed();
+            generateElapsed.textContent = '';
+        }
+    }
+
+    function showBulkLoading(active, title, detail) {
+        bulkLoading.hidden = !active;
+        bulkLoading.setAttribute('aria-busy', active ? 'true' : 'false');
+        if (title) bulkLoadingTitle.textContent = title;
+        if (detail) bulkLoadingDetail.textContent = detail;
+        if (active) {
+            bulkLoading.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    function selectedCompareModelB() {
+        const value = compareModelBSelect && compareModelBSelect.value
+            ? compareModelBSelect.value.trim()
+            : '';
+        if (value) return value;
+        if (generateModels.length > 1) {
+            const primary = selectedGenerateModel();
+            const alt = generateModels.find(function (m) { return m !== primary; });
+            return alt || generateModels[1] || defaultGenerateModel || '';
+        }
+        return defaultGenerateModel || '';
+    }
+
+    function renderCompareModelB(config) {
+        if (!compareModelBSelect) return;
+        compareModelBSelect.innerHTML = '';
+        const models = Array.isArray(config.models) ? config.models : [];
+        if (!models.length) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'No models configured';
+            compareModelBSelect.appendChild(opt);
+            compareModelBSelect.disabled = true;
+            return;
+        }
+        models.forEach(function (model) {
+            const opt = document.createElement('option');
+            opt.value = model;
+            opt.textContent = model;
+            compareModelBSelect.appendChild(opt);
+        });
+        const primary = selectedGenerateModel();
+        const alt = models.find(function (m) { return m !== primary; }) || models[0];
+        compareModelBSelect.value = alt;
+        compareModelBSelect.disabled = false;
+    }
+
+    function selectedGenerateModel() {
+        const value = generateModelSelect && generateModelSelect.value
+            ? generateModelSelect.value.trim()
+            : '';
+        return value || defaultGenerateModel || '';
+    }
+
+    function renderGenerateModels(config) {
+        generateModels = Array.isArray(config.models) ? config.models : [];
+        defaultGenerateModel = config.defaultModel || generateModels[0] || '';
+        generateModelSelect.innerHTML = '';
+        if (!generateModels.length) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'No models configured';
+            generateModelSelect.appendChild(opt);
+            generateModelSelect.disabled = true;
+            return;
+        }
+        generateModels.forEach(function (model) {
+            const opt = document.createElement('option');
+            opt.value = model;
+            opt.textContent = model;
+            generateModelSelect.appendChild(opt);
+        });
+        const saved = sessionStorage.getItem(MODEL_STORAGE_KEY);
+        const pick = saved && generateModels.indexOf(saved) >= 0 ? saved : defaultGenerateModel;
+        generateModelSelect.value = pick;
+        generateModelSelect.disabled = false;
+        renderCompareModelB(config);
+    }
+
+    async function loadGenerateModels() {
+        try {
+            const res = await fetch('/api/generate/models', {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            if (!res.ok) throw new Error('Could not load model list');
+            renderGenerateModels(await res.json());
+        } catch (err) {
+            generateModelSelect.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.value = 'gemma4:e2b';
+            opt.textContent = 'gemma4:e2b';
+            generateModelSelect.appendChild(opt);
+            defaultGenerateModel = 'gemma4:e2b';
+            generateModels = ['gemma4:e2b'];
+            renderCompareModelB({ models: generateModels, defaultModel: defaultGenerateModel });
+        }
+    }
+
+    function setPromptStatus(msg, isError) {
+        promptStatusEl.textContent = msg || '';
+        promptStatusEl.classList.toggle('is-error', !!isError);
+    }
+
+    function setBulkStatus(msg, isError) {
+        bulkStatus.textContent = msg || '';
+        bulkStatus.classList.toggle('is-error', !!isError);
+        bulkStatus.classList.toggle('is-busy', !isError && !!msg);
+    }
+
+    function setImportStatus(msg, isError) {
+        importStatus.textContent = msg || '';
+        importStatus.classList.toggle('is-error', !!isError);
+        importStatus.classList.toggle('is-busy', !isError && !!msg);
+    }
+
+    function updateBulkControls() {
+        bulkQueueBtn.disabled = !projectSel.value || !bulkFile.files || !bulkFile.files.length;
+    }
+
+    function projectContextBlock(project) {
+        if (!project) return '';
+        const name = (project.name || project.projectId || '').trim();
+        const baseUrl = (project.baseUrl || '').trim();
+        return '\n\nPROJECT CONTEXT\nName: ' + name
+            + '\nBase URL: ' + (baseUrl || '(not set)');
+    }
+
+    function fullPromptText() {
+        if (!promptText) return '';
+        return promptText + projectContextBlock(selectedProject);
+    }
+
+    function updatePreview() {
+        const full = fullPromptText();
+        preview.textContent = full || 'Loading prompt…';
+        copyBtn.disabled = !full;
+        generateBtn.disabled = !projectSel.value || !storiesInput.value.trim();
+        compareBtn.disabled = !projectSel.value || !storiesInput.value.trim()
+            || !selectedGenerateModel() || !selectedCompareModelB();
+        runPipelineBtn.disabled = !projectSel.value;
+        updateBulkControls();
+        importBtn.disabled = !projectSel.value || !importRaw.value.trim();
+    }
+
+    function updateAutomateLink(projectId) {
+        const q = projectId ? '?projectId=' + encodeURIComponent(projectId) : '';
+        openAutomate.href = '/automate' + q;
+    }
+
+    function findProject(projectId) {
+        return projects.find(function (p) { return p.projectId === projectId; }) || null;
+    }
+
+    function keelBadgeClass(path) {
+        const p = (path || '').toUpperCase();
+        if (p === 'AUTOMATE') return 'keel-badge keel-badge--automate';
+        if (p === 'EXECUTE') return 'keel-badge keel-badge--execute';
+        if (p === 'VISION_ONLY') return 'keel-badge keel-badge--vision';
+        if (p === 'MANUAL') return 'keel-badge keel-badge--manual';
+        return 'keel-badge keel-badge--manual';
+    }
+
+    function previewCounts(payload) {
+        if (payload && payload.keelPathCounts) return payload.keelPathCounts;
+        return (payload && payload.counts) || {};
+    }
+
+    function renderCounts(counts) {
+        countsEl.innerHTML = '';
+        if (!counts) return;
+        Object.keys(counts).sort().forEach(function (key) {
+            if (!counts[key]) return;
+            const chip = document.createElement('span');
+            chip.className = keelBadgeClass(key) + ' generate-count-chip';
+            chip.textContent = key + ' · ' + counts[key];
+            countsEl.appendChild(chip);
+        });
+    }
+
+    function keelPathOptions(current) {
+        const paths = ['AUTOMATE', 'EXECUTE', 'VISION_ONLY', 'MANUAL'];
+        const cur = (current || '').toUpperCase();
+        return paths.map(function (p) {
+            const selected = cur === p ? ' selected' : '';
+            return '<option value="' + p + '"' + selected + '>' + p + '</option>';
+        }).join('');
+    }
+
+    function renderTable(rows) {
+        const filter = (keelFilter.value || '').toUpperCase();
+        previewBody.innerHTML = '';
+        (rows || []).forEach(function (row) {
+            const path = (row.keelPath || '').toUpperCase();
+            if (filter && path !== filter) return;
+            const tr = document.createElement('tr');
+            tr.className = 'preview-row-clickable';
+            tr.setAttribute('data-tc-id', row.tcId || '');
+            tr.title = 'Click to edit ' + (row.tcId || 'test case');
+            tr.innerHTML = '<td class="mono">' + escapeHtml(row.tcId || '') + '</td>'
+                + '<td>' + escapeHtml(row.title || '') + '</td>'
+                + '<td><select class="keel-path-select ' + keelBadgeClass(path) + '" data-tc-id="'
+                + escapeHtml(row.tcId || '') + '" aria-label="KeelPath for ' + escapeHtml(row.tcId || '') + '">'
+                + keelPathOptions(path)
+                + '</select></td>'
+                + '<td>' + escapeHtml(row.priority || '') + '</td>'
+                + '<td class="clip">' + escapeHtml(row.tags || '') + '</td>';
+            previewBody.appendChild(tr);
+        });
+        if (!previewBody.children.length) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="5" class="muted">No rows match this filter.</td>';
+            previewBody.appendChild(tr);
+        }
+    }
+
+    function findRowByTcId(tcId) {
+        if (!lastResult || !lastResult.rows || !tcId) return null;
+        return lastResult.rows.find(function (row) { return row.tcId === tcId; }) || null;
+    }
+
+    function setTcEditError(msg) {
+        if (!msg) {
+            tcEditError.hidden = true;
+            tcEditError.textContent = '';
+            return;
+        }
+        tcEditError.hidden = false;
+        tcEditError.textContent = msg;
+    }
+
+    function closeTcEditor() {
+        tcEditModal.classList.add('hidden');
+        setTcEditError('');
+    }
+
+    function parseNumberedSteps(stepsText) {
+        const lines = String(stepsText || '').split(/\r?\n/);
+        const out = [];
+        for (let i = 0; i < lines.length; i++) {
+            const m = lines[i].trim().match(/^\d+\.\s*(.+)$/);
+            if (m) out.push(m[1].trim());
+        }
+        return out;
+    }
+
+    function splitTestDataLines(testData, stepCount) {
+        const raw = String(testData || '').split(/\r?\n/);
+        while (raw.length < stepCount) raw.push('');
+        return raw.slice(0, Math.max(stepCount, raw.length));
+    }
+
+    function addStepGridRow(stepText, dataText) {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+            '<td class="tc-edit-row-num"></td>' +
+            '<td><textarea class="tc-edit-step-text" rows="2"></textarea></td>' +
+            '<td><textarea class="tc-edit-data-text" rows="2"></textarea></td>' +
+            '<td><button type="button" class="button ghost small tc-edit-remove-row" title="Remove row">×</button></td>';
+        tr.querySelector('.tc-edit-step-text').value = stepText || '';
+        tr.querySelector('.tc-edit-data-text').value = dataText || '';
+        tcEditStepBody.appendChild(tr);
+        renumberStepGrid();
+    }
+
+    function renumberStepGrid() {
+        const rows = tcEditStepBody.querySelectorAll('tr');
+        rows.forEach(function (tr, idx) {
+            const num = tr.querySelector('.tc-edit-row-num');
+            if (num) num.textContent = String(idx + 1);
+        });
+    }
+
+    function assembleStepsAndDataFromGrid() {
+        const rows = tcEditStepBody.querySelectorAll('tr');
+        const steps = [];
+        const data = [];
+        rows.forEach(function (tr, idx) {
+            const step = (tr.querySelector('.tc-edit-step-text') || {}).value || '';
+            const datum = (tr.querySelector('.tc-edit-data-text') || {}).value || '';
+            steps.push((idx + 1) + '. ' + step.trim());
+            data.push(datum);
+        });
+        return { steps: steps.join('\n'), testData: data.join('\n') };
+    }
+
+    function setStepEditorMode(useGrid) {
+        tcEditUseGrid = !!useGrid;
+        const gridScroll = document.querySelector('.tc-edit-grid-scroll');
+        const gridHead = document.querySelector('.tc-edit-grid-head');
+        if (gridScroll) gridScroll.classList.toggle('hidden', !tcEditUseGrid);
+        if (gridHead) gridHead.classList.toggle('hidden', !tcEditUseGrid);
+        tcEditGridFallback.classList.toggle('hidden', tcEditUseGrid);
+        tcEditStepsLabel.classList.toggle('hidden', tcEditUseGrid);
+        tcEditTestdataLabel.classList.toggle('hidden', tcEditUseGrid);
+        if (tcEditAddRow) tcEditAddRow.classList.toggle('hidden', !tcEditUseGrid);
+    }
+
+    function openTcEditor(row) {
+        if (!row) return;
+        tcEditId.value = row.tcId || '';
+        tcEditTitleField.value = row.title || '';
+        tcEditPreconditions.value = row.preconditions || '';
+        tcEditExpected.value = row.expectedResult || '';
+        tcEditPriority.value = row.priority || '';
+        tcEditTags.value = row.tags || '';
+        tcEditVisual.value = row.visualAssertion || '';
+        tcEditKeelpath.value = (row.keelPath || 'EXECUTE').toUpperCase();
+        const parsed = parseNumberedSteps(row.steps || '');
+        tcEditStepBody.innerHTML = '';
+        if (parsed.length > 0) {
+            const dataLines = splitTestDataLines(row.testData || '', parsed.length);
+            parsed.forEach(function (step, i) {
+                addStepGridRow(step, dataLines[i] || '');
+            });
+            setStepEditorMode(true);
+            tcEditSteps.value = '';
+            tcEditTestdata.value = '';
+        } else {
+            tcEditSteps.value = row.steps || '';
+            tcEditTestdata.value = row.testData || '';
+            setStepEditorMode(false);
+        }
+        setTcEditError('');
+        tcEditModal.classList.remove('hidden');
+        tcEditTitleField.focus();
+    }
+
+    async function saveTcEditor() {
+        const projectId = projectSel.value;
+        const tcId = tcEditId.value.trim();
+        if (!projectId || !tcId) {
+            setTcEditError('Select a project and test case first.');
+            return;
+        }
+        let stepsVal = tcEditSteps.value;
+        let dataVal = tcEditTestdata.value;
+        if (tcEditUseGrid) {
+            const assembled = assembleStepsAndDataFromGrid();
+            stepsVal = assembled.steps;
+            dataVal = assembled.testData;
+        }
+        tcEditSave.disabled = true;
+        setTcEditError('');
+        try {
+            const payload = {
+                title: tcEditTitleField.value,
+                preconditions: tcEditPreconditions.value,
+                steps: stepsVal,
+                expectedResult: tcEditExpected.value,
+                testData: dataVal,
+                priority: tcEditPriority.value,
+                tags: tcEditTags.value,
+                visualAssertion: tcEditVisual.value,
+                keelPath: tcEditKeelpath.value
+            };
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
+                + '/generated-workbook/cases/' + encodeURIComponent(tcId), {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify(payload)
+            });
+            const body = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setTcEditError(body.message || body.error || ('Save failed (' + res.status + ')'));
+                return;
+            }
+            if (lastResult) {
+                if (body.csv) lastResult.csv = body.csv;
+                if (body.row && lastResult.rows) {
+                    const idx = lastResult.rows.findIndex(function (r) { return r.tcId === tcId; });
+                    if (idx >= 0) {
+                        lastResult.rows[idx] = body.row;
+                    }
+                }
+            }
+            renderCounts(body.keelPathCounts || previewCounts(body));
+            renderTable(lastResult ? lastResult.rows || [] : []);
+            closeTcEditor();
+            setGenerateStatus('Saved edits for ' + tcId + '.', false);
+        } catch (err) {
+            setTcEditError(err && err.message ? err.message : 'Network error');
+        } finally {
+            tcEditSave.disabled = false;
+        }
+    }
+
+    async function onKeelPathChange(selectEl) {
+        const tcId = selectEl.getAttribute('data-tc-id');
+        const keelPath = selectEl.value;
+        const projectId = projectSel.value;
+        if (!projectId || !tcId) return;
+
+        const previous = selectEl.dataset.previousKeelPath || '';
+        selectEl.disabled = true;
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/rows', {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify({ rows: [{ tcId: tcId, keelPath: keelPath }] })
+            });
+            const body = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                selectEl.value = previous || selectEl.querySelector('option[selected]')?.value || 'EXECUTE';
+                setGenerateStatus(body.message || body.error || ('KeelPath update failed (' + res.status + ')'), true);
+                return;
+            }
+            if (lastResult) {
+                if (body.csv) lastResult.csv = body.csv;
+                if (lastResult.rows) {
+                    lastResult.rows.forEach(function (row) {
+                        if (row.tcId === tcId) row.keelPath = keelPath;
+                    });
+                }
+            }
+            selectEl.className = 'keel-path-select ' + keelBadgeClass(keelPath);
+            selectEl.dataset.previousKeelPath = keelPath;
+            renderCounts(body.keelPathCounts || {});
+            setGenerateStatus('KeelPath updated for ' + tcId + '.', false);
+        } catch (err) {
+            selectEl.value = previous || 'EXECUTE';
+            setGenerateStatus(err && err.message ? err.message : 'Network error', true);
+        } finally {
+            selectEl.disabled = false;
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function truncatePreviewText(value, maxLen) {
+        const text = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+        if (!text) return '';
+        if (text.length <= maxLen) return text;
+        return text.slice(0, maxLen - 1) + '…';
+    }
+
+    function renderComparePreview(container, rows, maxRows) {
+        if (!container) return;
+        container.innerHTML = '';
+        const limit = maxRows || 5;
+        const all = rows || [];
+        const slice = all.slice(0, limit);
+        if (!slice.length) {
+            const empty = document.createElement('p');
+            empty.className = 'muted compare-preview-empty';
+            empty.textContent = 'No test cases from this model.';
+            container.appendChild(empty);
+            return;
+        }
+        slice.forEach(function (row) {
+            const card = document.createElement('article');
+            card.className = 'compare-tc-card';
+            const path = (row.keelPath || '').trim() || 'BLANK';
+            const steps = truncatePreviewText(row.steps, 220);
+            const expected = truncatePreviewText(row.expectedResult, 140);
+            card.innerHTML =
+                '<header class="compare-tc-card-head">'
+                + '<span class="mono compare-tc-id">' + escapeHtml(row.tcId || '—') + '</span>'
+                + '<span class="' + keelBadgeClass(path) + '">' + escapeHtml(path) + '</span>'
+                + '</header>'
+                + '<h4 class="compare-tc-title">' + escapeHtml(row.title || '(no title)') + '</h4>'
+                + (steps
+                    ? '<p class="compare-tc-label">Steps</p><p class="compare-tc-body">' + escapeHtml(steps) + '</p>'
+                    : '')
+                + (expected
+                    ? '<p class="compare-tc-label">Expected</p><p class="compare-tc-body">' + escapeHtml(expected) + '</p>'
+                    : '');
+            container.appendChild(card);
+        });
+        if (all.length > limit) {
+            const more = document.createElement('p');
+            more.className = 'muted compare-preview-more';
+            more.textContent = '… and ' + (all.length - limit) + ' more (save to see the full workbook)';
+            container.appendChild(more);
+        }
+    }
+
+    function showCompareResult(payload) {
+        lastCompareResult = payload;
+        compareResults.hidden = false;
+        saveCompareABtn.disabled = false;
+        saveCompareBBtn.disabled = false;
+        const sideA = payload.modelA || {};
+        const sideB = payload.modelB || {};
+        compareTitleA.textContent = sideA.model || 'Model A';
+        compareTitleB.textContent = sideB.model || 'Model B';
+        renderCountsInto(compareCountsA, previewCounts(sideA));
+        renderCountsInto(compareCountsB, previewCounts(sideB));
+        const rowsA = sideA.rows || [];
+        const rowsB = sideB.rows || [];
+        compareSummaryA.textContent = rowsA.length + ' test case' + (rowsA.length === 1 ? '' : 's');
+        compareSummaryB.textContent = rowsB.length + ' test case' + (rowsB.length === 1 ? '' : 's');
+        renderComparePreview(comparePreviewA, rowsA);
+        renderComparePreview(comparePreviewB, rowsB);
+        setGenerateStatus('Compared ' + (sideA.model || 'A') + ' vs ' + (sideB.model || 'B') + '.', false);
+        compareResults.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function renderCountsInto(container, counts) {
+        container.innerHTML = '';
+        if (!counts) return;
+        Object.keys(counts).sort().forEach(function (key) {
+            if (!counts[key]) return;
+            const chip = document.createElement('span');
+            chip.className = keelBadgeClass(key) + ' generate-count-chip';
+            chip.textContent = key + ' · ' + counts[key];
+            container.appendChild(chip);
+        });
+    }
+
+    async function runCompare() {
+        const projectId = projectSel.value;
+        const stories = storiesInput.value.trim();
+        const modelA = selectedGenerateModel();
+        const modelB = selectedCompareModelB();
+        if (!projectId || !stories || !modelA || !modelB) {
+            setGenerateStatus('Select a project, stories, and both models first.', true);
+            return;
+        }
+        if (modelA === modelB) {
+            setGenerateStatus('Pick two different models to compare.', true);
+            return;
+        }
+        compareBtn.disabled = true;
+        generateBtn.disabled = true;
+        storiesInput.disabled = true;
+        compareResults.hidden = true;
+        resultsSection.hidden = true;
+        setGenerateStatus('Queuing comparison job…', false);
+        showGenerateLoading(true, 'Queuing comparison…',
+            'Starting background compare with ' + modelA + ' and ' + modelB + ' — opening status page when ready.');
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generate/compare-async', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify({
+                    stories: stories,
+                    modelA: modelA,
+                    modelB: modelB
+                })
+            });
+            const body = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setGenerateStatus(body.message || body.error || ('Compare failed (' + res.status + ')'), true);
+                showGenerateLoading(false);
+                return;
+            }
+            setGenerateStatus('Queued — opening live progress…', false);
+            if (body.statusUrl) {
+                window.location.href = body.statusUrl;
+            } else if (body.jobId) {
+                window.location.href = '/status?jobId=' + encodeURIComponent(body.jobId);
+            }
+        } catch (err) {
+            setGenerateStatus(err && err.message ? err.message : 'Network error', true);
+            showGenerateLoading(false);
+        } finally {
+            storiesInput.disabled = false;
+            updatePreview();
+        }
+    }
+
+    async function loadCompareFromJob(jobId) {
+        showGenerateLoading(true, 'Loading comparison…', 'Fetching results from background job…');
+        try {
+            const res = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/compare-result', {
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Accept': 'application/json' }, API_HEADERS)
+            });
+            const body = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setGenerateStatus(body.message || body.error || ('Could not load comparison (' + res.status + ')'), true);
+                return;
+            }
+            showCompareResult(body);
+            setGenerateStatus('Comparison loaded — pick model A or B to save.', false);
+        } catch (err) {
+            setGenerateStatus(err && err.message ? err.message : 'Network error', true);
+        } finally {
+            showGenerateLoading(false);
+            updatePreview();
+        }
+    }
+
+    async function saveCompareSide(sideKey) {
+        const projectId = projectSel.value;
+        if (!projectId || !lastCompareResult) {
+            setGenerateStatus('Run a compare first.', true);
+            return;
+        }
+        const side = sideKey === 'A' ? lastCompareResult.modelA : lastCompareResult.modelB;
+        if (!side || !side.csv) {
+            setGenerateStatus('Nothing to save for model ' + sideKey + '.', true);
+            return;
+        }
+        const saveBtn = sideKey === 'A' ? saveCompareABtn : saveCompareBBtn;
+        saveBtn.disabled = true;
+        setGenerateStatus('Saving model ' + sideKey + '…', false);
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generate/save', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify({
+                    csv: side.csv,
+                    model: side.model || '',
+                    coverageNotes: side.coverageNotes || ''
+                })
+            });
+            const body = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setGenerateStatus(body.message || body.error || ('Save failed (' + res.status + ')'), true);
+                return;
+            }
+            // Lock choice: show saved preview above, close compare so it is not mistaken for a bug.
+            lastCompareResult = null;
+            compareResults.hidden = true;
+            saveCompareABtn.disabled = true;
+            saveCompareBBtn.disabled = true;
+            showResult(body);
+            setGenerateStatus(
+                'Saved ' + (side.model || ('model ' + sideKey))
+                    + ' as generated workbook. Compare closed — your choice is locked.',
+                false
+            );
+            if (resultsSection) {
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        } catch (err) {
+            setGenerateStatus(err && err.message ? err.message : 'Network error', true);
+        } finally {
+            // Keep buttons disabled after a successful lock; re-enable only if save failed and compare still open.
+            if (lastCompareResult) {
+                saveBtn.disabled = false;
+            }
+        }
+    }
+
+    function showResult(payload) {
+        lastResult = payload;
+        resultsSection.hidden = false;
+        renderCounts(previewCounts(payload));
+        renderTable(payload.rows || []);
+        coverageNotes.value = payload.coverageNotes || '';
+        if (!payload.coverageNotes) {
+            coverageNotes.placeholder = '(No coverage notes returned.)';
+        }
+        var usedModel = payload.model || selectedGenerateModel() || '';
+        setGenerateStatus(
+            'Generated ' + (payload.rows || []).length + ' test cases'
+                + (usedModel ? ' with ' + usedModel : '') + '.',
+            false
+        );
+    }
+
+    function onProjectChange() {
+        const projectId = projectSel.value;
+        selectedProject = findProject(projectId);
+        if (projectId) sessionStorage.setItem(STORAGE_KEY, projectId);
+        updateAutomateLink(projectId);
+        updatePreview();
+        setPromptStatus('', false);
+        loadBatchJobs();
+    }
+
+    function loadPrompt() {
+        return fetch(PROMPT_URL, { credentials: 'same-origin' })
+            .then(function (res) {
+                if (!res.ok) throw new Error('Could not load prompt (' + res.status + ')');
+                return res.text();
+            })
+            .then(function (text) {
+                promptText = (text || '').trim();
+                if (!promptText) throw new Error('Prompt file was empty');
+                updatePreview();
+                setPromptStatus('', false);
+            })
+            .catch(function (err) {
+                promptText = '';
+                preview.textContent = 'Prompt failed to load. Refresh the page or use Ollama generate above.';
+                copyBtn.disabled = true;
+                setPromptStatus(err && err.message ? err.message : 'Failed to load prompt', true);
+            });
+    }
+
+    async function loadProjects() {
+        projectErr.hidden = true;
+        const res = await fetch('/api/projects', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            projectErr.hidden = false;
+            projectErr.textContent = 'Could not load projects.';
+            workflow.hidden = true;
+            return;
+        }
+        projects = await res.json();
+        projectSel.innerHTML = '';
+        if (projects.length === 0) {
+            noProjects.hidden = false;
+            workflow.hidden = true;
+            return;
+        }
+        noProjects.hidden = true;
+        workflow.hidden = false;
+
+        projects.forEach(function (p) {
+            const opt = document.createElement('option');
+            opt.value = p.projectId;
+            opt.textContent = (p.name || p.projectId) + ' (' + p.projectId + ')';
+            projectSel.appendChild(opt);
+        });
+
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const match = saved && projects.some(function (p) { return p.projectId === saved; });
+        projectSel.value = match ? saved : projects[0].projectId;
+        onProjectChange();
+        loadBatchJobs();
+    }
+
+    async function loadBatchJobs() {
+        const projectId = projectSel.value;
+        if (!projectId) return;
+        try {
+            const res = await fetch('/api/jobs?projectId=' + encodeURIComponent(projectId)
+                + '&kind=GENERATE_BATCH', {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            if (!res.ok) return;
+            const jobs = await res.json();
+            batchJobsBody.innerHTML = '';
+            if (!jobs.length) {
+                batchJobsPanel.hidden = true;
+                return;
+            }
+            batchJobsPanel.hidden = false;
+            jobs.slice(0, 8).forEach(function (job) {
+                const tr = document.createElement('tr');
+                const progress = (job.progressCurrent || 0) + ' / ' + (job.progressTotal || 0);
+                tr.innerHTML = '<td class="mono">' + escapeHtml(job.jobId || '') + '</td>'
+                    + '<td>' + escapeHtml(job.status || '') + '</td>'
+                    + '<td>' + escapeHtml(progress) + '</td>'
+                    + '<td>' + escapeHtml(String(job.passedCount || 0)) + '</td>'
+                    + '<td><a class="button ghost" href="/status?jobId='
+                    + encodeURIComponent(job.jobId) + '">View</a></td>';
+                batchJobsBody.appendChild(tr);
+            });
+        } catch (e) { /* ignore */ }
+    }
+
+    async function queueBulkGenerate() {
+        const projectId = projectSel.value;
+        const file = bulkFile.files && bulkFile.files[0];
+        if (!projectId || !file) {
+            setBulkStatus('Select a project and CSV file first.', true);
+            return;
+        }
+        bulkQueueBtn.disabled = true;
+        setBulkStatus('Queuing bulk job…', false);
+        showBulkLoading(true, 'Queuing bulk job…', 'Uploading your CSV and starting the background queue.');
+        try {
+            const form = new FormData();
+            form.append('storiesFile', file);
+            if (bulkReviewPass.checked) {
+                form.append('reviewPass', 'true');
+            }
+            const model = selectedGenerateModel();
+            if (model) {
+                form.append('model', model);
+            }
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generate-batch-jobs', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: API_HEADERS,
+                body: form
+            });
+            const body = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setBulkStatus(body.message || body.error || ('Request failed (' + res.status + ')'), true);
+                showBulkLoading(false);
+                return;
+            }
+            setBulkStatus('Queued — opening live progress…', false);
+            showBulkLoading(true, 'Job queued', 'Opening the status page with a live progress bar…');
+            bulkFile.value = '';
+            updateBulkControls();
+            loadBatchJobs();
+            if (body.statusUrl) {
+                window.location.href = body.statusUrl;
+                return;
+            }
+            showBulkLoading(false);
+        } catch (err) {
+            setBulkStatus(err && err.message ? err.message : 'Network error', true);
+            showBulkLoading(false);
+        } finally {
+            updateBulkControls();
+        }
+    }
+
+    function stopPipelinePoll() {
+        if (pipelinePollTimer) {
+            clearTimeout(pipelinePollTimer);
+            pipelinePollTimer = null;
+        }
+    }
+
+    function stageJobLink(stageName, stage) {
+        if (!stage || !stage.jobId) return '';
+        const id = String(stage.jobId);
+        if (stageName === 'AUTOMATE') {
+            return ' — <a href="/status?jobId=' + encodeURIComponent(id) + '">open Automate status</a>';
+        }
+        if (stageName === 'EXECUTE') {
+            return ' — <a href="/execute?jobId=' + encodeURIComponent(id) + '">open Execute run</a>';
+        }
+        if (stageName === 'GENERATE') {
+            return ' — <a href="/status?jobId=' + encodeURIComponent(id) + '">open Generate job</a>';
+        }
+        return '';
+    }
+
+    function renderPipelineStatus(payload) {
+        if (!pipelineStatusPanel || !pipelineStatusSummary || !pipelineStageList) return;
+        pipelineStatusPanel.hidden = false;
+        const status = payload.status || 'UNKNOWN';
+        const current = payload.currentStage || '';
+        pipelineStatusSummary.textContent = 'Status: ' + status
+            + (current ? (' · current stage: ' + current) : '')
+            + (payload.message ? (' — ' + payload.message) : '');
+        pipelineStageList.innerHTML = '';
+        const stages = payload.stages || {};
+        ['GENERATE', 'AUTOMATE', 'EXECUTE'].forEach(function (name) {
+            const stage = stages[name] || {};
+            const li = document.createElement('li');
+            const st = stage.status || 'PENDING';
+            const job = stage.jobId ? (' · job ' + stage.jobId) : '';
+            li.innerHTML = '<strong>' + name + '</strong>: ' + escapeHtml(st) + escapeHtml(job)
+                + stageJobLink(name, stage);
+            pipelineStageList.appendChild(li);
+        });
+    }
+
+    async function pollPipeline(pipelineId) {
+        stopPipelinePoll();
+        activePipelineId = pipelineId;
+        try {
+            const res = await fetch('/api/pipelines/' + encodeURIComponent(pipelineId), {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            const payload = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setGenerateStatus(payload.message || payload.error || ('Pipeline status failed (' + res.status + ')'), true);
+                return;
+            }
+            renderPipelineStatus(payload);
+            const done = payload.status === 'COMPLETED' || payload.status === 'FAILED';
+            if (done) {
+                setGenerateStatus(
+                    payload.status === 'COMPLETED'
+                        ? 'Pipeline finished. Use the stage links below for Automate/Execute results.'
+                        : ('Pipeline failed' + (payload.message ? (': ' + payload.message) : '')),
+                    payload.status === 'FAILED'
+                );
+                return;
+            }
+            pipelinePollTimer = setTimeout(function () { pollPipeline(pipelineId); }, 2000);
+        } catch (err) {
+            setGenerateStatus(err && err.message ? err.message : 'Pipeline poll error', true);
+        }
+    }
+
+    async function runPipeline() {
+        const projectId = projectSel.value;
+        if (!projectId) {
+            setGenerateStatus('Select a project first.', true);
+            return;
+        }
+        const stories = storiesInput.value.trim();
+        const ok = window.confirm(
+            'All in one will:\n'
+            + '1) Generate test cases with a second coverage pass (revise — slower, more complete)\n'
+            + '2) Automate (if AUTOMATE rows exist)\n'
+            + '3) Execute (if runnable rows exist)\n\n'
+            + 'This can take a long time and use the browser/AI. Continue?'
+        );
+        if (!ok) return;
+        runPipelineBtn.disabled = true;
+        setGenerateStatus('Starting All in one…', false);
+        try {
+            const body = stories ? { stories: stories } : {};
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/pipeline', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify(body)
+            });
+            const payload = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setGenerateStatus(payload.message || payload.error || ('All in one failed (' + res.status + ')'), true);
+                return;
+            }
+            const pipelineId = payload.pipelineId || '';
+            setGenerateStatus('All in one started' + (pipelineId ? (' (' + pipelineId + ')') : '') + '. Watching stages…', false);
+            renderPipelineStatus(payload);
+            if (pipelineId) {
+                pollPipeline(pipelineId);
+            }
+        } catch (err) {
+            var msg = err && err.message ? err.message : 'Network error';
+            if (msg === 'Failed to fetch' || msg === 'NetworkError when attempting to fetch resource.') {
+                msg = 'Could not reach the server (Failed to fetch). Restart the portal, hard-refresh this page, and try again.';
+            }
+            setGenerateStatus(msg, true);
+        } finally {
+            runPipelineBtn.disabled = !projectSel.value;
+        }
+    }
+
+    async function runImport() {
+        const projectId = projectSel.value;
+        const raw = importRaw.value.trim();
+        if (!projectId || !raw) {
+            setImportStatus('Select a project and paste AI output first.', true);
+            return;
+        }
+        importBtn.disabled = true;
+        setImportStatus('Importing…', false);
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generate/import', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify({ raw: raw, format: 'auto' })
+            });
+            const body = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setImportStatus(body.message || body.error || ('Import failed (' + res.status + ')'), true);
+                return;
+            }
+            showResult(body);
+            setGenerateStatus('Workbook saved — use Automate/Execute with generated workbook', false);
+            setImportStatus('', false);
+            if (resultsSection) {
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        } catch (err) {
+            setImportStatus(err && err.message ? err.message : 'Network error', true);
+        } finally {
+            importBtn.disabled = !projectSel.value || !importRaw.value.trim();
+        }
+    }
+
+    async function runGenerate() {
+        const projectId = projectSel.value;
+        const stories = storiesInput.value.trim();
+        if (!projectId || !stories) {
+            setGenerateStatus('Select a project and paste stories first.', true);
+            return;
+        }
+        generateBtn.disabled = true;
+        setGenerateStatus('Queuing background job…', false);
+        showGenerateLoading(true, 'Queuing job…', 'Starting a background generate job — opening status page when ready.');
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generate-async', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify({
+                    stories: stories,
+                    options: {
+                        reviewPass: reviewPass.checked,
+                        model: selectedGenerateModel()
+                    }
+                })
+            });
+            const body = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setGenerateStatus(body.message || body.error || ('Request failed (' + res.status + ')'), true);
+                showGenerateLoading(false);
+                return;
+            }
+            setGenerateStatus('Queued — opening live progress…', false);
+            loadBatchJobs();
+            if (body.statusUrl) {
+                window.location.href = body.statusUrl;
+                return;
+            }
+        } catch (err) {
+            setGenerateStatus(err && err.message ? err.message : 'Network error', true);
+        } finally {
+            showGenerateLoading(false);
+            generateBtn.disabled = !projectSel.value || !storiesInput.value.trim();
+        }
+    }
+
+    function downloadCsv() {
+        if (!lastResult || !lastResult.csv) {
+            setGenerateStatus('Nothing to download yet.', true);
+            return;
+        }
+        const blob = new Blob([lastResult.csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (selectedProject && selectedProject.projectId ? selectedProject.projectId : 'keel') + '-generated-tcs.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    copyBtn.addEventListener('click', function () {
+        const text = fullPromptText();
+        if (!text) {
+            setPromptStatus('Prompt not loaded yet', true);
+            return;
+        }
+        const done = function () {
+            copyBtn.textContent = 'Copied';
+            setPromptStatus('Copied — paste into your AI chat, then paste your stories', false);
+            window.setTimeout(function () { copyBtn.textContent = 'Copy prompt'; }, 2000);
+        };
+        const fail = function () {
+            setPromptStatus('Clipboard blocked — select the prompt text and press Ctrl+C', true);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done).catch(fail);
+        } else {
+            fail();
+        }
+    });
+
+    projectSel.addEventListener('change', onProjectChange);
+    storiesInput.addEventListener('input', updatePreview);
+    importRaw.addEventListener('input', updatePreview);
+    importBtn.addEventListener('click', runImport);
+    generateBtn.addEventListener('click', runGenerate);
+    compareBtn.addEventListener('click', runCompare);
+    runPipelineBtn.addEventListener('click', runPipeline);
+    keelFilter.addEventListener('change', function () {
+        if (lastResult) renderTable(lastResult.rows || []);
+    });
+    previewBody.addEventListener('change', function (ev) {
+        const target = ev.target;
+        if (target && target.classList && target.classList.contains('keel-path-select')) {
+            onKeelPathChange(target);
+        }
+    });
+    previewBody.addEventListener('click', function (ev) {
+        const target = ev.target;
+        if (target && target.classList && target.classList.contains('keel-path-select')) {
+            ev.stopPropagation();
+            return;
+        }
+        const tr = target && target.closest ? target.closest('tr.preview-row-clickable') : null;
+        if (!tr) return;
+        const tcId = tr.getAttribute('data-tc-id');
+        const row = findRowByTcId(tcId);
+        if (row) openTcEditor(row);
+    });
+    tcEditCancel.addEventListener('click', closeTcEditor);
+    tcEditSave.addEventListener('click', saveTcEditor);
+    if (tcEditAddRow) {
+        tcEditAddRow.addEventListener('click', function () {
+            addStepGridRow('', '');
+        });
+    }
+    if (tcEditStepBody) {
+        tcEditStepBody.addEventListener('click', function (ev) {
+            const btn = ev.target && ev.target.closest ? ev.target.closest('.tc-edit-remove-row') : null;
+            if (!btn) return;
+            const tr = btn.closest('tr');
+            if (tr) tr.remove();
+            renumberStepGrid();
+        });
+    }
+    coverageNotes.addEventListener('input', function () {
+        if (lastResult) lastResult.coverageNotes = coverageNotes.value;
+    });
+    tcEditModal.addEventListener('click', function (ev) {
+        if (ev.target === tcEditModal) closeTcEditor();
+    });
+    document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && tcEditModal && !tcEditModal.classList.contains('hidden')) {
+            closeTcEditor();
+        }
+    });
+    downloadCsvBtn.addEventListener('click', downloadCsv);
+    bulkFile.addEventListener('change', updateBulkControls);
+    bulkQueueBtn.addEventListener('click', queueBulkGenerate);
+    saveCompareABtn.addEventListener('click', function () { saveCompareSide('A'); });
+    saveCompareBBtn.addEventListener('click', function () { saveCompareSide('B'); });
+    generateModelSelect.addEventListener('change', function () {
+        if (generateModelSelect.value) {
+            sessionStorage.setItem(MODEL_STORAGE_KEY, generateModelSelect.value);
+        }
+        renderCompareModelB({ models: generateModels, defaultModel: defaultGenerateModel });
+        updatePreview();
+    });
+
+    loadPrompt();
+    loadGenerateModels();
+    loadProjects();
+
+    const pendingCompareJobId = new URLSearchParams(window.location.search).get('compareJobId');
+    if (pendingCompareJobId) {
+        loadCompareFromJob(pendingCompareJobId);
+    }
+})();
+</script>
+</body>
+</html>

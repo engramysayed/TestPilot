@@ -1,0 +1,19 @@
+TC_ID,Title,Steps,ExpectedResult,Preconditions,Priority,Tags,VisualAssertion,TestData
+TC_01,Valid login,"1. Open the Login Page at /login
+2. Enter the username
+3. Enter the password
+4. Click the Login button","1. Login page is shown
+2. Username is accepted
+3. Password is accepted
+4. Secure Area is visible",Login required.,P1,smoke,,"<USERNAME>
+<PASSWORD>
+"
+TC_02,Invalid password,"1. Open the Login Page at /login
+2. Enter the username
+3. Enter an invalid password
+4. Click the Login button","1. Login page is shown
+2. Username is accepted
+3. Password is accepted
+4. Error message is shown",Login required.,P2,negative,,"<USERNAME>
+wrong-password
+"

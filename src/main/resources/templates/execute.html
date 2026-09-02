@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Execute')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell">
+    <div class="page-title">
+        <div>
+            <h1>Execute &amp; verify</h1>
+            <p class="lede">Run manual test cases against your app with DOM and vision — find bugs without codegen first.</p>
+        </div>
+    </div>
+
+    <section class="panel">
+        <label>Project
+            <select id="project-select">
+                <option value="">— Loading projects —</option>
+            </select>
+        </label>
+        <p id="project-err" class="error" hidden></p>
+        <p id="no-projects" class="muted" hidden>
+            No projects yet —
+            <a href="/projects">create one</a> to start executing.
+        </p>
+    </section>
+
+    <section class="panel" id="recent-execute-panel" hidden>
+        <h2>Recent execute runs</h2>
+        <p class="panel-intro">Last five runs for the selected project — reopen results without re-uploading.</p>
+        <table class="table" id="recent-execute-table">
+            <thead>
+            <tr>
+                <th>Job</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Score</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody id="recent-execute-body"></tbody>
+        </table>
+        <p id="recent-execute-empty" class="muted" hidden>No execute runs for this project yet.</p>
+        <p id="recent-execute-err" class="error" hidden></p>
+    </section>
+
+    <section class="panel" id="execute-form-panel" hidden>
+        <h2>Start an execute run</h2>
+        <p class="panel-intro">Pick a project with a configured base URL, attach your Excel workbook, and run cases live in the browser.</p>
+        <div class="hint design-ref-hint" id="design-ref-hint">
+            <strong>Design mockup images (optional):</strong>
+            Upload a PNG of the final screen design per test case ID (e.g. export from Figma).
+            On Execute, Keel compares that image to the live screenshot.
+            This is <em>not</em> the Excel <code>VisualAssertion</code> column —
+            that column is text only (“what should be visible”), not an attached image.
+            <form id="design-ref-form" class="design-ref-form">
+                <label>TC ID
+                    <input type="text" id="design-ref-tcId" name="tcId" placeholder="TC_001" required/>
+                </label>
+                <label>Design PNG
+                    <input type="file" id="design-ref-file" name="file" accept="image/png" required/>
+                </label>
+                <button type="submit" id="design-ref-submit">Upload design</button>
+            </form>
+            <p id="design-ref-msg" class="muted" hidden></p>
+            <p id="design-ref-err" class="error" hidden></p>
+        </div>
+        <form id="execute-form">
+            <div id="project-config">
+                <p class="hint" id="base-url-row" hidden>
+                    <strong>Base URL:</strong>
+                    <span id="base-url-display" class="mono"></span>
+                </p>
+                <p class="error" id="base-url-missing" hidden>
+                    No base URL configured.
+                    <a id="settings-link" href="#">Open project Settings</a> to set one before executing.
+                </p>
+                <label id="credential-label" hidden>Credential profile
+                    <select name="credentialProfile" id="credentialProfile">
+                        <option value="">— Select profile —</option>
+                    </select>
+                </label>
+            </div>
+            <div id="generated-workbook-panel" class="generated-workbook-panel" hidden>
+                <p class="hint generated-workbook-banner">
+                    <strong>Latest generated workbook</strong>
+                    <span id="generated-workbook-meta" class="muted"></span>
+                </p>
+                <div class="workbook-source-options">
+                    <label class="generate-check">
+                        <input type="radio" name="workbookSource" value="upload" checked/>
+                        <span>Upload a new .xlsx file</span>
+                    </label>
+                    <label class="generate-check">
+                        <input type="radio" name="workbookSource" value="generated"/>
+                        <span>Use latest generated workbook</span>
+                    </label>
+                </div>
+                <p class="muted generate-option-hint">Execute runs <strong>AUTOMATE</strong>, <strong>EXECUTE</strong>, and <strong>VISION_ONLY</strong> rows (and blank KeelPath for legacy sheets). Only <strong>MANUAL</strong> rows are skipped here.</p>
+            </div>
+            <label id="excel-upload-label">Excel (.xlsx)
+                <input type="file" name="excel" id="excel-input" accept=".xlsx" required/>
+            </label>
+            <button type="submit" id="submit-btn">Start execute run</button>
+        </form>
+        <p id="form-error" class="error" hidden></p>
+    </section>
+
+    <section class="panel" id="job-panel" hidden>
+        <h2>Run progress</h2>
+        <p class="panel-intro">
+            Job <code class="mono" id="job-id-display"></code>
+            — <a id="status-link" href="#">Full status page</a>
+        </p>
+        <dl class="status">
+            <dt>Status</dt><dd id="job-status">—</dd>
+            <dt>Progress</dt><dd id="job-progress">0 / 0</dd>
+            <dt>Message</dt><dd id="job-message">—</dd>
+            <dt>Passed</dt><dd id="job-passed">0</dd>
+            <dt>Blocked / TODO</dt><dd id="job-todo">0</dd>
+        </dl>
+        <p class="hint muted">Failed cases are marked TODO; the run continues with remaining cases.</p>
+        <p id="cancel-wrap">
+            <button type="button" class="button ghost" id="cancel-btn">Cancel run</button>
+        </p>
+        <p id="job-error" class="error" hidden></p>
+    </section>
+
+    <section class="panel execute-results" id="results-panel" hidden>
+        <h2>Results</h2>
+        <p class="panel-intro">Click a row to expand step timeline and screenshots.</p>
+        <div id="bug-report-actions" class="bug-report-actions" hidden>
+            <button type="button" class="button ghost" id="bug-report-json">Export bug report (JSON)</button>
+            <button type="button" class="button ghost" id="bug-report-csv">Export bug report (CSV)</button>
+            <button type="button" class="button ghost" id="results-excel">Export results (Excel + screenshots)</button>
+            <p class="muted generate-option-hint" style="margin:0.4rem 0 0">
+                Bug report lists failed cases (and design mismatches if you uploaded design references).
+                <strong>Design</strong> column compares the final screen to a reference PNG you upload — dash means no reference uploaded.
+                Results Excel includes every TC with step screenshots when available.
+            </p>
+        </div>
+        <table class="table" id="results-table">
+            <thead>
+            <tr>
+                <th>TC</th>
+                <th>Title</th>
+                <th>QA</th>
+                <th>Design</th>
+            </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+        </table>
+        <p id="results-empty" class="muted" hidden>No test cases yet.</p>
+        <p id="results-err" class="error" hidden></p>
+    </section>
+</main>
+</div>
+<script>
+(function () {
+    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+    const STORAGE_KEY = 'keel.executeProjectId';
+    const LAST_JOB_KEY = 'keel.lastExecuteJobId';
+    const TERMINAL = new Set(['COMPLETED', 'COMPLETED_WITH_BLOCK', 'FAILED', 'CANCELLED']);
+
+    const projectSel = document.getElementById('project-select');
+    const projectErr = document.getElementById('project-err');
+    const noProjects = document.getElementById('no-projects');
+    const formPanel = document.getElementById('execute-form-panel');
+    const executeForm = document.getElementById('execute-form');
+    const baseUrlRow = document.getElementById('base-url-row');
+    const baseUrlDisplay = document.getElementById('base-url-display');
+    const baseUrlMissing = document.getElementById('base-url-missing');
+    const settingsLink = document.getElementById('settings-link');
+    const credLabel = document.getElementById('credential-label');
+    const credSel = document.getElementById('credentialProfile');
+    const submitBtn = document.getElementById('submit-btn');
+    const formError = document.getElementById('form-error');
+    const generatedPanel = document.getElementById('generated-workbook-panel');
+    const generatedMeta = document.getElementById('generated-workbook-meta');
+    const excelLabel = document.getElementById('excel-upload-label');
+    const excelInput = document.getElementById('excel-input');
+    let hasGeneratedWorkbook = false;
+    let generatedWorkbookMeta = null;
+
+    function automateRunnable(counts) {
+        if (!counts) return 0;
+        return (counts.AUTOMATE || 0) + (counts.BLANK || 0);
+    }
+
+    function executeRunnable(counts) {
+        if (!counts) return 0;
+        return (counts.AUTOMATE || 0) + (counts.EXECUTE || 0)
+                + (counts.VISION_ONLY || 0) + (counts.BLANK || 0);
+    }
+
+    function surfaceSoftWarn(surface, tcCount, counts) {
+        const runnable = surface === 'AUTOMATE' ? automateRunnable(counts) : executeRunnable(counts);
+        if (runnable <= 0 || tcCount <= 0 || runnable * 2 >= tcCount) return null;
+        const label = surface === 'AUTOMATE' ? 'Automate' : 'Execute';
+        return 'Only ' + runnable + ' of ' + tcCount
+            + ' test cases are eligible for ' + label
+            + '. Most rows are marked for the other surface or MANUAL. Continue anyway?';
+    }
+
+    function formatKeelPathCounts(counts) {
+        if (!counts || typeof counts !== 'object') return '';
+        const parts = [];
+        if (counts.AUTOMATE) parts.push('A:' + counts.AUTOMATE);
+        if (counts.EXECUTE) parts.push('E:' + counts.EXECUTE);
+        if (counts.VISION_ONLY) parts.push('V:' + counts.VISION_ONLY);
+        if (counts.MANUAL) parts.push('M:' + counts.MANUAL);
+        if (counts.BLANK) parts.push('blank:' + counts.BLANK);
+        return parts.length ? ' · ' + parts.join(' ') : '';
+    }
+
+    function workbookSource() {
+        const picked = document.querySelector('input[name="workbookSource"]:checked');
+        return picked ? picked.value : 'upload';
+    }
+
+    function syncWorkbookSourceUi() {
+        const useGenerated = hasGeneratedWorkbook && workbookSource() === 'generated';
+        excelLabel.hidden = useGenerated;
+        excelInput.required = !useGenerated;
+        if (useGenerated) {
+            excelInput.value = '';
+        }
+    }
+
+    document.querySelectorAll('input[name="workbookSource"]').forEach(function (el) {
+        el.addEventListener('change', syncWorkbookSourceUi);
+    });
+
+    const jobPanel = document.getElementById('job-panel');
+    const jobIdDisplay = document.getElementById('job-id-display');
+    const statusLink = document.getElementById('status-link');
+    const jobStatusEl = document.getElementById('job-status');
+    const jobProgressEl = document.getElementById('job-progress');
+    const jobMessageEl = document.getElementById('job-message');
+    const jobPassedEl = document.getElementById('job-passed');
+    const jobTodoEl = document.getElementById('job-todo');
+    const cancelWrap = document.getElementById('cancel-wrap');
+    const cancelBtn = document.getElementById('cancel-btn');
+    let cancelRequested = false;
+    const jobErrorEl = document.getElementById('job-error');
+
+    const resultsPanel = document.getElementById('results-panel');
+    const resultsBody = document.getElementById('results-body');
+    const resultsEmpty = document.getElementById('results-empty');
+    const resultsErr = document.getElementById('results-err');
+    const bugReportActions = document.getElementById('bug-report-actions');
+    const bugReportJson = document.getElementById('bug-report-json');
+    const bugReportCsv = document.getElementById('bug-report-csv');
+    const resultsExcelBtn = document.getElementById('results-excel');
+    const designRefForm = document.getElementById('design-ref-form');
+    const designRefMsg = document.getElementById('design-ref-msg');
+    const designRefErr = document.getElementById('design-ref-err');
+    const recentExecutePanel = document.getElementById('recent-execute-panel');
+    const recentExecuteBody = document.getElementById('recent-execute-body');
+    const recentExecuteEmpty = document.getElementById('recent-execute-empty');
+    const recentExecuteErr = document.getElementById('recent-execute-err');
+
+    let projectHasBaseUrl = false;
+    let credentialsRequired = false;
+    let activeJobId = null;
+    let pollTimer = null;
+    let expandedTcId = null;
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function qaBadgeClass(qaStatus) {
+        return qaStatus === 'PASS' ? 'badge ok' : 'badge err';
+    }
+
+    function designBadgeClass(status) {
+        if (status === 'MATCH') return 'badge ok';
+        if (status === 'MISMATCH') return 'badge err';
+        if (status === 'UNCERTAIN') return 'badge warn';
+        if (status === 'SKIPPED') return 'badge muted';
+        return 'badge muted';
+    }
+
+    function renderDesignBadge(status) {
+        if (!status) {
+            return '<span class="muted">—</span>';
+        }
+        return '<span class="' + designBadgeClass(status) + '">' + escapeHtml(status) + '</span>';
+    }
+
+    function stateClass(state) {
+        if (state === 'passed') return 'step-ok';
+        if (state === 'failed') return 'step-fail';
+        return 'step-pending';
+    }
+
+    function resetProjectConfig() {
+        projectHasBaseUrl = false;
+        credentialsRequired = false;
+        baseUrlDisplay.textContent = '';
+        baseUrlRow.hidden = true;
+        baseUrlMissing.hidden = true;
+        credLabel.hidden = true;
+        credSel.innerHTML = '<option value="">— Select profile —</option>';
+        credSel.required = false;
+        submitBtn.disabled = false;
+        hasGeneratedWorkbook = false;
+        generatedWorkbookMeta = null;
+        if (generatedPanel) generatedPanel.hidden = true;
+        const uploadRadio = document.querySelector('input[name="workbookSource"][value="upload"]');
+        if (uploadRadio) uploadRadio.checked = true;
+        syncWorkbookSourceUi();
+    }
+
+    async function loadGeneratedWorkbook(projectId) {
+        hasGeneratedWorkbook = false;
+        generatedWorkbookMeta = null;
+        if (generatedPanel) generatedPanel.hidden = true;
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.available) {
+            syncWorkbookSourceUi();
+            return;
+        }
+        hasGeneratedWorkbook = true;
+        generatedWorkbookMeta = data;
+        if (generatedPanel) generatedPanel.hidden = false;
+        const when = data.createdAt ? new Date(data.createdAt).toLocaleString() : 'recently';
+        const ref = data.sourceRef ? ' · ' + data.sourceRef : '';
+        if (generatedMeta) {
+            const model = data.model ? ' · model ' + data.model : '';
+            const keel = formatKeelPathCounts(data.keelPathCounts);
+            generatedMeta.textContent = data.tcCount + ' test cases · saved ' + when + ref + model + keel;
+        }
+        syncWorkbookSourceUi();
+    }
+
+    async function loadProjectConfig(projectId) {
+        resetProjectConfig();
+        if (!projectId) {
+            formPanel.hidden = true;
+            return;
+        }
+        formPanel.hidden = false;
+        settingsLink.href = '/projects/' + encodeURIComponent(projectId) + '?tab=settings';
+
+        const projRes = await fetch('/api/projects/' + encodeURIComponent(projectId), {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!projRes.ok) {
+            formError.hidden = false;
+            formError.textContent = 'Could not load project settings.';
+            return;
+        }
+        const project = await projRes.json();
+        const baseUrl = (project.baseUrl || '').trim();
+        projectHasBaseUrl = baseUrl.length > 0;
+        if (projectHasBaseUrl) {
+            baseUrlRow.hidden = false;
+            baseUrlDisplay.textContent = baseUrl;
+            baseUrlMissing.hidden = true;
+        } else {
+            baseUrlRow.hidden = true;
+            baseUrlMissing.hidden = false;
+            submitBtn.disabled = true;
+        }
+
+        const credRes = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/credentials', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!credRes.ok) return;
+        const profiles = await credRes.json();
+        credSel.innerHTML = '<option value="">— Select profile —</option>';
+        profiles.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.profileName;
+            opt.textContent = c.profileName + ' (' + c.username + ')';
+            credSel.appendChild(opt);
+        });
+        credentialsRequired = profiles.length > 0;
+        if (credentialsRequired) {
+            credLabel.hidden = false;
+            credSel.required = true;
+        }
+        await loadGeneratedWorkbook(projectId);
+    }
+
+    async function loadProjects() {
+        projectErr.hidden = true;
+        const res = await fetch('/api/projects', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            projectErr.hidden = false;
+            projectErr.textContent = 'Could not load projects.';
+            return;
+        }
+        const projects = await res.json();
+        projectSel.innerHTML = '';
+        if (projects.length === 0) {
+            noProjects.hidden = false;
+            formPanel.hidden = true;
+            return;
+        }
+        noProjects.hidden = true;
+        projects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.projectId;
+            opt.textContent = (p.name || p.projectId) + ' (' + p.projectId + ')';
+            projectSel.appendChild(opt);
+        });
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const match = saved && projects.some(p => p.projectId === saved);
+        projectSel.value = match ? saved : projects[0].projectId;
+        onProjectChange();
+        const lastJob = sessionStorage.getItem(LAST_JOB_KEY);
+        if (lastJob && lastJob.startsWith('exec_')) {
+            openExecuteRun(lastJob);
+        }
+    }
+
+    function onProjectChange() {
+        formError.hidden = true;
+        const projectId = projectSel.value;
+        if (projectId) {
+            sessionStorage.setItem(STORAGE_KEY, projectId);
+        }
+        loadProjectConfig(projectId);
+        loadRecentExecuteRuns(projectId);
+    }
+
+    function jobBadgeClass(status) {
+        if (status === 'COMPLETED') return 'badge ok';
+        if (status === 'COMPLETED_WITH_BLOCK') return 'badge warn';
+        if (status === 'FAILED') return 'badge err';
+        return 'badge muted';
+    }
+
+    function renderRecentExecuteRuns(jobs) {
+        recentExecuteBody.innerHTML = '';
+        const recent = jobs.slice(0, 5);
+        recentExecuteEmpty.hidden = recent.length > 0;
+        document.getElementById('recent-execute-table').hidden = recent.length === 0;
+        recent.forEach(j => {
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td><code class="mono">' + escapeHtml(j.jobId) + '</code></td>' +
+                '<td><span class="' + jobBadgeClass(j.status) + '">' + escapeHtml(j.status) + '</span></td>' +
+                '<td>' + (j.progressCurrent ?? 0) + ' / ' + (j.progressTotal ?? 0) + '</td>' +
+                '<td>' + (j.passedCount ?? 0) + 'P / ' + (j.todoCount ?? 0) + 'T</td>' +
+                '<td class="actions">' +
+                '<a href="/status?jobId=' + encodeURIComponent(j.jobId) + '">Status</a> ' +
+                '<button type="button" class="button ghost reopen-run-btn">Results</button>' +
+                '</td>';
+            tr.querySelector('.reopen-run-btn').addEventListener('click', () => openExecuteRun(j.jobId));
+            recentExecuteBody.appendChild(tr);
+        });
+    }
+
+    async function loadRecentExecuteRuns(projectId) {
+        recentExecuteErr.hidden = true;
+        if (!projectId) {
+            recentExecutePanel.hidden = true;
+            return;
+        }
+        recentExecutePanel.hidden = false;
+        const res = await fetch('/api/jobs?projectId=' + encodeURIComponent(projectId) + '&kind=EXECUTE', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            recentExecuteErr.hidden = false;
+            recentExecuteErr.textContent = 'Could not load execute history.';
+            return;
+        }
+        renderRecentExecuteRuns(await res.json());
+    }
+
+    async function openExecuteRun(jobId) {
+        try {
+            sessionStorage.setItem(LAST_JOB_KEY, jobId);
+        } catch (e) { /* ignore */ }
+        activeJobId = jobId;
+        jobPanel.hidden = false;
+        jobIdDisplay.textContent = jobId;
+        statusLink.href = '/status?jobId=' + encodeURIComponent(jobId);
+        jobErrorEl.hidden = true;
+        resultsPanel.hidden = true;
+        resultsBody.innerHTML = '';
+        bugReportActions.hidden = true;
+        stopPoll();
+        const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId), {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            jobErrorEl.hidden = false;
+            jobErrorEl.textContent = (data.message || 'Could not load execute run') + ' (HTTP ' + res.status + ')';
+            return;
+        }
+        const done = renderJob(data);
+        if (done) {
+            if (data.status === 'FAILED') {
+                jobErrorEl.hidden = false;
+                jobErrorEl.textContent = data.message || 'Execute run failed';
+            }
+            await loadResults(jobId, true);
+        } else {
+            pollJob(jobId);
+        }
+    }
+
+    function findResultRow(tcId) {
+        return Array.from(resultsBody.querySelectorAll('tr.execute-row'))
+            .find(tr => tr.dataset.tcId === tcId) || null;
+    }
+
+    function renderJob(data) {
+        jobStatusEl.textContent = data.status || '—';
+        const cur = data.progressCurrent || 0;
+        const tot = data.progressTotal || 0;
+        jobProgressEl.textContent = cur + ' / ' + tot;
+        jobMessageEl.textContent = data.message || '—';
+        jobPassedEl.textContent = data.passedCount != null ? data.passedCount : 0;
+        jobTodoEl.textContent = data.todoCount != null ? data.todoCount : 0;
+        if (cancelWrap) {
+            const active = data.status === 'QUEUED' || data.status === 'RUNNING';
+            cancelWrap.hidden = !active || cancelRequested;
+        }
+        return TERMINAL.has(data.status);
+    }
+
+    async function requestCancel() {
+        if (!activeJobId || cancelRequested) return;
+        cancelRequested = true;
+        if (cancelBtn) {
+            cancelBtn.disabled = true;
+            cancelBtn.textContent = 'Cancelling…';
+        }
+        if (cancelWrap) cancelWrap.hidden = true;
+        try {
+            const res = await fetch('/api/jobs/' + encodeURIComponent(activeJobId) + '/cancel', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            if (!res.ok) {
+                cancelRequested = false;
+                if (cancelBtn) {
+                    cancelBtn.disabled = false;
+                    cancelBtn.textContent = 'Cancel run';
+                }
+                let data = {};
+                try { data = await res.json(); } catch (e) { /* ignore */ }
+                jobErrorEl.hidden = false;
+                jobErrorEl.textContent = (data.message || 'Cancel failed') + ' (HTTP ' + res.status + ')';
+            }
+        } catch (e) {
+            cancelRequested = false;
+            if (cancelBtn) {
+                cancelBtn.disabled = false;
+                cancelBtn.textContent = 'Cancel run';
+            }
+            jobErrorEl.hidden = false;
+            jobErrorEl.textContent = 'Network error while requesting cancel';
+        }
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', requestCancel);
+    }
+
+    function showBugReportActions(jobId) {
+        bugReportActions.hidden = false;
+        bugReportJson.onclick = function () { downloadBugReportJson(jobId); };
+        bugReportCsv.onclick = function () { downloadBugReportCsv(jobId); };
+        if (resultsExcelBtn) {
+            resultsExcelBtn.onclick = function () { downloadResultsExcel(jobId); };
+        }
+    }
+
+    async function downloadBugReportBlob(jobId, pathSuffix, fileName) {
+        const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId) + pathSuffix, {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            let msg = 'Could not download file.';
+            try {
+                const data = await res.json();
+                if (data.message) msg = data.message;
+            } catch (e) { /* ignore */ }
+            resultsErr.hidden = false;
+            resultsErr.textContent = msg;
+            return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    async function downloadBugReportJson(jobId) {
+        await downloadBugReportBlob(jobId, '/bug-report', 'bug-report-' + jobId + '.json');
+    }
+
+    async function downloadBugReportCsv(jobId) {
+        await downloadBugReportBlob(jobId, '/bug-report.csv', 'bug-report-' + jobId + '.csv');
+    }
+
+    async function downloadResultsExcel(jobId) {
+        await downloadBugReportBlob(jobId, '/results.xlsx', 'execute-results-' + jobId + '.xlsx');
+    }
+
+    async function loadResults(jobId, jobTerminal) {
+        resultsErr.hidden = true;
+        const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId) + '/tcs', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            resultsErr.hidden = false;
+            resultsErr.textContent = 'Could not load results.';
+            return;
+        }
+        const tcs = await res.json();
+        const keepExpanded = expandedTcId;
+        resultsPanel.hidden = false;
+        resultsBody.innerHTML = '';
+        resultsEmpty.hidden = tcs.length > 0;
+        document.getElementById('results-table').hidden = tcs.length === 0;
+        if (jobTerminal) {
+            showBugReportActions(jobId);
+        } else {
+            bugReportActions.hidden = true;
+        }
+        tcs.forEach(tc => {
+            const tr = document.createElement('tr');
+            tr.className = 'execute-row';
+            tr.dataset.tcId = tc.tcId;
+            tr.innerHTML =
+                '<td class="mono">' + escapeHtml(tc.tcId) + '</td>' +
+                '<td>' + escapeHtml(tc.title || '') + '</td>' +
+                '<td><span class="' + qaBadgeClass(tc.qaStatus) + '">' + escapeHtml(tc.qaStatus || 'FAIL') + '</span></td>' +
+                '<td>' + renderDesignBadge(tc.designCompareStatus) + '</td>';
+            tr.addEventListener('click', () => toggleTcDetail(jobId, tc.tcId, tr));
+            resultsBody.appendChild(tr);
+        });
+        if (keepExpanded && tcs.some(tc => tc.tcId === keepExpanded)) {
+            const row = findResultRow(keepExpanded);
+            if (row) {
+                await toggleTcDetail(jobId, keepExpanded, row);
+            }
+        } else if (keepExpanded) {
+            expandedTcId = null;
+        }
+    }
+
+    function renderTimeline(timeline) {
+        let html = '<ol class="step-timeline execute-timeline">';
+        (timeline || []).forEach(step => {
+            html += '<li class="' + stateClass(step.state) + '">';
+            html += '<div class="step-main">';
+            html += '<span class="step-state">' + escapeHtml(step.state) + '</span> ';
+            html += '<span>' + escapeHtml(step.label || '') + '</span>';
+            if (step.pageName) {
+                html += ' <span class="mono muted">@' + escapeHtml(step.pageName) + '</span>';
+            }
+            if (step.reason) {
+                html += '<div class="error">' + escapeHtml(step.reason) + '</div>';
+                if (step.reasonTechnical && step.reasonTechnical !== step.reason) {
+                    html += '<details class="panel-details"><summary class="muted">Technical detail</summary>'
+                        + '<pre class="generate-coverage-text">' + escapeHtml(step.reasonTechnical) + '</pre></details>';
+                }
+            }
+            if (step.screenshotUrl) {
+                html += '<div class="step-shot"><img src="' + escapeHtml(step.screenshotUrl) + '" alt="Step screenshot" loading="lazy"/></div>';
+            }
+            html += '</div></li>';
+        });
+        html += '</ol>';
+        return html;
+    }
+
+    function renderDesignCompare(projectId, jobId, tcId, status) {
+        if (!status) return '';
+        const refUrl = '/api/projects/' + encodeURIComponent(projectId)
+            + '/design-references/' + encodeURIComponent(tcId);
+        const actualUrl = '/api/execute-runs/' + encodeURIComponent(jobId)
+            + '/tcs/' + encodeURIComponent(tcId) + '/screenshots/design-actual.png?v=design-actual.png';
+        let html = '<div class="design-compare-panel">';
+        html += '<p class="hint"><strong>Design compare:</strong> ';
+        html += renderDesignBadge(status);
+        html += '</p>';
+        html += '<div class="design-compare-shots">';
+        html += '<figure><figcaption>Reference</figcaption>';
+        html += '<img src="' + escapeHtml(refUrl) + '" alt="Design reference" loading="lazy" class="design-ref-shot"/>';
+        html += '</figure>';
+        html += '<figure><figcaption>Actual</figcaption>';
+        html += '<img src="' + escapeHtml(actualUrl) + '" alt="Actual screenshot" loading="lazy" class="design-actual-shot"/>';
+        html += '</figure>';
+        html += '</div></div>';
+        return html;
+    }
+
+    function timelineDesignCompareStatus(timeline) {
+        if (!timeline || !timeline.length) return null;
+        for (const step of timeline) {
+            if (step.designCompareStatus) return step.designCompareStatus;
+            if (step.designCompare && step.designCompare.status) return step.designCompare.status;
+        }
+        return null;
+    }
+
+    async function toggleTcDetail(jobId, tcId, row) {
+        const existing = row.nextElementSibling;
+        if (existing && existing.classList.contains('execute-detail-row')) {
+            existing.remove();
+            expandedTcId = null;
+            return;
+        }
+        document.querySelectorAll('.execute-detail-row').forEach(r => r.remove());
+        expandedTcId = tcId;
+
+        const detailTr = document.createElement('tr');
+        detailTr.className = 'execute-detail-row';
+        const detailTd = document.createElement('td');
+        detailTd.colSpan = 4;
+        detailTd.innerHTML = '<p class="muted">Loading timeline…</p>';
+        detailTr.appendChild(detailTd);
+        row.after(detailTr);
+
+        const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId) + '/tcs/' + encodeURIComponent(tcId), {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            detailTd.innerHTML = '<p class="error">' + escapeHtml((data && data.message) || 'Failed to load TC detail') + '</p>';
+            return;
+        }
+        let html = '';
+        if (data.failureReasonUser || data.failureReason) {
+            html += '<p class="hint"><strong>What went wrong:</strong> '
+                + escapeHtml(data.failureReasonUser || data.failureReason) + '</p>';
+            if (data.failureReasonUser && data.failureReason
+                    && data.failureReasonUser !== data.failureReason) {
+                html += '<details class="panel-details"><summary class="muted">Technical detail</summary>'
+                    + '<pre class="generate-coverage-text">' + escapeHtml(data.failureReason) + '</pre></details>';
+            }
+        }
+        if (data.expectedResult) {
+            html += '<p class="muted"><strong>Expected:</strong> ' + escapeHtml(data.expectedResult) + '</p>';
+        }
+        const designStatus = data.designCompareStatus || timelineDesignCompareStatus(data.timeline);
+        const projectId = projectSel.value;
+        if (designStatus && projectId) {
+            html += renderDesignCompare(projectId, jobId, tcId, designStatus);
+        }
+        html += renderTimeline(data.timeline);
+        detailTd.innerHTML = html;
+    }
+
+    function stopPoll() {
+        if (pollTimer) {
+            clearTimeout(pollTimer);
+            pollTimer = null;
+        }
+    }
+
+    async function pollJob(jobId) {
+        try {
+            const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId), {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            let data = {};
+            try { data = await res.json(); } catch (e) { /* ignore */ }
+            if (!res.ok) {
+                jobErrorEl.hidden = false;
+                jobErrorEl.textContent = (data.message || 'Poll failed') + ' (HTTP ' + res.status + ')';
+                pollTimer = setTimeout(() => pollJob(jobId), 2000);
+                return;
+            }
+            jobErrorEl.hidden = true;
+            const done = renderJob(data);
+            if (done) {
+                stopPoll();
+                if (data.status === 'FAILED') {
+                    jobErrorEl.hidden = false;
+                    jobErrorEl.textContent = data.message || 'Execute run failed';
+                } else if (data.status === 'CANCELLED') {
+                    jobErrorEl.hidden = false;
+                    jobErrorEl.textContent = data.message || 'Execute run cancelled';
+                }
+                await loadResults(jobId, true);
+            } else {
+                await loadResults(jobId, false);
+                pollTimer = setTimeout(() => pollJob(jobId), 2000);
+            }
+        } catch (e) {
+            jobErrorEl.hidden = false;
+            jobErrorEl.textContent = 'Network error while polling';
+            pollTimer = setTimeout(() => pollJob(jobId), 2000);
+        }
+    }
+
+    function startJob(jobId) {
+        try {
+            sessionStorage.setItem(LAST_JOB_KEY, jobId);
+        } catch (e) { /* ignore */ }
+        activeJobId = jobId;
+        jobPanel.hidden = false;
+        cancelRequested = false;
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = 'Cancel run';
+        }
+        if (cancelWrap) cancelWrap.hidden = false;
+        jobIdDisplay.textContent = jobId;
+        statusLink.href = '/status?jobId=' + encodeURIComponent(jobId);
+        jobErrorEl.hidden = true;
+        resultsPanel.hidden = true;
+        resultsBody.innerHTML = '';
+        bugReportActions.hidden = true;
+        stopPoll();
+        pollJob(jobId);
+    }
+
+    designRefForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        designRefMsg.hidden = true;
+        designRefErr.hidden = true;
+        const projectId = projectSel.value;
+        if (!projectId) {
+            designRefErr.hidden = false;
+            designRefErr.textContent = 'Select a project first.';
+            return;
+        }
+        const tcId = document.getElementById('design-ref-tcId').value.trim();
+        const fileInput = document.getElementById('design-ref-file');
+        if (!tcId || !fileInput.files || !fileInput.files[0]) {
+            designRefErr.hidden = false;
+            designRefErr.textContent = 'Enter a TC ID and select a PNG file.';
+            return;
+        }
+        const body = new FormData();
+        body.append('tcId', tcId);
+        body.append('file', fileInput.files[0]);
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/design-references', {
+                method: 'POST',
+                headers: API_HEADERS,
+                credentials: 'same-origin',
+                body
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                designRefErr.hidden = false;
+                designRefErr.textContent = (data.error || 'ERROR') + ': ' + (data.message || 'Upload failed');
+                return;
+            }
+            designRefMsg.hidden = false;
+            designRefMsg.textContent = 'Uploaded design for ' + (data.tcId || tcId) + ' as ' + (data.storedAs || tcId + '.png') + '.';
+            designRefForm.reset();
+        } catch (err) {
+            designRefErr.hidden = false;
+            designRefErr.textContent = 'Network error uploading reference.';
+        }
+    });
+
+    executeForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        formError.hidden = true;
+        const projectId = projectSel.value;
+        if (!projectId) {
+            formError.hidden = false;
+            formError.textContent = 'Select a project';
+            return;
+        }
+        if (!projectHasBaseUrl) {
+            formError.hidden = false;
+            formError.textContent = 'Configure a base URL in project Settings before executing.';
+            return;
+        }
+        if (credentialsRequired && !credSel.value) {
+            formError.hidden = false;
+            formError.textContent = 'Select a credential profile';
+            return;
+        }
+        const excelInput = executeForm.excel;
+        const useGenerated = hasGeneratedWorkbook && workbookSource() === 'generated';
+        if (useGenerated && generatedWorkbookMeta) {
+            const warn = surfaceSoftWarn(
+                'EXECUTE',
+                generatedWorkbookMeta.tcCount || 0,
+                generatedWorkbookMeta.keelPathCounts
+            );
+            if (warn && !window.confirm(warn)) {
+                return;
+            }
+        }
+        if (!useGenerated && (!excelInput.files || !excelInput.files[0])) {
+            formError.hidden = false;
+            formError.textContent = 'Select an Excel file or use the generated workbook';
+            return;
+        }
+        submitBtn.disabled = true;
+        const body = new FormData();
+        if (useGenerated) {
+            body.append('useGenerated', 'true');
+        } else {
+            body.append('excel', excelInput.files[0]);
+        }
+        if (credSel.value) {
+            body.append('credentialProfile', credSel.value);
+        }
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/execute-runs', {
+                method: 'POST',
+                headers: API_HEADERS,
+                body
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                formError.hidden = false;
+                formError.textContent = (data.error || 'ERROR') + ': ' + (data.message || 'failed');
+                submitBtn.disabled = false;
+                return;
+            }
+            startJob(data.jobId);
+        } catch (err) {
+            formError.hidden = false;
+            formError.textContent = 'Network error starting execute run';
+        }
+        submitBtn.disabled = false;
+    });
+
+    projectSel.addEventListener('change', onProjectChange);
+    loadProjects();
+})();
+</script>
+</body>
+</html>

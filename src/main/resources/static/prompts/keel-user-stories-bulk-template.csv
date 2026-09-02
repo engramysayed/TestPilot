@@ -1,0 +1,4 @@
+US_ID,Title,Story
+US_001,Login,As a user I want to log in with valid credentials so that I can access my account dashboard.
+US_002,Invalid login,As a user I want to see a clear error when my password is wrong so that I know login failed.
+US_003,Cart,As a shopper I want to add an item to my cart so that I can purchase it later.

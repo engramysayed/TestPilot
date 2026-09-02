@@ -65,7 +65,7 @@ public class AgentRouterClient {
                 System.getProperty("delivery.final-revise.model"),
                 System.getenv("AGENTROUTER_MODEL"),
                 utils.PropertyReader.getProperty("delivery.final-revise.model"),
-                "claude-opus-4-8");
+                "claude-opus-5");
         if (key == null || key.isBlank()) {
             return null;
         }
@@ -99,7 +99,7 @@ public class AgentRouterClient {
                     System.getenv("AGENTROUTER_MODEL"),
                     System.getProperty("delivery.final-revise.model"),
                     utils.PropertyReader.getProperty("delivery.final-revise.model"),
-                    "claude-opus-4-8");
+                    "claude-opus-5");
             utils.LogsManager.warn("HEAL_INVENT: delivery.heal.invent.agentrouter.model is not set; "
                     + "each invent call will bill at the audit model " + model);
         }

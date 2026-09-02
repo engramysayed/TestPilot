@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='TC guide')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell shell-wide">
+    <div class="page-title guide-hero guide-reveal">
+        <div>
+            <p class="guide-kicker">Authoring standard</p>
+            <h1>Valid test case guide</h1>
+            <p class="lede">
+                Format and writing rules for client Excel sheets. Follow this so Keel can design
+                automation from the workbook alone. AI may rewrite wording — keep the column headers.
+            </p>
+        </div>
+        <div class="guide-hero-actions">
+            <a class="button" href="/automate">Go to Automate</a>
+            <a class="button ghost" href="/prompts/keel-manual-tcs-template.csv" download>Download template</a>
+            <a class="button ghost" href="#format">Jump to format</a>
+        </div>
+    </div>
+
+    <div class="guide-layout">
+        <nav class="guide-toc panel" aria-label="Guide sections">
+            <p class="guide-toc-title">On this page</p>
+            <a href="#format">1. Excel format</a>
+            <a href="#login">2. Login &amp; credentials</a>
+            <a href="#steps">3. Writing steps</a>
+            <a href="#expected">4. Expected results</a>
+            <a href="#testdata">5. Test data</a>
+            <a href="#visual">6. Visual assertion</a>
+            <a href="#complete">7. Complete cases</a>
+            <a href="#unsupported">8. Not supported</a>
+            <a href="#ai">9. AI rewrite &rarr; CSV</a>
+        </nav>
+
+        <div class="guide-main">
+            <section class="panel guide-section guide-reveal" id="format" data-guide-section="format">
+                <header class="guide-section-head">
+                    <span class="guide-num">01</span>
+                    <div>
+                        <h2>Excel format</h2>
+                        <p class="panel-intro">First sheet only. Row 1 = headers. File type <code>.xlsx</code>.</p>
+                    </div>
+                </header>
+                <div class="sheet-mock sheet-mock-scroll" aria-label="Required and optional Excel columns">
+                    <div class="sheet-mock-bar">
+                        <span></span><span></span><span></span>
+                        <em>manual-tcs.xlsx</em>
+                    </div>
+                    <div class="sheet-grid sheet-grid-9">
+                        <div class="sheet-cell head req">TC_ID</div>
+                        <div class="sheet-cell head req">Title</div>
+                        <div class="sheet-cell head req">Steps</div>
+                        <div class="sheet-cell head req">ExpectedResult</div>
+                        <div class="sheet-cell head rec">Preconditions</div>
+                        <div class="sheet-cell head opt">Priority</div>
+                        <div class="sheet-cell head opt">Tags</div>
+                        <div class="sheet-cell head opt">VisualAssertion</div>
+                        <div class="sheet-cell head opt sheet-cell-testdata">TestData</div>
+
+                        <div class="sheet-cell">TC_01</div>
+                        <div class="sheet-cell">Valid login</div>
+                        <div class="sheet-cell muted-cell">1. Open… 2. Enter…</div>
+                        <div class="sheet-cell muted-cell">1. … 2. …</div>
+                        <div class="sheet-cell muted-cell">Login required.</div>
+                        <div class="sheet-cell">P1</div>
+                        <div class="sheet-cell">smoke</div>
+                        <div class="sheet-cell muted-cell">Welcome heading…</div>
+                        <div class="sheet-cell muted-cell sheet-cell-testdata">· Nora</div>
+                    </div>
+                </div>
+                <div class="col-legend">
+                    <span class="leg req"><i></i> Required</span>
+                    <span class="leg rec"><i></i> Strongly recommended</span>
+                    <span class="leg opt"><i></i> Optional</span>
+                </div>
+                <p class="guide-howto-note">
+                    <a href="/prompts/keel-manual-tcs-template.csv" download>Download CSV template</a>
+                    — open in Excel, edit rows, save as <code>.xlsx</code>, then upload via Automate.
+                </p>
+                <ul class="guide-points">
+                    <li><strong>TC_ID</strong> — unique per row (e.g. <code>TC_01</code>)</li>
+                    <li><strong>Title</strong> — short case name</li>
+                    <li><strong>Steps</strong> — numbered user actions (exact UI labels)</li>
+                    <li><strong>ExpectedResult</strong> — observable outcomes (prefer one per step)</li>
+                    <li><strong>Preconditions</strong> — login need, role, starting context</li>
+                    <li><strong>Priority / Tags</strong> — e.g. <code>P1</code>, <code>smoke,login</code></li>
+                    <li><strong>VisualAssertion</strong> — optional <em>text</em> describing how the screen should look after steps pass (not an image; Figma/mockup PNGs are uploaded separately on the project for Execute)</li>
+                    <li><strong>TestData</strong> — optional values, <em>line-aligned</em> with Steps (aliases: <code>Test Data</code>, <code>StepData</code>)</li>
+                </ul>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="login" data-guide-section="login">
+                <header class="guide-section-head">
+                    <span class="guide-num">02</span>
+                    <div>
+                        <h2>Login &amp; credentials</h2>
+                        <p class="panel-intro">Say when auth is needed in Preconditions. Put shared secrets in run config.</p>
+                    </div>
+                </header>
+                <div class="decision-row">
+                    <article class="decision-card">
+                        <span class="decision-label">Needs auth</span>
+                        <h3>Preconditions</h3>
+                        <p>Write <code>Login required.</code> or <code>User must be logged in as …</code></p>
+                    </article>
+                    <div class="decision-arrow" aria-hidden="true"></div>
+                    <article class="decision-card">
+                        <span class="decision-label">One case only</span>
+                        <h3>In that row</h3>
+                        <p>Case-specific user/password (or role) may live in Preconditions or Steps.</p>
+                    </article>
+                    <div class="decision-arrow" aria-hidden="true"></div>
+                    <article class="decision-card accent">
+                        <span class="decision-label">Many cases</span>
+                        <h3>Run config</h3>
+                        <p>Leave Excel empty of secrets. Enter Username / Password once on Upload.</p>
+                    </article>
+                </div>
+                <div class="guide-callouts">
+                    <div class="callout ok">
+                        <strong>Public pages</strong>
+                        <p>Preconditions: <code>No login required.</code> — do not force auth.</p>
+                    </div>
+                    <div class="callout warn">
+                        <strong>Negative login</strong>
+                        <p>Keep wrong-user / wrong-password steps in <strong>Steps</strong>. Put the exact error text in ExpectedResult.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="steps" data-guide-section="steps">
+                <header class="guide-section-head">
+                    <span class="guide-num">03</span>
+                    <div>
+                        <h2>Writing steps</h2>
+                        <p class="panel-intro">One clear action per line. Name the control and the action from the live UI.</p>
+                    </div>
+                </header>
+                <div class="compare-grid">
+                    <div class="compare-pane bad">
+                        <div class="compare-visual" aria-hidden="true">
+                            <svg viewBox="0 0 220 120" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="8" y="10" width="204" height="100" rx="12" fill="#f3e8e8" stroke="#e2b4b4"/>
+                                <rect x="24" y="28" width="120" height="10" rx="5" fill="#d9a0a0" opacity="0.55"/>
+                                <rect x="24" y="48" width="72" height="10" rx="5" fill="#d9a0a0" opacity="0.4"/>
+                                <rect x="24" y="68" width="96" height="10" rx="5" fill="#d9a0a0" opacity="0.35"/>
+                                <circle cx="178" cy="58" r="22" fill="#c94f4f"/>
+                                <path d="M170 50l16 16M186 50l-16 16" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div class="compare-head">
+                            <span class="pill bad">Avoid</span>
+                            <h3>Vague shorthand</h3>
+                        </div>
+                        <ol class="compare-steps">
+                            <li>Login</li>
+                            <li>Add item</li>
+                            <li>Check</li>
+                        </ol>
+                    </div>
+                    <div class="compare-pane good">
+                        <div class="compare-visual" aria-hidden="true">
+                            <svg viewBox="0 0 220 120" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="8" y="10" width="204" height="100" rx="12" fill="#e7f7f9" stroke="#9ad5dc"/>
+                                <rect x="24" y="26" width="88" height="12" rx="6" fill="#0d9aa8"/>
+                                <rect x="24" y="48" width="140" height="10" rx="5" fill="#b7dde3"/>
+                                <rect x="24" y="66" width="140" height="10" rx="5" fill="#b7dde3"/>
+                                <rect x="24" y="84" width="64" height="14" rx="7" fill="#0a7d89"/>
+                                <circle cx="178" cy="58" r="22" fill="#1b9f72"/>
+                                <path d="M168 58l7 7 14-16" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <div class="compare-head">
+                            <span class="pill good">Prefer</span>
+                            <h3>Exact actions</h3>
+                        </div>
+                        <ol class="compare-steps">
+                            <li>Open the Login Page at /login</li>
+                            <li>Enter the username</li>
+                            <li>Enter the password</li>
+                            <li>Click the Login button</li>
+                            <li>Confirm the text Secure Area is visible</li>
+                        </ol>
+                    </div>
+                </div>
+                <ul class="guide-points">
+                    <li>Use visible labels: button text, field label, menu item, message copy.</li>
+                    <li>Include navigation when needed: <code>Open the … page at /path</code>.</li>
+                    <li>Confirmations: <code>Confirm the text … is visible</code>.</li>
+                    <li>Do <strong>not</strong> embed dummy names like <code>Test</code> / <code>User</code> in Enter lines — use <a href="#testdata">TestData</a>.</li>
+                </ul>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="expected" data-guide-section="expected">
+                <header class="guide-section-head">
+                    <span class="guide-num">04</span>
+                    <div>
+                        <h2>Expected results</h2>
+                        <p class="panel-intro">One overall result works; <strong>per-step expected results are better</strong> for automation fidelity.</p>
+                    </div>
+                </header>
+                <div class="pair-example">
+                    <div class="pair-block">
+                        <h3>Steps</h3>
+                        <pre>1. Click the Remove button
+2. Confirm the text It's gone is visible</pre>
+                    </div>
+                    <div class="pair-block highlight">
+                        <h3>ExpectedResult</h3>
+                        <pre>1. Remove starts and the checkbox disappears
+2. Message "It's gone" is shown on the page</pre>
+                    </div>
+                </div>
+                <ul class="guide-points">
+                    <li>Align numbering with Steps (<code>1. … 2. …</code> or <code>After step 4: …</code>).</li>
+                    <li>Quote exact UI text for messages, headings, and toasts.</li>
+                </ul>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="testdata" data-guide-section="testdata">
+                <header class="guide-section-head">
+                    <span class="guide-num">05</span>
+                    <div>
+                        <h2>Test data</h2>
+                        <p class="panel-intro">Optional column. Each line maps to the same line number in Steps — blank lines count.</p>
+                    </div>
+                </header>
+                <div class="pair-example align-example" aria-label="Steps aligned with TestData">
+                    <div class="pair-block">
+                        <h3>Steps</h3>
+                        <pre>1. Open the form at /reg/
+2. Enter in the First name field
+3. Enter in the Surname field
+4. Select 15 from the Day dropdown
+5. Click the Submit button</pre>
+                    </div>
+                    <div class="pair-block highlight">
+                        <h3>TestData</h3>
+                        <pre>(blank)
+Nora
+Bennett
+(blank)
+(blank)</pre>
+                    </div>
+                </div>
+                <div class="compare-grid">
+                    <div class="compare-pane bad">
+                        <div class="compare-head">
+                            <span class="pill bad">Avoid</span>
+                            <h3>Literals in the step</h3>
+                        </div>
+                        <ol class="compare-steps">
+                            <li>Enter Test in the First name field</li>
+                            <li>Enter User in the Surname field</li>
+                        </ol>
+                        <p class="compare-note"><code>Test</code> / <code>User</code> / <code>foo</code> / <code>fname</code> are never typed as real data.</p>
+                    </div>
+                    <div class="compare-pane good">
+                        <div class="compare-head">
+                            <span class="pill good">Prefer</span>
+                            <h3>Field in Steps · value in TestData</h3>
+                        </div>
+                        <ol class="compare-steps">
+                            <li>Enter in the First name field</li>
+                            <li>Enter in the Surname field</li>
+                        </ol>
+                        <p class="compare-note">TestData lines: <code>Nora</code> then <code>Bennett</code>. Leave a cell blank to invent a realistic value.</p>
+                    </div>
+                </div>
+                <ul class="guide-points">
+                    <li>Line 1 of TestData pairs with step 1, even if that step is only Open / Confirm.</li>
+                    <li>Dropdown picks may stay in the step (<code>Select 15 from the Day dropdown</code>) or sit in TestData.</li>
+                    <li>Blank TestData (or blank line) → Keel invents from the field identity (names, <code>*@example.com</code>, etc.).</li>
+                </ul>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="visual" data-guide-section="visual">
+                <header class="guide-section-head">
+                    <span class="guide-num">06</span>
+                    <div>
+                        <h2>Visual assertion</h2>
+                        <p class="panel-intro">Optional. Describes what the screen should look like after the case’s DOM steps pass.</p>
+                    </div>
+                </header>
+                <ul class="guide-points">
+                    <li>Write a short claim in plain language (form visible, heading present, cart still shown).</li>
+                    <li>DOM steps remain the source of truth for pass/fail of actions.</li>
+                    <li>Uncertain or very low-confidence visual answers alone do not fail a case that already passed its steps.</li>
+                </ul>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="complete" data-guide-section="complete">
+                <header class="guide-section-head">
+                    <span class="guide-num">07</span>
+                    <div>
+                        <h2>What each case must include</h2>
+                        <p class="panel-intro">Everything the converter needs to design the automated case — no guessing.</p>
+                    </div>
+                </header>
+                <div class="must-grid">
+                    <div class="must-card">
+                        <h3>Context</h3>
+                        <p>Starting page, role, and whether login is required.</p>
+                    </div>
+                    <div class="must-card">
+                        <h3>Exact actions</h3>
+                        <p>Named controls and verbs — not “do the thing”.</p>
+                    </div>
+                    <div class="must-card">
+                        <h3>Distinct names</h3>
+                        <p>When two similar items exist, name both so nothing is swapped.</p>
+                    </div>
+                    <div class="must-card">
+                        <h3>Observable outcomes</h3>
+                        <p>What the user should see or reach after each important step.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="unsupported" data-guide-section="unsupported">
+                <header class="guide-section-head">
+                    <span class="guide-num">08</span>
+                    <div>
+                        <h2>Not supported yet</h2>
+                        <p class="panel-intro">Leave these out of the workbook for now.</p>
+                    </div>
+                </header>
+                <div class="unsupported-banner">
+                    <div>
+                        <h3>File upload flows</h3>
+                        <p>Choose file, attach document, and drag-and-drop upload are not supported.
+                            Do not include TCs whose only purpose is uploading. Cover the rest of the flow without upload steps.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="ai" data-guide-section="ai">
+                <header class="guide-section-head">
+                    <span class="guide-num">09</span>
+                    <div>
+                        <h2>AI rewrite &rarr; CSV</h2>
+                        <p class="panel-intro">Copy a ready prompt into any AI chat. The AI returns CSV (not .xlsx) with Keel headers — then open in Excel and import via Automate.</p>
+                    </div>
+                </header>
+                <ol class="guide-howto">
+                    <li>Click <strong>Copy prompt</strong>.</li>
+                    <li>Paste into any AI chat (ChatGPT, Claude, Cursor, etc.).</li>
+                    <li>Paste <strong>one batch</strong> of rough TCs (about <strong>5–15</strong>, or one feature/tag).</li>
+                    <li>Copy the AI's <strong>CSV only</strong> into Excel (or save as <code>.xlsx</code>).</li>
+                    <li>Spot-check a few rows, then open <a href="/automate">Automate</a> to upload.</li>
+                </ol>
+                <p class="guide-howto-note">Large suites: repeat per batch and append rows in Excel. Do not paste the whole workbook at once.</p>
+                <p class="guide-howto-note">
+                    <a href="/prompts/keel-manual-tcs-template.csv" download>Download CSV template</a>
+                    for the exact column layout (same headers the AI prompt uses).
+                </p>
+                <div class="ai-prompt-card">
+                    <div class="ai-prompt-card-head">
+                        <h3>Prompt</h3>
+                        <button type="button" class="button" id="guide-ai-copy-btn" disabled>Copy prompt</button>
+                    </div>
+                    <pre id="guide-ai-prompt-preview" class="ai-prompt-preview" aria-live="polite">Loading prompt…</pre>
+                    <p id="guide-ai-status" class="ai-prompt-status" role="status"></p>
+                </div>
+                <div class="ai-tip-actions">
+                    <a class="button" href="/automate">Ready — open Automate</a>
+                </div>
+            </section>
+        </div>
+    </div>
+</main>
+</div>
+<script>
+(function () {
+    var PROMPT_URL = '/prompts/keel-tc-rewrite-to-csv.txt';
+    var preview = document.getElementById('guide-ai-prompt-preview');
+    var copyBtn = document.getElementById('guide-ai-copy-btn');
+    var statusEl = document.getElementById('guide-ai-status');
+    if (!preview || !copyBtn || !statusEl) {
+        return;
+    }
+    var promptText = '';
+
+    function setStatus(msg, isError) {
+        statusEl.textContent = msg || '';
+        statusEl.classList.toggle('is-error', !!isError);
+    }
+
+    function loadPrompt() {
+        return fetch(PROMPT_URL, { credentials: 'same-origin' })
+            .then(function (res) {
+                if (!res.ok) {
+                    throw new Error('Could not load prompt (' + res.status + ')');
+                }
+                return res.text();
+            })
+            .then(function (text) {
+                promptText = (text || '').trim();
+                if (!promptText) {
+                    throw new Error('Prompt file was empty');
+                }
+                preview.textContent = promptText;
+                copyBtn.disabled = false;
+                setStatus('', false);
+            })
+            .catch(function (err) {
+                promptText = '';
+                preview.textContent = 'Prompt failed to load. Open ' + PROMPT_URL + ' in a new tab, or refresh the page.';
+                copyBtn.disabled = true;
+                setStatus(err && err.message ? err.message : 'Failed to load prompt', true);
+            });
+    }
+
+    copyBtn.addEventListener('click', function () {
+        if (!promptText) {
+            setStatus('Prompt not loaded yet', true);
+            return;
+        }
+        var done = function () {
+            copyBtn.textContent = 'Copied';
+            setStatus('Copied — paste into your AI chat', false);
+            window.setTimeout(function () {
+                copyBtn.textContent = 'Copy prompt';
+            }, 2000);
+        };
+        var fail = function () {
+            setStatus('Clipboard blocked — select the prompt text and press Ctrl+C (Cmd+C on Mac)', true);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(promptText).then(done).catch(fail);
+        } else {
+            fail();
+        }
+    });
+
+    loadPrompt();
+})();
+</script>
+<script>
+(function () {
+    function initGuideMotion() {
+        var sections = Array.prototype.slice.call(document.querySelectorAll('[data-guide-section]'));
+        var toc = document.querySelector('.guide-toc');
+        if (!sections.length || !toc) {
+            return;
+        }
+
+        var tocLinks = toc.querySelectorAll('a[href^="#"]');
+        var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var visible = {};
+        var minRatio = 0.15;
+
+        function setActiveSection(id) {
+            if (!id) {
+                return;
+            }
+            Array.prototype.forEach.call(tocLinks, function (link) {
+                var match = link.getAttribute('href') === '#' + id;
+                link.classList.toggle('is-active', match);
+                if (match) {
+                    link.setAttribute('aria-current', 'location');
+                } else {
+                    link.removeAttribute('aria-current');
+                }
+            });
+        }
+
+        function updateActiveFromVisible() {
+            var activeId = null;
+            sections.forEach(function (section) {
+                var id = section.getAttribute('data-guide-section');
+                if (id && visible[id] >= minRatio) {
+                    activeId = id;
+                }
+            });
+            if (activeId) {
+                setActiveSection(activeId);
+            }
+        }
+
+        if (reducedMotion) {
+            sections.forEach(function (section) {
+                section.classList.add('is-visible');
+            });
+        }
+
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                var id = entry.target.getAttribute('data-guide-section');
+                if (!id) {
+                    return;
+                }
+                if (entry.isIntersecting) {
+                    if (!reducedMotion) {
+                        entry.target.classList.add('is-visible');
+                    }
+                    visible[id] = entry.intersectionRatio;
+                } else {
+                    delete visible[id];
+                }
+            });
+            updateActiveFromVisible();
+        }, {
+            threshold: [0.15, 0.2, 0.35, 0.5, 0.65]
+        });
+
+        sections.forEach(function (section) {
+            observer.observe(section);
+        });
+
+        if (sections[0]) {
+            setActiveSection(sections[0].getAttribute('data-guide-section'));
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initGuideMotion);
+    } else {
+        initGuideMotion();
+    }
+})();
+</script>
+</body>
+</html>

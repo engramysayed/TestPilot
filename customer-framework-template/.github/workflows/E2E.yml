@@ -1,0 +1,85 @@
+name: test pipeline
+
+on:
+  push:
+    branches:
+      - master
+
+  pull_request:
+    branches:
+      - master
+
+  schedule:
+    # * * * * * -> minutes,hours,week,month,day  for ex: (* 3 * * *) every day at 3 utc time -> 6 egp time
+    # every day at 12 pm egypt time
+    - cron: '* 21 * * *'
+
+  workflow_dispatch:
+
+
+jobs:
+  Edge_Test:
+    # the machine that will run on job
+    runs-on: windows-latest
+    # permissions for the job
+    permissions:
+      checks: write
+    # the steps that will be run in the job
+    steps:
+      #to pull the code from the repo
+      - name: Checkout code
+        uses: actions/checkout@v2
+     #to set up the java environment
+      - name: setup java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+    #to set up the maven environment
+      - name: setup maven
+        uses: stCarolas/setup-maven@v5
+        with:
+          maven-version: '3.9.9'
+    #to run the maven tests
+      - name: Running Tests
+        continue-on-error: true
+        run:  mvn test -Dtest="LoginTest" -DEXECUTION_TYPE="HEADLESS" -DBROWSER_TYPE="EDGE" clean test
+
+      - name: upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-Edge
+          path: "test-output/reports/*.html"
+
+  Chrome_test:
+    # the machine that will run on job
+    runs-on: windows-latest
+    # permissions for the job
+    permissions:
+      checks: write
+    # the steps that will be run in the job
+    steps:
+      #to pull the code from the repo
+      - name: Checkout code
+        uses: actions/checkout@v2
+     #to set up the java environment
+      - name: setup java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+       #to set up the maven environment
+      - name: setup maven
+        uses: stCarolas/setup-maven@v5
+        with:
+          maven-version: '3.9.9'
+       #to run the maven tests
+      - name: Running Tests
+        continue-on-error: true
+        run: mvn test -Dtest="LoginTest" -DEXECUTION_TYPE="HEADLESS" -DBROWSER_TYPE="CHROME" clean test
+
+      - name: upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-Chrome
+          path: "test-output/reports/*.html"

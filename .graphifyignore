@@ -1,0 +1,20 @@
+# Graphify: index TestPilot product code only (not customer ZIPs / TAF template)
+
+# Generated conversion output (customer packages)
+delivery-work/
+
+# Customer TAF template shipped in ZIPs (not product engine)
+customer-framework-template/
+
+# Runtime / store / build / graph output
+delivery-store/
+target/
+graphify-out/
+
+# Spec Kit / scaffolding (not product runtime)
+.specify/
+
+# Local secrets / IDE
+delivery.properties
+.idea/
+.cursor/

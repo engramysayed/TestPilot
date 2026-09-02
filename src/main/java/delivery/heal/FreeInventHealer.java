@@ -25,6 +25,7 @@ public class FreeInventHealer {
     private final CursorHealClient cursor;
     private final AgentRouterClient agentRouter;
     private final LocatorValidator validator;
+    private final RecoveryPlanParser recoveryParser;
     private final String provider;
     private final boolean enabled;
 
@@ -38,6 +39,7 @@ public class FreeInventHealer {
         this.cursor = cursor == null ? new CursorHealClient() : cursor;
         this.agentRouter = agentRouter;
         this.validator = validator == null ? new LocatorValidator() : validator;
+        this.recoveryParser = new RecoveryPlanParser(this.validator);
         this.provider = normalizeProvider(provider);
         this.enabled = enabled;
     }
@@ -61,14 +63,37 @@ public class FreeInventHealer {
             String whyInvoked,
             Path screenshotPathOrNull
     ) {
+        return invent(tcId, intent, slimHtml, pngOrNull, failureReason, priorStepSummaries,
+                whyInvoked, screenshotPathOrNull, null);
+    }
+
+    public Optional<List<ProvenStep>> invent(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String slimHtml,
+            byte[] pngOrNull,
+            String failureReason,
+            List<String> priorStepSummaries,
+            String whyInvoked,
+            Path screenshotPathOrNull,
+            String allowedOpenPath
+    ) {
         if (!enabled || intent == null) {
             return Optional.empty();
         }
-        if (slimHtml == null || slimHtml.isBlank()) {
+        boolean allowNavigate = allowedOpenPath != null && !allowedOpenPath.isBlank();
+        if ((slimHtml == null || slimHtml.isBlank()) && !allowNavigate) {
             LogsManager.info("HEAL_INVENT_SKIPPED: empty_html");
             return Optional.empty();
         }
         List<String> history = sanitizeHistory(priorStepSummaries);
+        List<String> vision = delivery.vision.VisionAttemptLog.linesForHeal();
+        if (!vision.isEmpty()) {
+            List<String> merged = new ArrayList<>(history);
+            merged.add("## Vision attempts this intent");
+            merged.addAll(vision);
+            history = List.copyOf(merged);
+        }
         String html = trim(slimHtml, MAX_HTML_CHARS);
         String reason = (failureReason == null ? "" : failureReason)
                 + " [whyInvoked=" + (whyInvoked == null ? "" : whyInvoked) + "]";
@@ -90,25 +115,148 @@ public class FreeInventHealer {
                         pngOrNull);
             } else {
                 raw = cursor.inventSteps(
-                        intent.text(), reason, history, html, screenshotPathOrNull);
+                        intent.text(), reason, history, html, screenshotPathOrNull, allowedOpenPath);
             }
         } catch (Exception e) {
             LogsManager.warn("HEAL_INVENT_FAILED: " + e.getMessage());
             return Optional.empty();
         }
 
-        List<ProvenStep> steps = parseAndValidate(tcId, intent, raw, html);
-        if (steps.isEmpty()) {
+        Optional<HealResult> healed = parseInventResponse(tcId, intent, raw, html, allowedOpenPath);
+        if (healed.isEmpty()) {
             LogsManager.info("HEAL_INVENT_REJECTED: no valid intent-matching steps");
             return Optional.empty();
         }
         LogsManager.info("HEAL_INVENT: resolved " + tcId + " provider=" + provider
-                + " steps=" + steps.size());
-        return Optional.of(steps);
+                + " tier=" + healed.get().tierUsed()
+                + " steps=" + healed.get().steps().size());
+        LAST_INVENT_RESULT.set(healed.get());
+        return Optional.of(healed.get().steps());
     }
 
-    private List<ProvenStep> parseAndValidate(
+    /** Last invent call result (includes recovery metadata when tier is recovery). */
+    private static final ThreadLocal<HealResult> LAST_INVENT_RESULT = new ThreadLocal<>();
+
+    public static Optional<HealResult> lastInventResult() {
+        HealResult result = LAST_INVENT_RESULT.get();
+        return result == null ? Optional.empty() : Optional.of(result);
+    }
+
+    public static void clearLastInventResult() {
+        LAST_INVENT_RESULT.remove();
+    }
+
+    /**
+     * Full invent parse: recovery mode or classic steps array.
+     */
+    public Optional<HealResult> inventHealResult(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String slimHtml,
+            byte[] pngOrNull,
+            String failureReason,
+            List<String> priorStepSummaries,
+            String whyInvoked,
+            Path screenshotPathOrNull,
+            String allowedOpenPath
+    ) {
+        LAST_INVENT_RESULT.remove();
+        if (!enabled || intent == null) {
+            return Optional.empty();
+        }
+        boolean allowNavigate = allowedOpenPath != null && !allowedOpenPath.isBlank();
+        if ((slimHtml == null || slimHtml.isBlank()) && !allowNavigate) {
+            LogsManager.info("HEAL_INVENT_SKIPPED: empty_html");
+            return Optional.empty();
+        }
+        List<String> history = sanitizeHistory(priorStepSummaries);
+        List<String> vision = delivery.vision.VisionAttemptLog.linesForHeal();
+        if (!vision.isEmpty()) {
+            List<String> merged = new ArrayList<>(history);
+            merged.add("## Vision attempts this intent");
+            merged.addAll(vision);
+            history = List.copyOf(merged);
+        }
+        String html = trim(slimHtml, MAX_HTML_CHARS);
+        String reason = (failureReason == null ? "" : failureReason)
+                + " [whyInvoked=" + (whyInvoked == null ? "" : whyInvoked) + "]";
+        if ((pngOrNull == null || pngOrNull.length == 0) && screenshotPathOrNull == null) {
+            LogsManager.info("HEAL_INVENT_NO_SCREENSHOT: " + tcId);
+        }
+
+        String raw;
+        try {
+            if ("agentrouter".equals(provider)) {
+                if (agentRouter == null) {
+                    LogsManager.warn("HEAL_INVENT_SKIPPED: AgentRouter is not configured");
+                    return Optional.empty();
+                }
+                raw = agentRouter.completeJson(
+                        LocatorPolicy.freeInventRules(),
+                        inventPrompt(intent, reason, history, html,
+                                pngOrNull != null && pngOrNull.length > 0),
+                        pngOrNull);
+            } else {
+                raw = cursor.inventSteps(
+                        intent.text(), reason, history, html, screenshotPathOrNull, allowedOpenPath);
+            }
+        } catch (Exception e) {
+            LogsManager.warn("HEAL_INVENT_FAILED: " + e.getMessage());
+            return Optional.empty();
+        }
+        Optional<HealResult> healed = parseInventResponse(tcId, intent, raw, html, allowedOpenPath);
+        healed.ifPresent(LAST_INVENT_RESULT::set);
+        return healed;
+    }
+
+    public Optional<HealResult> parseInventResponse(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String raw,
+            String slimHtml,
+            String allowedOpenPath
+    ) {
+        Optional<RecoveryPlanParser.RecoveryPlan> recovery =
+                recoveryParser.parse(tcId, raw, slimHtml);
+        if (recovery.isPresent()) {
+            RecoveryPlanParser.RecoveryPlan plan = recovery.get();
+            LogsManager.info("HEAL_RECOVERY: parsed " + plan.steps().size() + " steps for " + tcId);
+            return Optional.of(HealResult.recovery(
+                    plan.steps(), plan.automationNotes(), plan.thought()));
+        }
+        List<ProvenStep> steps = parseClassicSteps(tcId, intent, raw, slimHtml, allowedOpenPath);
+        if (steps.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(HealResult.success(steps, "invent"));
+    }
+
+    /**
+     * Same gate for any locator a model writes, whichever call produced it: shape allowlist,
+     * presence in the page, and an action that matches the intent.
+     */
+    public List<ProvenStep> validateWrittenSteps(
             String tcId, StepIntentBinder.IntentLine intent, String raw, String slimHtml) {
+        return validateWrittenSteps(tcId, intent, raw, slimHtml, null);
+    }
+
+    public List<ProvenStep> validateWrittenSteps(
+            String tcId, StepIntentBinder.IntentLine intent, String raw, String slimHtml,
+            String allowedOpenPath) {
+        if (intent == null || raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        return parseClassicSteps(tcId, intent, raw, slimHtml, allowedOpenPath);
+    }
+
+    private List<ProvenStep> parseClassicSteps(
+            String tcId, StepIntentBinder.IntentLine intent, String raw, String slimHtml) {
+        return parseClassicSteps(tcId, intent, raw, slimHtml, null);
+    }
+
+    private List<ProvenStep> parseClassicSteps(
+            String tcId, StepIntentBinder.IntentLine intent, String raw, String slimHtml,
+            String allowedOpenPath) {
         JSONObject root;
         try {
             String text = raw == null ? "" : raw.trim();
@@ -132,6 +280,17 @@ public class FreeInventHealer {
                 continue;
             }
             String action = item.optString("action", "").trim().toLowerCase(Locale.ROOT);
+            if (isNavigate(action)) {
+                String requested = item.optString("value", "").trim();
+                if (!delivery.job.ExcelPathNavigator.isAllowed(requested, allowedOpenPath)) {
+                    LogsManager.info("HEAL_INVENT_REJECTED: navigate not on Excel open-path → " + requested);
+                    continue;
+                }
+                result.add(new ProvenStep(
+                        tcId, "Page", "browserAction", "navigate",
+                        "", "", requested, "", "", true, "heal:invent:navigate"));
+                continue;
+            }
             if (!actionMatches(intent.kind(), action)) {
                 continue;
             }
@@ -163,6 +322,11 @@ public class FreeInventHealer {
             case ASSERT_VISIBLE -> "assert".equals(action);
             case CLICK_LOGIN, CLICK -> "click".equals(action);
         };
+    }
+
+    private static boolean isNavigate(String action) {
+        return "navigate".equals(action) || "open".equals(action) || "goto".equals(action)
+                || "go".equals(action);
     }
 
     private static String inventPrompt(

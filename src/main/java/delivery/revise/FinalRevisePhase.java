@@ -63,11 +63,20 @@ public class FinalRevisePhase {
         try {
             raw = client.completeJson(systemPrompt(), userPrompt(risky, byId));
         } catch (Exception e) {
-            LogsManager.info("FINAL_REVISE: AgentRouter call failed — " + e.getMessage());
-            String md = "# FINAL REVISE\n\n**Status:** skipped (API error)\n\n" + e.getMessage() + "\n";
+            // Provider detail stays in the log; the portal and the delivered report stay vendor-free.
+            LogsManager.warn("FINAL_REVISE: provider call failed — " + e.getMessage());
+            String md = """
+                    # FINAL REVISE
+
+                    **Status:** not completed
+
+                    The extra quality check could not run for this delivery.
+                    Every test case below was still proven in a real browser; treat this package
+                    as ready for review rather than pre-approved.
+                    """;
             writeReport(projectDir, md);
             return new FinalReviseResult(working, FinalReviseResult.JobVerdict.SHIP_WITH_REVIEW, md,
-                    "FINAL_REVISE_API_ERROR: " + e.getMessage(), true);
+                    "Extra quality check could not run — package delivered for review", true);
         }
 
         ParsedVerdict parsed = parseVerdict(raw);

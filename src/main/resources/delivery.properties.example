@@ -1,0 +1,15 @@
+LOCAL_LLM_BASE_URL=http://127.0.0.1:11434
+LOCAL_LLM_MODEL=gemma4:e2b
+DELIVERY_STORE_ROOT=./delivery-store
+BROWSER_TYPE=CHROME
+# LOCAL = visible window; HEADLESS = no UI (or set BROWSER_HEADLESS=true)
+EXECUTION_TYPE=HEADLESS
+BROWSER_HEADLESS=true
+DEFAULT_WAIT=10
+
+# Final revise (AgentRouter) — off by default; enable only when you have a key and want Client delivery audits
+# Set delivery.final-revise.enabled=true in application.properties (or env) and provide AGENTROUTER_API_KEY
+# delivery.final-revise.enabled=false
+# delivery.final-revise.base-url=https://agentrouter.org
+# delivery.final-revise.model=claude-opus-5
+# AGENTROUTER_API_KEY=your-key-here

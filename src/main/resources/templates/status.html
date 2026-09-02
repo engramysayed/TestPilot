@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Job status')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell" id="status-root"
+      th:attr="data-job-id=${jobId},data-initial-status=${jobStatus},data-job-kind=${jobKind},data-created-at=${jobCreatedAt}">
+    <div class="page-title">
+        <div>
+            <h1>Job status</h1>
+            <p class="lede">Job <code class="mono" th:text="${jobId}">job_...</code>
+                <span th:if="${isExecuteJob}" class="badge muted">Execute</span>
+                <span th:if="${isGenerateBatchJob}" class="badge muted">Generate batch</span>
+                <span th:if="${isGenerateCompareJob}" class="badge muted">Model compare</span>
+                <span th:if="${!isExecuteJob and !isGenerateBatchJob and !isGenerateCompareJob}" class="badge muted">Conversion</span>
+            </p>
+        </div>
+        <a class="button"
+           th:href="${isExecuteJob} ? '/execute' : (${isGenerateCompareJob or isGenerateBatchJob} ? '/generate' : '/jobs')"
+           th:text="${isExecuteJob} ? 'Back to Execute' : (${isGenerateCompareJob or isGenerateBatchJob} ? 'Back to Generate' : 'All jobs')">All jobs</a>
+    </div>
+    <section class="panel" id="live-progress"
+             th:attr="aria-busy=${jobStatus == 'QUEUED' or jobStatus == 'RUNNING'}">
+        <div class="live-progress-head">
+            <span id="job-busy-spinner" class="spinner"
+                  th:hidden="${jobStatus != 'QUEUED' and jobStatus != 'RUNNING'}"
+                  aria-hidden="true"></span>
+            <div>
+                <h2>Live progress</h2>
+                <p class="panel-intro" th:if="${isExecuteJob}">This page polls until the execute run finishes.</p>
+                <p class="panel-intro" th:if="${isGenerateBatchJob}">This page polls while each user story is generated one-by-one.</p>
+                <p class="panel-intro" th:if="${isGenerateCompareJob}">This page polls while both models generate test cases in the background.</p>
+                <p class="panel-intro" th:if="${!isExecuteJob and !isGenerateBatchJob and !isGenerateCompareJob}">This page polls until the job finishes.</p>
+            </div>
+        </div>
+        <div id="progress-track" class="progress-track"
+             th:classappend="${jobStatus == 'QUEUED' or jobStatus == 'RUNNING'} ? ' progress-track--indeterminate'">
+            <div id="progress-bar" class="progress-fill"
+                 th:classappend="${jobStatus == 'QUEUED' or jobStatus == 'RUNNING'} ? ' progress-fill--indeterminate'"
+                 th:style="'width:' + ${progressPercent} + '%'"></div>
+        </div>
+        <p id="job-elapsed" class="muted job-elapsed"
+           th:hidden="${jobStatus != 'QUEUED' and jobStatus != 'RUNNING'}"
+           th:text="${jobElapsedLabel}">Working for 0:00</p>
+        <dl class="status">
+            <dt>Status</dt><dd id="status" th:text="${jobStatus}">QUEUED</dd>
+            <dt>Progress</dt><dd id="progress" th:text="${progressLabel}">0 / 0</dd>
+            <dt>Message</dt><dd id="message" th:text="${jobMessage}">—</dd>
+            <dt th:text="${isGenerateCompareJob} ? 'Model A TCs' : 'Passed'">Passed</dt><dd id="passed" th:text="${passedCount}">0</dd>
+            <dt th:text="${isGenerateCompareJob} ? 'Model B TCs' : (${isGenerateBatchJob} ? 'Failed stories' : 'Blocked / TODO')">Blocked / TODO</dt><dd id="todo" th:text="${todoCount}">0</dd>
+        </dl>
+        <p id="cancel-wrap" th:hidden="${jobStatus != 'QUEUED' and jobStatus != 'RUNNING'}">
+            <button type="button" class="button ghost" id="cancel-btn">Cancel job</button>
+        </p>
+        <p id="block-banner" class="error"
+           th:hidden="${isExecuteJob or jobStatus != 'COMPLETED_WITH_BLOCK'}">
+            Soft block — ZIP is downloadable for inspection but <strong>not client-ready</strong>.
+            See <code>docs/FINAL_REVISE.md</code> in the package.
+        </p>
+        <p id="download-wrap"
+           th:hidden="${isExecuteJob or (jobStatus != 'COMPLETED' and jobStatus != 'COMPLETED_WITH_BLOCK')}">
+            <a id="download" class="button" th:href="@{/api/jobs/{id}/download(id=${jobId})}"
+               th:text="${isGenerateBatchJob} ? 'Download CSV' : 'Download ZIP'">Download ZIP</a>
+            <a href="/dashboard" style="margin-left:0.75rem">Back to dashboard</a>
+        </p>
+        <div id="execute-wrap" th:hidden="${!isExecuteJob}">
+            <p class="hint">Execute runs do not produce a ZIP. Open results on the Execute page or export a bug report when the run completes.</p>
+            <p>
+                <a id="execute-results-link" class="button" href="/execute">View results on Execute</a>
+                <a id="bug-report-link" class="button ghost" style="margin-left:0.75rem"
+                   th:href="@{/api/execute-runs/{id}/bug-report.csv(id=${jobId})}"
+                   th:hidden="${jobStatus != 'COMPLETED' and jobStatus != 'COMPLETED_WITH_BLOCK' and jobStatus != 'FAILED'}">
+                    Export bug report (CSV)
+                </a>
+            </p>
+        </div>
+        <div id="compare-wrap" th:hidden="${!isGenerateCompareJob}">
+            <p class="hint">When complete, open the side-by-side comparison on Generate and save your preferred model.</p>
+            <p>
+                <a id="compare-results-link" class="button" href="/generate">View comparison on Generate</a>
+            </p>
+        </div>
+        <p id="fail" class="error" th:if="${jobStatus == 'FAILED'}" th:text="${jobMessage}"></p>
+        <p id="fail-js" class="error" hidden></p>
+    </section>
+</main>
+</div>
+<script>
+(function () {
+    const root = document.getElementById('status-root');
+    const jobId = (root && root.getAttribute('data-job-id'))
+        || new URLSearchParams(window.location.search).get('jobId')
+        || '';
+    const jobKind = (root && root.getAttribute('data-job-kind')) || 'CONVERT';
+    const isExecute = jobKind === 'EXECUTE';
+    const isGenerateBatch = jobKind === 'GENERATE_BATCH';
+    const isGenerateCompare = jobKind === 'GENERATE_COMPARE';
+    const failEl = document.getElementById('fail-js');
+    const bar = document.getElementById('progress-bar');
+    const liveProgress = document.getElementById('live-progress');
+    const track = document.getElementById('progress-track');
+    const busySpinner = document.getElementById('job-busy-spinner');
+    const elapsedEl = document.getElementById('job-elapsed');
+    let elapsedTimer = null;
+    const initialCreatedAt = root && root.getAttribute('data-created-at');
+    let elapsedStart = parseCreatedAt(initialCreatedAt);
+    if (Number.isNaN(elapsedStart)) {
+        elapsedStart = Date.now();
+    }
+
+    function parseCreatedAt(iso) {
+        if (!iso) return NaN;
+        const t = Date.parse(iso);
+        return Number.isNaN(t) ? NaN : t;
+    }
+
+    function isActiveStatus(status) {
+        return status === 'QUEUED' || status === 'RUNNING';
+    }
+
+    function formatElapsed(ms) {
+        const totalSec = Math.max(0, Math.floor(ms / 1000));
+        const m = Math.floor(totalSec / 60);
+        const s = totalSec % 60;
+        return m + ':' + String(s).padStart(2, '0');
+    }
+
+    function setBusy(active, createdAtIso) {
+        const parsed = parseCreatedAt(createdAtIso);
+        if (!Number.isNaN(parsed)) {
+            elapsedStart = parsed;
+        }
+        if (liveProgress) {
+            liveProgress.setAttribute('aria-busy', active ? 'true' : 'false');
+        }
+        if (busySpinner) {
+            busySpinner.hidden = !active;
+        }
+        if (track) {
+            track.classList.toggle('progress-track--indeterminate', active);
+        }
+        if (bar) {
+            bar.classList.toggle('progress-fill--indeterminate', active);
+        }
+        if (elapsedEl) {
+            elapsedEl.hidden = !active;
+        }
+        if (active) {
+            if (elapsedEl) {
+                elapsedEl.textContent = 'Working for ' + formatElapsed(Date.now() - elapsedStart);
+            }
+            if (!elapsedTimer) {
+                elapsedTimer = setInterval(function () {
+                    elapsedEl.textContent = 'Working for ' + formatElapsed(Date.now() - elapsedStart);
+                }, 1000);
+            }
+        } else if (elapsedTimer) {
+            clearInterval(elapsedTimer);
+            elapsedTimer = null;
+        }
+    }
+
+    setBusy(isActiveStatus(root && root.getAttribute('data-initial-status')), initialCreatedAt);
+    const downloadWrap = document.getElementById('download-wrap');
+    const executeWrap = document.getElementById('execute-wrap');
+    const compareWrap = document.getElementById('compare-wrap');
+    const compareResultsLink = document.getElementById('compare-results-link');
+    const bugReportLink = document.getElementById('bug-report-link');
+    const executeResultsLink = document.getElementById('execute-results-link');
+    const cancelWrap = document.getElementById('cancel-wrap');
+    const cancelBtn = document.getElementById('cancel-btn');
+    let cancelRequested = false;
+
+    if (isExecute && executeResultsLink && jobId) {
+        executeResultsLink.href = '/execute';
+        try {
+            sessionStorage.setItem('keel.lastExecuteJobId', jobId);
+        } catch (e) { /* ignore */ }
+    }
+
+    function showFail(text) {
+        failEl.hidden = false;
+        failEl.textContent = text;
+    }
+
+    function updateCancelUi(status) {
+        if (!cancelWrap) return;
+        const active = isActiveStatus(status);
+        cancelWrap.hidden = !active;
+        if (!cancelBtn) return;
+        if (cancelRequested && active) {
+            cancelBtn.disabled = true;
+            cancelBtn.textContent = 'Cancelling…';
+        } else if (active) {
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = 'Cancel job';
+        }
+    }
+
+    async function requestCancel() {
+        if (!jobId || cancelRequested) return;
+        cancelRequested = true;
+        updateCancelUi('RUNNING');
+        if (cancelBtn) {
+            cancelBtn.disabled = true;
+            cancelBtn.textContent = 'Cancelling…';
+        }
+        try {
+            const res = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/cancel', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-Keel-Requested-With': 'Keel' }
+            });
+            if (!res.ok) {
+                cancelRequested = false;
+                if (cancelBtn) {
+                    cancelBtn.disabled = false;
+                    cancelBtn.textContent = 'Cancel job';
+                }
+                let data = {};
+                try { data = await res.json(); } catch (e) { /* ignore */ }
+                showFail(data.message || ('Cancel failed HTTP ' + res.status));
+            }
+        } catch (e) {
+            cancelRequested = false;
+            if (cancelBtn) {
+                cancelBtn.disabled = false;
+                cancelBtn.textContent = 'Cancel job';
+            }
+            showFail('Network error while requesting cancel');
+        }
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', requestCancel);
+    }
+
+    function render(data) {
+        document.getElementById('status').textContent = data.status || '—';
+        setBusy(isActiveStatus(data.status || ''), data.createdAt);
+        const cur = data.progressCurrent || 0;
+        const tot = data.progressTotal || 0;
+        document.getElementById('progress').textContent = cur + ' / ' + tot;
+        document.getElementById('message').textContent = data.message || '—';
+        document.getElementById('passed').textContent = data.passedCount != null ? data.passedCount : 0;
+        document.getElementById('todo').textContent = data.todoCount != null ? data.todoCount : 0;
+        const active = isActiveStatus(data.status || '');
+        const pct = tot > 0 ? Math.min(100, Math.round((cur / tot) * 100))
+            : (data.status === 'COMPLETED' || data.status === 'COMPLETED_WITH_BLOCK' ? 100 : 0);
+        if (bar) {
+            if (active) {
+                bar.style.width = pct + '%';
+            } else if (data.status === 'COMPLETED' || data.status === 'COMPLETED_WITH_BLOCK') {
+                bar.style.width = '100%';
+            } else if (data.status !== 'FAILED' && data.status !== 'CANCELLED') {
+                bar.style.width = pct + '%';
+            }
+        }
+        updateCancelUi(data.status || '');
+        const kind = data.jobKind || jobKind;
+        const executeJob = kind === 'EXECUTE';
+        const generateBatchJob = kind === 'GENERATE_BATCH';
+        const generateCompareJob = kind === 'GENERATE_COMPARE';
+        const blockBanner = document.getElementById('block-banner');
+        if (blockBanner) {
+            blockBanner.hidden = executeJob || generateBatchJob || generateCompareJob
+                || data.status !== 'COMPLETED_WITH_BLOCK';
+        }
+        if (generateCompareJob) {
+            if (downloadWrap) downloadWrap.hidden = true;
+            if (executeWrap) executeWrap.hidden = true;
+            if (compareWrap) compareWrap.hidden = false;
+            if (compareResultsLink && data.projectId) {
+                const href = '/generate?projectId='
+                    + encodeURIComponent(data.projectId)
+                    + '&compareJobId='
+                    + encodeURIComponent(jobId);
+                compareResultsLink.href = href;
+                compareResultsLink.hidden = data.status !== 'COMPLETED';
+            }
+            if (data.status === 'FAILED') {
+                showFail(data.message || 'Model comparison failed');
+                return true;
+            }
+            if (data.status === 'CANCELLED') {
+                showFail(data.message || 'Model comparison cancelled');
+                return true;
+            }
+            if (data.status === 'COMPLETED') {
+                return true;
+            }
+            return false;
+        }
+        if (executeJob) {
+            if (downloadWrap) downloadWrap.hidden = true;
+            if (executeWrap) executeWrap.hidden = false;
+            if (bugReportLink) {
+                const terminal = data.status === 'COMPLETED'
+                    || data.status === 'COMPLETED_WITH_BLOCK'
+                    || data.status === 'FAILED';
+                bugReportLink.hidden = !terminal;
+            }
+            if (data.status === 'FAILED') {
+                showFail(data.message || 'Execute run failed');
+                return true;
+            }
+            if (data.status === 'CANCELLED') {
+                showFail(data.message || 'Execute run cancelled');
+                return true;
+            }
+            if (data.status === 'COMPLETED' || data.status === 'COMPLETED_WITH_BLOCK') {
+                return true;
+            }
+            return false;
+        }
+        if (generateBatchJob) {
+            if (data.status === 'FAILED') {
+                const parts = [];
+                if (data.error && String(data.error).trim()) {
+                    parts.push(String(data.error).trim());
+                }
+                if (data.message && String(data.message).trim()) {
+                    const msg = String(data.message).trim();
+                    if (!parts.includes(msg)) {
+                        parts.push(msg);
+                    }
+                }
+                showFail(parts.length ? parts.join(' — ') : 'Generate batch failed');
+                return true;
+            }
+            if (data.status === 'CANCELLED') {
+                showFail(data.message || 'Generate batch cancelled');
+                return true;
+            }
+        }
+        if (data.status === 'COMPLETED' || data.status === 'COMPLETED_WITH_BLOCK') {
+            if (downloadWrap) downloadWrap.hidden = executeJob;
+            if (downloadWrap && generateBatchJob && data.status !== 'COMPLETED') {
+                downloadWrap.hidden = true;
+            }
+            const downloadBtn = document.getElementById('download');
+            if (downloadBtn && generateBatchJob) {
+                downloadBtn.textContent = 'Download CSV';
+            }
+            return true;
+        }
+        if (data.status === 'FAILED') {
+            showFail(data.message || 'Job failed');
+            return true;
+        }
+        if (data.status === 'CANCELLED') {
+            showFail(data.message || 'Job cancelled');
+            return true;
+        }
+        return false;
+    }
+
+    async function poll() {
+        if (!jobId) {
+            showFail('Missing jobId in status URL');
+            return;
+        }
+        try {
+            const res = await fetch('/api/jobs/' + encodeURIComponent(jobId), {
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json' }
+            });
+            let data = {};
+            try {
+                data = await res.json();
+            } catch (e) {
+                showFail('Invalid job status response (HTTP ' + res.status + ')');
+                setTimeout(poll, 1500);
+                return;
+            }
+            if (!res.ok) {
+                showFail(data.message || ('Job status error HTTP ' + res.status));
+                if (res.status === 401 || res.status === 403) {
+                    return;
+                }
+                setTimeout(poll, 1500);
+                return;
+            }
+            failEl.hidden = true;
+            const done = render(data);
+            if (!done) {
+                setTimeout(poll, 600);
+            }
+        } catch (e) {
+            showFail('Network error while polling job status');
+            setTimeout(poll, 2000);
+        }
+    }
+
+    poll();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+KEEL CAPABILITY MANIFEST — classify every generated test case with KeelPath.
+
+AUTOMATE (codegen conversion pipeline):
+- Linear UI flows with stable button/field/menu labels
+- Click, type, select, navigate by URL, login with credentials
+- No file upload, CAPTCHA, OTP, native OS dialogs, or email magic links
+- Good candidate for Selenium package generation
+
+EXECUTE (live browser prove — DOM + vision):
+- Multi-step flows that need live exploration or timing
+- Weak or dynamic locators but still UI-driven
+- Visual assertion on screenshot (Qwen)
+- Design reference compare when VisualAssertion is set
+
+VISION_ONLY (assert-heavy execute):
+- Primary value is VisualAssertion or design compare
+- Steps may be minimal (open page, wait, assert screen looks like X)
+- Little or no complex DOM interaction
+
+MANUAL (not runnable in Keel today):
+- File upload (choose file, attach, drag-drop)
+- CAPTCHA, OTP, magic-link email, SMS verification
+- Native OS / printer / Bluetooth / hardware
+- API-only or database-only checks with no UI
+- Multi-browser matrix in one TC
+- Download and verify file bytes (filename on screen is OK)
+
+RULE: Every row MUST set KeelPath to exactly one of: AUTOMATE, EXECUTE, VISION_ONLY, MANUAL.
+When unsure between AUTOMATE and EXECUTE, prefer EXECUTE.
+When upload is required, use MANUAL or rewrite steps to avoid upload.

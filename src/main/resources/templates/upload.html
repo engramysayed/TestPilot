@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Upload')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell">
+    <div class="page-title">
+        <div>
+            <h1>Upload &amp; convert</h1>
+            <p class="muted"><a href="/automate">← Automate</a></p>
+            <p class="lede">Upload your Excel workbook. Keel builds an automation package you can download when ready.</p>
+        </div>
+    </div>
+
+    <section class="panel guide-promo">
+        <div class="guide-promo-copy">
+            <p class="guide-kicker">Before you upload</p>
+            <h2>How to write good test cases</h2>
+            <p class="panel-intro">
+                See which columns are required, how test values line up with steps, and what Keel invents when a cell is blank.
+                Share the guide with anyone who writes the Excel.
+            </p>
+            <div class="guide-promo-actions">
+                <a class="button" href="/tc-guide#testdata">Test data rules</a>
+                <a class="button ghost" href="/tc-guide">Full guide</a>
+            </div>
+            <div class="upload-col-legend" aria-label="Excel column legend">
+                <span class="leg req"><i></i> TC_ID · Title · Steps · ExpectedResult</span>
+                <span class="leg rec"><i></i> Preconditions</span>
+                <span class="leg opt"><i></i> Priority · Tags · VisualAssertion · TestData</span>
+            </div>
+        </div>
+        <ul class="guide-promo-chips" aria-label="Guide topics">
+            <li>Line-align values</li>
+            <li>Blank cells invent data</li>
+            <li>No Test/User placeholders</li>
+            <li>Exact UI labels</li>
+            <li>One expected per step</li>
+            <li>No file-upload cases</li>
+        </ul>
+    </section>
+
+    <section class="panel">
+        <h2>Start a conversion</h2>
+        <p class="panel-intro">Pick a project with a configured base URL and credential profile, attach the workbook, and start.
+            Vision default is <code>ui-tars</code> (Ollama). To fall back: <code>delivery.vision.provider=qwen</code>.</p>
+        <form id="job-form" th:attr="data-final-revise-enabled=${finalReviseEnabled}">
+            <label>Project
+                <select name="projectId" id="projectId" required>
+                    <option value="">— Select project —</option>
+                    <option th:each="p : ${projects}"
+                            th:value="${p.projectId}"
+                            th:text="${p.name + ' (' + p.projectId + ')'}"
+                            th:selected="${p.projectId == projectId}"></option>
+                </select>
+            </label>
+            <div id="project-config" hidden>
+                <p class="hint" id="base-url-row">
+                    <strong>Base URL:</strong>
+                    <span id="base-url-display" class="mono"></span>
+                </p>
+                <p class="error" id="base-url-missing" hidden>
+                    No base URL configured.
+                    <a id="settings-link" href="#">Open project Settings</a> to set one before uploading.
+                </p>
+                <label id="credential-label" hidden>Credential profile
+                    <select name="credentialProfile" id="credentialProfile">
+                        <option value="">— Select profile —</option>
+                    </select>
+                </label>
+            </div>
+            <div id="generated-workbook-panel" class="generated-workbook-panel" hidden>
+                <p class="hint generated-workbook-banner">
+                    <strong>Latest generated workbook</strong>
+                    <span id="generated-workbook-meta" class="muted"></span>
+                </p>
+                <div class="workbook-source-options">
+                    <label class="generate-check">
+                        <input type="radio" name="workbookSource" value="upload" checked/>
+                        <span>Upload a new .xlsx file</span>
+                    </label>
+                    <label class="generate-check">
+                        <input type="radio" name="workbookSource" value="generated"/>
+                        <span>Use latest generated workbook</span>
+                    </label>
+                </div>
+                <p class="muted generate-option-hint">Automate runs <strong>AUTOMATE</strong> rows (and blank KeelPath for legacy sheets). EXECUTE / VISION_ONLY / MANUAL are skipped here.</p>
+            </div>
+            <label id="excel-upload-label">Excel (.xlsx)
+                <input type="file" name="excel" id="excel-input" accept=".xlsx" required/>
+            </label>
+            <label>Mode
+                <select name="mode" id="mode">
+                    <option value="NEW">NEW — full conversion</option>
+                    <option value="UPDATE">UPDATE — only changed TCs (needs a prior NEW)</option>
+                </select>
+            </label>
+            <label class="check">
+                <input type="checkbox" name="finalRevise" id="finalRevise" value="true"/>
+                Client delivery — extra quality check before download
+            </label>
+            <p class="hint" id="finalReviseHint">
+                Recommended when the package goes to a client. We compare your Excel cases to what was
+                converted and flag gaps. You can still download the ZIP; the job is marked as needing
+                review if something looks incomplete.
+            </p>
+            <p class="error" id="finalReviseDisabledWarn" hidden>
+                Final-revise (AgentRouter) is disabled on this server. The job will run without the extra
+                client-delivery audit until an admin sets
+                <code>delivery.final-revise.enabled=true</code> and configures
+                <code>AGENTROUTER_API_KEY</code>.
+            </p>
+            <p class="hint" id="modeHint">
+                <strong>NEW</strong> builds a fresh framework package for all cases.
+                <strong>UPDATE</strong> reuses the stored project framework and only re-authors TCs whose Steps/ExpectedResult changed (content hash). Unchanged cases are kept. If this project has never completed a NEW run, UPDATE fails with <code>UPDATE_WITHOUT_FRAMEWORK</code>.
+            </p>
+            <button type="submit" id="submit-btn">Start job</button>
+        </form>
+        <p id="job-error" class="error" hidden></p>
+    </section>
+</main>
+</div>
+<script>
+(function () {
+    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+    let projectHasBaseUrl = false;
+    let credentialsRequired = false;
+
+    const projectSel = document.getElementById('projectId');
+    const configBlock = document.getElementById('project-config');
+    const baseUrlDisplay = document.getElementById('base-url-display');
+    const baseUrlRow = document.getElementById('base-url-row');
+    const baseUrlMissing = document.getElementById('base-url-missing');
+    const settingsLink = document.getElementById('settings-link');
+    const credLabel = document.getElementById('credential-label');
+    const credSel = document.getElementById('credentialProfile');
+    const submitBtn = document.getElementById('submit-btn');
+    const err = document.getElementById('job-error');
+    const generatedPanel = document.getElementById('generated-workbook-panel');
+    const generatedMeta = document.getElementById('generated-workbook-meta');
+    const excelLabel = document.getElementById('excel-upload-label');
+    const excelInput = document.getElementById('excel-input');
+    const finalReviseCheckbox = document.getElementById('finalRevise');
+    const finalReviseDisabledWarn = document.getElementById('finalReviseDisabledWarn');
+    const formEl = document.getElementById('job-form');
+    const finalReviseEnabled = formEl && formEl.dataset.finalReviseEnabled === 'true';
+    let hasGeneratedWorkbook = false;
+    let generatedWorkbookMeta = null;
+
+    function updateFinalReviseWarning() {
+        if (!finalReviseDisabledWarn || !finalReviseCheckbox) return;
+        const show = !finalReviseEnabled && finalReviseCheckbox.checked;
+        finalReviseDisabledWarn.hidden = !show;
+    }
+
+    if (finalReviseCheckbox) {
+        finalReviseCheckbox.addEventListener('change', updateFinalReviseWarning);
+        updateFinalReviseWarning();
+    }
+
+    function automateRunnable(counts) {
+        if (!counts) return 0;
+        return (counts.AUTOMATE || 0) + (counts.BLANK || 0);
+    }
+
+    function executeRunnable(counts) {
+        if (!counts) return 0;
+        return (counts.EXECUTE || 0) + (counts.VISION_ONLY || 0) + (counts.BLANK || 0);
+    }
+
+    function surfaceSoftWarn(surface, tcCount, counts) {
+        const runnable = surface === 'AUTOMATE' ? automateRunnable(counts) : executeRunnable(counts);
+        if (runnable <= 0 || tcCount <= 0 || runnable * 2 >= tcCount) return null;
+        const label = surface === 'AUTOMATE' ? 'Automate' : 'Execute';
+        return 'Only ' + runnable + ' of ' + tcCount
+            + ' test cases are eligible for ' + label
+            + '. Most rows are marked for the other surface or MANUAL. Continue anyway?';
+    }
+
+    function formatKeelPathCounts(counts) {
+        if (!counts || typeof counts !== 'object') return '';
+        const parts = [];
+        if (counts.AUTOMATE) parts.push('A:' + counts.AUTOMATE);
+        if (counts.EXECUTE) parts.push('E:' + counts.EXECUTE);
+        if (counts.VISION_ONLY) parts.push('V:' + counts.VISION_ONLY);
+        if (counts.MANUAL) parts.push('M:' + counts.MANUAL);
+        if (counts.BLANK) parts.push('blank:' + counts.BLANK);
+        return parts.length ? ' · ' + parts.join(' ') : '';
+    }
+
+    function workbookSource() {
+        const picked = document.querySelector('input[name="workbookSource"]:checked');
+        return picked ? picked.value : 'upload';
+    }
+
+    function syncWorkbookSourceUi() {
+        const useGenerated = hasGeneratedWorkbook && workbookSource() === 'generated';
+        excelLabel.hidden = useGenerated;
+        excelInput.required = !useGenerated;
+        if (useGenerated) {
+            excelInput.value = '';
+        }
+    }
+
+    document.querySelectorAll('input[name="workbookSource"]').forEach(function (el) {
+        el.addEventListener('change', syncWorkbookSourceUi);
+    });
+
+    function resetProjectConfig() {
+        configBlock.hidden = true;
+        projectHasBaseUrl = false;
+        credentialsRequired = false;
+        baseUrlDisplay.textContent = '';
+        baseUrlRow.hidden = true;
+        baseUrlMissing.hidden = true;
+        credLabel.hidden = true;
+        credSel.innerHTML = '<option value="">— Select profile —</option>';
+        credSel.required = false;
+        submitBtn.disabled = false;
+        hasGeneratedWorkbook = false;
+        generatedWorkbookMeta = null;
+        generatedPanel.hidden = true;
+        document.querySelector('input[name="workbookSource"][value="upload"]').checked = true;
+        syncWorkbookSourceUi();
+    }
+
+    async function loadGeneratedWorkbook(projectId) {
+        hasGeneratedWorkbook = false;
+        generatedWorkbookMeta = null;
+        generatedPanel.hidden = true;
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.available) {
+            syncWorkbookSourceUi();
+            return;
+        }
+        hasGeneratedWorkbook = true;
+        generatedWorkbookMeta = data;
+        generatedPanel.hidden = false;
+        const when = data.createdAt ? new Date(data.createdAt).toLocaleString() : 'recently';
+        const ref = data.sourceRef ? ' · ' + data.sourceRef : '';
+        const model = data.model ? ' · model ' + data.model : '';
+        const keel = formatKeelPathCounts(data.keelPathCounts);
+        generatedMeta.textContent = data.tcCount + ' test cases · saved ' + when + ref + model + keel;
+        syncWorkbookSourceUi();
+    }
+
+    async function loadProjectConfig(projectId) {
+        resetProjectConfig();
+        if (!projectId) return;
+
+        configBlock.hidden = false;
+        settingsLink.href = '/projects/' + encodeURIComponent(projectId) + '?tab=settings';
+
+        const projRes = await fetch('/api/projects/' + encodeURIComponent(projectId), {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!projRes.ok) {
+            err.hidden = false;
+            err.textContent = 'Could not load project settings.';
+            return;
+        }
+        const project = await projRes.json();
+        const baseUrl = (project.baseUrl || '').trim();
+        projectHasBaseUrl = baseUrl.length > 0;
+        if (projectHasBaseUrl) {
+            baseUrlRow.hidden = false;
+            baseUrlDisplay.textContent = baseUrl;
+            baseUrlMissing.hidden = true;
+        } else {
+            baseUrlRow.hidden = true;
+            baseUrlMissing.hidden = false;
+            submitBtn.disabled = true;
+        }
+
+        const credRes = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/credentials', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!credRes.ok) return;
+        const profiles = await credRes.json();
+        credSel.innerHTML = '<option value="">— Select profile —</option>';
+        profiles.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.profileName;
+            opt.textContent = c.profileName + ' (' + c.username + ')';
+            credSel.appendChild(opt);
+        });
+        credentialsRequired = profiles.length > 0;
+        if (credentialsRequired) {
+            credLabel.hidden = false;
+            credSel.required = true;
+        }
+        await loadGeneratedWorkbook(projectId);
+    }
+
+    projectSel.addEventListener('change', () => {
+        err.hidden = true;
+        loadProjectConfig(projectSel.value);
+    });
+
+    if (projectSel.value) {
+        loadProjectConfig(projectSel.value);
+    }
+
+    document.getElementById('job-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const projectId = form.projectId.value;
+        err.hidden = true;
+        if (!projectId) {
+            err.hidden = false;
+            err.textContent = 'Select a project';
+            return;
+        }
+        if (!projectHasBaseUrl) {
+            err.hidden = false;
+            err.textContent = 'Configure a base URL in project Settings before uploading.';
+            return;
+        }
+        if (credentialsRequired && !form.credentialProfile.value) {
+            err.hidden = false;
+            err.textContent = 'Select a credential profile';
+            return;
+        }
+        const useGenerated = hasGeneratedWorkbook && workbookSource() === 'generated';
+        if (useGenerated && generatedWorkbookMeta) {
+            const warn = surfaceSoftWarn(
+                'AUTOMATE',
+                generatedWorkbookMeta.tcCount || 0,
+                generatedWorkbookMeta.keelPathCounts
+            );
+            if (warn && !window.confirm(warn)) {
+                return;
+            }
+        }
+        const body = new FormData();
+        if (useGenerated) {
+            body.append('useGenerated', 'true');
+        } else {
+            if (!form.excel.files || !form.excel.files[0]) {
+                err.hidden = false;
+                err.textContent = 'Select an Excel file or use the generated workbook';
+                return;
+            }
+            body.append('excel', form.excel.files[0]);
+        }
+        if (form.credentialProfile.value) {
+            body.append('credentialProfile', form.credentialProfile.value);
+        }
+        body.append('mode', form.mode.value);
+        body.append('finalRevise', form.finalRevise && form.finalRevise.checked ? 'true' : 'false');
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/jobs', {
+            method: 'POST',
+            headers: API_HEADERS,
+            body
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = (data.error || 'ERROR') + ': ' + (data.message || 'failed');
+            return;
+        }
+        window.location.href = '/status?jobId=' + encodeURIComponent(data.jobId);
+    });
+})();
+</script>
+</body>
+</html>

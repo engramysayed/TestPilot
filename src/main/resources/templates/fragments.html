@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:fragment="pageHead(title)">
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title th:text="${title} + ' — Keel'">Keel</title>
+        <link rel="icon" type="image/svg+xml" th:href="@{/img/favicon.svg}"/>
+        <link rel="stylesheet" th:href="@{/css/portal.css}"/>
+        <link rel="preconnect" href="https://fonts.googleapis.com"/>
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@500;600;700&display=swap" rel="stylesheet"/>
+    </th:block>
+</head>
+<body>
+<aside class="sidebar" th:fragment="sidebar">
+    <div class="sidebar-brand">
+        <a href="/dashboard" class="brand-link">
+            <img class="brand-logo" th:src="@{/img/keel-logo.svg}" alt="" width="32" height="32"/>
+            <span class="brand-mark">Keel</span>
+        </a>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Main">
+        <p class="sidebar-label">Workspace</p>
+        <a href="/dashboard" th:classappend="${navActive == 'dashboard'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1v-9.5z"/></svg>
+            Dashboard
+        </a>
+        <a href="/projects" th:classappend="${navActive == 'projects'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h6l2 2h10v11H3V7z"/></svg>
+            Projects
+        </a>
+        <a href="/generate" th:classappend="${navActive == 'generate'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4"/><path d="M12 17v4"/><path d="M3 12h4"/><path d="M17 12h4"/><path d="m8 8 2 2"/><path d="m14 14 2 2"/><path d="m14 8 2-2"/><path d="m8 14 2 2"/></svg>
+            Generate
+        </a>
+        <a href="/execute" th:classappend="${navActive == 'execute'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4V8z"/></svg>
+            Execute
+        </a>
+        <div class="nav-group" th:classappend="${navActive != null and navActive.startsWith('automate')} ? ' is-open' : ''"
+             data-nav-group="automate">
+            <a href="/automate" class="nav-group-head"
+               th:classappend="${navActive != null and navActive.startsWith('automate')} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>
+                Automate
+                <span class="nav-chevron" aria-hidden="true"></span>
+            </a>
+            <div class="nav-group-children">
+                <a href="/upload" th:classappend="${navActive == 'automate-upload'} ? 'active'">Upload</a>
+                <a href="/jobs" th:classappend="${navActive == 'automate-jobs'} ? 'active'">Jobs</a>
+            </div>
+        </div>
+        <a href="/tc-guide" th:classappend="${navActive == 'tc-guide'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9l3 3v13H6V4z"/><path d="M14 4v4h4"/><path d="M8 12h8"/><path d="M8 16h6"/></svg>
+            Guide
+        </a>
+
+        <p class="sidebar-label">Account</p>
+        <a href="/account" th:classappend="${navActive == 'account'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 19.5c1.2-3 3.5-4.5 7-4.5s5.8 1.5 7 4.5"/></svg>
+            Account
+        </a>
+        <th:block th:if="${isAdmin}">
+            <p class="sidebar-label">Admin</p>
+            <a href="/admin/users" th:classappend="${navActive == 'users'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="2.5"/><circle cx="16" cy="8" r="2.5"/><path d="M3.5 18.5c.8-2.2 2.6-3.5 4.5-3.5s3.7 1.3 4.5 3.5"/><path d="M12.5 18.5c.4-1.4 1.5-2.5 3.5-3.2"/></svg>
+                Users
+            </a>
+            <a href="/admin/domains" th:classappend="${navActive == 'domains'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M4 12h16"/><path d="M12 4a14 14 0 0 1 0 16"/><path d="M12 4a14 14 0 0 0 0 16"/></svg>
+                Domains
+            </a>
+        </th:block>
+    </nav>
+
+    <script th:inline="javascript">
+        (function () {
+            var KEY = 'keel.automateNavOpen';
+            var group = document.querySelector('[data-nav-group="automate"]');
+            if (!group) return;
+            var head = group.querySelector('.nav-group-head');
+            if (sessionStorage.getItem(KEY) === '1' || group.classList.contains('is-open')) {
+                group.classList.add('is-open');
+            }
+            if (head) {
+                head.addEventListener('click', function (e) {
+                    if (e.target.closest('.nav-group-children')) return;
+                    if (e.metaKey || e.ctrlKey) return;
+                    if (head.getAttribute('href') === '/automate' && !group.classList.contains('is-open')) {
+                        e.preventDefault();
+                        group.classList.add('is-open');
+                        sessionStorage.setItem(KEY, '1');
+                        return;
+                    }
+                    group.classList.toggle('is-open');
+                    sessionStorage.setItem(KEY, group.classList.contains('is-open') ? '1' : '0');
+                });
+            }
+        })();
+    </script>
+
+    <a id="sidebar-job-chip" class="sidebar-job-chip" hidden href="/status" aria-label="Open job status">
+        <span class="spinner spinner--badge" aria-hidden="true"></span>
+        <span id="sidebar-job-chip-label">Working…</span>
+    </a>
+
+    <script>
+        (function () {
+            var chip = document.getElementById('sidebar-job-chip');
+            var labelEl = document.getElementById('sidebar-job-chip-label');
+            if (!chip || !labelEl) return;
+            var ACTIVE = { QUEUED: true, RUNNING: true };
+            function kindLabel(kind) {
+                if (kind === 'GENERATE_BATCH') return 'Generating…';
+                if (kind === 'EXECUTE') return 'Executing…';
+                if (kind === 'GENERATE_COMPARE') return 'Comparing…';
+                return 'Converting…';
+            }
+            function hide() {
+                chip.hidden = true;
+            }
+            function show(href, text) {
+                chip.hidden = false;
+                chip.href = href;
+                labelEl.textContent = text;
+                chip.setAttribute('aria-label', text + ' Open job status');
+            }
+            async function tick() {
+                if (document.hidden) {
+                    schedule();
+                    return;
+                }
+                try {
+                    var res = await fetch('/api/jobs', {
+                        credentials: 'same-origin',
+                        headers: { 'Accept': 'application/json', 'X-Keel-Requested-With': 'Keel' }
+                    });
+                    if (!res.ok) {
+                        hide();
+                        schedule();
+                        return;
+                    }
+                    var rows = await res.json();
+                    if (!Array.isArray(rows)) {
+                        hide();
+                        schedule();
+                        return;
+                    }
+                    var active = rows.filter(function (j) {
+                        return j && ACTIVE[j.status];
+                    }).sort(function (a, b) {
+                        var ac = a.createdAt || '';
+                        var bc = b.createdAt || '';
+                        if (ac === bc) return 0;
+                        if (!ac) return 1;
+                        if (!bc) return -1;
+                        return ac < bc ? 1 : -1;
+                    });
+                    if (active.length === 0) {
+                        hide();
+                    } else {
+                        var newest = active[0];
+                        var href = '/status?jobId=' + encodeURIComponent(newest.jobId);
+                        var text = active.length === 1
+                            ? kindLabel(newest.jobKind)
+                            : (active.length + ' jobs running');
+                        show(href, text);
+                    }
+                } catch (e) {
+                    hide();
+                }
+                schedule();
+            }
+            function schedule() {
+                setTimeout(tick, 3000);
+            }
+            tick();
+        })();
+    </script>
+
+    <div class="sidebar-foot">
+        <div class="sidebar-user" th:if="${email}">
+            <span class="user-dot" aria-hidden="true"></span>
+            <span class="user-email" th:text="${email}">user@example.com</span>
+        </div>
+        <form th:action="@{/logout}" method="post" class="sidebar-logout">
+            <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit">Log out</button>
+        </form>
+    </div>
+</aside>
+</body>
+</html>

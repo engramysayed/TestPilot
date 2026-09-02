@@ -2,6 +2,7 @@ package delivery.authoring;
 
 import delivery.codegen.ProvenStep;
 import delivery.excel.ManualTestCase;
+import delivery.heal.FailedLocator;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -55,7 +56,34 @@ public class AuthoringService {
             byte[] pngOrNull,
             boolean allowVisionHeal
     ) throws Exception {
+        return authorIntent(tcId, intent, slimHtml, pngOrNull, allowVisionHeal, List.of(), List.of());
+    }
+
+    public List<ProvenStep> authorIntent(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String slimHtml,
+            byte[] pngOrNull,
+            boolean allowVisionHeal,
+            List<ProvenStep> spent
+    ) throws Exception {
+        return authorIntent(tcId, intent, slimHtml, pngOrNull, allowVisionHeal, spent, List.of());
+    }
+
+    public List<ProvenStep> authorIntent(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String slimHtml,
+            byte[] pngOrNull,
+            boolean allowVisionHeal,
+            List<ProvenStep> spent,
+            List<FailedLocator> failedLocators
+    ) throws Exception {
         List<DomCandidate> candidates = DomCandidateExtractor.extract(slimHtml);
+        if (intent != null && intent.kind() == StepIntentBinder.IntentKind.TYPE_FIELD) {
+            candidates = StepIntentBinder.withoutSpentControls(candidates, spent);
+        }
+        candidates = StepIntentBinder.withoutFailedLocators(candidates, failedLocators);
         StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(intent, tcId, candidates, List.of());
         if (bound.ok()) {
             return bound.steps();
@@ -179,6 +207,7 @@ public class AuthoringService {
                 Failure: %s
                 ## Already completed in this TC
                 %s
+                %s
                 Shortlist:
                 %s
                 %s
@@ -187,6 +216,7 @@ public class AuthoringService {
                 intent == null ? "" : intent.text(),
                 failureReason == null ? "" : failureReason,
                 formatPriorSteps(priorStepSummaries),
+                delivery.vision.VisionHealHints.ollamaSection(),
                 DomCandidateExtractor.formatTable(shortlist),
                 hasImage ? "(Screenshot of current page is attached as an image.)" : ""
         );
@@ -252,6 +282,14 @@ public class AuthoringService {
         if (candidateId == null || candidateId.isBlank() || intent == null) {
             return List.of();
         }
+        if (StepIntentBinder.wantsFormSubmit(intent.text())) {
+            DomCandidate chosenEarly = DomCandidateExtractor.findById(candidates, candidateId);
+            if (chosenEarly != null && StepIntentBinder.looksLikeNonSubmitNavigation(chosenEarly)) {
+                return List.of(rejectStep(tcId,
+                        "heal rejected: form submit cannot use non-submit navigation: "
+                                + candidateId));
+            }
+        }
         // Text-visibility intents: keep textContains (body text), don't swap to a weak landmark
         if (intent.kind() == StepIntentBinder.IntentKind.ASSERT_VISIBLE) {
             String phrase = StepIntentBinder.extractAssertTextPhrase(intent.text());
@@ -283,6 +321,13 @@ public class AuthoringService {
             return List.of(rejectStep(tcId,
                     "heal rejected: candidate lacks distinctive tokens for intent: " + intent.text()));
         }
+        // A named control has to be the one the step names, or the case passes on the wrong element.
+        if ((intent.kind() == StepIntentBinder.IntentKind.TYPE_FIELD
+                || intent.kind() == StepIntentBinder.IntentKind.ASSERT_VISIBLE)
+                && !StepIntentBinder.candidateSharesFieldToken(intent.text(), chosen)) {
+            return List.of(rejectStep(tcId,
+                    "heal rejected: " + chosen.id() + " does not carry the name in: " + intent.text()));
+        }
         if (!relaxDistinctive
                 && intent.kind() == StepIntentBinder.IntentKind.CLICK
                 && StepIntentBinder.intentRequiresNamedActionControl(intent.text())
@@ -300,9 +345,26 @@ public class AuthoringService {
         String assertType = "";
         String assertExpected = "";
         String value = "";
+        if (intent.kind() == StepIntentBinder.IntentKind.TYPE_USER
+                || intent.kind() == StepIntentBinder.IntentKind.TYPE_PASS
+                || intent.kind() == StepIntentBinder.IntentKind.TYPE_FIELD) {
+            String inputType = intent.kind() == StepIntentBinder.IntentKind.TYPE_PASS ? "password" : "text";
+            value = DummyValueInventor.fromStepOrInvent(
+                    intent.text(), intent.testData(), chosen.tag(), inputType,
+                    chosen.value(), chosen.label(), chosen.label());
+        }
         if (intent.kind() == StepIntentBinder.IntentKind.ASSERT_VISIBLE) {
-            assertType = "visible";
-            assertExpected = "";
+            String state = StepIntentBinder.extractStateAssertion(intent.text());
+            if (state != null && !state.isBlank()) {
+                assertType = state;
+                if ("selected".equals(state)) {
+                    String expected = StepIntentBinder.extractSelectedValuePhrase(intent.text());
+                    assertExpected = expected == null ? "" : expected;
+                }
+            } else {
+                assertType = "visible";
+                assertExpected = "";
+            }
         }
         return List.of(new ProvenStep(
                 tcId, "Page", "elementAction", action,
@@ -348,21 +410,6 @@ public class AuthoringService {
     ) throws Exception {
         List<ProvenStep> resolved = resolveAmbiguousWithLlm(tc, candidates, ambiguousReason, pngOrNull);
         if (!resolved.isEmpty() && resolved.stream().allMatch(ProvenStep::validated)) {
-            return resolved;
-        }
-        // Deterministic fallback: prefer first shortlist id (highest binder score)
-        String[] parts = ambiguousReason.split(":", 3);
-        if (parts.length >= 3) {
-            String firstId = parts[2].split(",")[0].trim();
-            if (!firstId.isBlank()) {
-                StepIntentBinder.BindResult preferred =
-                        StepIntentBinder.bindPreferring(tc, candidates, List.of(firstId));
-                if (preferred.ok()) {
-                    return preferred.steps();
-                }
-            }
-        }
-        if (!resolved.isEmpty()) {
             return resolved;
         }
         return List.of(rejectStep(tc.tcId(), ambiguousReason));

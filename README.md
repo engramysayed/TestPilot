@@ -1,69 +1,129 @@
-# TestPilot
+# Keel
 
-An **AI-Driven Test Automation Framework** that uses an LLM (Google Gemini) to plan test steps and Selenium to execute them. You describe a scenario in natural language; the agent runs the flow in a real browser, captures state (HTML + screenshots), and continues until the scenario is complete or a cycle limit is reached.
+**Keel** turns manual test intent into live browser evidence and downloadable Selenium/TestNG automation.
 
-## What it does
+Paste user stories or import structured test cases, prove them against a real site with bind → heal → recovery, then package a customer-ready framework ZIP — or run cases directly on **Execute**.
 
-- **Scenario in plain language** — Define test goals in `src/main/resources/scenario.txt` (e.g. “log in, create dashboard, add widget, drag-and-drop, save”).
-- **LLM planning** — Gemini receives current page state (current HTML, screenshot, URL, execution history) and returns the next batch of steps in a strict JSON schema.
-- **Selenium execution** — Steps are executed in a real browser (Chrome/Edge): clicks, typing, navigation, iframe switching, drag-and-drop, etc.
-- **State feedback loop** — After each batch, the agent slims the DOM, takes screenshots, and sends updated state back to the LLM for the next batch.
-- **Structured execution memory** — The planner receives compact `historySummary` memory (recent cycles, completed steps, failed attempts, last URL/screenshot) to reduce repetition while keeping prompts efficient.
-- **Bug reporting** — On completion, the LLM can report bugs (with evidence) in the final batch.
+---
 
-## High-level flow
+## What you get
 
-1. **Pre-start**: Open base URL, optional login (configurable), initial screenshot.
-2. **Loop** (until done or max cycles):
-   - Build state: current URL + slimmed HTML + last screenshot ref + history summary.
-   - Send **PlannerStart** JSON to Gemini (scenario + state + output schema).
-   - Parse **PlannerBatch** response: `steps[]` (actionType, action, selector, value, waits, etc.).
-   - Execute each step via Selenium; take screenshots; record results.
-   - Update state and repeat.
+| Surface | Purpose |
+|---------|---------|
+| **Generate** | Stories or external AI JSON/CSV → quality-gated workbook (`latest.xlsx` / CSV) |
+| **Automate** | Workbook → live prove + heal → Java Selenium TestNG ZIP |
+| **Execute** | Run selected cases against the live site with evidence, without full codegen packaging |
+| **Compare** | Same stories through two local models; save the better set into the project |
+| **KeelPath** | Per-case routing: `AUTOMATE` · `EXECUTE` · `VISION_ONLY` · `MANUAL` |
 
-## Tech stack
+Supporting capabilities:
 
-- **Java 24**, Maven, TestNG
-- **Selenium 4** (Chrome/Edge)
-- **Google Gemini API** (text + optional image) for step planning
-- **Jsoup** for HTML slimming; **org.json** for JSON; **Log4j2** for logging
+- Authoring quality gate (leave-empty / vague asserts / field naming)
+- Editable TC preview (step × test-data grid before Automate/Execute)
+- Heal cascade: DOM bind → Ollama → optional Cursor invent → structured **recovery** plans
+- Domains, projects, credentials, design references, and retention under a local store
 
-## Prerequisites
+---
 
-- JDK 24
-- Maven 3.x
-- Chrome or Edge (for browser automation)
-- [Gemini API key] (set in config)
+## Stack
 
-## Configuration
+- **Java 21** · Spring Boot portal
+- **Local Ollama** for generate / authoring (configurable models)
+- Optional **Cursor Auto** heal sidecar (`tools/cursor-heal/`)
+- Optional vision models (e.g. UI-TARS / Qwen-VL) for grounding and visual asserts
+- Filesystem store: `delivery-store/` · H2 or Postgres for portal accounts
+- Customer TAF template: `customer-framework-template/`
 
-Main config is loaded from `src/main/resources/webapp.properties`:
+---
 
-| Key | Description |
-|-----|-------------|
-| `BROWSER_TYPE` | `CHROME` or `EDGE` |
-| `BASE_WEB` | Starting URL |
-| `ISLOGIN` | `TRUE` to run login before the scenario (uses credentials below) |
-| `USERNAME`, `PASSWORD` | Login credentials |
-| `userNameLocator`, `passwordLocator`, `clickLocator` | Selectors for login (e.g. `cssSelector:input[placeholder='Username']`) |
-| `GEMINI_API_KEY` | Your Gemini API key |
-| `GEMINI_MODEL` | Model name (e.g. `gemini-2.5-flash`) |
-| `HTML_MAX_CHARS` | Max characters for slimmed HTML sent to planner |
-| `DEFAULT_WAIT`, `DEFAULT_SCREENSHOT_WAIT` | Default waits for actions and screenshots |
-| `MaxSteps` | Max steps per LLM batch (e.g. `3`) |
-| `MaxCycles` | Max planner cycles (e.g. `25`) |
+## Quick start
 
-Scenario is loaded from:
+### Prerequisites
 
-- `src/main/resources/scenario.txt`
+- JDK 21+
+- Maven 3.9+
+- Chrome or Edge
+- [Ollama](https://ollama.com/) with at least one generate model pulled (see `application.properties`)
+- Node.js 18+ if you enable the Cursor heal sidecar
 
-Configuration notes:
+### Run the portal
 
-- The project uses a typed Owner-based config layer for most values.
-- `GEMINI_API_KEY` is read via `PropertyReader` .
-
-## How to run
-
-```bash
-mvn clean test
+```bat
+start-portal.bat
 ```
+
+With Cursor heal (requires `CURSOR_API_KEY` via env or a local BAT — never commit keys):
+
+```bat
+start-portal-with-cursor-heal.bat
+```
+
+Open **http://localhost:8080**.
+
+Default admin credentials are set in `src/main/resources/application.properties` — **change them before any shared or remote use**.
+
+### Configuration
+
+Primary knobs live in `src/main/resources/application.properties`:
+
+| Key | Role |
+|-----|------|
+| `delivery.llm-base-url` / `delivery.llm-model` | Ollama endpoint and default model |
+| `delivery.generate-model` / `delivery.generate-models` | Generate + Compare model list |
+| `delivery.cursor-heal.enabled` | Enable Cursor invent/solve sidecar |
+| `delivery.store-root` | Project artifact store (default `./delivery-store`) |
+| `delivery.browser.headless` | Headless prove/execute browser |
+
+API clients should send header: `X-Keel-Requested-With: Keel`.
+
+After Generate UI, prompt, or gate changes: **restart the portal** and hard-refresh the browser.
+
+### CLI
+
+Batch conversion without the UI: `delivery.cli.DeliveryCli` — see `docs/ops/` for local Ollama and ops notes.
+
+---
+
+## How Automate works
+
+```text
+Excel / generated workbook
+        │
+        ▼
+   ProvePhase  ──► bind intents to live DOM
+        │              │
+        │              └─ fail ► HealCascade (Ollama → Cursor → recovery)
+        ▼
+   IR (TcDraft) → Revise → Emit (pages + tests) → Framework ZIP
+```
+
+**Recovery** (when page state mismatches the intent, e.g. a field that should be empty is filled): Cursor/invent may return structured JSON (`mode: "recovery"`, `recoverySteps`, `automationNotes`). Keel validates locators on the live page, executes the plan, records evidence (`heal-recovery.json`), and retries the same intent.
+
+---
+
+## Repository layout
+
+```text
+src/main/java/delivery/     Portal, jobs, authoring, heal, codegen, Excel
+src/main/resources/         application.properties, templates, static UI
+customer-framework-template/  Shipped TAF core inside every Automate ZIP
+tools/cursor-heal/          Cursor Auto heal sidecar
+docs/                       Specs, plans, and ops guides
+scripts/                    Setup helpers (e.g. vision models)
+```
+
+Engineering depth (flows, quality gates, historical workstream notes): [`docs/ENGINEERING_HANDOFF.md`](docs/ENGINEERING_HANDOFF.md).
+
+---
+
+## Security notes
+
+- Do not commit API keys. Use env vars (`CURSOR_API_KEY`, `AGENTROUTER_API_KEY`, …) or gitignored local BAT files (`cursor-api-key.local.bat`).
+- Change the portal admin password before exposing the app beyond localhost.
+- `delivery-store/` and `delivery-work/` hold runtime data and are gitignored.
+
+---
+
+## License
+
+Proprietary — all rights reserved unless a license file is added to this repository.

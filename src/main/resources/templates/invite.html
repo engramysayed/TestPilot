@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Accept invite — Keel</title>
+    <link rel="stylesheet" th:href="@{/css/portal.css}"/>
+</head>
+<body>
+<main class="shell">
+    <h1>Accept invite</h1>
+    <p class="error" th:if="${error}" th:text="${error}"></p>
+    <form th:if="${error == null}" th:action="@{/invite/{token}(token=${token})}" method="post">
+        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <p>Email: <strong th:text="${email}">user@example.com</strong></p>
+        <label>Choose a password (min 8 characters)
+            <input type="password" name="password" minlength="8" required autocomplete="new-password"/>
+        </label>
+        <button type="submit">Create account</button>
+    </form>
+    <p><a href="/login">Back to login</a></p>
+</main>
+</body>
+</html>

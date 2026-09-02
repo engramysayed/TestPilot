@@ -17,17 +17,22 @@ public interface AppConfig extends Config {
     @DefaultValue("EDGE")
     String browserType();
 
-    //LOCAL - HEADLESS - REMOTE
+    //LOCAL - HEADLESS - REMOTE (HEADLESS / LocalHeadless hide the browser window)
     @Key("EXECUTION_TYPE")
     @DefaultValue("LOCAL")
     String executionType();
+
+    /** When true, Chrome/Edge run headless regardless of EXECUTION_TYPE (unless Remote). */
+    @Key("BROWSER_HEADLESS")
+    @DefaultValue("false")
+    boolean browserHeadless();
 
     @Key("ISLOGIN")
     @DefaultValue("false")
     boolean isLogin();
 
     @Key("BASE_WEB")
-    @DefaultValue("https://www.saucedemo.com/")
+    @DefaultValue("")
     String baseWeb();
 
     @Key("USERNAME")

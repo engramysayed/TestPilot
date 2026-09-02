@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Request access — Keel</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/img/favicon.svg}"/>
+    <link rel="stylesheet" th:href="@{/css/portal.css}"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet"/>
+</head>
+<body class="login-body">
+<main class="login-split" aria-label="Request access">
+    <section class="login-form-pane">
+        <div class="login-form-card">
+            <p class="guide-kicker">New here</p>
+            <h1>Request access</h1>
+            <p class="lede">Leave your work email. An admin reviews requests and sends a link so you can set your own password.</p>
+            <p id="ok" class="ok hidden"></p>
+            <p id="err" class="error hidden"></p>
+            <form id="request-form" class="login-form">
+                <label>Work email
+                    <input type="email" name="email" required autocomplete="email" placeholder="you@company.com"/>
+                </label>
+                <button type="submit" class="button login-submit">Submit request</button>
+            </form>
+            <p class="muted" style="margin-top:1.25rem">
+                Already have an account? <a href="/login">Sign in</a>
+            </p>
+        </div>
+    </section>
+    <aside class="login-brand-pane" aria-label="Keel">
+        <div class="login-brand-inner login-brand-minimal">
+            <img class="login-logo" th:src="@{/img/keel-logo.svg}" alt="" width="88" height="88"/>
+            <p class="login-brand-name">Keel</p>
+            <p class="login-slogan">Give It the Task. Wake Up to Results.</p>
+        </div>
+    </aside>
+</main>
+<script>
+document.getElementById('request-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const ok = document.getElementById('ok');
+    const err = document.getElementById('err');
+    ok.classList.add('hidden');
+    err.classList.add('hidden');
+    const email = e.target.email.value.trim();
+    const r = await fetch('/api/access-requests', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Keel-Requested-With': 'Keel'
+        },
+        body: JSON.stringify({ email })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+        err.textContent = data.message || 'Could not submit request.';
+        err.classList.remove('hidden');
+        return;
+    }
+    ok.textContent = data.message || 'Request received.';
+    ok.classList.remove('hidden');
+    e.target.reset();
+});
+</script>
+</body>
+</html>

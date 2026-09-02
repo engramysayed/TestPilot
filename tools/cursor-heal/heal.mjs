@@ -48,12 +48,13 @@ async function main() {
     process.exit(2);
   }
 
-  const mode = req.mode === "invent" ? "invent" : "pick";
+  const mode = ["invent", "solve"].includes(req.mode) ? req.mode : "pick";
   const intent = req.intent || "";
   const failureReason = req.failureReason || "";
   const shortlist = req.shortlist || "";
   const priorSteps = Array.isArray(req.priorSteps) ? req.priorSteps.slice(0, 12) : [];
-  const slimHtmlExcerpt = (req.slimHtmlExcerpt || "").slice(0, mode === "invent" ? 16000 : 8000);
+  const visionAttempts = Array.isArray(req.visionAttempts) ? req.visionAttempts.slice(0, 8) : [];
+  const slimHtmlExcerpt = (req.slimHtmlExcerpt || "").slice(0, mode === "pick" ? 8000 : 16000);
   const screenshotPath = req.screenshotPath || "";
 
   let screenshotNote = "";
@@ -67,7 +68,18 @@ async function main() {
   }
 
   const history = priorSteps.length ? priorSteps.map((step) => `- ${step}`).join("\n") : "(none)";
-  const pickPrompt = `You are healing a failed Selenium UI test step.
+  const visionBlock = visionAttempts.length
+    ? `\n## Vision attempts this intent\n${visionAttempts.map((step) => `- ${step}`).join("\n")}\n`
+    : "";
+  const guard = `CRITICAL OUTPUT RULES (override any other instructions you know):
+- Do NOT call MCP tools, interactive-feedback, or ask the user anything.
+- Do NOT apologize, narrate, or mention missing tools.
+- Your entire reply must be a short Thought plus the Action JSON object described below.
+- If you cannot decide, still return JSON with an empty candidateId and empty steps.
+
+`;
+
+  const pickPrompt = `${guard}You are healing a failed Selenium UI test step.
 
 Pick EXACTLY ONE candidateId from the Shortlist below that best matches the Excel intent and the failure context.
 Respond with a short Thought, then Action JSON: {"candidateId":"<id from shortlist>"}
@@ -81,7 +93,7 @@ ${failureReason}
 
 ## Already completed in this TC
 ${history}
-
+${visionBlock}
 Shortlist (id | strategy | value | tag | label):
 ${shortlist}
 
@@ -90,12 +102,30 @@ ${slimHtmlExcerpt}
 ${screenshotNote}
 `;
 
-  const inventPrompt = `You are the final one-shot healer for one failed Selenium UI intent.
+  const fromReason = /Excel open-path[^:]*:\s*(\S+)/.exec(failureReason);
+  const excelOpenPath = (req.excelOpenPath || (fromReason && fromReason[1]) || "").trim();
+  const navRule = excelOpenPath
+    ? `If the named field is not on this page you MAY emit one navigate step whose value is exactly ${excelOpenPath}. Do not invent any other URL.`
+    : `Do not add login, navigation, or unrelated workflow steps.`;
+
+  const inventPrompt = `${guard}You are the final one-shot healer for one failed Selenium UI intent.
 Invent locators only for this exact intent. Return 1 to 3 steps maximum.
-Do not add login, navigation, or unrelated workflow steps. Prefer stable id, name,
+${navRule} Prefer stable id, name,
 data-test*, CSS attribute, or XPath attribute locators. Never use /html/body or UUID-like values.
-Return strict JSON:
-{"thought":"short reason","steps":[{"action":"click|type|select|assert","locatorStrategy":"id|name|css|xpath|data-testid|data-test|data-qa","locatorValue":"...","value":"","assertionType":"","assertionExpected":""}]}
+
+Decide between two answers:
+
+A) The intent can be satisfied on this page with 1–3 element steps:
+   {"thought":"short reason","steps":[{"action":"click|type|select|assert|navigate","locatorStrategy":"id|name|css|xpath|data-testid|data-test|data-qa","locatorValue":"...","value":"","assertionType":"","assertionExpected":""}]}
+
+B) The screenshot/HTML show the page STATE is wrong for this intent (field filled when Excel said leave empty,
+   wrong value visible, stale form after a prior mistake). Propose a short recovery plan (clear/click/type/select only):
+   {"mode":"recovery","thought":"why state is wrong","recoverySteps":[
+     {"action":"clear|click|type|select","locatorStrategy":"css","locatorValue":"...","value":""}
+   ],"automationNotes":["Excel-safe note for Automate after recovery succeeds"]}
+
+Every locator attribute must already appear in the HTML below. Max 3 recovery steps.
+After recovery succeeds, Keel retries the SAME failed intent (no intent-index jump).
 
 Excel intent:
 ${intent}
@@ -105,13 +135,65 @@ ${failureReason}
 
 ## Already completed in this TC
 ${history}
+${visionBlock}
+Slim HTML excerpt:
+${slimHtmlExcerpt}
+${screenshotNote}
+`;
+
+  // Solve is the escalation after the cheap local pick failed: the shortlist may simply not
+  // contain the element, so refusing the rows and returning a locator is a valid answer.
+  const solvePrompt = `${guard}You are the senior healer for one failed Selenium UI test step.
+The cheap local model already tried to pick from the shortlist and got it wrong, so do not
+assume the answer is in the list. Decide honestly between two answers:
+
+A) One shortlist row really is the element the Excel intent describes:
+   {"thought":"why this row","candidateId":"<id from shortlist>"}
+
+B) No row matches. Then read the HTML and screenshot and write the locator yourself:
+   {"thought":"why no row matches and how you found the element",
+    "steps":[{"action":"click|type|select|assert|navigate","locatorStrategy":"id|name|css|xpath|data-testid|data-test|data-qa","locatorValue":"...","value":"","assertionType":"","assertionExpected":""}]}
+
+C) The page STATE is wrong for the intent (filled when empty expected, wrong value visible). Return recovery:
+   {"mode":"recovery","thought":"why state is wrong","recoverySteps":[
+     {"action":"clear|click|type|select","locatorStrategy":"css","locatorValue":"...","value":""}
+   ],"automationNotes":["Excel-safe note for Automate"]}
+   After recovery, Keel retries the SAME failed intent (no intent-index jump).
+
+Answer B is expected and correct when the field's name is only in a nearby label or span
+rather than in an attribute on the control itself. Never force-fit a row you do not believe in.
+
+Locator rules:
+- Prefer a hand-written id, name, data-test*, or an attribute selector on a human attribute
+  (aria-label, placeholder, title, role).
+- Never build on a framework-generated id such as _r_15_, :r0:, ember1423 or mui-42.
+- When the control carries no name of its own, anchor on its label:
+  //label[contains(normalize-space(.),'First name')]//input  (label wraps the control)
+  //label[contains(normalize-space(.),'Email')]/following::input[1]  (label sits beside it)
+- Every attribute and every word you put in a locator must already appear in the HTML below.
+${excelOpenPath
+  ? `- If the named field is not on this page you MAY emit one navigate step whose value is exactly ${excelOpenPath}. Do not invent any other URL.`
+  : `- Return 1 to 3 steps for this intent only. No login, navigation, or unrelated steps.`}
+
+Excel intent:
+${intent}
+
+Failure reason:
+${failureReason}
+
+## Already completed in this TC
+${history}
+${visionBlock}
+Shortlist (id | strategy | value | tag | label):
+${shortlist}
 
 Slim HTML excerpt:
 ${slimHtmlExcerpt}
 ${screenshotNote}
 `;
 
-  const result = await Agent.prompt(mode === "invent" ? inventPrompt : pickPrompt, {
+  const prompts = { pick: pickPrompt, invent: inventPrompt, solve: solvePrompt };
+  const result = await Agent.prompt(prompts[mode], {
     apiKey,
     model: { id: "auto" },
     local: { cwd: process.cwd() },
@@ -122,8 +204,19 @@ ${screenshotNote}
     (typeof result === "string" ? result : JSON.stringify(result));
 
   const parsed = extractJsonObject(String(text));
+  if (mode === "solve") {
+    const id = parsed && parsed.candidateId ? String(parsed.candidateId).trim() : "";
+    const steps = parsed && Array.isArray(parsed.steps) ? parsed.steps : [];
+    const recovery = parsed && parsed.mode === "recovery";
+    if (!id && steps.length === 0 && !recovery) {
+      console.error("Solve returned neither a candidateId nor steps:", String(text).slice(0, 500));
+      process.exit(1);
+    }
+    process.stdout.write(JSON.stringify(parsed) + "\n");
+    return;
+  }
   if (mode === "invent") {
-    if (!parsed || !Array.isArray(parsed.steps)) {
+    if (!parsed || (!Array.isArray(parsed.steps) && parsed.mode !== "recovery")) {
       console.error("No invent steps in agent response:", String(text).slice(0, 500));
       process.exit(1);
     }

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Dashboard')}"></th:block>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell wide">
+    <div class="page-title">
+        <div>
+            <h1>Dashboard</h1>
+            <p class="lede">Overview of your projects, jobs, and pass rates.</p>
+        </div>
+    </div>
+
+    <section class="dash-hero">
+        <p th:if="${!stats.hasProjects}" class="muted dash-empty-hint dash-reveal">
+            No projects yet. Create one from <strong>Projects</strong> in the sidebar.
+        </p>
+
+        <section class="stats stats--overview">
+            <div class="stat-card stat-card--accent dash-reveal" style="--dash-reveal-delay: 0ms">
+                <span th:text="${stats.activeProjectCount}">0</span><label>Active projects</label>
+            </div>
+            <div class="stat-card stat-card--blue dash-reveal" style="--dash-reveal-delay: 40ms">
+                <span th:text="${stats.jobCount}">0</span><label>Conversions</label>
+            </div>
+            <div class="stat-card stat-card--teal dash-reveal" style="--dash-reveal-delay: 80ms">
+                <span th:text="${stats.executeJobCount}">0</span><label>Execute runs</label>
+            </div>
+            <div class="stat-card stat-card--amber dash-reveal" style="--dash-reveal-delay: 120ms">
+                <span th:text="${stats.runningJobs}">0</span><label>Running now</label>
+            </div>
+            <div class="stat-card stat-card--ok dash-reveal" style="--dash-reveal-delay: 160ms">
+                <span th:text="${stats.completedJobs}">0</span><label>Completed (Automate)</label>
+            </div>
+            <div class="stat-card stat-card--err dash-reveal" style="--dash-reveal-delay: 200ms">
+                <span th:text="${stats.failedJobs}">0</span><label>Failed (Automate)</label>
+            </div>
+            <div class="stat-card stat-card--blue dash-reveal" style="--dash-reveal-delay: 240ms">
+                <span th:text="${stats.passedTotal}">0</span><label>Passed (Automate)</label>
+            </div>
+            <div class="stat-card stat-card--warn dash-reveal" style="--dash-reveal-delay: 280ms">
+                <span th:text="${stats.todoTotal}">0</span><label>Blocked (Automate)</label>
+            </div>
+            <div class="stat-card stat-card--accent dash-reveal" style="--dash-reveal-delay: 320ms">
+                <span th:text="${stats.passRate} + '%'">0%</span><label>Pass rate</label>
+            </div>
+        </section>
+    </section>
+
+    <div class="dash-grid">
+        <section class="panel dash-chart-panel dash-chart-panel--tall">
+            <h2>Results by day</h2>
+            <p class="panel-intro">Passed vs blocked test cases. Filter by project or dates below.</p>
+            <div class="panel-toolbar">
+                <label>Project
+                    <select id="filterProject">
+                        <option value="">All projects</option>
+                        <option th:each="p : ${stats.projectOptions}"
+                                th:value="${p.projectId}"
+                                th:text="${p.name}"></option>
+                    </select>
+                </label>
+                <label>From
+                    <input type="date" id="filterFrom"/>
+                </label>
+                <label>To
+                    <input type="date" id="filterTo"/>
+                </label>
+                <button type="button" id="applyFilters" class="button">Apply</button>
+            </div>
+            <div class="chart-wrap chart-wrap--tall">
+                <canvas id="scoreChart" height="140"></canvas>
+            </div>
+        </section>
+
+        <section class="panel dash-chart-panel dash-chart-panel--tall">
+            <h2>Job status</h2>
+            <p class="panel-intro">Automate and Execute jobs — how many finished, failed, or are still running.</p>
+            <div class="dash-donut-layout">
+                <div class="chart-wrap chart-wrap--donut">
+                    <canvas id="statusChart"></canvas>
+                </div>
+                <ul class="dash-legend dash-legend--side" id="statusLegend"></ul>
+            </div>
+        </section>
+
+        <section class="panel dash-chart-panel dash-chart-panel--tall">
+            <h2>Automate results</h2>
+            <p class="panel-intro">Passed vs blocked cases from Automate conversion jobs.</p>
+            <div class="dash-donut-layout">
+                <div class="chart-wrap chart-wrap--donut">
+                    <canvas id="passChart"></canvas>
+                </div>
+                <ul class="dash-legend dash-legend--side" id="passLegend"></ul>
+            </div>
+        </section>
+
+        <section class="panel dash-stat-panel dash-chart-panel--tall">
+            <h2>Execute runs</h2>
+            <p class="panel-intro">Total Execute jobs, how many are running, and how many failed.</p>
+            <div class="dash-mini-stats">
+                <div class="dash-mini-stat dash-mini-stat--total">
+                    <span class="dash-mini-value" th:text="${stats.executeJobCount}">0</span>
+                    <span class="dash-mini-label">Total runs</span>
+                </div>
+                <div class="dash-mini-stat dash-mini-stat--running">
+                    <span class="dash-mini-value" th:text="${stats.executeRunning}">0</span>
+                    <span class="dash-mini-label">Running now</span>
+                </div>
+                <div class="dash-mini-stat dash-mini-stat--failed">
+                    <span class="dash-mini-value" th:text="${stats.statusFailed}">0</span>
+                    <span class="dash-mini-label">Failed jobs</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel dash-span">
+            <h2>Recent Automate jobs</h2>
+            <p class="panel-intro">Latest conversion jobs for your projects.</p>
+            <table class="table" id="jobsTable">
+                <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Project</th>
+                    <th>Mode</th>
+                    <th>Status</th>
+                    <th>Passed</th>
+                    <th>Blocked</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="j : ${stats.recentJobs}"
+                    th:attr="data-project=${j.projectId},data-day=${j.day},data-status=${j.status}">
+                    <td class="mono" th:text="${j.createdAt}">—</td>
+                    <td th:text="${j.projectName}">Project</td>
+                    <td th:text="${j.mode}">NEW</td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${j.status == 'COMPLETED'} ? ' ok' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? ' warn' : (${j.status == 'FAILED'} ? ' err' : (${j.status == 'RUNNING' or j.status == 'QUEUED'} ? ' warn badge--busy' : ' muted')))">
+                            <span class="spinner spinner--badge" th:if="${j.status == 'RUNNING' or j.status == 'QUEUED'}" aria-hidden="true"></span>
+                            <span th:text="${j.status}">COMPLETED</span>
+                        </span>
+                    </td>
+                    <td th:text="${j.passedCount}">0</td>
+                    <td th:text="${j.todoCount}">0</td>
+                </tr>
+                <tr th:if="${!stats.hasJobs}">
+                    <td colspan="6" class="muted">No conversion jobs recorded yet.</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+</main>
+</div>
+<script th:inline="javascript">
+    const allJobs = /*[[${stats.recentJobs}]]*/ [];
+    const chartLabels = /*[[${stats.chartLabels}]]*/ [];
+    const chartPassed = /*[[${stats.chartPassed}]]*/ [];
+    const chartTodo = /*[[${stats.chartTodo}]]*/ [];
+    const statusCounts = {
+        completed: /*[[${stats.statusCompleted}]]*/ 0,
+        blocked: /*[[${stats.statusBlocked}]]*/ 0,
+        failed: /*[[${stats.statusFailed}]]*/ 0,
+        running: /*[[${stats.statusRunning}]]*/ 0,
+        queued: /*[[${stats.statusQueued}]]*/ 0
+    };
+    const passedTotal = /*[[${stats.passedTotal}]]*/ 0;
+    const todoTotal = /*[[${stats.todoTotal}]]*/ 0;
+
+    const scoreCtx = document.getElementById('scoreChart');
+    const scoreChart = new Chart(scoreCtx, {
+        type: 'bar',
+        data: {
+            labels: chartLabels,
+            datasets: [
+                {
+                    label: 'Passed',
+                    data: chartPassed,
+                    backgroundColor: 'rgba(58, 160, 232, 0.88)',
+                    borderRadius: 8,
+                    maxBarThickness: 32
+                },
+                {
+                    label: 'Blocked',
+                    data: chartTodo,
+                    backgroundColor: 'rgba(230, 178, 60, 0.88)',
+                    borderRadius: 8,
+                    maxBarThickness: 32
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#5b7080', usePointStyle: true, padding: 14 }
+                },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#5b7080', maxRotation: 45 },
+                    grid: { color: 'rgba(18, 34, 44, 0.06)', drawBorder: false }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0, color: '#5b7080' },
+                    grid: { color: 'rgba(18, 34, 44, 0.06)', drawBorder: false }
+                }
+            }
+        }
+    });
+
+    const statusLabels = ['Completed', 'Needs review', 'Failed', 'Running', 'Queued'];
+    const statusData = [
+        statusCounts.completed,
+        statusCounts.blocked,
+        statusCounts.failed,
+        statusCounts.running,
+        statusCounts.queued
+    ];
+    const statusColors = [
+        'rgba(52, 199, 89, 0.88)',
+        'rgba(230, 178, 60, 0.88)',
+        'rgba(239, 68, 68, 0.88)',
+        'rgba(58, 160, 232, 0.88)',
+        'rgba(148, 163, 184, 0.55)'
+    ];
+
+    new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: statusLabels,
+            datasets: [{
+                data: statusData,
+                backgroundColor: statusColors,
+                borderWidth: 0,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '62%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const total = statusData.reduce((a, b) => a + b, 0) || 1;
+                            const pct = Math.round((ctx.raw / total) * 1000) / 10;
+                            return ctx.label + ': ' + ctx.raw + ' (' + pct + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    const legendEl = document.getElementById('statusLegend');
+    statusLabels.forEach((label, i) => {
+        if (statusData[i] === 0) return;
+        const li = document.createElement('li');
+        li.innerHTML = '<span class="dash-legend-swatch" style="background:' + statusColors[i] + '"></span>'
+            + label + ' <strong>' + statusData[i] + '</strong>';
+        legendEl.appendChild(li);
+    });
+    if (!legendEl.children.length) {
+        legendEl.innerHTML = '<li class="muted">No jobs yet</li>';
+    }
+
+    new Chart(document.getElementById('passChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Passed', 'Blocked'],
+            datasets: [{
+                data: [passedTotal, todoTotal],
+                backgroundColor: ['rgba(58, 160, 232, 0.88)', 'rgba(230, 178, 60, 0.88)'],
+                borderWidth: 0,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '62%',
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    const passLegendEl = document.getElementById('passLegend');
+    const passLegendRows = [];
+    passLegendRows.push(['Passed', passedTotal, 'rgba(58, 160, 232, 0.88)']);
+    passLegendRows.push(['Blocked', todoTotal, 'rgba(230, 178, 60, 0.88)']);
+    let passLegendCount = 0;
+    passLegendRows.forEach(([label, count, color]) => {
+        if (!count) return;
+        passLegendCount++;
+        const li = document.createElement('li');
+        li.innerHTML = '<span class="dash-legend-swatch" style="background:' + color + '"></span>'
+            + label + ' <strong>' + count + '</strong>';
+        passLegendEl.appendChild(li);
+    });
+    if (passLegendCount === 0) {
+        passLegendEl.innerHTML = '<li class="muted">No Automate results yet</li>';
+    }
+
+    function rebuildChart(jobs) {
+        const byDay = {};
+        jobs.forEach(j => {
+            if (!j.day) return;
+            if (!byDay[j.day]) byDay[j.day] = { passed: 0, todo: 0 };
+            byDay[j.day].passed += Number(j.passedCount || 0);
+            byDay[j.day].todo += Number(j.todoCount || 0);
+        });
+        const labels = Object.keys(byDay).sort();
+        scoreChart.data.labels = labels;
+        scoreChart.data.datasets[0].data = labels.map(d => byDay[d].passed);
+        scoreChart.data.datasets[1].data = labels.map(d => byDay[d].todo);
+        scoreChart.update();
+    }
+
+    function applyFilters() {
+        const project = document.getElementById('filterProject').value;
+        const from = document.getElementById('filterFrom').value;
+        const to = document.getElementById('filterTo').value;
+        const rows = document.querySelectorAll('#jobsTable tbody tr[data-project]');
+        rows.forEach(row => {
+            const day = row.getAttribute('data-day') || '';
+            const pid = row.getAttribute('data-project') || '';
+            let show = true;
+            if (project && pid !== project) show = false;
+            if (from && day && day < from) show = false;
+            if (to && day && day > to) show = false;
+            row.style.display = show ? '' : 'none';
+        });
+        const filtered = allJobs.filter(j => {
+            if (project && j.projectId !== project) return false;
+            if (from && j.day && j.day < from) return false;
+            if (to && j.day && j.day > to) return false;
+            return true;
+        });
+        rebuildChart(filtered);
+    }
+
+    document.getElementById('applyFilters').addEventListener('click', applyFilters);
+</script>
+</body>
+</html>

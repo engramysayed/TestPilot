@@ -1,0 +1,27 @@
+# User Story: Facebook Login — Negative Testing
+
+**As a** Facebook user,
+**I want** the login system to reject invalid login attempts and handle abnormal input correctly,
+**So that** unauthorized users cannot access an account and the application remains stable.
+
+#Scope
+
+The login page contains:
+
+* Email / Mobile number field
+* Password field
+* Log In button
+
+#Negative Scenarios to Cover
+
+1. **Missing required credentials**
+   Attempt to log in with one or both required fields empty.
+
+2. **Invalid credentials**
+   Attempt to log in using an incorrect password or an invalid/unregistered account identifier.
+
+3. **Malformed / extreme input**
+   Attempt to log in using invalid formats, special characters, whitespace-only input, or values exceeding reasonable field boundaries.
+
+4. **Abnormal application conditions**
+   Attempt to log in while the network is unavailable, the authentication request times out, or the user rapidly submits the login request multiple times.

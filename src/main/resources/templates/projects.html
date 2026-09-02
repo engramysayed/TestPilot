@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Projects')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell">
+    <div class="page-title">
+        <div>
+            <h1>Projects</h1>
+            <p class="lede">Configure base URL, credentials, and automation artifacts per workspace.</p>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-start">
+            <a class="button" href="/automate">Open Automate</a>
+            <button type="button" class="button ghost" id="delete-all-btn"
+                    th:if="${!#lists.isEmpty(projects)}">Delete all</button>
+        </div>
+    </div>
+
+    <section class="panel create-panel">
+        <h2>Create project</h2>
+        <p class="panel-intro">Name a workspace and optionally set its target base URL now.</p>
+        <form id="create-form" class="create-row">
+            <label class="grow">Project name
+                <input type="text" name="name" required placeholder="Acme Checkout"/>
+            </label>
+            <label class="grow">Base URL <span class="muted">(optional)</span>
+                <input type="url" name="baseUrl" placeholder="https://app.example.com"/>
+            </label>
+            <button type="submit">Create project</button>
+        </form>
+        <p id="msg" class="muted" hidden></p>
+    </section>
+
+    <section class="panel">
+        <div class="projects-panel-head">
+            <div>
+                <h2>Your projects</h2>
+                <p class="panel-intro">Open a project to manage settings, automation files, and test cases.</p>
+            </div>
+            <label class="check projects-archive-toggle">
+                <input type="checkbox" id="show-archived"/>
+                Show archived
+            </label>
+        </div>
+        <table class="table" id="projects-table">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Project ID</th>
+                <th>Base URL</th>
+                <th>Version</th>
+                <th>Last modified</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody id="projects-body"></tbody>
+        </table>
+        <p id="projects-empty" class="muted" hidden>No projects yet — create one above.</p>
+        <p id="projects-err" class="error" hidden></p>
+    </section>
+</main>
+</div>
+
+<div id="deleteAllModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="deleteAllTitle">
+    <div class="modal-card">
+        <h3 id="deleteAllTitle">Delete all projects?</h3>
+        <p class="muted">This removes every project and job from your account. Dashboard counters reset. This cannot be undone.</p>
+        <p id="deleteAllError" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="deleteAllCancel">Cancel</button>
+            <button type="button" class="button" id="deleteAllConfirm" style="background:#c44;border-color:#c44">Delete all</button>
+        </div>
+    </div>
+</div>
+
+<div id="archiveModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="archiveTitle">
+    <div class="modal-card">
+        <h3 id="archiveTitle">Archive project?</h3>
+        <p class="muted" id="archiveBody">Archived projects are hidden from the default list and cannot start new jobs.</p>
+        <p id="archiveError" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="archiveCancel">Cancel</button>
+            <button type="button" class="button" id="archiveConfirm">Archive</button>
+        </div>
+    </div>
+</div>
+
+<div id="deleteOneModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="deleteOneTitle">
+    <div class="modal-card">
+        <h3 id="deleteOneTitle">Delete project permanently?</h3>
+        <p class="muted" id="deleteOneBody">This removes its jobs and stored framework. This cannot be undone.</p>
+        <p id="deleteOneError" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="deleteOneCancel">Cancel</button>
+            <button type="button" class="button" id="deleteOneConfirm" style="background:#c44;border-color:#c44">Delete permanently</button>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const lastModifiedCache = {};
+    /*[# th:each="p : ${projects}"]*/
+    lastModifiedCache['[[${p.projectId}]]'] = '[[${p.lastModifiedLabel}]]';
+    /*[/]*/
+
+    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+    let pendingArchiveId = null;
+    let pendingDeleteId = null;
+
+    function openModal(id) {
+        document.getElementById(id).classList.remove('hidden');
+    }
+    function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+    }
+
+    function truncateUrl(url, max) {
+        if (!url) return '—';
+        const s = String(url);
+        if (s.length <= max) return s;
+        return s.slice(0, max - 1) + '…';
+    }
+
+    function lastModifiedLabel(p) {
+        if (p.lastModifiedLabel) return p.lastModifiedLabel;
+        if (p.lastModified) {
+            const d = new Date(p.lastModified);
+            if (!Number.isNaN(d.getTime())) {
+                return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+            }
+            return String(p.lastModified).slice(0, 19).replace('T', ' ');
+        }
+        const cached = lastModifiedCache[p.projectId];
+        if (cached && cached.trim()) return cached;
+        return 'Never converted';
+    }
+
+    function renderProjects(projects) {
+        const tbody = document.getElementById('projects-body');
+        const empty = document.getElementById('projects-empty');
+        const deleteAllBtn = document.getElementById('delete-all-btn');
+        tbody.innerHTML = '';
+        empty.hidden = projects.length > 0;
+        if (deleteAllBtn) deleteAllBtn.hidden = projects.length === 0;
+
+        projects.forEach(p => {
+            if (p.lastModifiedLabel) {
+                lastModifiedCache[p.projectId] = p.lastModifiedLabel;
+            }
+            const tr = document.createElement('tr');
+            if (p.archived) tr.classList.add('project-row-archived');
+
+            const nameCell = document.createElement('td');
+            const nameLink = document.createElement('a');
+            nameLink.href = '/projects/' + encodeURIComponent(p.projectId);
+            nameLink.textContent = p.name || p.projectId;
+            nameLink.className = 'project-name-link';
+            nameCell.appendChild(nameLink);
+            if (p.archived) {
+                const badge = document.createElement('span');
+                badge.className = 'badge muted project-archived-badge';
+                badge.textContent = 'Archived';
+                nameCell.appendChild(document.createTextNode(' '));
+                nameCell.appendChild(badge);
+            }
+
+            const idCell = document.createElement('td');
+            idCell.className = 'mono';
+            idCell.textContent = p.projectId;
+
+            const urlCell = document.createElement('td');
+            urlCell.className = 'clip muted';
+            urlCell.title = p.baseUrl || '';
+            urlCell.textContent = truncateUrl(p.baseUrl, 40);
+
+            const verCell = document.createElement('td');
+            verCell.textContent = 'v' + (p.latestVersion ?? 0);
+
+            const modCell = document.createElement('td');
+            modCell.textContent = lastModifiedLabel(p);
+
+            const actionsCell = document.createElement('td');
+            actionsCell.className = 'actions';
+            const openBtn = document.createElement('a');
+            openBtn.className = 'button';
+            openBtn.href = '/projects/' + encodeURIComponent(p.projectId);
+            openBtn.textContent = 'Open';
+            actionsCell.appendChild(openBtn);
+
+            if (!p.archived) {
+                const archiveBtn = document.createElement('button');
+                archiveBtn.type = 'button';
+                archiveBtn.className = 'button ghost';
+                archiveBtn.textContent = 'Archive';
+                archiveBtn.addEventListener('click', () => openArchiveModal(p));
+                actionsCell.appendChild(archiveBtn);
+            }
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'danger';
+            deleteBtn.textContent = 'Delete permanently';
+            deleteBtn.addEventListener('click', () => openDeleteModal(p));
+            actionsCell.appendChild(deleteBtn);
+
+            tr.append(nameCell, idCell, urlCell, verCell, modCell, actionsCell);
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function loadProjects() {
+        const err = document.getElementById('projects-err');
+        err.hidden = true;
+        const includeArchived = document.getElementById('show-archived').checked;
+        const url = '/api/projects' + (includeArchived ? '?includeArchived=true' : '');
+        const res = await fetch(url, { credentials: 'same-origin', headers: API_HEADERS });
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = 'Could not load projects.';
+            return;
+        }
+        const projects = await res.json();
+        renderProjects(projects);
+    }
+
+    function openArchiveModal(p) {
+        pendingArchiveId = p.projectId;
+        document.getElementById('archiveBody').textContent =
+            'Archive "' + (p.name || p.projectId) + '"? It will be hidden from the default list.';
+        document.getElementById('archiveError').classList.add('hidden');
+        openModal('archiveModal');
+    }
+
+    function openDeleteModal(p) {
+        pendingDeleteId = p.projectId;
+        document.getElementById('deleteOneBody').textContent =
+            'Delete "' + (p.name || p.projectId) + '" permanently? This removes its jobs and stored framework. This cannot be undone.';
+        document.getElementById('deleteOneError').classList.add('hidden');
+        openModal('deleteOneModal');
+    }
+
+    document.getElementById('create-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = e.target.name.value.trim();
+        const baseUrl = e.target.baseUrl.value.trim();
+        const body = { name };
+        if (baseUrl) body.baseUrl = baseUrl;
+        const res = await fetch('/api/projects', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        const msg = document.getElementById('msg');
+        msg.hidden = false;
+        if (!res.ok) {
+            msg.textContent = data.message || 'Create failed';
+            return;
+        }
+        window.location.href = '/projects/' + encodeURIComponent(data.projectId) + '?tab=settings';
+    });
+
+    document.getElementById('show-archived').addEventListener('change', loadProjects);
+
+    document.getElementById('archiveCancel').addEventListener('click', () => closeModal('archiveModal'));
+    document.getElementById('archiveModal').addEventListener('click', (e) => {
+        if (e.target.id === 'archiveModal') closeModal('archiveModal');
+    });
+    document.getElementById('archiveConfirm').addEventListener('click', async () => {
+        if (!pendingArchiveId) return;
+        const btn = document.getElementById('archiveConfirm');
+        btn.disabled = true;
+        const res = await fetch('/api/projects/' + encodeURIComponent(pendingArchiveId), {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ archived: true })
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        btn.disabled = false;
+        if (!res.ok) {
+            const err = document.getElementById('archiveError');
+            err.textContent = data.message || 'Archive failed';
+            err.classList.remove('hidden');
+            return;
+        }
+        closeModal('archiveModal');
+        pendingArchiveId = null;
+        await loadProjects();
+    });
+
+    document.getElementById('deleteOneCancel').addEventListener('click', () => closeModal('deleteOneModal'));
+    document.getElementById('deleteOneModal').addEventListener('click', (e) => {
+        if (e.target.id === 'deleteOneModal') closeModal('deleteOneModal');
+    });
+    document.getElementById('deleteOneConfirm').addEventListener('click', async () => {
+        if (!pendingDeleteId) return;
+        const btn = document.getElementById('deleteOneConfirm');
+        btn.disabled = true;
+        const res = await fetch('/api/projects/' + encodeURIComponent(pendingDeleteId), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        btn.disabled = false;
+        if (!res.ok) {
+            const err = document.getElementById('deleteOneError');
+            err.textContent = data.message || 'Delete failed';
+            err.classList.remove('hidden');
+            return;
+        }
+        delete lastModifiedCache[pendingDeleteId];
+        closeModal('deleteOneModal');
+        pendingDeleteId = null;
+        await loadProjects();
+    });
+
+    const deleteAllBtn = document.getElementById('delete-all-btn');
+    if (deleteAllBtn) {
+        deleteAllBtn.addEventListener('click', () => {
+            document.getElementById('deleteAllError').classList.add('hidden');
+            openModal('deleteAllModal');
+        });
+    }
+    document.getElementById('deleteAllCancel').addEventListener('click', () => closeModal('deleteAllModal'));
+    document.getElementById('deleteAllModal').addEventListener('click', (e) => {
+        if (e.target.id === 'deleteAllModal') closeModal('deleteAllModal');
+    });
+    document.getElementById('deleteAllConfirm').addEventListener('click', async () => {
+        const btn = document.getElementById('deleteAllConfirm');
+        btn.disabled = true;
+        const res = await fetch('/api/projects', {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        btn.disabled = false;
+        if (!res.ok) {
+            const err = document.getElementById('deleteAllError');
+            err.textContent = data.message || 'Delete all failed';
+            err.classList.remove('hidden');
+            return;
+        }
+        window.location.href = '/dashboard';
+    });
+
+    loadProjects();
+</script>
+</body>
+</html>

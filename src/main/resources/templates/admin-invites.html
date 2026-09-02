@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Invites — Keel</title>
+    <link rel="stylesheet" th:href="@{/css/portal.css}"/>
+</head>
+<body>
+<main class="shell">
+    <p><a href="/dashboard">← Dashboard</a></p>
+    <h1>Create invite</h1>
+    <p class="lede">Admin only. Share the accept link with the invited user.</p>
+    <form id="invite-form">
+        <label>Email
+            <input type="email" name="email" required/>
+        </label>
+        <button type="submit">Create invite</button>
+    </form>
+    <p id="out" class="ok" hidden></p>
+    <p id="err" class="error" hidden></p>
+</main>
+<script>
+    document.getElementById('invite-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = e.target.email.value;
+        const res = await fetch('/api/admin/invites', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel'},
+            body: JSON.stringify({email})
+        });
+        const data = await res.json();
+        const out = document.getElementById('out');
+        const err = document.getElementById('err');
+        out.hidden = true;
+        err.hidden = true;
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = data.message || 'Failed (admin role required)';
+            return;
+        }
+        out.hidden = false;
+        out.textContent = 'Invite for ' + data.email + ': ' + window.location.origin + data.acceptPath;
+    });
+</script>
+</body>
+</html>

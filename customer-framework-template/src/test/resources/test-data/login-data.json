@@ -1,0 +1,11 @@
+{
+    "validUsername": "demo_rain",
+    "validPassword": "test$123",
+    "invalidUsername": "demo",
+    "invalidPassword": "test",
+    "expectedError": "Username or Password is incorrect",
+    "validSupUser": "testSupUser",
+    "validSupPassword": "testSupPassword123",
+    "invalidSupUser": "testSupUser123",
+    "invalidSupPassword": "testSupPassword"
+}

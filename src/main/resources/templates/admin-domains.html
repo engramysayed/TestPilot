@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Domains')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell">
+    <div class="page-title">
+        <div>
+            <h1>Domains</h1>
+            <p class="lede">Stored site data on this server. Deleting a domain removes the store folder and matching portal projects/jobs so the dashboard resets for that site.</p>
+        </div>
+    </div>
+
+    <section class="panel">
+        <label>Domain
+            <select id="domainSelect">
+                <option value="">Select a domain…</option>
+            </select>
+        </label>
+        <p class="panel-intro" style="margin-top:0.85rem">
+            Legacy flat folders stay as-is until you choose to relocate them.
+            <button type="button" class="button ghost" id="migrateBtn" style="margin-top:0.5rem">Relocate legacy folders</button>
+        </p>
+        <p id="migrateOut" class="ok hidden"></p>
+        <div id="domainDetail" class="hidden" style="margin-top:1.25rem">
+            <div class="admin-domain-stats">
+                <div class="stat-card"><span id="statProjects">0</span><label>Projects</label></div>
+                <div class="stat-card"><span id="statMemory">0</span><label>Locator memories</label></div>
+                <div class="stat-card"><span id="statMaps">0</span><label>Locator maps</label></div>
+                <div class="stat-card"><span id="statMapSize">—</span><label>Map size</label></div>
+                <div class="stat-card"><span id="statModified">—</span><label>Last changed</label></div>
+            </div>
+            <p class="muted mono" id="statPath"></p>
+            <div class="danger-zone">
+                <h3>Delete entire domain</h3>
+                <p class="muted">This permanently deletes the folder and everything inside it.</p>
+                <button type="button" class="button" id="deleteOpenBtn" style="margin-top:0.85rem;background:#c44;border-color:#c44">Delete domain…</button>
+            </div>
+        </div>
+        <p id="listError" class="error hidden"></p>
+    </section>
+
+    <div id="deleteModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+        <div class="modal-card">
+            <h3 id="deleteModalTitle">Confirm domain delete</h3>
+            <p class="muted">Type the domain name exactly to confirm. This cannot be undone.</p>
+            <label>Confirm domain name
+                <input id="confirmName" class="confirm-domain-input" type="text" autocomplete="off" placeholder="example-com"/>
+            </label>
+            <p id="deleteError" class="error hidden"></p>
+            <div class="modal-actions">
+                <button type="button" class="button ghost" id="deleteCancelBtn">Cancel</button>
+                <button type="button" class="button" id="deleteBtn" style="background:#c44;border-color:#c44">Delete forever</button>
+            </div>
+        </div>
+    </div>
+</main>
+</div>
+<script>
+(async function () {
+    const select = document.getElementById('domainSelect');
+    const detail = document.getElementById('domainDetail');
+    const listError = document.getElementById('listError');
+    const deleteError = document.getElementById('deleteError');
+    const modal = document.getElementById('deleteModal');
+    let current = null;
+
+    function formatBytes(n) {
+        const v = Number(n) || 0;
+        if (v <= 0) return '—';
+        if (v < 1024) return v + ' B';
+        if (v < 1024 * 1024) return (v / 1024).toFixed(1) + ' KB';
+        return (v / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    async function loadList() {
+        listError.classList.add('hidden');
+        const r = await fetch('/api/admin/domains', {
+            headers: { 'X-Keel-Requested-With': 'Keel' }
+        });
+        if (!r.ok) {
+            listError.textContent = 'Could not load domains.';
+            listError.classList.remove('hidden');
+            return;
+        }
+        const data = await r.json();
+        select.innerHTML = '<option value="">Select a domain…</option>';
+        (data.domains || []).forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.domain;
+            opt.textContent = d.domain + ' (' + d.projectCount + ' projects)';
+            select.appendChild(opt);
+        });
+    }
+
+    function showDetail(d) {
+        current = d;
+        detail.classList.remove('hidden');
+        document.getElementById('statProjects').textContent = d.projectCount;
+        document.getElementById('statMemory').textContent = d.memoryEntries;
+        document.getElementById('statMaps').textContent = d.locatorMapCount || 0;
+        document.getElementById('statMapSize').textContent = formatBytes(d.locatorMapBytes);
+        document.getElementById('statModified').textContent = (d.lastModified || '—').slice(0, 19).replace('T', ' ');
+        document.getElementById('statPath').textContent = d.path || '';
+    }
+
+    function openModal() {
+        if (!current) return;
+        document.getElementById('confirmName').value = '';
+        deleteError.classList.add('hidden');
+        modal.classList.remove('hidden');
+        document.getElementById('confirmName').focus();
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+    }
+
+    select.addEventListener('change', async () => {
+        const v = select.value;
+        if (!v) {
+            detail.classList.add('hidden');
+            current = null;
+            return;
+        }
+        const r = await fetch('/api/admin/domains/' + encodeURIComponent(v), {
+            headers: { 'X-Keel-Requested-With': 'Keel' }
+        });
+        if (!r.ok) {
+            listError.textContent = 'Domain not found.';
+            listError.classList.remove('hidden');
+            return;
+        }
+        showDetail(await r.json());
+    });
+
+    document.getElementById('deleteOpenBtn').addEventListener('click', openModal);
+    document.getElementById('deleteCancelBtn').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    document.getElementById('deleteBtn').addEventListener('click', async () => {
+        if (!current) return;
+        deleteError.classList.add('hidden');
+        const confirm = document.getElementById('confirmName').value.trim();
+        const r = await fetch('/api/admin/domains/' + encodeURIComponent(current.domain), {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Keel-Requested-With': 'Keel'
+            },
+            body: JSON.stringify({ confirm })
+        });
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            deleteError.textContent = body.error || 'Delete failed.';
+            deleteError.classList.remove('hidden');
+            return;
+        }
+        closeModal();
+        detail.classList.add('hidden');
+        current = null;
+        await loadList();
+    });
+
+    document.getElementById('migrateBtn').addEventListener('click', async () => {
+        const out = document.getElementById('migrateOut');
+        out.classList.add('hidden');
+        const r = await fetch('/api/admin/domains/migrate-legacy', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Keel-Requested-With': 'Keel'
+            },
+            body: '{}'
+        });
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            listError.textContent = body.error || 'Migrate failed.';
+            listError.classList.remove('hidden');
+            return;
+        }
+        out.textContent = (body.count || 0) === 0
+            ? 'No legacy folders to move.'
+            : ('Moved ' + body.count + ': ' + (body.moved || []).join(', '));
+        out.classList.remove('hidden');
+        await loadList();
+    });
+
+    await loadList();
+})();
+</script>
+</body>
+</html>

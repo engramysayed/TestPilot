@@ -1,0 +1,125 @@
+{
+  "testCases": [
+    {
+      "tcId": "TC_01",
+      "title": "Login with empty email and empty password",
+      "preconditions": "No login required.",
+      "steps": "1. Open the Login Page at https://www.facebook.com/\n2. Leave the Email or phone field empty\n3. Leave the Password field empty\n4. Click the Log in button\n5. Confirm the message 'Please enter your email or phone number' is visible",
+      "expectedResult": "1. Login page is shown\n2. Email or phone is empty\n3. Password is empty\n4. Submit is clicked\n5. Error message 'Please enter your email or phone number' is shown",
+      "priority": "P1",
+      "tags": "negative,missing-credentials",
+      "visualAssertion": "",
+      "testData": "\n\n\n",
+      "keelPath": "EXECUTE"
+    },
+    {
+      "tcId": "TC_02",
+      "title": "Login with empty email and valid password",
+      "preconditions": "No login required.",
+      "steps": "1. Open the Login Page at https://www.facebook.com/\n2. Leave the Email or phone field empty\n3. Enter in the Password field\n4. Click the Log in button\n5. Confirm the message 'Please enter your email or phone number' is visible",
+      "expectedResult": "1. Login page is shown\n2. Email or phone is empty\n3. Password is accepted\n4. Submit is clicked\n5. Error message 'Please enter your email or phone number' is shown",
+      "priority": "P1",
+      "tags": "negative,missing-credentials",
+      "visualAssertion": "",
+      "testData": "\n\nValidPass123!\n\n",
+      "keelPath": "EXECUTE"
+    },
+    {
+      "tcId": "TC_03",
+      "title": "Login with valid email and empty password",
+      "preconditions": "No login required.",
+      "steps": "1. Open the Login Page at https://www.facebook.com/\n2. Enter in the Email or phone field\n3. Leave the Password field empty\n4. Click the Log in button\n5. Confirm the message 'Please enter your password' is visible",
+      "expectedResult": "1. Login page is shown\n2. Email or phone is accepted\n3. Password is empty\n4. Submit is clicked\n5. Error message 'Please enter your password' is shown",
+      "priority": "P1",
+      "tags": "negative,missing-credentials",
+      "visualAssertion": "",
+      "testData": "user@example.com\n\n\n",
+      "keelPath": "EXECUTE"
+    },
+    {
+      "tcId": "TC_04",
+      "title": "Login with wrong password for registered account",
+      "preconditions": "No login required.",
+      "steps": "1. Open the Login Page at https://www.facebook.com/\n2. Enter in the Email or phone field\n3. Enter in the Password field\n4. Click the Log in button\n5. Confirm the message 'Incorrect email or phone number' is visible",
+      "expectedResult": "1. Login page is shown\n2. Email or phone is accepted\n3. Password is accepted\n4. Submit is clicked\n5. Error message 'Incorrect email or phone number' is shown",
+      "priority": "P1",
+      "tags": "negative,invalid-credentials",
+      "visualAssertion": "",
+      "testData": "user@example.com\nWrongPass123!\n\n",
+      "keelPath": "EXECUTE"
+    },
+    {
+      "tcId": "TC_05",
+      "title": "Login with unregistered email identifier",
+      "preconditions": "No login required.",
+      "steps": "1. Open the Login Page at https://www.facebook.com/\n2. Enter in the Email or phone field\n3. Enter in the Password field\n4. Click the Log in button\n5. Confirm the message 'Incorrect email or phone number' is visible",
+      "expectedResult": "1. Login page is shown\n2. Unregistered email is accepted\n3. Password is accepted\n4. Submit is clicked\n5. Error message 'Incorrect email or phone number' is shown",
+      "priority": "P1",
+      "tags": "negative,invalid-credentials",
+      "visualAssertion": "",
+      "testData": "notregistered99999@test.com\nSomePass123!\n\n",
+      "keelPath": "EXECUTE"
+    },
+    {
+      "tcId": "TC_06",
+      "title": "Login with special characters in identifier",
+      "preconditions": "No login required.",
+      "steps": "1. Open the Login Page at https://www.facebook.com/\n2. Enter in the Email or phone field\n3. Enter in the Password field\n4. Click the Log in button\n5. Confirm the message 'Incorrect email or phone number' is visible",
+      "expectedResult": "1. Login page is shown\n2. Special character identifier is accepted\n3. Password is accepted\n4. Submit is clicked\n5. Error message 'Incorrect email or phone number' is shown",
+      "priority": "P2",
+      "tags": "negative,malformed-input",
+      "visualAssertion": "",
+      "testData": "user!@#$%^&*()@test.com\nSomePass123!\n\n",
+      "keelPath": "EXECUTE"
+    },
+    {
+      "tcId": "TC_07",
+      "title": "Login with whitespace-only password",
+      "preconditions": "No login required.",
+      "steps": "1. Open the Login Page at https://www.facebook.com/\n2. Enter in the Email or phone field\n3. Enter in the Password field\n4. Click the Log in button\n5. Confirm the message 'Please enter your password' is visible",
+      "expectedResult": "1. Login page is shown\n2. Email or phone is accepted\n3. Whitespace-only password is accepted\n4. Submit is clicked\n5. Error message 'Please enter your password' is shown",
+      "priority": "P2",
+      "tags": "negative,malformed-input",
+      "visualAssertion": "",
+      "testData": "user@example.com\n   \n\n",
+      "keelPath": "EXECUTE"
+    },
+    {
+      "tcId": "TC_08",
+      "title": "Login with oversized identifier exceeding field boundary",
+      "preconditions": "No login required.",
+      "steps": "1. Open the Login Page at https://www.facebook.com/\n2. Enter in the Email or phone field\n3. Enter in the Password field\n4. Click the Log in button\n5. Confirm the message 'Incorrect email or phone number' is visible",
+      "expectedResult": "1. Login page is shown\n2. Oversized identifier is accepted or truncated\n3. Password is accepted\n4. Submit is clicked\n5. Error message 'Incorrect email or phone number' is shown",
+      "priority": "P2",
+      "tags": "negative,malformed-input",
+      "visualAssertion": "",
+      "testData": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@test.com\nSomePass123!\n\n",
+      "keelPath": "EXECUTE"
+    },
+    {
+      "tcId": "TC_09",
+      "title": "Login with rapid double-click on Log In button",
+      "preconditions": "No login required.",
+      "steps": "1. Open the Login Page at https://www.facebook.com/\n2. Enter in the Email or phone field\n3. Enter in the Password field\n4. Double-click the Log in button rapidly\n5. Confirm the message 'Incorrect email or phone number' is visible and the page remains stable",
+      "expectedResult": "1. Login page is shown\n2. Email or phone is accepted\n3. Password is accepted\n4. Double submit is handled without crash\n5. Error message 'Incorrect email or phone number' is shown",
+      "priority": "P2",
+      "tags": "negative,abnormal-conditions",
+      "visualAssertion": "",
+      "testData": "user@example.com\nWrongPass123!\n\n",
+      "keelPath": "EXECUTE"
+    },
+    {
+      "tcId": "TC_10",
+      "title": "Login while network is unavailable",
+      "preconditions": "Device network connectivity is disabled.",
+      "steps": "1. Disable network connectivity on the test device\n2. Open the Login Page at https://www.facebook.com/\n3. Enter in the Email or phone field\n4. Enter in the Password field\n5. Click the Log in button\n6. Confirm a network-unavailable or connection error message is visible",
+      "expectedResult": "1. Network is offline\n2. Login page load fails or shows offline state\n3. Email or phone is entered\n4. Password is entered\n5. Submit is clicked\n6. Error message indicating network unavailability is shown",
+      "priority": "P2",
+      "tags": "negative,abnormal-conditions",
+      "visualAssertion": "",
+      "testData": "\n\nuser@example.com\nSomePass123!\n\n",
+      "keelPath": "MANUAL"
+    }
+  ],
+  "coverageNotes": "Covers all four negative scenario groups from the user story: missing credentials (TC_01–TC_03), invalid credentials (TC_04–TC_05), malformed/extreme input (TC_06–TC_08), and abnormal conditions (TC_09 double-submit EXECUTE, TC_10 network-unavailable MANUAL)."
+}
