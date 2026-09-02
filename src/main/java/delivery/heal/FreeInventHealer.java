@@ -28,6 +28,7 @@ public class FreeInventHealer {
     private final RecoveryPlanParser recoveryParser;
     private final String provider;
     private final boolean enabled;
+    private String presenceHtml = "";
 
     public FreeInventHealer(
             CursorHealClient cursor,
@@ -42,6 +43,10 @@ public class FreeInventHealer {
         this.recoveryParser = new RecoveryPlanParser(this.validator);
         this.provider = normalizeProvider(provider);
         this.enabled = enabled;
+    }
+
+    public void setPresenceHtml(String html) {
+        this.presenceHtml = html == null ? "" : html;
     }
 
     public static FreeInventHealer fromConfig(CursorHealClient cursor) {
@@ -122,7 +127,7 @@ public class FreeInventHealer {
             return Optional.empty();
         }
 
-        Optional<HealResult> healed = parseInventResponse(tcId, intent, raw, html, allowedOpenPath);
+        Optional<HealResult> healed = parseInventResponse(tcId, intent, raw, html, presenceHtml, allowedOpenPath);
         if (healed.isEmpty()) {
             LogsManager.info("HEAL_INVENT_REJECTED: no valid intent-matching steps");
             return Optional.empty();
@@ -204,7 +209,7 @@ public class FreeInventHealer {
             LogsManager.warn("HEAL_INVENT_FAILED: " + e.getMessage());
             return Optional.empty();
         }
-        Optional<HealResult> healed = parseInventResponse(tcId, intent, raw, html, allowedOpenPath);
+        Optional<HealResult> healed = parseInventResponse(tcId, intent, raw, html, presenceHtml, allowedOpenPath);
         healed.ifPresent(LAST_INVENT_RESULT::set);
         return healed;
     }
@@ -216,8 +221,19 @@ public class FreeInventHealer {
             String slimHtml,
             String allowedOpenPath
     ) {
+        return parseInventResponse(tcId, intent, raw, slimHtml, null, allowedOpenPath);
+    }
+
+    public Optional<HealResult> parseInventResponse(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String raw,
+            String slimHtml,
+            String fullHtml,
+            String allowedOpenPath
+    ) {
         Optional<RecoveryPlanParser.RecoveryPlan> recovery =
-                recoveryParser.parse(tcId, raw, slimHtml);
+                recoveryParser.parse(tcId, raw, slimHtml, fullHtml, allowedOpenPath);
         if (recovery.isPresent()) {
             RecoveryPlanParser.RecoveryPlan plan = recovery.get();
             LogsManager.info("HEAL_RECOVERY: parsed " + plan.steps().size() + " steps for " + tcId);

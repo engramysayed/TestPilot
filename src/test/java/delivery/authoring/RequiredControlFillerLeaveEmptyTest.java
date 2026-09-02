@@ -32,13 +32,35 @@ public class RequiredControlFillerLeaveEmptyTest {
         );
         // Use Submit-like wording so auto-fill engages (same path as Continue/Submit forms).
         List<ProvenStep> fills = RequiredControlFiller.planFillsBeforeClick(
-                LOGIN_HTML, "TC_02", "Click the Submit button", intents);
+                LOGIN_HTML, "TC_02", "Click Log in", intents);
         Assert.assertTrue(
                 fills.stream().noneMatch(s ->
                         "type".equalsIgnoreCase(s.action())
                                 && s.locatorValue() != null
                                 && s.locatorValue().toLowerCase().contains("email")),
                 "leave-empty email must not be auto-filled: " + fills);
+    }
+
+    @Test
+    public void logInClick_withoutLeaveEmpty_fillsEmail() {
+        List<StepIntentBinder.IntentLine> intents = List.of(
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.TYPE_FIELD,
+                        "Enter in the Email or phone field",
+                        "user@example.com"),
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.TYPE_FIELD,
+                        "Enter in the Password field",
+                        "Secret1!")
+        );
+        List<ProvenStep> fills = RequiredControlFiller.planFillsBeforeClick(
+                LOGIN_HTML, "TC_01", "Click Log in", intents);
+        Assert.assertTrue(
+                fills.stream().anyMatch(s ->
+                        "type".equalsIgnoreCase(s.action())
+                                && s.locatorValue() != null
+                                && s.locatorValue().toLowerCase().contains("email")),
+                "Log in should trigger autofill for email: " + fills);
     }
 
     @Test

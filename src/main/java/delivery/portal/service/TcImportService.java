@@ -69,6 +69,9 @@ public class TcImportService {
 
         String resolvedSource = (source == null || source.isBlank()) ? "PASTE_IMPORT" : source;
         workbooks.saveFromCases(projectId, repaired, resolvedSource, projectId, model);
+        if (coverageNotes != null && !coverageNotes.isBlank()) {
+            workbooks.updateCoverageNotes(projectId, coverageNotes);
+        }
         return toImportPayload(projectId, repaired, model, coverageNotes);
     }
 

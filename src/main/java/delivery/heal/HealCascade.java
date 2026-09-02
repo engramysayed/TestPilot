@@ -38,6 +38,15 @@ public class HealCascade {
     private final java.util.Map<String, Integer> inventAttemptsByTc =
             new java.util.concurrent.ConcurrentHashMap<>();
     private String allowedOpenPath = "";
+    /** Fuller page HTML for recovery presence checks when slim HTML drops attributes. */
+    private String presenceHtml = "";
+
+    public void setPresenceHtml(String html) {
+        this.presenceHtml = html == null ? "" : html;
+        if (freeInvent != null) {
+            freeInvent.setPresenceHtml(this.presenceHtml);
+        }
+    }
 
     public HealCascade(AuthoringService authoring, CursorHealClient cursor) {
         this(authoring, cursor, FreeInventHealer.fromConfig(
@@ -537,7 +546,7 @@ public class HealCascade {
             return null;
         }
         Optional<HealResult> parsed = freeInvent.parseInventResponse(
-                tcId, intent, raw, slimHtml, allowedOpenPath);
+                tcId, intent, raw, slimHtml, presenceHtml, allowedOpenPath);
         if (parsed.isEmpty()) {
             return null;
         }

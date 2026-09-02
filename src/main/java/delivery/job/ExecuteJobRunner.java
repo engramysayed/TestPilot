@@ -3,6 +3,8 @@ package delivery.job;
 import delivery.excel.ExcelTcReader;
 import delivery.excel.KeelPathCaseFilter;
 import delivery.excel.ManualTestCase;
+import delivery.portal.DeliveryPortalProperties;
+import delivery.portal.service.GeneratedWorkbookService;
 import delivery.store.ProjectStore;
 import delivery.util.ProjectNaming;
 
@@ -46,7 +48,8 @@ public class ExecuteJobRunner {
         Path dest = store.projectRoot(request.projectId()).resolve("execute-runs").resolve(jobId);
         Files.createDirectories(dest);
 
-        ProvePhase prove = new ProvePhase(progress).withMirrorRoot(dest).withCancelCheck(cancelCheck);
+        ProvePhase prove = new ProvePhase(progress).withMirrorRoot(dest).withCancelCheck(cancelCheck)
+                .withHealWorkbookApplier(healWorkbookApplier(request));
         prove.prove(request, cases, null, work);
 
         progress.update(proveUnits, jobTotal, "Design compare");
@@ -69,6 +72,24 @@ public class ExecuteJobRunner {
         }
 
         return new ExecuteJobResult(progress.passed(), progress.todo(), "execute completed");
+    }
+
+    static ProvePhase.HealWorkbookApplier healWorkbookApplier(ConversionJobRequest request) {
+        if (request == null || request.storeRoot() == null) {
+            return null;
+        }
+        DeliveryPortalProperties props = new DeliveryPortalProperties();
+        props.setStoreRoot(request.storeRoot().toString());
+        GeneratedWorkbookService workbooks = new GeneratedWorkbookService(props);
+        return (projectId, tcId, steps, notes, baseUrl) -> {
+            GeneratedWorkbookService.HealPatchApplyResult result =
+                    workbooks.applyHealRecoveryPatch(projectId, tcId, steps, notes, baseUrl);
+            if (result.excelSaved()) {
+                utils.LogsManager.info("HEAL_WORKBOOK_PATCH: saved for " + tcId);
+            } else if (result.skipped() && result.reason() != null && !result.reason().isBlank()) {
+                utils.LogsManager.warn(result.reason());
+            }
+        };
     }
 
     private static void copyTree(Path src, Path dest) throws Exception {

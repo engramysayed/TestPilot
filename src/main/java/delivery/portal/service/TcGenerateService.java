@@ -75,6 +75,9 @@ public class TcGenerateService {
 
         StoryGenerateResult generated = generateStory(project, stories.trim(), reviewPass, null, model);
         workbooks.saveFromCases(projectId, generated.cases(), "GENERATE_SYNC", projectId, generated.model());
+        if (generated.coverageNotes() != null && !generated.coverageNotes().isBlank()) {
+            workbooks.updateCoverageNotes(projectId, generated.coverageNotes());
+        }
         return toGeneratePayload(projectId, generated);
     }
 

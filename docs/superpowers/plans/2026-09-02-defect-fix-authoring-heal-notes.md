@@ -2,37 +2,38 @@
 
 **Spec/plan/tasks:** `docs/superpowers/*/*2026-09-02-defect-fix-authoring-heal*`
 
-## Shipped (this pass)
+## Closable follow-ups (closed)
 
-| Wave | Status |
+| Item | Status |
 |------|--------|
-| P0 T1–T3 | Done — escalate recovery routing, leave-empty auto-fill skip, TYPE_USER/PASS clear |
-| P1 T4–T8, T10 | Done — all-or-nothing recovery, proven trail, invent budget after parse, hardened clear, broader gate/phrasing, prompt cleanup |
-| P1 T9 | Already present — Execute/Automate Excel load already runs `GenerateQualityGate` |
-| P2 T11–T13 | Done — step×TestData grid editor, Escape, coverage notes session edit, slim→full HTML fallback |
-| P2 T14–T15 | Notes + Maven focus below |
+| Invent `fullHtml` presence | Wired via `HealCascade.setPresenceHtml` / invent parse |
+| Per-row Expected in TC grid | Generate modal Step × TestData × Expected |
+| Coverage notes persist | `PUT .../generated-workbook/coverage-notes` + Import/Generate write meta |
+| automationNotes trail | `automation-notes.txt` evidence + ZIP `docs/HEAL_AUTOMATION_NOTES.md` + **workbook patch** (`HealWorkbookPatcher` / `applyHealRecoveryPatch`) |
+| Second recovery | Up to **2** attempts per intent |
+| Focus trap | Tab cycles inside modal; Escape closes |
+| Bounded “wrong page” recovery | `navigate` only to Excel open-path; max **5** recovery steps |
+| Log in autofill | `looksLikeSubmit` includes log in / sign in; leave-empty still skipped |
 
-## Intentional limits (D17)
+## Still out of scope (honest)
 
-- Recovery allowlist: `clear` | `click` | `type` | `select` only (≤3 steps, one attempt per intent).
-- No intent-index jump; always retry the **current** failed intent after recovery.
-- `automationNotes` → evidence JSON + proven recovery steps; auto-rewrite Excel rows is a later optional.
-- Coverage notes edit is **session-scoped** on Generate (not a separate workbook meta API yet).
-- Full “solve any obstacle” agent is out of scope.
-- Invent `ThreadLocal` isolation only if prove becomes parallel.
-- Second recovery attempt per intent still fails closed (v1).
+- Full free-form multi-obstacle agent (captcha, 2FA, arbitrary wizards)
+- Parallel invent ThreadLocal isolation (prove remains single-threaded per job)
 
-## Manual smoke (after portal restart)
+## Shipped after defect pass
 
-1. Hard-refresh Generate.
-2. Import broken leave-empty + `<VALID_PASSWORD>` → gate fail.
-3. Import/fix empty-email TC → Submit must **not** invent email on Submit-like clicks.
-4. Click TC → step grid edit TestData → Save → workbook updated; Escape closes modal.
-5. Force assert fail with filled email → expect `HEAL_RECOVERY` / `heal-recovery.json` and retry assert; proven trail includes recovery clears/clicks.
-6. Cursor escalate path must not mark assert passed from recovery alone.
+- Deterministic heal recovery → generated workbook leave-empty / blank TestData patch (not free-form note→Steps rewrite); unmatched notes append to coverage + `automationNotesByTc`
+
+## Manual smoke
+
+1. Restart portal + hard-refresh Generate.
+2. Click TC → grid shows Step / Test data / Expected → Save.
+3. Edit coverage notes → **Save coverage notes**.
+4. Empty-email + Click Log in → email must stay empty.
+5. Recovery: look for `heal-recovery.json`, `automation-notes.txt`, Generate coverage **Heal notes**, updated leave-empty cells in `generated/latest.xlsx`, and after Automate `docs/HEAL_AUTOMATION_NOTES.md`.
 
 ## Maven focus
 
 ```text
-mvn -q "-Dtest=RecoveryPlanParserTest,HealCascadeTest,FreeInventHealerTest,RequiredControlFiller*Test,StepIntentBinderTest,GenerateAuthoringRulesTest,ProvePhase*Test" test
+mvn -q "-Dtest=RecoveryPlanParserTest,HealCascadeTest,FreeInventHealerTest,RequiredControlFiller*Test,StepIntentBinderTest,GenerateAuthoringRulesTest,ProvePhase*Test,GeneratedWorkbookCoverageNotesTest,HealWorkbookPatcherTest,GeneratedWorkbookHealPatchTest" test
 ```

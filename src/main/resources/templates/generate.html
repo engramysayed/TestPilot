@@ -144,8 +144,11 @@
             <details class="panel-details generate-coverage" id="coverage-panel">
                 <summary>Coverage notes</summary>
                 <textarea id="coverage-notes" class="generate-coverage-text" rows="6"
-                          placeholder="Coverage notes from Generate/Import (editable in this session)"></textarea>
-                <p class="muted">Edits stay with this browser session’s result payload until you re-generate or re-import.</p>
+                          placeholder="Coverage notes from Generate/Import"></textarea>
+                <div class="ai-tip-actions" style="margin-top:0.5rem;">
+                    <button type="button" class="button ghost" id="coverage-notes-save">Save coverage notes</button>
+                </div>
+                <p class="muted">Saved into this project’s workbook metadata.</p>
             </details>
 
             <div class="ai-tip-actions">
@@ -304,6 +307,7 @@
                             <th>#</th>
                             <th>Step</th>
                             <th>Test data</th>
+                            <th>Expected</th>
                             <th></th>
                         </tr>
                         </thead>
@@ -732,15 +736,17 @@
         return raw.slice(0, Math.max(stepCount, raw.length));
     }
 
-    function addStepGridRow(stepText, dataText) {
+    function addStepGridRow(stepText, dataText, expectedText) {
         const tr = document.createElement('tr');
         tr.innerHTML =
             '<td class="tc-edit-row-num"></td>' +
             '<td><textarea class="tc-edit-step-text" rows="2"></textarea></td>' +
             '<td><textarea class="tc-edit-data-text" rows="2"></textarea></td>' +
+            '<td><textarea class="tc-edit-expected-text" rows="2"></textarea></td>' +
             '<td><button type="button" class="button ghost small tc-edit-remove-row" title="Remove row">×</button></td>';
         tr.querySelector('.tc-edit-step-text').value = stepText || '';
         tr.querySelector('.tc-edit-data-text').value = dataText || '';
+        tr.querySelector('.tc-edit-expected-text').value = expectedText || '';
         tcEditStepBody.appendChild(tr);
         renumberStepGrid();
     }
@@ -757,13 +763,20 @@
         const rows = tcEditStepBody.querySelectorAll('tr');
         const steps = [];
         const data = [];
+        const expected = [];
         rows.forEach(function (tr, idx) {
             const step = (tr.querySelector('.tc-edit-step-text') || {}).value || '';
             const datum = (tr.querySelector('.tc-edit-data-text') || {}).value || '';
+            const exp = (tr.querySelector('.tc-edit-expected-text') || {}).value || '';
             steps.push((idx + 1) + '. ' + step.trim());
             data.push(datum);
+            expected.push((idx + 1) + '. ' + String(exp).trim());
         });
-        return { steps: steps.join('\n'), testData: data.join('\n') };
+        return {
+            steps: steps.join('\n'),
+            testData: data.join('\n'),
+            expectedResult: expected.join('\n')
+        };
     }
 
     function setStepEditorMode(useGrid) {
@@ -775,7 +788,27 @@
         tcEditGridFallback.classList.toggle('hidden', tcEditUseGrid);
         tcEditStepsLabel.classList.toggle('hidden', tcEditUseGrid);
         tcEditTestdataLabel.classList.toggle('hidden', tcEditUseGrid);
+        const expectedLabel = tcEditExpected ? tcEditExpected.closest('label') : null;
+        if (expectedLabel) expectedLabel.classList.toggle('hidden', tcEditUseGrid);
         if (tcEditAddRow) tcEditAddRow.classList.toggle('hidden', !tcEditUseGrid);
+    }
+
+    function trapFocusInModal(ev) {
+        if (!tcEditModal || tcEditModal.classList.contains('hidden')) return;
+        if (ev.key !== 'Tab') return;
+        const focusable = tcEditModal.querySelectorAll(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (ev.shiftKey && document.activeElement === first) {
+            ev.preventDefault();
+            last.focus();
+        } else if (!ev.shiftKey && document.activeElement === last) {
+            ev.preventDefault();
+            first.focus();
+        }
     }
 
     function openTcEditor(row) {
@@ -792,8 +825,10 @@
         tcEditStepBody.innerHTML = '';
         if (parsed.length > 0) {
             const dataLines = splitTestDataLines(row.testData || '', parsed.length);
+            const expectedLines = parseNumberedSteps(row.expectedResult || '');
+            while (expectedLines.length < parsed.length) expectedLines.push('');
             parsed.forEach(function (step, i) {
-                addStepGridRow(step, dataLines[i] || '');
+                addStepGridRow(step, dataLines[i] || '', expectedLines[i] || '');
             });
             setStepEditorMode(true);
             tcEditSteps.value = '';
@@ -817,10 +852,12 @@
         }
         let stepsVal = tcEditSteps.value;
         let dataVal = tcEditTestdata.value;
+        let expectedVal = tcEditExpected.value;
         if (tcEditUseGrid) {
             const assembled = assembleStepsAndDataFromGrid();
             stepsVal = assembled.steps;
             dataVal = assembled.testData;
+            expectedVal = assembled.expectedResult;
         }
         tcEditSave.disabled = true;
         setTcEditError('');
@@ -829,7 +866,7 @@
                 title: tcEditTitleField.value,
                 preconditions: tcEditPreconditions.value,
                 steps: stepsVal,
-                expectedResult: tcEditExpected.value,
+                expectedResult: expectedVal,
                 testData: dataVal,
                 priority: tcEditPriority.value,
                 tags: tcEditTags.value,
@@ -1557,7 +1594,7 @@
     tcEditSave.addEventListener('click', saveTcEditor);
     if (tcEditAddRow) {
         tcEditAddRow.addEventListener('click', function () {
-            addStepGridRow('', '');
+            addStepGridRow('', '', '');
         });
     }
     if (tcEditStepBody) {
@@ -1569,6 +1606,33 @@
             renumberStepGrid();
         });
     }
+    const coverageNotesSave = document.getElementById('coverage-notes-save');
+    async function saveCoverageNotes() {
+        const projectId = projectSel.value;
+        if (!projectId) {
+            setGenerateStatus('Select a project first.', true);
+            return;
+        }
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
+                + '/generated-workbook/coverage-notes', {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify({ coverageNotes: coverageNotes.value || '' })
+            });
+            const body = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setGenerateStatus(body.message || body.error || ('Save failed (' + res.status + ')'), true);
+                return;
+            }
+            if (lastResult) lastResult.coverageNotes = coverageNotes.value || '';
+            setGenerateStatus('Coverage notes saved.', false);
+        } catch (err) {
+            setGenerateStatus(err && err.message ? err.message : 'Network error', true);
+        }
+    }
+    if (coverageNotesSave) coverageNotesSave.addEventListener('click', saveCoverageNotes);
     coverageNotes.addEventListener('input', function () {
         if (lastResult) lastResult.coverageNotes = coverageNotes.value;
     });
@@ -1576,9 +1640,12 @@
         if (ev.target === tcEditModal) closeTcEditor();
     });
     document.addEventListener('keydown', function (ev) {
-        if (ev.key === 'Escape' && tcEditModal && !tcEditModal.classList.contains('hidden')) {
+        if (!tcEditModal || tcEditModal.classList.contains('hidden')) return;
+        if (ev.key === 'Escape') {
             closeTcEditor();
+            return;
         }
+        trapFocusInModal(ev);
     });
     downloadCsvBtn.addEventListener('click', downloadCsv);
     bulkFile.addEventListener('change', updateBulkControls);

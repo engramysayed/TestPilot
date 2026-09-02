@@ -252,7 +252,9 @@ public final class RequiredControlFiller {
                 || s.contains("pay") || s.contains("send") || s.contains("apply")
                 || s.contains("proceed") || s.contains("register")
                 || s.contains("create account") || s.contains("create new")
-                || s.contains("sign up") || s.contains("signup");
+                || s.contains("sign up") || s.contains("signup")
+                || s.contains("log in") || s.contains("login") || s.contains("sign in")
+                || s.contains("signin");
     }
 
     private static boolean shouldSkip(Element el) {

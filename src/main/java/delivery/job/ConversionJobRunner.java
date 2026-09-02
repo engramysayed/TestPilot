@@ -86,7 +86,8 @@ public class ConversionJobRunner {
         int proveUnits = allCases.size();
         int jobTotal = proveUnits + EmitPhase.PROGRESS_UNITS;
         progress.update(0, jobTotal, "Phase1 starting");
-        ProvePhase prove = new ProvePhase(progress).withCancelCheck(cancelCheck);
+        ProvePhase prove = new ProvePhase(progress).withCancelCheck(cancelCheck)
+                .withHealWorkbookApplier(ExecuteJobRunner.healWorkbookApplier(request));
         prove.prove(request, allCases, authorIds, work);
 
         progress.update(proveUnits, jobTotal, "Phase2 starting");

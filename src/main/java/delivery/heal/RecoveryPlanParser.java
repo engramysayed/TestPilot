@@ -4,6 +4,7 @@ import delivery.authoring.HtmlLocatorPresence;
 import delivery.authoring.LocatorCandidate;
 import delivery.authoring.LocatorValidator;
 import delivery.codegen.ProvenStep;
+import delivery.job.ExcelPathNavigator;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import utils.LogsManager;
@@ -15,8 +16,8 @@ import java.util.Set;
 
 /** Validates structured recovery JSON from invent/solve when page state mismatches intent. */
 public final class RecoveryPlanParser {
-    private static final int MAX_STEPS = 3;
-    private static final Set<String> ALLOWED_ACTIONS = Set.of("clear", "click", "type", "select");
+    private static final int MAX_STEPS = 5;
+    private static final Set<String> ALLOWED_ACTIONS = Set.of("clear", "click", "type", "select", "navigate");
 
     private final LocatorValidator validator;
 
@@ -35,17 +36,20 @@ public final class RecoveryPlanParser {
     ) {
     }
 
-    /**
-     * @return empty when raw is not recovery mode or validation fails
-     */
     public java.util.Optional<RecoveryPlan> parse(String tcId, String raw, String slimHtml) {
-        return parse(tcId, raw, slimHtml, null);
+        return parse(tcId, raw, slimHtml, null, null);
+    }
+
+    public java.util.Optional<RecoveryPlan> parse(String tcId, String raw, String slimHtml, String fullHtml) {
+        return parse(tcId, raw, slimHtml, fullHtml, null);
     }
 
     /**
-     * @param fullHtml optional fuller page HTML; used when slim HTML falsely omits a locator
+     * @param fullHtml optional fuller page HTML when slim dropped attributes
+     * @param allowedOpenPath Excel open-path; required for any navigate recovery step
      */
-    public java.util.Optional<RecoveryPlan> parse(String tcId, String raw, String slimHtml, String fullHtml) {
+    public java.util.Optional<RecoveryPlan> parse(
+            String tcId, String raw, String slimHtml, String fullHtml, String allowedOpenPath) {
         if (raw == null || raw.isBlank()) {
             return java.util.Optional.empty();
         }
@@ -69,7 +73,7 @@ public final class RecoveryPlanParser {
                 LogsManager.info("HEAL_RECOVERY_REJECTED: non-object recovery step at index " + i);
                 return java.util.Optional.empty();
             }
-            ProvenStep step = validateStep(tcId, item, slimHtml, fullHtml);
+            ProvenStep step = validateStep(tcId, item, slimHtml, fullHtml, allowedOpenPath);
             if (step == null) {
                 LogsManager.info("HEAL_RECOVERY_REJECTED: invalid step at index " + i + " (all-or-nothing)");
                 return java.util.Optional.empty();
@@ -85,11 +89,25 @@ public final class RecoveryPlanParser {
         return java.util.Optional.of(new RecoveryPlan(steps, notes, thought));
     }
 
-    private ProvenStep validateStep(String tcId, JSONObject item, String slimHtml, String fullHtml) {
+    private ProvenStep validateStep(
+            String tcId, JSONObject item, String slimHtml, String fullHtml, String allowedOpenPath) {
         String action = item.optString("action", "").trim().toLowerCase(Locale.ROOT);
         if (!ALLOWED_ACTIONS.contains(action)) {
             LogsManager.info("HEAL_RECOVERY_REJECTED: disallowed action → " + action);
             return null;
+        }
+        if ("navigate".equals(action)) {
+            String target = item.optString("value", "").trim();
+            if (target.isBlank()) {
+                target = item.optString("locatorValue", "").trim();
+            }
+            if (!ExcelPathNavigator.isAllowed(target, allowedOpenPath)) {
+                LogsManager.info("HEAL_RECOVERY_REJECTED: navigate not on Excel open-path → " + target);
+                return null;
+            }
+            return new ProvenStep(
+                    tcId, "Page", "browserAction", "navigate", "", "",
+                    target, "", "", true, "heal:recovery");
         }
         String strategy = firstNonBlank(item, "locatorStrategy", "strategy");
         String locatorValue = item.optString("locatorValue", "").trim();

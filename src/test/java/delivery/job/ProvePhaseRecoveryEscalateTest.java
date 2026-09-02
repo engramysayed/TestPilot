@@ -32,7 +32,7 @@ public class ProvePhaseRecoveryEscalateTest {
     public void escalate_recovery_routesToRecoveryRetryNotClassicExecute() {
         HealResult recovery = HealResult.recovery(List.of(clearEmail()), List.of(), "email filled");
         Assert.assertEquals(
-                ProvePhase.decideEscalateHeal(recovery, false),
+                ProvePhase.decideEscalateHeal(recovery, 0),
                 ProvePhase.EscalateHealDecision.RUN_RECOVERY_AND_RETRY_INTENT);
     }
 
@@ -40,22 +40,30 @@ public class ProvePhaseRecoveryEscalateTest {
     public void escalate_recoveryAlreadyAttempted_failsClosed() {
         HealResult recovery = HealResult.recovery(List.of(clearEmail()), List.of(), "again");
         Assert.assertEquals(
-                ProvePhase.decideEscalateHeal(recovery, true),
+                ProvePhase.decideEscalateHeal(recovery, ProvePhase.MAX_RECOVERY_ATTEMPTS),
                 ProvePhase.EscalateHealDecision.RECOVERY_ALREADY_ATTEMPTED_FAIL);
+    }
+
+    @Test
+    public void escalate_secondRecoveryStillAllowedOnce() {
+        HealResult recovery = HealResult.recovery(List.of(clearEmail()), List.of(), "retry");
+        Assert.assertEquals(
+                ProvePhase.decideEscalateHeal(recovery, 1),
+                ProvePhase.EscalateHealDecision.RUN_RECOVERY_AND_RETRY_INTENT);
     }
 
     @Test
     public void escalate_classicCursor_executesAsIntentFix() {
         HealResult classic = HealResult.success(List.of(clearEmail()), "cursor");
         Assert.assertEquals(
-                ProvePhase.decideEscalateHeal(classic, false),
+                ProvePhase.decideEscalateHeal(classic, 0),
                 ProvePhase.EscalateHealDecision.EXECUTE_AS_INTENT_FIX);
     }
 
     @Test
     public void escalate_failedHeal_skips() {
         Assert.assertEquals(
-                ProvePhase.decideEscalateHeal(HealResult.fail("exhausted"), false),
+                ProvePhase.decideEscalateHeal(HealResult.fail("exhausted"), 0),
                 ProvePhase.EscalateHealDecision.HEAL_FAILED);
     }
 }

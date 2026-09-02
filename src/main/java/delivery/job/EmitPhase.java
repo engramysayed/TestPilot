@@ -255,6 +255,34 @@ public class EmitPhase {
         if (Files.exists(score)) {
             Files.writeString(score, Files.readString(score) + extra);
         }
+        appendAutomationNotesDoc(projectDir, drafts);
+    }
+
+    /** Write heal recovery automationNotes into docs for Automate reviewers. */
+    private static void appendAutomationNotesDoc(Path projectDir, List<TcDraft> drafts) throws Exception {
+        StringBuilder body = new StringBuilder("# Heal automation notes\n\n");
+        boolean any = false;
+        for (TcDraft d : drafts) {
+            if (d == null || d.evidenceDir() == null || d.evidenceDir().isBlank()) {
+                continue;
+            }
+            Path notes = Path.of(d.evidenceDir()).resolve(d.tcId()).resolve("automation-notes.txt");
+            if (!Files.isRegularFile(notes)) {
+                notes = Path.of(d.evidenceDir()).resolve("automation-notes.txt");
+            }
+            if (!Files.isRegularFile(notes)) {
+                continue;
+            }
+            any = true;
+            body.append("## ").append(d.tcId()).append("\n\n");
+            body.append(Files.readString(notes).trim()).append("\n\n");
+        }
+        if (!any) {
+            return;
+        }
+        Path out = projectDir.resolve("docs/HEAL_AUTOMATION_NOTES.md");
+        Files.createDirectories(out.getParent());
+        Files.writeString(out, body.toString());
     }
 
     private static void appendHealMetrics(Path projectDir, List<TcDraft> drafts) throws Exception {

@@ -119,12 +119,13 @@ A) The intent can be satisfied on this page with 1–3 element steps:
    {"thought":"short reason","steps":[{"action":"click|type|select|assert|navigate","locatorStrategy":"id|name|css|xpath|data-testid|data-test|data-qa","locatorValue":"...","value":"","assertionType":"","assertionExpected":""}]}
 
 B) The screenshot/HTML show the page STATE is wrong for this intent (field filled when Excel said leave empty,
-   wrong value visible, stale form after a prior mistake). Propose a short recovery plan (clear/click/type/select only):
+   wrong value visible, stale form after a prior mistake). Propose a short recovery plan (clear/click/type/select/navigate only):
    {"mode":"recovery","thought":"why state is wrong","recoverySteps":[
-     {"action":"clear|click|type|select","locatorStrategy":"css","locatorValue":"...","value":""}
+     {"action":"clear|click|type|select|navigate","locatorStrategy":"css","locatorValue":"...","value":""}
    ],"automationNotes":["Excel-safe note for Automate after recovery succeeds"]}
+   navigate is allowed ONLY to the Excel open-path when provided.
 
-Every locator attribute must already appear in the HTML below. Max 3 recovery steps.
+Every locator attribute must already appear in the HTML below. Max 5 recovery steps.
 After recovery succeeds, Keel retries the SAME failed intent (no intent-index jump).
 
 Excel intent:
@@ -156,8 +157,9 @@ B) No row matches. Then read the HTML and screenshot and write the locator yours
 
 C) The page STATE is wrong for the intent (filled when empty expected, wrong value visible). Return recovery:
    {"mode":"recovery","thought":"why state is wrong","recoverySteps":[
-     {"action":"clear|click|type|select","locatorStrategy":"css","locatorValue":"...","value":""}
+     {"action":"clear|click|type|select|navigate","locatorStrategy":"css","locatorValue":"...","value":""}
    ],"automationNotes":["Excel-safe note for Automate"]}
+   navigate only to the Excel open-path when provided. Max 5 recovery steps.
    After recovery, Keel retries the SAME failed intent (no intent-index jump).
 
 Answer B is expected and correct when the field's name is only in a nearby label or span

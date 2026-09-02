@@ -1,6 +1,7 @@
 package delivery.portal.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import delivery.codegen.ProvenStep;
 import delivery.excel.ExcelTcReader;
 import delivery.excel.GenerateQualityGate;
 import delivery.excel.GeneratedTcCsvParser;
@@ -8,6 +9,7 @@ import delivery.excel.KeelPathCounts;
 import delivery.excel.ManualTcExcelWriter;
 import delivery.excel.ManualTestCase;
 import delivery.excel.TcImportRepair;
+import delivery.heal.HealWorkbookPatcher;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.KeelPath;
 import org.springframework.stereotype.Service;
@@ -64,6 +66,7 @@ public class GeneratedWorkbookService {
 
         KeelPathCounts keelPathCounts = KeelPathCounts.from(cases);
 
+        Map<String, Object> previous = readMeta(dir);
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("projectId", projectId);
         meta.put("tcCount", cases.size());
@@ -72,9 +75,188 @@ public class GeneratedWorkbookService {
         meta.put("sourceRef", sourceRef == null ? "" : sourceRef);
         if (model != null && !model.isBlank()) {
             meta.put("model", model);
+        } else if (previous.get("model") != null && !String.valueOf(previous.get("model")).isBlank()) {
+            meta.put("model", previous.get("model"));
+        }
+        Object priorNotes = previous.get("coverageNotes");
+        if (priorNotes != null) {
+            meta.put("coverageNotes", String.valueOf(priorNotes));
+        }
+        Object priorAuto = previous.get("automationNotesByTc");
+        if (priorAuto != null) {
+            meta.put("automationNotesByTc", priorAuto);
         }
         meta.put("createdAt", Instant.now().toString());
         meta.put("excelFile", EXCEL_FILE);
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(dir.resolve(META_FILE).toFile(), meta);
+    }
+
+    /** Persists coverage notes into workbook meta (does not rewrite Excel rows). */
+    public Map<String, Object> updateCoverageNotes(String projectId, String coverageNotes) throws Exception {
+        Path dir = generatedDir(projectId);
+        requireExcel(projectId);
+        Map<String, Object> meta = new LinkedHashMap<>(readMeta(dir));
+        meta.put("projectId", projectId);
+        meta.put("coverageNotes", coverageNotes == null ? "" : coverageNotes);
+        meta.put("updatedAt", Instant.now().toString());
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(dir.resolve(META_FILE).toFile(), meta);
+        Map<String, Object> out = new LinkedHashMap<>(
+                describe(projectId).orElseThrow(() -> new IllegalStateException("NO_GENERATED_WORKBOOK")));
+        out.put("coverageNotes", coverageNotes == null ? "" : coverageNotes);
+        return out;
+    }
+
+    /** Merge heal automation notes for a TC into workbook meta for Automate reviewers. */
+    @SuppressWarnings("unchecked")
+    public void mergeAutomationNotes(String projectId, String tcId, List<String> notes) throws Exception {
+        if (projectId == null || projectId.isBlank() || tcId == null || tcId.isBlank()
+                || notes == null || notes.isEmpty()) {
+            return;
+        }
+        Path dir = generatedDir(projectId);
+        if (!Files.isRegularFile(dir.resolve(EXCEL_FILE))) {
+            return;
+        }
+        Map<String, Object> meta = new LinkedHashMap<>(readMeta(dir));
+        Object raw = meta.get("automationNotesByTc");
+        Map<String, Object> byTc = raw instanceof Map<?, ?> m
+                ? new LinkedHashMap<>((Map<String, Object>) m)
+                : new LinkedHashMap<>();
+        List<String> existing = new ArrayList<>();
+        Object prior = byTc.get(tcId);
+        if (prior instanceof List<?> list) {
+            for (Object o : list) {
+                if (o != null && !String.valueOf(o).isBlank()) {
+                    existing.add(String.valueOf(o));
+                }
+            }
+        }
+        for (String note : notes) {
+            if (note != null && !note.isBlank() && !existing.contains(note)) {
+                existing.add(note);
+            }
+        }
+        byTc.put(tcId, existing);
+        meta.put("automationNotesByTc", byTc);
+        meta.put("updatedAt", Instant.now().toString());
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(dir.resolve(META_FILE).toFile(), meta);
+    }
+
+    public record HealPatchApplyResult(
+            boolean excelSaved,
+            boolean skipped,
+            String reason,
+            List<String> appliedSummaries
+    ) {
+        public HealPatchApplyResult {
+            reason = reason == null ? "" : reason;
+            appliedSummaries = appliedSummaries == null ? List.of() : List.copyOf(appliedSummaries);
+        }
+    }
+
+    /**
+     * After successful heal recovery: deterministically patch leave-empty Steps/TestData on the
+     * saved generated workbook, merge automation notes, and append unmatched notes to coverage.
+     * Best-effort for callers — gate failure skips Excel save but still persists notes when possible.
+     */
+    public HealPatchApplyResult applyHealRecoveryPatch(
+            String projectId,
+            String tcId,
+            List<ProvenStep> recoverySteps,
+            List<String> automationNotes,
+            String baseUrl
+    ) throws Exception {
+        if (projectId == null || projectId.isBlank() || tcId == null || tcId.isBlank()) {
+            return new HealPatchApplyResult(false, true, "missing projectId/tcId", List.of());
+        }
+        Path dir = generatedDir(projectId);
+        if (!Files.isRegularFile(dir.resolve(EXCEL_FILE))) {
+            return new HealPatchApplyResult(false, true, "NO_GENERATED_WORKBOOK", List.of());
+        }
+        String normalizedTcId = tcId.trim();
+        List<ManualTestCase> cases = new ExcelTcReader().read(requireExcel(projectId));
+        int index = -1;
+        for (int i = 0; i < cases.size(); i++) {
+            if (normalizedTcId.equals(cases.get(i).tcId())) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) {
+            mergeAutomationNotes(projectId, normalizedTcId, automationNotes);
+            appendHealCoverageNotes(projectId, normalizedTcId, automationNotes);
+            return new HealPatchApplyResult(false, true, "unknown tcId", List.of());
+        }
+
+        HealWorkbookPatcher.PatchResult patched = HealWorkbookPatcher.patch(
+                cases.get(index), recoverySteps, automationNotes);
+
+        if (patched.cellsChanged()) {
+            List<ManualTestCase> next = new ArrayList<>(cases);
+            next.set(index, patched.patchedCase());
+            List<ManualTestCase> repaired = TcImportRepair.repairCases(next);
+            List<String> gateErrors = GenerateQualityGate.validate(repaired, baseUrl);
+            if (!gateErrors.isEmpty()) {
+                mergeAutomationNotes(projectId, normalizedTcId, automationNotes);
+                appendHealCoverageNotes(projectId, normalizedTcId, patched.unmatchedNotes());
+                return new HealPatchApplyResult(
+                        false,
+                        true,
+                        "HEAL_WORKBOOK_PATCH_SKIPPED: " + String.join("; ", gateErrors),
+                        patched.appliedSummaries());
+            }
+            Map<String, Object> meta = readMeta(dir);
+            String source = String.valueOf(meta.getOrDefault("source", "GENERATE"));
+            String sourceRef = String.valueOf(meta.getOrDefault("sourceRef", ""));
+            Object modelObj = meta.get("model");
+            String model = modelObj == null ? null : String.valueOf(modelObj);
+            if (model != null && model.isBlank()) {
+                model = null;
+            }
+            saveFromCases(projectId, repaired, source, sourceRef, model);
+            mergeAutomationNotes(projectId, normalizedTcId, automationNotes);
+            appendHealCoverageNotes(projectId, normalizedTcId, patched.unmatchedNotes());
+            return new HealPatchApplyResult(true, false, "", patched.appliedSummaries());
+        }
+
+        mergeAutomationNotes(projectId, normalizedTcId, automationNotes);
+        appendHealCoverageNotes(projectId, normalizedTcId, patched.unmatchedNotes());
+        return new HealPatchApplyResult(false, false, "no cell changes", patched.appliedSummaries());
+    }
+
+    /** Append unmatched heal notes under a Heal notes heading; dedupe exact line text. */
+    void appendHealCoverageNotes(String projectId, String tcId, List<String> notes) throws Exception {
+        if (projectId == null || projectId.isBlank() || notes == null || notes.isEmpty()) {
+            return;
+        }
+        Path dir = generatedDir(projectId);
+        if (!Files.isRegularFile(dir.resolve(EXCEL_FILE))) {
+            return;
+        }
+        Map<String, Object> meta = new LinkedHashMap<>(readMeta(dir));
+        String prior = meta.get("coverageNotes") == null ? "" : String.valueOf(meta.get("coverageNotes"));
+        StringBuilder block = new StringBuilder();
+        block.append("### Heal notes (").append(tcId == null ? "" : tcId.trim()).append(")\n");
+        boolean any = false;
+        for (String n : notes) {
+            if (n == null || n.isBlank()) {
+                continue;
+            }
+            String line = n.trim();
+            if (prior.contains(line)) {
+                continue;
+            }
+            block.append("- ").append(line).append('\n');
+            any = true;
+        }
+        if (!any) {
+            return;
+        }
+        String updated = prior.isBlank()
+                ? block.toString().trim()
+                : prior.trim() + "\n\n" + block.toString().trim();
+        meta.put("coverageNotes", updated);
+        meta.put("updatedAt", Instant.now().toString());
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(dir.resolve(META_FILE).toFile(), meta);
     }
 
@@ -110,6 +292,8 @@ public class GeneratedWorkbookService {
         out.put("model", meta.getOrDefault("model", ""));
         out.put("createdAt", meta.getOrDefault("createdAt", ""));
         out.put("excelFileName", EXCEL_FILE);
+        out.put("coverageNotes", meta.getOrDefault("coverageNotes", ""));
+        out.put("automationNotesByTc", meta.getOrDefault("automationNotesByTc", Map.of()));
         return Optional.of(out);
     }
 

@@ -207,7 +207,7 @@ public final class GenerateAuthoringRules {
                 || lower.contains("empty " + fieldKind + " number");
     }
 
-    static boolean isEnterStepForField(String stepLower, String fieldKind) {
+    public static boolean isEnterStepForField(String stepLower, String fieldKind) {
         if (!ENTER_STEP.matcher(stepLower).find() && !stepLower.contains("leave the")) {
             return false;
         }
@@ -227,7 +227,7 @@ public final class GenerateAuthoringRules {
         return stepText != null && STANDALONE_EMAIL_FIELD.matcher(stepText).find();
     }
 
-    static boolean alreadyLeaveEmpty(String stepText) {
+    public static boolean alreadyLeaveEmpty(String stepText) {
         if (stepText == null) return false;
         String step = stepText.toLowerCase(java.util.Locale.ROOT);
         return LEAVE_EMPTY.matcher(stepText).find() || step.contains("empty value") || step.contains("leave");
@@ -238,7 +238,7 @@ public final class GenerateAuthoringRules {
         return v.startsWith("<") && v.endsWith(">");
     }
 
-    static List<String> splitNumberedSteps(String steps) {
+    public static List<String> splitNumberedSteps(String steps) {
         List<String> out = new ArrayList<>();
         if (steps == null || steps.isBlank()) {
             return out;
@@ -252,7 +252,7 @@ public final class GenerateAuthoringRules {
         return out;
     }
 
-    static List<String> splitTestDataLines(String testData, int stepCount) {
+    public static List<String> splitTestDataLines(String testData, int stepCount) {
         List<String> raw = new ArrayList<>();
         if (testData != null && !testData.isBlank()) {
             for (String line : testData.split("\n", -1)) {

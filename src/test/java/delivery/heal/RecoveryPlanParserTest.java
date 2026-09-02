@@ -97,11 +97,40 @@ public class RecoveryPlanParserTest {
                   {"action":"clear","locatorStrategy":"css","locatorValue":"input[name='email']","value":""},
                   {"action":"click","locatorStrategy":"id","locatorValue":"login","value":""},
                   {"action":"clear","locatorStrategy":"css","locatorValue":"input[name='email']","value":""},
+                  {"action":"click","locatorStrategy":"id","locatorValue":"login","value":""},
+                  {"action":"clear","locatorStrategy":"css","locatorValue":"input[name='email']","value":""},
                   {"action":"click","locatorStrategy":"id","locatorValue":"login","value":""}
                 ]}
                 """;
         Assert.assertTrue(new RecoveryPlanParser(new LocatorValidator())
                 .parse("TC1", raw, HTML)
+                .isEmpty());
+    }
+
+    @Test
+    public void acceptsNavigateOnExcelOpenPath() {
+        String raw = """
+                {"mode":"recovery","thought":"left login",
+                "recoverySteps":[
+                  {"action":"navigate","value":"/login"}
+                ]}
+                """;
+        RecoveryPlanParser.RecoveryPlan plan = new RecoveryPlanParser(new LocatorValidator())
+                .parse("TC1", raw, HTML, null, "/login")
+                .orElseThrow();
+        Assert.assertEquals(plan.steps().get(0).action(), "navigate");
+        Assert.assertEquals(plan.steps().get(0).value(), "/login");
+    }
+
+    @Test
+    public void rejectsNavigateOffExcelOpenPath() {
+        String raw = """
+                {"mode":"recovery","recoverySteps":[
+                  {"action":"navigate","value":"https://evil.example/"}
+                ]}
+                """;
+        Assert.assertTrue(new RecoveryPlanParser(new LocatorValidator())
+                .parse("TC1", raw, HTML, null, "/login")
                 .isEmpty());
     }
 

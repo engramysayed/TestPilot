@@ -112,6 +112,32 @@ public class GeneratedWorkbookController {
         }
     }
 
+    public record UpdateCoverageNotesRequest(String coverageNotes) {
+    }
+
+    @PutMapping(value = "/{projectId}/generated-workbook/coverage-notes", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> updateCoverageNotes(
+            @PathVariable("projectId") String projectId,
+            @RequestBody UpdateCoverageNotesRequest body
+    ) throws Exception {
+        Long ownerId = currentUser.requireUserId();
+        if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        }
+        try {
+            return ResponseEntity.ok(workbooks.updateCoverageNotes(
+                    projectId, body == null ? "" : body.coverageNotes()));
+        } catch (IllegalStateException e) {
+            if ("NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ApiError("NO_GENERATED_WORKBOOK",
+                                "No generated workbook saved for this project").asMap());
+            }
+            throw e;
+        }
+    }
+
     @PutMapping(value = "/{projectId}/generated-workbook/cases/{tcId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> updateCase(
             @PathVariable("projectId") String projectId,

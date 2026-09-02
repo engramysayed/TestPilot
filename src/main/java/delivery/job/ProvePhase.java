@@ -61,6 +61,18 @@ public class ProvePhase {
     /** When set (Execute jobs), mirror each draft to durable execute-runs storage after write. */
     private Path mirrorRoot;
     private BooleanSupplier cancelCheck = () -> false;
+    private HealWorkbookApplier healWorkbookApplier;
+
+    @FunctionalInterface
+    public interface HealWorkbookApplier {
+        void apply(
+                String projectId,
+                String tcId,
+                List<ProvenStep> recoverySteps,
+                List<String> automationNotes,
+                String baseUrl
+        ) throws Exception;
+    }
 
     public ProvePhase(JobProgressTracker progress) {
         this.progress = progress == null ? new JobProgressTracker() : progress;
@@ -73,6 +85,11 @@ public class ProvePhase {
 
     public ProvePhase withCancelCheck(BooleanSupplier cancelCheck) {
         this.cancelCheck = cancelCheck == null ? () -> false : cancelCheck;
+        return this;
+    }
+
+    public ProvePhase withHealWorkbookApplier(HealWorkbookApplier healWorkbookApplier) {
+        this.healWorkbookApplier = healWorkbookApplier;
         return this;
     }
 
@@ -293,7 +310,7 @@ public class ProvePhase {
                             + ": " + trim(intent.text(), 60));
 
             StepAttempt attempt = attemptIntentWithRetry(
-                    tc, request.baseUrl(), intent, intentIndex, authoring, healCascade, execution, evidence,
+                    tc, request, intent, intentIndex, authoring, healCascade, execution, evidence,
                     driverFactory, provenAll, failedThisTc);
             maxHealTier = mergeHealTier(maxHealTier, attempt.healTier());
             if (attempt.healSkipReason() != null && !attempt.healSkipReason().isBlank()) {
@@ -382,6 +399,7 @@ public class ProvePhase {
                 byte[] failPng = execution.capturePngBytes();
                 Path shot = writeHealScreenshot(evidence, tc.tcId(), 0, failPng);
                 CandidateLivenessProbe probe = new SeleniumCandidateLivenessProbe(driverFactory);
+                prepareHealPresence(healCascade, driverFactory);
                 HealResult healed = healCascade.heal(
                         tc.tcId(), healIntent, freshHtml, failPng,
                         outcome.failureReason(), shot, true,
@@ -442,7 +460,7 @@ public class ProvePhase {
 
     private StepAttempt attemptIntentWithRetry(
             ManualTestCase tc,
-            String baseUrl,
+            ConversionJobRequest request,
             StepIntentBinder.IntentLine intent,
             int intentIndex,
             AuthoringService authoring,
@@ -453,6 +471,7 @@ public class ProvePhase {
             List<ProvenStep> provenSoFar,
             List<FailedLocator> failedLocators
     ) {
+        String baseUrl = request == null ? "" : request.baseUrl();
         String lastReason = "";
         String evidenceDir = "";
         List<ProvenStep> lastPartial = List.of();
@@ -466,7 +485,7 @@ public class ProvePhase {
         CandidateLivenessProbe probe = new SeleniumCandidateLivenessProbe(driverFactory);
         VisionAttemptLog.beginIntent();
         boolean recoveredThisIntent = false;
-        boolean recoveryAttemptedThisIntent = false;
+        int recoveryAttemptsThisIntent = 0;
         List<ProvenStep> recoveredNav = new ArrayList<>();
         List<ProvenStep> recoveredActions = new ArrayList<>();
         try {
@@ -580,6 +599,7 @@ public class ProvePhase {
                             : stepBatch.stream().filter(s -> !s.validated()).findFirst()
                             .map(ProvenStep::rationale).orElse("unknown");
                     Path shot = writeHealScreenshot(evidence, tc.tcId(), intentIndex, healPng);
+                    prepareHealPresence(healCascade, driverFactory);
                     HealResult healed = healCascade.heal(
                             tc.tcId(), intent, html, healPng, lastReason, shot, true, priorSteps,
                             true, provenSoFar, failedThisIntent, probe);
@@ -590,14 +610,15 @@ public class ProvePhase {
                         continue;
                     }
                     RecoveryOutcome recovery = tryRecoveryHeal(
-                            healed, tc, execution, evidence, recoveryAttemptedThisIntent, recoveredActions);
+                            healed, tc, execution, evidence, recoveryAttemptsThisIntent, recoveredActions,
+                            request);
                     if (recovery == RecoveryOutcome.RECOVERY_RETRY) {
-                        recoveryAttemptedThisIntent = true;
+                        recoveryAttemptsThisIntent++;
                         healTier = mergeHealTier(healTier, "recovery");
                         continue;
                     }
                     if (recovery == RecoveryOutcome.RECOVERY_FAILED) {
-                        recoveryAttemptedThisIntent = true;
+                        recoveryAttemptsThisIntent++;
                         lastPartial = autoFillSteps;
                         lastReason = "Recovery steps failed";
                         healSkipReason = lastReason;
@@ -634,18 +655,20 @@ public class ProvePhase {
                         String freshHtml = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
                         byte[] failPng = execution.capturePngBytes();
                         Path shot = writeHealScreenshot(evidence, tc.tcId(), intentIndex, failPng);
+                        prepareHealPresence(healCascade, driverFactory);
                         HealResult healed = healCascade.heal(
                                 tc.tcId(), intent, freshHtml, failPng, lastReason, shot, true, priorSteps,
                                 true, provenSoFar, failedThisIntent, probe);
                         RecoveryOutcome recovery = tryRecoveryHeal(
-                                healed, tc, execution, evidence, recoveryAttemptedThisIntent, recoveredActions);
+                                healed, tc, execution, evidence, recoveryAttemptsThisIntent, recoveredActions,
+                                request);
                         if (recovery == RecoveryOutcome.RECOVERY_RETRY) {
-                            recoveryAttemptedThisIntent = true;
+                            recoveryAttemptsThisIntent++;
                             healTier = mergeHealTier(healTier, "recovery");
                             continue;
                         }
                         if (recovery == RecoveryOutcome.RECOVERY_FAILED) {
-                            recoveryAttemptedThisIntent = true;
+                            recoveryAttemptsThisIntent++;
                             healSkipReason = "Recovery steps failed";
                             lastReason = healSkipReason;
                             continue;
@@ -694,22 +717,24 @@ public class ProvePhase {
                         String html2 = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
                         byte[] png2 = execution.capturePngBytes();
                         Path shot2 = writeHealScreenshot(evidence, tc.tcId(), intentIndex, png2);
+                        prepareHealPresence(healCascade, driverFactory);
                         HealResult cursorHeal = healCascade.heal(
                                 tc.tcId(), intent, html2, png2,
                                 "re-execute after Ollama heal failed: " + lastReason,
                                 shot2, false, priorSteps, true, provenSoFar, failedThisIntent, probe);
                         EscalateHealDecision escalate = decideEscalateHeal(
-                                cursorHeal, recoveryAttemptedThisIntent);
+                                cursorHeal, recoveryAttemptsThisIntent);
                         if (escalate == EscalateHealDecision.RUN_RECOVERY_AND_RETRY_INTENT
                                 || escalate == EscalateHealDecision.RECOVERY_ALREADY_ATTEMPTED_FAIL) {
                             RecoveryOutcome recovery = tryRecoveryHeal(
-                                    cursorHeal, tc, execution, evidence, recoveryAttemptedThisIntent, recoveredActions);
+                                    cursorHeal, tc, execution, evidence, recoveryAttemptsThisIntent, recoveredActions,
+                                    request);
                             if (recovery == RecoveryOutcome.RECOVERY_RETRY) {
-                                recoveryAttemptedThisIntent = true;
+                                recoveryAttemptsThisIntent++;
                                 healTier = mergeHealTier(healTier, "recovery");
                                 continue;
                             }
-                            recoveryAttemptedThisIntent = true;
+                            recoveryAttemptsThisIntent++;
                             healSkipReason = "Recovery steps failed";
                             lastReason = healSkipReason;
                             continue;
@@ -877,6 +902,17 @@ public class ProvePhase {
         return List.copyOf(byKey.values());
     }
 
+    private static void prepareHealPresence(HealCascade healCascade, WebDriverFactory driverFactory) {
+        if (healCascade == null) {
+            return;
+        }
+        try {
+            healCascade.setPresenceHtml(PageSnapshot.html(driverFactory.get()));
+        } catch (Exception e) {
+            healCascade.setPresenceHtml("");
+        }
+    }
+
     private enum RecoveryOutcome { NOT_RECOVERY, RECOVERY_RETRY, RECOVERY_FAILED }
 
     /** How Cursor escalate-after-Ollama should treat a heal result (package-visible for tests). */
@@ -887,6 +923,8 @@ public class ProvePhase {
         HEAL_FAILED
     }
 
+    static final int MAX_RECOVERY_ATTEMPTS = 2;
+
     static boolean isRecoveryTier(HealResult healed) {
         return healed != null && healed.ok() && "recovery".equals(healed.tierUsed());
     }
@@ -895,30 +933,31 @@ public class ProvePhase {
      * Recovery-tier heals must never be executed as the original intent batch.
      * Classic cursor/invent fixes use {@link EscalateHealDecision#EXECUTE_AS_INTENT_FIX}.
      */
-    static EscalateHealDecision decideEscalateHeal(HealResult cursorHeal, boolean recoveryAlreadyAttempted) {
+    static EscalateHealDecision decideEscalateHeal(HealResult cursorHeal, int recoveryAttemptsUsed) {
         if (cursorHeal == null || !cursorHeal.ok()) {
             return EscalateHealDecision.HEAL_FAILED;
         }
         if (isRecoveryTier(cursorHeal)) {
-            return recoveryAlreadyAttempted
+            return recoveryAttemptsUsed >= MAX_RECOVERY_ATTEMPTS
                     ? EscalateHealDecision.RECOVERY_ALREADY_ATTEMPTED_FAIL
                     : EscalateHealDecision.RUN_RECOVERY_AND_RETRY_INTENT;
         }
         return EscalateHealDecision.EXECUTE_AS_INTENT_FIX;
     }
 
-    private static RecoveryOutcome tryRecoveryHeal(
+    private RecoveryOutcome tryRecoveryHeal(
             HealResult healed,
             ManualTestCase tc,
             TcExecutionService execution,
             Path evidence,
-            boolean recoveryAlreadyAttempted,
-            List<ProvenStep> recoveredActionsOut
+            int recoveryAttemptsUsed,
+            List<ProvenStep> recoveredActionsOut,
+            ConversionJobRequest request
     ) {
         if (!healed.ok() || !"recovery".equals(healed.tierUsed())) {
             return RecoveryOutcome.NOT_RECOVERY;
         }
-        if (recoveryAlreadyAttempted) {
+        if (recoveryAttemptsUsed >= MAX_RECOVERY_ATTEMPTS) {
             return RecoveryOutcome.RECOVERY_FAILED;
         }
         TcOutcome outcome = execution.execute(tc.tcId(), healed.steps(), evidence);
@@ -931,10 +970,36 @@ public class ProvePhase {
             recoveredActionsOut.addAll(proven == null || proven.isEmpty() ? healed.steps() : proven);
         }
         writeHealRecoveryEvidence(evidence, tc.tcId(), healed);
+        applyHealWorkbookPatchBestEffort(healWorkbookApplier, request, tc.tcId(), healed);
         PostActionSettle.afterAction();
         LogsManager.info("HEAL_RECOVERY: executed " + healed.steps().size()
                 + " steps for " + tc.tcId() + "; retrying intent");
         return RecoveryOutcome.RECOVERY_RETRY;
+    }
+
+    /** Best-effort generated-workbook patch after successful recovery; never throws. */
+    static void applyHealWorkbookPatchBestEffort(
+            HealWorkbookApplier applier,
+            ConversionJobRequest request,
+            String tcId,
+            HealResult healed
+    ) {
+        if (applier == null || request == null || healed == null || !healed.ok()) {
+            return;
+        }
+        if (!"recovery".equals(healed.tierUsed())) {
+            return;
+        }
+        try {
+            applier.apply(
+                    request.projectId(),
+                    tcId,
+                    healed.steps(),
+                    healed.automationNotes(),
+                    request.baseUrl());
+        } catch (Exception e) {
+            LogsManager.warn("HEAL_WORKBOOK_PATCH: " + e.getMessage());
+        }
     }
 
     private static void writeHealRecoveryEvidence(Path evidenceRoot, String tcId, HealResult healed) {
@@ -959,6 +1024,10 @@ public class ProvePhase {
             }
             obj.put("recoverySteps", steps);
             Files.writeString(dir.resolve("heal-recovery.json"), obj.toString(2));
+            if (!healed.automationNotes().isEmpty()) {
+                Files.writeString(dir.resolve("automation-notes.txt"),
+                        String.join("\n", healed.automationNotes()));
+            }
         } catch (Exception e) {
             LogsManager.warn("HEAL_RECOVERY_EVIDENCE: " + e.getMessage());
         }
