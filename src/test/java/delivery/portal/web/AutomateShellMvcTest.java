@@ -58,6 +58,21 @@ public class AutomateShellMvcTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    public void uploadPage_hasOptionalProposeOnlyCursorPreRunReview() throws Exception {
+        String body = mockMvc.perform(get("/upload").with(httpBasic(AUTH_USER, AUTH_PASS)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Assert.assertTrue(body.contains("id=\"pre-run-review\""), "review option missing");
+        Assert.assertTrue(body.contains("id=\"pre-run-review-panel\""), "review proposal panel missing");
+        Assert.assertTrue(body.contains("Accept &amp; run"), "explicit acceptance control missing");
+        Assert.assertTrue(body.contains("/pre-run-authoring-review"), "pre-run review API wiring missing");
+        Assert.assertTrue(body.contains("preRunReviewedCsv"), "accepted proposal must become run input");
+    }
+
+    @Test
     public void jobsPage_navActive() throws Exception {
         String body = mockMvc.perform(get("/jobs").with(httpBasic(AUTH_USER, AUTH_PASS)))
                 .andExpect(status().isOk())

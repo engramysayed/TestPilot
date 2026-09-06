@@ -7,6 +7,7 @@ import delivery.portal.service.PortalStore;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -135,6 +136,57 @@ public class GeneratedWorkbookController {
                                 "No generated workbook saved for this project").asMap());
             }
             throw e;
+        }
+    }
+
+    public record DeleteCasesRequest(List<String> tcIds) {
+    }
+
+    @GetMapping("/{projectId}/generated-workbook/cases")
+    public ResponseEntity<?> listCases(@PathVariable("projectId") String projectId) throws Exception {
+        Long ownerId = currentUser.requireUserId();
+        if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        }
+        try {
+            return ResponseEntity.ok(workbooks.listCases(projectId));
+        } catch (IllegalStateException e) {
+            if ("NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("available", false);
+                body.put("projectId", projectId);
+                body.put("cases", List.of());
+                return ResponseEntity.ok(body);
+            }
+            throw e;
+        }
+    }
+
+    @DeleteMapping(value = "/{projectId}/generated-workbook/cases", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> deleteCases(
+            @PathVariable("projectId") String projectId,
+            @RequestBody DeleteCasesRequest body
+    ) throws Exception {
+        Long ownerId = currentUser.requireUserId();
+        if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        }
+        try {
+            return ResponseEntity.ok(workbooks.deleteCases(
+                    projectId, body == null ? List.of() : body.tcIds()));
+        } catch (IllegalStateException e) {
+            if ("NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ApiError("NO_GENERATED_WORKBOOK",
+                                "No generated workbook saved for this project").asMap());
+            }
+            throw e;
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_REQUEST",
+                            e.getMessage() == null ? "Invalid delete" : e.getMessage()).asMap());
         }
     }
 

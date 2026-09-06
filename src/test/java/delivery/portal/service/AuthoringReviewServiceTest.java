@@ -133,6 +133,24 @@ public class AuthoringReviewServiceTest {
         Assert.assertEquals(fixture.lastProvider, "cursor");
     }
 
+    @Test
+    public void reviewCases_reviewsProspectiveRunSuite_withoutReadingSavedWorkbook() throws Exception {
+        Fixture fixture = fixture(List.of(originalCase()), validReviewJson());
+        ManualTestCase prospective = new ManualTestCase(
+                "TC_01", "Uploaded title", "",
+                "1. Enter in the Email field\n2. Click Submit",
+                "1. Email is accepted\n2. Submitted",
+                "P1", "", "", "", "EXECUTE");
+
+        Map<String, Object> result = fixture.service.reviewCases(
+                PROJECT_ID, OWNER_ID, List.of(prospective), "cursor", "", "");
+
+        Assert.assertEquals(result.get("provider"), "cursor");
+        Assert.assertEquals(result.get("tcCount"), 1);
+        Assert.assertTrue(fixture.lastUser.contains("Uploaded title"),
+                "review must use the prospective upload/library mix");
+    }
+
     private static Fixture fixture(List<ManualTestCase> cases, String response) throws Exception {
         Path root = Files.createTempDirectory("authoring-review-service");
         DeliveryPortalProperties props = new DeliveryPortalProperties();

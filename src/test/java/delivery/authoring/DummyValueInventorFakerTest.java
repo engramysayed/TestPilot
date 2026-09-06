@@ -4,8 +4,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 /**
- * When Excel does not supply a typed value, invent realistic fake data from the field
- * identity — never from a product host.
+ * Invent() still supplies heal fillers; fromStepOrInvent must not invent TestData.
  */
 public class DummyValueInventorFakerTest {
 
@@ -53,25 +52,23 @@ public class DummyValueInventorFakerTest {
     }
 
     @Test
-    public void inventsWhenExcelGivesNoConcreteValue() {
+    public void leavesBlankWhenExcelGivesNoConcreteValue() {
         String first = DummyValueInventor.fromStepOrInvent(
                 "Enter a first name in the First name field",
                 "input", "text", "firstName", "First name", "");
-        Assert.assertTrue(first.matches("[A-Za-z][A-Za-z'\\- ]{1,40}"), first);
-        Assert.assertFalse(first.toLowerCase().contains("first name"), first);
+        Assert.assertEquals(first, "");
     }
 
     @Test
-    public void inventsWhenExcelValueLooksLikeAPlaceholderToken() {
+    public void leavesBlankWhenExcelValueLooksLikeAPlaceholderToken() {
         String first = DummyValueInventor.fromStepOrInvent(
                 "Enter fname in the First name field",
                 "input", "text", "fname", "First name", "");
-        Assert.assertTrue(first.matches("[A-Za-z][A-Za-z'\\- ]{1,40}"), first);
-        Assert.assertNotEquals(first.toLowerCase(), "fname");
+        Assert.assertEquals(first, "");
         String email = DummyValueInventor.fromStepOrInvent(
                 "Enter email in the Email field",
                 "input", "email", "email", "Email", "");
-        Assert.assertTrue(email.contains("@"), email);
+        Assert.assertEquals(email, "");
     }
 
     @Test
@@ -79,12 +76,11 @@ public class DummyValueInventorFakerTest {
         String first = DummyValueInventor.fromStepOrInvent(
                 "Enter Test in the First name field",
                 "input", "text", "firstName", "First name", "");
-        Assert.assertNotEquals(first, "Test");
-        Assert.assertTrue(first.matches("[A-Za-z][A-Za-z'\\- ]{1,40}"), first);
+        Assert.assertEquals(first, "");
         String last = DummyValueInventor.fromStepOrInvent(
                 "Enter User in the Surname field",
                 "input", "text", "lastName", "Surname", "");
-        Assert.assertNotEquals(last, "User");
+        Assert.assertEquals(last, "");
     }
 
     @Test
@@ -93,24 +89,14 @@ public class DummyValueInventorFakerTest {
                 "Enter in the First name field", "Jordan",
                 "input", "text", "firstName", "First name", "");
         Assert.assertEquals(first, "Jordan");
-        String invented = DummyValueInventor.fromStepOrInvent(
+        String blank = DummyValueInventor.fromStepOrInvent(
                 "Enter in the First name field", "",
                 "input", "text", "firstName", "First name", "");
-        Assert.assertFalse(invented.isBlank());
-        Assert.assertNotEquals(invented, "Test");
-        Assert.assertNotEquals(invented.toLowerCase(), "first name");
+        Assert.assertEquals(blank, "");
     }
 
     @Test
-    public void columnPlaceholderStillInvents() {
-        String first = DummyValueInventor.fromStepOrInvent(
-                "Enter in the First name field", "Test",
-                "input", "text", "firstName", "First name", "");
-        Assert.assertNotEquals(first, "Test");
-    }
-
-    @Test
-    public void selectFromStepWinsOverMisalignedColumnEmail() {
+    public void selectEmbeddedValueWinsOverMisalignedColumn() {
         String year = DummyValueInventor.fromStepOrInvent(
                 "Select 1995 from the Year dropdown",
                 "nora.bennett.reg02@example.com",
@@ -119,11 +105,18 @@ public class DummyValueInventorFakerTest {
     }
 
     @Test
-    public void angleBracketTokenIsUnspecifiedNotTyped() {
+    public void passwordPlaceholderUsesTargetTokenNotInvent() {
         String password = DummyValueInventor.fromStepOrInvent(
                 "Enter in the Password field", "<VALID_PASSWORD>",
                 "input", "password", "pass", "Password", "");
-        Assert.assertNotEquals(password, "<VALID_PASSWORD>");
-        Assert.assertFalse(password.startsWith("<"), password);
+        Assert.assertEquals(password, "${TARGET_PASSWORD}");
+    }
+
+    @Test
+    public void usernameHintUsesTargetToken() {
+        String user = DummyValueInventor.fromStepOrInvent(
+                "Enter in the Username field", "",
+                "input", "text", "username", "Username", "");
+        Assert.assertEquals(user, "${TARGET_USERNAME}");
     }
 }

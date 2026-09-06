@@ -76,9 +76,28 @@ public class AuthoringReviewService {
             String requirementsNotes,
             String stories
     ) throws Exception {
+        List<ManualTestCase> current = new ExcelTcReader().read(workbooks.requireExcel(projectId));
+        return reviewCases(
+                projectId, ownerUserId, current, provider, requirementsNotes, stories);
+    }
+
+    /**
+     * Review the exact suite about to run (library subset, upload, or merged input).
+     * This is preview-only; the caller decides whether to accept and submit the returned CSV.
+     */
+    public Map<String, Object> reviewCases(
+            String projectId,
+            Long ownerUserId,
+            List<ManualTestCase> current,
+            String provider,
+            String requirementsNotes,
+            String stories
+    ) throws Exception {
         ProjectRecord project = store.getOwnedProject(projectId, ownerUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown project"));
-        List<ManualTestCase> current = new ExcelTcReader().read(workbooks.requireExcel(projectId));
+        if (current == null || current.isEmpty()) {
+            throw new IllegalArgumentException("No test cases to review");
+        }
         if (current.size() > MAX_CASES) {
             throw new IllegalArgumentException("Suite exceeds " + MAX_CASES + " cases");
         }

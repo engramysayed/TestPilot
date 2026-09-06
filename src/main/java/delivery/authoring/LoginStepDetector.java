@@ -88,14 +88,14 @@ public final class LoginStepDetector {
     }
 
     /**
-     * Run login prelude only when credentials exist AND the case needs auth:
+     * Run login prelude only when credentials exist AND the case needs a pre-session:
      * <ul>
-     *   <li>Excel has login / credential steps, or</li>
-     *   <li>Preconditions require an authenticated session, or</li>
+     *   <li>Preconditions require an authenticated session (and Steps do not themselves log in), or</li>
      *   <li>The live page already shows a login form (gated landing / base URL)</li>
      * </ul>
+     * Cases whose Steps perform login/sign-in are authored in the body — no prelude.
      * Public pages with no login form must not force login just because the job has credentials.
-     * Phrases like "No login required" never force auth.
+     * Phrases like "No login required" never force auth unless the live page is a login form.
      */
     public static boolean needsAuthenticatedSession(ManualTestCase tc, boolean jobHasCredentials) {
         return needsAuthenticatedSession(tc, jobHasCredentials, false);
@@ -114,13 +114,13 @@ public final class LoginStepDetector {
         }
         String pre = safe(tc.preconditions());
         String preForAuth = stripLoginNotNeeded(pre);
-        if (LOGIN_NOT_NEEDED.matcher(pre).find() && !REQUIRES_AUTH.matcher(preForAuth).find()) {
-            // Explicit "no login" in preconditions — only force auth if Steps themselves log in
-            // or the live page is already a login form.
-            return hasLoginSteps(tc) || loginFormVisibleOnCurrentPage;
-        }
+        // Cases that *perform* login in Steps author those steps in the body — never a separate
+        // prelude (prelude + bodyOnlyCase was emptying login TCs and soft-TODO on form miss).
         if (hasLoginSteps(tc)) {
-            return true;
+            return false;
+        }
+        if (LOGIN_NOT_NEEDED.matcher(pre).find() && !REQUIRES_AUTH.matcher(preForAuth).find()) {
+            return loginFormVisibleOnCurrentPage;
         }
         if (REQUIRES_AUTH.matcher(preForAuth).find()) {
             return true;

@@ -144,13 +144,67 @@
     <!-- Test cases tab -->
     <section id="tab-tcs" class="tab-panel" th:classappend="${activeTab != 'tcs'} ? ' hidden' : ''">
         <section class="panel">
-            <h2>Test cases</h2>
+            <h2>Generated library</h2>
+            <p class="panel-intro">
+                Test cases saved from Generate. Edit or delete here, then pick them later on Execute / Automate.
+            </p>
+            <p id="lib-empty" class="muted" hidden>No generated workbook yet — import or generate TCs first.</p>
+            <p id="lib-err" class="error" hidden></p>
+            <p id="lib-msg" class="muted" hidden></p>
+            <div class="actions" style="margin-bottom:0.75rem">
+                <button type="button" class="button ghost" id="lib-refresh-btn">Refresh</button>
+                <button type="button" class="button danger" id="lib-delete-btn" disabled>Delete selected</button>
+            </div>
+            <table class="table" id="lib-table" hidden>
+                <thead>
+                <tr>
+                    <th><input type="checkbox" id="lib-select-all" title="Select all"/></th>
+                    <th>TC</th>
+                    <th>Title</th>
+                    <th>KeelPath</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody id="lib-body"></tbody>
+            </table>
+        </section>
+
+        <section class="panel" id="lib-edit-panel" hidden>
+            <h2>Edit <span id="lib-edit-id" class="mono"></span></h2>
+            <form id="lib-edit-form">
+                <label>Title <input type="text" id="lib-edit-title" required/></label>
+                <label>Preconditions <textarea id="lib-edit-preconditions" rows="2"></textarea></label>
+                <label>Steps <textarea id="lib-edit-steps" rows="6" required></textarea></label>
+                <label>Expected result <textarea id="lib-edit-expected" rows="4" required></textarea></label>
+                <label>Test data <textarea id="lib-edit-testdata" rows="3"></textarea></label>
+                <label>Priority <input type="text" id="lib-edit-priority"/></label>
+                <label>Tags <input type="text" id="lib-edit-tags"/></label>
+                <label>Visual assertion <input type="text" id="lib-edit-visual"/></label>
+                <label>KeelPath
+                    <select id="lib-edit-keel">
+                        <option value="">(blank)</option>
+                        <option value="AUTOMATE">AUTOMATE</option>
+                        <option value="EXECUTE">EXECUTE</option>
+                        <option value="VISION_ONLY">VISION_ONLY</option>
+                        <option value="MANUAL">MANUAL</option>
+                    </select>
+                </label>
+                <p id="lib-edit-err" class="error" hidden></p>
+                <div class="modal-actions">
+                    <button type="button" class="button ghost" id="lib-edit-cancel">Cancel</button>
+                    <button type="submit" class="button">Save</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="panel">
+            <h2>Automate proven cases</h2>
             <p class="panel-intro">
                 From the last successful <strong>Automate</strong> conversion (proven IR), not from Generate alone.
                 <span id="run-at-label"></span>
                 Expand any case to see proven steps.
             </p>
-            <p id="empty" class="muted" hidden>Nothing stored yet — run Automate (conversion) so proven cases appear here. Generate saves under the project’s generated workbook (use Generate / Execute “latest generated workbook”).</p>
+            <p id="empty" class="muted" hidden>Nothing stored yet — run Automate (conversion) so proven cases appear here.</p>
             <p id="err" class="error" hidden></p>
             <div id="tc-list" class="tc-accordion"></div>
         </section>
@@ -892,6 +946,145 @@
         body.innerHTML = html;
     }
 
+    /* —— Generated library —— */
+    const libBody = document.getElementById('lib-body');
+    const libTable = document.getElementById('lib-table');
+    const libEmpty = document.getElementById('lib-empty');
+    const libErr = document.getElementById('lib-err');
+    const libMsg = document.getElementById('lib-msg');
+    const libDeleteBtn = document.getElementById('lib-delete-btn');
+    const libEditPanel = document.getElementById('lib-edit-panel');
+    let libCases = [];
+    let libEditingId = null;
+
+    function selectedLibIds() {
+        return Array.from(document.querySelectorAll('.lib-check:checked')).map(el => el.value);
+    }
+
+    function syncLibDeleteBtn() {
+        if (libDeleteBtn) libDeleteBtn.disabled = selectedLibIds().length === 0;
+    }
+
+    async function loadLibrary() {
+        if (!libBody) return;
+        libErr.hidden = true;
+        libMsg.hidden = true;
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases', {
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Accept': 'application/json' }
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            libErr.hidden = false;
+            libErr.textContent = (data && data.message) || 'Failed to load library';
+            return;
+        }
+        libCases = data.cases || [];
+        libEmpty.hidden = libCases.length > 0;
+        libTable.hidden = libCases.length === 0;
+        libBody.innerHTML = '';
+        libCases.forEach(tc => {
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td><input type="checkbox" class="lib-check" value="' + escapeHtml(tc.tcId) + '"/></td>' +
+                '<td class="mono">' + escapeHtml(tc.tcId) + '</td>' +
+                '<td>' + escapeHtml(tc.title || '') + '</td>' +
+                '<td class="mono">' + escapeHtml(tc.keelPath || '') + '</td>' +
+                '<td><button type="button" class="button ghost lib-edit-btn">Edit</button></td>';
+            tr.querySelector('.lib-check').addEventListener('change', syncLibDeleteBtn);
+            tr.querySelector('.lib-edit-btn').addEventListener('click', () => openLibEdit(tc));
+            libBody.appendChild(tr);
+        });
+        syncLibDeleteBtn();
+    }
+
+    function openLibEdit(tc) {
+        libEditingId = tc.tcId;
+        libEditPanel.hidden = false;
+        document.getElementById('lib-edit-id').textContent = tc.tcId;
+        document.getElementById('lib-edit-title').value = tc.title || '';
+        document.getElementById('lib-edit-preconditions').value = tc.preconditions || '';
+        document.getElementById('lib-edit-steps').value = tc.steps || '';
+        document.getElementById('lib-edit-expected').value = tc.expectedResult || '';
+        document.getElementById('lib-edit-testdata').value = tc.testData || '';
+        document.getElementById('lib-edit-priority').value = tc.priority || '';
+        document.getElementById('lib-edit-tags').value = tc.tags || '';
+        document.getElementById('lib-edit-visual').value = tc.visualAssertion || '';
+        document.getElementById('lib-edit-keel').value = tc.keelPath || '';
+        document.getElementById('lib-edit-err').hidden = true;
+        libEditPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.getElementById('lib-edit-cancel')?.addEventListener('click', () => {
+        libEditPanel.hidden = true;
+        libEditingId = null;
+    });
+
+    document.getElementById('lib-edit-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!libEditingId) return;
+        const err = document.getElementById('lib-edit-err');
+        err.hidden = true;
+        const body = {
+            title: document.getElementById('lib-edit-title').value,
+            preconditions: document.getElementById('lib-edit-preconditions').value,
+            steps: document.getElementById('lib-edit-steps').value,
+            expectedResult: document.getElementById('lib-edit-expected').value,
+            testData: document.getElementById('lib-edit-testdata').value,
+            priority: document.getElementById('lib-edit-priority').value,
+            tags: document.getElementById('lib-edit-tags').value,
+            visualAssertion: document.getElementById('lib-edit-visual').value,
+            keelPath: document.getElementById('lib-edit-keel').value
+        };
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
+            + '/generated-workbook/cases/' + encodeURIComponent(libEditingId), {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        let data = {};
+        try { data = await res.json(); } catch (ex) { /* ignore */ }
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = (data.message || data.error || 'Save failed');
+            return;
+        }
+        libEditPanel.hidden = true;
+        libEditingId = null;
+        libMsg.hidden = false;
+        libMsg.textContent = 'Saved.';
+        await loadLibrary();
+    });
+
+    document.getElementById('lib-refresh-btn')?.addEventListener('click', loadLibrary);
+    document.getElementById('lib-select-all')?.addEventListener('change', (e) => {
+        document.querySelectorAll('.lib-check').forEach(cb => { cb.checked = e.target.checked; });
+        syncLibDeleteBtn();
+    });
+    document.getElementById('lib-delete-btn')?.addEventListener('click', async () => {
+        const ids = selectedLibIds();
+        if (!ids.length || !window.confirm('Delete ' + ids.length + ' test case(s) from the library?')) return;
+        libErr.hidden = true;
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases', {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ tcIds: ids })
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            libErr.hidden = false;
+            libErr.textContent = data.message || 'Delete failed';
+            return;
+        }
+        libMsg.hidden = false;
+        libMsg.textContent = 'Deleted ' + (data.removedCount || ids.length) + ' case(s).';
+        await loadLibrary();
+    });
+
     /* —— Init —— */
     if (activeTab === 'settings') {
         loadProjectSettings();
@@ -901,6 +1094,7 @@
         loadArtifacts();
         startJobPoll();
     } else if (activeTab === 'tcs') {
+        loadLibrary();
         loadTcList();
     }
 

@@ -43,12 +43,14 @@ public class LoginStepDetectorTest {
     }
 
     @Test
-    public void excelLoginStepsStillNeedAuthSession() {
+    public void excelLoginStepsAuthorAsBodyNotPrelude() {
         ManualTestCase tc = new ManualTestCase(
                 "TC_TI_01", "Login", "User is on the Login Page",
                 "1. Enter the username test_user\n2. Enter the password TestPass1!\n3. Click the Login button",
                 "Secure Area shown", "P1", "");
-        Assert.assertTrue(LoginStepDetector.needsAuthenticatedSession(tc, true));
+        Assert.assertTrue(LoginStepDetector.hasLoginSteps(tc));
+        Assert.assertFalse(LoginStepDetector.needsAuthenticatedSession(tc, true),
+                "Login TCs must not run login prelude (would strip body steps)");
     }
 
     @Test

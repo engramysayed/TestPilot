@@ -4,9 +4,12 @@ import delivery.authoring.StepIntentBinder;
 import delivery.excel.ManualTestCase;
 import drivers.WebDriverFactory;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -39,8 +42,22 @@ public final class LoginFormNavigator {
             return false;
         }
         try {
-            List<WebElement> passwords = driver.findElements(By.cssSelector("input[type='password']"));
-            return passwords.stream().anyMatch(WebElement::isDisplayed);
+            if (driver.findElements(By.cssSelector("input[type='password']")).stream()
+                    .anyMatch(WebElement::isDisplayed)) {
+                return true;
+            }
+            // Custom / SPA fields sometimes omit type=password until hydrated
+            List<WebElement> candidates = driver.findElements(By.cssSelector(
+                    "input[name*='pass'], input[name*='Pass'], input[id*='pass'], input[id*='Pass'], "
+                            + "input[autocomplete='current-password'], input[autocomplete='new-password'], "
+                            + "input[data-test*='password'], input[data-testid*='password']"));
+            return candidates.stream().anyMatch(el -> {
+                try {
+                    return el.isDisplayed();
+                } catch (Exception e) {
+                    return false;
+                }
+            });
         } catch (Exception e) {
             return false;
         }
@@ -54,7 +71,7 @@ public final class LoginFormNavigator {
             String baseUrl,
             ManualTestCase tc
     ) {
-        if (pageHasLoginForm(driverFactory)) {
+        if (waitForLoginForm(driverFactory.get(), Duration.ofSeconds(3))) {
             return true;
         }
         WebDriver driver = driverFactory.get();
@@ -64,13 +81,13 @@ public final class LoginFormNavigator {
                 tc == null ? null : tc.steps());
         if (excelPath != null && !excelPath.isBlank()) {
             navigateToBasePath(driver, baseUrl, excelPath);
-            if (pageHasLoginForm(driver)) {
+            if (waitForLoginForm(driver, Duration.ofSeconds(12))) {
                 return true;
             }
         }
 
         if (clickLoginEntryControl(driver)) {
-            return pageHasLoginForm(driver);
+            return waitForLoginForm(driver, Duration.ofSeconds(8));
         }
         return false;
     }
@@ -87,7 +104,50 @@ public final class LoginFormNavigator {
         if (path == null || path.isBlank()) {
             return;
         }
-        navigateToBasePath(driverFactory.get(), baseUrl, path);
+        WebDriver driver = driverFactory.get();
+        navigateToBasePath(driver, baseUrl, path);
+        waitForDocumentReady(driver, Duration.ofSeconds(12));
+    }
+
+    /**
+     * Wait for SPA/document paint so execute does not soft-fail on a blank white page.
+     */
+    static boolean waitForLoginForm(WebDriver driver, Duration timeout) {
+        if (driver == null) {
+            return false;
+        }
+        waitForDocumentReady(driver, timeout);
+        long deadline = System.nanoTime() + timeout.toNanos();
+        while (System.nanoTime() < deadline) {
+            if (pageHasLoginForm(driver)) {
+                return true;
+            }
+            try {
+                Thread.sleep(200L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return pageHasLoginForm(driver);
+            }
+        }
+        return pageHasLoginForm(driver);
+    }
+
+    static void waitForDocumentReady(WebDriver driver, Duration timeout) {
+        if (driver == null) {
+            return;
+        }
+        try {
+            new WebDriverWait(driver, timeout).until(d -> {
+                try {
+                    Object rs = ((JavascriptExecutor) d).executeScript("return document.readyState");
+                    return "complete".equals(String.valueOf(rs));
+                } catch (RuntimeException e) {
+                    return true;
+                }
+            });
+        } catch (RuntimeException ignored) {
+            // Best-effort; caller still checks for the form.
+        }
     }
 
     static boolean clickLoginEntryControl(WebDriver driver) {

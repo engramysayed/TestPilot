@@ -52,6 +52,46 @@ public class DomainLocatorMemoryTest {
     }
 
     @Test
+    public void doesNotRememberLoginButtonForCartClick() {
+        DomainLocatorMemory memory = new DomainLocatorMemory();
+        StepIntentBinder.IntentLine addCart = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK, "Click the Add to cart button for backpack");
+        memory.remember("www.saucedemo.com", "/inventory.html", addCart, new ProvenStep(
+                "TC1", "Inv", "elementAction", "click",
+                "id", "login-button", "", "", "", true, "intent:CLICK"));
+        Assert.assertTrue(memory.recall("www.saucedemo.com", "/inventory.html", addCart, "TC1").isEmpty(),
+                "login-button must not be remembered for add-to-cart");
+    }
+
+    @Test
+    public void loadDropsPollutedLoginLocatorsForNonLoginIntents() throws Exception {
+        Path file = Files.createTempFile("domain-loc-pollute-", ".json");
+        try {
+            Files.writeString(file, """
+                    {"entries":[{
+                      "host":"www.saucedemo.com","path":"/login",
+                      "intentKey":"CLICK|click the add to cart button",
+                      "strategy":"id","locator":"login-button","action":"click"
+                    },{
+                      "host":"www.saucedemo.com","path":"/login",
+                      "intentKey":"CLICK_LOGIN|click the login button",
+                      "strategy":"id","locator":"login-button","action":"click"
+                    }]}
+                    """);
+            DomainLocatorMemory loaded = new DomainLocatorMemory();
+            loaded.load(file);
+            StepIntentBinder.IntentLine cart = new StepIntentBinder.IntentLine(
+                    StepIntentBinder.IntentKind.CLICK, "Click the Add to cart button");
+            StepIntentBinder.IntentLine login = new StepIntentBinder.IntentLine(
+                    StepIntentBinder.IntentKind.CLICK_LOGIN, "Click the Login button");
+            Assert.assertTrue(loaded.recall("www.saucedemo.com", "/login", cart, "TC1").isEmpty());
+            Assert.assertTrue(loaded.recall("www.saucedemo.com", "/login", login, "TC1").isPresent());
+        } finally {
+            Files.deleteIfExists(file);
+        }
+    }
+
+    @Test
     public void roundTripsThroughJsonFile() throws Exception {
         DomainLocatorMemory memory = new DomainLocatorMemory();
         StepIntentBinder.IntentLine intent = new StepIntentBinder.IntentLine(

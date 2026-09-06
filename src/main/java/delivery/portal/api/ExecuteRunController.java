@@ -77,6 +77,7 @@ public class ExecuteRunController {
             @PathVariable("projectId") String projectId,
             @RequestParam(value = "excel", required = false) MultipartFile excel,
             @RequestParam(value = "useGenerated", required = false, defaultValue = "false") String useGenerated,
+            @RequestParam(value = "tcIds", required = false) List<String> tcIds,
             @RequestParam(value = "credentialProfile", required = false) String credentialProfile
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
@@ -108,27 +109,17 @@ public class ExecuteRunController {
             password = resolved.passwordPlain();
         }
         boolean useStoredWorkbook = isTruthy(useGenerated);
-        if (useStoredWorkbook && excel != null && !excel.isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(new ApiError("BAD_REQUEST", "Provide either excel upload or useGenerated, not both").asMap());
-        }
         Path excelPath;
-        if (useStoredWorkbook) {
-            try {
-                excelPath = workbooks.copyForJob(projectId);
-            } catch (IllegalStateException e) {
+        try {
+            excelPath = delivery.portal.service.JobWorkbookResolver.resolve(
+                    workbooks, projectId, useStoredWorkbook, tcIds, excel);
+        } catch (IllegalStateException e) {
+            if ("NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(new ApiError("NO_GENERATED_WORKBOOK",
                                 "No generated workbook for this project — generate TCs first").asMap());
             }
-        } else {
-            if (excel == null || excel.isEmpty()) {
-                throw new InvalidExcelTemplateException("INVALID_EXCEL", "excel file is required");
-            }
-            Path uploadDir = Path.of(System.getProperty("java.io.tmpdir"), "delivery-uploads", projectId);
-            Files.createDirectories(uploadDir);
-            excelPath = uploadDir.resolve(UUID.randomUUID() + ".xlsx");
-            excel.transferTo(excelPath);
+            throw e;
         }
 
         try {

@@ -87,6 +87,12 @@ public class ConversionWorker {
             if (result.softBlocked() || "COMPLETED_WITH_BLOCK".equals(result.jobStatus())) {
                 job.setStatus(JobRecord.Status.COMPLETED_WITH_BLOCK);
                 job.setError("FINAL_REVISE_BLOCK");
+            } else if (result.passed() == 0 && result.todo() > 0) {
+                job.setStatus(JobRecord.Status.FAILED);
+                job.setError("ALL_CASES_TODO");
+                job.setMessage(result.message() == null || result.message().isBlank()
+                        ? "No cases proven — all TODO/PARTIAL (hard stop)"
+                        : result.message());
             } else {
                 job.setStatus(JobRecord.Status.COMPLETED);
             }

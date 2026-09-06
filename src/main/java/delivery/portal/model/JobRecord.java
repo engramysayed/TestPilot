@@ -113,7 +113,8 @@ public class JobRecord {
         if (kind == JobKind.GENERATE_COMPARE) {
             return false;
         }
-        return s == Status.COMPLETED || s == Status.COMPLETED_WITH_BLOCK;
+        return s == Status.COMPLETED || s == Status.COMPLETED_WITH_BLOCK
+                || s == Status.FAILED;
     }
 
     public static boolean isDownloadable(JobKind kind, String status) {

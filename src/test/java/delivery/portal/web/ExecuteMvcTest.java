@@ -84,4 +84,16 @@ public class ExecuteMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(body.contains("design-compare-panel"), "design compare detail panel missing");
         Assert.assertTrue(body.contains("bug-report.csv"), "bug report CSV export missing");
     }
+
+    @Test
+    public void execute_hasOptionalProposeOnlyCursorPreRunReview() throws Exception {
+        String body = fetchExecuteBody();
+        String main = mainShell(body);
+
+        Assert.assertTrue(main.contains("id=\"pre-run-review\""), "review option missing");
+        Assert.assertTrue(main.contains("id=\"pre-run-review-panel\""), "review proposal panel missing");
+        Assert.assertTrue(main.contains("Accept &amp; run"), "explicit acceptance control missing");
+        Assert.assertTrue(body.contains("/pre-run-authoring-review"), "pre-run review API wiring missing");
+        Assert.assertTrue(body.contains("preRunReviewedCsv"), "accepted proposal must become run input");
+    }
 }

@@ -526,13 +526,14 @@ public class ProvePhase {
                 if (memoryHost.isBlank()) {
                     memoryHost = hostOf(baseUrl);
                 }
-                String excelPath = StepIntentBinder.firstOpenPath(tc.preconditions(), tc.steps());
+                // Key by live page path — Excel open-path (/login) poisoned cart clicks with login-button.
+                String pagePath = pathOf(currentUrl(driverFactory));
                 Optional<ProvenStep> remembered = locatorMemory.recall(
-                        memoryHost, excelPath, intent, tc.tcId());
+                        memoryHost, pagePath, intent, tc.tcId());
                 if (remembered.isPresent()) {
                     ProvenStep ready = withInventedValue(remembered.get(), intent);
                     if (refusesSubmitNavigation(intent, List.of(ready))) {
-                        locatorMemory.forget(memoryHost, excelPath, intent);
+                        locatorMemory.forget(memoryHost, pagePath, intent);
                         LogsManager.info("SUBMIT_REFUSE: dropped remembered non-submit click for "
                                 + intent.text());
                     } else {
@@ -542,7 +543,7 @@ public class ProvePhase {
                             combined.addAll(memOutcome.provenSteps());
                             if (retryAfterPageRecovery(
                                     combined, tc, baseUrl, intent, driverFactory, recoveredThisIntent)) {
-                                locatorMemory.forget(memoryHost, excelPath, intent);
+                                locatorMemory.forget(memoryHost, pagePath, intent);
                                 recoveredThisIntent = true;
                                 keepRecoveredNavigate(recoveredNav, combined);
                                 lastReason = "Recovered to Excel open-path; retry bind";
@@ -553,7 +554,7 @@ public class ProvePhase {
                                     retriesUsed, healTier, healSkipReason,
                                     driverFactory, intent.text());
                         }
-                        locatorMemory.forget(memoryHost, excelPath, intent);
+                        locatorMemory.forget(memoryHost, pagePath, intent);
                         LogsManager.info("LOCATOR_MEMORY: dropped after execute fail for " + intent.text());
                     }
                 }
@@ -1118,10 +1119,24 @@ public class ProvePhase {
         if (host.isBlank()) {
             host = hostOf(request == null ? "" : request.baseUrl());
         }
-        String excelPath = StepIntentBinder.firstOpenPath(
-                tc == null ? "" : tc.preconditions(),
-                tc == null ? "" : tc.steps());
-        locatorMemory.remember(host, excelPath, intent, steps.get(steps.size() - 1));
+        String pagePath = pathOf(currentUrl(driverFactory));
+        locatorMemory.remember(host, pagePath, intent, steps.get(steps.size() - 1));
+    }
+
+    private static String pathOf(String url) {
+        if (url == null || url.isBlank()) {
+            return "/";
+        }
+        try {
+            java.net.URI uri = java.net.URI.create(url.trim());
+            String path = uri.getPath();
+            if (path == null || path.isBlank()) {
+                return "/";
+            }
+            return path;
+        } catch (Exception e) {
+            return "/";
+        }
     }
 
     private static ProvenStep withInventedValue(ProvenStep step, StepIntentBinder.IntentLine intent) {
@@ -1135,6 +1150,7 @@ public class ProvePhase {
         String inputType = intent.kind() == StepIntentBinder.IntentKind.TYPE_PASS ? "password" : "text";
         String value = DummyValueInventor.fromStepOrInvent(
                 intent.text(), intent.testData(), "input", inputType, "", intent.text(), intent.text());
+        value = StepIntentBinder.resolveLoginTypedValue(intent.kind(), intent.text(), value);
         return new ProvenStep(
                 step.tcId(), step.pageName(), step.actionType(), step.action(),
                 step.locatorStrategy(), step.locatorValue(), value,
@@ -1348,6 +1364,7 @@ public class ProvePhase {
             // Some drivers reject storage access on blank pages — navigate then clear again
         }
         driver.get(baseUrl);
+        LoginFormNavigator.waitForDocumentReady(driver, java.time.Duration.ofSeconds(12));
         try {
             org.openqa.selenium.JavascriptExecutor js =
                     (org.openqa.selenium.JavascriptExecutor) driver;

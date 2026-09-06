@@ -80,17 +80,25 @@
                 <div class="workbook-source-options">
                     <label class="generate-check">
                         <input type="radio" name="workbookSource" value="upload" checked/>
-                        <span>Upload a new .xlsx file</span>
+                        <span>Upload a new .xlsx or .csv file</span>
                     </label>
                     <label class="generate-check">
                         <input type="radio" name="workbookSource" value="generated"/>
-                        <span>Use latest generated workbook</span>
+                        <span>Use project library (all or selected below)</span>
                     </label>
                 </div>
-                <p class="muted generate-option-hint">Automate runs <strong>AUTOMATE</strong> rows (and blank KeelPath for legacy sheets). EXECUTE / VISION_ONLY / MANUAL are skipped here.</p>
+                <p class="muted generate-option-hint">Automate runs <strong>AUTOMATE</strong> rows (and blank KeelPath for legacy sheets). EXECUTE / VISION_ONLY / MANUAL are skipped here. With library selected you can also attach an upload to mix (upload wins on same TC_ID).</p>
+                <div id="library-pick-panel" class="library-pick-panel" hidden>
+                    <div class="actions" style="margin:0.5rem 0">
+                        <button type="button" class="button ghost" id="lib-pick-all">Select all</button>
+                        <button type="button" class="button ghost" id="lib-pick-none">Clear</button>
+                    </div>
+                    <div id="library-pick-list" class="library-pick-list"></div>
+                    <p id="library-pick-hint" class="muted">No selection = run all library cases.</p>
+                </div>
             </div>
-            <label id="excel-upload-label">Excel (.xlsx)
-                <input type="file" name="excel" id="excel-input" accept=".xlsx" required/>
+            <label id="excel-upload-label">Workbook (.xlsx or .csv)
+                <input type="file" name="excel" id="excel-input" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required/>
             </label>
             <label>Mode
                 <select name="mode" id="mode">
@@ -117,6 +125,26 @@
                 <strong>NEW</strong> builds a fresh framework package for all cases.
                 <strong>UPDATE</strong> reuses the stored project framework and only re-authors TCs whose Steps/ExpectedResult changed (content hash). Unchanged cases are kept. If this project has never completed a NEW run, UPDATE fails with <code>UPDATE_WITHOUT_FRAMEWORK</code>.
             </p>
+            <label class="check">
+                <input type="checkbox" id="pre-run-review"/>
+                Review selected TCs with Cursor before run (propose only)
+            </label>
+            <p class="hint muted">Cursor shows findings and a repaired proposal. Nothing runs or changes until you accept.</p>
+            <section class="panel" id="pre-run-review-panel" hidden
+                     data-endpoint="/pre-run-authoring-review">
+                <h3>Cursor pre-run review</h3>
+                <p id="pre-run-review-status" class="generate-status" role="status" aria-live="polite"></p>
+                <ul id="pre-run-review-findings"></ul>
+                <ul id="pre-run-review-errors" class="error"></ul>
+                <details>
+                    <summary>Proposed CSV</summary>
+                    <pre id="pre-run-review-csv" class="ai-prompt-preview"></pre>
+                </details>
+                <div class="actions">
+                    <button type="button" class="button" id="pre-run-review-accept" disabled>Accept &amp; run</button>
+                    <button type="button" class="button ghost" id="pre-run-review-cancel">Cancel</button>
+                </div>
+            </section>
             <button type="submit" id="submit-btn">Start job</button>
         </form>
         <p id="job-error" class="error" hidden></p>
@@ -143,12 +171,106 @@
     const generatedMeta = document.getElementById('generated-workbook-meta');
     const excelLabel = document.getElementById('excel-upload-label');
     const excelInput = document.getElementById('excel-input');
+    const preRunReview = document.getElementById('pre-run-review');
+    const preRunReviewPanel = document.getElementById('pre-run-review-panel');
+    const preRunReviewStatus = document.getElementById('pre-run-review-status');
+    const preRunReviewFindings = document.getElementById('pre-run-review-findings');
+    const preRunReviewErrors = document.getElementById('pre-run-review-errors');
+    const preRunReviewCsv = document.getElementById('pre-run-review-csv');
+    const preRunReviewAccept = document.getElementById('pre-run-review-accept');
+    let preRunReviewedCsv = null;
+    let preRunReviewApproved = false;
     const finalReviseCheckbox = document.getElementById('finalRevise');
     const finalReviseDisabledWarn = document.getElementById('finalReviseDisabledWarn');
     const formEl = document.getElementById('job-form');
     const finalReviseEnabled = formEl && formEl.dataset.finalReviseEnabled === 'true';
     let hasGeneratedWorkbook = false;
     let generatedWorkbookMeta = null;
+
+    function clearPreRunReview() {
+        preRunReviewedCsv = null;
+        preRunReviewApproved = false;
+        if (preRunReviewPanel) preRunReviewPanel.hidden = true;
+        if (preRunReviewStatus) preRunReviewStatus.textContent = '';
+        if (preRunReviewFindings) preRunReviewFindings.innerHTML = '';
+        if (preRunReviewErrors) preRunReviewErrors.innerHTML = '';
+        if (preRunReviewCsv) preRunReviewCsv.textContent = '';
+        if (preRunReviewAccept) preRunReviewAccept.disabled = true;
+    }
+
+    function buildPreRunReviewInput(useGenerated, form) {
+        const body = new FormData();
+        if (useGenerated) {
+            body.append('useGenerated', 'true');
+            selectedLibraryTcIds().forEach(id => body.append('tcIds', id));
+        }
+        if (form.excel.files && form.excel.files[0]) {
+            body.append('excel', form.excel.files[0]);
+        }
+        return body;
+    }
+
+    async function requestPreRunReview(projectId, useGenerated, form) {
+        clearPreRunReview();
+        preRunReviewPanel.hidden = false;
+        preRunReviewStatus.textContent = 'Cursor is reviewing the exact selected suite…';
+        submitBtn.disabled = true;
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
+                + '/pre-run-authoring-review', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: API_HEADERS,
+                body: buildPreRunReviewInput(useGenerated, form)
+            });
+            let data = {};
+            try { data = await res.json(); } catch (ignore) { /* show generic error */ }
+            if (!res.ok) {
+                preRunReviewStatus.textContent =
+                    (data.error || 'REVIEW_FAILED') + ': ' + (data.message || 'Cursor review failed');
+                return;
+            }
+            (data.findings || []).forEach(finding => {
+                const li = document.createElement('li');
+                li.textContent = '[' + (finding.severity || 'info') + '] '
+                    + (finding.tcId ? finding.tcId + ': ' : '') + (finding.message || '');
+                preRunReviewFindings.appendChild(li);
+            });
+            (data.gateErrors || []).forEach(message => {
+                const li = document.createElement('li');
+                li.textContent = message;
+                preRunReviewErrors.appendChild(li);
+            });
+            preRunReviewedCsv = data.csv || null;
+            preRunReviewCsv.textContent = preRunReviewedCsv || '';
+            preRunReviewAccept.disabled = !data.previewOk || !preRunReviewedCsv;
+            preRunReviewStatus.textContent = data.previewOk
+                ? 'Review complete. Inspect the proposal, then accept to start the run.'
+                : 'Review found blocking quality-gate errors. The run has not started.';
+            preRunReviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (error) {
+            preRunReviewStatus.textContent = 'Network error while asking Cursor to review.';
+        } finally {
+            submitBtn.disabled = false;
+        }
+    }
+
+    if (preRunReviewAccept) {
+        preRunReviewAccept.addEventListener('click', () => {
+            if (!preRunReviewedCsv) return;
+            preRunReviewApproved = true;
+            formEl.requestSubmit();
+        });
+    }
+    document.getElementById('pre-run-review-cancel')?.addEventListener('click', clearPreRunReview);
+    preRunReview?.addEventListener('change', () => {
+        if (!preRunReview.checked) clearPreRunReview();
+    });
+    formEl?.addEventListener('change', (event) => {
+        if (event.target !== preRunReview && preRunReviewedCsv) {
+            clearPreRunReview();
+        }
+    });
 
     function updateFinalReviseWarning() {
         if (!finalReviseDisabledWarn || !finalReviseCheckbox) return;
@@ -196,18 +318,55 @@
         return picked ? picked.value : 'upload';
     }
 
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
     function syncWorkbookSourceUi() {
         const useGenerated = hasGeneratedWorkbook && workbookSource() === 'generated';
-        excelLabel.hidden = useGenerated;
+        const pick = document.getElementById('library-pick-panel');
+        if (pick) pick.hidden = !useGenerated;
+        excelLabel.hidden = false;
         excelInput.required = !useGenerated;
-        if (useGenerated) {
-            excelInput.value = '';
-        }
     }
 
     document.querySelectorAll('input[name="workbookSource"]').forEach(function (el) {
         el.addEventListener('change', syncWorkbookSourceUi);
     });
+
+    async function loadLibraryPickList(projectId) {
+        const list = document.getElementById('library-pick-list');
+        if (!list) return;
+        list.innerHTML = '';
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        (data.cases || []).forEach(tc => {
+            const label = document.createElement('label');
+            label.className = 'generate-check';
+            label.innerHTML = '<input type="checkbox" class="lib-pick-check" value="'
+                + escapeHtml(tc.tcId) + '"/> <span class="mono">'
+                + escapeHtml(tc.tcId) + '</span> '
+                + escapeHtml(tc.title || '');
+            list.appendChild(label);
+        });
+    }
+
+    document.getElementById('lib-pick-all')?.addEventListener('click', () => {
+        document.querySelectorAll('.lib-pick-check').forEach(cb => { cb.checked = true; });
+    });
+    document.getElementById('lib-pick-none')?.addEventListener('click', () => {
+        document.querySelectorAll('.lib-pick-check').forEach(cb => { cb.checked = false; });
+    });
+
+    function selectedLibraryTcIds() {
+        return Array.from(document.querySelectorAll('.lib-pick-check:checked')).map(el => el.value);
+    }
 
     function resetProjectConfig() {
         configBlock.hidden = true;
@@ -249,6 +408,7 @@
         const model = data.model ? ' · model ' + data.model : '';
         const keel = formatKeelPathCounts(data.keelPathCounts);
         generatedMeta.textContent = data.tcCount + ' test cases · saved ' + when + ref + model + keel;
+        await loadLibraryPickList(projectId);
         syncWorkbookSourceUi();
     }
 
@@ -342,13 +502,24 @@
                 return;
             }
         }
+        if (preRunReview && preRunReview.checked && !preRunReviewApproved) {
+            await requestPreRunReview(projectId, useGenerated, form);
+            return;
+        }
         const body = new FormData();
-        if (useGenerated) {
+        if (preRunReviewedCsv && preRunReviewApproved) {
+            body.append('excel', new Blob([preRunReviewedCsv], { type: 'text/csv;charset=utf-8' }),
+                'cursor-reviewed.csv');
+        } else if (useGenerated) {
             body.append('useGenerated', 'true');
+            selectedLibraryTcIds().forEach(id => body.append('tcIds', id));
+            if (form.excel.files && form.excel.files[0]) {
+                body.append('excel', form.excel.files[0]);
+            }
         } else {
             if (!form.excel.files || !form.excel.files[0]) {
                 err.hidden = false;
-                err.textContent = 'Select an Excel file or use the generated workbook';
+                err.textContent = 'Select an Excel/CSV file or use the project library';
                 return;
             }
             body.append('excel', form.excel.files[0]);

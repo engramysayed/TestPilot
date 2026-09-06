@@ -506,12 +506,99 @@ public class GeneratedWorkbookService {
 
     /** Copy stored workbook to a job-scoped temp path so jobs do not mutate the saved copy. */
     public Path copyForJob(String projectId) throws Exception {
-        Path source = requireExcel(projectId);
+        return materializeForJob(projectId, null, null);
+    }
+
+    public List<ManualTestCase> readCases(String projectId) throws Exception {
+        return new ExcelTcReader().read(requireExcel(projectId));
+    }
+
+    public Map<String, Object> listCases(String projectId) throws Exception {
+        List<ManualTestCase> cases = readCases(projectId);
+        Map<String, Object> out = new LinkedHashMap<>(
+                describe(projectId).orElseThrow(() -> new IllegalStateException("NO_GENERATED_WORKBOOK")));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (ManualTestCase tc : cases) {
+            rows.add(toRowMap(tc));
+        }
+        out.put("cases", rows);
+        return out;
+    }
+
+    /**
+     * Deletes workbook rows by TC_ID. Refuses to delete the last remaining case.
+     */
+    public Map<String, Object> deleteCases(String projectId, List<String> tcIds) throws Exception {
+        if (tcIds == null || tcIds.isEmpty()) {
+            throw new IllegalArgumentException("tcIds is required");
+        }
+        java.util.LinkedHashSet<String> want = new java.util.LinkedHashSet<>();
+        for (String id : tcIds) {
+            if (id != null && !id.isBlank()) {
+                want.add(id.trim());
+            }
+        }
+        if (want.isEmpty()) {
+            throw new IllegalArgumentException("tcIds is required");
+        }
+        Path dir = generatedDir(projectId);
+        Map<String, Object> meta = readMeta(dir);
+        List<ManualTestCase> cases = readCases(projectId);
+        List<ManualTestCase> kept = new ArrayList<>();
+        int removed = 0;
+        for (ManualTestCase tc : cases) {
+            if (want.contains(tc.tcId())) {
+                removed++;
+            } else {
+                kept.add(tc);
+            }
+        }
+        if (removed == 0) {
+            throw new IllegalArgumentException("No matching tcIds in workbook");
+        }
+        if (kept.isEmpty()) {
+            throw new IllegalArgumentException("Cannot delete the last test case in the workbook");
+        }
+        String source = String.valueOf(meta.getOrDefault("source", "GENERATE"));
+        String sourceRef = String.valueOf(meta.getOrDefault("sourceRef", ""));
+        Object modelObj = meta.get("model");
+        String model = modelObj == null ? null : String.valueOf(modelObj);
+        if (model != null && model.isBlank()) {
+            model = null;
+        }
+        saveFromCases(projectId, kept, source, sourceRef, model);
+        Map<String, Object> out = listCases(projectId);
+        out.put("removedCount", removed);
+        return out;
+    }
+
+    /**
+     * Build a job-temp xlsx from library selection and/or upload cases.
+     * {@code selectedTcIds} null/empty with library = all library rows.
+     * Upload rows win on duplicate {@code TC_ID}.
+     */
+    public Path materializeForJob(
+            String projectId,
+            List<String> selectedTcIds,
+            List<ManualTestCase> uploadCases
+    ) throws Exception {
+        List<ManualTestCase> merged = WorkbookJobMaterializer.merge(
+                hasWorkbook(projectId) ? readCases(projectId) : List.of(),
+                selectedTcIds,
+                uploadCases == null ? List.of() : uploadCases
+        );
+        if (merged.isEmpty()) {
+            throw new IllegalStateException("NO_CASES_FOR_JOB");
+        }
         Path uploadDir = Path.of(System.getProperty("java.io.tmpdir"), "delivery-uploads", projectId, "generated");
         Files.createDirectories(uploadDir);
         Path dest = uploadDir.resolve(UUID.randomUUID() + ".xlsx");
-        Files.copy(source, dest, StandardCopyOption.REPLACE_EXISTING);
+        ManualTcExcelWriter.write(dest, merged);
         return dest;
+    }
+
+    public boolean hasWorkbook(String projectId) {
+        return Files.isRegularFile(generatedDir(projectId).resolve(EXCEL_FILE));
     }
 
     private Map<String, Object> readMeta(Path dir) throws Exception {

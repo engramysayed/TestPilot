@@ -119,8 +119,10 @@ public final class DummyValueInventor {
     }
 
     /**
-     * Prefer TestData column, then an explicit value in the step; else invent.
-     * "Test" / "User" / "fname" are placeholders, not typed data.
+     * Prefer TestData column, then an explicit value in the step.
+     * Does <em>not</em> invent faker values — leave blank or use {@code ${TARGET_*}} for login fields.
+     * Heal / required-field fillers still call {@link #invent} directly when filling incidental DOM.
+     * "Test" / "User" / "fname" / {@code <PLACEHOLDER>} are unspecified, not typed data.
      */
     public static String fromStepOrInvent(String stepText, String tag, String inputType,
                                           String name, String label, String placeholder) {
@@ -137,7 +139,7 @@ public final class DummyValueInventor {
         if (selectLike && extracted != null && !extracted.isBlank()) {
             return extracted;
         }
-        // Customer TestData wins for Enter/type fields (and over invent).
+        // Customer TestData wins for Enter/type fields.
         if (fromColumn != null) {
             return fromColumn;
         }
@@ -146,7 +148,17 @@ public final class DummyValueInventor {
                 && !extracted.equalsIgnoreCase(nullToEmpty(label))) {
             return extracted;
         }
-        return invent(tag, inputType, name, label, placeholder);
+        // Login secrets come from the job credential profile — never invent passwords/usernames.
+        String hint = join(name, label, placeholder, inputType).toLowerCase(Locale.ROOT);
+        String type = inputType == null ? "" : inputType.toLowerCase(Locale.ROOT);
+        if ("password".equals(type) || hint.contains("password") || hint.contains("passwd")) {
+            return "${TARGET_PASSWORD}";
+        }
+        if (hint.contains("username") || hint.contains("user name") || hint.contains("user-name")
+                || "username".equals(hint) || "user".equals(hint)) {
+            return "${TARGET_USERNAME}";
+        }
+        return "";
     }
 
     static String extractExplicitValue(String stepText) {

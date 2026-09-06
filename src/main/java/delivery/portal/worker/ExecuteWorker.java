@@ -71,7 +71,15 @@ public class ExecuteWorker {
             job.setPassedCount(result.passed());
             job.setTodoCount(result.todo());
             job.setMessage(result.message());
-            job.setStatus(JobRecord.Status.COMPLETED);
+            if (result.passed() == 0 && result.todo() > 0) {
+                job.setStatus(JobRecord.Status.FAILED);
+                job.setError("ALL_CASES_TODO");
+                job.setMessage(result.message() == null || result.message().isBlank()
+                        ? "No cases passed — all TODO/PARTIAL (hard stop)"
+                        : result.message());
+            } else {
+                job.setStatus(JobRecord.Status.COMPLETED);
+            }
             portalStore.syncJobPersistence(job);
             log.info("Execute job {} completed passed={} todo={}", jobId, result.passed(), result.todo());
         } catch (JobCancelledException e) {

@@ -32,6 +32,9 @@ public class DomainLocatorMemory {
         if (intent == null || step == null || step.locatorValue() == null || step.locatorValue().isBlank()) {
             return;
         }
+        if (!locatorFitsIntent(intent, step.locatorValue())) {
+            return;
+        }
         if (StepIntentBinder.wantsFormSubmit(intent.text())
                 && (StepIntentBinder.looksLikeNonSubmitNavigationLocator(step.locatorValue())
                 || !looksLikeReusableSubmitLocator(step.locatorValue()))) {
@@ -54,6 +57,10 @@ public class DomainLocatorMemory {
         }
         Slot slot = slots.get(slotKey(host, excelPath, intentKey(intent)));
         if (slot == null) {
+            return Optional.empty();
+        }
+        if (!locatorFitsIntent(intent, slot.locator())) {
+            slots.remove(slotKey(host, excelPath, intentKey(intent)));
             return Optional.empty();
         }
         if (StepIntentBinder.wantsFormSubmit(intent.text())
@@ -107,12 +114,16 @@ public class DomainLocatorMemory {
                 if (intentKey.isBlank()) {
                     continue;
                 }
+                String locator = o.optString("locator", "");
+                if (!intentKeyFitsLocator(intentKey, locator)) {
+                    continue;
+                }
                 slots.put(slotKey(host, path, intentKey), new Slot(
                         normalizeHost(host),
                         normalizePath(path),
                         intentKey,
                         o.optString("strategy", ""),
-                        o.optString("locator", ""),
+                        locator,
                         o.optString("action", "")));
             }
         } catch (Exception ignored) {
@@ -155,6 +166,52 @@ public class DomainLocatorMemory {
         return loc.contains("submit") || loc.contains("websubmit")
                 || loc.contains("sign-up") || loc.contains("signup") || loc.contains("sign up")
                 || loc.contains("create account") || loc.contains("register");
+    }
+
+    /**
+     * Auth-page controls must not be remembered for cart/product/assert intents.
+     * (SauceDemo pollution: every CLICK recalled {@code login-button}.)
+     */
+    static boolean locatorFitsIntent(StepIntentBinder.IntentLine intent, String locator) {
+        if (intent == null || intent.kind() == null) {
+            return false;
+        }
+        return intentKeyFitsLocator(intentKey(intent), locator);
+    }
+
+    static boolean intentKeyFitsLocator(String intentKey, String locator) {
+        if (intentKey == null || intentKey.isBlank() || locator == null || locator.isBlank()) {
+            return false;
+        }
+        String key = intentKey.toLowerCase(Locale.ROOT);
+        String loc = locator.toLowerCase(Locale.ROOT);
+        boolean authLocator = looksLikeAuthControlLocator(loc);
+        boolean loginIntent = key.startsWith("type_user|")
+                || key.startsWith("type_pass|")
+                || key.startsWith("click_login|");
+        if (loginIntent) {
+            return authLocator || key.startsWith("click_login|");
+        }
+        // Non-login intents must never reuse login/username/password controls
+        return !authLocator;
+    }
+
+    static boolean looksLikeAuthControlLocator(String locatorLower) {
+        if (locatorLower == null || locatorLower.isBlank()) {
+            return false;
+        }
+        String loc = locatorLower.toLowerCase(Locale.ROOT);
+        return loc.contains("login-button")
+                || loc.contains("login_button")
+                || loc.equals("login")
+                || loc.contains("login-container")
+                || loc.contains("user-name")
+                || loc.contains("username")
+                || loc.contains("user_name")
+                || loc.equals("password")
+                || loc.contains("password")
+                || loc.contains("signin")
+                || loc.contains("sign-in");
     }
 
     private static String slotKey(String host, String path, String intentKey) {

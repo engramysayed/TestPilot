@@ -676,6 +676,7 @@ public final class StepIntentBinder {
                         : DummyValueInventor.fromStepOrInvent(intent.text(), intent.testData(),
                         preferred.tag(), "password",
                         preferred.value(), preferred.label(), preferred.label());
+                prefValue = resolveLoginTypedValue(intent.kind(), intent.text(), prefValue);
                 return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "type",
                         preferred.strategy(), preferred.value(), prefValue, "", "", true,
                         "intent:" + intent.kind())), "");
@@ -709,17 +710,33 @@ public final class StepIntentBinder {
                 best.value(), best.label(), best.label())
                 : DummyValueInventor.fromStepOrInvent(intent.text(), intent.testData(), best.tag(), "password",
                 best.value(), best.label(), best.label());
-        // Prefer explicit Excel token over invent; job secrets still used at codegen via ${}
-        if (intent.kind() == IntentKind.TYPE_USER && (value == null || value.isBlank()
-                || "TestValue".equals(value))) {
-            value = extractCredToken(intent.text(), true);
-        }
-        if (intent.kind() == IntentKind.TYPE_PASS && (value == null || value.isBlank()
-                || "TestPass1!".equals(value))) {
-            value = extractCredToken(intent.text(), false);
-        }
+        value = resolveLoginTypedValue(intent.kind(), intent.text(), value);
         return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "type",
                 best.strategy(), best.value(), value, "", "", true, "intent:" + intent.kind())), "");
+    }
+
+    /**
+     * Login type intents: concrete Excel/TestData wins; otherwise job credentials via ${TARGET_*}.
+     * Never leave faker invent or trailing field nouns ("Password", "field") as typed values.
+     */
+    public static String resolveLoginTypedValue(IntentKind kind, String stepText, String raw) {
+        if (kind != IntentKind.TYPE_USER && kind != IntentKind.TYPE_PASS) {
+            return raw == null ? "" : raw;
+        }
+        boolean user = kind == IntentKind.TYPE_USER;
+        String extracted = DummyValueInventor.extractExplicitValue(stepText);
+        if (extracted != null && !extracted.isBlank() && !DummyValueInventor.looksLikeUnspecifiedValue(extracted)) {
+            return extracted;
+        }
+        if (raw != null && !raw.isBlank()
+                && !DummyValueInventor.looksLikeUnspecifiedValue(raw)
+                && !"${TARGET_USERNAME}".equals(raw)
+                && !"${TARGET_PASSWORD}".equals(raw)
+                && !"TestValue".equals(raw)
+                && !"TestPass1!".equals(raw)) {
+            return raw;
+        }
+        return user ? "${TARGET_USERNAME}" : "${TARGET_PASSWORD}";
     }
 
     /**
@@ -896,20 +913,10 @@ public final class StepIntentBinder {
         return best;
     }
 
-    /** Last non-field token after enter/type — e.g. student / wrongPassword. */
+    /** Unused — login typing uses {@link #resolveLoginTypedValue}. Kept temporarily for binary compat. */
+    @Deprecated
     private static String extractCredToken(String stepText, boolean user) {
-        String extracted = DummyValueInventor.extractExplicitValue(stepText);
-        if (extracted != null && !extracted.isBlank()) {
-            return extracted;
-        }
-        if (stepText == null) {
-            return user ? "user" : "pass";
-        }
-        String[] parts = stepText.trim().split("\\s+");
-        if (parts.length >= 1) {
-            return parts[parts.length - 1].replaceAll("[.,;:]+$", "");
-        }
-        return user ? "user" : "pass";
+        return user ? "${TARGET_USERNAME}" : "${TARGET_PASSWORD}";
     }
 
     private record OrdinalControl(String type, int index) {

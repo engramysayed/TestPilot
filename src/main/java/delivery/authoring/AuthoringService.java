@@ -352,6 +352,7 @@ public class AuthoringService {
             value = DummyValueInventor.fromStepOrInvent(
                     intent.text(), intent.testData(), chosen.tag(), inputType,
                     chosen.value(), chosen.label(), chosen.label());
+            value = StepIntentBinder.resolveLoginTypedValue(intent.kind(), intent.text(), value);
         }
         if (intent.kind() == StepIntentBinder.IntentKind.ASSERT_VISIBLE) {
             String state = StepIntentBinder.extractStateAssertion(intent.text());
