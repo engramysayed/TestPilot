@@ -164,6 +164,44 @@ public class GenerateMvcTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    public void generate_hasAuthoringReviewControlsAndWiring() throws Exception {
+        String body = fetchGenerateBody();
+        String main = mainShell(body);
+
+        Assert.assertTrue(main.contains("id=\"authoring-review-banner\""), "review banner missing");
+        Assert.assertTrue(main.contains("Review with AI"), "Review with AI copy missing");
+        Assert.assertTrue(main.contains("id=\"generate-authoring-review\""), "authoring review panel missing");
+        Assert.assertTrue(main.contains("id=\"review-requirements-notes\""), "requirements notes missing");
+        Assert.assertTrue(main.contains("id=\"authoring-review-start\""), "start review button missing");
+        Assert.assertTrue(main.contains("id=\"authoring-review-accept\""), "accept proposal button missing");
+        Assert.assertTrue(main.contains("id=\"authoring-review-discard\""), "discard proposal button missing");
+        Assert.assertTrue(main.contains("id=\"authoring-review-tc-count\""), "proposal TC count missing");
+        Assert.assertTrue(body.contains("keel.authoringReview.provider"), "review provider preference missing");
+        Assert.assertTrue(body.contains("/generate/authoring-review"), "authoring review API wiring missing");
+        Assert.assertTrue(body.contains("function loadAuthoringReviewAvailability("),
+                "saved workbook availability check missing");
+        Assert.assertTrue(body.contains("authoringReviewBanner.hidden = true"),
+                "successful showResult/project change must clear review banner");
+        Assert.assertTrue(body.contains("if (!projectId || !hasGeneratedWorkbook)"),
+                "start review must use workbook availability");
+        Assert.assertTrue(body.contains("authoringReviewPanel.hidden = false"),
+                "banner must reveal review panel");
+        Assert.assertTrue(body.contains("authoringReviewBanner.hidden = true"),
+                "review banner clear behavior missing");
+        Assert.assertTrue(body.contains("format: 'csv'"), "accept must import proposed CSV");
+        Assert.assertTrue(body.contains("function mergeAuthoringReviewCoverageNotes("),
+                "accept must merge authoring review coverage notes");
+        Assert.assertTrue(body.contains("### Authoring review"),
+                "merged review coverage heading missing");
+        Assert.assertTrue(body.contains("coverageNotesSaved = await saveCoverageNotes()"),
+                "accept must detect coverage-note save failures");
+        Assert.assertTrue(body.contains("The workbook was accepted, but coverage notes could not be saved"),
+                "partial accept failure must be visible");
+        Assert.assertTrue(body.contains("previewOk"), "accept must honor preview quality status");
+        Assert.assertTrue(body.contains("gateErrors"), "review must display quality gate errors");
+    }
+
+    @Test
     public void generate_hasEditableTcPreviewModal() throws Exception {
         String body = fetchGenerateBody();
         String main = mainShell(body);

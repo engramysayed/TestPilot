@@ -4,6 +4,7 @@ import delivery.excel.GenerateQualityGate;
 import delivery.portal.model.JobRecord;
 import delivery.portal.model.ProjectRecord;
 import delivery.portal.security.CurrentUserService;
+import delivery.portal.service.AuthoringReviewService;
 import delivery.portal.service.CompareJobFiles;
 import delivery.portal.service.GenerateModelService;
 import delivery.portal.service.PortalStore;
@@ -33,6 +34,7 @@ public class GenerateTcController {
     private final PortalStore store;
     private final CompareGenerateWorker compareWorker;
     private final GenerateModelService models;
+    private final AuthoringReviewService authoringReviews;
 
     public GenerateTcController(
             TcGenerateService generate,
@@ -40,7 +42,8 @@ public class GenerateTcController {
             CurrentUserService currentUser,
             PortalStore store,
             CompareGenerateWorker compareWorker,
-            GenerateModelService models
+            GenerateModelService models,
+            AuthoringReviewService authoringReviews
     ) {
         this.generate = generate;
         this.tcImport = tcImport;
@@ -48,6 +51,7 @@ public class GenerateTcController {
         this.store = store;
         this.compareWorker = compareWorker;
         this.models = models;
+        this.authoringReviews = authoringReviews;
     }
     public record GenerateTcRequest(String stories, Map<String, Object> options) {
     }
@@ -59,6 +63,53 @@ public class GenerateTcController {
     }
 
     public record ImportGenerateRequest(String raw, String format) {
+    }
+
+    public record AuthoringReviewRequest(String provider, String requirementsNotes, String stories) {
+    }
+
+    @PostMapping(value = "/{projectId}/generate/authoring-review", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> authoringReview(
+            @PathVariable("projectId") String projectId,
+            @RequestBody AuthoringReviewRequest body
+    ) {
+        try {
+            Map<String, Object> result = authoringReviews.review(
+                    projectId,
+                    currentUser.requireUserId(),
+                    body == null ? null : body.provider(),
+                    body == null ? null : body.requirementsNotes(),
+                    body == null ? null : body.stories()
+            );
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            if ("Unknown project".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
+            }
+            if (GenerateQualityGate.isQualityGateFailure(e)) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiError(
+                                "QUALITY_GATE",
+                                GenerateQualityGate.qualityGateDetail(e)).asMap());
+            }
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_REQUEST", e.getMessage()).asMap());
+        } catch (IllegalStateException e) {
+            String message = e.getMessage() == null ? "Provider unavailable" : e.getMessage();
+            if (message.contains("NO_GENERATED_WORKBOOK")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiError(
+                                "NO_GENERATED_WORKBOOK",
+                                "No generated workbook saved for this project").asMap());
+            }
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(new ApiError("PROVIDER_UNAVAILABLE", message).asMap());
+        } catch (Exception e) {
+            String message = e.getMessage() == null ? "Provider unavailable" : e.getMessage();
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(new ApiError("PROVIDER_UNAVAILABLE", message).asMap());
+        }
     }
 
     @PostMapping(value = "/{projectId}/generate/compare-async", consumes = MediaType.APPLICATION_JSON_VALUE)

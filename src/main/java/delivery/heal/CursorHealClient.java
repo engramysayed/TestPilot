@@ -163,6 +163,14 @@ public class CursorHealClient {
         return inventSteps(intentText, reason, priorSteps, slimHtmlExcerpt, screenshotPathOrNull);
     }
 
+    /** Ask Cursor Auto to review a complete authoring suite. Returns raw model JSON for parsing. */
+    public String authoringReview(String suiteJsonPromptPayload) {
+        JSONObject req = new JSONObject();
+        req.put("mode", "authoring-review");
+        req.put("suite", suiteJsonPromptPayload == null ? "" : suiteJsonPromptPayload);
+        return invoke(req);
+    }
+
     static void putVisionAttempts(JSONObject req) {
         if (req == null) {
             return;
@@ -224,6 +232,16 @@ public class CursorHealClient {
             }
             StringBuilder out = new StringBuilder();
             StringBuilder err = new StringBuilder();
+            Thread outReader = new Thread(() -> {
+                try (BufferedReader r = new BufferedReader(
+                        new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = r.readLine()) != null) {
+                        out.append(line).append('\n');
+                    }
+                } catch (Exception ignored) {
+                }
+            }, "cursor-heal-stdout");
             Thread errReader = new Thread(() -> {
                 try (BufferedReader r = new BufferedReader(
                         new InputStreamReader(proc.getErrorStream(), StandardCharsets.UTF_8))) {
@@ -234,17 +252,20 @@ public class CursorHealClient {
                 } catch (Exception ignored) {
                 }
             }, "cursor-heal-stderr");
+            outReader.setDaemon(true);
             errReader.setDaemon(true);
+            outReader.start();
             errReader.start();
-            try (BufferedReader r = new BufferedReader(
-                    new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = r.readLine()) != null) {
-                    out.append(line).append('\n');
-                }
+            long requestTimeoutSec = "authoring-review".equals(req.optString("mode"))
+                    ? Math.max(timeoutSec, 180L)
+                    : timeoutSec;
+            boolean finished = proc.waitFor(requestTimeoutSec, TimeUnit.SECONDS);
+            if (!finished) {
+                proc.destroyForcibly();
+                proc.waitFor(2, TimeUnit.SECONDS);
             }
-            boolean finished = proc.waitFor(timeoutSec, TimeUnit.SECONDS);
             try {
+                outReader.join(2000);
                 errReader.join(2000);
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
@@ -253,8 +274,7 @@ public class CursorHealClient {
                 LogsManager.warn("CURSOR_HEAL_STDERR: " + trim(err.toString().trim(), 400));
             }
             if (!finished) {
-                proc.destroyForcibly();
-                LogsManager.warn("CURSOR_HEAL_SKIPPED: sidecar timed out after " + timeoutSec + "s");
+                LogsManager.warn("CURSOR_HEAL_SKIPPED: sidecar timed out after " + requestTimeoutSec + "s");
                 return "";
             }
             int code = proc.exitValue();

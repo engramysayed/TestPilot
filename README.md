@@ -16,6 +16,8 @@ Paste user stories or import structured test cases, prove them against a real si
 | **Compare** | Same stories through two local models; save the better set into the project |
 | **KeelPath** | Per-case routing: `AUTOMATE` · `EXECUTE` · `VISION_ONLY` · `MANUAL` |
 
+On **Generate**, after a workbook is saved, you can optionally run **Review with AI** (Cursor or Ollama) to spot missing scenarios, ambiguities, and leave-empty / TestData issues before Execute or Automate. The review returns findings and a proposed suite for preview; **Accept** saves the updated workbook, **Discard** leaves the current file unchanged.
+
 Supporting capabilities:
 
 - Authoring quality gate (leave-empty / vague asserts / field naming)

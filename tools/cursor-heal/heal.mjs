@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Cursor heal sidecar — shortlist pick or one-shot free invent.
+ * Cursor heal sidecar — shortlist pick, free invent, or authoring review.
  * Model is hard-locked to Auto (id: "auto"). Do not pin composer/opus.
  *
- * stdin JSON: { mode:"pick"|"invent", intent, priorSteps, slimHtmlExcerpt, ... }
+ * stdin JSON: { mode:"pick"|"invent"|"authoring-review", ... }
  */
 import { Agent } from "@cursor/sdk";
 import { readFileSync, existsSync } from "node:fs";
@@ -48,7 +48,7 @@ async function main() {
     process.exit(2);
   }
 
-  const mode = ["invent", "solve"].includes(req.mode) ? req.mode : "pick";
+  const mode = ["invent", "solve", "authoring-review"].includes(req.mode) ? req.mode : "pick";
   const intent = req.intent || "";
   const failureReason = req.failureReason || "";
   const shortlist = req.shortlist || "";
@@ -194,7 +194,30 @@ ${slimHtmlExcerpt}
 ${screenshotNote}
 `;
 
-  const prompts = { pick: pickPrompt, invent: inventPrompt, solve: solvePrompt };
+  const authoringReviewPrompt = `You are Keel authoring reviewer.
+Review the complete suite JSON below together with its optional stories and requirementsNotes.
+Return ONLY one valid JSON object with:
+{"findings":[{"severity":"info|warn|error","tcId":"TC_...","message":"..."}],
+ "cases":[...the complete reviewed suite...],
+ "coverageNotes":"..."}
+
+Fix leave-empty/TestData alignment, vague assertions, and ambiguous controls. Flag missing
+coverage against stories when stories/requirementsNotes are present; if both are empty, say so
+in a finding and still repair authoring issues. Return the FULL suite in cases[] — every input
+TC_id exactly once (you may add new TC_ids for missing coverage only if total stays reasonable).
+Do not invent a large unrelated suite. Preserve existing TC_id values and obey KeelPath rules.
+Do not use tools, edit files, narrate, or wrap the JSON in markdown.
+
+Suite JSON:
+${req.suite || ""}
+`;
+
+  const prompts = {
+    pick: pickPrompt,
+    invent: inventPrompt,
+    solve: solvePrompt,
+    "authoring-review": authoringReviewPrompt,
+  };
   const result = await Agent.prompt(prompts[mode], {
     apiKey,
     model: { id: "auto" },
@@ -205,6 +228,10 @@ ${screenshotNote}
     (result && (result.result || result.text || result.output)) ||
     (typeof result === "string" ? result : JSON.stringify(result));
 
+  if (mode === "authoring-review") {
+    process.stdout.write(String(text));
+    return;
+  }
   const parsed = extractJsonObject(String(text));
   if (mode === "solve") {
     const id = parsed && parsed.candidateId ? String(parsed.candidateId).trim() : "";

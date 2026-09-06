@@ -27,13 +27,7 @@ public final class GeneratedTcJsonParser {
         if (raw == null || raw.isBlank()) {
             throw new IllegalArgumentException("JSON response is empty");
         }
-        String jsonText = extractJsonBlock(raw);
-        JsonNode root;
-        try {
-            root = MAPPER.readTree(jsonText);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Not valid JSON: " + e.getMessage(), e);
-        }
+        JsonNode root = parseRoot(raw);
         if (!root.isObject()) {
             throw new IllegalArgumentException("JSON root must be an object");
         }
@@ -63,6 +57,15 @@ public final class GeneratedTcJsonParser {
             }
         }
         return new ParseResult(out, coverageNotes);
+    }
+
+    static JsonNode parseRoot(String raw) {
+        String jsonText = extractJsonBlock(raw);
+        try {
+            return MAPPER.readTree(jsonText);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Not valid JSON: " + e.getMessage(), e);
+        }
     }
 
     public static String extractJsonBlock(String raw) {

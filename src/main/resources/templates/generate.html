@@ -28,6 +28,11 @@
         </p>
     </section>
 
+    <section class="panel hint" id="authoring-review-banner" hidden role="alert">
+        <strong>Issues found — Review with AI?</strong>
+        <button type="button" class="button ghost" id="authoring-review-banner-open">Review with AI</button>
+    </section>
+
     <section class="panel" id="generate-workflow" hidden>
         <div class="generate-primary">
             <div class="generate-primary-head">
@@ -154,6 +159,44 @@
             <div class="ai-tip-actions">
                 <button type="button" class="button" id="download-csv-btn">Download CSV</button>
                 <a class="button ghost" id="open-automate" href="/automate">Open Automate</a>
+            </div>
+        </section>
+
+        <section class="generate-results panel" id="generate-authoring-review" hidden>
+            <div class="generate-primary-head">
+                <div>
+                    <h2>Review with AI</h2>
+                    <p class="panel-intro">Review the current workbook for authoring issues. Nothing changes until you accept the proposal.</p>
+                </div>
+            </div>
+            <fieldset>
+                <legend>Provider</legend>
+                <label><input type="radio" name="authoring-review-provider" value="cursor" checked> Cursor</label>
+                <label><input type="radio" name="authoring-review-provider" value="ollama"> Ollama</label>
+            </fieldset>
+            <label for="review-requirements-notes">Requirements notes</label>
+            <textarea id="review-requirements-notes" rows="5"
+                      placeholder="Optional constraints or coverage expectations for this review…"></textarea>
+            <div class="generate-actions">
+                <button type="button" class="button" id="authoring-review-start">Start review</button>
+                <span id="authoring-review-status" class="generate-status" role="status" aria-live="polite"></span>
+            </div>
+            <div id="authoring-review-proposal" hidden>
+                <h3>Findings</h3>
+                <p id="authoring-review-tc-count" class="muted"></p>
+                <ul id="authoring-review-findings"></ul>
+                <div id="authoring-review-gate-block" hidden>
+                    <h3>Quality gate errors</h3>
+                    <ul id="authoring-review-gate-errors" class="error"></ul>
+                </div>
+                <details class="panel-details">
+                    <summary>Proposed CSV</summary>
+                    <pre id="authoring-review-csv" class="ai-prompt-preview"></pre>
+                </details>
+                <div class="ai-tip-actions">
+                    <button type="button" class="button" id="authoring-review-accept" disabled>Accept proposal</button>
+                    <button type="button" class="button ghost" id="authoring-review-discard">Discard</button>
+                </div>
             </div>
         </section>
 
@@ -357,6 +400,7 @@
     const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
     const STORAGE_KEY = 'keel.generateProjectId';
     const MODEL_STORAGE_KEY = 'keel.generateModel';
+    const AUTHORING_REVIEW_PROVIDER_KEY = 'keel.authoringReview.provider';
     const PROMPT_URL = '/prompts/keel-tc-generate-from-stories-to-json.txt';
 
     const projectSel = document.getElementById('project-select');
@@ -413,6 +457,19 @@
     const importRaw = document.getElementById('import-raw');
     const importBtn = document.getElementById('import-btn');
     const importStatus = document.getElementById('import-status');
+    const authoringReviewBanner = document.getElementById('authoring-review-banner');
+    const authoringReviewPanel = document.getElementById('generate-authoring-review');
+    const authoringReviewStart = document.getElementById('authoring-review-start');
+    const authoringReviewStatus = document.getElementById('authoring-review-status');
+    const authoringReviewRequirements = document.getElementById('review-requirements-notes');
+    const authoringReviewProposal = document.getElementById('authoring-review-proposal');
+    const authoringReviewFindings = document.getElementById('authoring-review-findings');
+    const authoringReviewTcCount = document.getElementById('authoring-review-tc-count');
+    const authoringReviewGateBlock = document.getElementById('authoring-review-gate-block');
+    const authoringReviewGateErrors = document.getElementById('authoring-review-gate-errors');
+    const authoringReviewCsv = document.getElementById('authoring-review-csv');
+    const authoringReviewAccept = document.getElementById('authoring-review-accept');
+    const authoringReviewDiscard = document.getElementById('authoring-review-discard');
     const tcEditModal = document.getElementById('tc-edit-modal');
     const tcEditError = document.getElementById('tc-edit-error');
     const tcEditId = document.getElementById('tc-edit-id');
@@ -439,6 +496,8 @@
     let selectedProject = null;
     let lastResult = null;
     let lastCompareResult = null;
+    let authoringReviewResult = null;
+    let hasGeneratedWorkbook = false;
     let generateModels = [];
     let defaultGenerateModel = '';
     let generateElapsedTimer = null;
@@ -598,6 +657,20 @@
         importStatus.textContent = msg || '';
         importStatus.classList.toggle('is-error', !!isError);
         importStatus.classList.toggle('is-busy', !isError && !!msg);
+    }
+
+    function setAuthoringReviewStatus(msg, isError) {
+        authoringReviewStatus.textContent = msg || '';
+        authoringReviewStatus.classList.toggle('is-error', !!isError);
+        authoringReviewStatus.classList.toggle('is-busy', !isError && !!msg);
+    }
+
+    function showAuthoringReviewBanner() {
+        authoringReviewBanner.hidden = false;
+    }
+
+    function showQualityGateBanner(body) {
+        if (body && body.error === 'QUALITY_GATE') showAuthoringReviewBanner();
     }
 
     function updateBulkControls() {
@@ -1166,7 +1239,10 @@
 
     function showResult(payload) {
         lastResult = payload;
+        hasGeneratedWorkbook = true;
         resultsSection.hidden = false;
+        authoringReviewPanel.hidden = false;
+        authoringReviewBanner.hidden = true;
         renderCounts(previewCounts(payload));
         renderTable(payload.rows || []);
         coverageNotes.value = payload.coverageNotes || '';
@@ -1181,13 +1257,37 @@
         );
     }
 
+    async function loadAuthoringReviewAvailability(projectId) {
+        hasGeneratedWorkbook = false;
+        authoringReviewPanel.hidden = true;
+        if (!projectId) return;
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook', {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (projectSel.value !== projectId || !data.available) return;
+            hasGeneratedWorkbook = true;
+            authoringReviewPanel.hidden = false;
+            coverageNotes.value = data.coverageNotes || '';
+        } catch (e) {
+            // Keep review unavailable when workbook status cannot be loaded.
+        }
+    }
+
     function onProjectChange() {
         const projectId = projectSel.value;
         selectedProject = findProject(projectId);
+        clearAuthoringReviewProposal();
+        authoringReviewBanner.hidden = true;
+        setAuthoringReviewStatus('', false);
         if (projectId) sessionStorage.setItem(STORAGE_KEY, projectId);
         updateAutomateLink(projectId);
         updatePreview();
         setPromptStatus('', false);
+        loadAuthoringReviewAvailability(projectId);
         loadBatchJobs();
     }
 
@@ -1466,6 +1566,7 @@
             });
             const body = await res.json().catch(function () { return {}; });
             if (!res.ok) {
+                showQualityGateBanner(body);
                 setImportStatus(body.message || body.error || ('Import failed (' + res.status + ')'), true);
                 return;
             }
@@ -1507,6 +1608,7 @@
             });
             const body = await res.json().catch(function () { return {}; });
             if (!res.ok) {
+                showQualityGateBanner(body);
                 setGenerateStatus(body.message || body.error || ('Request failed (' + res.status + ')'), true);
                 showGenerateLoading(false);
                 return;
@@ -1541,6 +1643,171 @@
         URL.revokeObjectURL(url);
     }
 
+    function selectedAuthoringReviewProvider() {
+        const selected = document.querySelector('input[name="authoring-review-provider"]:checked');
+        return selected ? selected.value : 'cursor';
+    }
+
+    function rememberAuthoringReviewProvider() {
+        try {
+            localStorage.setItem(AUTHORING_REVIEW_PROVIDER_KEY, selectedAuthoringReviewProvider());
+        } catch (e) { /* storage can be unavailable */ }
+    }
+
+    function restoreAuthoringReviewProvider() {
+        try {
+            const saved = localStorage.getItem(AUTHORING_REVIEW_PROVIDER_KEY);
+            if (saved !== 'cursor' && saved !== 'ollama') return;
+            const radio = document.querySelector(
+                'input[name="authoring-review-provider"][value="' + saved + '"]');
+            if (radio) radio.checked = true;
+        } catch (e) { /* use Cursor default */ }
+    }
+
+    function appendReviewListItem(list, text) {
+        const li = document.createElement('li');
+        li.textContent = text;
+        list.appendChild(li);
+    }
+
+    function clearAuthoringReviewProposal() {
+        authoringReviewResult = null;
+        authoringReviewProposal.hidden = true;
+        authoringReviewFindings.innerHTML = '';
+        authoringReviewTcCount.textContent = '';
+        authoringReviewGateErrors.innerHTML = '';
+        authoringReviewGateBlock.hidden = true;
+        authoringReviewCsv.textContent = '';
+        authoringReviewAccept.disabled = true;
+    }
+
+    function showAuthoringReviewProposal(payload) {
+        authoringReviewResult = payload;
+        authoringReviewFindings.innerHTML = '';
+        const tcCount = Number(payload.tcCount);
+        authoringReviewTcCount.textContent = Number.isFinite(tcCount)
+            ? tcCount + (tcCount === 1 ? ' proposed test case' : ' proposed test cases')
+            : '';
+        const findings = Array.isArray(payload.findings) ? payload.findings : [];
+        if (!findings.length) {
+            appendReviewListItem(authoringReviewFindings, 'No authoring issues reported.');
+        } else {
+            findings.forEach(function (finding) {
+                const prefix = [finding.severity, finding.tcId].filter(Boolean).join(' · ');
+                appendReviewListItem(
+                    authoringReviewFindings,
+                    (prefix ? prefix + ': ' : '') + (finding.message || 'Issue reported'));
+            });
+        }
+        const gateErrors = Array.isArray(payload.gateErrors) ? payload.gateErrors : [];
+        authoringReviewGateErrors.innerHTML = '';
+        gateErrors.forEach(function (error) {
+            appendReviewListItem(authoringReviewGateErrors, error);
+        });
+        authoringReviewGateBlock.hidden = gateErrors.length === 0;
+        authoringReviewCsv.textContent = payload.csv || '';
+        authoringReviewAccept.disabled =
+            payload.previewOk === false || gateErrors.length > 0 || !payload.csv;
+        authoringReviewProposal.hidden = false;
+    }
+
+    async function startAuthoringReview() {
+        const projectId = projectSel.value;
+        if (!projectId || !hasGeneratedWorkbook) {
+            setAuthoringReviewStatus('Generate or import a workbook first.', true);
+            return;
+        }
+        authoringReviewStart.disabled = true;
+        setAuthoringReviewStatus('Reviewing current workbook…', false);
+        clearAuthoringReviewProposal();
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
+                + '/generate/authoring-review', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify({
+                    provider: selectedAuthoringReviewProvider(),
+                    requirementsNotes: authoringReviewRequirements.value || '',
+                    stories: storiesInput.value || ''
+                })
+            });
+            const body = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setAuthoringReviewStatus(
+                    body.message || body.error || ('Review failed (' + res.status + ')'), true);
+                return;
+            }
+            authoringReviewBanner.hidden = true;
+            showAuthoringReviewProposal(body);
+            setAuthoringReviewStatus('Review complete — inspect the proposal before accepting.', false);
+        } catch (err) {
+            setAuthoringReviewStatus(err && err.message ? err.message : 'Network error', true);
+        } finally {
+            authoringReviewStart.disabled = false;
+        }
+    }
+
+    async function acceptAuthoringReviewProposal() {
+        const projectId = projectSel.value;
+        const proposal = authoringReviewResult;
+        const gateErrors = proposal && Array.isArray(proposal.gateErrors) ? proposal.gateErrors : [];
+        if (!projectId || !proposal || proposal.previewOk === false || gateErrors.length > 0 || !proposal.csv) {
+            setAuthoringReviewStatus('This proposal cannot be accepted until quality gate errors are resolved.', true);
+            return;
+        }
+        authoringReviewAccept.disabled = true;
+        setAuthoringReviewStatus('Accepting proposal…', false);
+        const existingCoverageNotes = coverageNotes.value || '';
+        let coverageNotesSaved = true;
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generate/import', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify({ raw: proposal.csv, format: 'csv' })
+            });
+            const body = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                showQualityGateBanner(body);
+                setAuthoringReviewStatus(
+                    body.message || body.error || ('Accept failed (' + res.status + ')'), true);
+                return;
+            }
+            showResult(body);
+            if (proposal.coverageNotes) {
+                coverageNotes.value = mergeAuthoringReviewCoverageNotes(
+                    existingCoverageNotes, proposal.coverageNotes);
+                coverageNotesSaved = await saveCoverageNotes();
+            }
+            authoringReviewBanner.hidden = true;
+            clearAuthoringReviewProposal();
+            setAuthoringReviewStatus(
+                coverageNotesSaved
+                    ? 'Proposal accepted and workbook refreshed.'
+                    : 'The workbook was accepted, but coverage notes could not be saved.',
+                !coverageNotesSaved);
+        } catch (err) {
+            setAuthoringReviewStatus(err && err.message ? err.message : 'Network error', true);
+        } finally {
+            if (authoringReviewResult) {
+                const errors = Array.isArray(authoringReviewResult.gateErrors)
+                    ? authoringReviewResult.gateErrors : [];
+                authoringReviewAccept.disabled =
+                    authoringReviewResult.previewOk === false || errors.length > 0 || !authoringReviewResult.csv;
+            }
+        }
+    }
+
+    function mergeAuthoringReviewCoverageNotes(existing, proposed) {
+        const note = (proposed || '').trim();
+        if (!note) return existing || '';
+        const current = (existing || '').trim();
+        if (current.includes(note)) return existing || '';
+        const reviewBlock = '### Authoring review\n' + note;
+        return current ? current + '\n\n' + reviewBlock : reviewBlock;
+    }
+
     copyBtn.addEventListener('click', function () {
         const text = fullPromptText();
         if (!text) {
@@ -1566,6 +1833,20 @@
     storiesInput.addEventListener('input', updatePreview);
     importRaw.addEventListener('input', updatePreview);
     importBtn.addEventListener('click', runImport);
+    document.querySelectorAll('input[name="authoring-review-provider"]').forEach(function (radio) {
+        radio.addEventListener('change', rememberAuthoringReviewProvider);
+    });
+    document.getElementById('authoring-review-banner-open').addEventListener('click', function () {
+        authoringReviewPanel.hidden = false;
+        authoringReviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        authoringReviewStart.focus();
+    });
+    authoringReviewStart.addEventListener('click', startAuthoringReview);
+    authoringReviewAccept.addEventListener('click', acceptAuthoringReviewProposal);
+    authoringReviewDiscard.addEventListener('click', function () {
+        clearAuthoringReviewProposal();
+        setAuthoringReviewStatus('Proposal discarded.', false);
+    });
     generateBtn.addEventListener('click', runGenerate);
     compareBtn.addEventListener('click', runCompare);
     runPipelineBtn.addEventListener('click', runPipeline);
@@ -1611,7 +1892,7 @@
         const projectId = projectSel.value;
         if (!projectId) {
             setGenerateStatus('Select a project first.', true);
-            return;
+            return false;
         }
         try {
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
@@ -1624,12 +1905,14 @@
             const body = await res.json().catch(function () { return {}; });
             if (!res.ok) {
                 setGenerateStatus(body.message || body.error || ('Save failed (' + res.status + ')'), true);
-                return;
+                return false;
             }
             if (lastResult) lastResult.coverageNotes = coverageNotes.value || '';
             setGenerateStatus('Coverage notes saved.', false);
+            return true;
         } catch (err) {
             setGenerateStatus(err && err.message ? err.message : 'Network error', true);
+            return false;
         }
     }
     if (coverageNotesSave) coverageNotesSave.addEventListener('click', saveCoverageNotes);
@@ -1660,6 +1943,7 @@
         updatePreview();
     });
 
+    restoreAuthoringReviewProvider();
     loadPrompt();
     loadGenerateModels();
     loadProjects();
