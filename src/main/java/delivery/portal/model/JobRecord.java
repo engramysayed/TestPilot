@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class JobRecord {
     public enum Status { QUEUED, RUNNING, COMPLETED, COMPLETED_WITH_BLOCK, FAILED, CANCELLED }
-    public enum JobKind { CONVERT, EXECUTE, GENERATE_BATCH, GENERATE_COMPARE }
+    public enum JobKind { CONVERT, EXECUTE, GENERATE_BATCH, GENERATE_COMPARE, HUNT }
 
     private final String jobId;
     private final String projectId;
@@ -112,6 +112,9 @@ public class JobRecord {
         }
         if (kind == JobKind.GENERATE_COMPARE) {
             return false;
+        }
+        if (kind == JobKind.HUNT) {
+            return s == Status.COMPLETED || s == Status.COMPLETED_WITH_BLOCK || s == Status.FAILED;
         }
         return s == Status.COMPLETED || s == Status.COMPLETED_WITH_BLOCK
                 || s == Status.FAILED;

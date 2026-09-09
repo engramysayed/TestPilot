@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <th:block th:replace="~{fragments :: pageHead(title='Job status')}"></th:block>
+        <th:block th:replace="~{fragments :: pageHead(title='Run status')}"></th:block>
 </head>
 <body class="app-body">
 <aside th:replace="~{fragments :: sidebar}"></aside>
@@ -10,17 +10,18 @@
       th:attr="data-job-id=${jobId},data-initial-status=${jobStatus},data-job-kind=${jobKind},data-created-at=${jobCreatedAt}">
     <div class="page-title">
         <div>
-            <h1>Job status</h1>
-            <p class="lede">Job <code class="mono" th:text="${jobId}">job_...</code>
+            <h1>Run status</h1>
+            <p class="lede">Run <code class="mono" th:text="${jobId}">job_...</code>
                 <span th:if="${isExecuteJob}" class="badge muted">Execute</span>
                 <span th:if="${isGenerateBatchJob}" class="badge muted">Generate batch</span>
                 <span th:if="${isGenerateCompareJob}" class="badge muted">Model compare</span>
-                <span th:if="${!isExecuteJob and !isGenerateBatchJob and !isGenerateCompareJob}" class="badge muted">Conversion</span>
+                <span th:if="${isHuntJob}" class="badge muted">Bug Hunter</span>
+                <span th:if="${!isExecuteJob and !isGenerateBatchJob and !isGenerateCompareJob and !isHuntJob}" class="badge muted">Conversion</span>
             </p>
         </div>
         <a class="button"
-           th:href="${isExecuteJob} ? '/execute' : (${isGenerateCompareJob or isGenerateBatchJob} ? '/generate' : '/jobs')"
-           th:text="${isExecuteJob} ? 'Back to Execute' : (${isGenerateCompareJob or isGenerateBatchJob} ? 'Back to Generate' : 'All jobs')">All jobs</a>
+           th:href="${isExecuteJob} ? '/execute' : (${isHuntJob} ? '/bug-hunter' : (${isGenerateCompareJob or isGenerateBatchJob} ? '/generate' : '/runs'))"
+           th:text="${isExecuteJob} ? 'Back to Execute' : (${isHuntJob} ? 'Back to Bug Hunter' : (${isGenerateCompareJob or isGenerateBatchJob} ? 'Back to Generate' : 'All runs'))">All runs</a>
     </div>
     <section class="panel" id="live-progress"
              th:attr="aria-busy=${jobStatus == 'QUEUED' or jobStatus == 'RUNNING'}">
@@ -33,7 +34,8 @@
                 <p class="panel-intro" th:if="${isExecuteJob}">This page polls until the execute run finishes.</p>
                 <p class="panel-intro" th:if="${isGenerateBatchJob}">This page polls while each user story is generated one-by-one.</p>
                 <p class="panel-intro" th:if="${isGenerateCompareJob}">This page polls while both models generate test cases in the background.</p>
-                <p class="panel-intro" th:if="${!isExecuteJob and !isGenerateBatchJob and !isGenerateCompareJob}">This page polls until the job finishes.</p>
+                <p class="panel-intro" th:if="${isHuntJob}">This page polls until the Bug Hunter finishes (finish or cycle ceiling).</p>
+                <p class="panel-intro" th:if="${!isExecuteJob and !isGenerateBatchJob and !isGenerateCompareJob and !isHuntJob}">This page polls until the job finishes.</p>
             </div>
         </div>
         <div id="progress-track" class="progress-track"
@@ -53,7 +55,7 @@
             <dt th:text="${isGenerateCompareJob} ? 'Model B TCs' : (${isGenerateBatchJob} ? 'Failed stories' : 'Blocked / TODO')">Blocked / TODO</dt><dd id="todo" th:text="${todoCount}">0</dd>
         </dl>
         <p id="cancel-wrap" th:hidden="${jobStatus != 'QUEUED' and jobStatus != 'RUNNING'}">
-            <button type="button" class="button ghost" id="cancel-btn">Cancel job</button>
+            <button type="button" class="button ghost" id="cancel-btn">Force stop</button>
         </p>
         <p id="block-banner" class="error"
            th:hidden="${isExecuteJob or jobStatus != 'COMPLETED_WITH_BLOCK'}">
@@ -61,9 +63,9 @@
             See <code>docs/FINAL_REVISE.md</code> in the package.
         </p>
         <p id="download-wrap"
-           th:hidden="${isExecuteJob or (jobStatus != 'COMPLETED' and jobStatus != 'COMPLETED_WITH_BLOCK')}">
+           th:hidden="${isExecuteJob or (jobStatus != 'COMPLETED' and jobStatus != 'COMPLETED_WITH_BLOCK' and !(isHuntJob and jobStatus == 'FAILED'))}">
             <a id="download" class="button" th:href="@{/api/jobs/{id}/download(id=${jobId})}"
-               th:text="${isGenerateBatchJob} ? 'Download CSV' : 'Download ZIP'">Download ZIP</a>
+               th:text="${isGenerateBatchJob} ? 'Download CSV' : (${isHuntJob} ? 'Download hunter pack' : 'Download ZIP')">Download ZIP</a>
             <a href="/dashboard" style="margin-left:0.75rem">Back to dashboard</a>
         </p>
         <div id="execute-wrap" th:hidden="${!isExecuteJob}">
@@ -98,6 +100,7 @@
     const isExecute = jobKind === 'EXECUTE';
     const isGenerateBatch = jobKind === 'GENERATE_BATCH';
     const isGenerateCompare = jobKind === 'GENERATE_COMPARE';
+    const isHunt = jobKind === 'HUNT';
     const failEl = document.getElementById('fail-js');
     const bar = document.getElementById('progress-bar');
     const liveProgress = document.getElementById('live-progress');
@@ -193,10 +196,10 @@
         if (!cancelBtn) return;
         if (cancelRequested && active) {
             cancelBtn.disabled = true;
-            cancelBtn.textContent = 'Cancelling…';
+            cancelBtn.textContent = 'Stopping…';
         } else if (active) {
             cancelBtn.disabled = false;
-            cancelBtn.textContent = 'Cancel job';
+            cancelBtn.textContent = 'Force stop';
         }
     }
 
@@ -206,10 +209,10 @@
         updateCancelUi('RUNNING');
         if (cancelBtn) {
             cancelBtn.disabled = true;
-            cancelBtn.textContent = 'Cancelling…';
+            cancelBtn.textContent = 'Stopping…';
         }
         try {
-            const res = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/cancel', {
+            const res = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/force-stop', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Accept': 'application/json', 'X-Keel-Requested-With': 'Keel' }
@@ -218,19 +221,19 @@
                 cancelRequested = false;
                 if (cancelBtn) {
                     cancelBtn.disabled = false;
-                    cancelBtn.textContent = 'Cancel job';
+                    cancelBtn.textContent = 'Force stop';
                 }
                 let data = {};
                 try { data = await res.json(); } catch (e) { /* ignore */ }
-                showFail(data.message || ('Cancel failed HTTP ' + res.status));
+                showFail(data.message || ('Force stop failed HTTP ' + res.status));
             }
         } catch (e) {
             cancelRequested = false;
             if (cancelBtn) {
                 cancelBtn.disabled = false;
-                cancelBtn.textContent = 'Cancel job';
+                cancelBtn.textContent = 'Force stop';
             }
-            showFail('Network error while requesting cancel');
+            showFail('Network error while force-stopping');
         }
     }
 
@@ -264,9 +267,10 @@
         const executeJob = kind === 'EXECUTE';
         const generateBatchJob = kind === 'GENERATE_BATCH';
         const generateCompareJob = kind === 'GENERATE_COMPARE';
+        const huntJob = kind === 'HUNT';
         const blockBanner = document.getElementById('block-banner');
         if (blockBanner) {
-            blockBanner.hidden = executeJob || generateBatchJob || generateCompareJob
+            blockBanner.hidden = executeJob || generateBatchJob || generateCompareJob || huntJob
                 || data.status !== 'COMPLETED_WITH_BLOCK';
         }
         if (generateCompareJob) {
@@ -345,9 +349,17 @@
             if (downloadBtn && generateBatchJob) {
                 downloadBtn.textContent = 'Download CSV';
             }
+            if (downloadBtn && huntJob) {
+                downloadBtn.textContent = 'Download hunter pack';
+            }
             return true;
         }
         if (data.status === 'FAILED') {
+            if (huntJob && downloadWrap && data.downloadable) {
+                downloadWrap.hidden = false;
+                const downloadBtn = document.getElementById('download');
+                if (downloadBtn) downloadBtn.textContent = 'Download hunter pack';
+            }
             showFail(data.message || 'Job failed');
             return true;
         }

@@ -38,6 +38,7 @@ public class DeliveryPortalProperties {
     private int generateNumPredict = LocalLlmClient.DEFAULT_GENERATE_NUM_PREDICT;
     private CodegenProperties codegen = new CodegenProperties();
     private RetentionProperties retention = new RetentionProperties();
+    private HuntProperties hunt = new HuntProperties();
 
     public static class CodegenProperties {
         /** Optional Ollama polish for generated test method names only (pages stay deterministic). */
@@ -53,6 +54,14 @@ public class DeliveryPortalProperties {
 
         public int getDays() { return days; }
         public void setDays(int days) { this.days = days; }
+    }
+
+    public static class HuntProperties {
+        /** DOM prompt mode for Bug Hunter: auto | map | slim */
+        private String domMode = "auto";
+
+        public String getDomMode() { return domMode == null ? "auto" : domMode; }
+        public void setDomMode(String domMode) { this.domMode = domMode; }
     }
 
     public boolean isDryRun() { return dryRun; }
@@ -108,4 +117,6 @@ public class DeliveryPortalProperties {
     public boolean isCodegenOllamaNaming() { return codegen.isOllamaNaming(); }
     public RetentionProperties getRetention() { return retention; }
     public void setRetention(RetentionProperties retention) { this.retention = retention; }
+    public HuntProperties getHunt() { return hunt; }
+    public void setHunt(HuntProperties hunt) { this.hunt = hunt == null ? new HuntProperties() : hunt; }
 }

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Bug Hunter')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell">
+    <div class="page-title">
+        <div>
+            <h1>Bug Hunter</h1>
+            <p class="lede">Exploratory hunt: break features, invent edge cases (capped), download a hunter pack — nothing auto-merges into the library.</p>
+            <p class="hint">With <code>delivery.dry-run=true</code> hunts simulate one cycle. Set dry-run false for live browser + Ollama/Cursor planning.</p>
+        </div>
+    </div>
+
+    <section class="panel">
+        <label>Project
+            <select id="project-select">
+                <option value="">— Loading projects —</option>
+            </select>
+        </label>
+        <p id="project-err" class="error" hidden></p>
+        <p id="no-projects" class="muted" hidden>
+            No projects yet —
+            <a href="/projects">create one</a> first.
+        </p>
+    </section>
+
+    <section class="panel" id="hunt-form-panel" hidden>
+        <h2>Start a hunt</h2>
+        <p class="panel-intro">
+            Select library cases, optional user story, planner, and caps.
+            Stop when the AI says finish or the cycle ceiling is hit.
+        </p>
+        <p class="muted" id="base-url-row" hidden>
+            Base URL <span id="base-url-display" class="mono"></span>
+        </p>
+        <p class="error" id="base-url-missing" hidden>
+            No base URL configured.
+            <a id="settings-link" href="#">Open project Settings</a>
+        </p>
+
+        <label id="cred-label" hidden>Credential profile
+            <select id="credential-profile"></select>
+        </label>
+
+        <label>User story / notes (optional)
+            <textarea id="user-story" rows="4" placeholder="Feature or acceptance notes for the hunter…"></textarea>
+        </label>
+
+        <fieldset class="hunt-planner">
+            <legend>Planner</legend>
+            <label class="check"><input type="radio" name="planner" value="ollama" checked/> Ollama</label>
+            <label class="check"><input type="radio" name="planner" value="cursor"/> Cursor</label>
+        </fieldset>
+
+        <label>DOM mode
+            <select id="dom-mode">
+                <option value="auto" selected>Auto (map + slim when thin)</option>
+                <option value="map">Map only</option>
+                <option value="slim">Full slim DOM</option>
+            </select>
+        </label>
+
+        <label class="check"><input type="checkbox" id="strategies-enabled" checked/> Use hunt strategies</label>
+
+        <div class="hunt-caps">
+            <label>Scenario cap
+                <input type="number" id="scenario-cap" min="1" max="20" value="5"/>
+            </label>
+            <label>Cycle ceiling
+                <input type="number" id="cycle-ceiling" min="1" max="30" value="8"/>
+            </label>
+            <label>Actions / cycle
+                <input type="number" id="action-cap" min="1" max="15" value="5"/>
+            </label>
+        </div>
+
+        <h3 class="auto-subhead">Library cases</h3>
+        <p id="lib-empty" class="muted" hidden>No generated workbook — upload or generate TCs first.</p>
+        <div id="lib-pick" class="lib-pick-list"></div>
+
+        <p id="hunt-err" class="error" hidden></p>
+        <div class="actions">
+            <button type="button" class="button" id="start-hunt" disabled>Start Bug Hunter</button>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Recent Bug Hunter runs</h2>
+        <p class="panel-intro">This project’s HUNT jobs — open Status or download the pack when ready.</p>
+        <p id="recent-empty" class="muted" hidden>No Bug Hunter runs yet.</p>
+        <table class="table" id="recent-table" hidden>
+            <thead>
+            <tr>
+                <th>Run</th>
+                <th>Status</th>
+                <th>Bugs</th>
+                <th>Scenarios</th>
+                <th>Message</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody id="recent-body"></tbody>
+        </table>
+    </section>
+</main>
+</div>
+<script>
+(function () {
+    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+    const STORAGE_KEY = 'keel.bugHunterProjectId';
+    const projectSel = document.getElementById('project-select');
+    const formPanel = document.getElementById('hunt-form-panel');
+    const startBtn = document.getElementById('start-hunt');
+    const huntErr = document.getElementById('hunt-err');
+    let projects = [];
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function badgeClass(status) {
+        const s = String(status || '').toUpperCase();
+        if (s === 'COMPLETED') return 'ok';
+        if (s === 'FAILED' || s === 'CANCELLED') return 'err';
+        if (s === 'COMPLETED_WITH_BLOCK') return 'warn';
+        return 'muted';
+    }
+
+    async function loadProjects() {
+        const res = await fetch('/api/projects', { credentials: 'same-origin', headers: API_HEADERS });
+        projects = res.ok ? await res.json() : [];
+        const noProj = document.getElementById('no-projects');
+        projectSel.innerHTML = '';
+        if (!projects.length) {
+            noProj.hidden = false;
+            formPanel.hidden = true;
+            projectSel.innerHTML = '<option value="">— None —</option>';
+            return;
+        }
+        noProj.hidden = true;
+        projects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.projectId;
+            opt.textContent = (p.name || p.projectId) + ' (' + p.projectId + ')';
+            projectSel.appendChild(opt);
+        });
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const match = saved && projects.some(p => p.projectId === saved);
+        projectSel.value = match ? saved : projects[0].projectId;
+        await onProjectChange();
+    }
+
+    async function onProjectChange() {
+        const projectId = projectSel.value;
+        sessionStorage.setItem(STORAGE_KEY, projectId || '');
+        formPanel.hidden = !projectId;
+        huntErr.hidden = true;
+        if (!projectId) return;
+        document.getElementById('settings-link').href =
+            '/projects/' + encodeURIComponent(projectId) + '?tab=settings';
+        const proj = projects.find(p => p.projectId === projectId) || {};
+        const base = proj.baseUrl || '';
+        document.getElementById('base-url-row').hidden = !base;
+        document.getElementById('base-url-missing').hidden = !!base;
+        document.getElementById('base-url-display').textContent = base;
+        await loadCredentials(projectId);
+        await loadLibrary(projectId);
+        await loadRecent(projectId);
+        updateStartEnabled();
+    }
+
+    async function loadCredentials(projectId) {
+        const label = document.getElementById('cred-label');
+        const sel = document.getElementById('credential-profile');
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/credentials', {
+            credentials: 'same-origin', headers: API_HEADERS
+        });
+        const list = res.ok ? await res.json() : [];
+        sel.innerHTML = '';
+        if (!list.length) {
+            label.hidden = true;
+            return;
+        }
+        label.hidden = false;
+        list.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.profileName;
+            opt.textContent = c.profileName + ' (' + (c.username || '') + ')';
+            sel.appendChild(opt);
+        });
+    }
+
+    async function loadLibrary(projectId) {
+        const pick = document.getElementById('lib-pick');
+        const empty = document.getElementById('lib-empty');
+        pick.innerHTML = '';
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases', {
+            credentials: 'same-origin', headers: API_HEADERS
+        });
+        if (!res.ok) {
+            empty.hidden = false;
+            return;
+        }
+        const data = await res.json();
+        const cases = data.cases || [];
+        empty.hidden = cases.length > 0;
+        cases.forEach(tc => {
+            const id = tc.tcId || tc.id;
+            const lab = document.createElement('label');
+            lab.className = 'check';
+            lab.innerHTML = '<input type="checkbox" class="hunt-tc" value="' + escapeHtml(id) + '"/> '
+                + '<span class="mono">' + escapeHtml(id) + '</span> '
+                + escapeHtml(tc.title || '');
+            pick.appendChild(lab);
+        });
+        pick.querySelectorAll('.hunt-tc').forEach(cb => cb.addEventListener('change', updateStartEnabled));
+    }
+
+    function selectedTcIds() {
+        return Array.from(document.querySelectorAll('.hunt-tc:checked')).map(cb => cb.value);
+    }
+
+    function updateStartEnabled() {
+        const hasBase = !document.getElementById('base-url-row').hidden;
+        const credNeeded = !document.getElementById('cred-label').hidden;
+        const credOk = !credNeeded || !!document.getElementById('credential-profile').value;
+        startBtn.disabled = !(hasBase && credOk && selectedTcIds().length > 0);
+    }
+
+    async function loadRecent(projectId) {
+        const res = await fetch('/api/jobs?projectId=' + encodeURIComponent(projectId) + '&kind=HUNT', {
+            credentials: 'same-origin', headers: API_HEADERS
+        });
+        const jobs = res.ok ? await res.json() : [];
+        const empty = document.getElementById('recent-empty');
+        const table = document.getElementById('recent-table');
+        const body = document.getElementById('recent-body');
+        body.innerHTML = '';
+        empty.hidden = jobs.length > 0;
+        table.hidden = jobs.length === 0;
+        jobs.slice(0, 10).forEach(j => {
+            const tr = document.createElement('tr');
+            const dl = j.downloadable
+                ? ' <a href="/api/jobs/' + encodeURIComponent(j.jobId) + '/download">Download</a>'
+                : '';
+            tr.innerHTML =
+                '<td><code class="mono">' + escapeHtml(j.jobId) + '</code></td>' +
+                '<td><span class="badge ' + badgeClass(j.status) + '">' + escapeHtml(j.status) + '</span></td>' +
+                '<td>' + (j.passedCount != null ? j.passedCount : '—') + '</td>' +
+                '<td>' + (j.todoCount != null ? j.todoCount : '—') + '</td>' +
+                '<td class="muted">' + escapeHtml(j.message || '') + '</td>' +
+                '<td><a href="/status?jobId=' + encodeURIComponent(j.jobId) + '">Status</a>' + dl + '</td>';
+            body.appendChild(tr);
+        });
+    }
+
+    startBtn.addEventListener('click', async () => {
+        huntErr.hidden = true;
+        startBtn.disabled = true;
+        const projectId = projectSel.value;
+        const planner = (document.querySelector('input[name="planner"]:checked') || {}).value || 'ollama';
+        const body = {
+            tcIds: selectedTcIds(),
+            userStory: document.getElementById('user-story').value || '',
+            planner: planner,
+            scenarioCap: Number(document.getElementById('scenario-cap').value) || 5,
+            cycleCeiling: Number(document.getElementById('cycle-ceiling').value) || 8,
+            actionCapPerCycle: Number(document.getElementById('action-cap').value) || 5,
+            domMode: document.getElementById('dom-mode').value || 'auto',
+            strategiesEnabled: document.getElementById('strategies-enabled').checked
+        };
+        if (!document.getElementById('cred-label').hidden) {
+            body.credentialProfile = document.getElementById('credential-profile').value;
+        }
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/hunt-runs', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            huntErr.hidden = false;
+            huntErr.textContent = (data && data.message) || 'Could not start Bug Hunter';
+            updateStartEnabled();
+            return;
+        }
+        window.location.href = '/status?jobId=' + encodeURIComponent(data.jobId);
+    });
+
+    projectSel.addEventListener('change', onProjectChange);
+    loadProjects();
+})();
+</script>
+</body>
+</html>

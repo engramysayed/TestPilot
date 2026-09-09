@@ -1,0 +1,240 @@
+package delivery.hunt;
+
+import org.json.JSONArray;
+import org.openqa.selenium.By;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+
+/** Executes allowlisted Bug Hunter planner actions against a live WebDriver. */
+public final class HuntActionExecutor {
+    /** Default wait when AI sends wait with no/blank ms. */
+    public static final int DEFAULT_WAIT_MS = 5000;
+    /** Hard ceiling for a single wait action. */
+    public static final int WAIT_CAP_MS = 15_000;
+
+    private final WebDriver driver;
+    private HuntActionGuard guard;
+
+    public HuntActionExecutor(WebDriver driver) {
+        this.driver = driver;
+    }
+
+    public void setGuard(HuntActionGuard guard) {
+        this.guard = guard;
+    }
+
+    public List<Map<String, Object>> executeAll(List<Map<String, Object>> actions) {
+        return executeAll(actions, Integer.MAX_VALUE);
+    }
+
+    public List<Map<String, Object>> executeAll(List<Map<String, Object>> actions, int actionCap) {
+        List<Map<String, Object>> log = new ArrayList<>();
+        if (actions == null || actions.isEmpty()) {
+            return log;
+        }
+        int cap = Math.max(1, actionCap);
+        int limit = Math.min(actions.size(), cap);
+        for (int i = 0; i < limit; i++) {
+            log.add(executeOne(actions.get(i)));
+        }
+        if (actions.size() > limit) {
+            Map<String, Object> skipped = new LinkedHashMap<>();
+            skipped.put("type", "cap");
+            skipped.put("status", "rejected");
+            skipped.put("reason", "actionCapPerCycle=" + cap + "; skipped "
+                    + (actions.size() - limit) + " extra action(s)");
+            log.add(skipped);
+        }
+        return log;
+    }
+
+    public Map<String, Object> executeOne(Map<String, Object> action) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        if (action == null) {
+            row.put("status", "rejected");
+            row.put("reason", "null action");
+            return row;
+        }
+        String type = str(action.get("type")).isBlank() ? str(action.get("action")) : str(action.get("type"));
+        type = type.trim().toLowerCase(Locale.ROOT);
+        row.put("type", type);
+        row.putAll(action);
+        if (guard != null) {
+            Optional<String> why = guard.rejectReason(action);
+            if (why.isPresent()) {
+                row.put("status", "rejected");
+                row.put("reason", "ungrounded_locator: " + why.get());
+                return row;
+            }
+        }
+        try {
+            switch (type) {
+                case "navigate" -> {
+                    String url = str(action.get("url"));
+                    if (url.isBlank()) {
+                        row.put("status", "rejected");
+                        row.put("reason", "navigate requires url");
+                        return row;
+                    }
+                    driver.get(url);
+                    row.put("status", "ok");
+                }
+                case "click" -> {
+                    find(action).click();
+                    row.put("status", "ok");
+                }
+                case "type" -> {
+                    WebElement el = find(action);
+                    el.clear();
+                    el.sendKeys(str(action.get("value")));
+                    row.put("status", "ok");
+                }
+                case "clear" -> {
+                    find(action).clear();
+                    row.put("status", "ok");
+                }
+                case "wait" -> {
+                    int ms = parseWaitMs(action.get("ms"));
+                    Thread.sleep(ms);
+                    row.put("ms", ms);
+                    row.put("status", "ok");
+                }
+                case "assert_visible" -> {
+                    WebElement el = find(action);
+                    boolean ok = el.isDisplayed();
+                    row.put("status", ok ? "ok" : "fail");
+                    if (!ok) {
+                        row.put("reason", "element not visible");
+                    }
+                }
+                case "assert_text" -> {
+                    String expected = str(action.get("text"));
+                    if (expected.isBlank()) {
+                        expected = str(action.get("value"));
+                    }
+                    String body = driver.findElement(By.tagName("body")).getText();
+                    boolean ok = body != null && body.contains(expected);
+                    row.put("expected", expected);
+                    row.put("status", ok ? "ok" : "fail");
+                    if (!ok) {
+                        row.put("reason", "text not found on page");
+                    }
+                }
+                case "", "finish" -> {
+                    row.put("status", "rejected");
+                    row.put("reason", "empty or non-action type");
+                }
+                default -> {
+                    row.put("status", "rejected");
+                    row.put("reason", "action not in allowlist: " + type);
+                }
+            }
+        } catch (Exception e) {
+            row.put("status", "fail");
+            row.put("reason", e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
+        return row;
+    }
+
+    /** Failed assert_* rows become bug drafts when planner did not emit bugs. */
+    public static List<Map<String, Object>> bugsFromFailedAsserts(List<Map<String, Object>> actionLog) {
+        List<Map<String, Object>> bugs = new ArrayList<>();
+        if (actionLog == null) {
+            return bugs;
+        }
+        for (Map<String, Object> row : actionLog) {
+            String type = str(row.get("type"));
+            if (!"fail".equals(str(row.get("status")))) {
+                continue;
+            }
+            if (!type.startsWith("assert_")) {
+                continue;
+            }
+            Map<String, Object> bug = new LinkedHashMap<>();
+            bug.put("title", "Assert failed: " + type);
+            bug.put("severity", "major");
+            bug.put("repro", "Planner action " + type + " failed during hunt");
+            bug.put("expected", str(row.get("expected")).isBlank() ? "Assertion to pass" : str(row.get("expected")));
+            bug.put("actual", str(row.get("reason")));
+            bugs.add(bug);
+        }
+        return bugs;
+    }
+
+    public static void writeActionsLog(Path cycleDir, List<Map<String, Object>> log) throws Exception {
+        Files.writeString(cycleDir.resolve("actions-log.json"),
+                new JSONArray(log == null ? List.of() : log).toString(2), StandardCharsets.UTF_8);
+    }
+
+    public byte[] screenshotPng() {
+        if (!(driver instanceof TakesScreenshot ts)) {
+            return new byte[0];
+        }
+        return ts.getScreenshotAs(OutputType.BYTES);
+    }
+
+    private WebElement find(Map<String, Object> action) {
+        String locator = str(action.get("locator"));
+        if (locator.isBlank()) {
+            locator = str(action.get("locatorValue"));
+        }
+        String strategy = str(action.get("locatorStrategy")).toLowerCase(Locale.ROOT);
+        if (strategy.isBlank()) {
+            strategy = guessStrategy(locator);
+        }
+        return driver.findElement(by(strategy, locator));
+    }
+
+    private static By by(String strategy, String value) {
+        return switch (strategy) {
+            case "id" -> By.id(value);
+            case "name" -> By.name(value);
+            case "xpath" -> By.xpath(value);
+            case "linktext", "link_text" -> By.linkText(value);
+            case "css", "cssselector", "css_selector", "" -> By.cssSelector(value);
+            default -> By.cssSelector(value);
+        };
+    }
+
+    private static String guessStrategy(String locator) {
+        if (locator.startsWith("//") || locator.startsWith("(//")) {
+            return "xpath";
+        }
+        if (locator.startsWith("#") || locator.contains("[") || locator.contains(".")) {
+            return "css";
+        }
+        return "css";
+    }
+
+    private static int parseWaitMs(Object raw) {
+        if (raw == null || String.valueOf(raw).isBlank() || "null".equalsIgnoreCase(String.valueOf(raw))) {
+            return DEFAULT_WAIT_MS;
+        }
+        int ms = DEFAULT_WAIT_MS;
+        try {
+            ms = Integer.parseInt(String.valueOf(raw).trim());
+        } catch (Exception ignored) {
+            return DEFAULT_WAIT_MS;
+        }
+        if (ms < 0) {
+            ms = 0;
+        }
+        return Math.min(ms, WAIT_CAP_MS);
+    }
+
+    private static String str(Object o) {
+        return o == null ? "" : String.valueOf(o);
+    }
+}

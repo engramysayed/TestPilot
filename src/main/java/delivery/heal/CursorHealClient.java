@@ -171,6 +171,21 @@ public class CursorHealClient {
         return invoke(req);
     }
 
+    /**
+     * Bug Hunter planner: brief + slim DOM + optional screenshot → HuntPlannerDecision JSON.
+     * Returns raw JSON; blank when sidecar disabled/unavailable (caller must fail closed).
+     */
+    public String huntPlan(String userPrompt, String slimHtmlExcerpt, Path screenshotPathOrNull) {
+        JSONObject req = new JSONObject();
+        req.put("mode", "hunt");
+        req.put("prompt", userPrompt == null ? "" : userPrompt);
+        req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
+        if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
+            req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
+        }
+        return invoke(req);
+    }
+
     static void putVisionAttempts(JSONObject req) {
         if (req == null) {
             return;
@@ -256,7 +271,8 @@ public class CursorHealClient {
             errReader.setDaemon(true);
             outReader.start();
             errReader.start();
-            long requestTimeoutSec = "authoring-review".equals(req.optString("mode"))
+            long requestTimeoutSec = ("authoring-review".equals(req.optString("mode"))
+                    || "hunt".equals(req.optString("mode")))
                     ? Math.max(timeoutSec, 180L)
                     : timeoutSec;
             boolean finished = proc.waitFor(requestTimeoutSec, TimeUnit.SECONDS);

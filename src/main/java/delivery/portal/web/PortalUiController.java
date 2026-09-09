@@ -71,7 +71,7 @@ public class PortalUiController {
 
     @GetMapping("/projects/{projectId}")
     public String projectDetail(@PathVariable("projectId") String projectId,
-                                @RequestParam(value = "tab", defaultValue = "settings") String tab,
+                                @RequestParam(value = "tab", defaultValue = "summary") String tab,
                                 Model model) {
         addNav(model);
         model.addAttribute("navActive", "projects");
@@ -81,8 +81,8 @@ public class PortalUiController {
             return "redirect:/projects";
         }
         String activeTab = switch (tab) {
-            case "automation", "tcs" -> tab;
-            default -> "settings";
+            case "summary", "automation", "tcs", "settings" -> tab;
+            default -> "summary";
         };
         model.addAttribute("project", owned.get());
         model.addAttribute("projectId", projectId);
@@ -109,10 +109,13 @@ public class PortalUiController {
     }
 
     @GetMapping("/automate")
-    public String automate(Model model) {
+    public String automate(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
         addNav(model);
         model.addAttribute("navActive", "automate");
-        return "automate";
+        model.addAttribute("projects", store.listProjects(currentUser.requireUserId()));
+        model.addAttribute("projectId", projectId == null ? "" : projectId);
+        model.addAttribute("finalReviseEnabled", portalProperties.isFinalReviseEnabled());
+        return "upload";
     }
 
     @GetMapping("/generate")
@@ -129,14 +132,19 @@ public class PortalUiController {
         return "execute";
     }
 
-    @GetMapping("/upload")
-    public String upload(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
+    @GetMapping("/bug-hunter")
+    public String bugHunter(Model model) {
         addNav(model);
-        model.addAttribute("navActive", "automate-upload");
-        model.addAttribute("projects", store.listProjects(currentUser.requireUserId()));
-        model.addAttribute("projectId", projectId == null ? "" : projectId);
-        model.addAttribute("finalReviseEnabled", portalProperties.isFinalReviseEnabled());
-        return "upload";
+        model.addAttribute("navActive", "bug-hunter");
+        return "bug-hunter";
+    }
+
+    @GetMapping("/upload")
+    public String upload(@RequestParam(value = "projectId", required = false) String projectId) {
+        if (projectId == null || projectId.isBlank()) {
+            return "redirect:/automate";
+        }
+        return "redirect:/automate?projectId=" + projectId;
     }
 
     @GetMapping("/tc-guide")
@@ -146,20 +154,18 @@ public class PortalUiController {
         return "tc-guide";
     }
 
-    @GetMapping("/jobs")
-    public String jobs(Model model) {
+    @GetMapping({"/runs", "/jobs"})
+    public String runs(Model model) {
         addNav(model);
-        model.addAttribute("navActive", "automate-jobs");
-        model.addAttribute("jobs", store.listJobEntities(currentUser.requireUserId()).stream()
-                .filter(j -> JobRecord.parseJobKind(j.getJobKind()) == JobRecord.JobKind.CONVERT)
-                .toList());
+        model.addAttribute("navActive", "runs");
+        model.addAttribute("jobs", store.listJobEntities(currentUser.requireUserId()));
         return "jobs";
     }
 
     @GetMapping("/status")
     public String status(@RequestParam("jobId") String jobId, Model model) {
         addNav(model);
-        model.addAttribute("navActive", "automate-jobs");
+        model.addAttribute("navActive", "runs");
         model.addAttribute("jobId", jobId);
         String status = "QUEUED";
         String message = "Waiting for worker…";
@@ -195,6 +201,7 @@ public class PortalUiController {
         model.addAttribute("isExecuteJob", JobRecord.JobKind.EXECUTE.name().equals(jobKind));
         model.addAttribute("isGenerateBatchJob", JobRecord.JobKind.GENERATE_BATCH.name().equals(jobKind));
         model.addAttribute("isGenerateCompareJob", JobRecord.JobKind.GENERATE_COMPARE.name().equals(jobKind));
+        model.addAttribute("isHuntJob", JobRecord.JobKind.HUNT.name().equals(jobKind));
         model.addAttribute("jobStatus", status);
         model.addAttribute("jobMessage", message);
         model.addAttribute("passedCount", passed);

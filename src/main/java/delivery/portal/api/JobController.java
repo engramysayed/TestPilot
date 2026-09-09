@@ -118,10 +118,16 @@ public class JobController {
                                 "No generated workbook for this project — generate TCs first").asMap());
             }
             throw e;
+        } catch (IllegalArgumentException e) {
+            ResponseEntity<Map<String, String>> callBefore = CallBeforeApiErrors.badRequestOrNull(e);
+            if (callBefore != null) {
+                return callBefore;
+            }
+            throw e;
         }
 
         try {
-            List<ManualTestCase> cases = new ExcelTcReader().read(excelPath);
+            List<ManualTestCase> cases = new ExcelTcReader(true).read(excelPath);
             Optional<String> block = KeelPathSurfaceGuard.hardBlock(
                     KeelPathCaseFilter.Surface.AUTOMATE, KeelPathCounts.from(cases));
             if (block.isPresent()) {
@@ -183,21 +189,30 @@ public class JobController {
                 .filter(e -> kindFilter == null || kindFilter.equals(
                         e.getJobKind() == null ? JobRecord.JobKind.CONVERT.name() : e.getJobKind()))
                 .map(e -> {
+                    // Prefer in-memory live progress so Recent runs matches the open detail panel.
+                    var live = store.getJob(e.getJobId());
+                    String status = live.map(j -> j.getStatus().name()).orElse(e.getStatus());
+                    int passed = live.map(JobRecord::getPassedCount).orElse(e.getPassedCount());
+                    int todo = live.map(JobRecord::getTodoCount).orElse(e.getTodoCount());
+                    int progressCurrent = live.map(JobRecord::getProgressCurrent).orElse(e.getProgressCurrent());
+                    int progressTotal = live.map(JobRecord::getProgressTotal).orElse(e.getProgressTotal());
+                    String message = live.map(j -> j.getMessage() == null ? "" : j.getMessage())
+                            .orElse(e.getMessage() == null ? "" : e.getMessage());
                     Map<String, Object> m = new LinkedHashMap<>();
                     m.put("jobId", e.getJobId());
                     m.put("projectId", e.getProjectId());
                     m.put("jobKind", e.getJobKind() == null ? JobRecord.JobKind.CONVERT.name() : e.getJobKind());
                     m.put("mode", e.getMode());
-                    m.put("status", e.getStatus());
-                    m.put("passedCount", e.getPassedCount());
-                    m.put("todoCount", e.getTodoCount());
-                    m.put("message", e.getMessage() == null ? "" : e.getMessage());
-                    m.put("progressCurrent", e.getProgressCurrent());
-                    m.put("progressTotal", e.getProgressTotal());
+                    m.put("status", status);
+                    m.put("passedCount", passed);
+                    m.put("todoCount", todo);
+                    m.put("message", message);
+                    m.put("progressCurrent", progressCurrent);
+                    m.put("progressTotal", progressTotal);
                     m.put("createdAt", e.getCreatedAt() == null ? "" : e.getCreatedAt().toString());
                     m.put("downloadable", JobRecord.isDownloadable(
-                            JobRecord.parseJobKind(e.getJobKind()), e.getStatus()));
-                    m.put("softBlocked", "COMPLETED_WITH_BLOCK".equals(e.getStatus()));
+                            JobRecord.parseJobKind(e.getJobKind()), status));
+                    m.put("softBlocked", "COMPLETED_WITH_BLOCK".equals(status));
                     return m;
                 })
                 .collect(Collectors.toList());
@@ -248,6 +263,27 @@ public class JobController {
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ApiError("NOT_FOUND", "Unknown job").asMap()));
+    }
+
+    /**
+     * Immediate owner stop for stuck QUEUED/RUNNING jobs (marks CANCELLED now so Delete works).
+     */
+    @PostMapping("/jobs/{jobId}/force-stop")
+    public ResponseEntity<?> forceStopJob(@PathVariable("jobId") String jobId) {
+        Optional<String> result = store.forceStopOwnedJob(jobId, currentUser.requireUserId());
+        if (result.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown job").asMap());
+        }
+        if ("ALREADY_DONE".equals(result.get())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiError("NOT_CANCELLABLE", "Job is not running or queued").asMap());
+        }
+        return ResponseEntity.accepted().body(Map.of(
+                "jobId", jobId,
+                "status", JobRecord.Status.CANCELLED.name(),
+                "forceStopped", true
+        ));
     }
 
     @GetMapping("/jobs/{jobId}/compare-result")
@@ -305,9 +341,9 @@ public class JobController {
                     .contentType(MediaType.parseMediaType("text/csv"))
                     .body(resource);
         }
-        if (job.getJobKind() != JobRecord.JobKind.CONVERT) {
+        if (job.getJobKind() != JobRecord.JobKind.CONVERT && job.getJobKind() != JobRecord.JobKind.HUNT) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ApiError("NOT_CONVERT", "Only conversion jobs have downloadable ZIPs").asMap());
+                    .body(new ApiError("NOT_CONVERT", "Only Automate and Bug Hunter jobs have downloadable ZIPs").asMap());
         }
         if (!JobRecord.isDownloadable(job.getJobKind(), job.getStatus())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)

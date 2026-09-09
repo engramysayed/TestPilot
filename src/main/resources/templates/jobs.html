@@ -1,63 +1,63 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <th:block th:replace="~{fragments :: pageHead(title='Jobs')}"></th:block>
+        <th:block th:replace="~{fragments :: pageHead(title='Runs')}"></th:block>
 </head>
 <body class="app-body">
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
-<main class="shell">
+<main class="shell shell-wide">
     <div class="page-title">
         <div>
-            <h1>Job history</h1>
-            <p class="muted">Part of Automate</p>
-            <p class="lede">Past conversions for your account. Re-open status or download completed ZIPs.
-                For execute history, see <a href="/execute">Execute</a>.</p>
+            <h1>Runs</h1>
+            <p class="lede">Generate, Automate, and Execute history for your account. Open status for live progress.</p>
         </div>
-        <a class="button" href="/automate">New conversion</a>
+        <a class="button" href="/automate">New Automate run</a>
     </div>
     <section class="panel" th:if="${#lists.isEmpty(jobs)}">
-        <p class="muted">No conversion jobs yet. Start from <a href="/automate">Automate</a>.</p>
+        <p class="muted">No runs yet. Start from <a href="/generate">Generate</a>, <a href="/automate">Automate</a>, or <a href="/execute">Execute</a>.</p>
     </section>
     <section class="panel" th:if="${!#lists.isEmpty(jobs)}">
-        <h2>All jobs</h2>
-        <p class="panel-intro">Newest first — open Status for live progress.</p>
-        <table class="table">
-            <thead>
-            <tr>
-                <th>Job</th>
-                <th>Project</th>
-                <th>Mode</th>
-                <th>Status</th>
-                <th>Progress</th>
-                <th>Score</th>
-                <th>Message</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="j : ${jobs}">
-                <td><code class="mono" th:text="${j.jobId}">job_</code></td>
-                <td class="mono" th:text="${j.projectId}">prj_</td>
-                <td th:text="${j.mode}">NEW</td>
-                <td>
-                    <span class="badge"
-                          th:classappend="${j.status == 'COMPLETED'} ? ' ok' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? ' warn' : (${j.status == 'FAILED'} ? ' err' : (${j.status == 'RUNNING' or j.status == 'QUEUED'} ? ' warn badge--busy' : ' muted')))">
-                        <span class="spinner spinner--badge" th:if="${j.status == 'RUNNING' or j.status == 'QUEUED'}" aria-hidden="true"></span>
-                        <span th:text="${j.status}">QUEUED</span>
-                    </span>
-                </td>
-                <td th:text="${j.progressCurrent} + ' / ' + ${j.progressTotal}">0 / 0</td>
-                <td th:text="${j.passedCount} + 'P / ' + ${j.todoCount} + 'T'">0P / 0T</td>
-                <td class="clip" th:text="${j.message}">—</td>
-                <td class="actions">
-                    <a th:href="@{/status(jobId=${j.jobId})}">Status</a>
-                    <a th:if="${j.status == 'COMPLETED' or j.status == 'COMPLETED_WITH_BLOCK'}" class="button"
-                       th:href="@{/api/jobs/{id}/download(id=${j.jobId})}">Download</a>
-                </td>
-            </tr>
-            </tbody>
-        </table>
+        <h2>All runs</h2>
+        <p class="panel-intro">Newest first — every surface shares this list.</p>
+        <div class="table-scroll">
+            <table class="table table--runs">
+                <thead>
+                <tr>
+                    <th>Run</th>
+                    <th>Kind</th>
+                    <th>Project</th>
+                    <th>Mode</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Message</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="j : ${jobs}">
+                    <td><code class="mono" th:text="${j.jobId}">job_</code></td>
+                    <td th:text="${j.jobKind == 'EXECUTE'} ? 'Execute' : (${j.jobKind == 'GENERATE_BATCH'} ? 'Generate' : (${j.jobKind == 'GENERATE_COMPARE'} ? 'Compare' : (${j.jobKind == 'HUNT'} ? 'Bug Hunter' : 'Automate')))">Automate</td>
+                    <td class="mono" th:text="${j.projectId}">prj_</td>
+                    <td th:text="${j.mode}">NEW</td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${j.status == 'COMPLETED'} ? ' ok' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? ' warn' : (${j.status == 'FAILED'} ? ' err' : (${j.status == 'RUNNING' or j.status == 'QUEUED'} ? ' warn badge--busy' : ' muted')))">
+                            <span class="spinner spinner--badge" th:if="${j.status == 'RUNNING' or j.status == 'QUEUED'}" aria-hidden="true"></span>
+                            <span th:text="${j.status}">QUEUED</span>
+                        </span>
+                    </td>
+                    <td th:text="${j.progressCurrent} + ' / ' + ${j.progressTotal}">0 / 0</td>
+                    <td class="clip" th:text="${j.message}">—</td>
+                    <td class="actions">
+                        <a th:href="@{/status(jobId=${j.jobId})}">Status</a>
+                        <a th:if="${j.status == 'COMPLETED' or j.status == 'COMPLETED_WITH_BLOCK'}" class="button"
+                           th:href="@{/api/jobs/{id}/download(id=${j.jobId})}">Download</a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </section>
 </main>
 </div>

@@ -48,13 +48,13 @@ async function main() {
     process.exit(2);
   }
 
-  const mode = ["invent", "solve", "authoring-review"].includes(req.mode) ? req.mode : "pick";
+  const mode = ["invent", "solve", "authoring-review", "hunt"].includes(req.mode) ? req.mode : "pick";
   const intent = req.intent || "";
   const failureReason = req.failureReason || "";
   const shortlist = req.shortlist || "";
   const priorSteps = Array.isArray(req.priorSteps) ? req.priorSteps.slice(0, 12) : [];
   const visionAttempts = Array.isArray(req.visionAttempts) ? req.visionAttempts.slice(0, 8) : [];
-  const slimHtmlExcerpt = (req.slimHtmlExcerpt || "").slice(0, mode === "pick" ? 8000 : 16000);
+  const slimHtmlExcerpt = (req.slimHtmlExcerpt || "").slice(0, mode === "pick" ? 8000 : mode === "hunt" ? 24000 : 16000);
   const screenshotPath = req.screenshotPath || "";
 
   let screenshotNote = "";
@@ -212,11 +212,28 @@ Suite JSON:
 ${req.suite || ""}
 `;
 
+  const huntPrompt = `${guard}You are Keel's Bug Hunter planner.
+Break the feature and invent edge-case scenarios within the remaining scenario budget.
+Return ONLY one JSON object:
+{"decision":"continue"|"finish","rationale":"...","actions":[],"bugs":[],"scenarios":[]}
+actions allowlist only: navigate{url}, click{locator}, type{locator,value}, clear{locator},
+wait{ms}, assert_visible{locator}, assert_text{text}.
+Respect actionCapPerCycle from Caps (default 5). wait with blank ms becomes 5000ms server-side.
+Use the steps journal to remember prior actions. Do not use tools, edit files, or narrate outside JSON.
+
+${req.prompt || ""}
+
+Slim HTML excerpt:
+${slimHtmlExcerpt}
+${screenshotNote}
+`;
+
   const prompts = {
     pick: pickPrompt,
     invent: inventPrompt,
     solve: solvePrompt,
     "authoring-review": authoringReviewPrompt,
+    hunt: huntPrompt,
   };
   const result = await Agent.prompt(prompts[mode], {
     apiKey,
@@ -230,6 +247,15 @@ ${req.suite || ""}
 
   if (mode === "authoring-review") {
     process.stdout.write(String(text));
+    return;
+  }
+  if (mode === "hunt") {
+    const parsed = extractJsonObject(String(text));
+    if (!parsed || !parsed.decision) {
+      console.error("Hunt planner returned no decision JSON:", String(text).slice(0, 500));
+      process.exit(1);
+    }
+    process.stdout.write(JSON.stringify(parsed) + "\n");
     return;
   }
   const parsed = extractJsonObject(String(text));

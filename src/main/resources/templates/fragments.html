@@ -39,19 +39,18 @@
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4V8z"/></svg>
             Execute
         </a>
-        <div class="nav-group" th:classappend="${navActive != null and navActive.startsWith('automate')} ? ' is-open' : ''"
-             data-nav-group="automate">
-            <a href="/automate" class="nav-group-head"
-               th:classappend="${navActive != null and navActive.startsWith('automate')} ? 'active'">
-                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>
-                Automate
-                <span class="nav-chevron" aria-hidden="true"></span>
-            </a>
-            <div class="nav-group-children">
-                <a href="/upload" th:classappend="${navActive == 'automate-upload'} ? 'active'">Upload</a>
-                <a href="/jobs" th:classappend="${navActive == 'automate-jobs'} ? 'active'">Jobs</a>
-            </div>
-        </div>
+        <a href="/automate" th:classappend="${navActive == 'automate'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>
+            Automate
+        </a>
+        <a href="/bug-hunter" th:classappend="${navActive == 'bug-hunter'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8 11h6"/><path d="M11 8v6"/></svg>
+            Bug Hunter
+        </a>
+        <a href="/runs" th:classappend="${navActive == 'runs'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+            Runs
+        </a>
         <a href="/tc-guide" th:classappend="${navActive == 'tc-guide'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9l3 3v13H6V4z"/><path d="M14 4v4h4"/><path d="M8 12h8"/><path d="M8 16h6"/></svg>
             Guide
@@ -75,33 +74,7 @@
         </th:block>
     </nav>
 
-    <script th:inline="javascript">
-        (function () {
-            var KEY = 'keel.automateNavOpen';
-            var group = document.querySelector('[data-nav-group="automate"]');
-            if (!group) return;
-            var head = group.querySelector('.nav-group-head');
-            if (sessionStorage.getItem(KEY) === '1' || group.classList.contains('is-open')) {
-                group.classList.add('is-open');
-            }
-            if (head) {
-                head.addEventListener('click', function (e) {
-                    if (e.target.closest('.nav-group-children')) return;
-                    if (e.metaKey || e.ctrlKey) return;
-                    if (head.getAttribute('href') === '/automate' && !group.classList.contains('is-open')) {
-                        e.preventDefault();
-                        group.classList.add('is-open');
-                        sessionStorage.setItem(KEY, '1');
-                        return;
-                    }
-                    group.classList.toggle('is-open');
-                    sessionStorage.setItem(KEY, group.classList.contains('is-open') ? '1' : '0');
-                });
-            }
-        })();
-    </script>
-
-    <a id="sidebar-job-chip" class="sidebar-job-chip" hidden href="/status" aria-label="Open job status">
+    <a id="sidebar-job-chip" class="sidebar-job-chip" hidden href="/status" aria-label="Open run status">
         <span class="spinner spinner--badge" aria-hidden="true"></span>
         <span id="sidebar-job-chip-label">Working…</span>
     </a>
@@ -125,7 +98,7 @@
                 chip.hidden = false;
                 chip.href = href;
                 labelEl.textContent = text;
-                chip.setAttribute('aria-label', text + ' Open job status');
+                chip.setAttribute('aria-label', text + ' Open run status');
             }
             async function tick() {
                 if (document.hidden) {
@@ -165,7 +138,7 @@
                         var href = '/status?jobId=' + encodeURIComponent(newest.jobId);
                         var text = active.length === 1
                             ? kindLabel(newest.jobKind)
-                            : (active.length + ' jobs running');
+                            : (active.length + ' runs in progress');
                         show(href, text);
                     }
                 } catch (e) {
