@@ -34,6 +34,75 @@ Supporting capabilities:
 
 ---
 
+## Choose your path — entire solution flow
+
+Use this to pick **one primary path** (you can still run others later on the same project library).
+
+```text
+                    ┌─────────────────────────┐
+                    │  Project + base URL     │
+                    │  (+ credentials)        │
+                    └───────────┬─────────────┘
+                                │
+                                ▼
+                    ┌─────────────────────────┐
+                    │  Do you have TCs yet?   │
+                    └───────────┬─────────────┘
+                     no / thin  │           yes
+                                │
+              ┌─────────────────┴─────────────────┐
+              ▼                                   ▼
+     ┌────────────────┐                 ┌────────────────────┐
+     │   GENERATE     │                 │  Library already   │
+     │ stories / CSV  │                 │  on the project    │
+     │ → workbook     │                 └─────────┬──────────┘
+     └───────┬────────┘                           │
+             │ optional Review with AI            │
+             ▼                                    │
+     ┌────────────────┐                           │
+     │ Project library│◄──────────────────────────┘
+     └───────┬────────┘
+             │
+             ▼
+     ┌───────────────────────────────────────────┐
+     │           What do you need next?          │
+     └───────┬───────────────┬───────────────────┘
+             │               │                   │
+             ▼               ▼                   ▼
+      ┌────────────┐  ┌────────────┐     ┌─────────────┐
+      │  EXECUTE   │  │  AUTOMATE  │     │ BUG HUNTER  │
+      │ live proof │  │ Selenium   │     │ exploratory │
+      │ + evidence │  │ TestNG ZIP │     │ break+invent│
+      └─────┬──────┘  └─────┬──────┘     └──────┬──────┘
+            │               │                    │
+            ▼               ▼                    ▼
+      Results / bugs   Framework ZIP      Hunter pack ZIP
+                                              (review only —
+                                               no library write)
+```
+
+### Decision table
+
+| If you want… | Go to | Output |
+|--------------|--------|--------|
+| Cases from stories or external AI | **Generate** (+ optional **Compare** / Review with AI) | Project library workbook |
+| “Does this written TC pass on the live site?” | **Execute** | Evidence, screenshots, bug export |
+| “Give me customer-ready Java automation” | **Automate** | Selenium/TestNG framework ZIP |
+| “Break the feature / invent edge cases I didn’t write” | **Bug Hunter** | Hunter pack (bugs + candidate scenarios) |
+| Route cases by intent | Set **KeelPath** on each TC | Automate vs Execute vs Manual eligibility |
+
+### Recommended happy path (full solution)
+
+1. **Project** — base URL + credential profile.  
+2. **Generate** — stories → library (optionally Review with AI → Accept).  
+3. **Execute** — small subset → confirm the app behaves.  
+4. **Automate** — `AUTOMATE` / blank KeelPath rows → download ZIP.  
+5. **Bug Hunter** (optional) — same library TCs → download pack → human reviews bugs/scenarios; import candidates only if you choose.
+
+KeelPath reminder: **Automate** skips `EXECUTE` / `VISION_ONLY` / `MANUAL`; **Execute** skips `MANUAL` only.
+
+---
+
 ## Stack
 
 - **Java 21** · Spring Boot portal
