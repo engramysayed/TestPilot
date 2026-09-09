@@ -37,6 +37,8 @@ Matching plans/tasks/notes sit beside each spec under `docs/superpowers/plans/`.
 2. Live loop: page map (B) + slim fallback (A) → Ollama/Cursor planner → grounded actions → journal + coverage.
 3. Phase 2: strategy sequencer (happy→…→invent), `HuntOracle` drafts, stop reasons `STUCK` / `COMPLETE` / finish / cycle cap.
 4. Phase 3 (two-pass DOM neighborhoods) is **out of scope** until AxisPay proves map+slim still too large.
+   - Gaps backlog: `docs/superpowers/plans/2026-09-10-bug-hunter-phase12-gaps.md`
+   - Deferred Phase 3: `docs/superpowers/plans/2026-09-10-bug-hunter-phase3-twopass-dom.md`
 5. Package: `delivery.hunt.*` under `src/main/java/delivery/hunt/`. Focused tests: `Hunt*Test`, `HuntApiTest`.
 
 ```bat
