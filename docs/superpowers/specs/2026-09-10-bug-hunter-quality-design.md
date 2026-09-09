@@ -284,7 +284,9 @@ Phase 2: optional “strategies” checkbox default on (fixed sequence).
 
 1. **Phase 1** implement + verify (map, auto/slim, guard, coverage, stuck, remove 32k cut).  
 2. **Phase 2** implement + verify (strategies, oracles, finish, pack polish).  
-3. **Phase 3** only if needed: two-pass neighborhoods after AxisPay evidence.
+3. **Phase 3** only if needed: two-pass neighborhoods after AxisPay evidence — see  
+   `docs/superpowers/plans/2026-09-10-bug-hunter-phase3-twopass-dom.md`.  
+   Remaining Phase 1–2 gaps: `docs/superpowers/plans/2026-09-10-bug-hunter-phase12-gaps.md`.
 
 ## Open decisions (locked for this spec)
 
