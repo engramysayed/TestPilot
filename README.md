@@ -13,17 +13,24 @@ Paste user stories or import structured test cases, prove them against a real si
 | **Generate** | Stories or external AI JSON/CSV → quality-gated workbook (`latest.xlsx` / CSV) |
 | **Automate** | Workbook → live prove + heal → Java Selenium TestNG ZIP |
 | **Execute** | Run selected cases against the live site with evidence, without full codegen packaging |
+| **Bug Hunter** | Exploratory live hunt: break features + invent edge scenarios → downloadable hunter pack (no auto-merge into the library) |
 | **Compare** | Same stories through two local models; save the better set into the project |
 | **KeelPath** | Per-case routing: `AUTOMATE` · `EXECUTE` · `VISION_ONLY` · `MANUAL` |
 
 On **Generate**, after a workbook is saved, you can optionally run **Review with AI** (Cursor or Ollama) to spot missing scenarios, ambiguities, and leave-empty / TestData issues before Execute or Automate. The review returns findings and a proposed suite for preview; **Accept** saves the updated workbook, **Discard** leaves the current file unchanged.
 
+On **Execute** and **Automate** you can use the project **Generated library**, select a subset, mix an optional `.xlsx` / `.csv` (upload wins on the same `TC_ID`), and optionally **Review selected TCs with Cursor before run**. Accept uses the proposal for that job only; to keep it, Accept on Generate Review with AI or edit the library on the project page.
+
 Supporting capabilities:
 
 - Authoring quality gate (leave-empty / vague asserts / field naming)
 - Editable TC preview (step × test-data grid before Automate/Execute)
+- Project **Generated library** (edit / delete saved cases)
 - Heal cascade: DOM bind → Ollama → optional Cursor invent → structured **recovery** plans
 - Domains, projects, credentials, design references, and retention under a local store
+
+**Everything Keel can do today:** [`docs/PRODUCT.md`](docs/PRODUCT.md).  
+**What shipped in each publish:** [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
@@ -75,6 +82,8 @@ Primary knobs live in `src/main/resources/application.properties`:
 | `delivery.cursor-heal.enabled` | Enable Cursor invent/solve sidecar |
 | `delivery.store-root` | Project artifact store (default `./delivery-store`) |
 | `delivery.browser.headless` | Headless prove/execute browser |
+| `delivery.hunt.dom-mode` | Bug Hunter DOM context: `auto` (page map, slim if thin) · `map` · `slim` |
+| `delivery.dry-run` | When `true`, hunts/conversions simulate without a live browser |
 
 API clients should send header: `X-Keel-Requested-With: Keel`.
 
@@ -103,13 +112,34 @@ Excel / generated workbook
 
 ---
 
+## How Bug Hunter works
+
+```text
+Selected library TCs + optional user story
+        │
+        ▼
+   brief.md → browser (optional login)
+        │
+        ▼
+   each cycle: page map (± slim) + screenshot + journal + coverage
+        → Ollama/Cursor planner JSON → grounded actions (cap 5)
+        → strategies (happy → empty → boundary → abuse → session → invent)
+        → oracle drafts + STUCK / COMPLETE / finish / cycle ceiling
+        ▼
+   hunter pack ZIP (bugs, candidate scenarios, cycles/** evidence)
+```
+
+Open **Bug Hunter** in the nav (`/bug-hunter`). Nothing merges into the generated library until a human imports candidates. Specs: [`docs/superpowers/specs/2026-09-09-bug-hunter-design.md`](docs/superpowers/specs/2026-09-09-bug-hunter-design.md), [`docs/superpowers/specs/2026-09-10-bug-hunter-quality-design.md`](docs/superpowers/specs/2026-09-10-bug-hunter-quality-design.md).
+
+---
+
 ## Repository layout
 
 ```text
-src/main/java/delivery/     Portal, jobs, authoring, heal, codegen, Excel
+src/main/java/delivery/     Portal, jobs, authoring, heal, hunt, codegen, Excel
 src/main/resources/         application.properties, templates, static UI
 customer-framework-template/  Shipped TAF core inside every Automate ZIP
-tools/cursor-heal/          Cursor Auto heal sidecar
+tools/cursor-heal/          Cursor Auto heal (+ hunt) sidecar
 docs/                       Specs, plans, and ops guides
 scripts/                    Setup helpers (e.g. vision models)
 ```

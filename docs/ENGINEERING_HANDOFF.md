@@ -1,6 +1,10 @@
 # Keel — Engineering handoff
 
-Product overview and quick start live in the root [`README.md`](../README.md). This document points engineers at deeper material already in the tree.
+Product overview and quick start live in the root [`README.md`](../README.md).  
+**Full product feature list:** [`PRODUCT.md`](PRODUCT.md).  
+**Public “what we shipped” writeup:** [`CHANGELOG.md`](../CHANGELOG.md) — add a dated section when you publish.
+
+This document points engineers at deeper material already in the tree.
 
 ## Core flows
 
@@ -20,8 +24,24 @@ Product overview and quick start live in the root [`README.md`](../README.md). T
 | Authoring + heal recovery | `docs/superpowers/specs/2026-09-02-authoring-heal-recovery-design.md` |
 | Defect fix pass | `docs/superpowers/specs/2026-09-02-defect-fix-authoring-heal-design.md` |
 | Generate authoring repair | `docs/superpowers/specs/2026-08-31-generate-authoring-repair-design.md` |
+| Project TC library + mix upload | `docs/superpowers/specs/2026-09-07-project-tc-library-design.md` |
+| Generate authoring preflight review | `docs/superpowers/specs/2026-09-06-authoring-preflight-review-design.md` |
+| Bug Hunter (HUNT) | `docs/superpowers/specs/2026-09-09-bug-hunter-design.md` |
+| Bug Hunter quality (page map + strategies) | `docs/superpowers/specs/2026-09-10-bug-hunter-quality-design.md` |
 
 Matching plans/tasks/notes sit beside each spec under `docs/superpowers/plans/`.
+
+## Bug Hunter (summary)
+
+1. Job kind `HUNT` — UI `/bug-hunter`, worker `HuntWorker`, pack download via jobs API.
+2. Live loop: page map (B) + slim fallback (A) → Ollama/Cursor planner → grounded actions → journal + coverage.
+3. Phase 2: strategy sequencer (happy→…→invent), `HuntOracle` drafts, stop reasons `STUCK` / `COMPLETE` / finish / cycle cap.
+4. Phase 3 (two-pass DOM neighborhoods) is **out of scope** until AxisPay proves map+slim still too large.
+5. Package: `delivery.hunt.*` under `src/main/java/delivery/hunt/`. Focused tests: `Hunt*Test`, `HuntApiTest`.
+
+```bat
+mvn -q "-Dtest=HuntCoreTest,HuntApiTest,HuntPageMapTest,HuntCoverageMapTest,HuntActionGuardTest,HuntDomModeTest,HuntStrategySequencerTest,HuntOracleTest,HuntStopRulesTest" test
+```
 
 ## Heal contract (summary)
 
