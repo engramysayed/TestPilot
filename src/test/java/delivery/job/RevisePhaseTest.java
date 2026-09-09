@@ -53,7 +53,7 @@ public class RevisePhaseTest {
         Assert.assertTrue(Files.exists(notes));
         String md = Files.readString(notes);
         Assert.assertTrue(md.contains("TC1"));
-        String todo = Files.readString(temp.resolve("src/test/java/project/tests/todo/TC1TodoTest.java"));
+        String todo = Files.readString(temp.resolve("src/test/java/project/tests/todo/TC1Todo.java"));
         Assert.assertTrue(todo.contains("// REVIEW:"));
     }
 }

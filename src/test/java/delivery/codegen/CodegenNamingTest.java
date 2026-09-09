@@ -55,4 +55,57 @@ public class CodegenNamingTest {
                 "intent:TYPE_FIELD");
         Assert.assertEquals(CodegenNaming.actionMethodName(s), "select_Combobox_4");
     }
+
+    @Test
+    public void pageStemEscapesJavaKeywords() {
+        Assert.assertEquals(CodegenNaming.pageStem("New"), "NewPage");
+        Assert.assertEquals(CodegenNaming.pageStem("class"), "ClassPage");
+        Assert.assertEquals(CodegenNaming.actionsClassName("New"), "NewPage_Actions");
+        Assert.assertEquals(CodegenNaming.locatorsClassName("New"), "NewPage_Locators");
+    }
+
+    @Test
+    public void pageStemMapsOpaqueHexToShortPageHash() {
+        String stem = CodegenNaming.pageStem("be4f4d1cbc76453db3e06854ad5f4a64");
+        Assert.assertTrue(stem.startsWith("Page_"), stem);
+        Assert.assertTrue(stem.matches("Page_[A-Fa-f0-9]{8}"), stem);
+        Assert.assertEquals(CodegenNaming.pageStem("OperationsUsers"), "OperationsUsers");
+    }
+
+    @Test
+    public void safeLocalVarNameEscapesKeywords() {
+        Assert.assertEquals(CodegenNaming.safeLocalVarName("New_Actions"), "newPage");
+        Assert.assertEquals(CodegenNaming.safeLocalVarName("NewPage_Actions"), "newPage");
+        Assert.assertEquals(CodegenNaming.safeLocalVarName("Login_Actions"), "login");
+        Assert.assertEquals(CodegenNaming.safeLocalVarName("Class_Actions"), "classPage");
+    }
+
+    @Test
+    public void sanitizeJavaIdentifierEscapesKeywordsAndLeadingDigits() {
+        Assert.assertEquals(CodegenNaming.sanitizeJavaIdentifier("new", "el"), "new_");
+        Assert.assertEquals(CodegenNaming.sanitizeJavaIdentifier("1abc", "el"), "el_1abc");
+        Assert.assertEquals(CodegenNaming.sanitizeJavaIdentifier("firstName_Txt_Locator", "el"),
+                "firstName_Txt_Locator");
+    }
+
+    @Test
+    public void testClassNameIdOnly() {
+        Assert.assertEquals(CodegenNaming.testClassName("TC_01", true), "TC_01");
+        Assert.assertEquals(CodegenNaming.testClassName("TC_06", false), "TC_06Todo");
+    }
+
+    @Test
+    public void pageStemKeepsLoginPage() {
+        Assert.assertEquals(CodegenNaming.pageStem("LoginPage"), "LoginPage");
+        Assert.assertEquals(CodegenNaming.actionsClassName("LoginPage"), "LoginPage_Actions");
+    }
+
+    @Test
+    public void isValidJavaIdentifierRejectsKeywords() {
+        Assert.assertTrue(CodegenNaming.isValidJavaIdentifier("login"));
+        Assert.assertTrue(CodegenNaming.isValidJavaIdentifier("newPage"));
+        Assert.assertFalse(CodegenNaming.isValidJavaIdentifier("new"));
+        Assert.assertFalse(CodegenNaming.isValidJavaIdentifier("1bad"));
+        Assert.assertFalse(CodegenNaming.isValidJavaIdentifier(""));
+    }
 }

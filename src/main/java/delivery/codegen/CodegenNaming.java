@@ -33,10 +33,39 @@ public final class CodegenNaming {
             Pattern.CASE_INSENSITIVE);
     private static final Pattern FIELD_IN_RATIONALE = Pattern.compile(
             "(?i)\\bfield=([^:\\s|]+)");
+    private static final Pattern OPAQUE_HEX = Pattern.compile("^[A-Fa-f0-9]{12,}$");
     private static final Set<String> BANNED_VERB_TOKENS = Set.of(
             "type", "select", "assert", "click", "element");
+    /** Java reserved words / literals that cannot be identifiers. */
+    static final Set<String> JAVA_KEYWORDS = Set.of(
+            "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class",
+            "const", "continue", "default", "do", "double", "else", "enum", "extends", "final",
+            "finally", "float", "for", "goto", "if", "implements", "import", "instanceof",
+            "int", "interface", "long", "native", "new", "package", "private", "protected",
+            "public", "return", "short", "static", "strictfp", "super", "switch", "synchronized",
+            "this", "throw", "throws", "transient", "try", "void", "volatile", "while",
+            "true", "false", "null", "var", "record", "yield", "sealed", "permits"
+    );
 
     private CodegenNaming() {
+    }
+
+    /** Passed → {@code TC_01}; partial/todo → {@code TC_06Todo} (no {@code Test} suffix). */
+    public static String testClassName(String tcId, boolean passed) {
+        String base = tcIdToClassName(tcId);
+        return passed ? base : base + "Todo";
+    }
+
+    public static String tcIdToClassName(String tcId) {
+        String cleaned = tcId == null ? "" : tcId.replaceAll("[^A-Za-z0-9]", "_");
+        if (cleaned.isEmpty()) {
+            return "Tc";
+        }
+        if (Character.isDigit(cleaned.charAt(0))) {
+            cleaned = "Tc_" + cleaned;
+        }
+        cleaned = cleaned.substring(0, 1).toUpperCase(Locale.ROOT) + cleaned.substring(1);
+        return sanitizeJavaIdentifier(cleaned, "Tc");
     }
 
     /** Stem for Locators/Actions class pair (no Page/Locators/Actions suffix). */
@@ -46,15 +75,21 @@ public final class CodegenNaming {
         if (cleaned.isEmpty()) {
             cleaned = "Page";
         }
-        String stem = Character.toUpperCase(cleaned.charAt(0)) + cleaned.substring(1);
-        if (stem.endsWith("Page") && stem.length() > 4) {
-            stem = stem.substring(0, stem.length() - 4);
+        if (OPAQUE_HEX.matcher(cleaned).matches()) {
+            return "Page_" + String.format(Locale.ROOT, "%08x", cleaned.toLowerCase(Locale.ROOT).hashCode());
         }
+        String stem = Character.toUpperCase(cleaned.charAt(0)) + cleaned.substring(1);
         if (stem.endsWith("Locators") && stem.length() > 8) {
             stem = stem.substring(0, stem.length() - 8);
         }
         if (stem.endsWith("Actions") && stem.length() > 7) {
             stem = stem.substring(0, stem.length() - 7);
+        }
+        if (stem.isEmpty()) {
+            stem = "Page";
+        }
+        if (JAVA_KEYWORDS.contains(stem.toLowerCase(Locale.ROOT))) {
+            stem = stem + "Page";
         }
         return stem;
     }
@@ -65,6 +100,51 @@ public final class CodegenNaming {
 
     public static String actionsClassName(String pageName) {
         return pageStem(pageName) + "_Actions";
+    }
+
+    /**
+     * Local variable for a page Actions type, e.g. {@code NewPage_Actions} → {@code newPage}.
+     */
+    public static String safeLocalVarName(String pageClass) {
+        if (pageClass == null || pageClass.isBlank()) {
+            return "page";
+        }
+        String base = pageClass.trim();
+        if (base.endsWith("_Actions")) {
+            base = base.substring(0, base.length() - "_Actions".length());
+        } else if (base.endsWith("Page") && base.length() > 4
+                && Character.isUpperCase(base.charAt(0))) {
+            // keep stems that already end with Page (NewPage → newPage)
+        }
+        if (base.isEmpty()) {
+            return "page";
+        }
+        String name = Character.toLowerCase(base.charAt(0)) + base.substring(1);
+        if (JAVA_KEYWORDS.contains(name)) {
+            return name + "Page";
+        }
+        if (!isValidJavaIdentifier(name)) {
+            return sanitizeJavaIdentifier(name, "page");
+        }
+        return name;
+    }
+
+    public static boolean isValidJavaIdentifier(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        if (JAVA_KEYWORDS.contains(name)) {
+            return false;
+        }
+        if (!Character.isJavaIdentifierStart(name.charAt(0))) {
+            return false;
+        }
+        for (int i = 1; i < name.length(); i++) {
+            if (!Character.isJavaIdentifierPart(name.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -81,34 +161,37 @@ public final class CodegenNaming {
     public static String actionMethodName(ProvenStep step) {
         String action = step.action() == null ? "do" : step.action().trim().toLowerCase(Locale.ROOT);
         String token = toPascalSnake(semanticToken(step));
-        return switch (action) {
+        String name = switch (action) {
             case "type", "select" -> action + "_" + token;
             case "click" -> "click_" + token + (token.toLowerCase(Locale.ROOT).contains("button") ? "" : "_Button");
             default -> action + "_" + token;
         };
+        return sanitizeJavaIdentifier(name, "do_Element");
     }
 
     /** Assert method matching @Step, e.g. {@code assert_Logged_In_Successfully_Is_Visible}. */
     public static String assertMethodName(ProvenStep step) {
         String type = step.assertionType() == null ? "visible" : step.assertionType().trim();
+        String name;
         if ("urlContains".equalsIgnoreCase(type)) {
             String exp = step.assertionExpected() == null ? "Url" : step.assertionExpected();
-            return "assert_Url_Contains_" + toPascalSnake(exp);
+            name = "assert_Url_Contains_" + toPascalSnake(exp);
+        } else {
+            String token = toPascalSnake(semanticToken(step));
+            if ("textContains".equalsIgnoreCase(type) || "visible".equalsIgnoreCase(type)
+                    || "notVisible".equalsIgnoreCase(type)) {
+                String verb = "notVisible".equalsIgnoreCase(type) ? "Is_Not_Visible" : "Is_Visible";
+                name = "assert_" + token + "_" + verb;
+            } else if ("checked".equalsIgnoreCase(type) || "selected".equalsIgnoreCase(type)) {
+                name = "assert_" + token + "_Is_Selected";
+            } else if ("unchecked".equalsIgnoreCase(type)) {
+                name = "assert_" + token + "_Is_Unchecked";
+            } else {
+                String cleaned = type.replaceAll("[^A-Za-z0-9]+", "_");
+                name = "assert_" + token + "_" + toPascalSnake(cleaned);
+            }
         }
-        String token = toPascalSnake(semanticToken(step));
-        if ("textContains".equalsIgnoreCase(type) || "visible".equalsIgnoreCase(type)
-                || "notVisible".equalsIgnoreCase(type)) {
-            String verb = "notVisible".equalsIgnoreCase(type) ? "Is_Not_Visible" : "Is_Visible";
-            return "assert_" + token + "_" + verb;
-        }
-        if ("checked".equalsIgnoreCase(type) || "selected".equalsIgnoreCase(type)) {
-            return "assert_" + token + "_Is_Selected";
-        }
-        if ("unchecked".equalsIgnoreCase(type)) {
-            return "assert_" + token + "_Is_Unchecked";
-        }
-        String cleaned = type.replaceAll("[^A-Za-z0-9]+", "_");
-        return "assert_" + token + "_" + toPascalSnake(cleaned);
+        return sanitizeJavaIdentifier(name, "assert_Element_Is_Visible");
     }
 
     static String semanticToken(ProvenStep step) {
@@ -358,7 +441,7 @@ public final class CodegenNaming {
         return sb.toString();
     }
 
-    static String sanitizeJavaIdentifier(String raw, String fallback) {
+    public static String sanitizeJavaIdentifier(String raw, String fallback) {
         if (raw == null || raw.isBlank()) {
             return fallback;
         }
@@ -367,11 +450,20 @@ public final class CodegenNaming {
         if (cleaned.startsWith("_")) {
             cleaned = cleaned.substring(1);
         }
+        if (cleaned.endsWith("_") && cleaned.length() > 1) {
+            cleaned = cleaned.substring(0, cleaned.length() - 1);
+        }
         if (cleaned.isEmpty()) {
             return fallback;
         }
         if (Character.isDigit(cleaned.charAt(0))) {
             cleaned = "el_" + cleaned;
+        }
+        if (JAVA_KEYWORDS.contains(cleaned)) {
+            cleaned = cleaned + "_";
+        }
+        if (!isValidJavaIdentifier(cleaned)) {
+            return fallback;
         }
         return cleaned;
     }

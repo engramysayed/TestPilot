@@ -22,14 +22,15 @@ public class CodeWriterTest {
                 new TcOutcome("TC_002", TcStatus.TODO, List.of(), "failed", null)
         );
         writer.write(temp, outcomes);
-        Assert.assertTrue(Files.exists(temp.resolve("src/test/java/project/tests/generated/TC_001Test.java")));
-        Assert.assertTrue(Files.exists(temp.resolve("src/test/java/project/tests/todo/TC_002TodoTest.java")));
+        Assert.assertTrue(Files.exists(temp.resolve("src/test/java/project/tests/generated/TC_001.java")));
+        Assert.assertTrue(Files.exists(temp.resolve("src/test/java/project/tests/todo/TC_002Todo.java")));
         Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Login_Locators.java")));
         Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Login_Actions.java")));
-        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_001Test.java"));
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_001.java"));
         Assert.assertTrue(java.contains("import project.pages.Login_Actions;"), java);
         Assert.assertTrue(java.contains("Login_Actions login = new Login_Actions(driver)"), java);
         Assert.assertTrue(java.contains("@Test(description = \"TC_001 — Valid login\")"), java);
+        Assert.assertTrue(java.contains("public void Valid_login()"), java);
         Assert.assertFalse(java.contains("new project.pages.Login"));
         Assert.assertFalse(java.contains("typeType_"));
         Assert.assertFalse(java.contains("clickClick_"));
@@ -50,7 +51,7 @@ public class CodeWriterTest {
                 "TC_L", "Login with valid credentials", TcStatus.PASSED, List.of(body), "", null,
                 true, List.of(loginType, loginClick));
         writer.write(temp, List.of(outcome));
-        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_LTest.java"));
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_L.java"));
         Assert.assertTrue(java.contains("TARGET_USERNAME"), java);
         Assert.assertTrue(java.contains("PracticeTestLogin_Actions"), java);
         Assert.assertTrue(java.contains("type_Username"), java);
@@ -74,13 +75,37 @@ public class CodeWriterTest {
                 "TC_P", "Checkout flow", TcStatus.TODO, List.of(ok, typed),
                 "No DOM candidate for intent CLICK: Click Finish", null, false, List.of());
         writer.write(temp, List.of(outcome));
-        String java = Files.readString(temp.resolve("src/test/java/project/tests/todo/TC_PTodoTest.java"));
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/todo/TC_PTodo.java"));
         Assert.assertTrue(java.contains("STOPPED HERE"), java);
         Assert.assertTrue(java.contains("Click Finish"), java);
+        Assert.assertFalse(java.contains("HEAL_EXHAUSTED"), java);
         Assert.assertTrue(java.contains("Cart_Actions cart"), java);
         Assert.assertTrue(java.contains("CheckoutStepOne_Actions checkoutStepOne"), java);
         Assert.assertTrue(java.contains("TC_P — Checkout flow"), java);
         Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Cart_Actions.java")));
+    }
+
+    @Test
+    public void pageVarNameEscapesJavaKeywords() {
+        Assert.assertEquals(CodeWriter.pageVarName("New_Actions"), "newPage");
+        Assert.assertEquals(CodeWriter.pageVarName("NewPage_Actions"), "newPage");
+        Assert.assertEquals(CodeWriter.pageVarName("Class_Actions"), "classPage");
+        Assert.assertEquals(CodeWriter.pageVarName("Login_Actions"), "login");
+    }
+
+    @Test
+    public void writesKeywordPageStemWithoutIllegalVarName() throws Exception {
+        Path temp = Files.createTempDirectory("codegen-keyword");
+        CodeWriter writer = new CodeWriter(Path.of("customer-framework-template/templates"));
+        ProvenStep step = new ProvenStep("TC_K", "New", "elementAction", "type",
+                "css", "[data-axis-test-id='first-name-input']", "Ramy", "", "", true, "ok");
+        writer.write(temp, List.of(new TcOutcome(
+                "TC_K", "Create user", TcStatus.PASSED, List.of(step), "", null, false, List.of())));
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_K.java"));
+        Assert.assertTrue(java.contains("NewPage_Actions newPage = new NewPage_Actions(driver)"), java);
+        Assert.assertFalse(java.contains("New_Actions new ="), java);
+        Assert.assertTrue(java.contains("newPage.type_"), java);
+        Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/NewPage_Actions.java")));
     }
 
     @Test
@@ -96,7 +121,7 @@ public class CodeWriterTest {
         writer.write(temp, List.of(new TcOutcome(
                 "TC_O", "Order", TcStatus.PASSED, List.of(assertTitle, clickCart, assertHeader),
                 "", null, false, List.of())));
-        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_OTest.java"));
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_O.java"));
         int a = java.indexOf("assert_");
         int c = java.indexOf("click_");
         int a2 = java.lastIndexOf("assert_");
@@ -109,15 +134,18 @@ public class CodeWriterTest {
         CodeWriter writer = new CodeWriter(Path.of("customer-framework-template/templates"));
         ProvenStep bodyAssert = new ProvenStep("TC_T", "Home", "elementAction", "assert",
                 "xpath", "//body", "", "textContains", "Welcome back", true, "intent:ASSERT");
+        ProvenStep idTextAssert = new ProvenStep("TC_T", "Home", "elementAction", "assert",
+                "id", "toast-msg", "", "textContains", "Created", true, "intent:ASSERT");
         ProvenStep checked = new ProvenStep("TC_T", "Home", "elementAction", "assert",
                 "id", "agree", "", "checked", "", true, "intent:ASSERT");
         ProvenStep unknown = new ProvenStep("TC_T", "Home", "elementAction", "assert",
                 "id", "x", "", "weirdType", "", true, "intent:ASSERT");
         writer.write(temp, List.of(new TcOutcome(
-                "TC_T", "Text", TcStatus.PASSED, List.of(bodyAssert, checked, unknown),
+                "TC_T", "Text", TcStatus.PASSED, List.of(bodyAssert, idTextAssert, checked, unknown),
                 "", null, false, List.of())));
         String actions = Files.readString(temp.resolve("src/main/java/project/pages/Home_Actions.java"));
         Assert.assertTrue(actions.contains("bodyTextContains(\"Welcome back\")"), actions);
+        Assert.assertTrue(actions.contains("textContains("), actions);
         Assert.assertFalse(actions.contains("By.tagName(\"body\")"), actions);
         Assert.assertTrue(actions.contains("elementSelected("), actions);
         Assert.assertTrue(actions.contains("public void assert_"), actions);

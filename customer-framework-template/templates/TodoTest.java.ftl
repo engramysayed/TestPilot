@@ -49,7 +49,7 @@ public class ${className} extends BaseTest {
     }
 
     @Test(description = "${testDescription?j_string}", enabled = false)
-    public void pendingCase() {
+    public void ${methodName}() {
 <#list pageVars as p>
         ${p.className} ${p.varName} = new ${p.className}(driver);
 </#list>

@@ -17,8 +17,11 @@ public final class PageNameNormalizer {
         if (!isAlias(pageName)) {
             return pageName.trim();
         }
+        if ("LoginPage".equalsIgnoreCase(stem) || stem.toLowerCase().contains("login")) {
+            return "LoginPage";
+        }
         if (stem.isBlank() || "Page".equals(stem) || "Home".equals(stem)) {
-            return "Login";
+            return "LoginPage";
         }
         return stem;
     }

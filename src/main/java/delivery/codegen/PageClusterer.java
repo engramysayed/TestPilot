@@ -6,6 +6,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Phase-2: assign POM page names from URL path / landmarks so locators cluster
@@ -24,6 +25,18 @@ public final class PageClusterer {
             String path = uri.getPath();
             if (path == null || path.isBlank() || "/".equals(path)) {
                 return pageNameFromHost(uri.getHost());
+            }
+            List<String> segments = meaningfulPathSegments(path);
+            if (isLoginPath(path, segments)) {
+                return "LoginPage";
+            }
+            if (segments.size() >= 2) {
+                String leafSeg = segments.get(segments.size() - 1).toLowerCase(Locale.ROOT);
+                String prevSeg = segments.get(segments.size() - 2);
+                if (Set.of("new", "create", "edit").contains(leafSeg)) {
+                    String entity = singularizeEntity(prevSeg);
+                    return capitalize(leafSeg) + entity;
+                }
             }
             String leaf = path;
             int slash = leaf.lastIndexOf('/');
@@ -97,6 +110,80 @@ public final class PageClusterer {
         }
         String last = labels[labels.length - 1];
         return last.length() <= 3 && index == labels.length - 1;
+    }
+
+    static List<String> meaningfulPathSegments(String path) {
+        List<String> out = new ArrayList<>();
+        if (path == null || path.isBlank()) {
+            return out;
+        }
+        for (String part : path.split("/")) {
+            if (part.isBlank()) {
+                continue;
+            }
+            String seg = part;
+            int dot = seg.lastIndexOf('.');
+            if (dot > 0) {
+                seg = seg.substring(0, dot);
+            }
+            if (seg.isBlank()) {
+                continue;
+            }
+            out.add(seg);
+        }
+        return out;
+    }
+
+    static String singularizeEntity(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "Entity";
+        }
+        String[] parts = raw.split("[-_]");
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (part.isBlank()) {
+                continue;
+            }
+            sb.append(singularizeWord(part));
+        }
+        return sb.isEmpty() ? "Entity" : sb.toString();
+    }
+
+    static boolean isLoginPath(String path, List<String> segments) {
+        if (path != null) {
+            String lower = path.toLowerCase(Locale.ROOT);
+            if (lower.contains("/login") || lower.contains("-login")) {
+                return true;
+            }
+        }
+        for (String seg : segments) {
+            if (seg == null || seg.isBlank()) {
+                continue;
+            }
+            String s = seg.toLowerCase(Locale.ROOT);
+            if ("login".equals(s) || s.endsWith("login")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String singularizeWord(String part) {
+        String p = part.toLowerCase(Locale.ROOT);
+        if (p.endsWith("ies") && p.length() > 3) {
+            p = p.substring(0, p.length() - 3) + "y";
+        } else if (p.endsWith("s") && p.length() > 1 && !p.endsWith("ss")) {
+            p = p.substring(0, p.length() - 1);
+        }
+        return Character.toUpperCase(p.charAt(0)) + p.substring(1);
+    }
+
+    private static String capitalize(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        String lower = raw.toLowerCase(Locale.ROOT);
+        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
     }
 
     public static String toPageClassStem(String raw) {

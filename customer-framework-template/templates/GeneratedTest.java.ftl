@@ -46,7 +46,7 @@ public class ${className} extends BaseTest {
     }
 
     @Test(description = "${testDescription?j_string}")
-    public void runCase() {
+    public void ${methodName}() {
 <#if chronCalls?size == 0>
         org.testng.Assert.fail("No proven steps generated for ${tcId?j_string}");
 <#else>

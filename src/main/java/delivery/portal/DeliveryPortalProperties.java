@@ -1,5 +1,6 @@
 package delivery.portal;
 
+import delivery.authoring.LocalLlmClient;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.ArrayList;
@@ -30,7 +31,21 @@ public class DeliveryPortalProperties {
     private List<String> generateModels = new ArrayList<>(List.of("gemma4:e2b", "qwen2.5:latest"));
     /** Per-story Ollama wait for generate jobs. Async JSON batches often exceed 2 minutes. */
     private int generateTimeoutSeconds = 600;
+    /**
+     * Max new tokens for generate JSON. Ollama defaults near 1k and truncates long TC batches
+     * ({@code done_reason=length} → empty/invalid testCases).
+     */
+    private int generateNumPredict = LocalLlmClient.DEFAULT_GENERATE_NUM_PREDICT;
+    private CodegenProperties codegen = new CodegenProperties();
     private RetentionProperties retention = new RetentionProperties();
+
+    public static class CodegenProperties {
+        /** Optional Ollama polish for generated test method names only (pages stay deterministic). */
+        private boolean ollamaNaming = false;
+
+        public boolean isOllamaNaming() { return ollamaNaming; }
+        public void setOllamaNaming(boolean ollamaNaming) { this.ollamaNaming = ollamaNaming; }
+    }
 
     public static class RetentionProperties {
         /** Age in days before execute-runs and work dirs are deleted; 0 disables sweeper. */
@@ -82,6 +97,15 @@ public class DeliveryPortalProperties {
     public void setGenerateTimeoutSeconds(int generateTimeoutSeconds) {
         this.generateTimeoutSeconds = generateTimeoutSeconds;
     }
+    public int getGenerateNumPredict() { return generateNumPredict; }
+    public void setGenerateNumPredict(int generateNumPredict) {
+        this.generateNumPredict = generateNumPredict;
+    }
+    public CodegenProperties getCodegen() { return codegen; }
+    public void setCodegen(CodegenProperties codegen) {
+        this.codegen = codegen == null ? new CodegenProperties() : codegen;
+    }
+    public boolean isCodegenOllamaNaming() { return codegen.isOllamaNaming(); }
     public RetentionProperties getRetention() { return retention; }
     public void setRetention(RetentionProperties retention) { this.retention = retention; }
 }

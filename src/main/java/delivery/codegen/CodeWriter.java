@@ -1,5 +1,6 @@
 package delivery.codegen;
 
+import delivery.authoring.LocalLlmClient;
 import delivery.job.TcOutcome;
 import delivery.job.TcStatus;
 import freemarker.template.Configuration;
@@ -11,6 +12,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,9 +21,27 @@ import java.util.Map;
 
 public class CodeWriter {
     private final Path templateDir;
+    private final CodegenOptions namingOptions;
+    private final LocalLlmClient namingClient;
 
     public CodeWriter(Path templateDir) {
+        this(templateDir, CodegenOptions.DEFAULT);
+    }
+
+    public CodeWriter(Path templateDir, CodegenOptions namingOptions) {
         this.templateDir = templateDir;
+        this.namingOptions = namingOptions == null ? CodegenOptions.DEFAULT : namingOptions;
+        if (this.namingOptions.ollamaNaming()
+                && !this.namingOptions.llmBaseUrl().isBlank()
+                && !this.namingOptions.llmModel().isBlank()) {
+            this.namingClient = new LocalLlmClient(
+                    this.namingOptions.llmBaseUrl(),
+                    this.namingOptions.llmModel(),
+                    Duration.ofSeconds(15),
+                    64);
+        } else {
+            this.namingClient = null;
+        }
     }
 
     public void write(Path projectRoot, List<TcOutcome> outcomes) throws Exception {
@@ -86,7 +106,9 @@ public class CodeWriter {
         List<TcOutcome> safeOutcomes = outcomes == null ? List.of() : outcomes;
         for (TcOutcome outcome : safeOutcomes) {
             boolean passed = outcome.status() == TcStatus.PASSED;
-            String className = toClassName(outcome.tcId()) + (passed ? "Test" : "TodoTest");
+            String className = CodegenNaming.testClassName(outcome.tcId(), passed);
+            String methodName = TestMethodNaming.resolve(
+                    outcome.title(), outcome.tcId(), namingClient, namingOptions.ollamaNaming());
             List<Map<String, Object>> chronCalls = buildChronologicalCalls(outcome.tcId(), outcome.provenSteps());
             List<Map<String, Object>> loginChron = buildChronologicalCalls(outcome.tcId(), outcome.loginSteps());
             Map<String, Object> model = new HashMapModel();
@@ -94,7 +116,8 @@ public class CodeWriter {
             model.put("tcId", outcome.tcId());
             model.put("title", outcome.title() == null ? "" : outcome.title());
             model.put("testDescription", testDescription(outcome.tcId(), outcome.title()));
-            model.put("reason", outcome.failureReason() == null ? "" : outcome.failureReason());
+            model.put("reason", CodegenTodoReason.summarize(outcome.failureReason(), 120));
+            model.put("methodName", methodName);
             model.put("steps", outcome.provenSteps());
             model.put("chronCalls", chronCalls);
             model.put("pageVars", pageVarsFor(chronCalls));
@@ -102,8 +125,7 @@ public class CodeWriter {
             model.put("loginPageVars", pageVarsFor(loginChron));
             model.put("pageImports", pageImportsFor(chronCalls, loginChron));
             model.put("needsLoginBeforeMethod", outcome.needsLoginBeforeMethod());
-            model.put("reviewComments", outcome.failureReason() == null
-                    ? List.of() : List.<String>of());
+            model.put("reviewComments", List.of());
             Path out = (passed ? generatedDir : todoDir).resolve(className + ".java");
             Template tpl = passed ? genTpl : todoTpl;
             try (Writer w = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
@@ -207,19 +229,7 @@ public class CodeWriter {
     }
 
     static String pageVarName(String pageClass) {
-        if (pageClass == null || pageClass.isBlank()) {
-            return "page";
-        }
-        String base = pageClass;
-        if (base.endsWith("_Actions")) {
-            base = base.substring(0, base.length() - "_Actions".length());
-        } else if (base.endsWith("Page")) {
-            base = base.substring(0, base.length() - 4);
-        }
-        if (base.isEmpty()) {
-            return "page";
-        }
-        return Character.toLowerCase(base.charAt(0)) + base.substring(1);
+        return CodegenNaming.safeLocalVarName(pageClass);
     }
 
     /**
@@ -253,14 +263,7 @@ public class CodeWriter {
     }
 
     public static String toClassName(String tcId) {
-        String cleaned = tcId.replaceAll("[^A-Za-z0-9]", "_");
-        if (cleaned.isEmpty()) {
-            return "Tc";
-        }
-        if (Character.isDigit(cleaned.charAt(0))) {
-            cleaned = "Tc_" + cleaned;
-        }
-        return cleaned.substring(0, 1).toUpperCase(Locale.ROOT) + cleaned.substring(1);
+        return CodegenNaming.tcIdToClassName(tcId);
     }
 
     private static final class HashMapModel extends LinkedHashMap<String, Object> {

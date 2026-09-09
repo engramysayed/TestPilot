@@ -273,7 +273,7 @@ public class PageAccumulator {
         return "click".equalsIgnoreCase(step.action());
     }
 
-    /** textContains asserts are validated via body text — no By field needed. */
+    /** textContains without a solid locator — use body text instead of brittle XPath fields. */
     private static boolean isBodyTextAssert(ProvenStep step) {
         if (step == null || step.assertionType() == null) {
             return false;
@@ -281,8 +281,30 @@ public class PageAccumulator {
         if (!"textContains".equalsIgnoreCase(step.assertionType())) {
             return false;
         }
-        String action = step.action() == null ? "" : step.action();
-        return "assert".equalsIgnoreCase(action) || action.isBlank();
+        String loc = step.locatorValue() == null ? "" : step.locatorValue().trim();
+        if (loc.isBlank()) {
+            return true;
+        }
+        String strat = step.locatorStrategy() == null ? "" : step.locatorStrategy().toLowerCase(Locale.ROOT);
+        if ("id".equals(strat) || "name".equals(strat)) {
+            return false;
+        }
+        String lower = loc.toLowerCase(Locale.ROOT);
+        if (lower.contains("data-axis-test-id") || lower.contains("data-test") || lower.contains("data-qa")) {
+            return false;
+        }
+        if (lower.contains("//body") || lower.contains("normalize-space(.)")) {
+            return true;
+        }
+        if ("xpath".equals(strat) && loc.length() > 120) {
+            return true;
+        }
+        return false;
+    }
+
+    /** Package-visible for unit tests. */
+    static boolean isBodyTextAssertForTest(ProvenStep step) {
+        return isBodyTextAssert(step);
     }
 
     private static String normalizeByStrategy(String strategy) {

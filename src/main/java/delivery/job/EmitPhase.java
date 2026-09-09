@@ -1,6 +1,7 @@
 package delivery.job;
 
 import delivery.codegen.CodeWriter;
+import delivery.codegen.CodegenOptions;
 import delivery.codegen.DomainCatalogWriter;
 import delivery.codegen.PageClusterer;
 import delivery.codegen.ProvenStep;
@@ -102,7 +103,9 @@ public class EmitPhase {
         }
 
         bumpProgress("Phase2 emit: writing pages and tests");
-        new CodeWriter(request.templateRoot().resolve("templates")).write(projectDir, toCodegen);
+        CodegenOptions codegenOpts = new CodegenOptions(
+                request.codegenOllamaNaming(), request.localLlmBaseUrl(), request.localLlmModel());
+        new CodeWriter(request.templateRoot().resolve("templates"), codegenOpts).write(projectDir, toCodegen);
         DomainCatalogWriter.write(projectDir, outcomes);
 
         FrameworkPackager packager = new FrameworkPackager();

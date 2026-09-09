@@ -2,6 +2,7 @@ package delivery.job;
 
 import delivery.authoring.LoginStepDetector;
 import delivery.authoring.StepIntentBinder;
+import delivery.codegen.CodegenNaming;
 import delivery.codegen.CodeWriter;
 import delivery.codegen.ProvenStep;
 import delivery.excel.ManualTestCase;
@@ -144,7 +145,7 @@ public class RevisePhase {
 
     private static void annotateTestFile(Path projectDir, TcDraft d, List<String> issues) throws Exception {
         boolean passed = d.status() == TcDraftStatus.PASSED || d.status() == TcDraftStatus.REUSED;
-        String className = CodeWriter.toClassName(d.tcId()) + (passed ? "Test" : "TodoTest");
+        String className = CodegenNaming.testClassName(d.tcId(), passed);
         Path file = projectDir.resolve(passed
                 ? "src/test/java/project/tests/generated/" + className + ".java"
                 : "src/test/java/project/tests/todo/" + className + ".java");

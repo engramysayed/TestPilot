@@ -37,7 +37,11 @@ public class ${actionsClassName} extends ${locatorsClassName} {
 <#if assertion.assertionType == "visible">
         driver.validation().elementVisable(${assertion.fieldName});
 <#elseif assertion.assertionType == "textContains">
+<#if assertion.fieldName?has_content>
+        driver.validation().textContains(${assertion.fieldName}, "${assertion.expected?j_string}");
+<#else>
         driver.validation().bodyTextContains("${assertion.expected?j_string}");
+</#if>
 <#elseif assertion.assertionType == "urlContains">
         driver.validation().urlContains("${assertion.expected?j_string}");
 <#elseif assertion.assertionType == "checked" || assertion.assertionType == "selected">

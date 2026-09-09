@@ -61,7 +61,7 @@ public class FacebookIrCodegenIdentityTest {
         Assert.assertFalse(actions.contains("select_Gender_Select"), actions);
 
         String test02 = Files.readString(
-                FRAMEWORK.resolve("src/test/java/project/tests/generated/TC_FB_REG_02Test.java"));
+                FRAMEWORK.resolve("src/test/java/project/tests/generated/TC_FB_REG_02.java"));
         Assert.assertTrue(test02.contains("type_First_Name"), test02);
         Assert.assertTrue(test02.contains("type_Surname"), test02);
         Assert.assertFalse(test02.contains("type_Type("), test02);

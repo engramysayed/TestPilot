@@ -9,6 +9,20 @@ import java.util.List;
 
 public class PageClustererTest {
     @Test
+    public void newEntityPathUsesVerbPrefix() {
+        Assert.assertEquals(
+                PageClusterer.pageNameFromUrl("https://opssit.axispay.app/operations-users/new"),
+                "NewOperationUser");
+    }
+
+    @Test
+    public void loginPathUsesLoginPage() {
+        Assert.assertEquals(
+                PageClusterer.pageNameFromUrl("https://example.com/practice-test-login/"),
+                "LoginPage");
+    }
+
+    @Test
     public void pageNameFromCheckoutPath() {
         Assert.assertEquals(
                 PageClusterer.pageNameFromUrl("https://shop.example.com/checkout-step-one.html"),
@@ -68,8 +82,8 @@ public class PageClustererTest {
                 -1, "", "", "", 0,
                 "https://practicetestautomation.com/practice-test-login/");
         TcDraft out = PageClusterer.reclusterDraft(draft);
-        Assert.assertEquals(out.loginSteps().get(0).pageName(), "PracticeTestLogin");
-        Assert.assertEquals(out.provenSteps().get(0).pageName(), "PracticeTestLogin");
+        Assert.assertEquals(out.loginSteps().get(0).pageName(), "LoginPage");
+        Assert.assertEquals(out.provenSteps().get(0).pageName(), "LoginPage");
     }
 
     @Test
@@ -84,8 +98,8 @@ public class PageClustererTest {
                 -1, "", "", "", 0,
                 "https://practicetestautomation.com/practice-test-login/");
         TcDraft out = PageClusterer.reclusterDraft(draft);
-        Assert.assertEquals(out.loginSteps().get(0).pageName(), "PracticeTestLogin");
-        Assert.assertEquals(out.provenSteps().get(0).pageName(), "PracticeTestLogin");
+        Assert.assertEquals(out.loginSteps().get(0).pageName(), "LoginPage");
+        Assert.assertEquals(out.provenSteps().get(0).pageName(), "LoginPage");
     }
 
     @Test

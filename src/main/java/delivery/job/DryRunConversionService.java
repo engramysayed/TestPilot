@@ -1,6 +1,7 @@
 package delivery.job;
 
 import delivery.codegen.CodeWriter;
+import delivery.codegen.CodegenOptions;
 import delivery.codegen.DomainCatalogWriter;
 import delivery.excel.ExcelTcReader;
 import delivery.excel.KeelPathCaseFilter;
@@ -76,7 +77,9 @@ public class DryRunConversionService {
                             + ", blocked " + progress.todo());
         }
 
-        new CodeWriter(request.templateRoot().resolve("templates")).write(projectDir, outcomes);
+        CodegenOptions codegenOpts = new CodegenOptions(
+                request.codegenOllamaNaming(), request.localLlmBaseUrl(), request.localLlmModel());
+        new CodeWriter(request.templateRoot().resolve("templates"), codegenOpts).write(projectDir, outcomes);
         DomainCatalogWriter.write(projectDir, outcomes);
         packager.writeScoreReport(projectDir, outcomes);
         packager.writeTargetConfig(projectDir, request.baseUrl(), request.username(), request.password());
