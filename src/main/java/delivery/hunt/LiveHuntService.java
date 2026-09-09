@@ -6,8 +6,10 @@ import delivery.job.JobCancelledException;
 import delivery.job.JobLoginService;
 import delivery.job.JobProgressTracker;
 import delivery.job.PageSnapshot;
+import delivery.store.PreferredHooksStore;
 import drivers.WebDriverFactory;
 import org.json.JSONArray;
+import org.json.JSONObject;
 import org.openqa.selenium.WebDriver;
 import parsingLayer.HtmlSlimmer;
 
@@ -34,6 +36,19 @@ public final class LiveHuntService {
             JobProgressTracker tracker,
             BooleanSupplier cancelCheck
     ) throws Exception {
+        return run(request, selectedCases, huntRoot, loginRequest, planner, tracker, cancelCheck, null);
+    }
+
+    public HuntJobResult run(
+            HuntRequest request,
+            List<ManualTestCase> selectedCases,
+            Path huntRoot,
+            ConversionJobRequest loginRequest,
+            HuntPlanner planner,
+            JobProgressTracker tracker,
+            BooleanSupplier cancelCheck,
+            Path storeRoot
+    ) throws Exception {
         request.normalize();
         if (planner == null) {
             throw new IllegalArgumentException("planner required");
@@ -48,6 +63,8 @@ public final class LiveHuntService {
         boolean hasLoginUsername = loginRequest != null
                 && loginRequest.username() != null
                 && !loginRequest.username().isBlank();
+        String preferredHooksLine = PreferredHooksStore.join(
+                storeRoot == null ? List.of() : PreferredHooksStore.load(storeRoot, request.getBaseUrl()));
         int groundedRejects = 0;
 
         if (tracker != null) {
@@ -113,6 +130,7 @@ public final class LiveHuntService {
                         map.toPromptMd(), StandardCharsets.UTF_8);
 
                 String heading = map.headings().isEmpty() ? "" : map.headings().get(0);
+                List<String> urlsBefore = coverage.visitedUrls();
                 coverage.noteVisit(map.url(), map.title(), heading);
 
                 boolean includeSlim = HuntDomMode.shouldIncludeSlim(domMode, map);
@@ -140,7 +158,8 @@ public final class LiveHuntService {
                         includeSlim,
                         coverage.forPrompt(),
                         strategyHint,
-                        request.getDomMode()
+                        request.getDomMode(),
+                        preferredHooksLine
                 );
                 String userPrompt = OllamaHuntPlanner.buildUserPrompt(ctx);
                 // TestPilot-style evidence: exact prompt + response as text + screenshot
@@ -179,13 +198,28 @@ public final class LiveHuntService {
                     attachEvidence(bug, cycle, shot);
                     allBugs.add(bug);
                 }
+
+                String postSlim = HtmlSlimmer.slim(PageSnapshot.html(driver), 80000);
+                HuntPageMap postMap = HuntPageMapBuilder.build(
+                        driver.getCurrentUrl(), driver.getTitle(), postSlim);
+                HuntOracle.PageSignals pageSignals = new HuntOracle.PageSignals(
+                        driver.getCurrentUrl(),
+                        HuntOracle.mainTextLength(postSlim),
+                        urlsBefore,
+                        request.isStrategiesEnabled() ? sequencer.current().mode() : "explore",
+                        HuntOracle.lastActionNavigateOrClick(actionLog));
                 List<Map<String, Object>> oracleBugs = HuntOracle.collect(
                         cycle,
                         netFails,
-                        map.alerts(),
+                        postMap.alerts(),
                         actionLog,
                         journal.reproSlice(),
-                        plannerBugs);
+                        plannerBugs,
+                        pageSignals);
+                Files.writeString(cycleDir.resolve("oracle.json"),
+                        new JSONObject(HuntOracle.signalSnapshot(
+                                netFails, postMap.alerts(), pageSignals, oracleBugs)).toString(2),
+                        StandardCharsets.UTF_8);
                 for (Map<String, Object> bug : oracleBugs) {
                     attachEvidence(bug, cycle, shot);
                     allBugs.add(bug);
@@ -250,7 +284,7 @@ public final class LiveHuntService {
 
         Path zip = HuntPackWriter.writePack(
                 huntRoot, request, brief, stopReason, allBugs, allScenarios, cyclesUsed, networkStatus,
-                groundedRejects, sequencer.completed(), oracleBugCount);
+                groundedRejects, sequencer.completed(), oracleBugCount, coverage.visitedUrlCount());
         if (tracker != null) {
             tracker.update(request.getCycleCeiling(), request.getCycleCeiling(), "Hunter pack ready");
             tracker.setScores(allBugs.size(), allScenarios.size());

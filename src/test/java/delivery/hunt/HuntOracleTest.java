@@ -85,6 +85,54 @@ public class HuntOracleTest {
     }
 
     @Test
+    public void loadingFailedDraftsBugWhenPlannerSilent() {
+        List<Map<String, Object>> netFails = List.of(
+                Map.of("type", "loading_failed", "errorText", "net::ERR_CONNECTION_REFUSED",
+                        "url", "https://example.com/api")
+        );
+        List<Map<String, Object>> bugs = HuntOracle.collect(
+                1, netFails, List.of(), List.of(), "repro", List.of());
+        Assert.assertEquals(bugs.size(), 1);
+        Assert.assertTrue(String.valueOf(bugs.get(0).get("title")).toLowerCase().contains("network"));
+        Assert.assertEquals(bugs.get(0).get("severity"), "major");
+    }
+
+    @Test
+    public void blankMainAfterNavigateDraftsBug() {
+        HuntOracle.PageSignals page = new HuntOracle.PageSignals(
+                "https://app.example/empty", 5, List.of("https://app.example/home"),
+                "happy", true);
+        List<Map<String, Object>> actionLog = List.of(
+                Map.of("type", "navigate", "status", "ok", "url", "https://app.example/empty")
+        );
+        List<Map<String, Object>> bugs = HuntOracle.collect(
+                1, List.of(), List.of(), actionLog, "repro", List.of(), page);
+        Assert.assertEquals(bugs.size(), 1);
+        Assert.assertTrue(String.valueOf(bugs.get(0).get("title")).toLowerCase().contains("blank"));
+    }
+
+    @Test
+    public void unexpectedLoginRedirectDraftsBug() {
+        HuntOracle.PageSignals page = new HuntOracle.PageSignals(
+                "https://app.example/login", 200,
+                List.of("https://app.example/dashboard"), "empty", true);
+        List<Map<String, Object>> bugs = HuntOracle.collect(
+                1, List.of(), List.of(), List.of(), "repro", List.of(), page);
+        Assert.assertEquals(bugs.size(), 1);
+        Assert.assertTrue(String.valueOf(bugs.get(0).get("title")).toLowerCase().contains("redirect"));
+    }
+
+    @Test
+    public void sessionStrategySkipsUnexpectedLoginUrl() {
+        HuntOracle.PageSignals page = new HuntOracle.PageSignals(
+                "https://app.example/login", 200,
+                List.of("https://app.example/dashboard"), "session", true);
+        List<Map<String, Object>> bugs = HuntOracle.collect(
+                1, List.of(), List.of(), List.of(), "repro", List.of(), page);
+        Assert.assertTrue(bugs.isEmpty());
+    }
+
+    @Test
     public void finishedAllWhenEveryModeCompleted() {
         HuntStrategySequencer seq = new HuntStrategySequencer(true);
         Assert.assertFalse(seq.finishedAll());

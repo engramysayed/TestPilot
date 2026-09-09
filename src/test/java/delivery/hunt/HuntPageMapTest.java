@@ -36,6 +36,13 @@ public class HuntPageMapTest {
     }
 
     @Test
+    public void extractsToastAlerts() {
+        String html = "<html><body><div class=\"toast\">Saved failed</div></body></html>";
+        HuntPageMap map = HuntPageMapBuilder.build("https://ex/", "x", html);
+        Assert.assertTrue(map.alerts().stream().anyMatch(a -> a.contains("Saved")));
+    }
+
+    @Test
     public void toPromptMd_includesDialogsSection() {
         String html = """
                 <html><body>

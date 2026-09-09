@@ -57,7 +57,7 @@ public final class HuntPageMapBuilder {
         Set<String> seen = new LinkedHashSet<>();
         List<String> out = new ArrayList<>();
 
-        for (Element el : doc.select("[role=alert]")) {
+        for (Element el : doc.select("[role=alert], .toast, .Toast, [class*=toast], [class*=Toast]")) {
             addSnippet(out, seen, snippet(el));
             if (out.size() >= ALERT_MAX) {
                 return List.copyOf(out);

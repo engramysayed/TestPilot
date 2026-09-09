@@ -19,7 +19,7 @@ public final class OllamaHuntPlanner implements HuntPlanner {
             Use the steps journal to remember what already ran — do not repeat failed clicks blindly.
             Respect scenarioCap remaining. Prefer finish when findings are enough.
             Do not narrate outside JSON.
-            """;
+            """ + "\n" + delivery.authoring.LocatorPolicy.huntPlannerRules();
 
     private final LocalLlmClient client;
 
@@ -102,6 +102,15 @@ public final class OllamaHuntPlanner implements HuntPlanner {
             sb.append("\n## Slim DOM (current page only)\n");
             String dom = ctx.slimDom() == null ? "" : ctx.slimDom();
             sb.append(dom).append('\n');
+        }
+
+        sb.append("\n## Locator preference\n");
+        String hooks = ctx.preferredHooksLine();
+        if (hooks == null || hooks.isBlank()) {
+            sb.append("No project preferred-hook attributes configured — use default priority in system rules.\n");
+        } else {
+            sb.append("Project preferred-hook attributes (prefer controls using these): ")
+                    .append(hooks).append('\n');
         }
 
         sb.append("\n## Screenshot\n");

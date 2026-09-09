@@ -87,7 +87,8 @@ public class HuntWorker {
                         HuntRuntimeFactory.loginRequest(job, props),
                         planner,
                         tracker,
-                        cancelCheck
+                        cancelCheck,
+                        Path.of(props.getStoreRoot())
                 );
             });
 

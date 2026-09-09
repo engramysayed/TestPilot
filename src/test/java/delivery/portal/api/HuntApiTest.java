@@ -96,8 +96,30 @@ public class HuntApiTest extends AbstractTestNGSpringContextTests {
             Assert.assertNotNull(zf.getEntry("bug-report.json"));
             Assert.assertNotNull(zf.getEntry("candidate-scenarios.json"));
             Assert.assertNotNull(zf.getEntry("coverage-map.md"));
+            Assert.assertNotNull(zf.getEntry("coverage-map.json"));
             Assert.assertNotNull(zf.getEntry("cycles/cycle-01/page-map.md"));
+            Assert.assertNotNull(zf.getEntry("cycles/cycle-01/planner-prompt.txt"));
+            Assert.assertNotNull(zf.getEntry("cycles/cycle-01/planner-response.txt"));
+            Assert.assertNotNull(zf.getEntry("cycles/cycle-01/oracle.json"));
         }
+    }
+
+    @Test
+    public void startHunt_strategiesDisabledAccepted() throws Exception {
+        String projectId = createProject();
+        workbooks.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_01", "Login", "", "1. Open login", "Home", "P1", "smoke")
+        ), "test", "hunt-api-off");
+
+        MvcResult start = mockMvc.perform(post("/api/projects/" + projectId + "/hunt-runs")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tcIds\":[\"TC_01\"],\"planner\":\"ollama\",\"scenarioCap\":2,\"cycleCeiling\":2,\"strategiesEnabled\":false}"))
+                .andExpect(status().isAccepted())
+                .andReturn();
+        String jobId = new JSONObject(start.getResponse().getContentAsString()).getString("jobId");
+        Assert.assertEquals(waitTerminal(jobId), "COMPLETED");
     }
 
     private String createProject() throws Exception {

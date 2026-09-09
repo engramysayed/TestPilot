@@ -64,6 +64,23 @@ public final class LocatorPolicy {
                 """;
     }
 
+    /**
+     * Selector priority for Bug Hunter planner (page-map grounded actions).
+     * Prefer project preferred-hook attributes when listed in the user prompt.
+     */
+    public static String huntPlannerRules() {
+        return """
+                Locator rules (CRITICAL):
+                - Emit ONLY locators that appear in the page map (or slim DOM when that section is present).
+                - Prefer locatorStrategy+locatorValue from the page map Controls list over free-form CSS.
+                - Priority when several controls match: project preferred-hook attributes (if listed),
+                  then id, data-testid / data-test / data-qa, name, then CSS/XPath attribute locators.
+                - Never invent ids, data-test values, or absolute /html/body XPath.
+                - Never use volatile framework ids (_r_*, :r*, ember*, mui-*).
+                - Prefer accessible name / label text shown on the map when choosing among equals.
+                """;
+    }
+
     public static String freeInventRules() {
         return """
                 You are the final one-shot healer for one failed Excel UI intent.

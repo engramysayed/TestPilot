@@ -4,7 +4,7 @@
 
 **Goal:** Close remaining quality-spec items that were deferred after Phase 1–2 shipped (page map, coverage, grounding, strategies, basic oracles, STUCK/COMPLETE).
 
-**Status:** Draft — backlog  
+**Status:** Implemented (gaps closed 2026-09-10)  
 **Parent spec:** `docs/superpowers/specs/2026-09-10-bug-hunter-quality-design.md`  
 **Shipped plan:** `docs/superpowers/plans/2026-09-10-bug-hunter-quality.md`  
 **Sibling (only if context still blows):** `docs/superpowers/plans/2026-09-10-bug-hunter-phase3-twopass-dom.md`

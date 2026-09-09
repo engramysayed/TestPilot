@@ -17,12 +17,14 @@ import java.util.Set;
  */
 public final class HuntCoverageMap {
     public static final String FILE_NAME = "coverage-map.md";
+    public static final String JSON_FILE_NAME = "coverage-map.json";
     public static final int STUCK_FAIL_STREAK = 2;
     public static final int PROMPT_MAX_CHARS = 12_000;
 
     private static final Set<String> STREAK_TYPES = Set.of("click", "type", "clear", "assert_visible");
 
     private final Path file;
+    private final Path jsonFile;
     private final List<String> urls = new ArrayList<>();
     private final Set<String> urlSeen = new LinkedHashSet<>();
     private final List<String> fingerprints = new ArrayList<>();
@@ -32,6 +34,7 @@ public final class HuntCoverageMap {
 
     public HuntCoverageMap(Path huntRoot) {
         this.file = huntRoot.resolve(FILE_NAME);
+        this.jsonFile = huntRoot.resolve(JSON_FILE_NAME);
     }
 
     public void noteVisit(String url, String title, String heading) throws Exception {
@@ -118,12 +121,29 @@ public final class HuntCoverageMap {
         return "…(earlier coverage truncated)…\n" + all.substring(all.length() - PROMPT_MAX_CHARS);
     }
 
+    public int visitedUrlCount() {
+        return urls.size();
+    }
+
+    /** Snapshot of URLs visited so far (ordered, deduped). */
+    public List<String> visitedUrls() {
+        return List.copyOf(urls);
+    }
+
     public Path path() {
         return file;
     }
 
     private void flush() throws Exception {
         Files.writeString(file, renderMarkdown(), StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+        Map<String, Object> json = new LinkedHashMap<>();
+        json.put("urls", urls);
+        json.put("fingerprints", fingerprints);
+        json.put("controls", controls);
+        json.put("strategiesCompleted", strategiesCompleted);
+        json.put("failStreaks", failStreaks);
+        Files.writeString(jsonFile, new org.json.JSONObject(json).toString(2), StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
     }
 

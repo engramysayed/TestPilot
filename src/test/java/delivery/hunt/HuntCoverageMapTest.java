@@ -21,6 +21,7 @@ public class HuntCoverageMapTest {
         Assert.assertTrue(cov.shouldStopStuck());
         Assert.assertTrue(cov.forPrompt().contains("https://ex/a"));
         Assert.assertTrue(Files.isRegularFile(root.resolve("coverage-map.md")));
+        Assert.assertTrue(Files.isRegularFile(root.resolve("coverage-map.json")));
     }
 
     @Test

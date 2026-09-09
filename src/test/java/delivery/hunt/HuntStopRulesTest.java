@@ -153,6 +153,7 @@ public class HuntStopRulesTest {
         Assert.assertTrue(summary.contains("Stop reason: COMPLETE"));
         Assert.assertTrue(summary.contains("Bugs: 3 (oracle: 2)"));
         Assert.assertTrue(summary.contains("Strategies completed: happy, empty, boundary, abuse, session, invent"));
+        Assert.assertTrue(summary.contains("Coverage URLs visited:"));
     }
 
     @Test

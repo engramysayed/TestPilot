@@ -42,7 +42,7 @@ public final class HuntPackWriter {
                                  String networkCapture,
                                  int groundedRejectCount) throws IOException {
         return writePack(huntRoot, request, briefMd, stopReason, bugs, scenarios, cyclesUsed,
-                networkCapture, groundedRejectCount, List.of(), 0);
+                networkCapture, groundedRejectCount, List.of(), 0, 0);
     }
 
     public static Path writePack(Path huntRoot, HuntRequest request,
@@ -54,6 +54,20 @@ public final class HuntPackWriter {
                                  int groundedRejectCount,
                                  List<String> strategiesCompleted,
                                  int oracleBugCount) throws IOException {
+        return writePack(huntRoot, request, briefMd, stopReason, bugs, scenarios, cyclesUsed,
+                networkCapture, groundedRejectCount, strategiesCompleted, oracleBugCount, 0);
+    }
+
+    public static Path writePack(Path huntRoot, HuntRequest request,
+                                 String briefMd, String stopReason,
+                                 List<Map<String, Object>> bugs,
+                                 List<Map<String, Object>> scenarios,
+                                 int cyclesUsed,
+                                 String networkCapture,
+                                 int groundedRejectCount,
+                                 List<String> strategiesCompleted,
+                                 int oracleBugCount,
+                                 int coverageUrlCount) throws IOException {
         Files.createDirectories(huntRoot);
         Files.writeString(huntRoot.resolve("brief.md"), briefMd == null ? "" : briefMd, StandardCharsets.UTF_8);
 
@@ -62,7 +76,7 @@ public final class HuntPackWriter {
 
         String summary = buildSummary(request, stopReason, cyclesUsed, bugRows.size(), scenarioRows.size(),
                 networkCapture == null ? "best-effort" : networkCapture, groundedRejectCount,
-                strategiesCompleted, oracleBugCount);
+                strategiesCompleted, oracleBugCount, coverageUrlCount);
         Files.writeString(huntRoot.resolve("SUMMARY.md"), summary, StandardCharsets.UTF_8);
 
         Map<String, Object> bugReport = new LinkedHashMap<>();
@@ -92,7 +106,7 @@ public final class HuntPackWriter {
                                int bugCount, int scenarioCount, String networkCapture,
                                int groundedRejectCount) {
         return buildSummary(request, stopReason, cyclesUsed, bugCount, scenarioCount,
-                networkCapture, groundedRejectCount, List.of(), 0);
+                networkCapture, groundedRejectCount, List.of(), 0, 0);
     }
 
     static String buildSummary(HuntRequest request, String stopReason, int cyclesUsed,
@@ -100,6 +114,16 @@ public final class HuntPackWriter {
                                int groundedRejectCount,
                                List<String> strategiesCompleted,
                                int oracleBugCount) {
+        return buildSummary(request, stopReason, cyclesUsed, bugCount, scenarioCount,
+                networkCapture, groundedRejectCount, strategiesCompleted, oracleBugCount, 0);
+    }
+
+    static String buildSummary(HuntRequest request, String stopReason, int cyclesUsed,
+                               int bugCount, int scenarioCount, String networkCapture,
+                               int groundedRejectCount,
+                               List<String> strategiesCompleted,
+                               int oracleBugCount,
+                               int coverageUrlCount) {
         String strategiesLine = strategiesCompleted == null || strategiesCompleted.isEmpty()
                 ? "none"
                 : String.join(", ", strategiesCompleted);
@@ -116,6 +140,7 @@ public final class HuntPackWriter {
                 - Bugs: %d (oracle: %d)
                 - Candidate scenarios: %d (cap %d)
                 - Strategies completed: %s
+                - Coverage URLs visited: %d
                 - Grounded locator rejects: %d
                 - Network capture: %s
                 """.formatted(
@@ -132,6 +157,7 @@ public final class HuntPackWriter {
                 scenarioCount,
                 request.getScenarioCap(),
                 strategiesLine,
+                coverageUrlCount,
                 groundedRejectCount,
                 nullSafe(networkCapture)
         );

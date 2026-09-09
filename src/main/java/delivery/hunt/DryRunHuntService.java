@@ -49,9 +49,17 @@ public final class DryRunHuntService {
         checkCancel(cancelCheck);
 
         HuntPlannerDecision decision = HuntPlannerDecision.finishDryRunSeed(request.getScenarioCap());
+        String dryPrompt = OllamaHuntPlanner.systemPrompt() + "\n\n---\n\n(dry-run) no live planner call\n";
+        Files.writeString(cycleDir.resolve("planner-prompt.txt"), dryPrompt, StandardCharsets.UTF_8);
+        Files.writeString(cycleDir.resolve("planner-response.txt"),
+                decision.rawJson(), StandardCharsets.UTF_8);
         Files.writeString(cycleDir.resolve("planner-response.json"),
                 decision.rawJson(), StandardCharsets.UTF_8);
         Files.writeString(cycleDir.resolve("actions-log.json"), "[]", StandardCharsets.UTF_8);
+        Files.writeString(cycleDir.resolve("oracle.json"),
+                new org.json.JSONObject(HuntOracle.signalSnapshot(
+                        List.of(), List.of(), HuntOracle.PageSignals.empty(), List.of())).toString(2),
+                StandardCharsets.UTF_8);
 
         List<Map<String, Object>> bugs = new ArrayList<>(decision.bugs());
         List<Map<String, Object>> scenarios = new ArrayList<>();

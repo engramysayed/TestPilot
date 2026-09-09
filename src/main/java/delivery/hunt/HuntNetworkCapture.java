@@ -77,6 +77,10 @@ public final class HuntNetworkCapture implements AutoCloseable {
             row.put("type", "loading_failed");
             row.put("errorText", event.getErrorText());
             row.put("canceled", event.getCanceled());
+            String err = event.getErrorText() == null ? "" : event.getErrorText();
+            if (err.toLowerCase(java.util.Locale.ROOT).contains("net::err")) {
+                row.put("type", "net_error");
+            }
             failures.add(row);
         } catch (Exception ignored) {
         }

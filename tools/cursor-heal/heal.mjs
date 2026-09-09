@@ -219,7 +219,9 @@ Return ONLY one JSON object:
 actions allowlist only: navigate{url}, click{locator}, type{locator,value}, clear{locator},
 wait{ms}, assert_visible{locator}, assert_text{text}.
 Respect actionCapPerCycle from Caps (default 5). wait with blank ms becomes 5000ms server-side.
-Use the steps journal to remember prior actions. Do not use tools, edit files, or narrate outside JSON.
+Use the steps journal to remember prior actions.
+Locator rules: only emit locators from the page map / slim excerpt; prefer preferred-hook attrs, then id, data-test*, name; never invent volatile framework ids.
+Do not use tools, edit files, or narrate outside JSON.
 
 ${req.prompt || ""}
 
