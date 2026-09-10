@@ -2929,6 +2929,19 @@ body:not(.app-body) .shell {
 .hunt-strategy-list.is-dimmed {
     opacity: 0.45;
 }
+.hunt-strategy-list[hidden] {
+    display: none !important;
+}
+.hunt-library.tc-multiselect {
+    margin: 1rem 0 0.5rem;
+}
+.hunt-library .tc-ms {
+    max-width: 36rem;
+}
+.hunt-library #lib-count {
+    margin: 0.35rem 0 0;
+    font-size: 0.82rem;
+}
 .hunt-caps {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));

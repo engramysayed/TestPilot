@@ -116,19 +116,28 @@
             </label>
         </div>
 
-        <div class="hunt-library">
-            <div class="hunt-library-head">
-                <h3 class="auto-subhead">Library cases</h3>
-                <span class="muted" id="lib-count"></span>
-            </div>
+        <div class="hunt-library tc-multiselect" id="hunt-library-panel">
+            <span class="tc-ms-label">Library cases</span>
             <p class="field-hint">Selected cases seed the hunt brief — they are not executed as a TestNG suite.</p>
             <p id="lib-empty" class="muted" hidden>No generated workbook — upload or generate TCs first.</p>
-            <div class="lib-pick-toolbar" id="lib-toolbar" hidden>
-                <button type="button" class="button ghost" id="lib-pick-all">Select all</button>
-                <button type="button" class="button ghost" id="lib-pick-none">Clear</button>
-                <input type="search" id="lib-filter" class="lib-filter" placeholder="Filter by id or title…" autocomplete="off"/>
+            <div class="tc-ms" id="hunt-tc-ms" hidden>
+                <button type="button" class="tc-ms-trigger" id="hunt-tc-ms-trigger"
+                        aria-haspopup="listbox" aria-expanded="false">
+                    <span class="tc-ms-chips" id="hunt-tc-ms-chips"></span>
+                    <span class="tc-ms-summary muted" id="hunt-tc-ms-summary">Select cases</span>
+                    <span class="tc-ms-caret" aria-hidden="true"></span>
+                </button>
+                <div class="tc-ms-dropdown" id="hunt-tc-ms-dropdown" hidden>
+                    <input type="search" id="hunt-tc-ms-search" class="tc-ms-search"
+                           placeholder="Search cases…" autocomplete="off"/>
+                    <div class="tc-ms-toolbar">
+                        <button type="button" class="button ghost" id="lib-pick-all">Select all</button>
+                        <button type="button" class="button ghost" id="lib-pick-none">Clear</button>
+                    </div>
+                    <div id="lib-pick" class="tc-ms-list" role="listbox" aria-label="Library cases"></div>
+                </div>
             </div>
-            <div id="lib-pick" class="lib-pick-list hunt-lib-list" role="group" aria-label="Library cases"></div>
+            <p class="muted" id="lib-count"></p>
         </div>
 
         <p id="hunt-err" class="error" hidden></p>
@@ -203,7 +212,7 @@
     }
 
     function syncStrategyUi() {
-        strategyExplain.classList.toggle('is-dimmed', !strategiesCb.checked);
+        strategyExplain.hidden = !strategiesCb.checked;
     }
 
     function setStarting(on) {
@@ -298,59 +307,100 @@
     }
 
     function refreshLibCount() {
+        const chips = document.getElementById('hunt-tc-ms-chips');
+        const summary = document.getElementById('hunt-tc-ms-summary');
+        const countEl = document.getElementById('lib-count');
+        if (!chips || !summary) return;
+        const selected = Array.from(document.querySelectorAll('.hunt-tc:checked'));
         const total = document.querySelectorAll('.hunt-tc').length;
-        const selected = document.querySelectorAll('.hunt-tc:checked').length;
-        const el = document.getElementById('lib-count');
-        el.textContent = total ? (selected + ' selected · ' + total + ' total') : '';
-        const pick = document.getElementById('lib-pick');
-        pick.classList.toggle('is-scrollable', total > 10);
+        chips.innerHTML = '';
+        if (selected.length === 0) {
+            summary.textContent = total ? 'Select cases (' + total + ')' : 'Select cases';
+            summary.hidden = false;
+        } else {
+            selected.slice(0, 4).forEach(cb => {
+                const chip = document.createElement('span');
+                chip.className = 'tc-ms-chip';
+                chip.textContent = cb.value;
+                chips.appendChild(chip);
+            });
+            if (selected.length > 4) {
+                const more = document.createElement('span');
+                more.className = 'tc-ms-chip tc-ms-chip-more';
+                more.textContent = '+' + (selected.length - 4);
+                chips.appendChild(more);
+            }
+            summary.textContent = selected.length + ' of ' + total;
+            summary.hidden = false;
+        }
+        countEl.textContent = total ? (selected.length + ' selected · ' + total + ' total') : '';
+    }
+
+    function openHuntMultiselect() {
+        const drop = document.getElementById('hunt-tc-ms-dropdown');
+        const trigger = document.getElementById('hunt-tc-ms-trigger');
+        if (!drop || !trigger) return;
+        drop.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        document.getElementById('hunt-tc-ms')?.classList.add('is-open');
+        const search = document.getElementById('hunt-tc-ms-search');
+        if (search) {
+            search.value = '';
+            filterHuntMultiselect('');
+            search.focus();
+        }
+    }
+
+    function closeHuntMultiselect() {
+        const drop = document.getElementById('hunt-tc-ms-dropdown');
+        const trigger = document.getElementById('hunt-tc-ms-trigger');
+        if (drop) drop.hidden = true;
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        document.getElementById('hunt-tc-ms')?.classList.remove('is-open');
+    }
+
+    function filterHuntMultiselect(q) {
+        const needle = (q || '').trim().toLowerCase();
+        document.querySelectorAll('#lib-pick .tc-ms-option').forEach(el => {
+            const hay = el.dataset.search || '';
+            el.hidden = needle !== '' && !hay.includes(needle);
+        });
     }
 
     async function loadLibrary(projectId) {
         const pick = document.getElementById('lib-pick');
         const empty = document.getElementById('lib-empty');
-        const toolbar = document.getElementById('lib-toolbar');
-        const filter = document.getElementById('lib-filter');
+        const ms = document.getElementById('hunt-tc-ms');
         pick.innerHTML = '';
-        filter.value = '';
+        closeHuntMultiselect();
         const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases', {
             credentials: 'same-origin', headers: API_HEADERS
         });
         if (!res.ok) {
             empty.hidden = false;
-            toolbar.hidden = true;
+            ms.hidden = true;
             refreshLibCount();
             return;
         }
         const data = await res.json();
         const cases = data.cases || [];
         empty.hidden = cases.length > 0;
-        toolbar.hidden = cases.length === 0;
+        ms.hidden = cases.length === 0;
         cases.forEach(tc => {
             const id = tc.tcId || tc.id;
             const lab = document.createElement('label');
-            lab.className = 'hunt-lib-item';
+            lab.className = 'tc-ms-option generate-check';
             lab.dataset.search = ((id || '') + ' ' + (tc.title || '')).toLowerCase();
-            lab.innerHTML =
-                '<input type="checkbox" class="hunt-tc" value="' + escapeHtml(id) + '"/>'
-                + '<span class="hunt-lib-text">'
-                + '<span class="mono hunt-lib-id">' + escapeHtml(id) + '</span>'
-                + '<span class="hunt-lib-title">' + escapeHtml(tc.title || '') + '</span>'
-                + '</span>';
+            lab.innerHTML = '<input type="checkbox" class="hunt-tc" value="' + escapeHtml(id) + '"/> '
+                + '<span class="mono">' + escapeHtml(id) + '</span> '
+                + '<span class="tc-ms-option-title">' + escapeHtml(tc.title || '') + '</span>';
+            lab.querySelector('input').addEventListener('change', () => {
+                refreshLibCount();
+                updateStartEnabled();
+            });
             pick.appendChild(lab);
         });
-        pick.querySelectorAll('.hunt-tc').forEach(cb => cb.addEventListener('change', () => {
-            updateStartEnabled();
-            refreshLibCount();
-        }));
         refreshLibCount();
-    }
-
-    function applyLibFilter() {
-        const q = (document.getElementById('lib-filter').value || '').trim().toLowerCase();
-        document.querySelectorAll('.hunt-lib-item').forEach(item => {
-            item.hidden = !!(q && !(item.dataset.search || '').includes(q));
-        });
     }
 
     function selectedTcIds() {
@@ -439,17 +489,32 @@
         }
     });
 
-    document.getElementById('lib-pick-all').addEventListener('click', () => {
-        document.querySelectorAll('.hunt-lib-item:not([hidden]) .hunt-tc').forEach(cb => { cb.checked = true; });
+    document.getElementById('hunt-tc-ms-trigger')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const drop = document.getElementById('hunt-tc-ms-dropdown');
+        if (drop && drop.hidden) openHuntMultiselect();
+        else closeHuntMultiselect();
+    });
+    document.getElementById('hunt-tc-ms-search')?.addEventListener('input', (e) => {
+        filterHuntMultiselect(e.target.value);
+    });
+    document.getElementById('lib-pick-all')?.addEventListener('click', () => {
+        document.querySelectorAll('#lib-pick .tc-ms-option:not([hidden]) .hunt-tc').forEach(cb => { cb.checked = true; });
         refreshLibCount();
         updateStartEnabled();
     });
-    document.getElementById('lib-pick-none').addEventListener('click', () => {
+    document.getElementById('lib-pick-none')?.addEventListener('click', () => {
         document.querySelectorAll('.hunt-tc').forEach(cb => { cb.checked = false; });
         refreshLibCount();
         updateStartEnabled();
     });
-    document.getElementById('lib-filter').addEventListener('input', applyLibFilter);
+    document.addEventListener('click', (e) => {
+        const root = document.getElementById('hunt-tc-ms');
+        if (root && !root.contains(e.target)) closeHuntMultiselect();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeHuntMultiselect();
+    });
     strategiesCb.addEventListener('change', syncStrategyUi);
     syncStrategyUi();
 
