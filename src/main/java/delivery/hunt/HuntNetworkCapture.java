@@ -4,9 +4,9 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chromium.HasCdp;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v142.network.Network;
-import org.openqa.selenium.devtools.v142.network.model.LoadingFailed;
-import org.openqa.selenium.devtools.v142.network.model.ResponseReceived;
+import org.openqa.selenium.devtools.v153.network.Network;
+import org.openqa.selenium.devtools.v153.network.model.LoadingFailed;
+import org.openqa.selenium.devtools.v153.network.model.ResponseReceived;
 import utils.LogsManager;
 
 import java.util.ArrayList;
@@ -46,6 +46,8 @@ public final class HuntNetworkCapture implements AutoCloseable {
             cap.tools.addListener(Network.loadingFailed(), cap::onLoadingFailed);
             // Touch HasCdp so Chromium paths stay warm when available
             if (driver instanceof HasCdp) {
+                LogsManager.info("HUNT_NETWORK: CDP session attached (devtools-v153)");
+            } else {
                 LogsManager.info("HUNT_NETWORK: CDP session attached");
             }
             return cap;
