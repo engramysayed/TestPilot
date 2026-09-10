@@ -73,11 +73,12 @@ public final class HuntActionExecutor {
             return row;
         }
         String type = str(action.get("type")).isBlank() ? str(action.get("action")) : str(action.get("type"));
-        type = normalizeType(type.trim().toLowerCase(Locale.ROOT));
-        row.putAll(action);
+        Map<String, Object> normalized = HuntActionNormalizer.normalize(action);
+        type = str(normalized.get("type"));
+        row.putAll(normalized);
         row.put("type", type);
         if (guard != null) {
-            Optional<String> why = guard.rejectReason(withNormalizedType(action, type));
+            Optional<String> why = guard.rejectReason(normalized);
             if (why.isPresent()) {
                 row.put("status", "rejected");
                 row.put("reason", "ungrounded_locator: " + why.get());
@@ -87,7 +88,7 @@ public final class HuntActionExecutor {
         try {
             switch (type) {
                 case "navigate" -> {
-                    String url = str(action.get("url"));
+                    String url = str(normalized.get("url"));
                     if (url.isBlank()) {
                         row.put("status", "rejected");
                         row.put("reason", "navigate requires url");
@@ -109,7 +110,7 @@ public final class HuntActionExecutor {
                     row.put("status", "ok");
                 }
                 case "execute_js" -> {
-                    String script = jsScript(action);
+                    String script = jsScript(normalized);
                     if (script.isBlank()) {
                         row.put("status", "rejected");
                         row.put("reason", "execute_js requires script|code|js");
@@ -132,27 +133,27 @@ public final class HuntActionExecutor {
                     row.put("status", "ok");
                 }
                 case "click" -> {
-                    find(action).click();
+                    find(normalized).click();
                     row.put("status", "ok");
                 }
                 case "type" -> {
-                    WebElement el = find(action);
+                    WebElement el = find(normalized);
                     el.clear();
-                    el.sendKeys(str(action.get("value")));
+                    el.sendKeys(str(normalized.get("value")));
                     row.put("status", "ok");
                 }
                 case "clear" -> {
-                    find(action).clear();
+                    find(normalized).clear();
                     row.put("status", "ok");
                 }
                 case "wait" -> {
-                    int ms = parseWaitMs(action.get("ms"));
+                    int ms = parseWaitMs(normalized.get("ms"));
                     Thread.sleep(ms);
                     row.put("ms", ms);
                     row.put("status", "ok");
                 }
                 case "assert_visible" -> {
-                    WebElement el = find(action);
+                    WebElement el = find(normalized);
                     boolean ok = el.isDisplayed();
                     row.put("status", ok ? "ok" : "fail");
                     if (!ok) {
@@ -160,9 +161,9 @@ public final class HuntActionExecutor {
                     }
                 }
                 case "assert_text" -> {
-                    String expected = str(action.get("text"));
+                    String expected = str(normalized.get("text"));
                     if (expected.isBlank()) {
-                        expected = str(action.get("value"));
+                        expected = str(normalized.get("value"));
                     }
                     String body = driver.findElement(By.tagName("body")).getText();
                     boolean ok = body != null && body.contains(expected);
@@ -275,19 +276,18 @@ public final class HuntActionExecutor {
     }
 
     static String normalizeType(String type) {
-        return switch (type) {
+        if (type == null) {
+            return "";
+        }
+        return switch (type.trim().toLowerCase(Locale.ROOT)) {
             case "navigate_back", "history_back", "go_back" -> "back";
             case "navigate_forward", "history_forward", "go_forward" -> "forward";
             case "reload", "reload_page", "page_refresh" -> "refresh";
             case "js", "javascript", "eval_js", "run_js" -> "execute_js";
-            default -> type;
+            case "fill", "input", "enter", "send_keys", "sendkeys", "set_value", "setvalue" -> "type";
+            case "press", "tap" -> "click";
+            default -> type.trim().toLowerCase(Locale.ROOT);
         };
-    }
-
-    private static Map<String, Object> withNormalizedType(Map<String, Object> action, String type) {
-        Map<String, Object> copy = new LinkedHashMap<>(action);
-        copy.put("type", type);
-        return copy;
     }
 
     private static String jsScript(Map<String, Object> action) {

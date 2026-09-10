@@ -19,7 +19,7 @@ public final class HuntActionGuard {
             "css", "cssselector", "xpath", "linktext", "link_text");
 
     private static final Pattern CSS_ATTR = Pattern.compile(
-            "^[a-zA-Z][\\w-]*\\[([\\w-]+)\\s*=\\s*['\"]([^'\"]+)['\"]\\]$");
+            "^(?:[a-zA-Z][\\w-]*)?\\[([\\w-]+)\\s*=\\s*['\"]([^'\"]+)['\"]\\]$");
     private static final Pattern XPATH_ATTR = Pattern.compile(
             "^//[a-zA-Z][\\w-]*\\[@([\\w-]+)\\s*=\\s*['\"]([^'\"]+)['\"]");
     private static final Pattern XPATH_LABEL_TEXT = Pattern.compile(
@@ -41,6 +41,7 @@ public final class HuntActionGuard {
             return Optional.empty();
         }
         String type = resolveType(action);
+        type = HuntActionExecutor.normalizeType(type);
         if (!GROUNDED_TYPES.contains(type)) {
             return Optional.empty();
         }
@@ -52,7 +53,17 @@ public final class HuntActionGuard {
         }
 
         String explicitStrategy = str(action.get("locatorStrategy")).trim().toLowerCase(Locale.ROOT);
-        String strategy = explicitStrategy.isBlank() ? guessStrategy(value) : explicitStrategy;
+        HuntActionNormalizer.NormalizedLocator nl =
+                HuntActionNormalizer.normalizeLocator(value, explicitStrategy);
+        value = nl.value();
+        rawLocator = value;
+        String strategy = nl.strategy().isBlank() ? guessStrategy(value) : nl.strategy();
+        if (!explicitStrategy.isBlank() && nl.strategy().isBlank()) {
+            strategy = explicitStrategy;
+        } else if (!nl.strategy().isBlank()) {
+            explicitStrategy = nl.strategy();
+            strategy = nl.strategy();
+        }
 
         if (inMap(strategy, value, rawLocator) || inHtml(explicitStrategy, strategy, value, rawLocator)) {
             return Optional.empty();

@@ -168,7 +168,17 @@ public final class LiveHuntService {
                         StandardCharsets.UTF_8);
                 Files.writeString(cycleDir.resolve("planner-request.md"), userPrompt, StandardCharsets.UTF_8);
 
+                if (tracker != null) {
+                    tracker.update(cycle, request.getCycleCeiling(),
+                            "Waiting for planner (cycle " + cycle + ")…");
+                }
+
                 HuntPlannerDecision decision = planner.plan(ctx);
+                if (tracker != null) {
+                    int planned = decision.actions() == null ? 0 : decision.actions().size();
+                    tracker.update(cycle, request.getCycleCeiling(),
+                            "Running " + planned + " action(s) for cycle " + cycle);
+                }
                 String responseText = decision.rawJson().isBlank()
                         ? new org.json.JSONObject()
                         .put("decision", decision.decision().name().toLowerCase())

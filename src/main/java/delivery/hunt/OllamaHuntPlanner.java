@@ -14,6 +14,10 @@ public final class OllamaHuntPlanner implements HuntPlanner {
             actions allowlist: navigate{url}, back{}, forward{}, refresh{}, execute_js{script},
             click{locator|locatorStrategy+locatorValue}, type{locator,value},
             clear{locator}, wait{ms}, assert_visible{locator}, assert_text{text}.
+            Never use fill/input — use type. Never invent locators.
+            Copy locators exactly from page map Controls (example css value:
+            [data-axis-test-id='username_Input']). Prefer
+            {"type":"type","locatorStrategy":"css","locatorValue":"[data-axis-test-id='username_Input']","value":"x"}.
             Aliases: navigate_back→back, reload→refresh, js/code→execute_js script field.
             Current URL is always in the page map (## URL) — read it; use navigate/back/forward/refresh to move.
             Prefer UI locators for normal probes; use execute_js only for short page probes
