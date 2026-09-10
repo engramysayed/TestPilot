@@ -46,7 +46,25 @@ public final class OllamaHuntPlanner implements HuntPlanner {
         String raw = png == null || png.length == 0
                 ? client.completeJson(SYSTEM, user)
                 : client.completeJson(SYSTEM, user, png);
-        return HuntPlannerDecision.parse(raw);
+        try {
+            return HuntPlannerDecision.parse(raw);
+        } catch (Exception first) {
+            // One repair pass — small models often emit NULs / truncated JSON.
+            String repairUser = user + "\n\n## Repair\nYour previous reply was invalid JSON ("
+                    + first.getMessage()
+                    + "). Return ONLY one valid JSON object with keys decision, rationale, actions, bugs, scenarios.";
+            String repaired = png == null || png.length == 0
+                    ? client.completeJson(SYSTEM, repairUser)
+                    : client.completeJson(SYSTEM, repairUser, png);
+            try {
+                return HuntPlannerDecision.parse(repaired);
+            } catch (Exception second) {
+                return HuntPlannerDecision.parse("""
+                        {"decision":"continue","rationale":"Planner JSON invalid after repair — skipping actions this cycle.",
+                        "actions":[],"bugs":[],"scenarios":[]}
+                        """.trim());
+            }
+        }
     }
 
     static String buildUserPrompt(Context ctx) {

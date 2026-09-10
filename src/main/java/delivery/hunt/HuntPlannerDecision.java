@@ -43,8 +43,18 @@ public final class HuntPlannerDecision {
         if (raw == null || raw.isBlank()) {
             throw new IllegalArgumentException("Empty planner JSON");
         }
-        String trimmed = stripFence(raw.trim());
-        JSONObject o = new JSONObject(trimmed);
+        String cleaned = sanitizePlannerText(raw);
+        String trimmed = stripFence(cleaned.trim());
+        trimmed = extractJsonObject(trimmed);
+        JSONObject o;
+        try {
+            o = new JSONObject(trimmed);
+        } catch (org.json.JSONException first) {
+            // Second pass: drop leftover control chars that still break strings.
+            trimmed = sanitizePlannerText(trimmed).replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", "");
+            trimmed = extractJsonObject(trimmed);
+            o = new JSONObject(trimmed);
+        }
         String d = o.optString("decision", "continue").trim().toLowerCase(Locale.ROOT);
         Decision decision = "finish".equals(d) ? Decision.FINISH : Decision.CONTINUE;
         return new HuntPlannerDecision(
@@ -55,6 +65,39 @@ public final class HuntPlannerDecision {
                 toMapList(o.optJSONArray("scenarios")),
                 trimmed
         );
+    }
+
+    /** Remove NULs / illegal controls that small local models sometimes emit inside JSON strings. */
+    static String sanitizePlannerText(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(raw.length());
+        for (int i = 0; i < raw.length(); i++) {
+            char c = raw.charAt(i);
+            if (c == 0) {
+                continue;
+            }
+            // Keep tab/LF/CR; drop other C0 controls that break org.json string parsing.
+            if (c < 0x20 && c != '\t' && c != '\n' && c != '\r') {
+                continue;
+            }
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    /** Prefer the outermost {...} when the model wraps JSON in prose. */
+    static String extractJsonObject(String s) {
+        if (s == null || s.isBlank()) {
+            return "";
+        }
+        int start = s.indexOf('{');
+        int end = s.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return s.substring(start, end + 1).trim();
+        }
+        return s.trim();
     }
 
     public static HuntPlannerDecision finishDryRunSeed(int scenarioCap) {

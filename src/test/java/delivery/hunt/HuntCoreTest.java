@@ -55,6 +55,24 @@ public class HuntCoreTest {
     }
 
     @Test
+    public void plannerParseStripsNulBytesInsideStrings() {
+        String dirty = "{\"decision\":\"continue\",\"rationale\":\"ok"
+                + "\u0000"
+                + "path\",\"actions\":[],\"bugs\":[],\"scenarios\":[]}";
+        HuntPlannerDecision d = HuntPlannerDecision.parse(dirty);
+        Assert.assertEquals(d.decision(), HuntPlannerDecision.Decision.CONTINUE);
+        Assert.assertTrue(d.rationale().contains("ok"));
+        Assert.assertTrue(d.rationale().contains("path"));
+    }
+
+    @Test
+    public void plannerParseExtractsObjectFromProse() {
+        HuntPlannerDecision d = HuntPlannerDecision.parse(
+                "Sure!\n{\"decision\":\"finish\",\"rationale\":\"done\",\"actions\":[],\"bugs\":[],\"scenarios\":[]}\nThanks");
+        Assert.assertEquals(d.decision(), HuntPlannerDecision.Decision.FINISH);
+    }
+
+    @Test
     public void dryRunProducesZip() throws Exception {
         HuntRequest req = new HuntRequest();
         req.setJobId("hunt_dry");
