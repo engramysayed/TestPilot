@@ -157,19 +157,21 @@
         <h2>Recent Bug Hunter runs</h2>
         <p class="panel-intro">This project’s HUNT jobs — open Status or download the pack when ready.</p>
         <p id="recent-empty" class="muted" hidden>No Bug Hunter runs yet.</p>
-        <table class="table" id="recent-table" hidden>
-            <thead>
-            <tr>
-                <th>Run</th>
-                <th>Status</th>
-                <th>Bugs</th>
-                <th>Scenarios</th>
-                <th>Message</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody id="recent-body"></tbody>
-        </table>
+        <div class="table-scroll table-scroll--hunt">
+            <table class="table table--hunt-recent" id="recent-table" hidden>
+                <thead>
+                <tr>
+                    <th>Run</th>
+                    <th>Status</th>
+                    <th>Bugs</th>
+                    <th>Scenarios</th>
+                    <th>Message</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody id="recent-body"></tbody>
+            </table>
+        </div>
     </section>
 </main>
 </div>
@@ -284,11 +286,24 @@
         sel.value = '';
     }
 
+    function shortMessage(msg) {
+        const raw = String(msg == null ? '' : msg).trim();
+        if (!raw) return '—';
+        // Prefer the leading error code / first sentence over Selenium dump.
+        const head = raw.split(/\r?\n/)[0];
+        const cut = head.indexOf(' Build info:');
+        const cleaned = (cut > 0 ? head.slice(0, cut) : head).trim();
+        if (cleaned.length <= 120) return cleaned;
+        return cleaned.slice(0, 117) + '…';
+    }
+
     function refreshLibCount() {
         const total = document.querySelectorAll('.hunt-tc').length;
         const selected = document.querySelectorAll('.hunt-tc:checked').length;
         const el = document.getElementById('lib-count');
         el.textContent = total ? (selected + ' selected · ' + total + ' total') : '';
+        const pick = document.getElementById('lib-pick');
+        pick.classList.toggle('is-scrollable', total > 10);
     }
 
     async function loadLibrary(projectId) {
@@ -371,12 +386,12 @@
                 ? ' <a href="/api/jobs/' + encodeURIComponent(j.jobId) + '/download">Download</a>'
                 : '';
             tr.innerHTML =
-                '<td><code class="mono">' + escapeHtml(j.jobId) + '</code></td>' +
+                '<td><code class="mono" title="' + escapeHtml(j.jobId) + '">' + escapeHtml(j.jobId) + '</code></td>' +
                 '<td><span class="badge ' + badgeClass(j.status) + ' badge--busy">' + escapeHtml(j.status) + busy + '</span></td>' +
                 '<td>' + (j.passedCount != null ? j.passedCount : '—') + '</td>' +
                 '<td>' + (j.todoCount != null ? j.todoCount : '—') + '</td>' +
-                '<td class="muted">' + escapeHtml(j.message || '') + '</td>' +
-                '<td><a href="/status?jobId=' + encodeURIComponent(j.jobId) + '">Status</a>' + dl + '</td>';
+                '<td class="clip muted" title="' + escapeHtml(j.message || '') + '">' + escapeHtml(shortMessage(j.message)) + '</td>' +
+                '<td class="actions"><a href="/status?jobId=' + encodeURIComponent(j.jobId) + '">Status</a>' + dl + '</td>';
             body.appendChild(tr);
         });
     }
