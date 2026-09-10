@@ -28,22 +28,25 @@
         </p>
     </section>
 
-    <section class="panel" id="hunt-form-panel" hidden>
+    <section class="panel hunt-start-panel" id="hunt-form-panel" hidden>
         <h2>Start a hunt</h2>
         <p class="panel-intro">
-            Select library cases, optional user story, planner, and caps.
-            Stop when the AI says finish or the cycle ceiling is hit.
+            Pick library cases as context, choose how the planner thinks, then start.
+            The hunt opens your project base URL first, then optionally auto-logs in.
         </p>
-        <p class="muted" id="base-url-row" hidden>
-            Base URL <span id="base-url-display" class="mono"></span>
-        </p>
+
+        <div class="hunt-base-card" id="base-url-row" hidden>
+            <span class="hunt-base-label">Opens first</span>
+            <code class="mono" id="base-url-display"></code>
+        </div>
         <p class="error" id="base-url-missing" hidden>
             No base URL configured.
             <a id="settings-link" href="#">Open project Settings</a>
         </p>
 
-        <label id="cred-label" hidden>Credential profile
+        <label id="cred-label" class="hunt-cred" hidden>Credential profile
             <select id="credential-profile"></select>
+            <span class="field-hint">Use <em>Open site only</em> when hunting login / auth flows so auto-login does not steal the page.</span>
         </label>
 
         <label>User story / notes (optional)
@@ -52,8 +55,23 @@
 
         <fieldset class="hunt-planner">
             <legend>Planner</legend>
-            <label class="check"><input type="radio" name="planner" value="ollama" checked/> Ollama</label>
-            <label class="check"><input type="radio" name="planner" value="cursor"/> Cursor</label>
+            <p class="field-hint hunt-planner-hint">Who decides the next browser actions each cycle.</p>
+            <div class="hunt-planner-cards" role="radiogroup" aria-label="Planner engine">
+                <label class="hunt-choice-card">
+                    <input type="radio" name="planner" value="ollama" checked/>
+                    <span class="hunt-choice-body">
+                        <span class="hunt-choice-title">Ollama</span>
+                        <span class="hunt-choice-desc">Local models — good default for repeated hunts.</span>
+                    </span>
+                </label>
+                <label class="hunt-choice-card">
+                    <input type="radio" name="planner" value="cursor"/>
+                    <span class="hunt-choice-body">
+                        <span class="hunt-choice-title">Cursor</span>
+                        <span class="hunt-choice-desc">Cloud agent planner when Ollama is not enough.</span>
+                    </span>
+                </label>
+            </div>
         </fieldset>
 
         <label>DOM mode
@@ -62,29 +80,76 @@
                 <option value="map">Map only</option>
                 <option value="slim">Full slim DOM</option>
             </select>
+            <span class="field-hint">What page context the planner sees each cycle.</span>
         </label>
 
-        <label class="check"><input type="checkbox" id="strategies-enabled" checked/> Use hunt strategies</label>
+        <div class="hunt-strategy-block">
+            <label class="hunt-strategy-toggle check">
+                <input type="checkbox" id="strategies-enabled" checked/>
+                <span>
+                    <strong>Use hunt strategies</strong>
+                    <span class="field-hint">Walks a fixed probe order instead of free-form explore-only.</span>
+                </span>
+            </label>
+            <ol class="hunt-strategy-list" id="strategy-explain" aria-label="Hunt strategy sequence">
+                <li><strong>Happy</strong> — expected path still works</li>
+                <li><strong>Empty</strong> — blank / missing required fields</li>
+                <li><strong>Boundary</strong> — length, format, and edge values</li>
+                <li><strong>Abuse</strong> — injection-ish / hostile input</li>
+                <li><strong>Session</strong> — logout / auth edge (skipped if no credentials)</li>
+                <li><strong>Invent</strong> — capped novel scenarios from context</li>
+            </ol>
+        </div>
 
         <div class="hunt-caps">
             <label>Scenario cap
                 <input type="number" id="scenario-cap" min="1" max="20" value="5"/>
+                <span class="field-hint">Max invented scenarios kept</span>
             </label>
             <label>Cycle ceiling
                 <input type="number" id="cycle-ceiling" min="1" max="30" value="8"/>
+                <span class="field-hint">Hard stop on planner rounds</span>
             </label>
             <label>Actions / cycle
                 <input type="number" id="action-cap" min="1" max="15" value="5"/>
+                <span class="field-hint">Clicks/types per round</span>
             </label>
         </div>
 
-        <h3 class="auto-subhead">Library cases</h3>
-        <p id="lib-empty" class="muted" hidden>No generated workbook — upload or generate TCs first.</p>
-        <div id="lib-pick" class="lib-pick-list"></div>
+        <div class="hunt-library">
+            <div class="hunt-library-head">
+                <h3 class="auto-subhead">Library cases</h3>
+                <span class="muted" id="lib-count"></span>
+            </div>
+            <p class="field-hint">Selected cases seed the hunt brief — they are not executed as a TestNG suite.</p>
+            <p id="lib-empty" class="muted" hidden>No generated workbook — upload or generate TCs first.</p>
+            <div class="lib-pick-toolbar" id="lib-toolbar" hidden>
+                <button type="button" class="button ghost" id="lib-pick-all">Select all</button>
+                <button type="button" class="button ghost" id="lib-pick-none">Clear</button>
+                <input type="search" id="lib-filter" class="lib-filter" placeholder="Filter by id or title…" autocomplete="off"/>
+            </div>
+            <div id="lib-pick" class="lib-pick-list hunt-lib-list" role="group" aria-label="Library cases"></div>
+        </div>
 
         <p id="hunt-err" class="error" hidden></p>
-        <div class="actions">
-            <button type="button" class="button" id="start-hunt" disabled>Start Bug Hunter</button>
+        <div class="actions hunt-start-actions">
+            <button type="button" class="button" id="start-hunt" disabled>
+                <span class="hunt-start-label">Start Bug Hunter</span>
+                <span class="hunt-start-busy" hidden>
+                    <span class="spinner spinner--badge" aria-hidden="true"></span>
+                    Starting…
+                </span>
+            </button>
+        </div>
+    </section>
+
+    <section class="panel" id="hunt-starting" hidden aria-live="polite" aria-busy="false">
+        <div class="generate-loading-head">
+            <span class="spinner" aria-hidden="true"></span>
+            <div>
+                <h3>Starting Bug Hunter…</h3>
+                <p class="muted">Queuing the job, then opening the status page.</p>
+            </div>
         </div>
     </section>
 
@@ -116,6 +181,9 @@
     const formPanel = document.getElementById('hunt-form-panel');
     const startBtn = document.getElementById('start-hunt');
     const huntErr = document.getElementById('hunt-err');
+    const huntStarting = document.getElementById('hunt-starting');
+    const strategiesCb = document.getElementById('strategies-enabled');
+    const strategyExplain = document.getElementById('strategy-explain');
     let projects = [];
 
     function escapeHtml(s) {
@@ -130,6 +198,21 @@
         if (s === 'FAILED' || s === 'CANCELLED') return 'err';
         if (s === 'COMPLETED_WITH_BLOCK') return 'warn';
         return 'muted';
+    }
+
+    function syncStrategyUi() {
+        strategyExplain.classList.toggle('is-dimmed', !strategiesCb.checked);
+    }
+
+    function setStarting(on) {
+        huntStarting.hidden = !on;
+        huntStarting.setAttribute('aria-busy', on ? 'true' : 'false');
+        formPanel.classList.toggle('is-submitting', on);
+        const label = startBtn.querySelector('.hunt-start-label');
+        const busy = startBtn.querySelector('.hunt-start-busy');
+        if (label) label.hidden = on;
+        if (busy) busy.hidden = !on;
+        startBtn.disabled = on || startBtn.disabled;
     }
 
     async function loadProjects() {
@@ -188,38 +271,71 @@
             return;
         }
         label.hidden = false;
+        const none = document.createElement('option');
+        none.value = '';
+        none.textContent = '— Open site only (no auto-login) —';
+        sel.appendChild(none);
         list.forEach(c => {
             const opt = document.createElement('option');
             opt.value = c.profileName;
             opt.textContent = c.profileName + ' (' + (c.username || '') + ')';
             sel.appendChild(opt);
         });
+        sel.value = '';
+    }
+
+    function refreshLibCount() {
+        const total = document.querySelectorAll('.hunt-tc').length;
+        const selected = document.querySelectorAll('.hunt-tc:checked').length;
+        const el = document.getElementById('lib-count');
+        el.textContent = total ? (selected + ' selected · ' + total + ' total') : '';
     }
 
     async function loadLibrary(projectId) {
         const pick = document.getElementById('lib-pick');
         const empty = document.getElementById('lib-empty');
+        const toolbar = document.getElementById('lib-toolbar');
+        const filter = document.getElementById('lib-filter');
         pick.innerHTML = '';
+        filter.value = '';
         const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases', {
             credentials: 'same-origin', headers: API_HEADERS
         });
         if (!res.ok) {
             empty.hidden = false;
+            toolbar.hidden = true;
+            refreshLibCount();
             return;
         }
         const data = await res.json();
         const cases = data.cases || [];
         empty.hidden = cases.length > 0;
+        toolbar.hidden = cases.length === 0;
         cases.forEach(tc => {
             const id = tc.tcId || tc.id;
             const lab = document.createElement('label');
-            lab.className = 'check';
-            lab.innerHTML = '<input type="checkbox" class="hunt-tc" value="' + escapeHtml(id) + '"/> '
-                + '<span class="mono">' + escapeHtml(id) + '</span> '
-                + escapeHtml(tc.title || '');
+            lab.className = 'hunt-lib-item';
+            lab.dataset.search = ((id || '') + ' ' + (tc.title || '')).toLowerCase();
+            lab.innerHTML =
+                '<input type="checkbox" class="hunt-tc" value="' + escapeHtml(id) + '"/>'
+                + '<span class="hunt-lib-text">'
+                + '<span class="mono hunt-lib-id">' + escapeHtml(id) + '</span>'
+                + '<span class="hunt-lib-title">' + escapeHtml(tc.title || '') + '</span>'
+                + '</span>';
             pick.appendChild(lab);
         });
-        pick.querySelectorAll('.hunt-tc').forEach(cb => cb.addEventListener('change', updateStartEnabled));
+        pick.querySelectorAll('.hunt-tc').forEach(cb => cb.addEventListener('change', () => {
+            updateStartEnabled();
+            refreshLibCount();
+        }));
+        refreshLibCount();
+    }
+
+    function applyLibFilter() {
+        const q = (document.getElementById('lib-filter').value || '').trim().toLowerCase();
+        document.querySelectorAll('.hunt-lib-item').forEach(item => {
+            item.hidden = !!(q && !(item.dataset.search || '').includes(q));
+        });
     }
 
     function selectedTcIds() {
@@ -227,10 +343,12 @@
     }
 
     function updateStartEnabled() {
+        if (formPanel.classList.contains('is-submitting')) {
+            startBtn.disabled = true;
+            return;
+        }
         const hasBase = !document.getElementById('base-url-row').hidden;
-        const credNeeded = !document.getElementById('cred-label').hidden;
-        const credOk = !credNeeded || !!document.getElementById('credential-profile').value;
-        startBtn.disabled = !(hasBase && credOk && selectedTcIds().length > 0);
+        startBtn.disabled = !(hasBase && selectedTcIds().length > 0);
     }
 
     async function loadRecent(projectId) {
@@ -246,12 +364,15 @@
         table.hidden = jobs.length === 0;
         jobs.slice(0, 10).forEach(j => {
             const tr = document.createElement('tr');
+            const busy = (j.status === 'RUNNING' || j.status === 'QUEUED')
+                ? ' <span class="spinner spinner--badge" aria-hidden="true"></span>'
+                : '';
             const dl = j.downloadable
                 ? ' <a href="/api/jobs/' + encodeURIComponent(j.jobId) + '/download">Download</a>'
                 : '';
             tr.innerHTML =
                 '<td><code class="mono">' + escapeHtml(j.jobId) + '</code></td>' +
-                '<td><span class="badge ' + badgeClass(j.status) + '">' + escapeHtml(j.status) + '</span></td>' +
+                '<td><span class="badge ' + badgeClass(j.status) + ' badge--busy">' + escapeHtml(j.status) + busy + '</span></td>' +
                 '<td>' + (j.passedCount != null ? j.passedCount : '—') + '</td>' +
                 '<td>' + (j.todoCount != null ? j.todoCount : '—') + '</td>' +
                 '<td class="muted">' + escapeHtml(j.message || '') + '</td>' +
@@ -262,7 +383,7 @@
 
     startBtn.addEventListener('click', async () => {
         huntErr.hidden = true;
-        startBtn.disabled = true;
+        setStarting(true);
         const projectId = projectSel.value;
         const planner = (document.querySelector('input[name="planner"]:checked') || {}).value || 'ollama';
         const body = {
@@ -276,24 +397,46 @@
             strategiesEnabled: document.getElementById('strategies-enabled').checked
         };
         if (!document.getElementById('cred-label').hidden) {
-            body.credentialProfile = document.getElementById('credential-profile').value;
+            body.credentialProfile = document.getElementById('credential-profile').value || '';
         }
-        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/hunt-runs', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        let data = {};
-        try { data = await res.json(); } catch (e) { /* ignore */ }
-        if (!res.ok) {
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/hunt-runs', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            let data = {};
+            try { data = await res.json(); } catch (e) { /* ignore */ }
+            if (!res.ok) {
+                huntErr.hidden = false;
+                huntErr.textContent = (data && data.message) || 'Could not start Bug Hunter';
+                setStarting(false);
+                updateStartEnabled();
+                return;
+            }
+            window.location.href = '/status?jobId=' + encodeURIComponent(data.jobId);
+        } catch (e) {
             huntErr.hidden = false;
-            huntErr.textContent = (data && data.message) || 'Could not start Bug Hunter';
+            huntErr.textContent = 'Network error starting Bug Hunter';
+            setStarting(false);
             updateStartEnabled();
-            return;
         }
-        window.location.href = '/status?jobId=' + encodeURIComponent(data.jobId);
     });
+
+    document.getElementById('lib-pick-all').addEventListener('click', () => {
+        document.querySelectorAll('.hunt-lib-item:not([hidden]) .hunt-tc').forEach(cb => { cb.checked = true; });
+        refreshLibCount();
+        updateStartEnabled();
+    });
+    document.getElementById('lib-pick-none').addEventListener('click', () => {
+        document.querySelectorAll('.hunt-tc').forEach(cb => { cb.checked = false; });
+        refreshLibCount();
+        updateStartEnabled();
+    });
+    document.getElementById('lib-filter').addEventListener('input', applyLibFilter);
+    strategiesCb.addEventListener('change', syncStrategyUi);
+    syncStrategyUi();
 
     projectSel.addEventListener('change', onProjectChange);
     loadProjects();

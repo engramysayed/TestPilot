@@ -9,11 +9,12 @@ import java.util.Locale;
 /**
  * Routes workbook rows to Automate vs Execute by {@code KeelPath}.
  * <ul>
- *   <li>AUTOMATE → Automate; also runnable on Execute (prove before convert)</li>
- *   <li>EXECUTE / VISION_ONLY → Execute only (skipped on Automate)</li>
+ *   <li>AUTOMATE / EXECUTE / VISION_ONLY → both Automate and Execute</li>
  *   <li>MANUAL → neither (human review only)</li>
  *   <li>blank / missing → both (legacy sheets without KeelPath)</li>
  * </ul>
+ * KeelPath remains a hint for Generate / operators; it no longer blocks Automate for
+ * cases that Execute can already run.
  */
 public final class KeelPathCaseFilter {
     public enum Surface { AUTOMATE, EXECUTE }
@@ -56,12 +57,10 @@ public final class KeelPathCaseFilter {
         if (path == KeelPath.MANUAL) {
             return false;
         }
-        return switch (surface) {
-            case AUTOMATE -> path == KeelPath.AUTOMATE;
-            case EXECUTE -> path == KeelPath.AUTOMATE
-                    || path == KeelPath.EXECUTE
-                    || path == KeelPath.VISION_ONLY;
-        };
+        // Automate and Execute share the same runnable set (everything except MANUAL).
+        return path == KeelPath.AUTOMATE
+                || path == KeelPath.EXECUTE
+                || path == KeelPath.VISION_ONLY;
     }
 
     /** Null means blank / unspecified (legacy). Throws if value is present but unknown. */
@@ -74,7 +73,7 @@ public final class KeelPathCaseFilter {
 
     private static String defaultEmptyMessage(Surface surface) {
         return switch (surface) {
-            case AUTOMATE -> "No AUTOMATE test cases in workbook (EXECUTE/VISION_ONLY/MANUAL rows are skipped on Automate)";
+            case AUTOMATE -> "No runnable test cases in workbook (only MANUAL rows are skipped on Automate)";
             case EXECUTE -> "No runnable test cases in workbook (only MANUAL rows are skipped on Execute)";
         };
     }

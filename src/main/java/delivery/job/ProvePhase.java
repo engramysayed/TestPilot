@@ -10,8 +10,10 @@ import delivery.authoring.DummyValueInventor;
 import delivery.codegen.PageClusterer;
 import delivery.codegen.PageNameNormalizer;
 import delivery.codegen.ProvenStep;
+import delivery.excel.CallBefore;
 import delivery.excel.ManualTestCase;
 import delivery.store.DomainLocatorMemory;
+import delivery.store.PreferredHooksStore;
 import delivery.store.ProjectStore;
 import delivery.heal.CursorHealClient;
 import delivery.heal.FailedLocator;
@@ -41,6 +43,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -115,18 +118,28 @@ public class ProvePhase {
                         VisionGroundingConfig.createProvider(),
                         () -> new SeleniumGroundingBrowser(driverFactory.get()))
                 : new HealCascade(authoring, new CursorHealClient());
-        TcExecutionService execution = new TcExecutionService(driverFactory);
+        TcExecutionService execution = new TcExecutionService(driverFactory, request);
         JobLoginService jobLogin = new JobLoginService();
         boolean jobHasCredentials = request.username() != null && !request.username().isBlank()
                 && request.password() != null;
         // null = author every TC (NEW); non-null = UPDATE author set (others REUSED)
         List<TcDraft> out = new ArrayList<>();
         locatorMemory = new DomainLocatorMemory();
-        locatorMemoryFile = memoryFile(request);
-        locatorMemory.load(locatorMemoryFile);
+        if (request != null && request.storeRoot() != null
+                && request.baseUrl() != null && !request.baseUrl().isBlank()) {
+            locatorMemoryFile = locatorMemory.openShared(request.storeRoot(), request.baseUrl());
+        } else {
+            locatorMemoryFile = memoryFile(request);
+            locatorMemory.load(locatorMemoryFile);
+        }
+        List<String> preferredHooks = request == null
+                ? List.of()
+                : PreferredHooksStore.load(request.storeRoot(), request.baseUrl());
 
-        try {
+        try (PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks)) {
             int index = 0;
+            Set<String> failedCallBeforeIds = new LinkedHashSet<>();
+            List<Boolean> freshSession = CallBeforeExpander.freshSessionAt(allCases);
             for (ManualTestCase tc : allCases) {
                 JobCancelSupport.checkCancelled(cancelCheck);
                 index++;
@@ -147,22 +160,34 @@ public class ProvePhase {
                                     + ", blocked " + progress.todo());
                     continue;
                 }
-
-                // Fresh browser per TC so in-app session state cannot leak across cases
-                if (index > 1) {
-                    try {
-                        driverFactory.restart();
-                    } catch (Exception e) {
-                        LogsManager.info("Driver restart failed before " + tc.tcId() + ": " + e.getMessage());
-                    }
+                if (callBeforeBlocked(tc, failedCallBeforeIds)) {
+                    String reason = "Call-before did not pass ("
+                            + String.join(", ", CallBefore.parse(tc.callBefore()))
+                            + ") — skipped so this case does not run on a broken session";
+                    TcDraft skipped = todoDraft(tc, List.of(), false, List.of(),
+                            reason, "", 0, "");
+                    drafts.write(skipped);
+                    mirrorDraft(workDir, skipped.tcId());
+                    out.add(skipped);
+                    failedCallBeforeIds.add(tc.tcId());
+                    progress.recordOutcome(skipped.status());
+                    progress.update(index, jobTotal,
+                            "Phase1 skipped " + tc.tcId() + " — call-before failed");
+                    continue;
                 }
 
+                // Fresh browser at each leaf-chain start; Call-before → leaf keep the same session.
                 TcDraft draft = proveOne(tc, request, authoring, healCascade, execution, jobLogin,
-                        driverFactory, evidence, jobHasCredentials, index, jobTotal);
+                        driverFactory, evidence, jobHasCredentials, index, jobTotal, freshSession);
                 draft = scrubDraftSecrets(draft, request);
                 drafts.write(draft);
                 mirrorDraft(workDir, draft.tcId());
                 out.add(draft);
+                if (draft.status() == TcDraftStatus.PASSED || draft.status() == TcDraftStatus.REUSED) {
+                    failedCallBeforeIds.remove(tc.tcId());
+                } else {
+                    failedCallBeforeIds.add(tc.tcId());
+                }
                 saveLocatorMemory();
                 progress.recordOutcome(draft.status());
                 progress.update(index, jobTotal,
@@ -201,10 +226,19 @@ public class ProvePhase {
             Path evidence,
             boolean jobHasCredentials,
             int tcIndex,
-            int tcTotal
+            int tcTotal,
+            List<Boolean> freshSession
     ) {
+        boolean wipeSession = wipeAt(tcIndex, freshSession);
         try {
-            openFreshPage(driverFactory, request.baseUrl());
+            if (wipeSession) {
+                if (tcIndex > 1) {
+                    driverFactory.restart();
+                }
+                openFreshPage(driverFactory, request.baseUrl());
+            } else {
+                ensureBrowserAlive(driverFactory);
+            }
         } catch (Exception e) {
             if (DeadBrowserSession.isDead(e)) {
                 try {
@@ -224,11 +258,27 @@ public class ProvePhase {
         healCascade.setExcelOpenPath(StepIntentBinder.firstOpenPath(
                 tc.preconditions(), tc.steps()));
 
-        // Open Excel path first so gated targets (redirect → login form) are visible before policy.
-        LoginFormNavigator.navigateExcelOpenPathIfPresent(driverFactory, request.baseUrl(), tc);
+        boolean continueSession = !wipeSession;
+        // Keep Call-before / prior-TC login: do not bounce later cases back to /login.
+        if (!continueSession || !isAuthOpenPath(StepIntentBinder.firstOpenPath(
+                tc.preconditions(), tc.steps()))) {
+            LoginFormNavigator.navigateExcelOpenPathIfPresent(driverFactory, request.baseUrl(), tc);
+        } else {
+            LogsManager.info("SESSION_CONTINUE: skip auth open-path for " + tc.tcId());
+        }
         boolean formVisible = LoginFormNavigator.pageHasLoginForm(driverFactory);
-        boolean needsLogin = LoginStepDetector.needsAuthenticatedSession(
-                tc, jobHasCredentials, formVisible);
+        boolean needsLogin;
+        if (continueSession) {
+            // Only re-login if the live page is already a login form (session lost).
+            needsLogin = formVisible && LoginStepDetector.needsAuthenticatedSession(
+                    tc, jobHasCredentials, true);
+            if (needsLogin) {
+                LogsManager.info("SESSION_CONTINUE: login form visible — re-auth for " + tc.tcId());
+            }
+        } else {
+            needsLogin = LoginStepDetector.needsAuthenticatedSession(
+                    tc, jobHasCredentials, formVisible);
+        }
 
         String loginFormUrl = "";
         List<ProvenStep> loginSteps = List.of();
@@ -257,7 +307,7 @@ public class ProvePhase {
                 }
                 // Keep placeholders in IR/codegen; resolve secrets only for live Selenium execute
                 loginFormUrl = currentUrl(driverFactory);
-                List<ProvenStep> loginForExec = resolveLoginSecrets(loginSteps, request);
+                List<ProvenStep> loginForExec = LoginSecretResolver.resolveForLive(loginSteps, request);
                 TcOutcome loginOutcome = execution.execute(tc.tcId(), loginForExec, evidence);
                 if (loginOutcome.status() != TcStatus.PASSED) {
                     try {
@@ -305,6 +355,7 @@ public class ProvePhase {
         String maxHealTier = "none";
         String healSkipAccum = "";
         for (StepIntentBinder.IntentLine intent : intents) {
+            JobCancelSupport.checkCancelled(cancelCheck);
             progress.update(tcIndex, tcTotal,
                     "Phase1 " + tc.tcId() + " step " + (intentIndex + 1) + "/" + intents.size()
                             + ": " + trim(intent.text(), 60));
@@ -506,7 +557,7 @@ public class ProvePhase {
                                     || i.kind() == StepIntentBinder.IntentKind.TYPE_PASS)
                             .toList();
                     List<ProvenStep> autoFills = RequiredControlFiller.planFillsBeforeClick(
-                            html, tc.tcId(), intent.text(), typeIntents);
+                            html, tc.tcId(), intent.text(), typeIntents, provenSoFar);
                     if (!autoFills.isEmpty()) {
                         TcOutcome fillOutcome = execution.execute(tc.tcId(), autoFills, evidence);
                         if (fillOutcome.status() != TcStatus.PASSED) {
@@ -530,6 +581,13 @@ public class ProvePhase {
                 String pagePath = pathOf(currentUrl(driverFactory));
                 Optional<ProvenStep> remembered = locatorMemory.recall(
                         memoryHost, pagePath, intent, tc.tcId());
+                if (remembered.isPresent()
+                        && StepIntentBinder.spendsMustAvoidPriorFills(intent.kind())
+                        && StepIntentBinder.isSpentLocator(remembered.get(), provenSoFar)) {
+                    locatorMemory.forget(memoryHost, pagePath, intent);
+                    LogsManager.info("LOCATOR_MEMORY: dropped spent locator for " + intent.text());
+                    remembered = Optional.empty();
+                }
                 if (remembered.isPresent()) {
                     ProvenStep ready = withInventedValue(remembered.get(), intent);
                     if (refusesSubmitNavigation(intent, List.of(ready))) {
@@ -537,6 +595,9 @@ public class ProvePhase {
                         LogsManager.info("SUBMIT_REFUSE: dropped remembered non-submit click for "
                                 + intent.text());
                     } else {
+                        LogsManager.info("LOCATOR_MEMORY: using "
+                                + ready.locatorStrategy() + ":" + ready.locatorValue()
+                                + " for " + intent.text());
                         TcOutcome memOutcome = execution.execute(tc.tcId(), List.of(ready), evidence);
                         if (memOutcome.status() == TcStatus.PASSED) {
                             List<ProvenStep> combined = new ArrayList<>(autoFillSteps);
@@ -714,7 +775,7 @@ public class ProvePhase {
                         }
                     }
 
-                    if (ollamaUsed && !cursorUsed) {
+                    if (!cursorUsed) {
                         String html2 = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
                         byte[] png2 = execution.capturePngBytes();
                         Path shot2 = writeHealScreenshot(evidence, tc.tcId(), intentIndex, png2);
@@ -1093,13 +1154,19 @@ public class ProvePhase {
     }
 
     private static Path memoryFile(ConversionJobRequest request) {
-        if (request == null || request.storeRoot() == null || request.projectId() == null
-                || request.projectId().isBlank()) {
+        if (request == null || request.storeRoot() == null) {
+            return null;
+        }
+        Path shared = DomainLocatorMemory.sharedFile(request.storeRoot(), request.baseUrl());
+        if (shared != null) {
+            return shared;
+        }
+        if (request.projectId() == null || request.projectId().isBlank()) {
             return null;
         }
         return new ProjectStore(request.storeRoot(), request.baseUrl())
                 .projectRoot(request.projectId())
-                .resolve("domain-locator-memory.json");
+                .resolve(DomainLocatorMemory.FILE_NAME);
     }
 
     private void saveLocatorMemory() {
@@ -1148,9 +1215,17 @@ public class ProvePhase {
             return step;
         }
         String inputType = intent.kind() == StepIntentBinder.IntentKind.TYPE_PASS ? "password" : "text";
+        String locatorHint = (step.locatorValue() == null ? "" : step.locatorValue())
+                + " " + (intent.text() == null ? "" : intent.text());
+        if (DummyValueInventor.looksLikeOtpHint(locatorHint)
+                && intent.kind() == StepIntentBinder.IntentKind.TYPE_PASS) {
+            inputType = "text";
+        }
         String value = DummyValueInventor.fromStepOrInvent(
                 intent.text(), intent.testData(), "input", inputType, "", intent.text(), intent.text());
-        value = StepIntentBinder.resolveLoginTypedValue(intent.kind(), intent.text(), value);
+        if (!DummyValueInventor.looksLikeOtpHint(locatorHint)) {
+            value = StepIntentBinder.resolveLoginTypedValue(intent.kind(), intent.text(), value);
+        }
         return new ProvenStep(
                 step.tcId(), step.pageName(), step.actionType(), step.action(),
                 step.locatorStrategy(), step.locatorValue(), value,
@@ -1273,34 +1348,6 @@ public class ProvePhase {
                 needsLogin, 0, "", reason, evidenceDir, retries, url);
     }
 
-    /**
-     * Resolve ${TARGET_*} placeholders for live Selenium only.
-     * Never persist the returned list into IR / codegen.
-     */
-    private static List<ProvenStep> resolveLoginSecrets(
-            List<ProvenStep> loginSteps, ConversionJobRequest request) {
-        if (loginSteps == null || loginSteps.isEmpty()) {
-            return List.of();
-        }
-        String user = request.username() == null ? "" : request.username();
-        String pass = request.password() == null ? "" : request.password();
-        List<ProvenStep> out = new ArrayList<>();
-        for (ProvenStep s : loginSteps) {
-            String v = s.value() == null ? "" : s.value();
-            if ("${TARGET_USERNAME}".equals(v)) {
-                v = user;
-            } else if ("${TARGET_PASSWORD}".equals(v)) {
-                v = pass;
-            }
-            out.add(new ProvenStep(
-                    s.tcId(), s.pageName(), s.actionType(), s.action(),
-                    s.locatorStrategy(), s.locatorValue(), v,
-                    s.assertionType(), s.assertionExpected(), s.validated(), s.rationale(),
-                    s.screenshotRelPath()));
-        }
-        return out;
-    }
-
     /** Replace job username/password literals with ${TARGET_*} for IR and emit. */
     static List<ProvenStep> scrubSecrets(List<ProvenStep> steps, ConversionJobRequest request) {
         if (steps == null || steps.isEmpty() || request == null) {
@@ -1341,6 +1388,68 @@ public class ProvePhase {
                 draft.blockerStepIndex(), draft.blockerIntent(), draft.failureReason(),
                 draft.evidenceDir(), draft.retryCountOnBlocker(), draft.lastPageUrl(),
                 draft.healTier(), draft.healSkipReason(), draft.loginFormUrl());
+    }
+
+    /** Skip a leaf when a Call-before TC in this job did not pass. */
+    static boolean callBeforeBlocked(ManualTestCase tc, Set<String> failedIds) {
+        if (tc == null || failedIds == null || failedIds.isEmpty()) {
+            return false;
+        }
+        for (String beforeId : CallBefore.parse(tc.callBefore())) {
+            if (failedIds.contains(beforeId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Wipe/restart browser at each leaf-chain start (Call-before → leaf keep the session). */
+    static boolean wipeSessionBeforeTc(int tcIndex, List<ManualTestCase> allCases) {
+        List<Boolean> flags = CallBeforeExpander.freshSessionAt(allCases);
+        if (flags == null || flags.isEmpty()) {
+            return tcIndex <= 1;
+        }
+        int i = tcIndex - 1;
+        if (i < 0 || i >= flags.size()) {
+            return tcIndex <= 1;
+        }
+        return Boolean.TRUE.equals(flags.get(i));
+    }
+
+    private static boolean wipeAt(int tcIndex, List<Boolean> freshSession) {
+        if (freshSession == null || freshSession.isEmpty()) {
+            return tcIndex <= 1;
+        }
+        int i = tcIndex - 1;
+        if (i < 0 || i >= freshSession.size()) {
+            return tcIndex <= 1;
+        }
+        return Boolean.TRUE.equals(freshSession.get(i));
+    }
+
+    /** Excel open paths that would destroy an authenticated portal session. */
+    static boolean isAuthOpenPath(String path) {
+        if (path == null || path.isBlank()) {
+            return false;
+        }
+        String p = path.trim().toLowerCase(Locale.ROOT);
+        return p.contains("/login") || p.contains("/signin") || p.contains("/sign-in")
+                || p.contains("/auth") || p.equals("login") || p.equals("signin");
+    }
+
+    private static void ensureBrowserAlive(WebDriverFactory driverFactory) {
+        org.openqa.selenium.WebDriver driver = driverFactory.get();
+        try {
+            if (driver.getWindowHandles() == null || driver.getWindowHandles().isEmpty()) {
+                throw new IllegalStateException("no such window: no window handles");
+            }
+            driver.getCurrentUrl();
+        } catch (RuntimeException e) {
+            if (DeadBrowserSession.isDead(e)) {
+                throw e;
+            }
+            // Some drivers throw before first navigation — continue with existing session.
+        }
     }
 
     private static void openFreshPage(WebDriverFactory driverFactory, String baseUrl) {

@@ -25,6 +25,17 @@ public class ExcelTcReader {
     private static final String[] REQUIRED = {"TCID", "TITLE", "STEPS", "EXPECTEDRESULT"};
     private static final DataFormatter FORMATTER = new DataFormatter();
 
+    private final boolean allowDuplicateTcIds;
+
+    public ExcelTcReader() {
+        this(false);
+    }
+
+    /** Job workbooks may repeat a TC_ID when Call-before re-runs a case before another leaf. */
+    public ExcelTcReader(boolean allowDuplicateTcIds) {
+        this.allowDuplicateTcIds = allowDuplicateTcIds;
+    }
+
     public List<ManualTestCase> read(Path excel) {
         if (excel == null || !Files.isRegularFile(excel)) {
             throw new InvalidExcelTemplateException(
@@ -67,11 +78,12 @@ public class ExcelTcReader {
                             ExcelValidationMessages.INVALID_EXCEL,
                             ExcelValidationMessages.blankTcId(r + 1));
                 }
-                if (!seenIds.add(tcId)) {
+                if (!allowDuplicateTcIds && !seenIds.add(tcId)) {
                     throw new InvalidExcelTemplateException(
                             ExcelValidationMessages.INVALID_EXCEL,
                             ExcelValidationMessages.duplicateTcId(tcId));
                 }
+                seenIds.add(tcId);
                 String steps = ExcelStepText.normalizeMultiline(cellKeepNewlines(row, columns.get("STEPS")));
                 String testData = ExcelStepText.normalizeMultiline(firstNonBlank(
                         cellKeepNewlines(row, columns.getOrDefault("TESTDATA", -1)),
@@ -85,6 +97,7 @@ public class ExcelTcReader {
                     testData = visualAssertion;
                     visualAssertion = "";
                 }
+                String callBefore = cell(row, columns.getOrDefault("CALLBEFORE", -1));
                 // Blank KeelPath stays blank (legacy → eligible for both Automate and Execute).
                 cases.add(new ManualTestCase(
                         tcId,
@@ -96,7 +109,8 @@ public class ExcelTcReader {
                         cell(row, columns.getOrDefault("TAGS", -1)),
                         visualAssertion,
                         testData,
-                        keelPath
+                        keelPath,
+                        callBefore
                 ));
             }
             if (cases.isEmpty()) {

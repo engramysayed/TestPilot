@@ -1,5 +1,6 @@
 package delivery.job;
 
+import delivery.authoring.DummyValueInventor;
 import delivery.authoring.StepIntentBinder;
 import delivery.excel.ManualTestCase;
 import drivers.WebDriverFactory;
@@ -43,7 +44,7 @@ public final class LoginFormNavigator {
         }
         try {
             if (driver.findElements(By.cssSelector("input[type='password']")).stream()
-                    .anyMatch(WebElement::isDisplayed)) {
+                    .anyMatch(LoginFormNavigator::isDisplayedLoginPassword)) {
                 return true;
             }
             // Custom / SPA fields sometimes omit type=password until hydrated
@@ -51,15 +52,64 @@ public final class LoginFormNavigator {
                     "input[name*='pass'], input[name*='Pass'], input[id*='pass'], input[id*='Pass'], "
                             + "input[autocomplete='current-password'], input[autocomplete='new-password'], "
                             + "input[data-test*='password'], input[data-testid*='password']"));
-            return candidates.stream().anyMatch(el -> {
-                try {
-                    return el.isDisplayed();
-                } catch (Exception e) {
-                    return false;
-                }
-            });
+            return candidates.stream().anyMatch(LoginFormNavigator::isDisplayedLoginPassword);
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * Masked OTP/MFA inputs use {@code type=password} but are not a username/password login form.
+     * Treating them as login made Sign-in look like a no-op and re-triggered login before TC_06.
+     */
+    static boolean isDisplayedLoginPassword(WebElement el) {
+        if (el == null) {
+            return false;
+        }
+        try {
+            if (!el.isDisplayed()) {
+                return false;
+            }
+        } catch (RuntimeException e) {
+            return false;
+        }
+        String id = attr(el, "id");
+        String name = attr(el, "name");
+        String placeholder = attr(el, "placeholder");
+        String autocomplete = attr(el, "autocomplete");
+        String extra = attr(el, "data-axis-test-id") + " " + attr(el, "data-testid")
+                + " " + attr(el, "aria-label") + " " + attr(el, "data-test");
+        if (DummyValueInventor.looksLikeOtpHint(
+                id + " " + name + " " + placeholder + " " + extra)) {
+            return false;
+        }
+        String type = attr(el, "type").toLowerCase(Locale.ROOT);
+        if ("password".equals(type)) {
+            return true;
+        }
+        return looksLikeLoginPasswordField(id, name, placeholder, autocomplete, extra);
+    }
+
+    static boolean looksLikeLoginPasswordField(
+            String id, String name, String placeholder, String autocomplete, String extra) {
+        String hint = ((id == null ? "" : id) + " " + (name == null ? "" : name)
+                + " " + (placeholder == null ? "" : placeholder)
+                + " " + (autocomplete == null ? "" : autocomplete)
+                + " " + (extra == null ? "" : extra)).toLowerCase(Locale.ROOT);
+        if (DummyValueInventor.looksLikeOtpHint(hint)) {
+            return false;
+        }
+        return hint.contains("password") || hint.contains("passwd")
+                || hint.contains("current-password") || hint.contains("new-password")
+                || "pass".equals(hint.trim()) || hint.contains("pass ");
+    }
+
+    private static String attr(WebElement el, String name) {
+        try {
+            String v = el.getAttribute(name);
+            return v == null ? "" : v;
+        } catch (RuntimeException e) {
+            return "";
         }
     }
 

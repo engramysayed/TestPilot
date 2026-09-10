@@ -40,8 +40,16 @@ public final class DummyValueInventor {
         String t = tag == null ? "" : tag.toLowerCase(Locale.ROOT);
         int maxLen = parseMaxLength(maxLengthAttr);
 
+        // OTP/MFA (often type=password for masking) must never become login secrets.
+        if (looksLikeOtpHint(hint)) {
+            return digits(maxLen > 0 ? Math.min(maxLen, 8) : 6);
+        }
+
         if ("password".equals(type) || hint.contains("password") || hint.contains("passwd")) {
-            return FAKER.internet().password(10, 14, true, true, true);
+            return "${TARGET_PASSWORD}";
+        }
+        if (isLoginIdentifierHint(hint, "")) {
+            return "${TARGET_USERNAME}";
         }
         if ("email".equals(type) || hint.contains("email") || hint.contains("e-mail")) {
             String local = FAKER.internet().username().replaceAll("[^a-zA-Z0-9._-]", "");
@@ -149,16 +157,30 @@ public final class DummyValueInventor {
             return extracted;
         }
         // Login secrets come from the job credential profile — never invent passwords/usernames.
-        String hint = join(name, label, placeholder, inputType).toLowerCase(Locale.ROOT);
+        String hint = join(name, label, placeholder, inputType, stepText).toLowerCase(Locale.ROOT);
         String type = inputType == null ? "" : inputType.toLowerCase(Locale.ROOT);
+        if (looksLikeOtpHint(hint)) {
+            return "";
+        }
         if ("password".equals(type) || hint.contains("password") || hint.contains("passwd")) {
             return "${TARGET_PASSWORD}";
         }
-        if (hint.contains("username") || hint.contains("user name") || hint.contains("user-name")
-                || "username".equals(hint) || "user".equals(hint)) {
+        if (isLoginIdentifierHint(hint, stepText)) {
             return "${TARGET_USERNAME}";
         }
         return "";
+    }
+
+    static boolean isLoginIdentifierHint(String hint, String stepText) {
+        String h = hint == null ? "" : hint.toLowerCase(Locale.ROOT).trim();
+        String step = stepText == null ? "" : stepText.toLowerCase(Locale.ROOT);
+        String blob = h + " " + step;
+        if (blob.contains("username") || blob.contains("user name") || blob.contains("user-name")
+                || blob.contains("email or phone") || blob.contains("email/phone")
+                || blob.contains("email / mobile") || blob.contains("email/mobile")) {
+            return true;
+        }
+        return "user".equals(h);
     }
 
     static String extractExplicitValue(String stepText) {
@@ -210,6 +232,25 @@ public final class DummyValueInventor {
             }
         }
         return null;
+    }
+
+    /** OTP / MFA / verification-code fields — never treat as login password. */
+    public static boolean looksLikeOtpHint(String hint) {
+        if (hint == null || hint.isBlank()) {
+            return false;
+        }
+        String h = hint.toLowerCase(Locale.ROOT);
+        return h.contains("otp")
+                || h.contains("one-time")
+                || h.contains("onetime")
+                || h.contains("one time")
+                || h.contains("mfa")
+                || h.contains("2fa")
+                || h.contains("totp")
+                || h.contains("verification code")
+                || h.contains("verify code")
+                || h.contains("auth code")
+                || h.contains("authentication code");
     }
 
     /**

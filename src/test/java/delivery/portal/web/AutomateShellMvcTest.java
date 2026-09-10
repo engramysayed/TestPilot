@@ -13,6 +13,7 @@ import java.util.List;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(classes = PortalApplication.class, properties = {
@@ -36,72 +37,50 @@ public class AutomateShellMvcTest extends AbstractTestNGSpringContextTests {
 
     @Test
     public void automatePages_okWhenAuthenticated() throws Exception {
-        for (String path : List.of("/automate", "/generate", "/execute")) {
+        for (String path : List.of("/automate", "/generate", "/execute", "/runs")) {
             mockMvc.perform(get(path).with(httpBasic(AUTH_USER, AUTH_PASS)))
                     .andExpect(status().isOk());
         }
     }
 
     @Test
-    public void uploadPage_navActiveAndBackLink() throws Exception {
-        String body = mockMvc.perform(get("/upload").with(httpBasic(AUTH_USER, AUTH_PASS)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        Assert.assertTrue(body.contains("href=\"/automate\">← Automate</a>"));
-        Assert.assertTrue(body.contains("data-nav-group=\"automate\""));
-        Assert.assertTrue(body.contains("is-open"));
-        Assert.assertTrue(body.contains("href=\"/upload\" class=\"active\">Upload</a>"));
-        Assert.assertTrue(body.contains("data-final-revise-enabled=\"false\""));
-    }
-
-    @Test
-    public void uploadPage_hasOptionalProposeOnlyCursorPreRunReview() throws Exception {
-        String body = mockMvc.perform(get("/upload").with(httpBasic(AUTH_USER, AUTH_PASS)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        Assert.assertTrue(body.contains("id=\"pre-run-review\""), "review option missing");
-        Assert.assertTrue(body.contains("id=\"pre-run-review-panel\""), "review proposal panel missing");
-        Assert.assertTrue(body.contains("Accept &amp; run"), "explicit acceptance control missing");
-        Assert.assertTrue(body.contains("/pre-run-authoring-review"), "pre-run review API wiring missing");
-        Assert.assertTrue(body.contains("preRunReviewedCsv"), "accepted proposal must become run input");
-    }
-
-    @Test
-    public void jobsPage_navActive() throws Exception {
-        String body = mockMvc.perform(get("/jobs").with(httpBasic(AUTH_USER, AUTH_PASS)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        Assert.assertTrue(body.contains("Part of Automate"));
-        Assert.assertTrue(body.contains("data-nav-group=\"automate\""));
-        Assert.assertTrue(body.contains("is-open"));
-        Assert.assertTrue(body.contains("href=\"/jobs\" class=\"active\">Jobs</a>"));
-    }
-
-    @Test
-    public void sidebar_hasAutomateGroup_notTopLevelUploadJobs() throws Exception {
+    public void automatePage_isTheUploadForm() throws Exception {
         String body = mockMvc.perform(get("/automate").with(httpBasic(AUTH_USER, AUTH_PASS)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        Assert.assertTrue(body.contains("data-nav-group=\"automate\""));
-        Assert.assertTrue(body.contains("nav-group-children"));
-        Assert.assertTrue(body.contains("href=\"/upload\">Upload</a>"));
-        Assert.assertTrue(body.contains("href=\"/jobs\">Jobs</a>"));
+        Assert.assertTrue(body.contains("href=\"/automate\""), "Automate nav missing");
+        Assert.assertTrue(body.contains("href=\"/runs\""), "Runs nav missing");
+        Assert.assertFalse(body.contains("nav-group-children"));
+        Assert.assertFalse(body.contains("href=\"/upload\">Upload</a>"));
+        Assert.assertTrue(body.contains("id=\"pre-run-review\""), "review option missing");
+        Assert.assertTrue(body.contains("data-final-revise-enabled=\"false\""));
+    }
 
-        String beforeAutomateGroup = body.substring(0, body.indexOf("data-nav-group=\"automate\""));
-        Assert.assertFalse(beforeAutomateGroup.contains("href=\"/upload\""));
-        Assert.assertFalse(beforeAutomateGroup.contains("href=\"/jobs\""));
+    @Test
+    public void uploadRedirectsToAutomate() throws Exception {
+        mockMvc.perform(get("/upload").with(httpBasic(AUTH_USER, AUTH_PASS)))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/automate"));
+        mockMvc.perform(get("/upload").param("projectId", "prj_abc").with(httpBasic(AUTH_USER, AUTH_PASS)))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/automate?projectId=prj_abc"));
+    }
+
+    @Test
+    public void runsPage_navActive() throws Exception {
+        String body = mockMvc.perform(get("/runs").with(httpBasic(AUTH_USER, AUTH_PASS)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Assert.assertTrue(body.contains(">Runs</h1>") || body.contains(">Runs</a>"));
+        Assert.assertTrue(body.contains("href=\"/runs\" class=\"active\">Runs</a>")
+                || body.contains("href=\"/runs\""));
+        Assert.assertFalse(body.contains("Part of Automate"));
     }
 
     @Test

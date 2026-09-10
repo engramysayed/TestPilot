@@ -89,7 +89,7 @@ public final class VisionPromptTemplate {
         return switch (intent.kind()) {
             case CLICK, CLICK_LOGIN -> "CLICK";
             case TYPE_USER, TYPE_PASS, TYPE_FIELD -> "INPUT";
-            case ASSERT_VISIBLE -> "VERIFY";
+            case ASSERT_VISIBLE -> "FIND_TEXT";
         };
     }
 }

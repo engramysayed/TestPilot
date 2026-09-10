@@ -21,6 +21,16 @@ public class FailureReasonHumanizerTest {
                         + "reason=No DOM candidate for intent ASSERT_VISIBLE: Confirm a clear validation/error state is shown");
         Assert.assertTrue(out.toLowerCase().contains("error") || out.toLowerCase().contains("message"));
         Assert.assertFalse(out.contains("ASSERT_VISIBLE"));
+        Assert.assertFalse(out.toLowerCase().contains("facebook"));
+        Assert.assertTrue(out.toLowerCase().contains("app"));
+    }
+
+    @Test
+    public void phoneHealMessageIsSiteAgnostic() {
+        String out = FailureReasonHumanizer.forUser(
+                "HEAL_EXHAUSTED: Cursor pick path exhausted; reason=phone field missing");
+        Assert.assertFalse(out.toLowerCase().contains("facebook"));
+        Assert.assertTrue(out.toLowerCase().contains("phone"));
     }
 
     @Test

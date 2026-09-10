@@ -88,7 +88,9 @@ public final class PostActionSettle {
                 || t.contains("finish")
                 || t.contains("submit")
                 || t.contains("login")
-                || t.contains("sign in");
+                || t.contains("sign in")
+                || t.contains("otp")
+                || t.contains("verify");
     }
 
     /** Soft landing when SPA keeps the same URL (rare on SauceDemo). */

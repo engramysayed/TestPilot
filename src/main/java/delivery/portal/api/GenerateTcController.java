@@ -65,7 +65,7 @@ public class GenerateTcController {
     public record ImportGenerateRequest(String raw, String format) {
     }
 
-    public record AuthoringReviewRequest(String provider, String requirementsNotes, String stories) {
+    public record AuthoringReviewRequest(String provider, String model, String requirementsNotes, String stories) {
     }
 
     @PostMapping(value = "/{projectId}/generate/authoring-review", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -78,6 +78,7 @@ public class GenerateTcController {
                     projectId,
                     currentUser.requireUserId(),
                     body == null ? null : body.provider(),
+                    body == null || body.model() == null ? "" : body.model(),
                     body == null ? null : body.requirementsNotes(),
                     body == null ? null : body.stories()
             );

@@ -172,20 +172,31 @@ public class GenerateMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(main.contains("Review with AI"), "Review with AI copy missing");
         Assert.assertTrue(main.contains("id=\"generate-authoring-review\""), "authoring review panel missing");
         Assert.assertTrue(main.contains("id=\"review-requirements-notes\""), "requirements notes missing");
+        Assert.assertTrue(main.contains("id=\"authoring-review-provider\""), "provider dropdown missing");
+        Assert.assertTrue(main.contains("id=\"authoring-review-model\""), "Ollama review model select missing");
+        Assert.assertTrue(main.contains("id=\"authoring-review-model-row\""), "Ollama model row missing");
         Assert.assertTrue(main.contains("id=\"authoring-review-start\""), "start review button missing");
+        Assert.assertTrue(body.contains("function syncAuthoringReviewProviderUi("),
+                "provider dropdown must reveal the Ollama model picker");
+        Assert.assertTrue(body.contains("Ollama model must be specified")
+                        || body.contains("Choose an Ollama model"),
+                "start review must require an Ollama model");
         Assert.assertTrue(main.contains("id=\"authoring-review-accept\""), "accept proposal button missing");
         Assert.assertTrue(main.contains("id=\"authoring-review-discard\""), "discard proposal button missing");
         Assert.assertTrue(main.contains("id=\"authoring-review-tc-count\""), "proposal TC count missing");
+        Assert.assertTrue(main.contains("id=\"authoring-review-cases\""), "proposed TCs must render as a readable list");
         Assert.assertTrue(body.contains("keel.authoringReview.provider"), "review provider preference missing");
         Assert.assertTrue(body.contains("/generate/authoring-review"), "authoring review API wiring missing");
-        Assert.assertTrue(body.contains("function loadAuthoringReviewAvailability("),
-                "saved workbook availability check missing");
+        Assert.assertTrue(body.contains("function setAuthoringReviewUnlocked("),
+                "review must lock until generate/import");
+        Assert.assertTrue(body.contains("authoringReviewStart.disabled = !unlocked"),
+                "Start review must stay disabled until a workbook exists");
         Assert.assertTrue(body.contains("authoringReviewBanner.hidden = true"),
                 "successful showResult/project change must clear review banner");
         Assert.assertTrue(body.contains("if (!projectId || !hasGeneratedWorkbook)"),
                 "start review must use workbook availability");
-        Assert.assertTrue(body.contains("authoringReviewPanel.hidden = false"),
-                "banner must reveal review panel");
+        Assert.assertTrue(body.contains("Generate or import a workbook first"),
+                "banner/start must refuse review before generate");
         Assert.assertTrue(body.contains("authoringReviewBanner.hidden = true"),
                 "review banner clear behavior missing");
         Assert.assertTrue(body.contains("format: 'csv'"), "accept must import proposed CSV");

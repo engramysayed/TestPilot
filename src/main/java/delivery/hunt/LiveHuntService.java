@@ -27,6 +27,11 @@ import java.util.function.BooleanSupplier;
  */
 public final class LiveHuntService {
 
+    /** Contract hint for tests: navigate before optional login prelude. */
+    public static String openThenLoginOrderHint() {
+        return "baseUrl-then-optional-login";
+    }
+
     public HuntJobResult run(
             HuntRequest request,
             List<ManualTestCase> selectedCases,
@@ -83,12 +88,7 @@ public final class LiveHuntService {
         try (HuntNetworkCapture network = HuntNetworkCapture.attach(driverFactory.get())) {
             networkStatus = network.statusLabel();
             WebDriver driver = driverFactory.get();
-            if (loginRequest != null
-                    && loginRequest.username() != null && !loginRequest.username().isBlank()) {
-                new JobLoginService().loginIfNeeded(driverFactory, loginRequest);
-            } else if (request.getBaseUrl() != null && !request.getBaseUrl().isBlank()) {
-                driver.get(request.getBaseUrl());
-            }
+            openSiteThenMaybeLogin(driver, driverFactory, request, loginRequest, hasLoginUsername, huntRoot, journal);
 
             HuntActionExecutor actions = new HuntActionExecutor(driver);
 
@@ -298,6 +298,56 @@ public final class LiveHuntService {
                 stopReason,
                 networkStatus
         );
+    }
+
+    /**
+     * Always open the project base URL first. Optional credential login runs after that.
+     * Login failures are soft for Bug Hunter (continue on the open page) so login-feature hunts
+     * and mismatched selectors do not abort before cycle 1.
+     */
+    static void openSiteThenMaybeLogin(
+            WebDriver driver,
+            WebDriverFactory driverFactory,
+            HuntRequest request,
+            ConversionJobRequest loginRequest,
+            boolean hasLoginUsername,
+            Path huntRoot,
+            HuntStepsJournal journal
+    ) throws Exception {
+        String base = request.getBaseUrl() == null ? "" : request.getBaseUrl().trim();
+        if (!base.isBlank()) {
+            driver.get(base);
+        }
+        if (!hasLoginUsername || loginRequest == null) {
+            Files.writeString(huntRoot.resolve("login-prelude.txt"),
+                    "Opened site only (no auto-login credentials).\nurl=" + safeUrl(driver) + "\n",
+                    StandardCharsets.UTF_8);
+            return;
+        }
+        try {
+            new JobLoginService().loginIfNeeded(driverFactory, loginRequest);
+            Files.writeString(huntRoot.resolve("login-prelude.txt"),
+                    "Auto-login OK.\nurl=" + safeUrl(driver) + "\n",
+                    StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            Files.writeString(huntRoot.resolve("login-prelude.txt"),
+                    "Auto-login failed — continuing hunt on current page.\n"
+                            + "url=" + safeUrl(driver) + "\n"
+                            + "error=" + msg + "\n",
+                    StandardCharsets.UTF_8);
+            journal.appendCycleHeader(0, "login_prelude",
+                    "Auto-login failed; hunt continues from open page. " + msg);
+        }
+    }
+
+    private static String safeUrl(WebDriver driver) {
+        try {
+            String u = driver.getCurrentUrl();
+            return u == null ? "" : u;
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     private static void attachEvidence(Map<String, Object> bug, int cycle, Path shot) {

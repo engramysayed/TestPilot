@@ -1,6 +1,7 @@
 package delivery.authoring;
 
 import delivery.codegen.ProvenStep;
+import delivery.store.PreferredHooksStore;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -34,6 +35,17 @@ public final class RequiredControlFiller {
     public static List<ProvenStep> planFills(
             String html, String tcId, boolean onlyRequiredAttr,
             List<StepIntentBinder.IntentLine> typeIntents) {
+        return planFills(html, tcId, onlyRequiredAttr, typeIntents, List.of());
+    }
+
+    /**
+     * @param spent already typed/selected controls this TC — never re-fill the same field
+     *              (including preferred-hook vs id twins of one element).
+     */
+    public static List<ProvenStep> planFills(
+            String html, String tcId, boolean onlyRequiredAttr,
+            List<StepIntentBinder.IntentLine> typeIntents,
+            List<ProvenStep> spent) {
         List<ProvenStep> out = new ArrayList<>();
         if (html == null || html.isBlank()) {
             return out;
@@ -42,10 +54,14 @@ public final class RequiredControlFiller {
         Set<String> seen = new HashSet<>();
         Set<String> handledRadioGroups = new HashSet<>();
         List<StepIntentBinder.IntentLine> dataIntents = typeIntents == null ? List.of() : typeIntents;
+        List<ProvenStep> spentSteps = spent == null ? List.of() : spent;
 
         Elements controls = doc.select("input, select, textarea");
         for (Element el : controls) {
             if (shouldSkip(el)) {
+                continue;
+            }
+            if (elementMatchesSpent(el, spentSteps)) {
                 continue;
             }
             boolean required = el.hasAttr("required")
@@ -119,29 +135,131 @@ public final class RequiredControlFiller {
         return out;
     }
 
-    /** Fill before submit-like clicks, or when any required empty control exists. */
+    /** Fill empty fields only before submit/continue/sign-in — not before Verify/Submit OTP. */
     public static List<ProvenStep> planFillsBeforeClick(String html, String tcId, String clickIntentText) {
-        return planFillsBeforeClick(html, tcId, clickIntentText, List.of());
+        return planFillsBeforeClick(html, tcId, clickIntentText, List.of(), List.of());
     }
 
     public static List<ProvenStep> planFillsBeforeClick(
             String html, String tcId, String clickIntentText,
             List<StepIntentBinder.IntentLine> typeIntents) {
-        boolean submitLike = looksLikeSubmit(clickIntentText);
-        Document doc = html == null || html.isBlank() ? null : Jsoup.parse(html);
-        boolean hasRequiredEmpty = false;
-        if (doc != null) {
-            for (Element el : doc.select("input[required], select[required], textarea[required], [aria-required=true]")) {
-                if (!shouldSkip(el) && isEmpty(el)) {
-                    hasRequiredEmpty = true;
-                    break;
+        return planFillsBeforeClick(html, tcId, clickIntentText, typeIntents, List.of());
+    }
+
+    public static List<ProvenStep> planFillsBeforeClick(
+            String html, String tcId, String clickIntentText,
+            List<StepIntentBinder.IntentLine> typeIntents,
+            List<ProvenStep> spent) {
+        if (!looksLikeSubmit(clickIntentText)) {
+            return List.of();
+        }
+        return planFills(html, tcId, false, typeIntents, spent);
+    }
+
+    static boolean looksLikeSubmit(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        String s = text.toLowerCase(Locale.ROOT);
+        // OTP verify/submit is not a form autofill gate — Excel often says "submit OTP".
+        if (s.contains("otp") || s.contains("one-time") || s.contains("one time")
+                || s.contains("mfa") || s.contains("2fa") || s.contains("totp")
+                || s.contains("verification code")) {
+            return false;
+        }
+        return s.contains("continue") || s.contains("submit") || s.contains("finish")
+                || s.contains("next") || s.contains("save") || s.contains("place order")
+                || s.contains("complete") || s.contains("confirm") || s.contains("checkout")
+                || s.contains("pay") || s.contains("send") || s.contains("apply")
+                || s.contains("proceed") || s.contains("register")
+                || s.contains("create account") || s.contains("create new")
+                || s.contains("sign up") || s.contains("signup")
+                || s.contains("log in") || s.contains("login") || s.contains("sign in")
+                || s.contains("signin");
+    }
+
+    /**
+     * True when this DOM node is the same control a prior type/select already used —
+     * matches preferred-hook locators against id/name/data-* on the element.
+     */
+    static boolean elementMatchesSpent(Element el, List<ProvenStep> spent) {
+        if (el == null || spent == null || spent.isEmpty()) {
+            return false;
+        }
+        Set<String> identities = elementIdentities(el);
+        if (identities.isEmpty()) {
+            return false;
+        }
+        for (ProvenStep step : spent) {
+            if (step == null || step.action() == null) {
+                continue;
+            }
+            String action = step.action().toLowerCase(Locale.ROOT);
+            if (!("type".equals(action) || "select".equals(action) || "clear".equals(action))) {
+                continue;
+            }
+            for (String token : locatorIdentities(step.locatorStrategy(), step.locatorValue())) {
+                if (identities.contains(token)) {
+                    return true;
                 }
             }
         }
-        if (!submitLike && !hasRequiredEmpty) {
-            return List.of();
+        return false;
+    }
+
+    private static Set<String> elementIdentities(Element el) {
+        Set<String> out = new HashSet<>();
+        if (usableIdentifier(el.id())) {
+            out.add("id:" + el.id().toLowerCase(Locale.ROOT));
         }
-        return planFills(html, tcId, !submitLike, typeIntents);
+        if (usableIdentifier(el.attr("name"))) {
+            out.add("name:" + el.attr("name").toLowerCase(Locale.ROOT));
+        }
+        for (org.jsoup.nodes.Attribute attr : el.attributes()) {
+            String key = attr.getKey() == null ? "" : attr.getKey().toLowerCase(Locale.ROOT);
+            if (!(key.startsWith("data-") && key.contains("test")) && !"data-qa".equals(key)) {
+                continue;
+            }
+            String v = attr.getValue();
+            if (usableIdentifier(v)) {
+                out.add("attr:" + key + ":" + v.toLowerCase(Locale.ROOT));
+                out.add("hook:" + v.toLowerCase(Locale.ROOT));
+            }
+        }
+        return out;
+    }
+
+    static Set<String> locatorIdentities(String strategy, String value) {
+        Set<String> out = new HashSet<>();
+        if (value == null || value.isBlank()) {
+            return out;
+        }
+        String s = strategy == null ? "" : strategy.toLowerCase(Locale.ROOT);
+        String v = value.trim();
+        if ("id".equals(s)) {
+            out.add("id:" + v.toLowerCase(Locale.ROOT));
+        } else if ("name".equals(s)) {
+            out.add("name:" + v.toLowerCase(Locale.ROOT));
+        } else if ("data-test".equals(s) || "data-testid".equals(s) || "data-qa".equals(s)) {
+            out.add("attr:" + s + ":" + v.toLowerCase(Locale.ROOT));
+            out.add("hook:" + v.toLowerCase(Locale.ROOT));
+        }
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+                "\\[(data-[a-z0-9-]+)\\s*=\\s*['\"]([^'\"]+)['\"]\\]",
+                java.util.regex.Pattern.CASE_INSENSITIVE).matcher(v);
+        while (m.find()) {
+            String attr = m.group(1).toLowerCase(Locale.ROOT);
+            String attrVal = m.group(2).toLowerCase(Locale.ROOT);
+            out.add("attr:" + attr + ":" + attrVal);
+            out.add("hook:" + attrVal);
+        }
+        java.util.regex.Matcher idM = java.util.regex.Pattern.compile(
+                "(?:@id|\\bid)\\s*=\\s*['\"]([^'\"]+)['\"]",
+                java.util.regex.Pattern.CASE_INSENSITIVE).matcher(v);
+        if (idM.find()) {
+            out.add("id:" + idM.group(1).toLowerCase(Locale.ROOT));
+        }
+        return out;
     }
 
     private static String valueForControl(
@@ -173,7 +291,8 @@ public final class RequiredControlFiller {
         StepIntentBinder.IntentLine best = null;
         int bestScore = 0;
         for (StepIntentBinder.IntentLine intent : typeIntents) {
-            if (intent == null || intent.testData() == null || intent.testData().isBlank()) {
+            if (intent == null || intent.testData() == null || intent.testData().isBlank()
+                    || DummyValueInventor.looksLikeUnspecifiedValue(intent.testData())) {
                 continue;
             }
             if (intent.kind() != StepIntentBinder.IntentKind.TYPE_FIELD
@@ -241,22 +360,6 @@ public final class RequiredControlFiller {
         return false;
     }
 
-    static boolean looksLikeSubmit(String text) {
-        if (text == null || text.isBlank()) {
-            return false;
-        }
-        String s = text.toLowerCase(Locale.ROOT);
-        return s.contains("continue") || s.contains("submit") || s.contains("finish")
-                || s.contains("next") || s.contains("save") || s.contains("place order")
-                || s.contains("complete") || s.contains("confirm") || s.contains("checkout")
-                || s.contains("pay") || s.contains("send") || s.contains("apply")
-                || s.contains("proceed") || s.contains("register")
-                || s.contains("create account") || s.contains("create new")
-                || s.contains("sign up") || s.contains("signup")
-                || s.contains("log in") || s.contains("login") || s.contains("sign in")
-                || s.contains("signin");
-    }
-
     private static boolean shouldSkip(Element el) {
         String type = el.attr("type").toLowerCase(Locale.ROOT);
         if ("hidden".equals(type) || "submit".equals(type) || "button".equals(type)
@@ -268,7 +371,11 @@ public final class RequiredControlFiller {
         }
         // Login credentials are handled by JobLoginService / prelude — skip typical auth fields here
         String hint = (el.attr("name") + " " + el.id() + " " + el.attr("placeholder")
-                + " " + el.attr("data-test") + " " + el.attr("autocomplete")).toLowerCase(Locale.ROOT);
+                + " " + el.attr("data-test") + " " + el.attr("data-testid")
+                + " " + el.attr("data-axis-test-id") + " " + el.attr("autocomplete")).toLowerCase(Locale.ROOT);
+        if (DummyValueInventor.looksLikeOtpHint(hint)) {
+            return true;
+        }
         if (hint.contains("password") || hint.contains("username") || hint.contains("user-name")
                 || "username".equals(hint.trim()) || hint.contains("current-password")
                 || hint.contains("new-password")) {
@@ -352,8 +459,18 @@ public final class RequiredControlFiller {
     }
 
     private static Locator locatorOf(Element el) {
-        if (usableIdentifier(el.id())) {
-            return new Locator("id", el.id());
+        // Prefer test hooks so autofill locators match binder preferred-hook strategy.
+        List<String> preferred = PreferredHooksStore.current();
+        if (preferred != null) {
+            for (String hook : preferred) {
+                if (hook == null || hook.isBlank()) {
+                    continue;
+                }
+                String v = el.attr(hook);
+                if (usableIdentifier(v)) {
+                    return new Locator("css", "[" + hook + "='" + v.replace("'", "") + "']");
+                }
+            }
         }
         for (String attr : List.of("data-test", "data-testid", "data-qa")) {
             String v = el.attr(attr);
@@ -362,6 +479,16 @@ public final class RequiredControlFiller {
                         : "data-testid".equals(attr) ? "data-testid" : "data-qa";
                 return new Locator(strategy, v);
             }
+        }
+        for (org.jsoup.nodes.Attribute attr : el.attributes()) {
+            String key = attr.getKey() == null ? "" : attr.getKey().toLowerCase(Locale.ROOT);
+            if (key.startsWith("data-") && key.contains("test") && usableIdentifier(attr.getValue())) {
+                return new Locator("css", "[" + attr.getKey() + "='"
+                        + attr.getValue().replace("'", "") + "']");
+            }
+        }
+        if (usableIdentifier(el.id())) {
+            return new Locator("id", el.id());
         }
         if (usableIdentifier(el.attr("name"))) {
             return new Locator("name", el.attr("name"));

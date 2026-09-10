@@ -92,4 +92,59 @@ public class GeneratedWorkbookCaseUpdateTest {
         ), "GENERATE", "unit-test");
         service.updateCaseFields(projectId, "TC_99", Map.of("title", "Nope"), "https://example.test");
     }
+
+    @Test
+    public void updateCaseFields_persistsCallBefore() throws Exception {
+        GeneratedWorkbookService service = service();
+        String projectId = "proj-call-before-ok";
+        service.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_01", "Login", "", "1. Login", "ok", "P1", "", "", "", "AUTOMATE"),
+                new ManualTestCase("TC_06", "Feature", "", "1. Do thing", "ok", "P1", "", "", "", "AUTOMATE")
+        ), "GENERATE", "unit-test");
+
+        Map<String, Object> updated = service.updateCaseFields(
+                projectId, "TC_06", Map.of("callBefore", "TC_01"), "https://example.test");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> row = (Map<String, Object>) updated.get("row");
+        Assert.assertEquals(row.get("callBefore"), "TC_01");
+
+        List<ManualTestCase> read = new ExcelTcReader().read(service.requireExcel(projectId));
+        ManualTestCase tc06 = read.stream().filter(tc -> "TC_06".equals(tc.tcId())).findFirst().orElseThrow();
+        Assert.assertEquals(tc06.callBefore(), "TC_01");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void updateCaseFields_rejectsSelfCallBefore() throws Exception {
+        GeneratedWorkbookService service = service();
+        String projectId = "proj-call-before-self";
+        service.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_06", "Feature", "", "1. Do thing", "ok", "P1", "", "", "", "AUTOMATE")
+        ), "GENERATE", "unit-test");
+
+        try {
+            service.updateCaseFields(projectId, "TC_06", Map.of("callBefore", "TC_06"), "https://example.test");
+            Assert.fail("Expected self-reference rejection");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage().startsWith("CALL_BEFORE_SELF:"), e.getMessage());
+            throw e;
+        }
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void updateCaseFields_rejectsUnknownCallBefore() throws Exception {
+        GeneratedWorkbookService service = service();
+        String projectId = "proj-call-before-unknown";
+        service.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_06", "Feature", "", "1. Do thing", "ok", "P1", "", "", "", "AUTOMATE")
+        ), "GENERATE", "unit-test");
+
+        try {
+            service.updateCaseFields(projectId, "TC_06", Map.of("callBefore", "TC_99"), "https://example.test");
+            Assert.fail("Expected unknown callBefore rejection");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage().startsWith("UNKNOWN_CALL_BEFORE:"), e.getMessage());
+            throw e;
+        }
+    }
 }

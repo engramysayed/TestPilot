@@ -77,7 +77,7 @@ public class PortalJobStarter implements JobStarter {
                 ? KeelPathCaseFilter.Surface.AUTOMATE
                 : KeelPathCaseFilter.Surface.EXECUTE;
         try {
-            List<ManualTestCase> cases = new ExcelTcReader().read(excelPath);
+            List<ManualTestCase> cases = new ExcelTcReader(true).read(excelPath);
             Optional<String> block = KeelPathSurfaceGuard.hardBlock(surface, KeelPathCounts.from(cases));
             if (block.isPresent()) {
                 throw new IllegalStateException("SURFACE_MISMATCH: " + block.get());

@@ -119,4 +119,75 @@ public class DummyValueInventorFakerTest {
                 "input", "text", "username", "Username", "");
         Assert.assertEquals(user, "${TARGET_USERNAME}");
     }
+
+    @Test
+    public void loginTypeIgnoresInventedTestData_usesCredentialProfile() {
+        Assert.assertEquals(
+                StepIntentBinder.resolveLoginTypedValue(
+                        StepIntentBinder.IntentKind.TYPE_USER,
+                        "Enter in the Username field",
+                        "cursor-invented-user"),
+                "${TARGET_USERNAME}");
+        Assert.assertEquals(
+                StepIntentBinder.resolveLoginTypedValue(
+                        StepIntentBinder.IntentKind.TYPE_PASS,
+                        "Enter in the Password field",
+                        "CursorPass1!"),
+                "${TARGET_PASSWORD}");
+    }
+
+    @Test
+    public void loginTypeKeepsQuotedStepLiteral() {
+        Assert.assertEquals(
+                StepIntentBinder.resolveLoginTypedValue(
+                        StepIntentBinder.IntentKind.TYPE_USER,
+                        "Enter 'wrong.user' in the Username field",
+                        ""),
+                "wrong.user");
+    }
+
+    @Test
+    public void inventLoginFieldsUseCredentialTokensNotFaker() {
+        Assert.assertEquals(
+                DummyValueInventor.invent("input", "text", "username", "Username", ""),
+                "${TARGET_USERNAME}");
+        Assert.assertEquals(
+                DummyValueInventor.invent("input", "password", "pass", "Password", ""),
+                "${TARGET_PASSWORD}");
+        Assert.assertEquals(
+                DummyValueInventor.invent("input", "text", "email", "Email or phone", ""),
+                "${TARGET_USERNAME}");
+    }
+
+    @Test
+    public void otpFieldNeverUsesTargetPasswordEvenWhenTypePassword() {
+        Assert.assertNotEquals(
+                DummyValueInventor.invent("input", "password", "basic_otp", "OTP", ""),
+                "${TARGET_PASSWORD}");
+        Assert.assertNotEquals(
+                DummyValueInventor.fromStepOrInvent(
+                        "Enter the OTP", "245345",
+                        "input", "password", "basic_otp", "OTP", ""),
+                "${TARGET_PASSWORD}");
+        Assert.assertEquals(
+                DummyValueInventor.fromStepOrInvent(
+                        "Enter the OTP", "245345",
+                        "input", "password", "basic_otp", "OTP", ""),
+                "245345");
+    }
+
+    @Test
+    public void emailOrPhonePlaceholderUsesCredentialProfile() {
+        Assert.assertEquals(
+                DummyValueInventor.fromStepOrInvent(
+                        "Enter in the Email or phone field", "<USERNAME>",
+                        "input", "text", "email", "Email or phone", ""),
+                "${TARGET_USERNAME}");
+        Assert.assertEquals(
+                StepIntentBinder.resolveLoginTypedValue(
+                        StepIntentBinder.IntentKind.TYPE_USER,
+                        "Enter in the Email or phone field",
+                        "<USERNAME>"),
+                "${TARGET_USERNAME}");
+    }
 }

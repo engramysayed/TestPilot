@@ -556,6 +556,62 @@ public class HealCascadeTest {
     }
 
     @Test
+    public void ollamaCannotReuseTheInputThisTcAlreadyTyped() {
+        String html = """
+                <body>
+                  <input id="basic_otp" name="otp" aria-label="OTP" />
+                  <button data-axis-test-id="verify_Otp_Button">Verify OTP</button>
+                </body>
+                """;
+        LocalLlmClient llm = new LocalLlmClient("http://127.0.0.1:9", "dummy") {
+            @Override
+            public String completeJson(String system, String user) {
+                List<DomCandidate> all = DomCandidateExtractor.extract(html);
+                String otpId = all.stream()
+                        .filter(c -> c.value().toLowerCase().contains("basic_otp"))
+                        .findFirst()
+                        .orElseThrow()
+                        .id();
+                return "{\"candidateId\":\"" + otpId + "\"}";
+            }
+
+            @Override
+            public String completeJson(String system, String user, byte[] imagePng) {
+                return completeJson(system, user);
+            }
+        };
+        CursorHealClient cursor = new CursorHealClient(false, "unused", 5) {
+            @Override
+            public String solve(String intentText, String failureReason, String shortlistTable,
+                                String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull,
+                                List<String> priorSteps) {
+                List<DomCandidate> all = DomCandidateExtractor.extract(html);
+                String buttonId = all.stream()
+                        .filter(c -> c.value().toLowerCase().contains("verify"))
+                        .findFirst()
+                        .orElseThrow()
+                        .id();
+                return "{\"candidateId\":\"" + buttonId + "\"}";
+            }
+        };
+        HealCascade cascade = new HealCascade(
+                new AuthoringService(llm, new LocatorValidator()), cursor);
+        List<ProvenStep> spent = List.of(new ProvenStep(
+                "TC1", "Page", "elementAction", "type",
+                "id", "basic_otp", "245345", "", "", true, "intent:TYPE_FIELD"));
+
+        HealResult result = cascade.heal(
+                "TC1",
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.CLICK, "Click the Verify OTP button"),
+                html, new byte[]{1}, "bind failed", null, true, List.of(), true, spent);
+
+        Assert.assertTrue(result.ok(), result.reason());
+        Assert.assertFalse(result.steps().get(0).locatorValue().contains("basic_otp"),
+                "heal reused a spent OTP input: " + result.steps().get(0).locatorValue());
+    }
+
+    @Test
     public void submitHealRejectsALoginHrefPick() {
         String html = """
                 <body>

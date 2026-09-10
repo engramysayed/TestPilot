@@ -61,6 +61,7 @@ public class AuthoringReviewApiTest extends AbstractTestNGSpringContextTests {
                 eq(projectId),
                 anyLong(),
                 eq("cursor"),
+                eq(""),
                 eq("Keep the suite focused"),
                 eq("A user can log in")))
                 .thenReturn(payload);
@@ -83,7 +84,7 @@ public class AuthoringReviewApiTest extends AbstractTestNGSpringContextTests {
     @Test
     public void authoringReview_badProvider_returnsBadRequest() throws Exception {
         String projectId = createProject();
-        when(reviews.review(eq(projectId), anyLong(), eq("openai"), eq(""), eq("")))
+        when(reviews.review(eq(projectId), anyLong(), eq("openai"), eq(""), eq(""), eq("")))
                 .thenThrow(new IllegalArgumentException("provider must be cursor or ollama"));
 
         performReview(projectId, """
@@ -97,12 +98,12 @@ public class AuthoringReviewApiTest extends AbstractTestNGSpringContextTests {
     @Test
     public void authoringReview_qualityGateException_returnsQualityGateError() throws Exception {
         String projectId = createProject();
-        when(reviews.review(eq(projectId), anyLong(), eq("ollama"), eq(""), eq("")))
+        when(reviews.review(eq(projectId), anyLong(), eq("ollama"), eq("gemma4:e2b"), eq(""), eq("")))
                 .thenThrow(GenerateQualityGate.failureException(
                         List.of("tcId 'TC_01': steps are blank after normalize")));
 
         performReview(projectId, """
-                {"provider":"ollama","requirementsNotes":"","stories":""}
+                {"provider":"ollama","model":"gemma4:e2b","requirementsNotes":"","stories":""}
                 """)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("QUALITY_GATE"))
@@ -113,11 +114,11 @@ public class AuthoringReviewApiTest extends AbstractTestNGSpringContextTests {
     @Test
     public void authoringReview_missingWorkbook_returnsNotFound() throws Exception {
         String projectId = createProject();
-        when(reviews.review(eq(projectId), anyLong(), eq("ollama"), eq(""), eq("")))
+        when(reviews.review(eq(projectId), anyLong(), eq("ollama"), eq("gemma4:e2b"), eq(""), eq("")))
                 .thenThrow(new IllegalStateException("NO_GENERATED_WORKBOOK"));
 
         performReview(projectId, """
-                {"provider":"ollama","requirementsNotes":"","stories":""}
+                {"provider":"ollama","model":"gemma4:e2b","requirementsNotes":"","stories":""}
                 """)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("NO_GENERATED_WORKBOOK"));
@@ -126,7 +127,7 @@ public class AuthoringReviewApiTest extends AbstractTestNGSpringContextTests {
     @Test
     public void authoringReview_providerFailure_returnsServiceUnavailable() throws Exception {
         String projectId = createProject();
-        when(reviews.review(eq(projectId), anyLong(), eq("cursor"), eq(""), eq("")))
+        when(reviews.review(eq(projectId), anyLong(), eq("cursor"), eq(""), eq(""), eq("")))
                 .thenThrow(new IllegalStateException("cursor returned empty review"));
 
         performReview(projectId, """

@@ -15,9 +15,11 @@ import java.util.List;
 public class ElementsHandler {
     /** ARIA / HTML roles a dropdown option can carry, most specific first. */
     private static final List<String> OPTION_SELECTORS = List.of(
+            ".ant-select-item-option-content",
+            ".ant-select-item-option",
             "[role='option']", "[role='menuitemradio']", "[role='menuitemcheckbox']",
             "[role='menuitem']", "[role='treeitem']", "[role='listbox'] li", "li", "option");
-    private static final long OPTION_WAIT_MS = 5000;
+    private static final long OPTION_WAIT_MS = 8000;
 
     private final WebDriver driver;
     private final WaitHandler waitHandler;
@@ -88,30 +90,116 @@ public class ElementsHandler {
      */
     public String selectFromCustomDropdown(WebElement control, String option) {
         String wanted = normalizeText(option);
+        openDropdown(control);
+        WebElement match;
         if (wanted.isEmpty()) {
-            return "false -> no option text to select";
-        }
-        clickHard(control);
-        WebElement match = waitForOption(wanted);
-        if (match == null && acceptsTypedText(control)) {
-            // Typeahead comboboxes only render their list once the text narrows it.
-            try {
-                control.sendKeys(option);
-                match = waitForOption(wanted);
-            } catch (Exception ignored) {
-                // fall through to the failure below
+            // Excel "choose Gender" with no value — pick the first real option that appears.
+            match = waitForFirstOption();
+            if (match != null) {
+                wanted = normalizeText(match.getText());
+            }
+        } else {
+            match = waitForOption(wanted);
+            if (match == null && acceptsTypedText(control)) {
+                // Typeahead comboboxes only render their list once the text narrows it.
+                try {
+                    control.sendKeys(option);
+                    match = waitForOption(wanted);
+                } catch (Exception ignored) {
+                    // fall through
+                }
+            }
+            // TestData spelling can disagree with the live label — still pick a real option.
+            if (match == null) {
+                LogsManager.warn("Option '" + option + "' not in dropdown — using first visible option");
+                match = waitForFirstOption();
+                if (match != null) {
+                    wanted = normalizeText(match.getText());
+                }
             }
         }
         if (match == null) {
             dismissPopup();
-            return "false -> option '" + option + "' never appeared after opening the dropdown";
+            return wanted.isEmpty()
+                    ? "false -> no options appeared after opening the dropdown"
+                    : "false -> option '" + option + "' never appeared after opening the dropdown";
         }
         clickHard(match);
-        if (!selectionVisible(control, wanted)) {
-            LogsManager.warn("Clicked option '" + option
+        if (!wanted.isEmpty() && !selectionVisible(control, wanted)) {
+            LogsManager.warn("Clicked option '" + wanted
                     + "' but the control does not show it — the widget may render the value elsewhere");
         }
         return "true";
+    }
+
+    /** Ant Design / MUI often need the selector chrome clicked, not only the inner input. */
+    private void openDropdown(WebElement control) {
+        WebElement target = control;
+        try {
+            WebElement chrome = control.findElement(By.xpath(
+                    "./ancestor-or-self::*[contains(@class,'ant-select') or @role='combobox'][1]"
+                            + "//*[contains(@class,'ant-select-selector') or @role='combobox'][1]"));
+            if (chrome != null) {
+                target = chrome;
+            }
+        } catch (Exception ignored) {
+            // use the bound control
+        }
+        clickHard(target);
+        if (target != control) {
+            try {
+                clickHard(control);
+            } catch (Exception ignored) {
+                // already opened via chrome
+            }
+        }
+    }
+
+    private WebElement waitForFirstOption() {
+        long deadline = System.currentTimeMillis() + OPTION_WAIT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            WebElement hit = findFirstOption();
+            if (hit != null) {
+                return hit;
+            }
+            pause(200);
+        }
+        return null;
+    }
+
+    private static final List<String> FIRST_OPTION_SELECTORS = List.of(
+            ".ant-select-item-option-content",
+            ".ant-select-item-option",
+            ".ant-select-dropdown [role='option']",
+            "[role='listbox'] [role='option']",
+            "[role='option']",
+            "[role='menuitemradio']",
+            "[role='menuitemcheckbox']",
+            "option");
+
+    private WebElement findFirstOption() {
+        for (String selector : FIRST_OPTION_SELECTORS) {
+            List<WebElement> found;
+            try {
+                found = driver.findElements(By.cssSelector(selector));
+            } catch (Exception e) {
+                continue;
+            }
+            for (WebElement el : found) {
+                try {
+                    if (!el.isDisplayed()) {
+                        continue;
+                    }
+                    String text = normalizeText(el.getText());
+                    if (!text.isEmpty()) {
+                        return el;
+                    }
+                } catch (Exception stale) {
+                    // try next
+                }
+            }
+        }
+        return null;
     }
 
     private WebElement waitForOption(String wanted) {

@@ -77,6 +77,25 @@ public class ProjectPatchApiTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    public void patch_savesPreferredHooksOnTheDomainFolder() throws Exception {
+        String id = createProject();
+        mockMvc.perform(patch("/api/projects/" + id)
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"baseUrl\":\"https://opssit.axispay.app/login\",\"preferredHooks\":\"data-axis-test-id\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.preferredHooks").value("data-axis-test-id"));
+        Path file = Path.of(props.getStoreRoot(), "opssit-axispay-app", "preferred-hooks.json");
+        org.testng.Assert.assertTrue(Files.isRegularFile(file), file.toString());
+        mockMvc.perform(get("/api/projects/" + id)
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.preferredHooks").value("data-axis-test-id"));
+    }
+
+    @Test
     public void archive_hidesFromDefaultList() throws Exception {
         String id = createProject();
         mockMvc.perform(patch("/api/projects/" + id)

@@ -28,6 +28,10 @@ public class ProjectTcService {
         this.store = store;
     }
 
+    public int clearProvenCases(String projectId) throws Exception {
+        return draftStore(projectId).deleteAll();
+    }
+
     public List<Map<String, Object>> listTcs(String projectId) throws Exception {
         String runAt = conversionRunLabel(projectId);
         List<Map<String, Object>> out = new ArrayList<>();

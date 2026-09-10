@@ -80,8 +80,8 @@ public class AuthoringService {
             List<FailedLocator> failedLocators
     ) throws Exception {
         List<DomCandidate> candidates = DomCandidateExtractor.extract(slimHtml);
-        if (intent != null && intent.kind() == StepIntentBinder.IntentKind.TYPE_FIELD) {
-            candidates = StepIntentBinder.withoutSpentControls(candidates, spent);
+        if (intent != null && StepIntentBinder.spendsMustAvoidPriorFills(intent.kind())) {
+            candidates = StepIntentBinder.withoutSpentControls(candidates, spent, slimHtml);
         }
         candidates = StepIntentBinder.withoutFailedLocators(candidates, failedLocators);
         StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(intent, tcId, candidates, List.of());
@@ -338,9 +338,10 @@ public class AuthoringService {
         }
         String action = intent.kind() == StepIntentBinder.IntentKind.ASSERT_VISIBLE ? "assert" : "click";
         if (intent.kind() == StepIntentBinder.IntentKind.TYPE_USER
-                || intent.kind() == StepIntentBinder.IntentKind.TYPE_PASS
-                || intent.kind() == StepIntentBinder.IntentKind.TYPE_FIELD) {
+                || intent.kind() == StepIntentBinder.IntentKind.TYPE_PASS) {
             action = "type";
+        } else if (intent.kind() == StepIntentBinder.IntentKind.TYPE_FIELD) {
+            action = StepIntentBinder.resolveFieldAction(chosen, intent.text());
         }
         String assertType = "";
         String assertExpected = "";
@@ -677,7 +678,7 @@ public class AuthoringService {
                 }
                 String hay = (c.value() + " " + c.label()).toLowerCase(Locale.ROOT);
                 if (hay.equals(needle) || hay.contains(needle)) {
-                    int rank = DomCandidateExtractor.strategyRank(c.strategy());
+                    int rank = DomCandidateExtractor.strategyRank(c.strategy(), c.value());
                     if (rank > bestRank) {
                         bestRank = rank;
                         best = c;
@@ -775,9 +776,12 @@ public class AuthoringService {
             String typed = step.optString("value", "");
             if (loginMode && "type".equalsIgnoreCase(action) && bound != null) {
                 String hay = bound.value().toLowerCase(Locale.ROOT);
-                if (hay.contains("user") || hay.contains("email")) {
+                if (DummyValueInventor.looksLikeOtpHint(hay + " " + bound.label())) {
+                    // keep LLM / Excel OTP value
+                } else if (hay.contains("user") || hay.contains("email")) {
                     typed = "${TARGET_USERNAME}";
-                } else if (hay.contains("pass")) {
+                } else if (hay.contains("password") || hay.contains("passwd")
+                        || hay.matches(".*\\bpass\\b.*")) {
                     typed = "${TARGET_PASSWORD}";
                 }
             }

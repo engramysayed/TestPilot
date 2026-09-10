@@ -114,7 +114,12 @@ public final class HuntOracle {
             if ("cap".equals(type) || type.isBlank()) {
                 continue;
             }
-            return "navigate".equals(type) || "click".equals(type);
+            return "navigate".equals(type)
+                    || "click".equals(type)
+                    || "back".equals(type)
+                    || "forward".equals(type)
+                    || "refresh".equals(type)
+                    || "execute_js".equals(type);
         }
         return false;
     }

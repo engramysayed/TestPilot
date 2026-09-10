@@ -71,10 +71,14 @@ public class VisionTriggersTest {
                 StepIntentBinder.IntentKind.CLICK_LOGIN,
                 StepIntentBinder.IntentKind.TYPE_FIELD,
                 StepIntentBinder.IntentKind.TYPE_USER,
-                StepIntentBinder.IntentKind.TYPE_PASS,
-                StepIntentBinder.IntentKind.ASSERT_VISIBLE)) {
+                StepIntentBinder.IntentKind.TYPE_PASS)) {
             Assert.assertTrue(VisionTriggers.isEligible(
                     new StepIntentBinder.IntentLine(kind, "step")));
         }
+        Assert.assertFalse(VisionTriggers.isEligible(
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.ASSERT_VISIBLE,
+                        "Confirm the message is visible")),
+                "text asserts must not widget-ground or scroll the viewport");
     }
 }

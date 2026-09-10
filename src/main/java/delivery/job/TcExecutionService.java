@@ -26,12 +26,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class TcExecutionService {
     private final WebDriverFactory driverFactory;
     private final actionExecute executor;
+    private final ConversionJobRequest request;
     /** Monotonic across all execute() batches for one TC (avoids overwriting step-001.png). */
     private final AtomicInteger shotSeq = new AtomicInteger(0);
 
     public TcExecutionService(WebDriverFactory driverFactory) {
+        this(driverFactory, null);
+    }
+
+    public TcExecutionService(WebDriverFactory driverFactory, ConversionJobRequest request) {
         this.driverFactory = driverFactory;
         this.executor = new actionExecute(driverFactory);
+        this.request = request;
     }
 
     /** Call at the start of each TC so screenshot names restart at 001. */
@@ -40,6 +46,7 @@ public class TcExecutionService {
     }
 
     public TcOutcome execute(String tcId, List<ProvenStep> steps, Path evidenceRoot) {
+        steps = LoginSecretResolver.resolveForLive(steps, request);
         List<ProvenStep> proven = new ArrayList<>();
         Path evidenceDir = evidenceRoot == null ? null : evidenceRoot.resolve(tcId);
         try {
@@ -124,6 +131,9 @@ public class TcExecutionService {
                             captureFailure(evidenceDir);
                             return new TcOutcome(tcId, TcStatus.TODO, proven, result + " | " + retry, evidenceDir);
                         }
+                    } else if (looksLikeDateField(step)) {
+                        // Ant Design date pickers stay open after typing and block the next control.
+                        dismissTransientOverlays();
                     }
                 }
                 if (hasAssert) {
@@ -268,6 +278,29 @@ public class TcExecutionService {
             el.sendKeys(Keys.chord(modifier, "a"), Keys.DELETE);
         } catch (Exception e) {
             LogsManager.warn("Could not force-clear field: " + e.getMessage());
+        }
+    }
+
+    static boolean looksLikeDateField(ProvenStep step) {
+        if (step == null) {
+            return false;
+        }
+        String hay = ((step.locatorValue() == null ? "" : step.locatorValue()) + " "
+                + (step.value() == null ? "" : step.value()) + " "
+                + (step.rationale() == null ? "" : step.rationale())).toLowerCase();
+        if (hay.contains("date") || hay.contains("birth") || hay.contains("expir")) {
+            return true;
+        }
+        String value = step.value() == null ? "" : step.value().trim();
+        return value.matches("\\d{1,2}[/.-]\\d{1,2}[/.-]\\d{2,4}");
+    }
+
+    void dismissTransientOverlays() {
+        try {
+            driverFactory.get().findElement(By.tagName("body")).sendKeys(Keys.ESCAPE);
+            LogsManager.info("DISMISS_OVERLAY: Escape after date field");
+        } catch (Exception e) {
+            LogsManager.warn("DISMISS_OVERLAY failed: " + e.getMessage());
         }
     }
 

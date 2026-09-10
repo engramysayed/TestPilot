@@ -95,5 +95,9 @@ public class ExecuteMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(main.contains("Accept &amp; run"), "explicit acceptance control missing");
         Assert.assertTrue(body.contains("/pre-run-authoring-review"), "pre-run review API wiring missing");
         Assert.assertTrue(body.contains("preRunReviewedCsv"), "accepted proposal must become run input");
+        Assert.assertTrue(main.contains("id=\"pre-run-review-progress\""), "in-progress bar missing");
+        Assert.assertTrue(main.contains("id=\"pre-run-review-result\""), "proposal result must stay hidden until review finishes");
+        Assert.assertTrue(main.contains("id=\"pre-run-review-cases\""), "proposed TCs must render as a readable list");
+        Assert.assertTrue(body.contains("pre-run-review-progress"), "progress element must be toggled while Cursor reviews");
     }
 }

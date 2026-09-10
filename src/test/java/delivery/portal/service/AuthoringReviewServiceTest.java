@@ -30,15 +30,22 @@ public class AuthoringReviewServiceTest {
         byte[] before = Files.readAllBytes(fixture.workbooks.requireExcel(PROJECT_ID));
 
         Map<String, Object> result = fixture.service.review(
-                PROJECT_ID, OWNER_ID, " OLLAMA ", "Keep fixes minimal", "Empty email is rejected");
+                PROJECT_ID, OWNER_ID, " OLLAMA ", "gemma4:e2b", "Keep fixes minimal", "Empty email is rejected");
 
         Assert.assertEquals(result.get("provider"), "ollama");
+        Assert.assertEquals(result.get("model"), "gemma4:e2b");
+        Assert.assertEquals(fixture.lastModel, "gemma4:e2b");
         Assert.assertEquals(result.get("tcCount"), 1);
         Assert.assertEquals(result.get("previewOk"), Boolean.TRUE);
         Assert.assertEquals(result.get("gateErrors"), List.of());
         Assert.assertEquals(result.get("coverageNotes"), "Empty-email coverage retained.");
         Assert.assertTrue(String.valueOf(result.get("csv")).contains("Leave the Email field empty"));
         Assert.assertEquals(((List<?>) result.get("findings")).size(), 1);
+        List<?> cases = (List<?>) result.get("cases");
+        Assert.assertEquals(cases.size(), 1);
+        Assert.assertEquals(((Map<?, ?>) cases.get(0)).get("tcId"), "TC_01");
+        Assert.assertTrue(String.valueOf(((Map<?, ?>) cases.get(0)).get("steps"))
+                .contains("Leave the Email field empty"));
         Assert.assertEquals(Files.readAllBytes(fixture.workbooks.requireExcel(PROJECT_ID)), before);
         Assert.assertEquals(
                 new ExcelTcReader().read(fixture.workbooks.requireExcel(PROJECT_ID)).get(0).steps(),
@@ -55,9 +62,21 @@ public class AuthoringReviewServiceTest {
 
         IllegalArgumentException error = Assert.expectThrows(
                 IllegalArgumentException.class,
-                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "openai", "", ""));
+                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "openai", "", "", ""));
 
         Assert.assertEquals(error.getMessage(), "provider must be cursor or ollama");
+        Assert.assertEquals(fixture.calls, 0);
+    }
+
+    @Test
+    public void review_ollamaWithoutModel_fails() throws Exception {
+        Fixture fixture = fixture(List.of(originalCase()), validReviewJson());
+
+        IllegalArgumentException error = Assert.expectThrows(
+                IllegalArgumentException.class,
+                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "ollama", "  ", "", ""));
+
+        Assert.assertEquals(error.getMessage(), "Ollama model must be specified");
         Assert.assertEquals(fixture.calls, 0);
     }
 
@@ -73,7 +92,7 @@ public class AuthoringReviewServiceTest {
 
         IllegalArgumentException error = Assert.expectThrows(
                 IllegalArgumentException.class,
-                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "cursor", "", ""));
+                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "cursor", "", "", ""));
 
         Assert.assertEquals(error.getMessage(), "Suite exceeds 50 cases");
         Assert.assertEquals(fixture.calls, 0);
@@ -87,7 +106,7 @@ public class AuthoringReviewServiceTest {
 
         IllegalArgumentException error = Assert.expectThrows(
                 IllegalArgumentException.class,
-                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "ollama", "", ""));
+                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "ollama", "gemma4:e2b", "", ""));
 
         Assert.assertTrue(error.getMessage().contains("missing input tcId 'TC_02'"), error.getMessage());
     }
@@ -100,7 +119,7 @@ public class AuthoringReviewServiceTest {
 
         IllegalArgumentException error = Assert.expectThrows(
                 IllegalArgumentException.class,
-                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "ollama", "", ""));
+                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "ollama", "gemma4:e2b", "", ""));
 
         Assert.assertTrue(error.getMessage().contains("duplicate tcId 'TC_01'"), error.getMessage());
     }
@@ -115,7 +134,7 @@ public class AuthoringReviewServiceTest {
 
         IllegalArgumentException error = Assert.expectThrows(
                 IllegalArgumentException.class,
-                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "ollama", "", ""));
+                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "ollama", "gemma4:e2b", "", ""));
 
         Assert.assertTrue(error.getMessage().contains("returned more than 50 cases"), error.getMessage());
     }
@@ -126,7 +145,7 @@ public class AuthoringReviewServiceTest {
 
         IllegalStateException error = Assert.expectThrows(
                 IllegalStateException.class,
-                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "cursor", "", ""));
+                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "cursor", "", "", ""));
 
         Assert.assertEquals(error.getMessage(), "cursor returned empty review");
         Assert.assertEquals(fixture.calls, 1);
@@ -143,7 +162,7 @@ public class AuthoringReviewServiceTest {
                 "P1", "", "", "", "EXECUTE");
 
         Map<String, Object> result = fixture.service.reviewCases(
-                PROJECT_ID, OWNER_ID, List.of(prospective), "cursor", "", "");
+                PROJECT_ID, OWNER_ID, List.of(prospective), "cursor", "", "", "");
 
         Assert.assertEquals(result.get("provider"), "cursor");
         Assert.assertEquals(result.get("tcCount"), 1);
@@ -159,9 +178,10 @@ public class AuthoringReviewServiceTest {
         workbooks.saveFromCases(PROJECT_ID, cases, "TEST", "fixture");
 
         Fixture fixture = new Fixture(workbooks);
-        AuthoringReviewService.ReviewLlmPort port = (provider, system, user) -> {
+        AuthoringReviewService.ReviewLlmPort port = (provider, model, system, user) -> {
             fixture.calls++;
             fixture.lastProvider = provider;
+            fixture.lastModel = model;
             fixture.lastSystem = system;
             fixture.lastUser = user;
             return response;
@@ -253,6 +273,7 @@ public class AuthoringReviewServiceTest {
         private AuthoringReviewService service;
         private int calls;
         private String lastProvider;
+        private String lastModel;
         private String lastSystem;
         private String lastUser;
 

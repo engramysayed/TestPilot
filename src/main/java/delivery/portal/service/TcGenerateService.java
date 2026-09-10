@@ -211,12 +211,38 @@ public class TcGenerateService {
         String resolvedModel = models.resolve(model);
         String system = buildSystemPrompt();
         String user = buildUserMessage(project, stories, storyLabel);
-        String raw = invokeOllama(system, user, resolvedModel, cancelCheck);
+        LocalLlmClient.ChatOutcome first = invokeOllamaDetailed(system, user, resolvedModel, cancelCheck);
+        String raw = first.contentOrEmpty();
+        if (first.truncated() || looksLikeEmptyOrBrokenBatch(raw)) {
+            log.warn("Generate output truncated or empty testCases — retrying compact batch");
+            String compactUser = user + "\n\nIMPORTANT: Previous model output was truncated or had an empty "
+                    + "testCases array (Ollama done_reason=length). Emit 1–5 COMPLETE testCases only. "
+                    + "Keep steps concise. Every JSON string must be closed. Prefer one happy-path case "
+                    + "covering the full acceptance flow.";
+            first = invokeOllamaDetailed(system, compactUser, resolvedModel, cancelCheck);
+            raw = first.contentOrEmpty();
+            if (first.truncated()) {
+                throw new IllegalStateException(
+                        "OLLAMA_TRUNCATED: model hit the output token limit twice. "
+                                + "Raise delivery.generate-num-predict or use a larger generate model "
+                                + "(e.g. qwen2.5:latest).");
+            }
+        }
         if (reviewPass) {
             String reviewUser = buildReviewUserMessage(stories, raw);
-            raw = invokeOllama(system, reviewUser, resolvedModel, cancelCheck);
+            raw = invokeOllamaDetailed(system, reviewUser, resolvedModel, cancelCheck).contentOrEmpty();
         }
-        ParsedLlmOutput parsed = parseLlmOutput(raw);
+        ParsedLlmOutput parsed;
+        try {
+            parsed = parseLlmOutput(raw);
+        } catch (IllegalArgumentException parseError) {
+            log.warn("Generate parse failed — retrying once: {}", parseError.getMessage());
+            String retryUser = user + "\n\nPrevious JSON was unusable (" + parseError.getMessage()
+                    + "). Reply with ONE complete JSON object only. "
+                    + "testCases must be a non-empty array. Keep to 1–5 cases.";
+            raw = invokeOllamaDetailed(system, retryUser, resolvedModel, cancelCheck).contentOrEmpty();
+            parsed = parseLlmOutput(raw);
+        }
         List<ManualTestCase> cases = GeneratedTcScopeFilter.apply(stories, parsed.cases());
         List<String> gateErrors = GenerateQualityGate.validate(cases, project.getBaseUrl());
         if (!gateErrors.isEmpty()) {
@@ -225,7 +251,7 @@ public class TcGenerateService {
         }
         if (!gateErrors.isEmpty()) {
             String retryUser = buildQualityRetryUserMessage(project, stories, storyLabel, raw, gateErrors);
-            raw = invokeOllama(system, retryUser, resolvedModel, cancelCheck);
+            raw = invokeOllamaDetailed(system, retryUser, resolvedModel, cancelCheck).contentOrEmpty();
             parsed = parseLlmOutput(raw);
             cases = GeneratedTcScopeFilter.apply(stories, parsed.cases());
             cases = applyAuthoringRepair(cases, project.getBaseUrl(), storyLabel);
@@ -235,6 +261,21 @@ public class TcGenerateService {
             }
         }
         return new StoryGenerateResult(cases, parsed.coverageNotes(), resolvedModel);
+    }
+
+    static boolean looksLikeEmptyOrBrokenBatch(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return true;
+        }
+        try {
+            GeneratedTcJsonParser.parse(raw);
+            return false;
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage() == null ? "" : e.getMessage();
+            return msg.contains("non-empty testCases")
+                    || msg.contains("JSON response is empty")
+                    || msg.contains("Not valid JSON");
+        }
     }
 
     private List<ManualTestCase> applyAuthoringRepair(
@@ -254,29 +295,50 @@ public class TcGenerateService {
         return "OLLAMA_TIMEOUT after " + timeoutSec + "s";
     }
 
-    private String invokeOllama(String system, String user, String model, BooleanSupplier cancelCheck)
-            throws Exception {
+    private LocalLlmClient.ChatOutcome invokeOllamaDetailed(
+            String system, String user, String model, BooleanSupplier cancelCheck
+    ) throws Exception {
         JobCancelSupport.checkCancelled(cancelCheck);
         if (cancelCheck == null) {
-            return callOllama(system, user, model);
+            return callOllamaDetailed(system, user, model);
         }
-        return callOllama(system, user, model, cancelCheck);
+        return callOllamaDetailed(system, user, model, cancelCheck);
+    }
+
+    private String invokeOllama(String system, String user, String model, BooleanSupplier cancelCheck)
+            throws Exception {
+        return invokeOllamaDetailed(system, user, model, cancelCheck).contentOrEmpty();
     }
 
     String callOllama(String system, String user, String model) throws Exception {
-        return callOllama(system, user, model, null);
+        return callOllamaDetailed(system, user, model).contentOrEmpty();
     }
 
     String callOllama(String system, String user, String model, BooleanSupplier cancelCheck) throws Exception {
+        return callOllamaDetailed(system, user, model, cancelCheck).contentOrEmpty();
+    }
+
+    LocalLlmClient.ChatOutcome callOllamaDetailed(String system, String user, String model) throws Exception {
+        return callOllamaDetailed(system, user, model, null);
+    }
+
+    LocalLlmClient.ChatOutcome callOllamaDetailed(
+            String system, String user, String model, BooleanSupplier cancelCheck
+    ) throws Exception {
         int timeoutSec = Math.max(30, props.getGenerateTimeoutSeconds());
+        int numPredict = Math.max(
+                LocalLlmClient.DEFAULT_GENERATE_NUM_PREDICT,
+                props.getGenerateNumPredict());
         LocalLlmClient client = new LocalLlmClient(
                 props.getLlmBaseUrl(),
                 model,
-                Duration.ofSeconds(timeoutSec + 30L));
+                Duration.ofSeconds(timeoutSec + 30L),
+                numPredict);
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
-            Callable<String> task = () -> client.completeChat(system, user, true);
-            Future<String> future = executor.submit(task);
+            Callable<LocalLlmClient.ChatOutcome> task =
+                    () -> client.completeChatDetailed(system, user, true, numPredict);
+            Future<LocalLlmClient.ChatOutcome> future = executor.submit(task);
             try {
                 return JobCancelSupport.awaitOrCancel(
                         future, TimeUnit.SECONDS.toMillis(timeoutSec), cancelCheck);
@@ -325,6 +387,7 @@ public class TcGenerateService {
             row.put("visualAssertion", tc.visualAssertion());
             row.put("testData", tc.testData());
             row.put("keelPath", tc.keelPath());
+            row.put("callBefore", tc.callBefore());
             rows.add(row);
         }
         return rows;

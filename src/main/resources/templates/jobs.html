@@ -6,7 +6,7 @@
 <body class="app-body">
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
-<main class="shell shell-wide">
+<main class="shell shell-wide shell-runs">
     <div class="page-title">
         <div>
             <h1>Runs</h1>
@@ -17,10 +17,10 @@
     <section class="panel" th:if="${#lists.isEmpty(jobs)}">
         <p class="muted">No runs yet. Start from <a href="/generate">Generate</a>, <a href="/automate">Automate</a>, or <a href="/execute">Execute</a>.</p>
     </section>
-    <section class="panel" th:if="${!#lists.isEmpty(jobs)}">
+    <section class="panel panel-runs" th:if="${!#lists.isEmpty(jobs)}">
         <h2>All runs</h2>
         <p class="panel-intro">Newest first — every surface shares this list.</p>
-        <div class="table-scroll">
+        <div class="table-scroll table-scroll--runs">
             <table class="table table--runs">
                 <thead>
                 <tr>
@@ -36,10 +36,10 @@
                 </thead>
                 <tbody>
                 <tr th:each="j : ${jobs}">
-                    <td><code class="mono" th:text="${j.jobId}">job_</code></td>
+                    <td><code class="mono" th:text="${j.jobId}" th:title="${j.jobId}">job_</code></td>
                     <td th:text="${j.jobKind == 'EXECUTE'} ? 'Execute' : (${j.jobKind == 'GENERATE_BATCH'} ? 'Generate' : (${j.jobKind == 'GENERATE_COMPARE'} ? 'Compare' : (${j.jobKind == 'HUNT'} ? 'Bug Hunter' : 'Automate')))">Automate</td>
-                    <td class="mono" th:text="${j.projectId}">prj_</td>
-                    <td th:text="${j.mode}">NEW</td>
+                    <td class="mono" th:text="${j.projectId}" th:title="${j.projectId}">prj_</td>
+                    <td class="clip" th:text="${j.mode}" th:title="${j.mode}">NEW</td>
                     <td>
                         <span class="badge"
                               th:classappend="${j.status == 'COMPLETED'} ? ' ok' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? ' warn' : (${j.status == 'FAILED'} ? ' err' : (${j.status == 'RUNNING' or j.status == 'QUEUED'} ? ' warn badge--busy' : ' muted')))">
@@ -47,11 +47,11 @@
                             <span th:text="${j.status}">QUEUED</span>
                         </span>
                     </td>
-                    <td th:text="${j.progressCurrent} + ' / ' + ${j.progressTotal}">0 / 0</td>
-                    <td class="clip" th:text="${j.message}">—</td>
+                    <td class="mono" th:text="${j.progressCurrent} + '/' + ${j.progressTotal}">0/0</td>
+                    <td class="clip" th:text="${j.message}" th:title="${j.message}">—</td>
                     <td class="actions">
                         <a th:href="@{/status(jobId=${j.jobId})}">Status</a>
-                        <a th:if="${j.status == 'COMPLETED' or j.status == 'COMPLETED_WITH_BLOCK'}" class="button"
+                        <a th:if="${j.status == 'COMPLETED' or j.status == 'COMPLETED_WITH_BLOCK' or (j.jobKind == 'HUNT' and j.status == 'FAILED')}" class="button"
                            th:href="@{/api/jobs/{id}/download(id=${j.jobId})}">Download</a>
                     </td>
                 </tr>

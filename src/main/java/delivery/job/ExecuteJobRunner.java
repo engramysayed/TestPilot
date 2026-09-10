@@ -31,7 +31,7 @@ public class ExecuteJobRunner {
 
     public ExecuteJobResult run(ConversionJobRequest request, String jobId, BooleanSupplier cancelCheck) throws Exception {
         List<ManualTestCase> cases = KeelPathCaseFilter.requireForSurface(
-                new ExcelTcReader().read(request.excel()),
+                new ExcelTcReader(true).read(request.excel()),
                 KeelPathCaseFilter.Surface.EXECUTE,
                 "No runnable test cases in workbook — only MANUAL rows are skipped on Execute"
         );

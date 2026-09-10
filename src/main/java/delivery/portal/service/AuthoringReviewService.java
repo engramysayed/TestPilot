@@ -46,7 +46,7 @@ public class AuthoringReviewService {
 
     @FunctionalInterface
     public interface ReviewLlmPort {
-        String complete(String provider, String system, String user) throws Exception;
+        String complete(String provider, String model, String system, String user) throws Exception;
     }
 
     @Autowired
@@ -73,12 +73,13 @@ public class AuthoringReviewService {
             String projectId,
             Long ownerUserId,
             String provider,
+            String model,
             String requirementsNotes,
             String stories
     ) throws Exception {
         List<ManualTestCase> current = new ExcelTcReader().read(workbooks.requireExcel(projectId));
         return reviewCases(
-                projectId, ownerUserId, current, provider, requirementsNotes, stories);
+                projectId, ownerUserId, current, provider, model, requirementsNotes, stories);
     }
 
     /**
@@ -90,6 +91,7 @@ public class AuthoringReviewService {
             Long ownerUserId,
             List<ManualTestCase> current,
             String provider,
+            String model,
             String requirementsNotes,
             String stories
     ) throws Exception {
@@ -106,9 +108,16 @@ public class AuthoringReviewService {
         if (!providerNorm.equals("cursor") && !providerNorm.equals("ollama")) {
             throw new IllegalArgumentException("provider must be cursor or ollama");
         }
+        String modelNorm = model == null ? "" : model.trim();
+        if (providerNorm.equals("ollama") && modelNorm.isEmpty()) {
+            throw new IllegalArgumentException("Ollama model must be specified");
+        }
+        if (providerNorm.equals("cursor")) {
+            modelNorm = "";
+        }
 
         String userPayload = toSuiteJson(current, stories, requirementsNotes).toString(2);
-        String raw = llm.complete(providerNorm, SYSTEM_PROMPT, userPayload);
+        String raw = llm.complete(providerNorm, modelNorm, SYSTEM_PROMPT, userPayload);
         if (raw == null || raw.isBlank()) {
             throw new IllegalStateException(providerNorm + " returned empty review");
         }
@@ -119,8 +128,15 @@ public class AuthoringReviewService {
         List<String> gateErrors = GenerateQualityGate.validate(repaired, project.getBaseUrl());
 
         Map<String, Object> out = new LinkedHashMap<>();
+        List<Map<String, Object>> caseRows = new ArrayList<>();
+        for (ManualTestCase tc : repaired) {
+            caseRows.add(GeneratedWorkbookService.toRowMap(tc));
+        }
+
         out.put("provider", providerNorm);
+        out.put("model", modelNorm);
         out.put("findings", findingMaps(parsed.findings()));
+        out.put("cases", caseRows);
         out.put("csv", GeneratedTcCsvParser.toCsv(repaired));
         out.put("coverageNotes", parsed.coverageNotes());
         out.put("gateErrors", gateErrors);
@@ -163,13 +179,13 @@ public class AuthoringReviewService {
     private static ReviewLlmPort defaultPort(DeliveryPortalProperties props) {
         CursorHealClient cursor = new CursorHealClient();
         // Cursor embeds the reviewer contract in heal.mjs; Ollama uses SYSTEM_PROMPT here.
-        return (provider, system, user) -> {
+        return (provider, model, system, user) -> {
             if ("cursor".equals(provider)) {
                 return cursor.authoringReview(user);
             }
             LocalLlmClient ollama = new LocalLlmClient(
                     props.getLlmBaseUrl(),
-                    props.getGenerateModel(),
+                    model,
                     Duration.ofSeconds(Math.max(30, props.getGenerateTimeoutSeconds()) + 30L));
             return ollama.completeChat(system, user, true);
         };

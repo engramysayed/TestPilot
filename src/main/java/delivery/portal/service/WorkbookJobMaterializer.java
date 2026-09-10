@@ -1,6 +1,7 @@
 package delivery.portal.service;
 
 import delivery.excel.ManualTestCase;
+import delivery.job.CallBeforeExpander;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -28,18 +29,13 @@ public final class WorkbookJobMaterializer {
         Set<String> selected = normalizeIds(selectedTcIds);
         Map<String, ManualTestCase> byId = new LinkedHashMap<>();
 
-        boolean filterLibrary = !selected.isEmpty();
         for (ManualTestCase tc : library) {
             if (tc == null || tc.tcId() == null || tc.tcId().isBlank()) {
-                continue;
-            }
-            if (filterLibrary && !selected.contains(tc.tcId().trim())) {
                 continue;
             }
             byId.put(tc.tcId().trim(), tc);
         }
 
-        // If selection was requested but library empty / no hits, still allow upload-only.
         for (ManualTestCase tc : upload) {
             if (tc == null || tc.tcId() == null || tc.tcId().isBlank()) {
                 continue;
@@ -47,19 +43,45 @@ public final class WorkbookJobMaterializer {
             byId.put(tc.tcId().trim(), tc);
         }
 
-        // Selection-only without library match and without upload → empty (caller errors).
-        if (filterLibrary && upload.isEmpty() && byId.isEmpty()) {
+        if (byId.isEmpty()) {
             return List.of();
         }
 
-        // No library filter and no library and only upload — byId already has upload.
-        // No selection, empty library, empty upload — empty.
-        if (!filterLibrary && library.isEmpty() && upload.isEmpty()) {
+        List<String> leafIds = resolveLeafIds(library, upload, selected);
+        if (leafIds.isEmpty()) {
             return List.of();
         }
 
-        // useGenerated all + no upload: selected empty means all library (already in byId)
-        return new ArrayList<>(byId.values());
+        return CallBeforeExpander.expand(new ArrayList<>(byId.values()), leafIds);
+    }
+
+    private static List<String> resolveLeafIds(
+            List<ManualTestCase> library,
+            List<ManualTestCase> upload,
+            Set<String> selected
+    ) {
+        if (!selected.isEmpty()) {
+            return new ArrayList<>(selected);
+        }
+        if (!library.isEmpty()) {
+            return libraryIdsInOrder(library);
+        }
+        return libraryIdsInOrder(upload);
+    }
+
+    private static List<String> libraryIdsInOrder(List<ManualTestCase> cases) {
+        List<String> leafIds = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (ManualTestCase tc : cases) {
+            if (tc == null || tc.tcId() == null || tc.tcId().isBlank()) {
+                continue;
+            }
+            String id = tc.tcId().trim();
+            if (seen.add(id)) {
+                leafIds.add(id);
+            }
+        }
+        return leafIds;
     }
 
     private static Set<String> normalizeIds(List<String> selectedTcIds) {

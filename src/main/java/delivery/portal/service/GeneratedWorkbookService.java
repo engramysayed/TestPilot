@@ -2,6 +2,7 @@ package delivery.portal.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import delivery.codegen.ProvenStep;
+import delivery.excel.CallBefore;
 import delivery.excel.ExcelTcReader;
 import delivery.excel.GenerateQualityGate;
 import delivery.excel.GeneratedTcCsvParser;
@@ -9,9 +10,12 @@ import delivery.excel.KeelPathCounts;
 import delivery.excel.ManualTcExcelWriter;
 import delivery.excel.ManualTestCase;
 import delivery.excel.TcImportRepair;
+import delivery.excel.WorkbookUploadSupport;
 import delivery.heal.HealWorkbookPatcher;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.KeelPath;
+import delivery.store.GeneratedStoreLayout;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -21,9 +25,11 @@ import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -33,14 +39,25 @@ public class GeneratedWorkbookService {
     private static final String CSV_FILE = "latest.csv";
 
     private final DeliveryPortalProperties props;
+    private final PortalStore portalStore;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public GeneratedWorkbookService(DeliveryPortalProperties props) {
+        this(props, null);
+    }
+
+    @Autowired
+    public GeneratedWorkbookService(DeliveryPortalProperties props, PortalStore portalStore) {
         this.props = props;
+        this.portalStore = portalStore;
     }
 
     public Path generatedDir(String projectId) {
-        return Path.of(props.getStoreRoot(), projectId, "generated");
+        Path storeRoot = Path.of(props.getStoreRoot());
+        Path projectRoot = portalStore == null
+                ? storeRoot.resolve(projectId)
+                : portalStore.projectDiskRoot(projectId);
+        return GeneratedStoreLayout.resolveGeneratedDir(storeRoot, projectRoot, projectId);
     }
 
     public void saveFromCases(String projectId, List<ManualTestCase> cases, String source, String sourceRef)
@@ -89,6 +106,102 @@ public class GeneratedWorkbookService {
         meta.put("createdAt", Instant.now().toString());
         meta.put("excelFile", EXCEL_FILE);
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(dir.resolve(META_FILE).toFile(), meta);
+    }
+
+    public record MergeResult(List<ManualTestCase> cases, int replacedCount, int addedCount) {
+    }
+
+    /**
+     * Merge upload rows into an existing library: same {@code TC_ID} replaces in place;
+     * new IDs append after existing order.
+     */
+    public static MergeResult mergeByTcId(List<ManualTestCase> existing, List<ManualTestCase> upload) {
+        List<ManualTestCase> base = existing == null ? List.of() : existing;
+        List<ManualTestCase> incoming = upload == null ? List.of() : upload;
+        Map<String, ManualTestCase> byId = new LinkedHashMap<>();
+        for (ManualTestCase tc : base) {
+            if (tc != null && tc.tcId() != null && !tc.tcId().isBlank()) {
+                byId.put(tc.tcId().trim(), tc);
+            }
+        }
+        int replaced = 0;
+        int added = 0;
+        for (ManualTestCase tc : incoming) {
+            if (tc == null || tc.tcId() == null || tc.tcId().isBlank()) {
+                continue;
+            }
+            String id = tc.tcId().trim();
+            if (byId.containsKey(id)) {
+                replaced++;
+            } else {
+                added++;
+            }
+            byId.put(id, tc);
+        }
+        List<ManualTestCase> merged = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (ManualTestCase tc : base) {
+            if (tc == null || tc.tcId() == null || tc.tcId().isBlank()) {
+                continue;
+            }
+            String id = tc.tcId().trim();
+            if (seen.add(id)) {
+                merged.add(byId.get(id));
+            }
+        }
+        for (ManualTestCase tc : incoming) {
+            if (tc == null || tc.tcId() == null || tc.tcId().isBlank()) {
+                continue;
+            }
+            String id = tc.tcId().trim();
+            if (seen.add(id)) {
+                merged.add(byId.get(id));
+            }
+        }
+        return new MergeResult(List.copyOf(merged), replaced, added);
+    }
+
+    /**
+     * Parse Excel/CSV upload and merge into the project generated library by TC_ID.
+     */
+    public Map<String, Object> mergeUploadFile(
+            String projectId,
+            String originalFilename,
+            byte[] bytes,
+            String baseUrl
+    ) throws Exception {
+        if (bytes == null || bytes.length == 0) {
+            throw new IllegalArgumentException("file is required");
+        }
+        Path tmp = Path.of(System.getProperty("java.io.tmpdir"), "delivery-uploads", projectId,
+                UUID.randomUUID() + "-lib-merge.xlsx");
+        Files.createDirectories(tmp.getParent());
+        List<ManualTestCase> uploadCases;
+        try {
+            WorkbookUploadSupport.materializeExcel(originalFilename, bytes, tmp);
+            uploadCases = new ExcelTcReader().read(tmp);
+        } finally {
+            Files.deleteIfExists(tmp);
+        }
+        List<ManualTestCase> repaired = TcImportRepair.repairCases(uploadCases);
+        List<String> gateErrors = GenerateQualityGate.validate(repaired, baseUrl);
+        if (!gateErrors.isEmpty()) {
+            throw GenerateQualityGate.failureException(gateErrors);
+        }
+        List<ManualTestCase> existing = hasWorkbook(projectId) ? readCases(projectId) : List.of();
+        MergeResult merged = mergeByTcId(existing, repaired);
+        if (merged.cases().isEmpty()) {
+            throw new IllegalArgumentException("Upload contained no test cases");
+        }
+        String sourceRef = originalFilename == null || originalFilename.isBlank()
+                ? projectId
+                : originalFilename.trim();
+        saveFromCases(projectId, merged.cases(), "LIBRARY_UPLOAD", sourceRef, null);
+        Map<String, Object> out = listCases(projectId);
+        out.put("replacedCount", merged.replacedCount());
+        out.put("addedCount", merged.addedCount());
+        out.put("uploadCount", repaired.size());
+        return out;
     }
 
     /** Persists coverage notes into workbook meta (does not rewrite Excel rows). */
@@ -357,7 +470,8 @@ public class GeneratedWorkbookService {
                         tc.tags(),
                         tc.visualAssertion(),
                         tc.testData(),
-                        newPath
+                        newPath,
+                        tc.callBefore()
                 ));
             } else {
                 patched.add(tc);
@@ -405,6 +519,14 @@ public class GeneratedWorkbookService {
         }
 
         String normalizedTcId = tcId.trim();
+        Set<String> knownIds = new LinkedHashSet<>();
+        for (ManualTestCase tc : cases) {
+            knownIds.add(tc.tcId().trim());
+        }
+        if (fields.containsKey("callBefore")) {
+            String rawCallBefore = fields.get("callBefore");
+            CallBefore.validateRefs(rawCallBefore == null ? "" : rawCallBefore, normalizedTcId, knownIds);
+        }
         boolean found = false;
         List<ManualTestCase> patched = new ArrayList<>(cases.size());
         ManualTestCase updatedRow = null;
@@ -467,6 +589,7 @@ public class GeneratedWorkbookService {
                 keelPath = KeelPath.parse(rawPath).name();
             }
         }
+        String callBefore = fieldOrExisting(fields, "callBefore", tc.callBefore());
         return new ManualTestCase(
                 tc.tcId(),
                 title,
@@ -477,7 +600,8 @@ public class GeneratedWorkbookService {
                 tags,
                 visualAssertion,
                 testData,
-                keelPath
+                keelPath,
+                callBefore
         );
     }
 
@@ -501,6 +625,7 @@ public class GeneratedWorkbookService {
         row.put("visualAssertion", tc.visualAssertion());
         row.put("testData", tc.testData());
         row.put("keelPath", tc.keelPath());
+        row.put("callBefore", tc.callBefore());
         return row;
     }
 

@@ -22,19 +22,68 @@
     </div>
 
     <nav class="project-tabs" aria-label="Project sections">
-        <a th:href="@{/projects/{id}(id=${projectId}, tab='settings')}"
-           th:classappend="${activeTab == 'settings'} ? ' active' : ''">Settings</a>
+        <a th:href="@{/projects/{id}(id=${projectId}, tab='summary')}"
+           th:classappend="${activeTab == 'summary'} ? ' active' : ''">Summary</a>
         <a th:href="@{/projects/{id}(id=${projectId}, tab='automation')}"
            th:classappend="${activeTab == 'automation'} ? ' active' : ''">Automation</a>
         <a th:href="@{/projects/{id}(id=${projectId}, tab='tcs')}"
            th:classappend="${activeTab == 'tcs'} ? ' active' : ''">Test cases</a>
+        <a th:href="@{/projects/{id}(id=${projectId}, tab='settings')}"
+           th:classappend="${activeTab == 'settings'} ? ' active' : ''">Settings</a>
     </nav>
+
+    <!-- Summary tab -->
+    <section id="tab-summary" class="tab-panel" th:classappend="${activeTab != 'summary'} ? ' hidden' : ''">
+        <p id="summary-err" class="error" hidden></p>
+        <div id="summary-running" class="hint hidden">A job is running for this project.</div>
+        <div id="summary-strip" class="summary-strip" aria-label="Project snapshot">
+            <div class="summary-strip-item">
+                <span class="summary-strip-label">Library</span>
+                <span class="summary-strip-value" id="summary-library">—</span>
+            </div>
+            <div class="summary-strip-item">
+                <span class="summary-strip-label">Latest package</span>
+                <span class="summary-strip-value" id="summary-package">—</span>
+            </div>
+            <div class="summary-strip-item">
+                <span class="summary-strip-label">Last Automate prove</span>
+                <span class="summary-strip-value" id="summary-prove">—</span>
+            </div>
+        </div>
+        <section class="panel">
+            <h2>Recent activity</h2>
+            <p class="panel-intro">
+                Last 10 Automate, Execute, and Generate runs for this project.
+                Automate / Generate open Status; Execute expands here.
+            </p>
+            <p id="summary-jobs-empty" class="muted" hidden>
+                No runs yet.
+                <a href="/automate">Automate</a> ·
+                <a href="/execute">Execute</a> ·
+                <a href="/generate">Generate</a>
+            </p>
+            <table class="table" id="summary-jobs-table" hidden>
+                <thead>
+                <tr>
+                    <th>When</th>
+                    <th>Kind</th>
+                    <th>Status</th>
+                    <th>Passed</th>
+                    <th>Blocked</th>
+                    <th>Message</th>
+                </tr>
+                </thead>
+                <tbody id="summary-jobs-body"></tbody>
+            </table>
+            <div id="summary-exec-detail" class="summary-exec-detail hidden"></div>
+        </section>
+    </section>
 
     <!-- Settings tab -->
     <section id="tab-settings" class="tab-panel" th:classappend="${activeTab != 'settings'} ? ' hidden' : ''">
         <section class="panel">
             <h2>Project settings</h2>
-            <p class="panel-intro">Name and target base URL used for uploads.</p>
+            <p class="panel-intro">Name, target URL, and preferred test-hook attributes for this site.</p>
             <form id="settings-form" class="settings-form">
                 <label>Project name
                     <input type="text" name="name" required id="settings-name"/>
@@ -42,6 +91,11 @@
                 <label>Base URL
                     <input type="url" name="baseUrl" id="settings-base-url" placeholder="https://app.example.com"/>
                 </label>
+                <label>Preferred test hooks
+                    <input type="text" name="preferredHooks" id="settings-preferred-hooks"
+                           placeholder="data-axis-test-id"/>
+                </label>
+                <p class="muted">Comma-separated attribute names. Ranked above id, data-testid, CSS, and XPath. Shared with every project on this host.</p>
                 <p id="settings-msg" class="muted" hidden></p>
                 <button type="submit">Save settings</button>
             </form>
@@ -107,23 +161,27 @@
     <section id="tab-automation" class="tab-panel" th:classappend="${activeTab != 'automation'} ? ' hidden' : ''">
         <p id="auto-running-hint" class="hint hidden">A job is running for this project — artifact delete is disabled until it finishes.</p>
         <p id="auto-err" class="error" hidden></p>
+        <div id="auto-viewing-banner" class="auto-source-banner" role="status" aria-live="polite">
+            Showing: <strong>Current framework</strong>
+            <span class="muted"> — latest conversion on disk</span>
+        </div>
         <div class="auto-layout">
             <div class="auto-tree">
                 <section class="panel">
                     <h2>Packages</h2>
-                    <p class="panel-intro">Version ZIP archives from conversions.</p>
+                    <p class="panel-intro">Version ZIP archives from conversions. Open a version to browse its pages and tests.</p>
                     <ul id="auto-packages" class="artifact-list"></ul>
                     <p id="auto-packages-empty" class="muted">No packages yet.</p>
                 </section>
                 <section class="panel">
                     <h2>Pages</h2>
-                    <p class="panel-intro">Generated page object classes.</p>
+                    <p id="auto-pages-intro" class="panel-intro">From current framework.</p>
                     <ul id="auto-pages" class="artifact-list"></ul>
                     <p id="auto-pages-empty" class="muted">No page classes yet.</p>
                 </section>
                 <section class="panel">
                     <h2>Tests</h2>
-                    <p class="panel-intro">Generated and todo test classes.</p>
+                    <p id="auto-tests-intro" class="panel-intro">From current framework.</p>
                     <h3 class="auto-subhead">Generated</h3>
                     <ul id="auto-tests-gen" class="artifact-list"></ul>
                     <p id="auto-tests-gen-empty" class="muted">No generated tests yet.</p>
@@ -139,6 +197,22 @@
                 <pre id="auto-preview-content" class="code-preview muted">No file selected.</pre>
             </aside>
         </div>
+
+        <section class="panel">
+            <h2>Last Automate prove results</h2>
+            <p class="panel-intro">
+                Pass / fail / partial from the <strong>last Automate run</strong> that wrote prove drafts under
+                <code class="mono">ir/</code>. This is not the editable library (that lives under Test cases).
+                Deleting an Automate job or ZIP does <em>not</em> remove these drafts.
+                <span id="run-at-label"></span>
+            </p>
+            <div class="actions lib-toolbar">
+                <button type="button" class="button ghost" id="ir-clear-btn" hidden>Clear leftover proven cases</button>
+            </div>
+            <p id="empty" class="muted" hidden>Nothing stored — run Automate so proven cases appear here.</p>
+            <p id="err" class="error" hidden></p>
+            <div id="tc-list" class="tc-accordion"></div>
+        </section>
     </section>
 
     <!-- Test cases tab -->
@@ -146,27 +220,43 @@
         <section class="panel">
             <h2>Generated library</h2>
             <p class="panel-intro">
-                Test cases saved from Generate. Edit or delete here, then pick them later on Execute / Automate.
+                Test cases saved from Generate or Upload. This table is what Execute / Automate uses when you pick
+                the project library. Rows stay collapsed until you click them. Upload Excel/CSV merges by
+                TC_ID (same ID replaces; other cases stay). Edit Test data on the same row as its step —
+                blank cells are intentional (login uses your credential profile).
             </p>
-            <p id="lib-empty" class="muted" hidden>No generated workbook yet — import or generate TCs first.</p>
+            <p id="lib-empty" class="muted" hidden>No generated workbook yet — upload Excel/CSV, import, or generate TCs first.</p>
             <p id="lib-err" class="error" hidden></p>
             <p id="lib-msg" class="muted" hidden></p>
-            <div class="actions" style="margin-bottom:0.75rem">
+            <div class="actions lib-toolbar">
+                <label class="lib-search-label">
+                    <input type="search" id="lib-search" placeholder="Search ID, title, tags, steps…" autocomplete="off" aria-label="Search test cases"/>
+                </label>
+                <label class="button ghost lib-upload-btn">
+                    Upload Excel/CSV
+                    <input type="file" id="lib-upload-input" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden/>
+                </label>
                 <button type="button" class="button ghost" id="lib-refresh-btn">Refresh</button>
                 <button type="button" class="button danger" id="lib-delete-btn" disabled>Delete selected</button>
             </div>
-            <table class="table" id="lib-table" hidden>
-                <thead>
-                <tr>
-                    <th><input type="checkbox" id="lib-select-all" title="Select all"/></th>
-                    <th>TC</th>
-                    <th>Title</th>
-                    <th>KeelPath</th>
-                    <th></th>
-                </tr>
-                </thead>
-                <tbody id="lib-body"></tbody>
-            </table>
+            <p id="lib-filter-empty" class="muted" hidden>No cases match this search.</p>
+            <div id="lib-list" class="lib-table-wrap" hidden>
+                <table class="table lib-table">
+                    <thead>
+                    <tr>
+                        <th class="lib-col-check"><input type="checkbox" id="lib-select-all" title="Select all" aria-label="Select all"/></th>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Priority</th>
+                        <th>Path</th>
+                        <th>Steps</th>
+                        <th>Test data</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody id="lib-tbody"></tbody>
+                </table>
+            </div>
         </section>
 
         <section class="panel" id="lib-edit-panel" hidden>
@@ -174,9 +264,32 @@
             <form id="lib-edit-form">
                 <label>Title <input type="text" id="lib-edit-title" required/></label>
                 <label>Preconditions <textarea id="lib-edit-preconditions" rows="2"></textarea></label>
-                <label>Steps <textarea id="lib-edit-steps" rows="6" required></textarea></label>
-                <label>Expected result <textarea id="lib-edit-expected" rows="4" required></textarea></label>
-                <label>Test data <textarea id="lib-edit-testdata" rows="3"></textarea></label>
+                <label class="call-before-field">Call before test
+                    <input type="hidden" id="lib-edit-call-before" value=""/>
+                    <div class="call-before-chips" id="lib-call-before-chips"></div>
+                    <input type="search" id="lib-call-before-search" placeholder="Search other cases by ID or title…" autocomplete="off" aria-label="Search cases to call before test"/>
+                    <ul class="call-before-results" id="lib-call-before-results" hidden></ul>
+                </label>
+                <p class="hint">
+                    Each row is one step. Test data is what Execute types for that step (leave blank for login —
+                    credential profile wins). Expected is the outcome for that same step.
+                </p>
+                <div class="lib-align-table" role="table" aria-label="Steps, test data, and expected results">
+                    <div class="lib-align-head" role="row">
+                        <span role="columnheader">#</span>
+                        <span role="columnheader">Step</span>
+                        <span role="columnheader">Test data</span>
+                        <span role="columnheader">Expected</span>
+                        <span role="columnheader" class="lib-align-remove-h"></span>
+                    </div>
+                    <div id="lib-align-rows"></div>
+                </div>
+                <div class="lib-align-actions">
+                    <button type="button" class="button ghost" id="lib-add-step">Add step</button>
+                </div>
+                <textarea id="lib-edit-steps" hidden></textarea>
+                <textarea id="lib-edit-testdata" hidden></textarea>
+                <textarea id="lib-edit-expected" hidden></textarea>
                 <label>Priority <input type="text" id="lib-edit-priority"/></label>
                 <label>Tags <input type="text" id="lib-edit-tags"/></label>
                 <label>Visual assertion <input type="text" id="lib-edit-visual"/></label>
@@ -195,18 +308,6 @@
                     <button type="submit" class="button">Save</button>
                 </div>
             </form>
-        </section>
-
-        <section class="panel">
-            <h2>Automate proven cases</h2>
-            <p class="panel-intro">
-                From the last successful <strong>Automate</strong> conversion (proven IR), not from Generate alone.
-                <span id="run-at-label"></span>
-                Expand any case to see proven steps.
-            </p>
-            <p id="empty" class="muted" hidden>Nothing stored yet — run Automate (conversion) so proven cases appear here.</p>
-            <p id="err" class="error" hidden></p>
-            <div id="tc-list" class="tc-accordion"></div>
         </section>
     </section>
 </main>
@@ -310,16 +411,48 @@
     </div>
 </div>
 
+<!-- Library delete selected modal -->
+<div id="libDeleteModal" class="modal-backdrop hidden" role="dialog" aria-modal="true"
+     aria-labelledby="libDeleteTitle">
+    <div class="modal-card">
+        <h3 id="libDeleteTitle">Delete selected test cases?</h3>
+        <p class="muted" id="lib-delete-body">This removes them from the generated library.</p>
+        <p id="lib-delete-err" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="libDeleteCancel">Cancel</button>
+            <button type="button" class="button danger" id="libDeleteConfirm">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Clear leftover Automate IR modal -->
+<div id="irClearModal" class="modal-backdrop hidden" role="dialog" aria-modal="true"
+     aria-labelledby="irClearTitle">
+    <div class="modal-card">
+        <h3 id="irClearTitle">Clear leftover proven cases?</h3>
+        <p class="muted">
+            Removes Automate prove drafts from this project’s <code class="mono">ir/</code> folder.
+            Generated library test cases are not deleted.
+        </p>
+        <p id="ir-clear-err" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="irClearCancel">Cancel</button>
+            <button type="button" class="button danger" id="irClearConfirm">Clear proven cases</button>
+        </div>
+    </div>
+</div>
+
 <script th:inline="javascript">
 (function () {
     const root = document.getElementById('project-root');
     const projectId = root.getAttribute('data-project-id');
     const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
-    const activeTab = /*[[${activeTab}]]*/ 'settings';
+    const activeTab = /*[[${activeTab}]]*/ 'summary';
     let jobRunning = false;
     let jobPollTimer = null;
     let pendingCredDelete = null;
     let pendingArtifactPath = null;
+    let pendingLibDeleteIds = [];
 
     function escapeHtml(s) {
         return String(s == null ? '' : s)
@@ -366,6 +499,8 @@
         const p = await res.json();
         document.getElementById('settings-name').value = p.name || '';
         document.getElementById('settings-base-url').value = p.baseUrl || '';
+        const hooks = document.getElementById('settings-preferred-hooks');
+        if (hooks) hooks.value = p.preferredHooks || '';
         const heading = document.getElementById('project-name-heading');
         if (heading && p.name) heading.textContent = p.name;
         const badge = document.getElementById('archived-badge');
@@ -380,7 +515,8 @@
         msg.hidden = false;
         const body = {
             name: e.target.name.value.trim(),
-            baseUrl: e.target.baseUrl.value.trim()
+            baseUrl: e.target.baseUrl.value.trim(),
+            preferredHooks: e.target.preferredHooks.value.trim()
         };
         const res = await fetch(apiUrl(''), {
             method: 'PATCH',
@@ -671,6 +807,8 @@
     });
 
     /* —— Automation —— */
+    let viewingPackage = null; // null = live framework/; else versions/vN.zip
+
     function formatBytes(n) {
         if (n == null || n < 0) return '';
         if (n < 1024) return n + ' B';
@@ -678,10 +816,53 @@
         return (n / (1024 * 1024)).toFixed(1) + ' MB';
     }
 
+    function packageLabel(path) {
+        return String(path || '').replace(/^versions\//, '').replace(/\.zip$/, '') || 'package';
+    }
+
+    function updateViewingBanner() {
+        const banner = document.getElementById('auto-viewing-banner');
+        const pagesIntro = document.getElementById('auto-pages-intro');
+        const testsIntro = document.getElementById('auto-tests-intro');
+        if (!banner) return;
+        if (!viewingPackage) {
+            banner.className = 'auto-source-banner';
+            banner.innerHTML = 'Showing: <strong>Current framework</strong>'
+                + '<span class="muted"> — latest conversion on disk</span>';
+            if (pagesIntro) pagesIntro.textContent = 'From current framework.';
+            if (testsIntro) testsIntro.textContent = 'From current framework.';
+            return;
+        }
+        const label = packageLabel(viewingPackage);
+        banner.className = 'auto-source-banner is-package';
+        banner.innerHTML = 'Showing: <strong>' + escapeHtml(label) + '</strong>'
+            + '<span class="muted"> — read-only package ZIP</span> '
+            + '<button type="button" class="button ghost" id="auto-back-live">Back to current framework</button>';
+        if (pagesIntro) pagesIntro.textContent = 'From package ' + label + '.';
+        if (testsIntro) testsIntro.textContent = 'From package ' + label + '.';
+        document.getElementById('auto-back-live')?.addEventListener('click', () => {
+            viewingPackage = null;
+            clearPreview();
+            loadArtifacts();
+        });
+    }
+
+    function clearPreview() {
+        const pathEl = document.getElementById('auto-preview-path');
+        const contentEl = document.getElementById('auto-preview-content');
+        if (pathEl) pathEl.textContent = '—';
+        if (contentEl) {
+            contentEl.textContent = 'No file selected.';
+            contentEl.className = 'code-preview muted';
+        }
+    }
+
     function renderArtifactItem(item, opts) {
         const li = document.createElement('li');
         li.className = 'artifact-item';
         const isZip = item.path && item.path.endsWith('.zip');
+        const active = isZip && viewingPackage === item.path;
+        if (active) li.classList.add('is-active');
         li.innerHTML =
             '<span class="artifact-label">' + escapeHtml(item.label || item.path) + '</span>' +
             '<span class="mono muted artifact-path">' + escapeHtml(item.path) + '</span>' +
@@ -693,23 +874,36 @@
             previewBtn.type = 'button';
             previewBtn.className = 'button ghost';
             previewBtn.textContent = 'Preview';
-            previewBtn.addEventListener('click', () => previewArtifact(item.path));
+            previewBtn.addEventListener('click', () => previewArtifact(item.path, item.package || viewingPackage));
             actions.appendChild(previewBtn);
         }
         if (isZip) {
+            const openBtn = document.createElement('button');
+            openBtn.type = 'button';
+            openBtn.className = 'button ghost';
+            openBtn.textContent = active ? 'Viewing' : 'Open';
+            openBtn.disabled = active;
+            openBtn.addEventListener('click', () => {
+                viewingPackage = item.path;
+                clearPreview();
+                loadArtifacts();
+            });
+            actions.appendChild(openBtn);
             const dl = document.createElement('a');
             dl.className = 'button ghost';
             dl.textContent = 'Download';
             dl.href = apiUrl('/artifacts/download?path=' + encodeURIComponent(item.path));
             actions.appendChild(dl);
         }
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'danger artifact-delete-btn';
-        delBtn.textContent = 'Delete';
-        delBtn.disabled = jobRunning;
-        delBtn.addEventListener('click', () => openArtifactDelete(item.path, item.label || item.path));
-        actions.appendChild(delBtn);
+        if (!viewingPackage || isZip) {
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'danger artifact-delete-btn';
+            delBtn.textContent = 'Delete';
+            delBtn.disabled = jobRunning;
+            delBtn.addEventListener('click', () => openArtifactDelete(item.path, item.label || item.path));
+            actions.appendChild(delBtn);
+        }
         return li;
     }
 
@@ -724,7 +918,12 @@
     async function loadArtifacts() {
         const err = document.getElementById('auto-err');
         err.hidden = true;
-        const res = await fetch(apiUrl('/artifacts'), { credentials: 'same-origin', headers: API_HEADERS });
+        updateViewingBanner();
+        let url = apiUrl('/artifacts');
+        if (viewingPackage) {
+            url += '?package=' + encodeURIComponent(viewingPackage);
+        }
+        const res = await fetch(url, { credentials: 'same-origin', headers: API_HEADERS });
         let data = {};
         try { data = await res.json(); } catch (e) { /* ignore */ }
         if (!res.ok) {
@@ -732,6 +931,8 @@
             err.textContent = (data && data.message) || 'Failed to load artifacts';
             return;
         }
+        viewingPackage = data.viewingPackage || null;
+        updateViewingBanner();
         renderArtifactList(
             document.getElementById('auto-packages'),
             document.getElementById('auto-packages-empty'),
@@ -754,13 +955,18 @@
         );
     }
 
-    async function previewArtifact(path) {
+    async function previewArtifact(path, packageZip) {
         const pathEl = document.getElementById('auto-preview-path');
         const contentEl = document.getElementById('auto-preview-content');
-        pathEl.textContent = path;
+        const pkg = packageZip || viewingPackage;
+        pathEl.textContent = pkg ? (pkg + ' → ' + path) : path;
         contentEl.textContent = 'Loading…';
         contentEl.className = 'code-preview';
-        const res = await fetch(apiUrl('/artifacts/preview?path=' + encodeURIComponent(path)), {
+        let url = apiUrl('/artifacts/preview?path=' + encodeURIComponent(path));
+        if (pkg) {
+            url += '&package=' + encodeURIComponent(pkg);
+        }
+        const res = await fetch(url, {
             credentials: 'same-origin',
             headers: API_HEADERS
         });
@@ -880,6 +1086,8 @@
             runLabel.textContent = ' Last run: ' + data.lastRunAt + '.';
         }
         emptyEl.hidden = tcs.length > 0;
+        const irClear = document.getElementById('ir-clear-btn');
+        if (irClear) irClear.hidden = tcs.length === 0;
         listEl.innerHTML = '';
         tcs.forEach(tc => {
             const item = document.createElement('details');
@@ -947,13 +1155,16 @@
     }
 
     /* —— Generated library —— */
-    const libBody = document.getElementById('lib-body');
-    const libTable = document.getElementById('lib-table');
+    const libList = document.getElementById('lib-list');
+    const libTbody = document.getElementById('lib-tbody');
     const libEmpty = document.getElementById('lib-empty');
     const libErr = document.getElementById('lib-err');
     const libMsg = document.getElementById('lib-msg');
+    const libFilterEmpty = document.getElementById('lib-filter-empty');
     const libDeleteBtn = document.getElementById('lib-delete-btn');
     const libEditPanel = document.getElementById('lib-edit-panel');
+    const libAlignRows = document.getElementById('lib-align-rows');
+    const libSearch = document.getElementById('lib-search');
     let libCases = [];
     let libEditingId = null;
 
@@ -965,10 +1176,303 @@
         if (libDeleteBtn) libDeleteBtn.disabled = selectedLibIds().length === 0;
     }
 
+    function libSearchHaystack(tc) {
+        return [
+            tc.tcId, tc.title, tc.tags, tc.steps, tc.preconditions, tc.expectedResult, tc.keelPath, tc.priority
+        ].map(function (v) { return v == null ? '' : String(v); }).join('\n').toLowerCase();
+    }
+
+    function applyLibFilter() {
+        const q = (libSearch && libSearch.value ? libSearch.value : '').trim().toLowerCase();
+        let visible = 0;
+        document.querySelectorAll('#lib-tbody tr.lib-row').forEach(function (tr) {
+            const detail = tr.nextElementSibling;
+            const hay = tr.getAttribute('data-search') || '';
+            const match = !q || hay.indexOf(q) !== -1;
+            tr.classList.toggle('lib-row-hidden', !match);
+            if (detail && detail.classList.contains('lib-detail')) {
+                detail.classList.toggle('lib-row-hidden', !match);
+                if (!match) {
+                    detail.classList.remove('is-open');
+                    tr.classList.remove('is-expanded');
+                }
+            }
+            if (match) visible++;
+        });
+        if (libFilterEmpty) {
+            libFilterEmpty.hidden = !(libCases.length > 0 && visible === 0);
+        }
+        const selectAll = document.getElementById('lib-select-all');
+        if (selectAll && q) selectAll.checked = false;
+        syncLibDeleteBtn();
+    }
+
+    function toggleLibDetail(tr) {
+        const detail = tr.nextElementSibling;
+        if (!detail || !detail.classList.contains('lib-detail')) return;
+        const open = !detail.classList.contains('is-open');
+        detail.classList.toggle('is-open', open);
+        tr.classList.toggle('is-expanded', open);
+    }
+
+    function splitKeptLines(text) {
+        return String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    }
+
+    function splitStepLines(text) {
+        return splitKeptLines(text).map(function (s) {
+            return s.replace(/^\s*\d+\.\s*/, '').trimEnd();
+        }).filter(function (s, i, arr) {
+            return s.trim() !== '' || arr.some(function (x) { return x.trim() !== ''; });
+        }).filter(function (s) { return s.trim() !== ''; });
+    }
+
+    function filledDataCount(testData, stepCount) {
+        const lines = splitKeptLines(testData);
+        let n = 0;
+        for (let i = 0; i < stepCount; i++) {
+            if ((lines[i] || '').trim()) n++;
+        }
+        return n;
+    }
+
+    function parseCallBefore(raw) {
+        if (!raw || !String(raw).trim()) return [];
+        return String(raw).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    }
+
+    function libCaseMap() {
+        const map = {};
+        libCases.forEach(function (tc) { map[tc.tcId] = tc; });
+        return map;
+    }
+
+    function syncLibCallBeforeHidden() {
+        const chips = document.getElementById('lib-call-before-chips');
+        const hidden = document.getElementById('lib-edit-call-before');
+        if (!chips || !hidden) return;
+        const ids = Array.from(chips.querySelectorAll('.call-before-chip')).map(function (el) {
+            return el.getAttribute('data-tc-id');
+        });
+        hidden.value = ids.join(',');
+    }
+
+    function refreshLibCallBeforeChipButtons() {
+        const chipsEl = document.getElementById('lib-call-before-chips');
+        if (!chipsEl) return;
+        const chips = chipsEl.querySelectorAll('.call-before-chip');
+        chips.forEach(function (chip, i) {
+            const up = chip.querySelector('.call-before-up');
+            const down = chip.querySelector('.call-before-down');
+            if (up) up.disabled = i === 0;
+            if (down) down.disabled = i === chips.length - 1;
+        });
+    }
+
+    function appendLibCallBeforeChip(chipsEl, id, title) {
+        const chip = document.createElement('div');
+        chip.className = 'call-before-chip';
+        chip.setAttribute('data-tc-id', id);
+        const snippet = title && title.length > 48 ? title.slice(0, 48) + '…' : (title || '');
+        chip.innerHTML =
+            '<span class="call-before-chip-label mono">' + escapeHtml(id) + '</span>' +
+            (snippet ? '<span class="call-before-chip-title">' + escapeHtml(snippet) + '</span>' : '') +
+            '<span class="call-before-chip-actions">' +
+            '<button type="button" class="button ghost small call-before-up" title="Move up">↑</button>' +
+            '<button type="button" class="button ghost small call-before-down" title="Move down">↓</button>' +
+            '<button type="button" class="button ghost small call-before-remove" title="Remove">×</button>' +
+            '</span>';
+        chip.querySelector('.call-before-up').addEventListener('click', function (e) {
+            e.preventDefault();
+            const prev = chip.previousElementSibling;
+            if (prev) {
+                chipsEl.insertBefore(chip, prev);
+                syncLibCallBeforeHidden();
+                refreshLibCallBeforeChipButtons();
+            }
+        });
+        chip.querySelector('.call-before-down').addEventListener('click', function (e) {
+            e.preventDefault();
+            const next = chip.nextElementSibling;
+            if (next) {
+                chipsEl.insertBefore(next, chip);
+                syncLibCallBeforeHidden();
+                refreshLibCallBeforeChipButtons();
+            }
+        });
+        chip.querySelector('.call-before-remove').addEventListener('click', function (e) {
+            e.preventDefault();
+            chip.remove();
+            syncLibCallBeforeHidden();
+            refreshLibCallBeforeChipButtons();
+            renderLibCallBeforeResults();
+        });
+        chipsEl.appendChild(chip);
+    }
+
+    function renderLibCallBeforeChips(ids) {
+        const chipsEl = document.getElementById('lib-call-before-chips');
+        const hidden = document.getElementById('lib-edit-call-before');
+        if (!chipsEl || !hidden) return;
+        chipsEl.innerHTML = '';
+        ids.forEach(function (id) {
+            const tc = libCaseMap()[id] || {};
+            appendLibCallBeforeChip(chipsEl, id, tc.title || '');
+        });
+        hidden.value = ids.join(',');
+        refreshLibCallBeforeChipButtons();
+    }
+
+    function hideLibCallBeforeResults() {
+        const resultsEl = document.getElementById('lib-call-before-results');
+        if (resultsEl) resultsEl.hidden = true;
+    }
+
+    function renderLibCallBeforeResults() {
+        const searchEl = document.getElementById('lib-call-before-search');
+        const resultsEl = document.getElementById('lib-call-before-results');
+        const hidden = document.getElementById('lib-edit-call-before');
+        if (!searchEl || !resultsEl || !hidden || !libEditingId) return;
+        const q = (searchEl.value || '').trim().toLowerCase();
+        const selected = new Set(parseCallBefore(hidden.value));
+        const matches = libCases.filter(function (tc) {
+            if (tc.tcId === libEditingId) return false;
+            if (selected.has(tc.tcId)) return false;
+            if (!q) return true;
+            return (tc.tcId + ' ' + (tc.title || '')).toLowerCase().indexOf(q) !== -1;
+        }).slice(0, 15);
+        resultsEl.innerHTML = '';
+        if (!matches.length) {
+            resultsEl.hidden = true;
+            return;
+        }
+        matches.forEach(function (tc) {
+            const li = document.createElement('li');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'call-before-result-item';
+            btn.innerHTML = '<span class="mono">' + escapeHtml(tc.tcId) + '</span> — ' + escapeHtml(tc.title || '');
+            btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+            btn.addEventListener('click', function () {
+                appendLibCallBeforeChip(document.getElementById('lib-call-before-chips'), tc.tcId, tc.title || '');
+                syncLibCallBeforeHidden();
+                refreshLibCallBeforeChipButtons();
+                searchEl.value = '';
+                renderLibCallBeforeResults();
+            });
+            li.appendChild(btn);
+            resultsEl.appendChild(li);
+        });
+        resultsEl.hidden = false;
+    }
+
+    function callBeforePreviewHtml(callBefore) {
+        const ids = parseCallBefore(callBefore);
+        if (!ids.length) return '';
+        return '<p class="call-before-preview"><span class="call-before-kicker">Call before</span> '
+            + ids.map(function (id) {
+                return '<span class="call-before-id mono">' + escapeHtml(id) + '</span>';
+            }).join('<span class="call-before-sep">→</span>') + '</p>';
+    }
+
+    function alignedPreview(steps, testData, expectedResult, callBefore) {
+        const stepLines = splitStepLines(steps);
+        const dataLines = splitKeptLines(testData);
+        const expectedLines = splitStepLines(expectedResult);
+        if (!stepLines.length) {
+            return callBeforePreviewHtml(callBefore) + '<p class="muted">No steps</p>';
+        }
+        const rowCount = Math.max(stepLines.length, expectedLines.length, 1);
+        let rows = '';
+        for (let i = 0; i < rowCount; i++) {
+            const data = (dataLines[i] || '').trim();
+            const expected = (expectedLines[i] || '').trim();
+            rows += '<tr>'
+                + '<td class="lib-step-num">' + (i + 1) + '</td>'
+                + '<td>' + escapeHtml(stepLines[i] || '') + '</td>'
+                + '<td class="lib-data-cell">'
+                + (data ? escapeHtml(data) : '<span class="lib-data-empty">blank</span>')
+                + '</td>'
+                + '<td class="lib-expected-cell">'
+                + (expected ? escapeHtml(expected) : '<span class="lib-expected-empty">—</span>')
+                + '</td>'
+                + '</tr>';
+        }
+        return callBeforePreviewHtml(callBefore)
+            + '<div class="lib-detail-wrap"><table class="lib-step-table">'
+            + '<thead><tr><th>#</th><th>Step</th><th>Test data</th><th>Expected</th></tr></thead>'
+            + '<tbody>' + rows + '</tbody></table></div>';
+    }
+
+    function collectAlignFields() {
+        const steps = [];
+        const data = [];
+        const expected = [];
+        document.querySelectorAll('.lib-align-row').forEach(function (row) {
+            const step = (row.querySelector('.lib-step-input') || {}).value || '';
+            const cell = (row.querySelector('.lib-data-input') || {}).value || '';
+            const exp = (row.querySelector('.lib-expected-input') || {}).value || '';
+            steps.push(step.replace(/^\s*\d+\.\s*/, '').trim());
+            data.push(cell.replace(/\r\n/g, '\n').replace(/\r/g, '\n'));
+            expected.push(exp.replace(/^\s*\d+\.\s*/, '').trim());
+        });
+        const numberedSteps = steps.map(function (s, i) { return (i + 1) + '. ' + s; });
+        const numberedExpected = expected.map(function (s, i) { return (i + 1) + '. ' + s; });
+        document.getElementById('lib-edit-steps').value = numberedSteps.join('\n');
+        document.getElementById('lib-edit-testdata').value = data.join('\n');
+        document.getElementById('lib-edit-expected').value = numberedExpected.join('\n');
+        return steps.some(function (s) { return s.trim() !== ''; });
+    }
+
+    function addAlignRow(step, data, expected) {
+        if (!libAlignRows) return;
+        const row = document.createElement('div');
+        row.className = 'lib-align-row';
+        row.setAttribute('role', 'row');
+        const num = libAlignRows.children.length + 1;
+        row.innerHTML =
+            '<span class="lib-align-num" role="cell">' + num + '</span>' +
+            '<textarea class="lib-step-input" rows="2" role="cell" required placeholder="Step action"></textarea>' +
+            '<input type="text" class="lib-data-input" role="cell" placeholder="blank = profile / none"/>' +
+            '<textarea class="lib-expected-input" rows="2" role="cell" placeholder="Expected for this step"></textarea>' +
+            '<button type="button" class="button ghost lib-align-remove" title="Remove step">×</button>';
+        row.querySelector('.lib-step-input').value = step || '';
+        row.querySelector('.lib-data-input').value = data || '';
+        row.querySelector('.lib-expected-input').value = expected || '';
+        row.querySelector('.lib-align-remove').addEventListener('click', function () {
+            row.remove();
+            renumberAlignRows();
+        });
+        libAlignRows.appendChild(row);
+    }
+
+    function renumberAlignRows() {
+        document.querySelectorAll('.lib-align-row .lib-align-num').forEach(function (el, i) {
+            el.textContent = String(i + 1);
+        });
+    }
+
+    function renderAlignRows(stepsText, testData, expectedResult) {
+        if (!libAlignRows) return;
+        libAlignRows.innerHTML = '';
+        const steps = splitStepLines(stepsText);
+        const data = splitKeptLines(testData);
+        const expected = splitStepLines(expectedResult);
+        const count = Math.max(steps.length, expected.length, 1);
+        for (let i = 0; i < count; i++) {
+            addAlignRow(
+                steps[i] || '',
+                i < data.length ? data[i] : '',
+                expected[i] || ''
+            );
+        }
+    }
+
     async function loadLibrary() {
-        if (!libBody) return;
+        if (!libList || !libTbody) return;
         libErr.hidden = true;
         libMsg.hidden = true;
+        if (libFilterEmpty) libFilterEmpty.hidden = true;
         const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases', {
             credentials: 'same-origin',
             headers: { ...API_HEADERS, 'Accept': 'application/json' }
@@ -982,20 +1486,39 @@
         }
         libCases = data.cases || [];
         libEmpty.hidden = libCases.length > 0;
-        libTable.hidden = libCases.length === 0;
-        libBody.innerHTML = '';
-        libCases.forEach(tc => {
+        libList.hidden = libCases.length === 0;
+        libTbody.innerHTML = '';
+        libCases.forEach(function (tc) {
+            const stepCount = splitStepLines(tc.steps).length;
+            const dataCount = filledDataCount(tc.testData, stepCount);
             const tr = document.createElement('tr');
+            tr.className = 'lib-row';
+            tr.setAttribute('data-search', libSearchHaystack(tc));
             tr.innerHTML =
                 '<td><input type="checkbox" class="lib-check" value="' + escapeHtml(tc.tcId) + '"/></td>' +
                 '<td class="mono">' + escapeHtml(tc.tcId) + '</td>' +
                 '<td>' + escapeHtml(tc.title || '') + '</td>' +
-                '<td class="mono">' + escapeHtml(tc.keelPath || '') + '</td>' +
-                '<td><button type="button" class="button ghost lib-edit-btn">Edit</button></td>';
+                '<td>' + escapeHtml(tc.priority || '') + '</td>' +
+                '<td>' + (tc.keelPath ? '<span class="badge muted">' + escapeHtml(tc.keelPath) + '</span>' : '') + '</td>' +
+                '<td>' + stepCount + '</td>' +
+                '<td>' + (dataCount ? dataCount + ' filled' : 'all blank') + '</td>' +
+                '<td class="actions"><button type="button" class="button lib-edit-btn">Edit</button></td>';
+            const detail = document.createElement('tr');
+            detail.className = 'lib-detail';
+            detail.innerHTML = '<td colspan="8">' + alignedPreview(tc.steps, tc.testData, tc.expectedResult, tc.callBefore) + '</td>';
+            tr.querySelector('.lib-check').addEventListener('click', function (e) { e.stopPropagation(); });
             tr.querySelector('.lib-check').addEventListener('change', syncLibDeleteBtn);
-            tr.querySelector('.lib-edit-btn').addEventListener('click', () => openLibEdit(tc));
-            libBody.appendChild(tr);
+            tr.querySelector('.lib-edit-btn').addEventListener('click', function (e) {
+                e.stopPropagation();
+                openLibEdit(tc);
+            });
+            tr.addEventListener('click', function () { toggleLibDetail(tr); });
+            libTbody.appendChild(tr);
+            libTbody.appendChild(detail);
         });
+        const selectAll = document.getElementById('lib-select-all');
+        if (selectAll) selectAll.checked = false;
+        applyLibFilter();
         syncLibDeleteBtn();
     }
 
@@ -1005,14 +1528,17 @@
         document.getElementById('lib-edit-id').textContent = tc.tcId;
         document.getElementById('lib-edit-title').value = tc.title || '';
         document.getElementById('lib-edit-preconditions').value = tc.preconditions || '';
-        document.getElementById('lib-edit-steps').value = tc.steps || '';
-        document.getElementById('lib-edit-expected').value = tc.expectedResult || '';
-        document.getElementById('lib-edit-testdata').value = tc.testData || '';
+        renderLibCallBeforeChips(parseCallBefore(tc.callBefore || ''));
+        const libCbSearch = document.getElementById('lib-call-before-search');
+        if (libCbSearch) libCbSearch.value = '';
+        hideLibCallBeforeResults();
         document.getElementById('lib-edit-priority').value = tc.priority || '';
         document.getElementById('lib-edit-tags').value = tc.tags || '';
         document.getElementById('lib-edit-visual').value = tc.visualAssertion || '';
         document.getElementById('lib-edit-keel').value = tc.keelPath || '';
         document.getElementById('lib-edit-err').hidden = true;
+        renderAlignRows(tc.steps || '', tc.testData || '', tc.expectedResult || '');
+        collectAlignFields();
         libEditPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
@@ -1021,11 +1547,32 @@
         libEditingId = null;
     });
 
+    document.getElementById('lib-add-step')?.addEventListener('click', () => {
+        addAlignRow('', '', '');
+    });
+
+    document.getElementById('lib-call-before-search')?.addEventListener('input', renderLibCallBeforeResults);
+    document.getElementById('lib-call-before-search')?.addEventListener('focus', renderLibCallBeforeResults);
+    document.getElementById('lib-call-before-search')?.addEventListener('blur', function () {
+        setTimeout(hideLibCallBeforeResults, 150);
+    });
+
     document.getElementById('lib-edit-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!libEditingId) return;
         const err = document.getElementById('lib-edit-err');
         err.hidden = true;
+        if (!collectAlignFields()) {
+            err.hidden = false;
+            err.textContent = 'Add at least one step.';
+            return;
+        }
+        const expectedVal = document.getElementById('lib-edit-expected').value || '';
+        if (!splitStepLines(expectedVal).some(function (s) { return s.trim() !== ''; })) {
+            err.hidden = false;
+            err.textContent = 'Add an expected result for at least one step.';
+            return;
+        }
         const body = {
             title: document.getElementById('lib-edit-title').value,
             preconditions: document.getElementById('lib-edit-preconditions').value,
@@ -1035,7 +1582,8 @@
             priority: document.getElementById('lib-edit-priority').value,
             tags: document.getElementById('lib-edit-tags').value,
             visualAssertion: document.getElementById('lib-edit-visual').value,
-            keelPath: document.getElementById('lib-edit-keel').value
+            keelPath: document.getElementById('lib-edit-keel').value,
+            callBefore: document.getElementById('lib-edit-call-before').value || ''
         };
         const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
             + '/generated-workbook/cases/' + encodeURIComponent(libEditingId), {
@@ -1059,13 +1607,99 @@
     });
 
     document.getElementById('lib-refresh-btn')?.addEventListener('click', loadLibrary);
+    libSearch?.addEventListener('input', applyLibFilter);
+    document.getElementById('lib-upload-input')?.addEventListener('change', async (e) => {
+        const input = e.target;
+        const file = input.files && input.files[0];
+        input.value = '';
+        if (!file) return;
+        libErr.hidden = true;
+        libMsg.hidden = true;
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/upload', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Accept': 'application/json' },
+            body: form
+        });
+        let data = {};
+        try { data = await res.json(); } catch (ex) { /* ignore */ }
+        if (!res.ok) {
+            libErr.hidden = false;
+            libErr.textContent = (data && data.message) || 'Upload failed';
+            return;
+        }
+        libMsg.hidden = false;
+        libMsg.textContent = 'Merged upload: '
+            + (data.replacedCount || 0) + ' replaced, '
+            + (data.addedCount || 0) + ' added'
+            + ' (library now ' + (data.tcCount || (data.cases || []).length) + ').';
+        await loadLibrary();
+    });
     document.getElementById('lib-select-all')?.addEventListener('change', (e) => {
-        document.querySelectorAll('.lib-check').forEach(cb => { cb.checked = e.target.checked; });
+        document.querySelectorAll('.lib-check').forEach(cb => {
+            const tr = cb.closest('tr');
+            if (tr && tr.classList.contains('lib-row-hidden')) return;
+            cb.checked = e.target.checked;
+        });
         syncLibDeleteBtn();
     });
-    document.getElementById('lib-delete-btn')?.addEventListener('click', async () => {
+    document.getElementById('ir-clear-btn')?.addEventListener('click', () => {
+        document.getElementById('ir-clear-err').classList.add('hidden');
+        openModal('irClearModal');
+    });
+    document.getElementById('irClearCancel')?.addEventListener('click', () => closeModal('irClearModal'));
+    document.getElementById('irClearModal')?.addEventListener('click', e => {
+        if (e.target.id === 'irClearModal') closeModal('irClearModal');
+    });
+    document.getElementById('irClearConfirm')?.addEventListener('click', async () => {
+        const btn = document.getElementById('irClearConfirm');
+        btn.disabled = true;
+        errEl.hidden = true;
+        const res = await fetch(apiUrl('/automate-ir'), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Accept': 'application/json' }
+        });
+        btn.disabled = false;
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            const clearErr = document.getElementById('ir-clear-err');
+            clearErr.textContent = data.message || 'Could not clear proven cases';
+            clearErr.classList.remove('hidden');
+            return;
+        }
+        closeModal('irClearModal');
+        await loadTcList();
+    });
+
+    document.getElementById('lib-delete-btn')?.addEventListener('click', () => {
         const ids = selectedLibIds();
-        if (!ids.length || !window.confirm('Delete ' + ids.length + ' test case(s) from the library?')) return;
+        if (!ids.length) return;
+        pendingLibDeleteIds = ids;
+        document.getElementById('lib-delete-body').textContent =
+            'Delete ' + ids.length + ' test case' + (ids.length === 1 ? '' : 's')
+            + ' from the generated library? This cannot be undone.';
+        document.getElementById('lib-delete-err').classList.add('hidden');
+        openModal('libDeleteModal');
+    });
+    document.getElementById('libDeleteCancel')?.addEventListener('click', () => {
+        pendingLibDeleteIds = [];
+        closeModal('libDeleteModal');
+    });
+    document.getElementById('libDeleteModal')?.addEventListener('click', e => {
+        if (e.target.id === 'libDeleteModal') {
+            pendingLibDeleteIds = [];
+            closeModal('libDeleteModal');
+        }
+    });
+    document.getElementById('libDeleteConfirm')?.addEventListener('click', async () => {
+        const ids = pendingLibDeleteIds.slice();
+        if (!ids.length) return;
+        const btn = document.getElementById('libDeleteConfirm');
+        btn.disabled = true;
         libErr.hidden = true;
         const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases', {
             method: 'DELETE',
@@ -1073,29 +1707,164 @@
             headers: { ...API_HEADERS, 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ tcIds: ids })
         });
+        btn.disabled = false;
         let data = {};
         try { data = await res.json(); } catch (e) { /* ignore */ }
         if (!res.ok) {
-            libErr.hidden = false;
-            libErr.textContent = data.message || 'Delete failed';
+            const delErr = document.getElementById('lib-delete-err');
+            delErr.textContent = data.message || 'Delete failed';
+            delErr.classList.remove('hidden');
             return;
         }
+        closeModal('libDeleteModal');
+        pendingLibDeleteIds = [];
         libMsg.hidden = false;
         libMsg.textContent = 'Deleted ' + (data.removedCount || ids.length) + ' case(s).';
         await loadLibrary();
     });
 
+    /* —— Summary —— */
+    let summaryExpandedJobId = null;
+
+    function summaryBadgeClass(status) {
+        const s = String(status || '').toUpperCase();
+        if (s === 'COMPLETED' || s === 'PASSED') return 'ok';
+        if (s === 'FAILED' || s === 'CANCELLED') return 'err';
+        if (s === 'COMPLETED_WITH_BLOCK' || s === 'PARTIAL' || s === 'TODO') return 'warn';
+        if (s === 'RUNNING' || s === 'QUEUED') return 'muted';
+        return 'muted';
+    }
+
+    async function loadSummary() {
+        const err = document.getElementById('summary-err');
+        err.hidden = true;
+        const res = await fetch(apiUrl('/summary'), {
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Accept': 'application/json' }
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = (data && data.message) || 'Failed to load summary';
+            return;
+        }
+        const strip = data.strip || {};
+        const prove = strip.prove || {};
+        document.getElementById('summary-library').textContent =
+            (strip.libraryCaseCount != null ? strip.libraryCaseCount : 0) + ' cases';
+        document.getElementById('summary-package').textContent = strip.latestPackage || 'none';
+        const proveParts = [];
+        if (prove.total > 0) {
+            proveParts.push((prove.passed || 0) + ' passed');
+            if (prove.blocked) proveParts.push(prove.blocked + ' blocked');
+            if (prove.reused) proveParts.push(prove.reused + ' reused');
+            if (prove.lastRunAt) proveParts.push('· ' + prove.lastRunAt);
+        } else {
+            proveParts.push('none yet');
+        }
+        document.getElementById('summary-prove').textContent = proveParts.join(' ');
+        const runningHint = document.getElementById('summary-running');
+        if (strip.jobRunning) runningHint.classList.remove('hidden');
+        else runningHint.classList.add('hidden');
+
+        const jobs = data.recentJobs || [];
+        const empty = document.getElementById('summary-jobs-empty');
+        const table = document.getElementById('summary-jobs-table');
+        const body = document.getElementById('summary-jobs-body');
+        const detail = document.getElementById('summary-exec-detail');
+        empty.hidden = jobs.length > 0;
+        table.hidden = jobs.length === 0;
+        body.innerHTML = '';
+        if (summaryExpandedJobId && !jobs.some(j => j.jobId === summaryExpandedJobId)) {
+            summaryExpandedJobId = null;
+            detail.classList.add('hidden');
+            detail.innerHTML = '';
+        }
+        jobs.forEach(j => {
+            const tr = document.createElement('tr');
+            tr.className = 'summary-job-row';
+            if (j.jobId === summaryExpandedJobId) tr.classList.add('is-open');
+            tr.dataset.jobId = j.jobId;
+            tr.dataset.jobKind = j.jobKind || 'CONVERT';
+            tr.innerHTML =
+                '<td class="muted">' + escapeHtml(j.createdAtLabel || j.createdAt || '—') + '</td>' +
+                '<td>' + escapeHtml(j.kindLabel || j.jobKind || 'Automate') + '</td>' +
+                '<td><span class="badge ' + summaryBadgeClass(j.status) + '">' + escapeHtml(j.status || '—') + '</span></td>' +
+                '<td>' + (j.passedCount != null ? j.passedCount : '—') + '</td>' +
+                '<td>' + (j.todoCount != null ? j.todoCount : '—') + '</td>' +
+                '<td class="muted">' + escapeHtml(j.message || '') + '</td>';
+            tr.addEventListener('click', () => onSummaryJobClick(j, tr));
+            body.appendChild(tr);
+        });
+    }
+
+    async function onSummaryJobClick(job, rowEl) {
+        const kind = String(job.jobKind || 'CONVERT').toUpperCase();
+        if (kind === 'EXECUTE') {
+            await toggleSummaryExecute(job, rowEl);
+            return;
+        }
+        window.location.href = '/status?jobId=' + encodeURIComponent(job.jobId);
+    }
+
+    async function toggleSummaryExecute(job, rowEl) {
+        const detail = document.getElementById('summary-exec-detail');
+        document.querySelectorAll('#summary-jobs-body tr.is-open').forEach(r => r.classList.remove('is-open'));
+        if (summaryExpandedJobId === job.jobId) {
+            summaryExpandedJobId = null;
+            detail.classList.add('hidden');
+            detail.innerHTML = '';
+            return;
+        }
+        summaryExpandedJobId = job.jobId;
+        rowEl.classList.add('is-open');
+        detail.classList.remove('hidden');
+        detail.innerHTML = '<p class="muted">Loading Execute cases…</p>';
+        const res = await fetch('/api/execute-runs/' + encodeURIComponent(job.jobId) + '/tcs', {
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Accept': 'application/json' }
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            detail.innerHTML = '<p class="error">' + escapeHtml((data && data.message) || 'Could not load Execute cases') + '</p>';
+            return;
+        }
+        const tcs = Array.isArray(data) ? data : (data.tcs || data.cases || []);
+        let html = '<div class="summary-exec-head">'
+            + '<strong>Execute</strong> <code class="mono">' + escapeHtml(job.jobId) + '</code>'
+            + ' <a class="button ghost" href="/execute">Open on Execute page</a>'
+            + '</div>';
+        if (!tcs.length) {
+            html += '<p class="muted">No case results stored for this run yet.</p>';
+        } else {
+            html += '<ul class="summary-exec-list">';
+            tcs.forEach(tc => {
+                const id = tc.tcId || tc.id || '—';
+                const st = tc.status || '—';
+                html += '<li><span class="mono">' + escapeHtml(id) + '</span> '
+                    + '<span class="badge ' + summaryBadgeClass(st) + '">' + escapeHtml(st) + '</span> '
+                    + '<span class="muted">' + escapeHtml(tc.title || '') + '</span></li>';
+            });
+            html += '</ul>';
+        }
+        detail.innerHTML = html;
+    }
+
     /* —— Init —— */
-    if (activeTab === 'settings') {
+    if (activeTab === 'summary') {
+        loadSummary();
+    } else if (activeTab === 'settings') {
         loadProjectSettings();
         loadCredentials();
         loadDesignReferences();
     } else if (activeTab === 'automation') {
         loadArtifacts();
+        loadTcList();
         startJobPoll();
     } else if (activeTab === 'tcs') {
         loadLibrary();
-        loadTcList();
     }
 
     document.addEventListener('visibilitychange', () => {

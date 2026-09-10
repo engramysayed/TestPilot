@@ -56,6 +56,23 @@ public class TcDraftStore {
         return out;
     }
 
+    /** Deletes IR JSON files. Used when the last Automate job was removed but drafts remain. */
+    public int deleteAll() throws Exception {
+        if (!Files.isDirectory(irDir)) {
+            return 0;
+        }
+        int deleted = 0;
+        try (Stream<Path> files = Files.list(irDir)) {
+            for (Path file : files.toList()) {
+                if (Files.isRegularFile(file)) {
+                    Files.deleteIfExists(file);
+                    deleted++;
+                }
+            }
+        }
+        return deleted;
+    }
+
     public static JSONObject toJson(TcDraft d) {
         JSONObject o = new JSONObject();
         o.put("tcId", d.tcId());

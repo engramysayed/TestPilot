@@ -115,7 +115,7 @@ public class UseGeneratedWorkbookApiTest extends AbstractTestNGSpringContextTest
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("SURFACE_MISMATCH"))
                 .andExpect(jsonPath("$.message").value(
-                        org.hamcrest.Matchers.containsString("AUTOMATE")));
+                        org.hamcrest.Matchers.containsString("MANUAL")));
     }
 
     @Test

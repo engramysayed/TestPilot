@@ -71,7 +71,18 @@ public class ProjectArtifactsApiTest extends AbstractTestNGSpringContextTests {
     private void seedFixture(String projectId) throws Exception {
         Path projectRoot = store.projectDiskRoot(projectId);
         Files.createDirectories(projectRoot.resolve("versions"));
-        Files.writeString(projectRoot.resolve("versions/v1.zip"), "fake-zip-content");
+        Path zipPath = projectRoot.resolve("versions/v1.zip");
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(Files.newOutputStream(zipPath))) {
+            zos.putNextEntry(new java.util.zip.ZipEntry("src/main/java/project/pages/PackagedPage_Actions.java"));
+            zos.write("public class PackagedPage_Actions {}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            zos.closeEntry();
+            zos.putNextEntry(new java.util.zip.ZipEntry("src/test/java/project/tests/generated/TC_99.java"));
+            zos.write("public class TC_99 {}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            zos.closeEntry();
+            zos.putNextEntry(new java.util.zip.ZipEntry("README.md"));
+            zos.write("skip me".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            zos.closeEntry();
+        }
         Path loginPage = projectRoot.resolve(
                 "framework/src/main/java/project/pages/LoginPage.java");
         Files.createDirectories(loginPage.getParent());
@@ -125,6 +136,33 @@ public class ProjectArtifactsApiTest extends AbstractTestNGSpringContextTests {
                 .andExpect(jsonPath("$.deleted").value(true));
 
         Assert.assertFalse(Files.exists(zip));
+    }
+
+    @Test
+    public void listArtifacts_packageShowsZipContentsNotLiveFramework() throws Exception {
+        String id = createProjectWithFixture();
+        mockMvc.perform(get("/api/projects/" + id + "/artifacts")
+                        .param("package", "versions/v1.zip")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.viewingPackage").value("versions/v1.zip"))
+                .andExpect(jsonPath("$.pages[0].label").value("PackagedPage_Actions"))
+                .andExpect(jsonPath("$.pages[0].path").value(
+                        "src/main/java/project/pages/PackagedPage_Actions.java"))
+                .andExpect(jsonPath("$.tests.generated[0].label").value("TC_99_Generated"));
+    }
+
+    @Test
+    public void preview_fromPackageZip() throws Exception {
+        String id = createProjectWithFixture();
+        mockMvc.perform(get("/api/projects/" + id + "/artifacts/preview")
+                        .param("package", "versions/v1.zip")
+                        .param("path", "src/test/java/project/tests/generated/TC_99.java")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("public class TC_99 {}"));
     }
 
     @Test

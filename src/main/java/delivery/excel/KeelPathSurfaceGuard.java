@@ -51,7 +51,7 @@ public final class KeelPathSurfaceGuard {
     private static String defaultEmptyMessage(Surface surface) {
         return switch (surface) {
             case AUTOMATE ->
-                    "No AUTOMATE test cases in workbook (EXECUTE/VISION_ONLY/MANUAL rows are skipped on Automate)";
+                    "No runnable test cases in workbook (only MANUAL rows are skipped on Automate)";
             case EXECUTE ->
                     "No runnable test cases in workbook (only MANUAL rows are skipped on Execute)";
         };

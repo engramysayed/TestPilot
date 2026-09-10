@@ -73,8 +73,12 @@ public class GeneratePromptResourceTest extends AbstractTestNGSpringContextTests
         Assert.assertTrue(lower.contains("testdata") || body.contains("TestData"), "TestData rules");
         Assert.assertTrue(lower.contains("file upload") || lower.contains("file-upload"),
                 "must forbid file-upload-only cases");
-        Assert.assertTrue(lower.contains("password") || lower.contains("<password>"),
-                "must forbid real passwords / use placeholders");
+        Assert.assertTrue(lower.contains("never") && (lower.contains("testdata") || body.contains("TestData")),
+                "must forbid generating TestData");
+        Assert.assertFalse(body.contains("<USERNAME>"),
+                "must not teach <USERNAME> placeholders");
+        Assert.assertFalse(body.contains("<PASSWORD>"),
+                "must not teach <PASSWORD> placeholders");
 
         Assert.assertTrue(lower.contains("paste") && (lower.contains("stories")
                 || lower.contains("acceptance criteria") || lower.contains("requirements")),

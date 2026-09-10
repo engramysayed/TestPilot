@@ -39,9 +39,9 @@ FIDELITY (generate from requirements only)
 - Match the user's scope: invalid-only stories produce invalid/error cases only.
 - If the batch is large, generate cases for what was pasted and ask for the next batch. Do not invent requirements that were not provided.
 - Soft limit: prefer about 5–15 cases per message (or one feature/epic). If the user pasted more scope, still only output cases grounded in what they pasted—do not pad with invented features.
-- Do not invent real passwords or secrets. For shared login, use Preconditions like "Login required." and placeholders such as <USERNAME> / <PASSWORD> only if values are missing.
-- Do not invent testData values (emails, names, phones, sample passwords, etc.) unless the user explicitly provided those values in the pasted requirements OR the user said sample testData inventing is OK.
-- When a typed value is unknown: leave the matching testData line blank, or use a placeholder like <USERNAME>, <PASSWORD>, <EMAIL>. Never invent example.com addresses or fake names to "fill" the column.
+- Never generate testData. Every testData field must be an empty string. Do not invent emails, names, phones, sample passwords, or angle-bracket tokens.
+- Forbidden in testData and in steps: angle-bracket placeholders (USERNAME, PASSWORD, EMAIL, FIRST_NAME, or any similar token). Login values come from the user's credential profile at Execute / Automate time.
+- Do not invent real passwords or secrets. For shared login, write preconditions like "Login required." and leave testData as "".
 - Prefer exact UI labels from the pasted requirements; when app context is thin, use reasonable labels but do not hallucinate screens or flows not implied by the requirements.
 - Do not create file-upload-only cases (choose file / attach / drag-and-drop upload).
 
@@ -49,8 +49,8 @@ AUTHORING RULES
 - Steps: numbered list, one clear action per line; use exact UI labels (button text, field label, menu item).
 - For login flows use exact field labels from requirements. Combined identifier boxes (Email / Mobile number, Email or phone): use "Email or phone field" in steps — never standalone "Email field" or "Phone field" unless requirements describe separate inputs. Password always uses "Password field". Do not use vague phrasing like "Enter a valid email address".
 - Prefer "Open the … page at /path" when navigation is needed.
-- Move typed values out of Enter steps into testData only when the value is known from requirements or the user allowed sample data. Example when known: Step "Enter in the First name field" with testData line "Nora". When unknown: same step with a blank testData line or <FIRST_NAME>.
-- testData is line-aligned with steps (blank lines count). Line N of testData pairs with step N.
+- Write Enter steps without typed values in the step text (example: "Enter in the First name field"). Never move invented values into testData — leave testData as "".
+- testData must stay empty. Keel may later pair user-edited testData lines with steps (line N of testData pairs with step N).
 - expectedResult: prefer one observable outcome per step, numbered to match steps; quote exact UI messages when given.
 - preconditions: login need, role, starting context. Public pages: "No login required."
 - priority / tags / visualAssertion: infer from requirements when obvious; leave empty string if unknown.
@@ -75,7 +75,7 @@ TINY SHAPE EXAMPLE (illustrative only — not extra cases to emit unless the req
       "priority": "P1",
       "tags": "negative",
       "visualAssertion": "",
-      "testData": "<USERNAME>\n<WRONG_PASSWORD>\n\n",
+      "testData": "",
       "keelPath": "AUTOMATE"
     },
     {
@@ -99,7 +99,7 @@ TINY SHAPE EXAMPLE (illustrative only — not extra cases to emit unless the req
       "priority": "P1",
       "tags": "negative",
       "visualAssertion": "",
-      "testData": "user!@#$%^&*()\nWrongPass123\n\n",
+      "testData": "",
       "keelPath": "EXECUTE"
     }
   ],

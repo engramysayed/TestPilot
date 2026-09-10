@@ -12,7 +12,7 @@ public class KeelPathCaseFilterTest {
     }
 
     @Test
-    public void automate_keepsAutomateAndBlank_skipsExecuteManual() {
+    public void automate_keepsAutomateExecuteVisionAndBlank_skipsManualOnly() {
         List<ManualTestCase> filtered = KeelPathCaseFilter.forSurface(List.of(
                 tc("A", "AUTOMATE"),
                 tc("E", "EXECUTE"),
@@ -21,7 +21,7 @@ public class KeelPathCaseFilterTest {
                 tc("B", "")
         ), KeelPathCaseFilter.Surface.AUTOMATE);
 
-        Assert.assertEquals(filtered.stream().map(ManualTestCase::tcId).toList(), List.of("A", "B"));
+        Assert.assertEquals(filtered.stream().map(ManualTestCase::tcId).toList(), List.of("A", "E", "V", "B"));
     }
 
     @Test

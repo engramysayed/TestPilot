@@ -33,7 +33,9 @@ public final class GeneratedTcJsonParser {
         }
         JsonNode testCasesNode = firstArray(root, "testCases", "test_cases", "cases");
         if (testCasesNode == null || !testCasesNode.isArray() || testCasesNode.isEmpty()) {
-            throw new IllegalArgumentException("JSON must contain a non-empty testCases array");
+            String snippet = raw.length() > 240 ? raw.substring(0, 240) + "…" : raw;
+            throw new IllegalArgumentException(
+                    "JSON must contain a non-empty testCases array (got: " + snippet.replace('\n', ' ') + ")");
         }
         String coverageNotes = textOrEmpty(root.get("coverageNotes"));
         if (coverageNotes.isBlank()) {
@@ -122,7 +124,8 @@ public final class GeneratedTcJsonParser {
                 textOrEmpty(firstField(node, "tags", "Tags")),
                 visualAssertion,
                 testData,
-                keelStored
+                keelStored,
+                textOrEmpty(firstField(node, "callBefore", "CallBefore"))
         );
     }
 

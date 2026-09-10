@@ -10,6 +10,7 @@ import delivery.portal.persistence.JobRepository;
 import delivery.portal.persistence.ProjectEntity;
 import delivery.portal.persistence.ProjectRepository;
 import delivery.store.DomainStorePaths;
+import delivery.store.PreferredHooksStore;
 import delivery.store.ProjectStore;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -124,6 +125,10 @@ public class PortalStore {
         return projectRepository.findByProjectId(projectId).map(this::toRecord);
     }
 
+    public String preferredHooksJoined(String projectId) {
+        return PreferredHooksStore.join(PreferredHooksStore.load(storeRootPath, resolveBaseUrlHint(projectId)));
+    }
+
     public Optional<ProjectRecord> getOwnedProject(String projectId, Long ownerUserId) {
         return projectRepository.findByProjectId(projectId)
                 .filter(p -> p.getOwnerUserId().equals(ownerUserId))
@@ -163,6 +168,12 @@ public class PortalStore {
             entity.setArchivedAt(patch.archived() ? Instant.now() : null);
         }
         projectRepository.save(entity);
+        if (patch.preferredHooks() != null) {
+            String url = entity.getBaseUrl() != null && !entity.getBaseUrl().isBlank()
+                    ? entity.getBaseUrl()
+                    : resolveBaseUrlHint(projectId);
+            PreferredHooksStore.save(storeRootPath, url, patch.preferredHooks());
+        }
         return Optional.of(toRecord(entity));
     }
 
@@ -260,6 +271,21 @@ public class PortalStore {
         return true;
     }
 
+    /**
+     * Owner-only hard delete of one job row (memory + DB). Does not touch disk —
+     * callers remove kind-specific folders separately.
+     */
+    @Transactional
+    public boolean deleteOwnedJobRecord(String jobId, Long ownerUserId) {
+        Optional<JobRecord> owned = getOwnedJob(jobId, ownerUserId);
+        if (owned.isEmpty()) {
+            return false;
+        }
+        jobs.remove(jobId);
+        jobRepository.findByJobId(jobId).ifPresent(jobRepository::delete);
+        return true;
+    }
+
     /** Deletes every project (and jobs) owned by this user. */
     @Transactional
     public int deleteAllOwnedProjects(Long ownerUserId) {
@@ -330,6 +356,36 @@ public class PortalStore {
         }
         cancelRequested.computeIfAbsent(jobId, ignored -> new java.util.concurrent.atomic.AtomicBoolean())
                 .set(true);
+    }
+
+    /**
+     * Owner hard-stop: sets the cooperative cancel flag and marks the job CANCELLED immediately
+     * so stuck/dead workers no longer block Delete. Workers must not overwrite CANCELLED.
+     *
+     * @return empty if missing/not owned; {@code ALREADY_DONE} if not active; {@code OK} if stopped
+     */
+    public Optional<String> forceStopOwnedJob(String jobId, Long ownerUserId) {
+        Optional<JobRecord> owned = getOwnedJob(jobId, ownerUserId);
+        if (owned.isEmpty()) {
+            return Optional.empty();
+        }
+        JobRecord job = owned.get();
+        if (job.getStatus() != JobRecord.Status.QUEUED && job.getStatus() != JobRecord.Status.RUNNING) {
+            return Optional.of("ALREADY_DONE");
+        }
+        requestCancel(jobId);
+        job.setStatus(JobRecord.Status.CANCELLED);
+        job.setMessage("Force-stopped by owner");
+        syncJobPersistence(job);
+        return Optional.of("OK");
+    }
+
+    /** True when a finishing worker must not write COMPLETED/FAILED over a force-stop. */
+    public boolean shouldAbortCompletion(JobRecord job) {
+        if (job == null) {
+            return false;
+        }
+        return job.getStatus() == JobRecord.Status.CANCELLED || isCancelRequested(job.getJobId());
     }
 
     public boolean isCancelRequested(String jobId) {

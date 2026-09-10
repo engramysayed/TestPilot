@@ -222,7 +222,7 @@ public class HealCascade {
             reason = reason + bannedBlock(failedLocators);
         }
         List<DomCandidate> candidates = DomCandidateExtractor.extract(slimHtml);
-        if (intent.kind() == StepIntentBinder.IntentKind.TYPE_FIELD) {
+        if (StepIntentBinder.spendsMustAvoidPriorFills(intent.kind())) {
             candidates = StepIntentBinder.withoutSpentControls(candidates, spentSteps);
         }
         candidates = StepIntentBinder.withoutFailedLocators(candidates, failedLocators);
@@ -246,7 +246,8 @@ public class HealCascade {
         }
 
         // After a burned locator (or zero-size drop), try the next named row before paying for LLM.
-        boolean allowNamedRetry = !failedLocators.isEmpty() || livenessDropped;
+        boolean allowNamedRetry = intent.kind() != StepIntentBinder.IntentKind.ASSERT_VISIBLE
+                && (!failedLocators.isEmpty() || livenessDropped);
         if (allowNamedRetry && !distinctivePool.isEmpty()) {
             DomCandidate pick = authoring.shortlistForIntent(intent, distinctivePool, 1).stream()
                     .findFirst()
@@ -465,6 +466,11 @@ public class HealCascade {
         }
         if (intent == null) {
             return true;
+        }
+        if (StepIntentBinder.spendsMustAvoidPriorFills(intent.kind())
+                && steps.stream().anyMatch(s -> StepIntentBinder.isSpentLocator(s, spent))) {
+            LogsManager.info("HEAL_REJECT: spent locator reused for " + trim(intent.text(), 40));
+            return false;
         }
         if (StepIntentBinder.wantsFormSubmit(intent.text()) && clickIsNonSubmitNavigation(steps, candidates)) {
             LogsManager.info("HEAL_REJECT: form submit picked a non-submit navigation control");

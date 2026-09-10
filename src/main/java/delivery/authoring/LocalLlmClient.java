@@ -11,22 +11,31 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
  * Local Ollama HTTP client. Must not target cloud LLM vendors.
  */
 public class LocalLlmClient {
+    /** Default generate budget — long TC JSON batches truncate at Ollama's ~1k default. */
+    public static final int DEFAULT_GENERATE_NUM_PREDICT = 8192;
+
     private final String baseUrl;
     private final String model;
     private final Duration requestTimeout;
+    private final int defaultNumPredict;
     private final HttpClient httpClient;
 
     public LocalLlmClient(String baseUrl, String model) {
-        this(baseUrl, model, Duration.ofMinutes(5));
+        this(baseUrl, model, Duration.ofMinutes(5), 0);
     }
 
     public LocalLlmClient(String baseUrl, String model, Duration requestTimeout) {
+        this(baseUrl, model, requestTimeout, 0);
+    }
+
+    public LocalLlmClient(String baseUrl, String model, Duration requestTimeout, int defaultNumPredict) {
         this.baseUrl = trimTrailingSlash(Objects.requireNonNull(baseUrl, "baseUrl"));
         this.model = Objects.requireNonNull(model, "model");
         if (looksLikeCloudVendor(this.baseUrl)) {
@@ -35,6 +44,7 @@ public class LocalLlmClient {
         this.requestTimeout = (requestTimeout == null || requestTimeout.isZero() || requestTimeout.isNegative())
                 ? Duration.ofMinutes(5)
                 : requestTimeout;
+        this.defaultNumPredict = Math.max(0, defaultNumPredict);
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .build();
@@ -83,27 +93,22 @@ public class LocalLlmClient {
      */
     public String completeChat(String system, String user, boolean forceJson, byte[]... pngs)
             throws IOException, InterruptedException {
-        JSONObject body = new JSONObject();
-        body.put("model", model);
-        body.put("stream", false);
-        JSONArray messages = new JSONArray();
-        messages.put(new JSONObject().put("role", "system").put("content", system == null ? "" : system));
-        JSONObject userMsg = new JSONObject().put("role", "user").put("content", user == null ? "" : user);
-        JSONArray images = encodeImages(pngs);
-        if (images.length() > 0) {
-            userMsg.put("images", images);
-        }
-        messages.put(userMsg);
-        body.put("messages", messages);
-        if (forceJson) {
-            body.put("format", "json");
-        }
+        return completeChatDetailed(system, user, forceJson, defaultNumPredict, pngs).content();
+    }
 
+    public ChatOutcome completeChatDetailed(
+            String system,
+            String user,
+            boolean forceJson,
+            int numPredict,
+            byte[]... pngs
+    ) throws IOException, InterruptedException {
+        String bodyJson = buildChatRequestBody(model, system, user, forceJson, numPredict, pngs);
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/chat"))
                 .timeout(requestTimeout)
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8))
+                .POST(HttpRequest.BodyPublishers.ofString(bodyJson, StandardCharsets.UTF_8))
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
@@ -119,7 +124,37 @@ public class LocalLlmClient {
         if (content.isBlank()) {
             content = message.optString("thinking", "");
         }
-        return stripThinkingWrappers(content);
+        String doneReason = root.optString("done_reason", "");
+        return new ChatOutcome(stripThinkingWrappers(content), doneReason);
+    }
+
+    static String buildChatRequestBody(
+            String model,
+            String system,
+            String user,
+            boolean forceJson,
+            int numPredict,
+            byte[]... pngs
+    ) {
+        JSONObject body = new JSONObject();
+        body.put("model", model);
+        body.put("stream", false);
+        JSONArray messages = new JSONArray();
+        messages.put(new JSONObject().put("role", "system").put("content", system == null ? "" : system));
+        JSONObject userMsg = new JSONObject().put("role", "user").put("content", user == null ? "" : user);
+        JSONArray images = encodeImages(pngs);
+        if (images.length() > 0) {
+            userMsg.put("images", images);
+        }
+        messages.put(userMsg);
+        body.put("messages", messages);
+        if (forceJson) {
+            body.put("format", "json");
+        }
+        if (numPredict > 0) {
+            body.put("options", new JSONObject().put("num_predict", numPredict));
+        }
+        return body.toString();
     }
 
     private static JSONArray encodeImages(byte[]... pngs) {
@@ -157,8 +192,18 @@ public class LocalLlmClient {
         return new AuthorBatchResponse(completeJson(request.systemPrompt(), request.userPrompt()));
     }
 
+    public record ChatOutcome(String content, String doneReason) {
+        public boolean truncated() {
+            return doneReason != null && "length".equalsIgnoreCase(doneReason.trim());
+        }
+
+        public String contentOrEmpty() {
+            return content == null ? "" : content;
+        }
+    }
+
     private static boolean looksLikeCloudVendor(String url) {
-        String lower = url.toLowerCase();
+        String lower = url.toLowerCase(Locale.ROOT);
         return lower.contains("googleapis.com")
                 || lower.contains("openai.com")
                 || lower.contains("anthropic.com")

@@ -23,7 +23,7 @@ public class KeelPathCountsTest {
         Assert.assertEquals(c.get("BLANK"), 1);
         Assert.assertEquals(c.get("EXECUTE"), 1);
         Assert.assertEquals(c.get("MANUAL"), 1);
-        Assert.assertEquals(c.automateRunnable(), 2);
+        Assert.assertEquals(c.automateRunnable(), 3); // AUTOMATE + EXECUTE + BLANK
         Assert.assertEquals(c.executeRunnable(), 3); // AUTOMATE + EXECUTE + BLANK (not MANUAL)
     }
 
@@ -37,7 +37,7 @@ public class KeelPathCountsTest {
         Assert.assertEquals(c.get("AUTOMATE"), 1);
         Assert.assertEquals(c.get("VISION_ONLY"), 1);
         Assert.assertEquals(c.get("EXECUTE"), 1);
-        Assert.assertEquals(c.automateRunnable(), 1);
+        Assert.assertEquals(c.automateRunnable(), 3);
         Assert.assertEquals(c.executeRunnable(), 3);
     }
 }

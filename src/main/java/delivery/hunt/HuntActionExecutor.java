@@ -2,6 +2,7 @@ package delivery.hunt;
 
 import org.json.JSONArray;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
@@ -23,6 +24,10 @@ public final class HuntActionExecutor {
     public static final int DEFAULT_WAIT_MS = 5000;
     /** Hard ceiling for a single wait action. */
     public static final int WAIT_CAP_MS = 15_000;
+    /** Max characters for an execute_js script body. */
+    public static final int EXECUTE_JS_MAX_CHARS = 4000;
+    /** Max characters of JS return value stored in the action log. */
+    public static final int EXECUTE_JS_RESULT_MAX_CHARS = 500;
 
     private final WebDriver driver;
     private HuntActionGuard guard;
@@ -68,11 +73,11 @@ public final class HuntActionExecutor {
             return row;
         }
         String type = str(action.get("type")).isBlank() ? str(action.get("action")) : str(action.get("type"));
-        type = type.trim().toLowerCase(Locale.ROOT);
-        row.put("type", type);
+        type = normalizeType(type.trim().toLowerCase(Locale.ROOT));
         row.putAll(action);
+        row.put("type", type);
         if (guard != null) {
-            Optional<String> why = guard.rejectReason(action);
+            Optional<String> why = guard.rejectReason(withNormalizedType(action, type));
             if (why.isPresent()) {
                 row.put("status", "rejected");
                 row.put("reason", "ungrounded_locator: " + why.get());
@@ -89,6 +94,41 @@ public final class HuntActionExecutor {
                         return row;
                     }
                     driver.get(url);
+                    row.put("status", "ok");
+                }
+                case "back" -> {
+                    driver.navigate().back();
+                    row.put("status", "ok");
+                }
+                case "forward" -> {
+                    driver.navigate().forward();
+                    row.put("status", "ok");
+                }
+                case "refresh" -> {
+                    driver.navigate().refresh();
+                    row.put("status", "ok");
+                }
+                case "execute_js" -> {
+                    String script = jsScript(action);
+                    if (script.isBlank()) {
+                        row.put("status", "rejected");
+                        row.put("reason", "execute_js requires script|code|js");
+                        return row;
+                    }
+                    if (script.length() > EXECUTE_JS_MAX_CHARS) {
+                        row.put("status", "rejected");
+                        row.put("reason", "execute_js script exceeds " + EXECUTE_JS_MAX_CHARS + " chars");
+                        return row;
+                    }
+                    if (!(driver instanceof JavascriptExecutor js)) {
+                        row.put("status", "fail");
+                        row.put("reason", "driver does not support JavascriptExecutor");
+                        return row;
+                    }
+                    Object result = js.executeScript(script);
+                    row.put("script", script);
+                    row.put("result", truncate(result == null ? "null" : String.valueOf(result),
+                            EXECUTE_JS_RESULT_MAX_CHARS));
                     row.put("status", "ok");
                 }
                 case "click" -> {
@@ -232,6 +272,43 @@ public final class HuntActionExecutor {
             ms = 0;
         }
         return Math.min(ms, WAIT_CAP_MS);
+    }
+
+    static String normalizeType(String type) {
+        return switch (type) {
+            case "navigate_back", "history_back", "go_back" -> "back";
+            case "navigate_forward", "history_forward", "go_forward" -> "forward";
+            case "reload", "reload_page", "page_refresh" -> "refresh";
+            case "js", "javascript", "eval_js", "run_js" -> "execute_js";
+            default -> type;
+        };
+    }
+
+    private static Map<String, Object> withNormalizedType(Map<String, Object> action, String type) {
+        Map<String, Object> copy = new LinkedHashMap<>(action);
+        copy.put("type", type);
+        return copy;
+    }
+
+    private static String jsScript(Map<String, Object> action) {
+        String script = str(action.get("script"));
+        if (script.isBlank()) {
+            script = str(action.get("code"));
+        }
+        if (script.isBlank()) {
+            script = str(action.get("js"));
+        }
+        return script;
+    }
+
+    private static String truncate(String s, int max) {
+        if (s == null) {
+            return "";
+        }
+        if (s.length() <= max) {
+            return s;
+        }
+        return s.substring(0, max) + "…";
     }
 
     private static String str(Object o) {

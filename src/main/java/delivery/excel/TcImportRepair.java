@@ -66,7 +66,8 @@ public final class TcImportRepair {
                 testCase.tags(),
                 testCase.visualAssertion(),
                 repairMultilineField(testCase.testData()),
-                repairKeelPath(testCase.keelPath()));
+                repairKeelPath(testCase.keelPath()),
+                testCase.callBefore());
     }
 
     private static String repairKeelPath(String raw) {

@@ -44,7 +44,7 @@ public class DryRunConversionService {
         List<ManualTestCase> cases = KeelPathCaseFilter.requireForSurface(
                 new ExcelTcReader().read(request.excel()),
                 KeelPathCaseFilter.Surface.AUTOMATE,
-                "No AUTOMATE test cases in workbook — use Generate KeelPath=AUTOMATE, or leave KeelPath blank for legacy sheets"
+                "No runnable test cases in workbook — MANUAL rows are skipped on Automate; use AUTOMATE/EXECUTE/VISION_ONLY or blank KeelPath"
         );
         progress.update(0, cases.size(), "Dry-run packaging (no local AI)");
 

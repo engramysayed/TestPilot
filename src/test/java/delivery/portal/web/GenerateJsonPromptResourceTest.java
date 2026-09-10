@@ -27,6 +27,13 @@ public class GenerateJsonPromptResourceTest {
             Assert.assertTrue(body.contains("TC_03"));
             Assert.assertTrue(body.contains("Special characters"));
             Assert.assertTrue(body.contains("EXECUTE"));
+            Assert.assertFalse(body.contains("<USERNAME>"),
+                    "must not teach <USERNAME> placeholders");
+            Assert.assertFalse(body.contains("<PASSWORD>"),
+                    "must not teach <PASSWORD> placeholders");
+            Assert.assertTrue(body.toLowerCase().contains("never")
+                    && body.toLowerCase().contains("testdata"),
+                    "must forbid generating testData");
         }
     }
 

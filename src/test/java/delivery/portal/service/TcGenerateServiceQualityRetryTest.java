@@ -1,5 +1,6 @@
 package delivery.portal.service;
 
+import delivery.authoring.LocalLlmClient;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.excel.GenerateQualityGate;
 import delivery.portal.model.ProjectRecord;
@@ -120,10 +121,12 @@ public class TcGenerateServiceQualityRetryTest {
         }
 
         @Override
-        String callOllama(String system, String user, String model) {
+        LocalLlmClient.ChatOutcome callOllamaDetailed(
+                String system, String user, String model, java.util.function.BooleanSupplier cancelCheck) {
             llmCallCount++;
             userPrompts.add(user);
-            return llmResponses.get(llmCallCount - 1);
+            String content = llmResponses.get(Math.min(llmCallCount - 1, llmResponses.size() - 1));
+            return new LocalLlmClient.ChatOutcome(content, "stop");
         }
     }
 }

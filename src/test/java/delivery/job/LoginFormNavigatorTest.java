@@ -9,6 +9,14 @@ import static org.mockito.Mockito.when;
 
 public class LoginFormNavigatorTest {
     @Test
+    public void otpPasswordInputIsNotALoginForm() {
+        Assert.assertFalse(LoginFormNavigator.looksLikeLoginPasswordField(
+                "basic_otp", "otp", "OTP", "", "otp-input"));
+        Assert.assertTrue(LoginFormNavigator.looksLikeLoginPasswordField(
+                "basic_password", "password", "Password", "current-password", ""));
+    }
+
+    @Test
     public void scoresLoginLinkHigherThanUnrelated() {
         WebElement login = element("a", "Sign In", "https://example.com/login");
         WebElement other = element("a", "Checkboxes", "https://example.com/checkboxes");

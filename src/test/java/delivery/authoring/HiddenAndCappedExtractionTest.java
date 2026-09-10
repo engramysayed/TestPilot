@@ -39,7 +39,7 @@ public class HiddenAndCappedExtractionTest {
     }
 
     @Test
-    public void textXpathTargetsTheInnermostNode() {
+    public void buttonTextXpathDoesNotRequireTheButtonToBeTheInnermostTextNode() {
         String html = "<div><button aria-hidden=\"false\">Place order</button></div>";
         List<DomCandidate> candidates = DomCandidateExtractor.extract(html);
 
@@ -48,8 +48,34 @@ public class HiddenAndCappedExtractionTest {
                 .findFirst()
                 .orElse(null);
         Assert.assertNotNull(textCandidate, candidates.toString());
-        Assert.assertTrue(textCandidate.value().contains("not(.//*[contains("),
-                "an ancestor would otherwise win: " + textCandidate.value());
+        Assert.assertEquals(
+                textCandidate.value(),
+                "//button[contains(normalize-space(.),'Place order')]",
+                "a tagged button xpath already excludes the wrapper");
+        Assert.assertFalse(textCandidate.value().contains("not(.//*"),
+                "innermost-not excludes buttons whose label lives in a child span");
+    }
+
+    @Test
+    public void verifyOtpButtonWithInnerSpanUsesSimpleButtonXpath() {
+        String html = """
+                <body>
+                  <button data-axis-test-id="verify_Otp_Button" type="button">
+                    <span>Verify OTP</span>
+                  </button>
+                </body>
+                """;
+        List<DomCandidate> candidates = DomCandidateExtractor.extract(html);
+        Assert.assertTrue(candidates.stream().anyMatch(c ->
+                        "css".equals(c.strategy())
+                                && c.value().contains("data-axis-test-id")
+                                && c.value().contains("verify_Otp_Button")),
+                "vendor data-*test* hooks must be candidates: "
+                        + DomCandidateExtractor.formatTable(candidates));
+        Assert.assertTrue(candidates.stream().noneMatch(c ->
+                        c.value().contains("Verify OTP") && c.value().contains("not(.//*")),
+                "inner-span buttons must not emit the innermost-not xpath: "
+                        + DomCandidateExtractor.formatTable(candidates));
     }
 
     @Test

@@ -64,6 +64,18 @@ public final class DomainStorePaths {
         return s;
     }
 
+    /** {@code <storeRoot>/<domain>/} — shared site files live here, not under a project id. */
+    public static Path resolveDomainRoot(Path storeRoot, String domainFolderOrUrl) {
+        if (storeRoot == null) {
+            return null;
+        }
+        String domain = folderNameFromHostOrUrl(domainFolderOrUrl);
+        if (domain.isBlank()) {
+            return null;
+        }
+        return storeRoot.resolve(domain);
+    }
+
     /**
      * Prefer nested {@code domain/projectId}; reuse legacy flat project dirs when they already exist.
      */

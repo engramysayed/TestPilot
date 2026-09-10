@@ -91,7 +91,8 @@ public final class HealWorkbookPatcher {
                     tc.tags(),
                     tc.visualAssertion(),
                     String.join("\n", dataLines),
-                    tc.keelPath());
+                    tc.keelPath(),
+                    tc.callBefore());
         }
         return new PatchResult(out, applied, unmatched, cellsChanged);
     }

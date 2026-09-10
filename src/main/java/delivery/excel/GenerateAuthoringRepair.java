@@ -85,27 +85,7 @@ public final class GenerateAuthoringRepair {
             }
         }
 
-        List<String> dataLines = GenerateAuthoringRules.splitTestDataLines(
-                testCase.testData(), stepLines.size());
-        boolean testDataChanged = false;
-        for (String fieldKind : EMPTY_FIELD_KINDS) {
-            if (!GenerateAuthoringRules.mentionsEmpty(titleAndExpected, fieldKind)) {
-                continue;
-            }
-            for (int i = 0; i < stepLines.size(); i++) {
-                String dataLine = dataLines.get(i);
-                if (GenerateAuthoringRules.isEnterStepForField(
-                        stepLines.get(i).toLowerCase(Locale.ROOT), fieldKind)
-                        && !dataLine.trim().isEmpty()
-                        && !GenerateAuthoringRules.isPlaceholder(dataLine)) {
-                    dataLines.set(i, "");
-                    testDataChanged = true;
-                }
-            }
-        }
-
         steps = stepsChanged ? numberedSteps(stepLines) : steps;
-        String testData = testDataChanged ? String.join("\n", dataLines) : testCase.testData();
         return new ManualTestCase(
                 testCase.tcId(),
                 testCase.title(),
@@ -115,8 +95,9 @@ public final class GenerateAuthoringRepair {
                 testCase.priority(),
                 testCase.tags(),
                 testCase.visualAssertion(),
-                testData,
-                testCase.keelPath());
+                "",
+                testCase.keelPath(),
+                testCase.callBefore());
     }
 
     private static String numberedSteps(List<String> stepLines) {

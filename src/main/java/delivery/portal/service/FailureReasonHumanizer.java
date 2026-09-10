@@ -25,10 +25,10 @@ public final class FailureReasonHumanizer {
         }
         if (lower.contains("no dom candidate") && lower.contains("assert")) {
             return "Could not find the expected error/message on the page after the actions. "
-                    + "The earlier steps may have worked, but the final check text did not match what Facebook showed.";
+                    + "The earlier steps may have worked, but the final check text did not match what the app showed.";
         }
         if (lower.contains("heal_exhausted") && lower.contains("phone")) {
-            return "Could not find a dedicated Phone field. On Facebook, email and phone share one box — "
+            return "Could not find a dedicated Phone field. On this site, email and phone may share one box — "
                     + "prefer “Enter … in the Email or phone field”.";
         }
         if (lower.contains("heal_exhausted") || lower.contains("cursor solved nothing")) {

@@ -77,18 +77,30 @@ public class GenerateBatchWorker {
             job.setTodoCount(result.failedStoryCount());
             job.setZipPath(result.outputCsv());
             job.setMessage(result.message());
-            job.setStatus(JobRecord.Status.COMPLETED);
-            workbooks.saveFromCsvFile(
-                    job.getProjectId(), result.outputCsv(), "GENERATE_BATCH", jobId, job.getGenerateModel());
-            portalStore.syncJobPersistence(job);
+            if (portalStore.shouldAbortCompletion(job)) {
+                cancel(job);
+            } else {
+                job.setStatus(JobRecord.Status.COMPLETED);
+                workbooks.saveFromCsvFile(
+                        job.getProjectId(), result.outputCsv(), "GENERATE_BATCH", jobId, job.getGenerateModel());
+                portalStore.syncJobPersistence(job);
+            }
             log.info("Generate batch {} completed tcs={} failedStories={}",
                     jobId, result.generatedTcCount(), result.failedStoryCount());
         } catch (JobCancelledException e) {
             cancel(job);
         } catch (IllegalStateException e) {
-            fail(job, e.getMessage(), e);
+            if (portalStore.shouldAbortCompletion(job)) {
+                cancel(job);
+            } else {
+                fail(job, e.getMessage(), e);
+            }
         } catch (Exception e) {
-            fail(job, "Generate batch failed", e);
+            if (portalStore.shouldAbortCompletion(job)) {
+                cancel(job);
+            } else {
+                fail(job, "Generate batch failed", e);
+            }
         } finally {
             portalStore.clearCancelRequest(jobId);
             JobUploadCleanup.deleteIfTempUpload(job.getExcelPath());

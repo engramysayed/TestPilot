@@ -108,11 +108,10 @@ public class HuntController {
 
         String username = "";
         String password = "";
-        if (!credentials.list(projectId).isEmpty()) {
-            if (req.credentialProfile() == null || req.credentialProfile().isBlank()) {
-                return ResponseEntity.badRequest()
-                        .body(new ApiError("CREDENTIAL_PROFILE_REQUIRED", "credentialProfile is required").asMap());
-            }
+        if (!credentials.list(projectId).isEmpty()
+                && req.credentialProfile() != null
+                && !req.credentialProfile().isBlank()
+                && !"__none__".equalsIgnoreCase(req.credentialProfile().trim())) {
             ProjectCredentialService.ResolvedCredential resolved =
                     credentials.resolveForJob(projectId, req.credentialProfile().trim());
             username = resolved.username();

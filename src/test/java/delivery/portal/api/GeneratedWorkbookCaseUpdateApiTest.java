@@ -73,6 +73,68 @@ public class GeneratedWorkbookCaseUpdateApiTest extends AbstractTestNGSpringCont
     }
 
     @Test
+    public void updateCase_callBeforeSuccess() throws Exception {
+        String projectId = createProject();
+        workbooks.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_01", "Login", "", "1. Open login", "1. OK",
+                        "P1", "auth", "", "", "AUTOMATE"),
+                new ManualTestCase("TC_06", "Feature", "", "1. Do thing", "1. OK",
+                        "P1", "", "", "", "AUTOMATE")
+        ), "TEST", "unit");
+
+        mockMvc.perform(put("/api/projects/" + projectId + "/generated-workbook/cases/TC_06")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Feature",
+                                  "preconditions": "",
+                                  "steps": "1. Do thing",
+                                  "expectedResult": "1. OK",
+                                  "testData": "",
+                                  "priority": "P1",
+                                  "tags": "",
+                                  "visualAssertion": "",
+                                  "keelPath": "AUTOMATE",
+                                  "callBefore": "TC_01"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.row.callBefore").value("TC_01"));
+    }
+
+    @Test
+    public void updateCase_callBeforeSelfReject() throws Exception {
+        String projectId = createProject();
+        workbooks.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_06", "Feature", "", "1. Do thing", "1. OK",
+                        "P1", "", "", "", "AUTOMATE")
+        ), "TEST", "unit");
+
+        mockMvc.perform(put("/api/projects/" + projectId + "/generated-workbook/cases/TC_06")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Feature",
+                                  "preconditions": "",
+                                  "steps": "1. Do thing",
+                                  "expectedResult": "1. OK",
+                                  "testData": "",
+                                  "priority": "P1",
+                                  "tags": "",
+                                  "visualAssertion": "",
+                                  "keelPath": "AUTOMATE",
+                                  "callBefore": "TC_06"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("CALL_BEFORE_SELF"));
+    }
+
+    @Test
     public void updateCase_qualityGateReject() throws Exception {
         String projectId = createProject();
         workbooks.saveFromCases(projectId, List.of(

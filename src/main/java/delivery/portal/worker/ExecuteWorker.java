@@ -71,23 +71,34 @@ public class ExecuteWorker {
             job.setPassedCount(result.passed());
             job.setTodoCount(result.todo());
             job.setMessage(result.message());
-            if (result.passed() == 0 && result.todo() > 0) {
+            if (portalStore.shouldAbortCompletion(job)) {
+                cancel(job);
+            } else if (result.passed() == 0 && result.todo() > 0) {
                 job.setStatus(JobRecord.Status.FAILED);
                 job.setError("ALL_CASES_TODO");
                 job.setMessage(result.message() == null || result.message().isBlank()
                         ? "No cases passed — all TODO/PARTIAL (hard stop)"
                         : result.message());
+                portalStore.syncJobPersistence(job);
             } else {
                 job.setStatus(JobRecord.Status.COMPLETED);
+                portalStore.syncJobPersistence(job);
             }
-            portalStore.syncJobPersistence(job);
             log.info("Execute job {} completed passed={} todo={}", jobId, result.passed(), result.todo());
         } catch (JobCancelledException e) {
             cancel(job);
         } catch (IllegalStateException e) {
-            fail(job, e.getMessage(), e);
+            if (portalStore.shouldAbortCompletion(job)) {
+                cancel(job);
+            } else {
+                fail(job, e.getMessage(), e);
+            }
         } catch (Exception e) {
-            fail(job, "Execute failed", e);
+            if (portalStore.shouldAbortCompletion(job)) {
+                cancel(job);
+            } else {
+                fail(job, "Execute failed", e);
+            }
         } finally {
             portalStore.clearCancelRequest(jobId);
             JobUploadCleanup.deleteIfTempUpload(job.getExcelPath());

@@ -30,4 +30,16 @@ public class TcDraftStoreTest {
         Assert.assertEquals(loaded.retryCountOnBlocker(), 1);
         Assert.assertEquals(store.readAll().size(), 1);
     }
+
+    @Test
+    public void deleteAllRemovesDrafts() throws Exception {
+        Path work = Files.createTempDirectory("ir-store-clear");
+        TcDraftStore store = new TcDraftStore(work);
+        store.write(new TcDraft(
+                "TC1", "Checkout", "1. Click checkout", "ok",
+                TcDraftStatus.TODO, List.of(), List.of(), false,
+                -1, "", "", "", 0, ""));
+        Assert.assertEquals(store.deleteAll(), 1);
+        Assert.assertEquals(store.readAll().size(), 0);
+    }
 }

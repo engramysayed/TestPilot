@@ -14,7 +14,7 @@ import java.util.List;
 public final class ManualTcExcelWriter {
     private static final String[] HEADERS = {
             "TC_ID", "Title", "Steps", "ExpectedResult", "Preconditions",
-            "Priority", "Tags", "VisualAssertion", "TestData", "KeelPath"
+            "Priority", "Tags", "VisualAssertion", "TestData", "KeelPath", "CallBefore"
     };
 
     private ManualTcExcelWriter() {
@@ -45,6 +45,7 @@ public final class ManualTcExcelWriter {
                 row.createCell(7).setCellValue(tc.visualAssertion());
                 row.createCell(8).setCellValue(tc.testData());
                 row.createCell(9).setCellValue(tc.keelPath());
+                row.createCell(10).setCellValue(tc.callBefore());
             }
             for (int i = 0; i < HEADERS.length; i++) {
                 sheet.autoSizeColumn(i);

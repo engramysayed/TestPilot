@@ -39,7 +39,7 @@ public class GenerateAuthoringRepairTest {
     }
 
     @Test
-    public void repair_blanksEmptyEmailTestData_keepsPasswordLine() {
+    public void repair_clearsAllGeneratedTestDataIncludingPlaceholders() {
         ManualTestCase raw = emptyEmailTypedData();
         Assert.assertFalse(GenerateQualityGate.validate(List.of(raw), BASE).isEmpty());
 
@@ -47,10 +47,36 @@ public class GenerateAuthoringRepairTest {
         Assert.assertEquals(out.size(), 1);
         List<String> errors = GenerateQualityGate.validate(out, BASE);
         Assert.assertTrue(errors.isEmpty(), errors.toString());
+        Assert.assertEquals(out.get(0).testData(), "", "Generate must not persist TestData");
+    }
 
-        List<String> data = GenerateAuthoringRules.splitTestDataLines(out.get(0).testData(), 5);
-        Assert.assertEquals(data.get(1).trim(), "", "empty-email step TestData must be blank");
-        Assert.assertEquals(data.get(2).trim(), "ValidPass123!");
+    @Test
+    public void repair_stripsAnglePlaceholders() {
+        ManualTestCase raw = new ManualTestCase(
+                "TC_01",
+                "Valid login",
+                "Login required.",
+                """
+                1. Open the Login Page at https://www.facebook.com/
+                2. Enter in the Email or phone field
+                3. Enter in the Password field
+                4. Click the Log in button
+                5. Confirm the home feed is visible""",
+                """
+                1. Login page is shown
+                2. Email or phone is accepted
+                3. Password is accepted
+                4. Submit is clicked
+                5. Home feed is shown""",
+                "P1",
+                "smoke",
+                "",
+                "<USERNAME>\n<_PASSWORD>\n\n",
+                "EXECUTE");
+        List<ManualTestCase> out = GenerateAuthoringRepair.repair(List.of(raw));
+        Assert.assertEquals(out.get(0).testData(), "");
+        Assert.assertTrue(GenerateQualityGate.validate(out, BASE).isEmpty(),
+                GenerateQualityGate.validate(out, BASE).toString());
     }
 
     @Test
@@ -65,7 +91,7 @@ public class GenerateAuthoringRepairTest {
         Assert.assertTrue(GenerateQualityGate.validate(List.of(already), BASE).isEmpty());
 
         List<ManualTestCase> out = GenerateAuthoringRepair.repair(List.of(already));
-        Assert.assertEquals(out.get(0).testData(), already.testData());
+        Assert.assertEquals(out.get(0).testData(), "");
         Assert.assertEquals(out.get(0).steps(), already.steps());
     }
 

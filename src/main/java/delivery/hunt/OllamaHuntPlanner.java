@@ -11,8 +11,13 @@ public final class OllamaHuntPlanner implements HuntPlanner {
             You are Keel's Bug Hunter planner. Break the feature safely and invent edge-case scenarios.
             Return ONLY one JSON object with keys:
             decision ("continue"|"finish"), rationale, actions[], bugs[], scenarios[].
-            actions allowlist: navigate{url}, click{locator|locatorStrategy+locatorValue}, type{locator,value},
+            actions allowlist: navigate{url}, back{}, forward{}, refresh{}, execute_js{script},
+            click{locator|locatorStrategy+locatorValue}, type{locator,value},
             clear{locator}, wait{ms}, assert_visible{locator}, assert_text{text}.
+            Aliases: navigate_back→back, reload→refresh, js/code→execute_js script field.
+            Current URL is always in the page map (## URL) — read it; use navigate/back/forward/refresh to move.
+            Prefer UI locators for normal probes; use execute_js only for short page probes
+            (read state, dispatch events, scroll) — max ~4000 chars, no network exfil.
             Emit at most actionCapPerCycle actions (see Caps). wait with no/blank ms defaults to 5000ms server-side.
             Use the page map as the primary DOM signal — only emit locators that appear in the page map
             (or in the slim DOM section when attached).

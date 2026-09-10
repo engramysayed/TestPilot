@@ -46,11 +46,10 @@ public class ConversionJobRunner {
             throw new IllegalStateException("UPDATE_WITHOUT_FRAMEWORK");
         }
 
-        ExcelTcReader reader = new ExcelTcReader();
         List<ManualTestCase> allCases = KeelPathCaseFilter.requireForSurface(
-                reader.read(request.excel()),
+                new ExcelTcReader(true).read(request.excel()),
                 KeelPathCaseFilter.Surface.AUTOMATE,
-                "No AUTOMATE test cases in workbook — use Generate KeelPath=AUTOMATE, or leave KeelPath blank for legacy sheets"
+                "No runnable test cases in workbook — MANUAL rows are skipped on Automate; use AUTOMATE/EXECUTE/VISION_ONLY or blank KeelPath"
         );
 
         Map<String, String> storedHashes = new HashMap<>();
@@ -119,7 +118,8 @@ public class ConversionJobRunner {
                 tc.tags(),
                 tc.visualAssertion(),
                 tc.testData(),
-                tc.keelPath()
+                tc.keelPath(),
+                tc.callBefore()
         );
     }
 }

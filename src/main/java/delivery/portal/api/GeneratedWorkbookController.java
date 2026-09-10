@@ -1,6 +1,7 @@
 package delivery.portal.api;
 
 import delivery.excel.GenerateQualityGate;
+import delivery.excel.InvalidExcelTemplateException;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.PortalStore;
@@ -10,10 +11,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,7 +56,8 @@ public class GeneratedWorkbookController {
             String priority,
             String tags,
             String visualAssertion,
-            String keelPath
+            String keelPath,
+            String callBefore
     ) {
     }
 
@@ -190,6 +195,46 @@ public class GeneratedWorkbookController {
         }
     }
 
+    @PostMapping(
+            value = "/{projectId}/generated-workbook/upload",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<?> uploadMerge(
+            @PathVariable("projectId") String projectId,
+            @RequestParam("file") MultipartFile file
+    ) throws Exception {
+        Long ownerId = currentUser.requireUserId();
+        var projectOpt = store.getOwnedProject(projectId, ownerId);
+        if (projectOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        }
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_REQUEST", "file is required").asMap());
+        }
+        try {
+            return ResponseEntity.ok(workbooks.mergeUploadFile(
+                    projectId,
+                    file.getOriginalFilename(),
+                    file.getBytes(),
+                    projectOpt.get().getBaseUrl()));
+        } catch (InvalidExcelTemplateException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError(
+                            e.getErrorCode() == null ? "INVALID_EXCEL" : e.getErrorCode(),
+                            e.getMessage() == null ? "Invalid Excel/CSV" : e.getMessage()).asMap());
+        } catch (IllegalArgumentException e) {
+            if (GenerateQualityGate.isQualityGateFailure(e)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiError("QUALITY_GATE", GenerateQualityGate.qualityGateDetail(e)).asMap());
+            }
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_REQUEST",
+                            e.getMessage() == null ? "Invalid upload" : e.getMessage()).asMap());
+        }
+    }
+
     @PutMapping(value = "/{projectId}/generated-workbook/cases/{tcId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> updateCase(
             @PathVariable("projectId") String projectId,
@@ -216,6 +261,7 @@ public class GeneratedWorkbookController {
         fields.put("tags", body.tags());
         fields.put("visualAssertion", body.visualAssertion());
         fields.put("keelPath", body.keelPath());
+        fields.put("callBefore", body.callBefore());
         try {
             return ResponseEntity.ok(workbooks.updateCaseFields(
                     projectId, tcId, fields, projectOpt.get().getBaseUrl()));
@@ -226,6 +272,10 @@ public class GeneratedWorkbookController {
             }
             throw e;
         } catch (IllegalArgumentException e) {
+            ResponseEntity<Map<String, String>> callBefore = CallBeforeApiErrors.badRequestOrNull(e);
+            if (callBefore != null) {
+                return callBefore;
+            }
             if (GenerateQualityGate.isQualityGateFailure(e)) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(new ApiError("QUALITY_GATE", GenerateQualityGate.qualityGateDetail(e)).asMap());

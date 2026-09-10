@@ -172,7 +172,7 @@ public class StepIntentBinderTest {
     }
 
     @Test
-    public void typeField_inventsDummyForShippingName() {
+    public void typeField_leavesBlankWhenNoConcreteName() {
         List<DomCandidate> form = List.of(
                 new DomCandidate("c1", "data-test", "firstName", "input", "First Name"),
                 new DomCandidate("c2", "data-test", "lastName", "input", "Last Name"),
@@ -184,7 +184,7 @@ public class StepIntentBinderTest {
         Assert.assertTrue(r.ok(), r.rejectReason());
         Assert.assertEquals(r.steps().get(0).action(), "type");
         Assert.assertEquals(r.steps().get(0).locatorValue(), "firstName");
-        Assert.assertFalse(r.steps().get(0).value().isBlank());
+        Assert.assertEquals(r.steps().get(0).value(), "");
     }
 
     @Test
@@ -318,6 +318,66 @@ public class StepIntentBinderTest {
     }
 
     @Test
+    public void chooseHubBindsCamelCaseHubId() {
+        Assert.assertTrue(StepIntentBinder.hayContainsToken("hubId", "hub"));
+        Assert.assertTrue(StepIntentBinder.hayContainsToken("hub-input", "hub"));
+        Assert.assertFalse(StepIntentBinder.hayContainsToken("hubble", "hub"));
+        List<DomCandidate> form = List.of(
+                new DomCandidate("c1", "css", "[data-axis-test-id='role-input']", "input", "Role"),
+                new DomCandidate("c2", "id", "hubId", "combobox", "Hub"),
+                new DomCandidate("c3", "css", "[data-axis-test-id='login-input']", "input", "Login")
+        );
+        StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.TYPE_FIELD, "choose Hub", "asdas"),
+                "TC_06", form, List.of());
+        Assert.assertTrue(bound.ok(), bound.rejectReason());
+        Assert.assertEquals(bound.steps().get(0).action(), "select");
+        Assert.assertTrue(bound.steps().get(0).locatorValue().contains("hub"),
+                bound.steps().get(0).locatorValue());
+    }
+
+    @Test
+    public void chooseGenderBindsAsSelectNotType() {
+        List<DomCandidate> form = List.of(
+                new DomCandidate("c1", "css", "[data-axis-test-id='first-name-input']", "input", "First name"),
+                new DomCandidate("c2", "css", "[data-axis-test-id='gender-input']", "input", "Gender"),
+                new DomCandidate("c3", "css", "[data-axis-test-id='last-name-input']", "input", "Last name")
+        );
+        StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.TYPE_FIELD, "choose Gender"),
+                "TC_06", form, List.of());
+        Assert.assertTrue(bound.ok(), bound.rejectReason());
+        Assert.assertEquals(bound.steps().get(0).action(), "select");
+        Assert.assertTrue(bound.steps().get(0).locatorValue().contains("gender-input"),
+                bound.steps().get(0).locatorValue());
+    }
+
+    @Test
+    public void retainDistinctiveMatches_sidebarExpandAsideDoesNotStarveMenu() {
+        List<DomCandidate> inventory = List.of(
+                new DomCandidate("c1", "xpath", "//div[contains(.,'Dashboard')]", "div", "Dashboard"),
+                new DomCandidate("c2", "xpath", "//div[contains(.,'Wallets')]", "div", "Wallets"),
+                new DomCandidate("c3", "xpath", "//div[contains(.,'Cards')]", "div", "Cards"),
+                new DomCandidate("c4", "xpath", "//div[contains(.,'User Management')]", "div", "User Management"),
+                new DomCandidate("c5", "xpath", "//div[contains(.,'Reports')]", "div", "Reports")
+        );
+        StepIntentBinder.IntentLine intent = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK,
+                "Click User Management in the left sidebar (expand if collapsed)");
+        Assert.assertTrue(StepIntentBinder.intentActionVerbs(intent.text()).isEmpty(),
+                "parenthetical expand hint must not become a named-action verb");
+        List<DomCandidate> kept = StepIntentBinder.retainDistinctiveMatches(intent, inventory);
+        Assert.assertEquals(kept.size(), 1, kept.toString());
+        Assert.assertEquals(kept.get(0).label(), "User Management");
+        StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(intent, "TC_06", inventory, List.of());
+        Assert.assertTrue(bound.ok(), bound.rejectReason());
+        Assert.assertTrue(bound.steps().get(0).locatorValue().contains("User Management"),
+                bound.steps().get(0).locatorValue());
+    }
+
+    @Test
     public void retainDistinctiveMatches_namedActionDoesNotFallBackToTitle() {
         List<DomCandidate> inventory = List.of(
                 new DomCandidate("c1", "data-test", "entity-title", "a", "Red Backpack"),
@@ -342,6 +402,67 @@ public class StepIntentBinderTest {
         List<ProvenStep> forced = authoring.stepsPreferringCandidate("E2E", intent, withoutBackpack, "c2");
         Assert.assertFalse(forced.get(0).validated(),
                 "heal force-path must not validate wrong named entity: " + forced.get(0).rationale());
+    }
+
+    @Test
+    public void signInClickBindsButtonNotUsernameFieldNamedLogin() {
+        List<DomCandidate> form = List.of(
+                new DomCandidate("c1", "id", "basic_login", "input", "Username"),
+                new DomCandidate("c2", "id", "basic_password", "input", "Password"),
+                new DomCandidate("c3", "css", "button[data-axis-test-id='sign_In_Button']", "button", "Sign in"));
+        StepIntentBinder.BindResult result = StepIntentBinder.bindSingle(
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.CLICK_LOGIN, "Click the Sign in button"),
+                "TC1", form, List.of());
+        Assert.assertTrue(result.ok(), result.rejectReason());
+        Assert.assertEquals(result.steps().get(0).action(), "click");
+        Assert.assertTrue(result.steps().get(0).locatorValue().toLowerCase().contains("sign"),
+                "Sign in must click the button, got " + result.steps().get(0).locatorValue());
+        Assert.assertFalse(result.steps().get(0).locatorValue().contains("basic_login"),
+                "must not click the username field");
+    }
+
+    @Test
+    public void clickVerifyOtpBindsButtonNotOtpInput() {
+        List<DomCandidate> form = List.of(
+                new DomCandidate("c1", "id", "basic_otp", "input", "OTP"),
+                new DomCandidate("c2", "css", "button[data-axis-test-id='verify_Otp_Button']", "button", "Verify OTP"));
+        StepIntentBinder.BindResult result = StepIntentBinder.bindSingle(
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.CLICK, "Click the Verify OTP button"),
+                "TC1", form, List.of());
+        Assert.assertTrue(result.ok(), result.rejectReason());
+        Assert.assertEquals(result.steps().get(0).action(), "click");
+        Assert.assertFalse(result.steps().get(0).locatorValue().contains("basic_otp"),
+                "must not click the OTP input, got " + result.steps().get(0).locatorValue());
+        Assert.assertTrue(result.steps().get(0).locatorValue().toLowerCase().contains("verify")
+                        || result.steps().get(0).locatorValue().toLowerCase().contains("otp"),
+                result.steps().get(0).locatorValue());
+    }
+
+    @Test
+    public void otpInputWithPasswordTypeKeepsOtpTestDataNotTargetPassword() {
+        // Masked OTP fields often use type=password; must not map to login secrets.
+        List<DomCandidate> form = List.of(
+                new DomCandidate("c1", "css",
+                        "input[type='password'][id='basic_otp']", "input", "OTP"));
+        StepIntentBinder.BindResult result = StepIntentBinder.bindSingle(
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.TYPE_FIELD, "Enter the OTP", "245345"),
+                "TC1", form, List.of());
+        Assert.assertTrue(result.ok(), result.rejectReason());
+        Assert.assertEquals(result.steps().get(0).value(), "245345");
+        Assert.assertNotEquals(result.steps().get(0).value(), "${TARGET_PASSWORD}");
+    }
+
+    @Test
+    public void clickVerifyOtpIsAClickNotAnAssert() {
+        Assert.assertEquals(
+                StepIntentBinder.classify("click the verify otp button"),
+                StepIntentBinder.IntentKind.CLICK);
+        Assert.assertEquals(
+                StepIntentBinder.classify("confirm the text 'Start navigating' is visible"),
+                StepIntentBinder.IntentKind.ASSERT_VISIBLE);
     }
 
     @Test
@@ -462,6 +583,34 @@ public class StepIntentBinderTest {
         StepIntentBinder.BindResult result = StepIntentBinder.bindSingle(enter, "TC1", candidates, List.of());
         Assert.assertTrue(result.ok(), result.rejectReason());
         Assert.assertEquals(result.steps().get(0).value(), "Alice");
+    }
+
+    @Test
+    public void classifyEmailOrPhoneEnterAsTypeUser() {
+        Assert.assertEquals(
+                StepIntentBinder.classify("enter in the email or phone field"),
+                StepIntentBinder.IntentKind.TYPE_USER);
+        Assert.assertEquals(
+                StepIntentBinder.classify("enter in the first name field"),
+                StepIntentBinder.IntentKind.TYPE_FIELD);
+    }
+
+    @Test
+    public void emailOrPhonePlaceholder_usesCredentialProfileNotTestData() {
+        List<DomCandidate> form = List.of(
+                new DomCandidate("c1", "css", "input[name='email']", "input", "Email or phone"),
+                new DomCandidate("c2", "css", "input[name='pass']", "input", "Password"),
+                new DomCandidate("c3", "css", "login-button", "button", "Login"));
+        ManualTestCase tc = new ManualTestCase(
+                "TC_login", "Login", "Login required.",
+                "1. Enter in the Email or phone field\n2. Enter in the Password field\n3. Click the Login button",
+                "Home", "P1", "smoke", "",
+                "<USERNAME>\n<_PASSWORD>\n",
+                "EXECUTE");
+        StepIntentBinder.BindResult result = StepIntentBinder.bind(tc, form);
+        Assert.assertTrue(result.ok(), result.rejectReason());
+        Assert.assertEquals(result.steps().get(0).value(), "${TARGET_USERNAME}");
+        Assert.assertEquals(result.steps().get(1).value(), "${TARGET_PASSWORD}");
     }
 
     @Test

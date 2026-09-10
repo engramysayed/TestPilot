@@ -22,11 +22,17 @@ public class KeelPathSurfaceGuardTest {
     }
 
     @Test
-    public void hardBlock_automateWhenNoAutomateOrBlank() {
-        KeelPathCounts c = counts("EXECUTE", "MANUAL", "VISION_ONLY");
+    public void hardBlock_automateWhenOnlyManual() {
+        KeelPathCounts c = counts("MANUAL", "MANUAL");
         Optional<String> msg = KeelPathSurfaceGuard.hardBlock(Surface.AUTOMATE, c);
         Assert.assertTrue(msg.isPresent());
-        Assert.assertTrue(msg.get().contains("AUTOMATE"));
+        Assert.assertTrue(msg.get().toLowerCase().contains("manual"));
+    }
+
+    @Test
+    public void hardBlock_automateAllowsExecuteOnlyWorkbook() {
+        KeelPathCounts c = counts("EXECUTE", "VISION_ONLY", "MANUAL");
+        Assert.assertTrue(KeelPathSurfaceGuard.hardBlock(Surface.AUTOMATE, c).isEmpty());
     }
 
     @Test
@@ -58,7 +64,7 @@ public class KeelPathSurfaceGuardTest {
 
     @Test
     public void softWarn_whenRunnableBelowHalfOfTcCount() {
-        KeelPathCounts c = counts("AUTOMATE", "EXECUTE", "EXECUTE", "EXECUTE", "EXECUTE");
+        KeelPathCounts c = counts("AUTOMATE", "MANUAL", "MANUAL", "MANUAL", "MANUAL");
         Optional<String> msg = KeelPathSurfaceGuard.softWarn(Surface.AUTOMATE, c);
         Assert.assertTrue(msg.isPresent());
         Assert.assertTrue(msg.get().contains("1"));
@@ -67,16 +73,16 @@ public class KeelPathSurfaceGuardTest {
 
     @Test
     public void softWarn_emptyWhenRunnableIsHalfOrMore() {
-        KeelPathCounts half = counts("AUTOMATE", "AUTOMATE", "EXECUTE", "EXECUTE");
+        KeelPathCounts half = counts("AUTOMATE", "EXECUTE", "MANUAL", "MANUAL");
         Assert.assertTrue(KeelPathSurfaceGuard.softWarn(Surface.AUTOMATE, half).isEmpty());
 
-        KeelPathCounts majority = counts("AUTOMATE", "AUTOMATE", "AUTOMATE", "EXECUTE");
+        KeelPathCounts majority = counts("AUTOMATE", "EXECUTE", "VISION_ONLY", "MANUAL");
         Assert.assertTrue(KeelPathSurfaceGuard.softWarn(Surface.AUTOMATE, majority).isEmpty());
     }
 
     @Test
     public void softWarn_emptyWhenHardBlockWouldApply() {
-        KeelPathCounts c = counts("EXECUTE", "MANUAL");
+        KeelPathCounts c = counts("MANUAL", "MANUAL");
         Assert.assertTrue(KeelPathSurfaceGuard.softWarn(Surface.AUTOMATE, c).isEmpty());
     }
 }

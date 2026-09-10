@@ -15,7 +15,8 @@ public final class VisionTriggers {
             return false;
         }
         return switch (intent.kind()) {
-            case CLICK, CLICK_LOGIN, TYPE_FIELD, TYPE_USER, TYPE_PASS, ASSERT_VISIBLE -> true;
+            case CLICK, CLICK_LOGIN, TYPE_FIELD, TYPE_USER, TYPE_PASS -> true;
+            case ASSERT_VISIBLE -> false;
         };
     }
 

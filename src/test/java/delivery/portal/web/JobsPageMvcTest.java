@@ -68,7 +68,7 @@ public class JobsPageMvcTest extends AbstractTestNGSpringContextTests {
         job.setCreatedAt(Instant.now());
         jobRepository.save(job);
 
-        String body = mockMvc.perform(get("/jobs").with(httpBasic(AUTH_USER, AUTH_PASS)))
+        String body = mockMvc.perform(get("/runs").with(httpBasic(AUTH_USER, AUTH_PASS)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -101,19 +101,19 @@ public class JobsPageMvcTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
-    public void jobsPage_hidesExecuteRuns() throws Exception {
+    public void runsPage_showsExecuteAndAutomate() throws Exception {
         String projectId = createProject();
         patchBaseUrl(projectId);
         String execJobId = startExecuteRun(projectId);
 
-        String body = mockMvc.perform(get("/jobs").with(httpBasic(AUTH_USER, AUTH_PASS)))
+        String body = mockMvc.perform(get("/runs").with(httpBasic(AUTH_USER, AUTH_PASS)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        Assert.assertFalse(body.contains(execJobId), "execute job should not appear on /jobs");
-        Assert.assertTrue(body.contains("Execute"), "should link to execute history");
+        Assert.assertTrue(body.contains(execJobId), "execute run should appear on /runs");
+        Assert.assertTrue(body.contains("Execute"));
     }
 
     private String createProject() throws Exception {

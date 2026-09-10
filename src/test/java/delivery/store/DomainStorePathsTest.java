@@ -8,6 +8,14 @@ import java.nio.file.Path;
 
 public class DomainStorePathsTest {
     @Test
+    public void domainRootSitsAboveProjectFolders() {
+        Path root = Path.of("delivery-store");
+        Assert.assertEquals(
+                DomainStorePaths.resolveDomainRoot(root, "https://opssit.axispay.app/login"),
+                root.resolve("opssit-axispay-app"));
+    }
+
+    @Test
     public void sanitizesHostAndUrl() {
         Assert.assertEquals(DomainStorePaths.folderNameFromHostOrUrl("saucedemo.com"), "saucedemo-com");
         Assert.assertEquals(DomainStorePaths.folderNameFromHostOrUrl("https://www.saucedemo.com/inventory.html"),

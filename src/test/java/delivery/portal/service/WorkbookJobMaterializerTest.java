@@ -38,13 +38,12 @@ public class WorkbookJobMaterializerTest {
     }
 
     @Test
-    public void mixKeepsLibraryPlusUpload() {
+    public void mixExpandsSelectedLeavesOnly() {
         List<ManualTestCase> out = WorkbookJobMaterializer.merge(
                 List.of(tc("TC_01", "Lib1"), tc("TC_02", "Lib2")),
                 List.of("TC_01"),
                 List.of(tc("TC_03", "Up3")));
-        Assert.assertEquals(out.size(), 2);
+        Assert.assertEquals(out.size(), 1);
         Assert.assertEquals(out.get(0).tcId(), "TC_01");
-        Assert.assertEquals(out.get(1).tcId(), "TC_03");
     }
 }

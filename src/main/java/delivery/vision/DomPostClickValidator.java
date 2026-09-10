@@ -1,12 +1,12 @@
 package delivery.vision;
 
+import delivery.job.LoginFormNavigator;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import utils.LogsManager;
 import utils.PropertyReader;
 
-import java.util.List;
 import java.util.Locale;
 
 /**
@@ -68,7 +68,7 @@ public final class DomPostClickValidator {
             body = "";
         }
         try {
-            loginForm = isLoginFormVisible(driver);
+            loginForm = LoginFormNavigator.pageHasLoginForm(driver);
         } catch (RuntimeException ignored) {
             loginForm = false;
         }
@@ -85,7 +85,22 @@ public final class DomPostClickValidator {
         if (before == null || driver == null) {
             return new Result(Status.SKIP, "missing driver/snapshot");
         }
-        return compare(before, capture(driver), targetHint);
+        // SPA login/OTP often paints after the Selenium click returns.
+        Result last = compare(before, capture(driver), targetHint);
+        if (last.status() != Status.FAIL) {
+            return last;
+        }
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(2).toNanos();
+        while (System.nanoTime() < deadline && last.status() == Status.FAIL) {
+            try {
+                Thread.sleep(150L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            last = compare(before, capture(driver), targetHint);
+        }
+        return last;
     }
 
     /** Pure comparison for unit tests / offline checks. */
@@ -111,20 +126,6 @@ public final class DomPostClickValidator {
         String hint = targetHint == null ? "" : targetHint.trim();
         LogsManager.info("DOM_POST_CLICK: FAIL no-dom-change hint=" + hint);
         return new Result(Status.FAIL, "no-url-title-body-login-change after click");
-    }
-
-    static boolean isLoginFormVisible(WebDriver driver) {
-        List<WebElement> passwords = driver.findElements(By.cssSelector("input[type='password']"));
-        for (WebElement el : passwords) {
-            try {
-                if (el.isDisplayed()) {
-                    return true;
-                }
-            } catch (RuntimeException ignored) {
-                // stale
-            }
-        }
-        return false;
     }
 
     private static String fingerprint(String text) {

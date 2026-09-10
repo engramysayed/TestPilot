@@ -8,6 +8,7 @@ import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.PortalStore;
 import delivery.portal.service.ProjectArtifactService;
 import delivery.portal.service.ProjectCredentialService;
+import delivery.portal.service.ProjectSummaryService;
 import delivery.portal.service.ProjectTcService;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -40,15 +41,17 @@ public class ProjectController {
     private final ProjectTcService projectTcs;
     private final ProjectCredentialService credentials;
     private final ProjectArtifactService artifacts;
+    private final ProjectSummaryService summary;
 
     public ProjectController(PortalStore store, CurrentUserService currentUser,
                              ProjectTcService projectTcs, ProjectCredentialService credentials,
-                             ProjectArtifactService artifacts) {
+                             ProjectArtifactService artifacts, ProjectSummaryService summary) {
         this.store = store;
         this.currentUser = currentUser;
         this.projectTcs = projectTcs;
         this.credentials = credentials;
         this.artifacts = artifacts;
+        this.summary = summary;
     }
 
     public record CreateProjectRequest(String name, String baseUrl) {
@@ -110,6 +113,7 @@ public class ProjectController {
         map.put("hasStoredFramework", store.hasStoredFramework(p.getProjectId()));
         map.put("latestVersion", p.getLatestVersion());
         map.put("baseUrl", p.getBaseUrl());
+        map.put("preferredHooks", store.preferredHooksJoined(p.getProjectId()));
         map.put("archived", p.isArchived());
         map.put("lastModified", p.getLastModified());
         map.put("lastModifiedLabel", p.getLastModifiedLabel());
@@ -193,14 +197,19 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}/artifacts")
-    public ResponseEntity<?> listArtifacts(@PathVariable("projectId") String projectId) {
+    public ResponseEntity<?> listArtifacts(
+            @PathVariable("projectId") String projectId,
+            @RequestParam(value = "package", required = false) String packageZip) {
         if (store.getOwnedProject(projectId, currentUser.requireUserId()).isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
         }
         try {
             Path root = store.projectDiskRoot(projectId);
-            return ResponseEntity.ok(artifacts.buildTree(root));
+            return ResponseEntity.ok(artifacts.buildTree(root, packageZip));
+        } catch (ProjectArtifactService.BadPathException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_PATH", e.getMessage()).asMap());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiError("INTERNAL_ERROR", e.getMessage() == null ? "Failed to list artifacts" : e.getMessage()).asMap());
@@ -210,13 +219,14 @@ public class ProjectController {
     @GetMapping("/{projectId}/artifacts/preview")
     public ResponseEntity<?> previewArtifact(
             @PathVariable("projectId") String projectId,
-            @RequestParam("path") String path) {
+            @RequestParam("path") String path,
+            @RequestParam(value = "package", required = false) String packageZip) {
         if (store.getOwnedProject(projectId, currentUser.requireUserId()).isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
         }
         try {
-            String content = artifacts.preview(store.projectDiskRoot(projectId), path);
+            String content = artifacts.preview(store.projectDiskRoot(projectId), path, packageZip);
             return ResponseEntity.ok()
                     .contentType(MediaType.TEXT_PLAIN)
                     .body(content);
@@ -280,6 +290,38 @@ public class ProjectController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiError("INTERNAL_ERROR", e.getMessage() == null ? "Delete failed" : e.getMessage()).asMap());
+        }
+    }
+
+    @GetMapping("/{projectId}/summary")
+    public ResponseEntity<?> summary(@PathVariable("projectId") String projectId) {
+        Long uid = currentUser.requireUserId();
+        if (store.getOwnedProject(projectId, uid).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        }
+        try {
+            return ResponseEntity.ok(summary.build(projectId, uid));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiError("INTERNAL_ERROR",
+                            e.getMessage() == null ? "Failed to load summary" : e.getMessage()).asMap());
+        }
+    }
+
+    @DeleteMapping("/{projectId}/automate-ir")
+    public ResponseEntity<?> clearAutomateIr(@PathVariable("projectId") String projectId) {
+        if (store.getOwnedProject(projectId, currentUser.requireUserId()).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        }
+        try {
+            int deleted = projectTcs.clearProvenCases(projectId);
+            return ResponseEntity.ok(Map.of("deleted", deleted, "cleared", true));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiError("IR_CLEAR_FAILED",
+                            e.getMessage() == null ? "Could not clear proven cases" : e.getMessage()).asMap());
         }
     }
 

@@ -1,5 +1,6 @@
 package delivery.authoring;
 
+import delivery.store.PreferredHooksStore;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -35,7 +36,9 @@ public final class DomCandidateExtractor {
             "[role=button]", "[role=link]", "[onclick]",
             "[role=combobox]", "[role=listbox]", "[role=textbox]", "[role=searchbox]",
             "[role=checkbox]", "[role=radio]", "[role=switch]", "[role=spinbutton]",
-            "[role=slider]", "[role=tab]", "[role=menuitem]", "[contenteditable=true]");
+            "[role=slider]", "[role=tab]", "[role=menuitem]", "[role=menuitemcheckbox]",
+            "[role=menuitemradio]", "[aria-expanded]", "[aria-haspopup]",
+            "[contenteditable=true]");
     /** Roles that describe the control better than the tag it happens to be built from. */
     private static final List<String> WIDGET_ROLES = List.of(
             "combobox", "listbox", "textbox", "searchbox", "checkbox", "radio", "switch",
@@ -53,6 +56,12 @@ public final class DomCandidateExtractor {
 
     public static List<DomCandidate> extract(String html) {
         return extract(html, DEFAULT_MAX);
+    }
+
+    public static List<DomCandidate> extract(String html, List<String> preferredHooks) {
+        try (PreferredHooksStore.Scope ignored = PreferredHooksStore.activate(preferredHooks)) {
+            return extract(html, DEFAULT_MAX);
+        }
     }
 
     public static List<DomCandidate> extract(String html, int max) {
@@ -93,17 +102,36 @@ public final class DomCandidateExtractor {
                 continue;
             }
             String tag = el.tagName().toLowerCase(Locale.ROOT);
+            List<String> preferredOnEl = preferredAttrsOn(el);
+            if (!preferredOnEl.isEmpty()) {
+                for (String attr : preferredOnEl) {
+                    String v = el.attr(attr);
+                    seq = put(byKey, seq, "css", cssAttrSelector(attr, v), tag, labelOf(el, v));
+                }
+                continue;
+            }
+            // One locator family per element: test hooks win over id/name twins.
+            if (hasTestHookAttr(el)) {
+                for (org.jsoup.nodes.Attribute attr : el.attributes()) {
+                    if (!isTestHookAttr(attr.getKey())) {
+                        continue;
+                    }
+                    String v = attr.getValue();
+                    if (!usableIdentifier(v)) {
+                        continue;
+                    }
+                    String key = attr.getKey().toLowerCase(Locale.ROOT);
+                    if ("data-test".equals(key) || "data-testid".equals(key) || "data-qa".equals(key)) {
+                        seq = put(byKey, seq, key, v, tag, labelOf(el, v));
+                    } else {
+                        seq = put(byKey, seq, "css", cssAttrSelector(attr.getKey(), v), tag, labelOf(el, v));
+                    }
+                }
+                continue;
+            }
             String id = el.id();
             if (usableIdentifier(id) && !repeatedIds.contains(id)) {
                 seq = put(byKey, seq, "id", id, tag, labelOf(el, id));
-            }
-            for (String attr : List.of("data-test", "data-testid", "data-qa")) {
-                String v = el.attr(attr);
-                if (usableIdentifier(v)) {
-                    String strategy = "data-test".equals(attr) ? "data-test"
-                            : "data-testid".equals(attr) ? "data-testid" : "data-qa";
-                    seq = put(byKey, seq, strategy, v, tag, labelOf(el, v));
-                }
             }
             String name = el.attr("name");
             if (usableIdentifier(name)) {
@@ -145,8 +173,9 @@ public final class DomCandidateExtractor {
         seq = emitIndexedInputs(doc, byKey, seq, "checkbox", repeatedIds);
         seq = emitIndexedInputs(doc, byKey, seq, "radio", repeatedIds);
 
-        // Buttons / links identified by visible text when they lack stable attributes.
-        for (Element el : doc.select("button, a, [role=button]")) {
+        // Buttons / links / menu entries identified by visible text when they lack stable attributes.
+        for (Element el : doc.select(
+                "button, a, [role=button], [role=menuitem], [aria-expanded], [aria-haspopup]")) {
             if (hasStableAttr(el, repeatedIds) || isHidden(el)) {
                 continue;
             }
@@ -155,21 +184,33 @@ public final class DomCandidateExtractor {
                 continue;
             }
             String tag = el.tagName().toLowerCase(Locale.ROOT);
-            seq = put(byKey, seq, "xpath", innermostTextXpath(tag, text), tag, text);
+            String kind = controlKind(el);
+            seq = put(byKey, seq, "xpath", innermostTextXpath(tag, text), kind, text);
         }
 
         return capped(byKey.values(), max);
     }
 
     /**
-     * {@code contains(normalize-space(.))} is true for every ancestor of the text as well, and
-     * Selenium hands back the outermost one — a click then lands on a wrapper. The extra predicate
-     * keeps only the node that has no matching descendant.
+     * Tagged buttons/links already exclude a wrapper {@code div}. The extra
+     * {@code not(.//*)} predicate is only for generic ancestors; on a {@code button} it
+     * drops the control when the label lives in a child {@code span}.
      */
     static String innermostTextXpath(String tag, String text) {
         String lit = XpathLiterals.quote(text);
-        return "//" + tag + "[contains(normalize-space(.)," + lit + ")]"
-                + "[not(.//*[contains(normalize-space(.)," + lit + ")])]";
+        String tagged = "//" + tag + "[contains(normalize-space(.)," + lit + ")]";
+        if (isInteractiveTextTag(tag)) {
+            return tagged;
+        }
+        return tagged + "[not(.//*[contains(normalize-space(.)," + lit + ")])]";
+    }
+
+    private static boolean isInteractiveTextTag(String tag) {
+        if (tag == null || tag.isBlank()) {
+            return false;
+        }
+        String t = tag.toLowerCase(Locale.ROOT);
+        return "button".equals(t) || "a".equals(t) || "li".equals(t);
     }
 
     /**
@@ -180,7 +221,7 @@ public final class DomCandidateExtractor {
         List<DomCandidate> stable = new ArrayList<>();
         List<DomCandidate> fallback = new ArrayList<>();
         for (DomCandidate c : all) {
-            if (isStableStrategy(c.strategy())) {
+            if (isStableStrategy(c.strategy(), c.value())) {
                 stable.add(c);
             } else {
                 fallback.add(c);
@@ -534,6 +575,14 @@ public final class DomCandidateExtractor {
     }
 
     public static boolean isStableStrategy(String strategy) {
+        return isStableStrategy(strategy, null);
+    }
+
+    public static boolean isStableStrategy(String strategy, String value) {
+        if (PreferredHooksStore.matches(value, PreferredHooksStore.current())
+                || PreferredHooksStore.matches(strategy, PreferredHooksStore.current())) {
+            return true;
+        }
         if (strategy == null) {
             return false;
         }
@@ -556,6 +605,18 @@ public final class DomCandidateExtractor {
 
     /** Higher = preferred when token scores tie. */
     public static int strategyRank(String strategy) {
+        return strategyRank(strategy, null);
+    }
+
+    public static int strategyRank(String strategy, String value) {
+        return strategyRank(strategy, value, PreferredHooksStore.current());
+    }
+
+    public static int strategyRank(String strategy, String value, List<String> preferredHooks) {
+        if (PreferredHooksStore.matches(value, preferredHooks)
+                || PreferredHooksStore.matches(strategy, preferredHooks)) {
+            return 45;
+        }
         if (strategy == null) {
             return 0;
         }
@@ -611,10 +672,44 @@ public final class DomCandidateExtractor {
 
     private static boolean hasStableAttr(Element el, Set<String> repeatedIds) {
         return (usableIdentifier(el.id()) && !repeatedIds.contains(el.id()))
-                || usableIdentifier(el.attr("data-test"))
-                || usableIdentifier(el.attr("data-testid"))
-                || usableIdentifier(el.attr("data-qa"))
+                || hasTestHookAttr(el)
+                || !preferredAttrsOn(el).isEmpty()
                 || usableIdentifier(el.attr("name"));
+    }
+
+    private static List<String> preferredAttrsOn(Element el) {
+        List<String> wanted = PreferredHooksStore.current();
+        if (el == null || wanted.isEmpty()) {
+            return List.of();
+        }
+        List<String> hit = new ArrayList<>();
+        for (String hook : wanted) {
+            if (hook == null || hook.isBlank()) {
+                continue;
+            }
+            String v = el.attr(hook);
+            if (usableIdentifier(v)) {
+                hit.add(hook);
+            }
+        }
+        return hit;
+    }
+
+    static boolean isTestHookAttr(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        String n = name.toLowerCase(Locale.ROOT);
+        return "data-qa".equals(n) || (n.startsWith("data-") && n.contains("test"));
+    }
+
+    private static boolean hasTestHookAttr(Element el) {
+        for (org.jsoup.nodes.Attribute attr : el.attributes()) {
+            if (isTestHookAttr(attr.getKey()) && usableIdentifier(attr.getValue())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** An id shared by several elements identifies none of them. */

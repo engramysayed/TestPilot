@@ -12,11 +12,6 @@
             <h1>Projects</h1>
             <p class="lede">Configure base URL, credentials, and automation artifacts per workspace.</p>
         </div>
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-start">
-            <a class="button" href="/automate">Open Automate</a>
-            <button type="button" class="button ghost" id="delete-all-btn"
-                    th:if="${!#lists.isEmpty(projects)}">Delete all</button>
-        </div>
     </div>
 
     <section class="panel create-panel">
@@ -40,10 +35,14 @@
                 <h2>Your projects</h2>
                 <p class="panel-intro">Open a project to manage settings, automation files, and test cases.</p>
             </div>
-            <label class="check projects-archive-toggle">
-                <input type="checkbox" id="show-archived"/>
-                Show archived
-            </label>
+            <div class="projects-panel-actions">
+                <label class="check projects-archive-toggle">
+                    <input type="checkbox" id="show-archived"/>
+                    Show archived
+                </label>
+                <button type="button" class="button danger" id="delete-all-btn"
+                        th:if="${!#lists.isEmpty(projects)}">Delete all</button>
+            </div>
         </div>
         <table class="table" id="projects-table">
             <thead>

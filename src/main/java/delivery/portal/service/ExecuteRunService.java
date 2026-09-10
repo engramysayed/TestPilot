@@ -4,6 +4,7 @@ import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStatus;
 import delivery.ir.TcDraftStore;
 import delivery.portal.model.JobRecord;
+import delivery.store.ProjectStore;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Files;
@@ -32,6 +33,31 @@ public class ExecuteRunService {
     public Optional<JobRecord> requireOwnedExecuteJob(String jobId, Long ownerUserId) {
         return store.getOwnedJob(jobId, ownerUserId)
                 .filter(j -> j.getJobKind() == JobRecord.JobKind.EXECUTE);
+    }
+
+    /**
+     * Hard-delete an execute job the caller owns: DB + memory + on-disk execute-runs folder.
+     * Refuses QUEUED/RUNNING (cancel first).
+     *
+     * @return empty if not found / not owned / not EXECUTE;
+     *         Optional.of("ACTIVE") if still running;
+     *         Optional.of("OK") on success
+     */
+    public Optional<String> deleteOwnedExecuteRun(String jobId, Long ownerUserId) throws Exception {
+        Optional<JobRecord> owned = requireOwnedExecuteJob(jobId, ownerUserId);
+        if (owned.isEmpty()) {
+            return Optional.empty();
+        }
+        JobRecord job = owned.get();
+        if (job.getStatus() == JobRecord.Status.QUEUED || job.getStatus() == JobRecord.Status.RUNNING) {
+            return Optional.of("ACTIVE");
+        }
+        Path root = runRoot(job);
+        store.deleteOwnedJobRecord(jobId, ownerUserId);
+        if (Files.isDirectory(root)) {
+            ProjectStore.deleteRecursive(root);
+        }
+        return Optional.of("OK");
     }
 
     public List<Map<String, Object>> listTcs(String jobId) throws Exception {

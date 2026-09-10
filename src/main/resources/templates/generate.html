@@ -166,19 +166,35 @@
             <div class="generate-primary-head">
                 <div>
                     <h2>Review with AI</h2>
-                    <p class="panel-intro">Review the current workbook for authoring issues. Nothing changes until you accept the proposal.</p>
+                    <p class="panel-intro">Available after Generate or Import saves a workbook. Nothing changes until you accept the proposal.</p>
                 </div>
             </div>
-            <fieldset>
-                <legend>Provider</legend>
-                <label><input type="radio" name="authoring-review-provider" value="cursor" checked> Cursor</label>
-                <label><input type="radio" name="authoring-review-provider" value="ollama"> Ollama</label>
-            </fieldset>
+            <div class="review-config">
+                <label for="authoring-review-provider">Provider
+                    <select id="authoring-review-provider" aria-describedby="authoring-review-provider-hint">
+                        <option value="cursor" selected>Cursor</option>
+                        <option value="ollama">Ollama</option>
+                    </select>
+                </label>
+                <div id="authoring-review-model-row" class="review-model-field" hidden>
+                    <label for="authoring-review-model">Ollama model
+                        <select id="authoring-review-model" aria-describedby="authoring-review-model-hint">
+                            <option value="">Loading models…</option>
+                        </select>
+                    </label>
+                    <p class="muted generate-option-hint" id="authoring-review-model-hint">
+                        This is the model that will review the workbook.
+                    </p>
+                </div>
+            </div>
+            <p class="muted generate-option-hint" id="authoring-review-provider-hint">
+                Cursor uses the heal sidecar. Ollama uses the model you select below.
+            </p>
             <label for="review-requirements-notes">Requirements notes</label>
             <textarea id="review-requirements-notes" rows="5"
                       placeholder="Optional constraints or coverage expectations for this review…"></textarea>
             <div class="generate-actions">
-                <button type="button" class="button" id="authoring-review-start">Start review</button>
+                <button type="button" class="button" id="authoring-review-start" disabled>Start review</button>
                 <span id="authoring-review-status" class="generate-status" role="status" aria-live="polite"></span>
             </div>
             <div id="authoring-review-proposal" hidden>
@@ -189,8 +205,10 @@
                     <h3>Quality gate errors</h3>
                     <ul id="authoring-review-gate-errors" class="error"></ul>
                 </div>
-                <details class="panel-details">
-                    <summary>Proposed CSV</summary>
+                <h4 class="review-cases-heading">Proposed test cases</h4>
+                <div id="authoring-review-cases" class="review-case-list"></div>
+                <details class="review-csv-raw">
+                    <summary>Raw CSV</summary>
                     <pre id="authoring-review-csv" class="ai-prompt-preview"></pre>
                 </details>
                 <div class="ai-tip-actions">
@@ -338,9 +356,15 @@
             <label>Preconditions
                 <input type="text" id="tc-edit-preconditions"/>
             </label>
+            <label class="call-before-field">Call before test
+                <input type="hidden" id="tc-edit-call-before" value=""/>
+                <div class="call-before-chips" id="tc-call-before-chips"></div>
+                <input type="search" id="tc-call-before-search" placeholder="Search other cases by ID or title…" autocomplete="off" aria-label="Search cases to call before test"/>
+                <ul class="call-before-results" id="tc-call-before-results" hidden></ul>
+            </label>
             <div class="tc-edit-grid-block">
                 <div class="tc-edit-grid-head">
-                    <span>Steps × Test data</span>
+                    <span>Steps × Test data × Expected</span>
                     <button type="button" class="button ghost small" id="tc-edit-add-row">Add row</button>
                 </div>
                 <div class="tc-edit-grid-scroll">
@@ -364,10 +388,10 @@
                 <label id="tc-edit-testdata-label" class="hidden">Test data
                     <textarea id="tc-edit-testdata" rows="3"></textarea>
                 </label>
+                <label id="tc-edit-expected-label" class="hidden">Expected result
+                    <textarea id="tc-edit-expected" rows="4"></textarea>
+                </label>
             </div>
-            <label>Expected result
-                <textarea id="tc-edit-expected" rows="4"></textarea>
-            </label>
             <div class="tc-edit-inline">
                 <label>Priority
                     <input type="text" id="tc-edit-priority"/>
@@ -401,6 +425,7 @@
     const STORAGE_KEY = 'keel.generateProjectId';
     const MODEL_STORAGE_KEY = 'keel.generateModel';
     const AUTHORING_REVIEW_PROVIDER_KEY = 'keel.authoringReview.provider';
+    const AUTHORING_REVIEW_MODEL_KEY = 'keel.authoringReview.model';
     const PROMPT_URL = '/prompts/keel-tc-generate-from-stories-to-json.txt';
 
     const projectSel = document.getElementById('project-select');
@@ -459,6 +484,9 @@
     const importStatus = document.getElementById('import-status');
     const authoringReviewBanner = document.getElementById('authoring-review-banner');
     const authoringReviewPanel = document.getElementById('generate-authoring-review');
+    const authoringReviewProvider = document.getElementById('authoring-review-provider');
+    const authoringReviewModelRow = document.getElementById('authoring-review-model-row');
+    const authoringReviewModel = document.getElementById('authoring-review-model');
     const authoringReviewStart = document.getElementById('authoring-review-start');
     const authoringReviewStatus = document.getElementById('authoring-review-status');
     const authoringReviewRequirements = document.getElementById('review-requirements-notes');
@@ -468,6 +496,7 @@
     const authoringReviewGateBlock = document.getElementById('authoring-review-gate-block');
     const authoringReviewGateErrors = document.getElementById('authoring-review-gate-errors');
     const authoringReviewCsv = document.getElementById('authoring-review-csv');
+    const authoringReviewCases = document.getElementById('authoring-review-cases');
     const authoringReviewAccept = document.getElementById('authoring-review-accept');
     const authoringReviewDiscard = document.getElementById('authoring-review-discard');
     const tcEditModal = document.getElementById('tc-edit-modal');
@@ -489,6 +518,10 @@
     const tcEditGridFallback = document.getElementById('tc-edit-grid-fallback');
     const tcEditStepsLabel = document.getElementById('tc-edit-steps-label');
     const tcEditTestdataLabel = document.getElementById('tc-edit-testdata-label');
+    const tcEditCallBefore = document.getElementById('tc-edit-call-before');
+    const tcCallBeforeChips = document.getElementById('tc-call-before-chips');
+    const tcCallBeforeSearch = document.getElementById('tc-call-before-search');
+    const tcCallBeforeResults = document.getElementById('tc-call-before-results');
     let tcEditUseGrid = true;
 
     let promptText = '';
@@ -607,6 +640,7 @@
             opt.textContent = 'No models configured';
             generateModelSelect.appendChild(opt);
             generateModelSelect.disabled = true;
+            renderAuthoringReviewModels();
             return;
         }
         generateModels.forEach(function (model) {
@@ -620,6 +654,7 @@
         generateModelSelect.value = pick;
         generateModelSelect.disabled = false;
         renderCompareModelB(config);
+        renderAuthoringReviewModels();
     }
 
     async function loadGenerateModels() {
@@ -639,6 +674,7 @@
             defaultGenerateModel = 'gemma4:e2b';
             generateModels = ['gemma4:e2b'];
             renderCompareModelB({ models: generateModels, defaultModel: defaultGenerateModel });
+            renderAuthoringReviewModels();
         }
     }
 
@@ -665,7 +701,18 @@
         authoringReviewStatus.classList.toggle('is-busy', !isError && !!msg);
     }
 
+    function setAuthoringReviewUnlocked(unlocked) {
+        hasGeneratedWorkbook = !!unlocked;
+        authoringReviewPanel.hidden = !unlocked;
+        authoringReviewStart.disabled = !unlocked;
+        if (!unlocked) {
+            clearAuthoringReviewProposal();
+            setAuthoringReviewStatus('', false);
+        }
+    }
+
     function showAuthoringReviewBanner() {
+        if (!hasGeneratedWorkbook) return;
         authoringReviewBanner.hidden = false;
     }
 
@@ -788,6 +835,134 @@
         tcEditError.textContent = msg;
     }
 
+    function parseCallBefore(raw) {
+        if (!raw || !String(raw).trim()) return [];
+        return String(raw).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    }
+
+    function tcEditCaseMap() {
+        const map = {};
+        (lastResult && lastResult.rows ? lastResult.rows : []).forEach(function (row) {
+            map[row.tcId] = row;
+        });
+        return map;
+    }
+
+    function syncTcCallBeforeHidden() {
+        if (!tcCallBeforeChips || !tcEditCallBefore) return;
+        const ids = Array.from(tcCallBeforeChips.querySelectorAll('.call-before-chip')).map(function (el) {
+            return el.getAttribute('data-tc-id');
+        });
+        tcEditCallBefore.value = ids.join(',');
+    }
+
+    function refreshTcCallBeforeChipButtons() {
+        if (!tcCallBeforeChips) return;
+        const chips = tcCallBeforeChips.querySelectorAll('.call-before-chip');
+        chips.forEach(function (chip, i) {
+            const up = chip.querySelector('.call-before-up');
+            const down = chip.querySelector('.call-before-down');
+            if (up) up.disabled = i === 0;
+            if (down) down.disabled = i === chips.length - 1;
+        });
+    }
+
+    function appendTcCallBeforeChip(id, title) {
+        if (!tcCallBeforeChips) return;
+        const chip = document.createElement('div');
+        chip.className = 'call-before-chip';
+        chip.setAttribute('data-tc-id', id);
+        const snippet = title && title.length > 48 ? title.slice(0, 48) + '…' : (title || '');
+        chip.innerHTML =
+            '<span class="call-before-chip-label mono">' + escapeHtml(id) + '</span>' +
+            (snippet ? '<span class="call-before-chip-title">' + escapeHtml(snippet) + '</span>' : '') +
+            '<span class="call-before-chip-actions">' +
+            '<button type="button" class="button ghost small call-before-up" title="Move up">↑</button>' +
+            '<button type="button" class="button ghost small call-before-down" title="Move down">↓</button>' +
+            '<button type="button" class="button ghost small call-before-remove" title="Remove">×</button>' +
+            '</span>';
+        chip.querySelector('.call-before-up').addEventListener('click', function (e) {
+            e.preventDefault();
+            const prev = chip.previousElementSibling;
+            if (prev) {
+                tcCallBeforeChips.insertBefore(chip, prev);
+                syncTcCallBeforeHidden();
+                refreshTcCallBeforeChipButtons();
+            }
+        });
+        chip.querySelector('.call-before-down').addEventListener('click', function (e) {
+            e.preventDefault();
+            const next = chip.nextElementSibling;
+            if (next) {
+                tcCallBeforeChips.insertBefore(next, chip);
+                syncTcCallBeforeHidden();
+                refreshTcCallBeforeChipButtons();
+            }
+        });
+        chip.querySelector('.call-before-remove').addEventListener('click', function (e) {
+            e.preventDefault();
+            chip.remove();
+            syncTcCallBeforeHidden();
+            refreshTcCallBeforeChipButtons();
+            renderTcCallBeforeResults();
+        });
+        tcCallBeforeChips.appendChild(chip);
+    }
+
+    function renderTcCallBeforeChips(ids) {
+        if (!tcCallBeforeChips || !tcEditCallBefore) return;
+        const map = tcEditCaseMap();
+        tcCallBeforeChips.innerHTML = '';
+        ids.forEach(function (id) {
+            const row = map[id] || {};
+            appendTcCallBeforeChip(id, row.title || '');
+        });
+        tcEditCallBefore.value = ids.join(',');
+        refreshTcCallBeforeChipButtons();
+    }
+
+    function hideTcCallBeforeResults() {
+        if (tcCallBeforeResults) tcCallBeforeResults.hidden = true;
+    }
+
+    function renderTcCallBeforeResults() {
+        if (!tcCallBeforeSearch || !tcCallBeforeResults || !tcEditCallBefore) return;
+        const selfId = (tcEditId && tcEditId.value ? tcEditId.value : '').trim();
+        if (!selfId) return;
+        const q = (tcCallBeforeSearch.value || '').trim().toLowerCase();
+        const selected = new Set(parseCallBefore(tcEditCallBefore.value));
+        const rows = lastResult && lastResult.rows ? lastResult.rows : [];
+        const matches = rows.filter(function (row) {
+            if (row.tcId === selfId) return false;
+            if (selected.has(row.tcId)) return false;
+            if (!q) return true;
+            return (row.tcId + ' ' + (row.title || '')).toLowerCase().indexOf(q) !== -1;
+        }).slice(0, 15);
+        tcCallBeforeResults.innerHTML = '';
+        if (!matches.length) {
+            tcCallBeforeResults.hidden = true;
+            return;
+        }
+        matches.forEach(function (row) {
+            const li = document.createElement('li');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'call-before-result-item';
+            btn.innerHTML = '<span class="mono">' + escapeHtml(row.tcId) + '</span> — ' + escapeHtml(row.title || '');
+            btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+            btn.addEventListener('click', function () {
+                appendTcCallBeforeChip(row.tcId, row.title || '');
+                syncTcCallBeforeHidden();
+                refreshTcCallBeforeChipButtons();
+                tcCallBeforeSearch.value = '';
+                renderTcCallBeforeResults();
+            });
+            li.appendChild(btn);
+            tcCallBeforeResults.appendChild(li);
+        });
+        tcCallBeforeResults.hidden = false;
+    }
+
     function closeTcEditor() {
         tcEditModal.classList.add('hidden');
         setTcEditError('');
@@ -889,6 +1064,9 @@
         tcEditId.value = row.tcId || '';
         tcEditTitleField.value = row.title || '';
         tcEditPreconditions.value = row.preconditions || '';
+        renderTcCallBeforeChips(parseCallBefore(row.callBefore || ''));
+        if (tcCallBeforeSearch) tcCallBeforeSearch.value = '';
+        hideTcCallBeforeResults();
         tcEditExpected.value = row.expectedResult || '';
         tcEditPriority.value = row.priority || '';
         tcEditTags.value = row.tags || '';
@@ -944,7 +1122,8 @@
                 priority: tcEditPriority.value,
                 tags: tcEditTags.value,
                 visualAssertion: tcEditVisual.value,
-                keelPath: tcEditKeelpath.value
+                keelPath: tcEditKeelpath.value,
+                callBefore: tcEditCallBefore ? tcEditCallBefore.value || '' : ''
             };
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
                 + '/generated-workbook/cases/' + encodeURIComponent(tcId), {
@@ -1239,9 +1418,8 @@
 
     function showResult(payload) {
         lastResult = payload;
-        hasGeneratedWorkbook = true;
         resultsSection.hidden = false;
-        authoringReviewPanel.hidden = false;
+        setAuthoringReviewUnlocked(true);
         authoringReviewBanner.hidden = true;
         renderCounts(previewCounts(payload));
         renderTable(payload.rows || []);
@@ -1258,8 +1436,7 @@
     }
 
     async function loadAuthoringReviewAvailability(projectId) {
-        hasGeneratedWorkbook = false;
-        authoringReviewPanel.hidden = true;
+        setAuthoringReviewUnlocked(false);
         if (!projectId) return;
         try {
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook', {
@@ -1269,11 +1446,9 @@
             if (!res.ok) return;
             const data = await res.json();
             if (projectSel.value !== projectId || !data.available) return;
-            hasGeneratedWorkbook = true;
-            authoringReviewPanel.hidden = false;
             coverageNotes.value = data.coverageNotes || '';
         } catch (e) {
-            // Keep review unavailable when workbook status cannot be loaded.
+            // Keep review locked until this visit generates or imports.
         }
     }
 
@@ -1644,24 +1819,82 @@
     }
 
     function selectedAuthoringReviewProvider() {
-        const selected = document.querySelector('input[name="authoring-review-provider"]:checked');
-        return selected ? selected.value : 'cursor';
+        const value = authoringReviewProvider && authoringReviewProvider.value
+            ? authoringReviewProvider.value.trim()
+            : '';
+        return value === 'ollama' ? 'ollama' : 'cursor';
+    }
+
+    function selectedAuthoringReviewModel() {
+        const value = authoringReviewModel && authoringReviewModel.value
+            ? authoringReviewModel.value.trim()
+            : '';
+        return value;
     }
 
     function rememberAuthoringReviewProvider() {
         try {
             localStorage.setItem(AUTHORING_REVIEW_PROVIDER_KEY, selectedAuthoringReviewProvider());
+            if (selectedAuthoringReviewProvider() === 'ollama' && selectedAuthoringReviewModel()) {
+                localStorage.setItem(AUTHORING_REVIEW_MODEL_KEY, selectedAuthoringReviewModel());
+            }
         } catch (e) { /* storage can be unavailable */ }
     }
 
     function restoreAuthoringReviewProvider() {
         try {
             const saved = localStorage.getItem(AUTHORING_REVIEW_PROVIDER_KEY);
-            if (saved !== 'cursor' && saved !== 'ollama') return;
-            const radio = document.querySelector(
-                'input[name="authoring-review-provider"][value="' + saved + '"]');
-            if (radio) radio.checked = true;
+            if (saved === 'cursor' || saved === 'ollama') {
+                authoringReviewProvider.value = saved;
+            }
         } catch (e) { /* use Cursor default */ }
+        syncAuthoringReviewProviderUi();
+    }
+
+    function renderAuthoringReviewModels() {
+        if (!authoringReviewModel) return;
+        const previous = selectedAuthoringReviewModel();
+        authoringReviewModel.innerHTML = '';
+        if (!generateModels.length) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'No models configured';
+            authoringReviewModel.appendChild(opt);
+            authoringReviewModel.disabled = true;
+            return;
+        }
+        generateModels.forEach(function (model) {
+            const opt = document.createElement('option');
+            opt.value = model;
+            opt.textContent = model;
+            authoringReviewModel.appendChild(opt);
+        });
+        let saved = '';
+        try {
+            saved = localStorage.getItem(AUTHORING_REVIEW_MODEL_KEY) || '';
+        } catch (e) { /* ignore */ }
+        const generatePick = selectedGenerateModel();
+        const pick = (previous && generateModels.indexOf(previous) >= 0)
+            ? previous
+            : (saved && generateModels.indexOf(saved) >= 0 ? saved : generatePick);
+        authoringReviewModel.value = pick || generateModels[0];
+        authoringReviewModel.disabled = false;
+    }
+
+    function syncAuthoringReviewProviderUi() {
+        const ollama = selectedAuthoringReviewProvider() === 'ollama';
+        if (authoringReviewModelRow) {
+            authoringReviewModelRow.hidden = !ollama;
+        }
+        if (authoringReviewModel) {
+            authoringReviewModel.disabled = !ollama || !generateModels.length;
+        }
+        const hint = document.getElementById('authoring-review-provider-hint');
+        if (hint) {
+            hint.textContent = ollama
+                ? 'Ollama will review with the model selected here.'
+                : 'Cursor uses the heal sidecar. Choose Ollama to pick a local model.';
+        }
     }
 
     function appendReviewListItem(list, text) {
@@ -1678,7 +1911,44 @@
         authoringReviewGateErrors.innerHTML = '';
         authoringReviewGateBlock.hidden = true;
         authoringReviewCsv.textContent = '';
+        if (authoringReviewCases) authoringReviewCases.innerHTML = '';
         authoringReviewAccept.disabled = true;
+    }
+
+    function renderAuthoringReviewCases(cases) {
+        if (!authoringReviewCases) return;
+        authoringReviewCases.innerHTML = '';
+        if (!Array.isArray(cases) || !cases.length) {
+            authoringReviewCases.innerHTML = '<p class="muted">No proposed cases in this review.</p>';
+            return;
+        }
+        cases.forEach(function (tc) {
+            const card = document.createElement('article');
+            card.className = 'review-case';
+            const steps = String(tc.steps || '').split(/\n+/).filter(Boolean);
+            const expected = String(tc.expectedResult || '').split(/\n+/).filter(Boolean);
+            const data = String(tc.testData || '').split(/\n+/).filter(Boolean);
+            card.innerHTML =
+                '<header class="review-case-head">' +
+                    '<span class="mono">' + escapeHtml(tc.tcId || '') + '</span>' +
+                    '<strong>' + escapeHtml(tc.title || '') + '</strong>' +
+                    (tc.keelPath ? '<span class="badge muted">' + escapeHtml(tc.keelPath) + '</span>' : '') +
+                '</header>' +
+                '<div class="review-case-grid">' +
+                    '<section><h5>Steps</h5><ol>' + steps.map(function (s) {
+                        return '<li>' + escapeHtml(s.replace(/^\d+\.\s*/, '')) + '</li>';
+                    }).join('') + '</ol></section>' +
+                    '<section><h5>Expected</h5><ol>' + expected.map(function (s) {
+                        return '<li>' + escapeHtml(s.replace(/^\d+\.\s*/, '')) + '</li>';
+                    }).join('') + '</ol></section>' +
+                    '<section><h5>Test data</h5>' +
+                        (data.length
+                            ? '<ol>' + data.map(function (s) { return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ol>'
+                            : '<p class="muted">None</p>') +
+                    '</section>' +
+                '</div>';
+            authoringReviewCases.appendChild(card);
+        });
     }
 
     function showAuthoringReviewProposal(payload) {
@@ -1706,6 +1976,7 @@
         });
         authoringReviewGateBlock.hidden = gateErrors.length === 0;
         authoringReviewCsv.textContent = payload.csv || '';
+        renderAuthoringReviewCases(payload.cases);
         authoringReviewAccept.disabled =
             payload.previewOk === false || gateErrors.length > 0 || !payload.csv;
         authoringReviewProposal.hidden = false;
@@ -1717,8 +1988,18 @@
             setAuthoringReviewStatus('Generate or import a workbook first.', true);
             return;
         }
+        const provider = selectedAuthoringReviewProvider();
+        const model = provider === 'ollama' ? selectedAuthoringReviewModel() : '';
+        if (provider === 'ollama' && !model) {
+            setAuthoringReviewStatus('Choose an Ollama model before starting the review.', true);
+            return;
+        }
         authoringReviewStart.disabled = true;
-        setAuthoringReviewStatus('Reviewing current workbook…', false);
+        setAuthoringReviewStatus(
+            provider === 'ollama'
+                ? ('Reviewing current workbook with ' + model + '…')
+                : 'Reviewing current workbook with Cursor…',
+            false);
         clearAuthoringReviewProposal();
         try {
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
@@ -1727,7 +2008,8 @@
                 credentials: 'same-origin',
                 headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
                 body: JSON.stringify({
-                    provider: selectedAuthoringReviewProvider(),
+                    provider: provider,
+                    model: model,
                     requirementsNotes: authoringReviewRequirements.value || '',
                     stories: storiesInput.value || ''
                 })
@@ -1740,11 +2022,14 @@
             }
             authoringReviewBanner.hidden = true;
             showAuthoringReviewProposal(body);
-            setAuthoringReviewStatus('Review complete — inspect the proposal before accepting.', false);
+            const used = body.provider === 'ollama' && body.model
+                ? ('Review complete with Ollama (' + body.model + ') — inspect the proposal before accepting.')
+                : 'Review complete — inspect the proposal before accepting.';
+            setAuthoringReviewStatus(used, false);
         } catch (err) {
             setAuthoringReviewStatus(err && err.message ? err.message : 'Network error', true);
         } finally {
-            authoringReviewStart.disabled = false;
+            authoringReviewStart.disabled = !hasGeneratedWorkbook;
         }
     }
 
@@ -1833,10 +2118,16 @@
     storiesInput.addEventListener('input', updatePreview);
     importRaw.addEventListener('input', updatePreview);
     importBtn.addEventListener('click', runImport);
-    document.querySelectorAll('input[name="authoring-review-provider"]').forEach(function (radio) {
-        radio.addEventListener('change', rememberAuthoringReviewProvider);
+    authoringReviewProvider.addEventListener('change', function () {
+        rememberAuthoringReviewProvider();
+        syncAuthoringReviewProviderUi();
     });
+    authoringReviewModel.addEventListener('change', rememberAuthoringReviewProvider);
     document.getElementById('authoring-review-banner-open').addEventListener('click', function () {
+        if (!hasGeneratedWorkbook) {
+            setAuthoringReviewStatus('Generate or import a workbook first.', true);
+            return;
+        }
         authoringReviewPanel.hidden = false;
         authoringReviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         authoringReviewStart.focus();
@@ -1873,6 +2164,13 @@
     });
     tcEditCancel.addEventListener('click', closeTcEditor);
     tcEditSave.addEventListener('click', saveTcEditor);
+    if (tcCallBeforeSearch) {
+        tcCallBeforeSearch.addEventListener('input', renderTcCallBeforeResults);
+        tcCallBeforeSearch.addEventListener('focus', renderTcCallBeforeResults);
+        tcCallBeforeSearch.addEventListener('blur', function () {
+            setTimeout(hideTcCallBeforeResults, 150);
+        });
+    }
     if (tcEditAddRow) {
         tcEditAddRow.addEventListener('click', function () {
             addStepGridRow('', '', '');

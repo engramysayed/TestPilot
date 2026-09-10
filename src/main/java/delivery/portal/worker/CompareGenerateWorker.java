@@ -80,15 +80,27 @@ public class CompareGenerateWorker {
             CompareJobFiles.writeResult(resultFile, compareResult);
             job.setZipPath(resultFile);
             job.setMessage("Comparison ready — open Generate to pick a model");
-            job.setStatus(JobRecord.Status.COMPLETED);
-            portalStore.syncJobPersistence(job);
+            if (portalStore.shouldAbortCompletion(job)) {
+                cancel(job);
+            } else {
+                job.setStatus(JobRecord.Status.COMPLETED);
+                portalStore.syncJobPersistence(job);
+            }
             log.info("Compare job {} completed modelA={} modelB={}", jobId, payload.modelA(), payload.modelB());
         } catch (JobCancelledException e) {
             cancel(job);
         } catch (IllegalStateException e) {
-            fail(job, e.getMessage(), e);
+            if (portalStore.shouldAbortCompletion(job)) {
+                cancel(job);
+            } else {
+                fail(job, e.getMessage(), e);
+            }
         } catch (Exception e) {
-            fail(job, "Model comparison failed", e);
+            if (portalStore.shouldAbortCompletion(job)) {
+                cancel(job);
+            } else {
+                fail(job, "Model comparison failed", e);
+            }
         } finally {
             portalStore.clearCancelRequest(jobId);
             JobUploadCleanup.deleteIfTempUpload(payloadPath);

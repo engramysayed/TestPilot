@@ -59,6 +59,74 @@ public class SpentLocatorTest {
     }
 
     @Test
+    public void clickSkipsTheInputThisTcAlreadyTyped() {
+        List<DomCandidate> candidates = List.of(
+                new DomCandidate("c1", "id", "basic_otp", "input", "OTP"),
+                new DomCandidate("c2", "css", "button[data-axis-test-id='verify_Otp_Button']",
+                        "button", "Verify OTP"));
+        List<ProvenStep> spent = List.of(new ProvenStep(
+                "TC1", "Page", "elementAction", "type",
+                "id", "basic_otp", "245345", "", "", true, "intent:TYPE_FIELD"));
+        List<DomCandidate> live = StepIntentBinder.withoutSpentControls(candidates, spent);
+        Assert.assertTrue(live.stream().noneMatch(c -> "basic_otp".equals(c.value())),
+                "typed OTP field must be spent for a later click");
+
+        StepIntentBinder.BindResult result = StepIntentBinder.bindSingle(
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.CLICK, "Click the Verify OTP button"),
+                "TC1", live, List.of());
+        Assert.assertTrue(result.ok(), result.rejectReason());
+        Assert.assertFalse(result.steps().get(0).locatorValue().contains("basic_otp"));
+    }
+
+    @Test
+    public void typingOtpViaPreferredHookSpendsIdTwin() {
+        // AxisPay: first type uses data-axis-test-id; id=basic_otp must not be typed again.
+        String html = """
+                <form>
+                  <input id="basic_otp" data-axis-test-id="otp-input"/>
+                  <button data-axis-test-id="verify_Otp_Button">Verify OTP</button>
+                </form>
+                """;
+        List<DomCandidate> candidates = List.of(
+                new DomCandidate("c1", "css", "[data-axis-test-id='otp-input']", "input", "OTP"),
+                new DomCandidate("c2", "id", "basic_otp", "input", "OTP"),
+                new DomCandidate("c3", "css", "button[data-axis-test-id='verify_Otp_Button']",
+                        "button", "Verify OTP"));
+        List<ProvenStep> spent = List.of(new ProvenStep(
+                "TC1", "Page", "elementAction", "type",
+                "css", "[data-axis-test-id='otp-input']", "245345", "", "", true, "intent:TYPE_FIELD"));
+        List<DomCandidate> live = StepIntentBinder.withoutSpentControls(candidates, spent, html);
+        Assert.assertTrue(live.stream().noneMatch(c -> "basic_otp".equals(c.value())),
+                "OTP id twin must be spent after preferred-hook type: " + live);
+        Assert.assertTrue(live.stream().noneMatch(c ->
+                        c.value() != null && c.value().contains("otp-input")),
+                "preferred OTP locator must stay spent");
+    }
+
+    @Test
+    public void typingViaPreferredHookSpendsIdTwinForAnyField() {
+        String html = """
+                <form>
+                  <input id="firstName" data-axis-test-id="first-name"/>
+                  <input id="lastName" data-axis-test-id="last-name"/>
+                </form>
+                """;
+        List<DomCandidate> candidates = List.of(
+                new DomCandidate("c1", "css", "[data-axis-test-id='first-name']", "input", "First name"),
+                new DomCandidate("c2", "id", "firstName", "input", "First name"),
+                new DomCandidate("c3", "id", "lastName", "input", "Last name"));
+        List<ProvenStep> spent = List.of(new ProvenStep(
+                "TC1", "Page", "elementAction", "type",
+                "css", "[data-axis-test-id='first-name']", "Ada", "", "", true, "intent:TYPE_FIELD"));
+        List<DomCandidate> live = StepIntentBinder.withoutSpentControls(candidates, spent, html);
+        Assert.assertTrue(live.stream().noneMatch(c -> "firstName".equals(c.value())),
+                "id twin of preferred-hook field must be spent: " + live);
+        Assert.assertTrue(live.stream().anyMatch(c -> "lastName".equals(c.value())),
+                "unrelated field must remain bindable");
+    }
+
+    @Test
     public void assertCanStillTargetAControlThisTcAlreadyFilled() {
         List<DomCandidate> candidates = DomCandidateExtractor.extract(FORM);
         List<ProvenStep> spent = List.of(select("div[aria-label='Select day']"));

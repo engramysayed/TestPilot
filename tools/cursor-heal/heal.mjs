@@ -216,8 +216,11 @@ ${req.suite || ""}
 Break the feature and invent edge-case scenarios within the remaining scenario budget.
 Return ONLY one JSON object:
 {"decision":"continue"|"finish","rationale":"...","actions":[],"bugs":[],"scenarios":[]}
-actions allowlist only: navigate{url}, click{locator}, type{locator,value}, clear{locator},
+actions allowlist only: navigate{url}, back{}, forward{}, refresh{}, execute_js{script},
+click{locator}, type{locator,value}, clear{locator},
 wait{ms}, assert_visible{locator}, assert_text{text}.
+Aliases: navigate_back→back, reload→refresh, js→execute_js.
+Current URL is in the page map (## URL). Prefer UI locators; use execute_js only for short page probes (max ~4000 chars).
 Respect actionCapPerCycle from Caps (default 5). wait with blank ms becomes 5000ms server-side.
 Use the steps journal to remember prior actions.
 Locator rules: only emit locators from the page map / slim excerpt; prefer preferred-hook attrs, then id, data-test*, name; never invent volatile framework ids.

@@ -71,10 +71,10 @@ public class PreRunAuthoringReviewController {
             boolean useLibrary = isTruthy(useGenerated);
             materialized = JobWorkbookResolver.resolve(
                     workbooks, projectId, useLibrary, tcIds, excel);
-            List<ManualTestCase> cases = new ExcelTcReader().read(materialized);
+            List<ManualTestCase> cases = new ExcelTcReader(true).read(materialized);
             log.info("PRE_RUN_REVIEW_START project={} provider=cursor cases={}", projectId, cases.size());
             Map<String, Object> result = reviews.reviewCases(
-                    projectId, ownerId, cases, "cursor", "", "");
+                    projectId, ownerId, cases, "cursor", "", "", "");
             log.info("PRE_RUN_REVIEW_COMPLETE project={} cases={} previewOk={} findings={}",
                     projectId,
                     result.get("tcCount"),

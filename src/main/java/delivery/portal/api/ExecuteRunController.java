@@ -24,6 +24,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -120,10 +121,16 @@ public class ExecuteRunController {
                                 "No generated workbook for this project — generate TCs first").asMap());
             }
             throw e;
+        } catch (IllegalArgumentException e) {
+            ResponseEntity<Map<String, String>> callBefore = CallBeforeApiErrors.badRequestOrNull(e);
+            if (callBefore != null) {
+                return callBefore;
+            }
+            throw e;
         }
 
         try {
-            List<ManualTestCase> cases = new ExcelTcReader().read(excelPath);
+            List<ManualTestCase> cases = new ExcelTcReader(true).read(excelPath);
             Optional<String> block = KeelPathSurfaceGuard.hardBlock(
                     KeelPathCaseFilter.Surface.EXECUTE, KeelPathCounts.from(cases));
             if (block.isPresent()) {
@@ -183,6 +190,22 @@ public class ExecuteRunController {
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ApiError("NOT_FOUND", "Unknown execute run").asMap()));
+    }
+
+    @DeleteMapping("/execute-runs/{jobId}")
+    public ResponseEntity<?> deleteExecuteRun(@PathVariable("jobId") String jobId) throws Exception {
+        Long ownerId = currentUser.requireUserId();
+        Optional<String> result = executeRuns.deleteOwnedExecuteRun(jobId, ownerId);
+        if (result.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown execute run").asMap());
+        }
+        if ("ACTIVE".equals(result.get())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiError("JOB_ACTIVE",
+                            "Force-stop the run before deleting it").asMap());
+        }
+        return ResponseEntity.ok(Map.of("deleted", true, "jobId", jobId));
     }
 
     @GetMapping("/execute-runs/{jobId}/tcs")

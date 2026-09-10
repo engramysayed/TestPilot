@@ -18,7 +18,41 @@ import java.util.Optional;
  * Tried before bind; dropped on execute failure; overwritten on success.
  */
 public class DomainLocatorMemory {
+    public static final String FILE_NAME = "domain-locator-memory.json";
+
     private final Map<String, Slot> slots = new LinkedHashMap<>();
+
+    public static Path sharedFile(Path storeRoot, String baseUrl) {
+        Path domain = DomainStorePaths.resolveDomainRoot(storeRoot, baseUrl);
+        return domain == null ? null : domain.resolve(FILE_NAME);
+    }
+
+    /**
+     * One file per site. Older per-project copies are merged only when the shared
+     * file does not exist yet, so a forgotten slot is not resurrected later.
+     */
+    public Path openShared(Path storeRoot, String baseUrl) {
+        Path shared = sharedFile(storeRoot, baseUrl);
+        if (shared == null) {
+            return null;
+        }
+        if (Files.isRegularFile(shared)) {
+            load(shared);
+            return shared;
+        }
+        Path domain = shared.getParent();
+        if (domain != null && Files.isDirectory(domain)) {
+            try (var children = Files.list(domain)) {
+                children.filter(Files::isDirectory)
+                        .map(p -> p.resolve(FILE_NAME))
+                        .filter(Files::isRegularFile)
+                        .forEach(this::load);
+            } catch (Exception ignored) {
+                // Best-effort migration; prove still runs.
+            }
+        }
+        return shared;
+    }
 
     public static String intentKey(StepIntentBinder.IntentLine intent) {
         if (intent == null || intent.kind() == null) {
@@ -189,11 +223,50 @@ public class DomainLocatorMemory {
         boolean loginIntent = key.startsWith("type_user|")
                 || key.startsWith("type_pass|")
                 || key.startsWith("click_login|");
+        if (key.startsWith("click_login|")) {
+            return looksLikeLoginSubmitLocator(loc);
+        }
         if (loginIntent) {
-            return authLocator || key.startsWith("click_login|");
+            return authLocator;
+        }
+        if (key.startsWith("click|") && looksLikeTypedFieldLocator(loc)) {
+            return false;
         }
         // Non-login intents must never reuse login/username/password controls
         return !authLocator;
+    }
+
+    static boolean looksLikeTypedFieldLocator(String locator) {
+        if (locator == null || locator.isBlank()) {
+            return false;
+        }
+        String loc = locator.toLowerCase(Locale.ROOT);
+        String compact = loc.replaceAll("[^a-z0-9]+", "");
+        if (compact.contains("button") || compact.contains("submit")) {
+            return false;
+        }
+        return compact.contains("otp")
+                || compact.contains("username")
+                || compact.contains("password")
+                || compact.contains("email");
+    }
+
+    static boolean looksLikeLoginSubmitLocator(String locatorLower) {
+        if (locatorLower == null || locatorLower.isBlank()) {
+            return false;
+        }
+        String loc = locatorLower.toLowerCase(Locale.ROOT);
+        String compact = loc.replaceAll("[^a-z0-9]+", "");
+        if (compact.contains("password") || compact.contains("username")
+                || compact.contains("otp")) {
+            return false;
+        }
+        if (compact.contains("signin") || compact.contains("loginbutton")
+                || compact.contains("submit") || loc.contains("sign_in")
+                || loc.contains("sign-in")) {
+            return true;
+        }
+        return compact.contains("login") && compact.contains("button");
     }
 
     static boolean looksLikeAuthControlLocator(String locatorLower) {

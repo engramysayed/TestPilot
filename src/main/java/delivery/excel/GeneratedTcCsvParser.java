@@ -13,7 +13,7 @@ import java.util.Map;
 /** Parses Keel TC CSV from LLM output (RFC4180-style quoted fields). */
 public final class GeneratedTcCsvParser {
     private static final String EXPECTED_HEADER =
-            "TC_ID,Title,Steps,ExpectedResult,Preconditions,Priority,Tags,VisualAssertion,TestData,KeelPath";
+            "TC_ID,Title,Steps,ExpectedResult,Preconditions,Priority,Tags,VisualAssertion,TestData,KeelPath,CallBefore";
 
     private GeneratedTcCsvParser() {
     }
@@ -62,7 +62,8 @@ public final class GeneratedTcCsvParser {
                     cell(row, cols.getOrDefault("TAGS", -1)),
                     visualAssertion,
                     testData,
-                    keelStored
+                    keelStored,
+                    cell(row, cols.getOrDefault("CALLBEFORE", -1))
             ));
         }
         if (out.isEmpty()) {
@@ -90,7 +91,8 @@ public final class GeneratedTcCsvParser {
             sb.append(csvCell(tc.tags())).append(',');
             sb.append(csvCell(tc.visualAssertion())).append(',');
             sb.append(csvCell(tc.testData())).append(',');
-            sb.append(csvCell(tc.keelPath())).append('\n');
+            sb.append(csvCell(tc.keelPath())).append(',');
+            sb.append(csvCell(tc.callBefore())).append('\n');
         }
         return sb.toString();
     }

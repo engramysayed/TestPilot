@@ -70,9 +70,12 @@ public final class KeelPathCounts {
         return out;
     }
 
-    /** Rows eligible for Automate: AUTOMATE plus blank (legacy sheets). */
+    /**
+     * Rows eligible for Automate: AUTOMATE, EXECUTE, VISION_ONLY, plus blank.
+     * Only MANUAL is excluded (same runnable set as Execute).
+     */
     public int automateRunnable() {
-        return get("AUTOMATE") + get("BLANK");
+        return get("AUTOMATE") + get("EXECUTE") + get("VISION_ONLY") + get("BLANK");
     }
 
     /**

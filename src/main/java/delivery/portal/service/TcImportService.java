@@ -134,6 +134,7 @@ public class TcImportService {
             row.put("visualAssertion", tc.visualAssertion());
             row.put("testData", tc.testData());
             row.put("keelPath", tc.keelPath());
+            row.put("callBefore", tc.callBefore());
             rows.add(row);
         }
         return rows;

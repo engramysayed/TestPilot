@@ -10,12 +10,14 @@ public record ManualTestCase(
         String tags,
         String visualAssertion,
         String testData,
-        String keelPath
+        String keelPath,
+        String callBefore
 ) {
     public ManualTestCase {
         visualAssertion = visualAssertion == null ? "" : visualAssertion;
         testData = testData == null ? "" : testData;
         keelPath = keelPath == null ? "" : keelPath;
+        callBefore = callBefore == null ? "" : callBefore.trim();
     }
 
     public ManualTestCase(
@@ -26,7 +28,7 @@ public record ManualTestCase(
             String expectedResult,
             String priority,
             String tags) {
-        this(tcId, title, preconditions, steps, expectedResult, priority, tags, "", "", "");
+        this(tcId, title, preconditions, steps, expectedResult, priority, tags, "", "", "", "");
     }
 
     public ManualTestCase(
@@ -38,7 +40,7 @@ public record ManualTestCase(
             String priority,
             String tags,
             String visualAssertion) {
-        this(tcId, title, preconditions, steps, expectedResult, priority, tags, visualAssertion, "", "");
+        this(tcId, title, preconditions, steps, expectedResult, priority, tags, visualAssertion, "", "", "");
     }
 
     public ManualTestCase(
@@ -51,7 +53,21 @@ public record ManualTestCase(
             String tags,
             String visualAssertion,
             String testData) {
-        this(tcId, title, preconditions, steps, expectedResult, priority, tags, visualAssertion, testData, "");
+        this(tcId, title, preconditions, steps, expectedResult, priority, tags, visualAssertion, testData, "", "");
+    }
+
+    public ManualTestCase(
+            String tcId,
+            String title,
+            String preconditions,
+            String steps,
+            String expectedResult,
+            String priority,
+            String tags,
+            String visualAssertion,
+            String testData,
+            String keelPath) {
+        this(tcId, title, preconditions, steps, expectedResult, priority, tags, visualAssertion, testData, keelPath, "");
     }
 
     public String contentHash() {

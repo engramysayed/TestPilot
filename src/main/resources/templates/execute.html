@@ -27,16 +27,129 @@
         </p>
     </section>
 
+    <section class="panel execute-start" id="execute-form-panel" hidden>
+        <h2>Start an execute run</h2>
+        <p class="panel-intro">Choose credentials and cases, then run against the project base URL.</p>
+        <form id="execute-form" class="execute-start-form">
+            <div id="project-config" class="execute-start-meta">
+                <p class="muted" id="base-url-row" hidden>
+                    Base URL <span id="base-url-display" class="mono"></span>
+                </p>
+                <p class="error" id="base-url-missing" hidden>
+                    No base URL configured.
+                    <a id="settings-link" href="#">Open project Settings</a>
+                </p>
+                <label id="credential-label" hidden>Credential profile
+                    <select name="credentialProfile" id="credentialProfile">
+                        <option value="">— Select profile —</option>
+                    </select>
+                </label>
+            </div>
+
+            <div id="generated-workbook-panel" class="execute-source" hidden>
+                <div class="workbook-source-options">
+                    <label class="generate-check">
+                        <input type="radio" name="workbookSource" value="upload" checked/>
+                        <span>Upload workbook</span>
+                    </label>
+                    <label class="generate-check">
+                        <input type="radio" name="workbookSource" value="generated"/>
+                        <span>Use project library</span>
+                    </label>
+                </div>
+                <p id="generated-workbook-meta" class="muted execute-source-meta"></p>
+                <p class="muted generate-option-hint">Runs AUTOMATE, EXECUTE, VISION_ONLY, and blank KeelPath. MANUAL is skipped.</p>
+                <div id="library-pick-panel" class="tc-multiselect" hidden>
+                    <span class="tc-ms-label">Cases to run</span>
+                    <div class="tc-ms" id="tc-ms">
+                        <button type="button" class="tc-ms-trigger" id="tc-ms-trigger"
+                                aria-haspopup="listbox" aria-expanded="false">
+                            <span class="tc-ms-chips" id="tc-ms-chips"></span>
+                            <span class="tc-ms-summary muted" id="tc-ms-summary">All cases</span>
+                            <span class="tc-ms-caret" aria-hidden="true"></span>
+                        </button>
+                        <div class="tc-ms-dropdown" id="tc-ms-dropdown" hidden>
+                            <input type="search" id="tc-ms-search" class="tc-ms-search"
+                                   placeholder="Search cases…" autocomplete="off"/>
+                            <div class="tc-ms-toolbar">
+                                <button type="button" class="button ghost" id="lib-pick-all">Select all</button>
+                                <button type="button" class="button ghost" id="lib-pick-none">Clear</button>
+                            </div>
+                            <div id="library-pick-list" class="tc-ms-list" role="listbox"></div>
+                        </div>
+                    </div>
+                    <p id="library-pick-hint" class="muted">No selection = run all library cases.</p>
+                </div>
+            </div>
+
+            <label id="excel-upload-label">Workbook (.xlsx or .csv)
+                <input type="file" name="excel" id="excel-input" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required/>
+            </label>
+
+            <details class="execute-optional">
+                <summary>Optional design mockups</summary>
+                <p class="muted">Upload a PNG per TC ID for visual compare (not the Excel VisualAssertion column).</p>
+                <div id="design-ref-form" class="design-ref-form">
+                    <label>TC ID
+                        <input type="text" id="design-ref-tcId" name="tcId" placeholder="TC_001"/>
+                    </label>
+                    <label>Design PNG
+                        <input type="file" id="design-ref-file" name="file" accept="image/png"/>
+                    </label>
+                    <button type="button" id="design-ref-submit" class="button ghost">Upload design</button>
+                </div>
+                <p id="design-ref-msg" class="muted" hidden></p>
+                <p id="design-ref-err" class="error" hidden></p>
+            </details>
+
+            <label class="check">
+                <input type="checkbox" id="pre-run-review"/>
+                Review with Cursor before run (propose only)
+            </label>
+            <p class="muted generate-option-hint">Findings only — nothing runs until you accept.</p>
+
+            <section class="panel" id="pre-run-review-panel" hidden
+                     data-endpoint="/pre-run-authoring-review">
+                <h3>Cursor pre-run review</h3>
+                <p id="pre-run-review-status" class="generate-status" role="status" aria-live="polite"></p>
+                <div id="pre-run-review-progress" class="pre-run-progress" hidden>
+                    <div class="progress-track progress-track--indeterminate" aria-hidden="true">
+                        <div class="progress-fill progress-fill--indeterminate"></div>
+                    </div>
+                    <p class="muted generate-option-hint">Cursor is still reviewing…</p>
+                </div>
+                <div id="pre-run-review-result" hidden>
+                    <ul id="pre-run-review-findings" class="review-findings"></ul>
+                    <ul id="pre-run-review-errors" class="error"></ul>
+                    <h4 class="review-cases-heading">Proposed test cases</h4>
+                    <div id="pre-run-review-cases" class="review-case-list"></div>
+                    <details class="review-csv-raw">
+                        <summary>Raw CSV</summary>
+                        <pre id="pre-run-review-csv" class="ai-prompt-preview"></pre>
+                    </details>
+                    <div class="actions">
+                        <button type="button" class="button" id="pre-run-review-accept" disabled>Accept &amp; run</button>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button type="button" class="button ghost" id="pre-run-review-cancel">Cancel</button>
+                </div>
+            </section>
+
+            <button type="submit" id="submit-btn">Start execute run</button>
+        </form>
+        <p id="form-error" class="error" hidden></p>
+    </section>
+
     <section class="panel" id="recent-execute-panel" hidden>
         <h2>Recent execute runs</h2>
-        <p class="panel-intro">Last five runs for the selected project — reopen results without re-uploading.</p>
+        <p class="panel-intro">Last five runs — open a row for status and results, or delete permanently.</p>
         <table class="table" id="recent-execute-table">
             <thead>
             <tr>
                 <th>Job</th>
                 <th>Status</th>
                 <th>Progress</th>
-                <th>Score</th>
                 <th></th>
             </tr>
             </thead>
@@ -46,102 +159,11 @@
         <p id="recent-execute-err" class="error" hidden></p>
     </section>
 
-    <section class="panel" id="execute-form-panel" hidden>
-        <h2>Start an execute run</h2>
-        <p class="panel-intro">Pick a project with a configured base URL, attach your Excel workbook, and run cases live in the browser.</p>
-        <div class="hint design-ref-hint" id="design-ref-hint">
-            <strong>Design mockup images (optional):</strong>
-            Upload a PNG of the final screen design per test case ID (e.g. export from Figma).
-            On Execute, Keel compares that image to the live screenshot.
-            This is <em>not</em> the Excel <code>VisualAssertion</code> column —
-            that column is text only (“what should be visible”), not an attached image.
-            References are stored per project via <code>/design-references</code>.
-            <form id="design-ref-form" class="design-ref-form">
-                <label>TC ID
-                    <input type="text" id="design-ref-tcId" name="tcId" placeholder="TC_001" required/>
-                </label>
-                <label>Design PNG
-                    <input type="file" id="design-ref-file" name="file" accept="image/png" required/>
-                </label>
-                <button type="submit" id="design-ref-submit">Upload design</button>
-            </form>
-            <p id="design-ref-msg" class="muted" hidden></p>
-            <p id="design-ref-err" class="error" hidden></p>
-        </div>
-        <form id="execute-form">
-            <div id="project-config">
-                <p class="hint" id="base-url-row" hidden>
-                    <strong>Base URL:</strong>
-                    <span id="base-url-display" class="mono"></span>
-                </p>
-                <p class="error" id="base-url-missing" hidden>
-                    No base URL configured.
-                    <a id="settings-link" href="#">Open project Settings</a> to set one before executing.
-                </p>
-                <label id="credential-label" hidden>Credential profile
-                    <select name="credentialProfile" id="credentialProfile">
-                        <option value="">— Select profile —</option>
-                    </select>
-                </label>
-            </div>
-            <div id="generated-workbook-panel" class="generated-workbook-panel" hidden>
-                <p class="hint generated-workbook-banner">
-                    <strong>Latest generated workbook</strong>
-                    <span id="generated-workbook-meta" class="muted"></span>
-                </p>
-                <div class="workbook-source-options">
-                    <label class="generate-check">
-                        <input type="radio" name="workbookSource" value="upload" checked/>
-                        <span>Upload a new .xlsx or .csv file</span>
-                    </label>
-                    <label class="generate-check">
-                        <input type="radio" name="workbookSource" value="generated"/>
-                        <span>Use project library (all or selected below)</span>
-                    </label>
-                </div>
-                <p class="muted generate-option-hint">Execute runs <strong>AUTOMATE</strong>, <strong>EXECUTE</strong>, and <strong>VISION_ONLY</strong> rows (and blank KeelPath for legacy sheets). Only <strong>MANUAL</strong> rows are skipped here. With library selected you can also attach an upload to mix (upload wins on same TC_ID).</p>
-                <div id="library-pick-panel" class="library-pick-panel" hidden>
-                    <div class="actions" style="margin:0.5rem 0">
-                        <button type="button" class="button ghost" id="lib-pick-all">Select all</button>
-                        <button type="button" class="button ghost" id="lib-pick-none">Clear</button>
-                    </div>
-                    <div id="library-pick-list" class="library-pick-list"></div>
-                    <p id="library-pick-hint" class="muted">No selection = run all library cases.</p>
-                </div>
-            </div>
-            <label id="excel-upload-label">Workbook (.xlsx or .csv)
-                <input type="file" name="excel" id="excel-input" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required/>
-            </label>
-            <label class="check">
-                <input type="checkbox" id="pre-run-review"/>
-                Review selected TCs with Cursor before run (propose only)
-            </label>
-            <p class="hint muted">Cursor shows findings and a repaired proposal. Nothing runs or changes until you accept.</p>
-            <section class="panel" id="pre-run-review-panel" hidden
-                     data-endpoint="/pre-run-authoring-review">
-                <h3>Cursor pre-run review</h3>
-                <p id="pre-run-review-status" class="generate-status" role="status" aria-live="polite"></p>
-                <ul id="pre-run-review-findings"></ul>
-                <ul id="pre-run-review-errors" class="error"></ul>
-                <details>
-                    <summary>Proposed CSV</summary>
-                    <pre id="pre-run-review-csv" class="ai-prompt-preview"></pre>
-                </details>
-                <div class="actions">
-                    <button type="button" class="button" id="pre-run-review-accept" disabled>Accept &amp; run</button>
-                    <button type="button" class="button ghost" id="pre-run-review-cancel">Cancel</button>
-                </div>
-            </section>
-            <button type="submit" id="submit-btn">Start execute run</button>
-        </form>
-        <p id="form-error" class="error" hidden></p>
-    </section>
-
+    <!-- Live run + results host (also reused inside expanded recent rows) -->
     <section class="panel" id="job-panel" hidden>
         <h2>Run progress</h2>
         <p class="panel-intro">
             Job <code class="mono" id="job-id-display"></code>
-            — <a id="status-link" href="#">Full status page</a>
         </p>
         <dl class="status">
             <dt>Status</dt><dd id="job-status">—</dd>
@@ -150,25 +172,21 @@
             <dt>Passed</dt><dd id="job-passed">0</dd>
             <dt>Blocked / TODO</dt><dd id="job-todo">0</dd>
         </dl>
-        <p class="hint muted">Failed cases are marked TODO; the run continues with remaining cases. If every case is TODO/PARTIAL, the job ends as FAILED (hard stop).</p>
+        <p class="hint muted">Failed cases are marked TODO; the run continues with remaining cases.</p>
         <p id="cancel-wrap">
-            <button type="button" class="button ghost" id="cancel-btn">Cancel run</button>
+            <button type="button" class="button ghost" id="cancel-btn">Force stop</button>
+            <span id="cancel-hint" class="muted cancel-hint">Marks the job cancelled now so you can delete it.</span>
         </p>
         <p id="job-error" class="error" hidden></p>
     </section>
 
     <section class="panel execute-results" id="results-panel" hidden>
         <h2>Results</h2>
-        <p class="panel-intro">Click a row to expand step timeline and screenshots.</p>
+        <p class="panel-intro">Click a TC row for timeline and screenshots.</p>
         <div id="bug-report-actions" class="bug-report-actions" hidden>
             <button type="button" class="button ghost" id="bug-report-json">Export bug report (JSON)</button>
             <button type="button" class="button ghost" id="bug-report-csv">Export bug report (CSV)</button>
             <button type="button" class="button ghost" id="results-excel">Export results (Excel + screenshots)</button>
-            <p class="muted generate-option-hint" style="margin:0.4rem 0 0">
-                Bug report lists failed cases (and design mismatches if you uploaded design references).
-                <strong>Design</strong> column compares the final screen to a reference PNG you upload — dash means no reference uploaded.
-                Results Excel includes every TC with step screenshots when available.
-            </p>
         </div>
         <table class="table" id="results-table">
             <thead>
@@ -186,6 +204,20 @@
     </section>
 </main>
 </div>
+
+<div id="execDeleteModal" class="modal-backdrop hidden" role="dialog" aria-modal="true"
+     aria-labelledby="execDeleteTitle">
+    <div class="modal-card">
+        <h3 id="execDeleteTitle">Delete execute run?</h3>
+        <p class="muted" id="execDeleteBody">This permanently removes the run and its stored results. This cannot be undone.</p>
+        <p id="execDeleteError" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="execDeleteCancel">Cancel</button>
+            <button type="button" class="button danger" id="execDeleteConfirm">Delete permanently</button>
+        </div>
+    </div>
+</div>
+
 <script>
 (function () {
     const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
@@ -217,19 +249,77 @@
     const preRunReviewErrors = document.getElementById('pre-run-review-errors');
     const preRunReviewCsv = document.getElementById('pre-run-review-csv');
     const preRunReviewAccept = document.getElementById('pre-run-review-accept');
+    const preRunReviewProgress = document.getElementById('pre-run-review-progress');
+    const preRunReviewResult = document.getElementById('pre-run-review-result');
+    const preRunReviewCases = document.getElementById('pre-run-review-cases');
     let preRunReviewedCsv = null;
     let preRunReviewApproved = false;
     let hasGeneratedWorkbook = false;
     let generatedWorkbookMeta = null;
 
+    function setPreRunReviewBusy(busy) {
+        preRunReviewPanel.setAttribute('aria-busy', busy ? 'true' : 'false');
+        preRunReviewProgress.hidden = !busy;
+        if (busy) {
+            preRunReviewResult.hidden = true;
+            preRunReviewAccept.disabled = true;
+            preRunReviewedCsv = null;
+            preRunReviewApproved = false;
+            preRunReviewFindings.innerHTML = '';
+            preRunReviewErrors.innerHTML = '';
+            preRunReviewCsv.textContent = '';
+            if (preRunReviewCases) preRunReviewCases.innerHTML = '';
+        }
+    }
+
+    function renderProposedCases(cases) {
+        if (!preRunReviewCases) return;
+        preRunReviewCases.innerHTML = '';
+        if (!Array.isArray(cases) || !cases.length) {
+            preRunReviewCases.innerHTML = '<p class="muted">No proposed cases in this review.</p>';
+            return;
+        }
+        cases.forEach(function (tc) {
+            const card = document.createElement('article');
+            card.className = 'review-case';
+            const steps = String(tc.steps || '').split(/\n+/).filter(Boolean);
+            const expected = String(tc.expectedResult || '').split(/\n+/).filter(Boolean);
+            const data = String(tc.testData || '').split(/\n+/).filter(Boolean);
+            card.innerHTML =
+                '<header class="review-case-head">' +
+                    '<span class="mono">' + escapeHtml(tc.tcId || '') + '</span>' +
+                    '<strong>' + escapeHtml(tc.title || '') + '</strong>' +
+                    (tc.keelPath ? '<span class="badge muted">' + escapeHtml(tc.keelPath) + '</span>' : '') +
+                '</header>' +
+                '<div class="review-case-grid">' +
+                    '<section><h5>Steps</h5><ol>' + steps.map(function (s) {
+                        return '<li>' + escapeHtml(s.replace(/^\d+\.\s*/, '')) + '</li>';
+                    }).join('') + '</ol></section>' +
+                    '<section><h5>Expected</h5><ol>' + expected.map(function (s) {
+                        return '<li>' + escapeHtml(s.replace(/^\d+\.\s*/, '')) + '</li>';
+                    }).join('') + '</ol></section>' +
+                    '<section><h5>Test data</h5>' +
+                        (data.length
+                            ? '<ol>' + data.map(function (s) { return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ol>'
+                            : '<p class="muted">None</p>') +
+                    '</section>' +
+                '</div>';
+            preRunReviewCases.appendChild(card);
+        });
+    }
+
     function clearPreRunReview() {
         preRunReviewedCsv = null;
         preRunReviewApproved = false;
         preRunReviewPanel.hidden = true;
+        preRunReviewPanel.setAttribute('aria-busy', 'false');
+        preRunReviewProgress.hidden = true;
+        preRunReviewResult.hidden = true;
         preRunReviewStatus.textContent = '';
         preRunReviewFindings.innerHTML = '';
         preRunReviewErrors.innerHTML = '';
         preRunReviewCsv.textContent = '';
+        if (preRunReviewCases) preRunReviewCases.innerHTML = '';
         preRunReviewAccept.disabled = true;
     }
 
@@ -248,6 +338,7 @@
     async function requestPreRunReview(projectId, useGenerated) {
         clearPreRunReview();
         preRunReviewPanel.hidden = false;
+        setPreRunReviewBusy(true);
         preRunReviewStatus.textContent = 'Cursor is reviewing the exact selected suite…';
         submitBtn.disabled = true;
         try {
@@ -261,10 +352,13 @@
             let data = {};
             try { data = await res.json(); } catch (ignore) { /* show generic error */ }
             if (!res.ok) {
+                setPreRunReviewBusy(false);
                 preRunReviewStatus.textContent =
                     (data.error || 'REVIEW_FAILED') + ': ' + (data.message || 'Cursor review failed');
                 return;
             }
+            setPreRunReviewBusy(false);
+            preRunReviewResult.hidden = false;
             (data.findings || []).forEach(finding => {
                 const li = document.createElement('li');
                 li.textContent = '[' + (finding.severity || 'info') + '] '
@@ -278,12 +372,14 @@
             });
             preRunReviewedCsv = data.csv || null;
             preRunReviewCsv.textContent = preRunReviewedCsv || '';
+            renderProposedCases(data.cases);
             preRunReviewAccept.disabled = !data.previewOk || !preRunReviewedCsv;
             preRunReviewStatus.textContent = data.previewOk
                 ? 'Review complete. Inspect the proposal, then accept to start the run.'
                 : 'Review found blocking quality-gate errors. The run has not started.';
             preRunReviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } catch (error) {
+            setPreRunReviewBusy(false);
             preRunReviewStatus.textContent = 'Network error while asking Cursor to review.';
         } finally {
             submitBtn.disabled = false;
@@ -295,7 +391,10 @@
         preRunReviewApproved = true;
         executeForm.requestSubmit();
     });
-    document.getElementById('pre-run-review-cancel').addEventListener('click', clearPreRunReview);
+    document.getElementById('pre-run-review-cancel').addEventListener('click', () => {
+        preRunReview.checked = false;
+        clearPreRunReview();
+    });
     preRunReview.addEventListener('change', () => {
         if (!preRunReview.checked) clearPreRunReview();
     });
@@ -307,7 +406,8 @@
 
     function automateRunnable(counts) {
         if (!counts) return 0;
-        return (counts.AUTOMATE || 0) + (counts.BLANK || 0);
+        return (counts.AUTOMATE || 0) + (counts.EXECUTE || 0)
+                + (counts.VISION_ONLY || 0) + (counts.BLANK || 0);
     }
 
     function executeRunnable(counts) {
@@ -328,12 +428,12 @@
     function formatKeelPathCounts(counts) {
         if (!counts || typeof counts !== 'object') return '';
         const parts = [];
-        if (counts.AUTOMATE) parts.push('A:' + counts.AUTOMATE);
-        if (counts.EXECUTE) parts.push('E:' + counts.EXECUTE);
-        if (counts.VISION_ONLY) parts.push('V:' + counts.VISION_ONLY);
-        if (counts.MANUAL) parts.push('M:' + counts.MANUAL);
-        if (counts.BLANK) parts.push('blank:' + counts.BLANK);
-        return parts.length ? ' · ' + parts.join(' ') : '';
+        if (counts.AUTOMATE) parts.push('Automate ' + counts.AUTOMATE);
+        if (counts.EXECUTE) parts.push('Execute ' + counts.EXECUTE);
+        if (counts.VISION_ONLY) parts.push('Vision ' + counts.VISION_ONLY);
+        if (counts.MANUAL) parts.push('Manual ' + counts.MANUAL);
+        if (counts.BLANK) parts.push('blank ' + counts.BLANK);
+        return parts.length ? ' · paths: ' + parts.join(', ') : '';
     }
 
     function workbookSource() {
@@ -361,6 +461,7 @@
         const list = document.getElementById('library-pick-list');
         if (!list) return;
         list.innerHTML = '';
+        closeTcMultiselect();
         const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases', {
             credentials: 'same-origin',
             headers: API_HEADERS
@@ -369,25 +470,108 @@
         const data = await res.json();
         (data.cases || []).forEach(tc => {
             const label = document.createElement('label');
-            label.className = 'generate-check';
+            label.className = 'tc-ms-option generate-check';
+            label.dataset.search = ((tc.tcId || '') + ' ' + (tc.title || '')).toLowerCase();
             label.innerHTML = '<input type="checkbox" class="lib-pick-check" value="'
                 + escapeHtml(tc.tcId) + '"/> <span class="mono">'
                 + escapeHtml(tc.tcId) + '</span> '
-                + escapeHtml(tc.title || '');
+                + '<span class="tc-ms-option-title">' + escapeHtml(tc.title || '') + '</span>';
+            label.querySelector('input').addEventListener('change', refreshTcMultiselectSummary);
             list.appendChild(label);
         });
+        refreshTcMultiselectSummary();
     }
-
-    document.getElementById('lib-pick-all')?.addEventListener('click', () => {
-        document.querySelectorAll('.lib-pick-check').forEach(cb => { cb.checked = true; });
-    });
-    document.getElementById('lib-pick-none')?.addEventListener('click', () => {
-        document.querySelectorAll('.lib-pick-check').forEach(cb => { cb.checked = false; });
-    });
 
     function selectedLibraryTcIds() {
         return Array.from(document.querySelectorAll('.lib-pick-check:checked')).map(el => el.value);
     }
+
+    function refreshTcMultiselectSummary() {
+        const chips = document.getElementById('tc-ms-chips');
+        const summary = document.getElementById('tc-ms-summary');
+        if (!chips || !summary) return;
+        const selected = Array.from(document.querySelectorAll('.lib-pick-check:checked'));
+        const total = document.querySelectorAll('.lib-pick-check').length;
+        chips.innerHTML = '';
+        if (selected.length === 0) {
+            summary.textContent = total ? 'All cases (' + total + ')' : 'All cases';
+            summary.hidden = false;
+            return;
+        }
+        const show = selected.slice(0, 4);
+        show.forEach(cb => {
+            const chip = document.createElement('span');
+            chip.className = 'tc-ms-chip';
+            chip.textContent = cb.value;
+            chips.appendChild(chip);
+        });
+        if (selected.length > 4) {
+            const more = document.createElement('span');
+            more.className = 'tc-ms-chip tc-ms-chip-more';
+            more.textContent = '+' + (selected.length - 4);
+            chips.appendChild(more);
+        }
+        summary.textContent = selected.length + ' of ' + total;
+        summary.hidden = false;
+    }
+
+    function openTcMultiselect() {
+        const drop = document.getElementById('tc-ms-dropdown');
+        const trigger = document.getElementById('tc-ms-trigger');
+        if (!drop || !trigger) return;
+        drop.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        document.getElementById('tc-ms')?.classList.add('is-open');
+        const search = document.getElementById('tc-ms-search');
+        if (search) {
+            search.value = '';
+            filterTcMultiselect('');
+            search.focus();
+        }
+    }
+
+    function closeTcMultiselect() {
+        const drop = document.getElementById('tc-ms-dropdown');
+        const trigger = document.getElementById('tc-ms-trigger');
+        if (drop) drop.hidden = true;
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        document.getElementById('tc-ms')?.classList.remove('is-open');
+    }
+
+    function filterTcMultiselect(q) {
+        const needle = (q || '').trim().toLowerCase();
+        document.querySelectorAll('#library-pick-list .tc-ms-option').forEach(el => {
+            const hay = el.dataset.search || '';
+            el.hidden = needle !== '' && !hay.includes(needle);
+        });
+    }
+
+    document.getElementById('tc-ms-trigger')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const drop = document.getElementById('tc-ms-dropdown');
+        if (drop && drop.hidden) openTcMultiselect();
+        else closeTcMultiselect();
+    });
+    document.getElementById('tc-ms-search')?.addEventListener('input', (e) => {
+        filterTcMultiselect(e.target.value);
+    });
+    document.getElementById('lib-pick-all')?.addEventListener('click', () => {
+        document.querySelectorAll('.lib-pick-check').forEach(cb => {
+            if (!cb.closest('.tc-ms-option')?.hidden) cb.checked = true;
+        });
+        refreshTcMultiselectSummary();
+    });
+    document.getElementById('lib-pick-none')?.addEventListener('click', () => {
+        document.querySelectorAll('.lib-pick-check').forEach(cb => { cb.checked = false; });
+        refreshTcMultiselectSummary();
+    });
+    document.addEventListener('click', (e) => {
+        const root = document.getElementById('tc-ms');
+        if (root && !root.contains(e.target)) closeTcMultiselect();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeTcMultiselect();
+    });
 
     const jobPanel = document.getElementById('job-panel');
     const jobIdDisplay = document.getElementById('job-id-display');
@@ -417,6 +601,11 @@
     const recentExecuteBody = document.getElementById('recent-execute-body');
     const recentExecuteEmpty = document.getElementById('recent-execute-empty');
     const recentExecuteErr = document.getElementById('recent-execute-err');
+    let expandedRunId = null;
+    const runDetailHost = document.createElement('div');
+    runDetailHost.id = 'run-detail-host';
+    runDetailHost.hidden = true;
+    document.querySelector('main.shell')?.appendChild(runDetailHost);
 
     let projectHasBaseUrl = false;
     let credentialsRequired = false;
@@ -607,25 +796,143 @@
         return 'badge muted';
     }
 
+    function mountRunPanelsInto(container) {
+        if (!container) return;
+        container.appendChild(jobPanel);
+        container.appendChild(resultsPanel);
+        jobPanel.hidden = false;
+        // results shown after load
+    }
+
+    function collapseAllRunDetails() {
+        recentExecuteBody.querySelectorAll('tr.exec-run-detail').forEach(function (row) {
+            row.hidden = true;
+            row.classList.remove('is-open');
+        });
+        recentExecuteBody.querySelectorAll('tr.exec-run-row').forEach(function (row) {
+            row.classList.remove('is-expanded');
+        });
+        expandedRunId = null;
+        runDetailHost.appendChild(jobPanel);
+        runDetailHost.appendChild(resultsPanel);
+        jobPanel.hidden = true;
+        resultsPanel.hidden = true;
+    }
+
     function renderRecentExecuteRuns(jobs) {
+        collapseAllRunDetails();
         recentExecuteBody.innerHTML = '';
         const recent = jobs.slice(0, 5);
         recentExecuteEmpty.hidden = recent.length > 0;
         document.getElementById('recent-execute-table').hidden = recent.length === 0;
         recent.forEach(j => {
             const tr = document.createElement('tr');
+            tr.className = 'exec-run-row';
+            tr.dataset.jobId = j.jobId;
+            const active = j.status === 'QUEUED' || j.status === 'RUNNING';
             tr.innerHTML =
                 '<td><code class="mono">' + escapeHtml(j.jobId) + '</code></td>' +
                 '<td><span class="' + jobBadgeClass(j.status) + '">' + escapeHtml(j.status) + '</span></td>' +
                 '<td>' + (j.progressCurrent ?? 0) + ' / ' + (j.progressTotal ?? 0) + '</td>' +
-                '<td>' + (j.passedCount ?? 0) + 'P / ' + (j.todoCount ?? 0) + 'T</td>' +
-                '<td class="actions">' +
-                '<a href="/status?jobId=' + encodeURIComponent(j.jobId) + '">Status</a> ' +
-                '<button type="button" class="button ghost reopen-run-btn">Results</button>' +
+                '<td class="actions exec-run-actions">' +
+                '<button type="button" class="button ghost reopen-run-btn">Open</button> ' +
+                (active
+                    ? '<button type="button" class="button ghost force-stop-run-btn">Force stop</button> '
+                    : '') +
+                '<button type="button" class="button danger delete-run-btn">Delete</button>' +
                 '</td>';
-            tr.querySelector('.reopen-run-btn').addEventListener('click', () => openExecuteRun(j.jobId));
+            const detail = document.createElement('tr');
+            detail.className = 'exec-run-detail';
+            detail.hidden = true;
+            detail.innerHTML = '<td colspan="4"><div class="exec-run-detail-mount"></div></td>';
+            const open = () => openExecuteRun(j.jobId, tr, detail);
+            tr.querySelector('.reopen-run-btn').addEventListener('click', function (e) {
+                e.stopPropagation();
+                open();
+            });
+            const forceBtnRow = tr.querySelector('.force-stop-run-btn');
+            if (forceBtnRow) {
+                forceBtnRow.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    requestForceStop(j.jobId, forceBtnRow);
+                });
+            }
+            tr.querySelector('.delete-run-btn').addEventListener('click', function (e) {
+                e.stopPropagation();
+                openDeleteExecuteModal(j.jobId);
+            });
+            tr.addEventListener('click', function (e) {
+                if (e.target.closest('button')) return;
+                open();
+            });
             recentExecuteBody.appendChild(tr);
+            recentExecuteBody.appendChild(detail);
         });
+    }
+
+    let pendingDeleteJobId = null;
+
+    function openDeleteExecuteModal(jobId) {
+        pendingDeleteJobId = jobId;
+        const body = document.getElementById('execDeleteBody');
+        const err = document.getElementById('execDeleteError');
+        if (body) {
+            body.textContent = 'Permanently delete '
+                + jobId
+                + ' and its stored results? This cannot be undone.';
+        }
+        if (err) {
+            err.classList.add('hidden');
+            err.textContent = '';
+        }
+        document.getElementById('execDeleteModal')?.classList.remove('hidden');
+    }
+
+    function closeDeleteExecuteModal() {
+        pendingDeleteJobId = null;
+        document.getElementById('execDeleteModal')?.classList.add('hidden');
+    }
+
+    document.getElementById('execDeleteCancel')?.addEventListener('click', closeDeleteExecuteModal);
+    document.getElementById('execDeleteModal')?.addEventListener('click', function (e) {
+        if (e.target === this) closeDeleteExecuteModal();
+    });
+    document.getElementById('execDeleteConfirm')?.addEventListener('click', async function () {
+        if (!pendingDeleteJobId) return;
+        await deleteExecuteRun(pendingDeleteJobId);
+    });
+
+    async function deleteExecuteRun(jobId) {
+        recentExecuteErr.hidden = true;
+        const modalErr = document.getElementById('execDeleteError');
+        if (modalErr) {
+            modalErr.classList.add('hidden');
+            modalErr.textContent = '';
+        }
+        const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Accept': 'application/json' }
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            const msg = (data && data.message) || 'Delete failed';
+            if (modalErr) {
+                modalErr.classList.remove('hidden');
+                modalErr.textContent = msg;
+            }
+            recentExecuteErr.hidden = false;
+            recentExecuteErr.textContent = msg;
+            return;
+        }
+        closeDeleteExecuteModal();
+        if (activeJobId === jobId) {
+            stopPoll();
+            activeJobId = null;
+            collapseAllRunDetails();
+        }
+        await loadRecentExecuteRuns(projectSel.value);
     }
 
     async function loadRecentExecuteRuns(projectId) {
@@ -647,20 +954,53 @@
         renderRecentExecuteRuns(await res.json());
     }
 
-    async function openExecuteRun(jobId) {
+    async function openExecuteRun(jobId, rowEl, detailEl) {
         try {
             sessionStorage.setItem(LAST_JOB_KEY, jobId);
         } catch (e) { /* ignore */ }
+
+        if (!rowEl || !detailEl) {
+            rowEl = recentExecuteBody.querySelector('tr.exec-run-row[data-job-id="' + String(jobId).replace(/"/g, '') + '"]');
+            detailEl = rowEl ? rowEl.nextElementSibling : null;
+        }
+        if (expandedRunId === jobId && detailEl && detailEl.classList.contains('is-open')) {
+            collapseAllRunDetails();
+            return;
+        }
+        collapseAllRunDetails();
+        if (rowEl && detailEl) {
+            rowEl.classList.add('is-expanded');
+            detailEl.hidden = false;
+            detailEl.classList.add('is-open');
+            const mount = detailEl.querySelector('.exec-run-detail-mount');
+            mountRunPanelsInto(mount);
+            expandedRunId = jobId;
+        } else {
+            runDetailHost.hidden = false;
+            mountRunPanelsInto(runDetailHost);
+            jobPanel.hidden = false;
+        }
+
         activeJobId = jobId;
-        jobPanel.hidden = false;
+        cancelRequested = false;
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = 'Force stop';
+        }
+        const cancelHint = document.getElementById('cancel-hint');
+        if (cancelHint) {
+            cancelHint.textContent = 'Stops after the current test case finishes.';
+        }
         jobIdDisplay.textContent = jobId;
-        statusLink.href = '/status?jobId=' + encodeURIComponent(jobId);
+        if (statusLink) statusLink.href = '/status?jobId=' + encodeURIComponent(jobId);
         jobErrorEl.hidden = true;
         resultsPanel.hidden = true;
         resultsBody.innerHTML = '';
         bugReportActions.hidden = true;
         stopPoll();
-        jobPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (detailEl) {
+            detailEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
         const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId), {
             credentials: 'same-origin',
             headers: API_HEADERS
@@ -679,9 +1019,6 @@
                 jobErrorEl.textContent = data.message || 'Execute run failed';
             }
             await loadResults(jobId, true);
-            if (!resultsPanel.hidden) {
-                resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
         } else {
             pollJob(jobId);
         }
@@ -702,49 +1039,115 @@
         jobTodoEl.textContent = data.todoCount != null ? data.todoCount : 0;
         if (cancelWrap) {
             const active = data.status === 'QUEUED' || data.status === 'RUNNING';
-            cancelWrap.hidden = !active || cancelRequested;
+            cancelWrap.hidden = !active;
+            if (cancelBtn && !cancelRequested) {
+                cancelBtn.disabled = false;
+                cancelBtn.textContent = 'Force stop';
+            }
         }
+        syncRecentRunRow(data);
         return TERMINAL.has(data.status);
     }
 
-    async function requestCancel() {
-        if (!activeJobId || cancelRequested) return;
-        cancelRequested = true;
-        if (cancelBtn) {
-            cancelBtn.disabled = true;
-            cancelBtn.textContent = 'Cancelling…';
+    /** Keep the summary row in sync with live poll (avoids stuck QUEUED 0/0). */
+    function syncRecentRunRow(data) {
+        if (!data || !data.jobId || !recentExecuteBody) return;
+        const tr = recentExecuteBody.querySelector(
+            'tr.exec-run-row[data-job-id="' + String(data.jobId).replace(/"/g, '') + '"]');
+        if (!tr) return;
+        const cells = tr.querySelectorAll('td');
+        if (cells.length < 3) return;
+        const status = data.status || '—';
+        cells[1].innerHTML = '<span class="' + jobBadgeClass(status) + '">' + escapeHtml(status) + '</span>';
+        cells[2].textContent = (data.progressCurrent ?? 0) + ' / ' + (data.progressTotal ?? 0);
+        const actions = tr.querySelector('.exec-run-actions');
+        if (!actions) return;
+        const active = status === 'QUEUED' || status === 'RUNNING';
+        let forceBtnRow = actions.querySelector('.force-stop-run-btn');
+        if (active && !forceBtnRow) {
+            forceBtnRow = document.createElement('button');
+            forceBtnRow.type = 'button';
+            forceBtnRow.className = 'button ghost force-stop-run-btn';
+            forceBtnRow.textContent = 'Force stop';
+            forceBtnRow.addEventListener('click', function (e) {
+                e.stopPropagation();
+                requestForceStop(data.jobId, forceBtnRow);
+            });
+            const del = actions.querySelector('.delete-run-btn');
+            if (del) actions.insertBefore(forceBtnRow, del);
+            else actions.appendChild(forceBtnRow);
+        } else if (!active && forceBtnRow) {
+            forceBtnRow.remove();
         }
-        if (cancelWrap) cancelWrap.hidden = true;
+    }
+
+    async function requestForceStop(jobId, sourceBtn) {
+        const id = jobId || activeJobId;
+        if (!id) return;
+        const buttons = [];
+        if (cancelBtn) buttons.push(cancelBtn);
+        if (sourceBtn) buttons.push(sourceBtn);
+        document.querySelectorAll('.force-stop-run-btn').forEach(b => buttons.push(b));
+        buttons.forEach(b => {
+            b.disabled = true;
+            b.textContent = 'Stopping…';
+        });
+        if (cancelWrap && id === activeJobId) cancelWrap.hidden = false;
+        const hint = document.getElementById('cancel-hint');
+        if (hint) {
+            hint.textContent = 'Force-stopping — job will show as CANCELLED.';
+        }
+        if (jobMessageEl && id === activeJobId) {
+            jobMessageEl.textContent = 'Force-stopping…';
+        }
         try {
-            const res = await fetch('/api/jobs/' + encodeURIComponent(activeJobId) + '/cancel', {
+            const res = await fetch('/api/jobs/' + encodeURIComponent(id) + '/force-stop', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: API_HEADERS
             });
             if (!res.ok) {
-                cancelRequested = false;
-                if (cancelBtn) {
-                    cancelBtn.disabled = false;
-                    cancelBtn.textContent = 'Cancel run';
+                buttons.forEach(b => {
+                    b.disabled = false;
+                    b.textContent = b.id === 'cancel-btn' ? 'Force stop' : 'Force stop';
+                });
+                if (hint) {
+                    hint.textContent = 'Marks the job cancelled now so you can delete it.';
                 }
                 let data = {};
                 try { data = await res.json(); } catch (e) { /* ignore */ }
                 jobErrorEl.hidden = false;
-                jobErrorEl.textContent = (data.message || 'Cancel failed') + ' (HTTP ' + res.status + ')';
+                jobErrorEl.textContent = (data.message || 'Force stop failed') + ' (HTTP ' + res.status + ')';
+                recentExecuteErr.hidden = false;
+                recentExecuteErr.textContent = (data.message || 'Force stop failed');
+            } else {
+                cancelRequested = false;
+                if (projectSel.value) {
+                    await loadRecentExecuteRuns(projectSel.value);
+                }
+                if (id === activeJobId) {
+                    await pollOnce();
+                }
             }
         } catch (e) {
-            cancelRequested = false;
-            if (cancelBtn) {
-                cancelBtn.disabled = false;
-                cancelBtn.textContent = 'Cancel run';
+            buttons.forEach(b => {
+                b.disabled = false;
+                b.textContent = 'Force stop';
+            });
+            if (hint) {
+                hint.textContent = 'Marks the job cancelled now so you can delete it.';
             }
             jobErrorEl.hidden = false;
-            jobErrorEl.textContent = 'Network error while requesting cancel';
+            jobErrorEl.textContent = 'Network error while force-stopping.';
         }
     }
 
+    async function requestCancel(jobId, sourceBtn) {
+        return requestForceStop(jobId, sourceBtn);
+    }
+
     if (cancelBtn) {
-        cancelBtn.addEventListener('click', requestCancel);
+        cancelBtn.addEventListener('click', () => requestCancel(activeJobId, cancelBtn));
     }
 
     function showBugReportActions(jobId) {
@@ -1008,25 +1411,25 @@
             sessionStorage.setItem(LAST_JOB_KEY, jobId);
         } catch (e) { /* ignore */ }
         activeJobId = jobId;
-        jobPanel.hidden = false;
         cancelRequested = false;
         if (cancelBtn) {
             cancelBtn.disabled = false;
-            cancelBtn.textContent = 'Cancel run';
+            cancelBtn.textContent = 'Force stop';
         }
         if (cancelWrap) cancelWrap.hidden = false;
         jobIdDisplay.textContent = jobId;
-        statusLink.href = '/status?jobId=' + encodeURIComponent(jobId);
+        if (statusLink) statusLink.href = '/status?jobId=' + encodeURIComponent(jobId);
         jobErrorEl.hidden = true;
         resultsPanel.hidden = true;
         resultsBody.innerHTML = '';
         bugReportActions.hidden = true;
         stopPoll();
-        pollJob(jobId);
+        loadRecentExecuteRuns(projectSel.value).then(function () {
+            openExecuteRun(jobId);
+        });
     }
 
-    designRefForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    document.getElementById('design-ref-submit')?.addEventListener('click', async () => {
         designRefMsg.hidden = true;
         designRefErr.hidden = true;
         const projectId = projectSel.value;
@@ -1060,7 +1463,8 @@
             }
             designRefMsg.hidden = false;
             designRefMsg.textContent = 'Uploaded design for ' + (data.tcId || tcId) + ' as ' + (data.storedAs || tcId + '.png') + '.';
-            designRefForm.reset();
+            document.getElementById('design-ref-tcId').value = '';
+            fileInput.value = '';
         } catch (err) {
             designRefErr.hidden = false;
             designRefErr.textContent = 'Network error uploading reference.';
@@ -1088,7 +1492,7 @@
         }
         const excelInput = executeForm.excel;
         const useGenerated = hasGeneratedWorkbook && workbookSource() === 'generated';
-        if (useGenerated && generatedWorkbookMeta) {
+        if (useGenerated && generatedWorkbookMeta && selectedLibraryTcIds().length === 0) {
             const warn = surfaceSoftWarn(
                 'EXECUTE',
                 generatedWorkbookMeta.tcCount || 0,

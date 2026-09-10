@@ -87,6 +87,19 @@ public final class HuntStepsJournal {
         String type = str(row.get("type")).toLowerCase();
         return switch (type) {
             case "navigate" -> "url=" + str(row.get("url"));
+            case "back", "forward", "refresh" -> "";
+            case "execute_js" -> {
+                String script = str(row.get("script"));
+                if (script.isBlank()) {
+                    script = str(row.get("code"));
+                }
+                if (script.isBlank()) {
+                    script = str(row.get("js"));
+                }
+                String result = str(row.get("result"));
+                yield "script=" + abbreviate(script, 80)
+                        + (result.isBlank() ? "" : " result=" + abbreviate(result, 60));
+            }
             case "type" -> "locator=" + locatorOf(row) + " value=" + str(row.get("value"));
             case "click", "clear", "assert_visible" -> "locator=" + locatorOf(row);
             case "assert_text" -> "text=" + (str(row.get("text")).isBlank() ? str(row.get("expected")) : str(row.get("text")));
@@ -101,6 +114,13 @@ public final class HuntStepsJournal {
             loc = str(row.get("locatorValue"));
         }
         return loc;
+    }
+
+    private static String abbreviate(String s, int max) {
+        if (s == null || s.length() <= max) {
+            return s == null ? "" : s;
+        }
+        return s.substring(0, max) + "…";
     }
 
     private static String str(Object o) {

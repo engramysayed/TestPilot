@@ -68,7 +68,7 @@ public class FinalReviseDefaultsTest extends AbstractTestNGSpringContextTests {
 
     @Test
     public void uploadPage_exposesFinalReviseEnabledFlag() throws Exception {
-        String body = mockMvc.perform(get("/upload")
+        String body = mockMvc.perform(get("/automate")
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
                 .andExpect(status().isOk())
                 .andReturn()
