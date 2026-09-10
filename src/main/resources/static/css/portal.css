@@ -2932,15 +2932,38 @@ body:not(.app-body) .shell {
 .hunt-strategy-list[hidden] {
     display: none !important;
 }
+.hunt-start-panel {
+    overflow: visible;
+    position: relative;
+    z-index: 1;
+}
+.hunt-start-panel:has(.tc-ms.is-open) {
+    z-index: 80;
+}
 .hunt-library.tc-multiselect {
     margin: 1rem 0 0.5rem;
+    position: relative;
+    z-index: 2;
 }
 .hunt-library .tc-ms {
     max-width: 36rem;
+    z-index: 2;
+}
+.hunt-library .tc-ms.is-open {
+    z-index: 90;
+}
+.hunt-library .tc-ms-dropdown {
+    z-index: 91;
+    top: auto;
+    bottom: calc(100% + 0.35rem);
 }
 .hunt-library #lib-count {
     margin: 0.35rem 0 0;
     font-size: 0.82rem;
+}
+.hunt-start-actions {
+    position: relative;
+    z-index: 0;
 }
 .hunt-caps {
     display: grid;

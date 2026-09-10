@@ -10,8 +10,8 @@
     <div class="page-title">
         <div>
             <h1>Bug Hunter</h1>
-            <p class="lede">Exploratory hunt: break features, invent edge cases (capped), download a hunter pack — nothing auto-merges into the library.</p>
-            <p class="hint">With <code>delivery.dry-run=true</code> hunts simulate one cycle. Set dry-run false for live browser + Ollama/Cursor planning.</p>
+            <p class="lede">Explore your website in a real browser and look for bugs. You get a downloadable report — nothing is added to your test library automatically.</p>
+            <p class="hint">An AI planner decides what to try next on each round (Ollama or Cursor).</p>
         </div>
     </div>
 
@@ -31,44 +31,44 @@
     <section class="panel hunt-start-panel" id="hunt-form-panel" hidden>
         <h2>Start a hunt</h2>
         <p class="panel-intro">
-            Pick library cases as context, choose how the planner thinks, then start.
-            The hunt opens your project base URL first, then optionally auto-logs in.
+            Pick a few related test cases, choose how the AI plans steps, then start.
+            Keel opens your project website first, then can sign in if you pick a credential profile.
         </p>
 
         <div class="hunt-base-card" id="base-url-row" hidden>
-            <span class="hunt-base-label">Opens first</span>
+            <span class="hunt-base-label">Website</span>
             <code class="mono" id="base-url-display"></code>
         </div>
         <p class="error" id="base-url-missing" hidden>
-            No base URL configured.
+            No website URL configured.
             <a id="settings-link" href="#">Open project Settings</a>
         </p>
 
-        <label id="cred-label" class="hunt-cred" hidden>Credential profile
+        <label id="cred-label" class="hunt-cred" hidden>Sign-in profile
             <select id="credential-profile"></select>
-            <span class="field-hint">Use <em>Open site only</em> when hunting login / auth flows so auto-login does not steal the page.</span>
+            <span class="field-hint">Use <em>Open site only</em> when you want to test login yourself (no auto sign-in).</span>
         </label>
 
-        <label>User story / notes (optional)
-            <textarea id="user-story" rows="4" placeholder="Feature or acceptance notes for the hunter…"></textarea>
+        <label>Notes for the hunter (optional)
+            <textarea id="user-story" rows="4" placeholder="What feature should it try to break? e.g. create user, checkout…"></textarea>
         </label>
 
         <fieldset class="hunt-planner">
             <legend>Planner</legend>
-            <p class="field-hint hunt-planner-hint">Who decides the next browser actions each cycle.</p>
+            <p class="field-hint hunt-planner-hint">Who chooses the next clicks and checks each round.</p>
             <div class="hunt-planner-cards" role="radiogroup" aria-label="Planner engine">
                 <label class="hunt-choice-card">
                     <input type="radio" name="planner" value="ollama" checked/>
                     <span class="hunt-choice-body">
                         <span class="hunt-choice-title">Ollama</span>
-                        <span class="hunt-choice-desc">Local models — good default for repeated hunts.</span>
+                        <span class="hunt-choice-desc">Runs on your machine — usual choice.</span>
                     </span>
                 </label>
                 <label class="hunt-choice-card">
                     <input type="radio" name="planner" value="cursor"/>
                     <span class="hunt-choice-body">
                         <span class="hunt-choice-title">Cursor</span>
-                        <span class="hunt-choice-desc">Cloud agent planner when Ollama is not enough.</span>
+                        <span class="hunt-choice-desc">Cloud planner when you want a stronger model.</span>
                     </span>
                 </label>
             </div>
@@ -80,7 +80,7 @@
                 <option value="map">Map only</option>
                 <option value="slim">Full slim DOM</option>
             </select>
-            <span class="field-hint">What page context the planner sees each cycle.</span>
+            <span class="field-hint">What the AI can see about the current page.</span>
         </label>
 
         <div class="hunt-strategy-block">
@@ -88,38 +88,38 @@
                 <input type="checkbox" id="strategies-enabled" checked/>
                 <span>
                     <strong>Use hunt strategies</strong>
-                    <span class="field-hint">Walks a fixed probe order instead of free-form explore-only.</span>
+                    <span class="field-hint">Follow a fixed checklist of probe types instead of free exploration only.</span>
                 </span>
             </label>
             <ol class="hunt-strategy-list" id="strategy-explain" aria-label="Hunt strategy sequence">
                 <li><strong>Happy</strong> — expected path still works</li>
                 <li><strong>Empty</strong> — blank / missing required fields</li>
                 <li><strong>Boundary</strong> — length, format, and edge values</li>
-                <li><strong>Abuse</strong> — injection-ish / hostile input</li>
-                <li><strong>Session</strong> — logout / auth edge (skipped if no credentials)</li>
-                <li><strong>Invent</strong> — capped novel scenarios from context</li>
+                <li><strong>Abuse</strong> — hostile or unexpected input</li>
+                <li><strong>Session</strong> — logout / signed-out edge (skipped if no sign-in)</li>
+                <li><strong>Invent</strong> — a few new ideas from your notes and cases</li>
             </ol>
         </div>
 
         <div class="hunt-caps">
             <label>Scenario cap
                 <input type="number" id="scenario-cap" min="1" max="20" value="5"/>
-                <span class="field-hint">Max invented scenarios kept</span>
+                <span class="field-hint">Max new ideas to keep</span>
             </label>
             <label>Cycle ceiling
                 <input type="number" id="cycle-ceiling" min="1" max="30" value="8"/>
-                <span class="field-hint">Hard stop on planner rounds</span>
+                <span class="field-hint">Max planning rounds</span>
             </label>
             <label>Actions / cycle
                 <input type="number" id="action-cap" min="1" max="15" value="5"/>
-                <span class="field-hint">Clicks/types per round</span>
+                <span class="field-hint">Clicks or typing per round</span>
             </label>
         </div>
 
         <div class="hunt-library tc-multiselect" id="hunt-library-panel">
             <span class="tc-ms-label">Library cases</span>
-            <p class="field-hint">Selected cases seed the hunt brief — they are not executed as a TestNG suite.</p>
-            <p id="lib-empty" class="muted" hidden>No generated workbook — upload or generate TCs first.</p>
+            <p class="field-hint">Pick cases that match the feature you want explored. They guide the hunt — they are not a full automated suite run.</p>
+            <p id="lib-empty" class="muted" hidden>No test cases yet — generate or upload some on Generate first.</p>
             <div class="tc-ms" id="hunt-tc-ms" hidden>
                 <button type="button" class="tc-ms-trigger" id="hunt-tc-ms-trigger"
                         aria-haspopup="listbox" aria-expanded="false">
@@ -157,14 +157,14 @@
             <span class="spinner" aria-hidden="true"></span>
             <div>
                 <h3>Starting Bug Hunter…</h3>
-                <p class="muted">Queuing the job, then opening the status page.</p>
+                <p class="muted">Starting the hunt — you will move to the status page next.</p>
             </div>
         </div>
     </section>
 
     <section class="panel">
-        <h2>Recent Bug Hunter runs</h2>
-        <p class="panel-intro">This project’s HUNT jobs — open Status or download the pack when ready.</p>
+        <h2>Recent runs</h2>
+        <p class="panel-intro">Past hunts for this project. Open Status for progress, or download the report when ready.</p>
         <p id="recent-empty" class="muted" hidden>No Bug Hunter runs yet.</p>
         <div class="table-scroll table-scroll--hunt">
             <table class="table table--hunt-recent" id="recent-table" hidden>
