@@ -23,6 +23,7 @@ On **Execute** and **Automate** you can use the project **Generated library**, s
 
 Supporting capabilities:
 
+- **Authoring engine** per job: **Keel** (default, deterministic bind + heal) or **Precision** (Cursor `groundRank` + optional `solve`, ~50 API calls/job, Keel fallback)
 - Authoring quality gate (leave-empty / vague asserts / field naming)
 - Editable TC preview (step × test-data grid before Automate/Execute)
 - Project **Generated library** (edit / delete saved cases)
@@ -99,7 +100,7 @@ Use this to pick **one primary path** (you can still run others later on the sam
 4. **Automate** — `AUTOMATE` / blank KeelPath rows → download ZIP.  
 5. **Bug Hunter** (optional) — same library TCs → download pack → human reviews bugs/scenarios; import candidates only if you choose.
 
-KeelPath reminder: **Automate** skips `EXECUTE` / `VISION_ONLY` / `MANUAL`; **Execute** skips `MANUAL` only.
+KeelPath reminder: **Automate** and **Execute** both run every row except `MANUAL` (including `EXECUTE`, `VISION_ONLY`, and blank). Use `MANUAL` to skip both surfaces.
 
 ---
 
@@ -149,6 +150,8 @@ Primary knobs live in `src/main/resources/application.properties`:
 | `delivery.llm-base-url` / `delivery.llm-model` | Ollama endpoint and default model |
 | `delivery.generate-model` / `delivery.generate-models` | Generate + Compare model list |
 | `delivery.cursor-heal.enabled` | Enable Cursor invent/solve sidecar |
+| `delivery.authoring.precision.enabled` | Server gate for Precision jobs (when `false`, UI warns and jobs fall back to Keel) |
+| `delivery.authoring.precision.max-calls-per-job` | Cap on Cursor `groundRank` + `solve` calls per Automate/Execute job (default `50`) |
 | `delivery.store-root` | Project artifact store (default `./delivery-store`) |
 | `delivery.browser.headless` | Headless prove/execute browser |
 | `delivery.hunt.dom-mode` | Bug Hunter DOM context: `auto` (page map, slim if thin) · `map` · `slim` |
@@ -162,6 +165,25 @@ After Generate UI, prompt, or gate changes: **restart the portal** and hard-refr
 
 Batch conversion without the UI: `delivery.cli.DeliveryCli` — see `docs/ops/` for local Ollama and ops notes.
 
+```bat
+mvn -q exec:java -Dexec.mainClass=delivery.cli.DeliveryCli -Dexec.args="--excel path\to\cases.xlsx --base-url https://example.com --authoring-engine precision"
+```
+
+`--authoring-engine` accepts `keel` (default) or `precision`.
+
+---
+
+## Authoring engine (Automate, Execute, All in one)
+
+| Engine | When to use | Bind path |
+|--------|-------------|-----------|
+| **Keel** | Default; fast; no Cursor API | Deterministic DOM bind → heal cascade (Ollama → Cursor pick/invent → recovery) |
+| **Precision** | Complex UIs; needs `CURSOR_API_KEY` | DOM shortlist → one multimodal Cursor `groundRank` → bind on high/medium; one `solve` on low; auto-fallback to Keel on cap or errors |
+
+Choose on **Automate** (`/automate`), **Execute** (`/execute`), and **Generate → All in one** (applies to Automate + Execute stages). Stored per job in `automate-runs/{jobId}/request.json` or `execute-runs/{jobId}/request.json`. When any intent falls back, the status page shows a `PRECISION_FALLBACK` banner.
+
+Details: [`docs/ops/end-to-end-flow.md`](docs/ops/end-to-end-flow.md#authoring-engine-automate--execute).
+
 ---
 
 ## How Automate works
@@ -171,7 +193,7 @@ Excel / generated workbook
         │
         ▼
    ProvePhase  ──► bind intents to live DOM
-        │              │
+        │              │  (Keel bind OR Precision groundRank/solve)
         │              └─ fail ► HealCascade (Ollama → Cursor → recovery)
         ▼
    IR (TcDraft) → Revise → Emit (pages + tests) → Framework ZIP

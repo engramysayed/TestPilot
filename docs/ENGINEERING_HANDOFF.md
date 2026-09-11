@@ -28,8 +28,9 @@ This document points engineers at deeper material already in the tree.
 | Generate authoring preflight review | `docs/superpowers/specs/2026-09-06-authoring-preflight-review-design.md` |
 | Bug Hunter (HUNT) | `docs/superpowers/specs/2026-09-09-bug-hunter-design.md` |
 | Bug Hunter quality (page map + strategies) | `docs/superpowers/specs/2026-09-10-bug-hunter-quality-design.md` |
+| Precision authoring engine (Keel vs Cursor groundRank) | `docs/superpowers/specs/2026-09-11-authoring-precision-engine-design.md` |
 
-Matching plans/tasks/notes sit beside each spec under `docs/superpowers/plans/`.
+Matching plans/tasks/notes sit beside each spec under `docs/superpowers/plans/`. Review fix checklist: `docs/superpowers/plans/2026-09-11-precision-engine-fixes.md`.
 
 ## Bug Hunter (summary)
 
@@ -45,13 +46,31 @@ Matching plans/tasks/notes sit beside each spec under `docs/superpowers/plans/`.
 mvn -q "-Dtest=HuntCoreTest,HuntApiTest,HuntPageMapTest,HuntCoverageMapTest,HuntActionGuardTest,HuntDomModeTest,HuntStrategySequencerTest,HuntOracleTest,HuntStopRulesTest" test
 ```
 
+## Precision authoring engine (summary)
+
+1. `AuthoringEngine` enum: `keel` (default) | `precision` on Automate, Execute, and All-in-one pipeline jobs.
+2. **Keel path** — unchanged: `StepIntentBinder` → heal cascade on failure.
+3. **Precision path** — `PrecisionBindService`: preflight (HTML, API key, server flag) before budget charge → `CursorHealClient.groundRank` → bind or one `solve` (`FreeInventHealer.parseInventResponse` for `steps[]`) → Keel fallback on cap / errors.
+4. **Job-scoped config** — `PrecisionJobConfig` on `ConversionJobRequest` (no `System.setProperty` in workers).
+5. **Shared heal budget** — `HealCascade.attachPrecisionBudget` so post-fail Cursor heal shares the per-job cap on Precision jobs.
+6. **Telemetry** — per-TC `precisionFallback`, call delta, `groundRank`/`solve` in `healTier` merge; `PRECISION_FALLBACK` banner on status page.
+7. **Portal** — radio on `/automate`, `/execute`, `/generate` (All in one); `authoringEngine` on job API; `request.json` under `automate-runs/` / `execute-runs/`.
+8. **CLI** — `DeliveryCli --authoring-engine keel|precision`.
+
+Key classes: `delivery.authoring.PrecisionBindService`, `PrecisionCallBudget`, `PrecisionJobConfig`, `delivery.job.AuthoringJobRequestFiles`, `ProvePhase.PrecisionJobTracker`.
+
+```bat
+mvn -q "-Dtest=AuthoringEngineTest,PrecisionBindServiceTest,PrecisionJobConfigTest,PrecisionCallBudgetTest,GroundRankResultTest,CursorHealClientGroundRankTest,AuthoringEngineApiTest" test
+```
+
 ## Heal contract (summary)
 
 1. Bind Excel intents to live DOM candidates (no invented locators at bind time).
-2. Ollama picks from a shortlist when bind is weak.
-3. Cursor invent/solve may write locators **or** a structured recovery plan (`mode: "recovery"`).
-4. Recovery steps are validated against the page, executed, evidenced, then the **same** intent is retried.
-5. Caps: invent budget per TC; one recovery attempt per intent; allowlisted recovery actions only.
+2. **Precision jobs** may bind via Cursor `groundRank` / `solve` before heal (see above).
+3. Ollama picks from a shortlist when bind is weak.
+4. Cursor invent/solve may write locators **or** a structured recovery plan (`mode: "recovery"`).
+5. Recovery steps are validated against the page, executed, evidenced, then the **same** intent is retried.
+6. Caps: invent budget per TC; one recovery attempt per intent; allowlisted recovery actions only; Precision jobs also share `delivery.authoring.precision.max-calls-per-job`.
 
 ## Quality gate (summary)
 

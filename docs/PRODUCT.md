@@ -95,8 +95,10 @@ Turn stories or AI output into a Keel workbook stored on the project (`generated
 
 ### All in one pipeline
 
+- Pick **Keel** or **Precision (Cursor)** for the Automate and Execute stages (default Keel).
 - Confirm, then: Generate (with second coverage pass) → Automate → Execute.
 - Stage links show where each part landed (workbook on Generate, ZIP on Automate, run on Execute).
+- Warning when Precision is disabled server-side (`delivery.authoring.precision.enabled=false`).
 
 ### Bulk generate
 
@@ -173,9 +175,8 @@ Each case can declare where it should run:
 | `MANUAL` | Skip both run surfaces |
 | *(blank)* | Legacy: eligible on both Automate and Execute |
 
-- **Automate** runs `AUTOMATE` + blank. Skips EXECUTE / VISION_ONLY / MANUAL.
-- **Execute** runs AUTOMATE + EXECUTE + VISION_ONLY + blank. Skips **MANUAL** only.
-- Banners show path counts. Wrong-surface submit is **blocked**. Minority-surface is a confirm warning.
+- **Automate** and **Execute** share the same runnable set: `AUTOMATE`, `EXECUTE`, `VISION_ONLY`, and blank. Only **MANUAL** is skipped on both surfaces.
+- Banners show path counts. Wrong-surface submit is **blocked** when a surface has zero runnable rows. Minority-surface is a confirm warning.
 
 ---
 
@@ -231,6 +232,7 @@ Run cases on the live site **without** building a customer ZIP.
 - Mix: library ∪ upload; **same `TC_ID` → upload wins**.
 - Optional PNG design mockup per TC (also on project Settings).
 - Optional **Review selected TCs with Cursor before run** (propose only). **Accept & run** uses that CSV **for this job only** — it does not save the library.
+- **Authoring engine**: **Keel** (default) or **Precision (Cursor)** — higher accuracy on complex UIs; requires `CURSOR_API_KEY`; falls back to Keel if unavailable (~50 API calls per job).
 - **Start execute run**. Cancel while running.
 
 ### While it runs
@@ -269,7 +271,8 @@ Turn the workbook into a **downloadable Java Selenium TestNG** package.
 - **UPDATE** — only TCs whose Steps/ExpectedResult changed; needs a prior NEW (`UPDATE_WITHOUT_FRAMEWORK` if none).
 - **Client delivery** checkbox — extra final-revise audit before download (off unless the server has `delivery.final-revise.enabled=true` and `AGENTROUTER_API_KEY`). You can still download; the job may be marked as needing review.
 - Optional Cursor **pre-run review** (same propose-only rule as Execute).
-- KeelPath guard: cannot start Automate if there are no AUTOMATE/blank rows.
+- **Authoring engine**: **Keel** (default) or **Precision (Cursor)** — same semantics as Execute.
+- KeelPath guard: cannot start Automate if there are no runnable rows (everything except `MANUAL`).
 
 ### What the job does (in order)
 
@@ -288,6 +291,28 @@ Locator memory remembers working locators **per live page path**. Auth-only loca
 
 ---
 
+## Authoring engine (Keel vs Precision)
+
+Per **Automate**, **Execute**, and **All in one** job you choose how intents bind to the live DOM during Prove.
+
+| Engine | Bind path | Needs |
+|--------|-----------|--------|
+| **Keel** | Deterministic DOM bind; on failure → heal cascade (Ollama shortlist → Cursor pick/invent → recovery) | Local Ollama (for heal tiers) |
+| **Precision** | DOM shortlist → one Cursor `groundRank` (multimodal) → bind on high/medium confidence; one `solve` on low; Keel fallback on cap/errors | `CURSOR_API_KEY` + `delivery.cursor-heal.enabled=true` |
+
+**Server knobs** (`application.properties`):
+
+- `delivery.authoring.precision.enabled` — when `false`, Precision jobs fall back to Keel immediately; the portal shows a warning if you pick Precision.
+- `delivery.authoring.precision.max-calls-per-job` — shared cap for `groundRank`, `solve`, and Precision-era post-fail Cursor heal (default `50`).
+
+**Per-job artifacts**: `automate-runs/{jobId}/request.json` or `execute-runs/{jobId}/request.json` records `authoringEngine`. IR drafts store per-TC precision call counts and fallback flags. Status page shows a muted banner when any intent used Keel fallback (`PRECISION_FALLBACK`).
+
+**CLI**: `DeliveryCli --authoring-engine keel|precision`.
+
+Design: `docs/superpowers/specs/2026-09-11-authoring-precision-engine-design.md`.
+
+---
+
 ## Vision (optional)
 
 Requires a vision model in Ollama (UI-TARS by default; `delivery.vision.provider=qwen` to fall back).
@@ -301,7 +326,8 @@ Requires a vision model in Ollama (UI-TARS by default; `delivery.vision.provider
 
 ## Command line
 
-- `delivery.cli.DeliveryCli` — batch conversion without the UI.
+- `delivery.cli.DeliveryCli` — batch Automate conversion without the UI.
+- `--authoring-engine keel|precision` (default `keel`).
 - Ops notes: `docs/ops/` (Ollama, portal restart, Windows).
 
 Start scripts:

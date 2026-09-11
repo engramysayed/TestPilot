@@ -16,6 +16,45 @@ Internal design notes stay under `docs/superpowers/`. Engineers can start from `
 
 ---
 
+## 2026-09-11 — Precision authoring engine (Keel vs Cursor)
+
+**Commit:** `d4927cc` — *feat(authoring): add Precision engine with review fixes and pipeline toggle*  
+**Surfaces:** **Automate**, **Execute**, **Generate → All in one**, CLI, job status API.
+
+### What you can do
+
+- Choose **Keel** (default) or **Precision (Cursor)** when starting Automate, Execute, or the All-in-one pipeline.
+- Precision uses Cursor `groundRank` (multimodal) plus an optional one-shot `solve` per intent, with automatic **Keel fallback** when the API is missing, the cap is hit, or bind fails.
+- See per-job fallback on the status page (`PRECISION_FALLBACK` banner) and in IR drafts (per-TC precision metadata).
+- Run batch conversion from CLI: `--authoring-engine precision`.
+
+### Why
+
+Keel bind + heal is fast and deterministic but can struggle on dense or dynamic UIs. Precision trades API calls for stronger initial grounding while keeping Keel as the safety net.
+
+### How to use it
+
+1. Set `CURSOR_API_KEY` and start with `start-portal-with-cursor-heal.bat` (or equivalent env).
+2. On **Automate**, **Execute**, or **Generate → All in one**, pick **Precision (Cursor)**.
+3. Watch the job status — if Precision could not bind an intent, the banner explains Keel fallback.
+4. Server-wide off switch: `delivery.authoring.precision.enabled=false` (portal warns when Precision is selected).
+
+### What we did not change
+
+- **Keel remains the default** for every surface unless you opt in.
+- Generate / Compare / Bug Hunter planner paths are unchanged.
+- Bug Hunter and Hunt changes in the working tree are **not** part of this publish.
+
+### Known limits
+
+- ~50 Cursor calls per job by default (`delivery.authoring.precision.max-calls-per-job`).
+- Precision does not replace heal cascade — it improves the **first** bind; failures still flow through Ollama/Cursor invent/recovery (within the shared cap on Precision jobs).
+- No Claude / Anthropic models (project rule).
+
+**Specs:** `docs/superpowers/specs/2026-09-11-authoring-precision-engine-design.md`, fix plan `docs/superpowers/plans/2026-09-11-precision-engine-fixes.md`.
+
+---
+
 ## 2026-09-10 — Bug Hunter (exploratory) + quality loop
 
 **Commits:** `793a7a6` — *feat(hunt): ship Bug Hunter with page map, coverage, strategies, oracles* (plus docs follow-up).  

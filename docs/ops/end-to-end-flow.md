@@ -169,6 +169,8 @@ Tier is recorded per step, and a test case is tagged with the riskiest tier any 
 | Tier | What resolved the step | Risk |
 | --- | --- | --- |
 | `none` | Deterministic DOM binding | Lowest |
+| `groundRank` | Precision job: Cursor multimodal rank on initial bind | Low–medium |
+| `solve` | Precision job: Cursor one-shot solve after low-confidence rank | Medium |
 | `ollama` | Local model picked from a distinctive shortlist | Low |
 | `cursor` | Cursor sidecar picked from a distinctive shortlist | Medium |
 | `vision` | Pick came from a widened pool — no distinctive tokens matched | High |
@@ -209,4 +211,6 @@ Per job, the portal sends `authoringEngine: keel | precision` (stored in `automa
 | **Keel** | Existing deterministic bind → Ollama pick → Cursor heal cascade (unchanged) |
 | **Precision** | DOM shortlist → one multimodal Cursor `groundRank` call → bind on high/medium confidence; one `solve` on low confidence; auto-fallback to Keel on cap, missing `CURSOR_API_KEY`, or sidecar errors |
 
-Precision skips UI-TARS Layer 1.5 on the initial bind (vision is inside `groundRank`). Job messages include `PRECISION_FALLBACK` when any intent fell back; the status page shows a muted banner.
+Precision skips UI-TARS Layer 1.5 on the initial bind (vision is inside `groundRank`). Post-fail heal on Precision jobs shares the same per-job call cap via `HealCascade.attachPrecisionBudget`. Job messages include `PRECISION_FALLBACK` when any intent fell back; the status page shows a muted banner.
+
+**Where to choose engine:** Automate upload, Execute start, Generate → All in one (pipeline API `authoringEngine`), CLI `--authoring-engine`.
