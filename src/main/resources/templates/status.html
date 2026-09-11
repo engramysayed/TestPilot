@@ -34,7 +34,7 @@
                 <p class="panel-intro" th:if="${isExecuteJob}">This page polls until the execute run finishes.</p>
                 <p class="panel-intro" th:if="${isGenerateBatchJob}">This page polls while each user story is generated one-by-one.</p>
                 <p class="panel-intro" th:if="${isGenerateCompareJob}">This page polls while both models generate test cases in the background.</p>
-                <p class="panel-intro" th:if="${isHuntJob}">This page polls until the Bug Hunter finishes (finish or cycle ceiling).</p>
+                <p class="panel-intro" th:if="${isHuntJob}">This page polls until the Bug Hunter finishes (planner finish, iteration cap, or cycle cap).</p>
                 <p class="panel-intro" th:if="${!isExecuteJob and !isGenerateBatchJob and !isGenerateCompareJob and !isHuntJob}">This page polls until the job finishes.</p>
             </div>
         </div>
@@ -61,6 +61,9 @@
            th:hidden="${isExecuteJob or jobStatus != 'COMPLETED_WITH_BLOCK'}">
             Soft block — ZIP is downloadable for inspection but <strong>not client-ready</strong>.
             See <code>docs/FINAL_REVISE.md</code> in the package.
+        </p>
+        <p id="precision-fallback-banner" class="muted" hidden>
+            Precision engine fell back to Keel for some steps — results used deterministic grounding.
         </p>
         <p id="download-wrap"
            th:hidden="${isExecuteJob or (jobStatus != 'COMPLETED' and jobStatus != 'COMPLETED_WITH_BLOCK' and !(isHuntJob and jobStatus == 'FAILED'))}">
@@ -248,6 +251,11 @@
         const tot = data.progressTotal || 0;
         document.getElementById('progress').textContent = cur + ' / ' + tot;
         document.getElementById('message').textContent = data.message || '—';
+        const precisionBanner = document.getElementById('precision-fallback-banner');
+        if (precisionBanner) {
+            const msgText = String(data.message || '');
+            precisionBanner.hidden = !msgText.includes('PRECISION_FALLBACK');
+        }
         document.getElementById('passed').textContent = data.passedCount != null ? data.passedCount : 0;
         document.getElementById('todo').textContent = data.todoCount != null ? data.todoCount : 0;
         const active = isActiveStatus(data.status || '');

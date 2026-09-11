@@ -1,6 +1,7 @@
 package delivery.heal;
 
 import delivery.authoring.AuthoringService;
+import delivery.authoring.PrecisionCallBudget;
 import delivery.authoring.DomCandidate;
 import delivery.authoring.DomCandidateExtractor;
 import delivery.authoring.StepIntentBinder;
@@ -40,6 +41,8 @@ public class HealCascade {
     private String allowedOpenPath = "";
     /** Fuller page HTML for recovery presence checks when slim HTML drops attributes. */
     private String presenceHtml = "";
+    /** When set, Cursor heal/solve calls share the Precision per-job cap. */
+    private PrecisionCallBudget precisionBudget;
 
     public void setPresenceHtml(String html) {
         this.presenceHtml = html == null ? "" : html;
@@ -103,6 +106,10 @@ public class HealCascade {
 
     public void setExcelOpenPath(String excelOpenPath) {
         this.allowedOpenPath = excelOpenPath == null ? "" : excelOpenPath.trim();
+    }
+
+    public void attachPrecisionBudget(PrecisionCallBudget budget) {
+        this.precisionBudget = budget;
     }
 
     public HealCascade(AuthoringService authoring) {
@@ -325,6 +332,9 @@ public class HealCascade {
                 && !solveReason.contains("Excel open-path")) {
             solveReason = solveReason
                     + "\nExcel open-path (only allowed navigation target): " + allowedOpenPath;
+        }
+        if (!allowPrecisionCursorCall("solve")) {
+            return HealResult.fail("HEAL_EXHAUSTED: precision call cap exceeded");
         }
         String raw = cursor.solve(
                 intent.text(), solveReason, table, htmlExcerpt, screenshotPathOrNull, priorSteps);
@@ -611,6 +621,17 @@ public class HealCascade {
                 .anyMatch(c -> StepIntentBinder.candidateSharesFieldToken(intent.text(), c));
     }
 
+    private boolean allowPrecisionCursorCall(String label) {
+        if (precisionBudget == null) {
+            return true;
+        }
+        if (precisionBudget.tryConsume()) {
+            return true;
+        }
+        LogsManager.info("PRECISION_BUDGET: skipped heal " + label + " — cap exceeded");
+        return false;
+    }
+
     private HealResult tryInvent(
             String tcId,
             StepIntentBinder.IntentLine intent,
@@ -626,6 +647,9 @@ public class HealCascade {
             if (allowInvent) {
                 logInventBudgetExhausted(tcId);
             }
+            return null;
+        }
+        if (precisionBudget != null && !allowPrecisionCursorCall("invent")) {
             return null;
         }
         Optional<HealResult> healed = freeInvent.inventHealResult(

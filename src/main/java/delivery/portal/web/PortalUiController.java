@@ -115,6 +115,7 @@ public class PortalUiController {
         model.addAttribute("projects", store.listProjects(currentUser.requireUserId()));
         model.addAttribute("projectId", projectId == null ? "" : projectId);
         model.addAttribute("finalReviseEnabled", portalProperties.isFinalReviseEnabled());
+        model.addAttribute("precisionAuthoringEnabled", portalProperties.isPrecisionAuthoringEnabled());
         return "upload";
     }
 
@@ -122,6 +123,7 @@ public class PortalUiController {
     public String generate(Model model) {
         addNav(model);
         model.addAttribute("navActive", "generate");
+        model.addAttribute("precisionAuthoringEnabled", portalProperties.isPrecisionAuthoringEnabled());
         return "generate";
     }
 
@@ -129,6 +131,7 @@ public class PortalUiController {
     public String execute(Model model) {
         addNav(model);
         model.addAttribute("navActive", "execute");
+        model.addAttribute("precisionAuthoringEnabled", portalProperties.isPrecisionAuthoringEnabled());
         return "execute";
     }
 

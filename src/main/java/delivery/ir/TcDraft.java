@@ -27,7 +27,12 @@ public record TcDraft(
         String healTier,
         String healSkipReason,
         /** Login form URL stem for reclustering login steps (D13). */
-        String loginFormUrl
+        String loginFormUrl,
+        /** Job-level authoring engine used during prove. */
+        String jobAuthoringEngine,
+        int precisionCallsUsed,
+        boolean precisionFallback,
+        String precisionFallbackReason
 ) {
     public TcDraft {
         provenSteps = provenSteps == null ? List.of() : List.copyOf(provenSteps);
@@ -42,6 +47,35 @@ public record TcDraft(
         healTier = healTier == null || healTier.isBlank() ? "none" : healTier;
         healSkipReason = healSkipReason == null ? "" : healSkipReason;
         loginFormUrl = loginFormUrl == null ? "" : loginFormUrl;
+        jobAuthoringEngine = jobAuthoringEngine == null || jobAuthoringEngine.isBlank()
+                ? "keel" : jobAuthoringEngine;
+        precisionFallbackReason = precisionFallbackReason == null ? "" : precisionFallbackReason;
+    }
+
+    /** Compatibility constructor with heal metadata; precision fields default. */
+    public TcDraft(
+            String tcId,
+            String title,
+            String stepsText,
+            String expectedResult,
+            TcDraftStatus status,
+            List<ProvenStep> provenSteps,
+            List<ProvenStep> loginSteps,
+            boolean needsLoginBeforeMethod,
+            int blockerStepIndex,
+            String blockerIntent,
+            String failureReason,
+            String evidenceDir,
+            int retryCountOnBlocker,
+            String lastPageUrl,
+            String healTier,
+            String healSkipReason,
+            String loginFormUrl
+    ) {
+        this(tcId, title, stepsText, expectedResult, status, provenSteps, loginSteps,
+                needsLoginBeforeMethod, blockerStepIndex, blockerIntent, failureReason,
+                evidenceDir, retryCountOnBlocker, lastPageUrl, healTier, healSkipReason, loginFormUrl,
+                "keel", 0, false, "");
     }
 
     /** Compatibility constructor without heal / login-form metadata. */
@@ -63,7 +97,8 @@ public record TcDraft(
     ) {
         this(tcId, title, stepsText, expectedResult, status, provenSteps, loginSteps,
                 needsLoginBeforeMethod, blockerStepIndex, blockerIntent, failureReason,
-                evidenceDir, retryCountOnBlocker, lastPageUrl, "none", "", "");
+                evidenceDir, retryCountOnBlocker, lastPageUrl, "none", "", "",
+                "keel", 0, false, "");
     }
 
     public TcDraft withHeal(String tier, String skipReason) {
@@ -71,7 +106,8 @@ public record TcDraft(
                 tcId, title, stepsText, expectedResult, status, provenSteps, loginSteps,
                 needsLoginBeforeMethod, blockerStepIndex, blockerIntent, failureReason,
                 evidenceDir, retryCountOnBlocker, lastPageUrl,
-                tier, skipReason, loginFormUrl);
+                tier, skipReason, loginFormUrl,
+                jobAuthoringEngine, precisionCallsUsed, precisionFallback, precisionFallbackReason);
     }
 
     public TcDraft withLoginFormUrl(String url) {
@@ -79,6 +115,17 @@ public record TcDraft(
                 tcId, title, stepsText, expectedResult, status, provenSteps, loginSteps,
                 needsLoginBeforeMethod, blockerStepIndex, blockerIntent, failureReason,
                 evidenceDir, retryCountOnBlocker, lastPageUrl,
-                healTier, healSkipReason, url);
+                healTier, healSkipReason, url,
+                jobAuthoringEngine, precisionCallsUsed, precisionFallback, precisionFallbackReason);
+    }
+
+    public TcDraft withPrecisionJob(
+            String engine, int callsUsed, boolean fallback, String fallbackReason) {
+        return new TcDraft(
+                tcId, title, stepsText, expectedResult, status, provenSteps, loginSteps,
+                needsLoginBeforeMethod, blockerStepIndex, blockerIntent, failureReason,
+                evidenceDir, retryCountOnBlocker, lastPageUrl,
+                healTier, healSkipReason, loginFormUrl,
+                engine, callsUsed, fallback, fallbackReason);
     }
 }

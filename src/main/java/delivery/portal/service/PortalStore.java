@@ -522,6 +522,9 @@ public class PortalStore {
         job.setGenerateModel(e.getGenerateModel());
         job.setCreatedAt(e.getCreatedAt());
         job.setCompletedAt(e.getCompletedAt());
+        job.setAuthoringEngine(delivery.job.AuthoringJobRequestFiles.read(
+                delivery.job.AuthoringJobRequestFiles.requestPath(
+                        projectDiskRoot(e.getProjectId()), parseJobKind(e.getJobKind()), e.getJobId())));
         jobs.put(job.getJobId(), job);
         return job;
     }

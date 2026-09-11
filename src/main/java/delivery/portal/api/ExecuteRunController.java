@@ -1,6 +1,8 @@
 package delivery.portal.api;
 
+import delivery.authoring.AuthoringEngine;
 import delivery.excel.ExcelTcReader;
+import delivery.job.AuthoringJobRequestFiles;
 import delivery.excel.GenerateQualityGate;
 import delivery.excel.InvalidExcelTemplateException;
 import delivery.excel.KeelPathCaseFilter;
@@ -79,7 +81,8 @@ public class ExecuteRunController {
             @RequestParam(value = "excel", required = false) MultipartFile excel,
             @RequestParam(value = "useGenerated", required = false, defaultValue = "false") String useGenerated,
             @RequestParam(value = "tcIds", required = false) List<String> tcIds,
-            @RequestParam(value = "credentialProfile", required = false) String credentialProfile
+            @RequestParam(value = "credentialProfile", required = false) String credentialProfile,
+            @RequestParam(value = "authoringEngine", required = false, defaultValue = "keel") String authoringEngine
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
         if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
@@ -151,6 +154,7 @@ public class ExecuteRunController {
         }
 
         String jobId = "exec_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        AuthoringEngine engine = AuthoringEngine.parse(authoringEngine);
         JobRecord job = new JobRecord(
                 jobId,
                 projectId,
@@ -163,6 +167,10 @@ public class ExecuteRunController {
                 false,
                 JobRecord.JobKind.EXECUTE
         );
+        job.setAuthoringEngine(engine);
+        Path requestPath = AuthoringJobRequestFiles.requestPath(
+                store.projectDiskRoot(projectId), JobRecord.JobKind.EXECUTE, jobId);
+        AuthoringJobRequestFiles.write(requestPath, engine);
         store.saveJob(job);
         worker.submit(jobId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(

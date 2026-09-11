@@ -197,3 +197,16 @@ AgentRouter is not part of heal. The only exception is opt-in: `delivery.heal.in
 | `delivery.heal.invent.max-per-tc` | `2` | Invent budget per test case |
 | `delivery.heal.invent.agentrouter.model` | unset | Cheap model for invent; warns and falls back to the audit model |
 | `delivery.honesty-demote` | `false` | Demote thin PASSes outside client delivery |
+| `delivery.authoring.precision.enabled` | `true` | When false, Precision jobs fall back to Keel immediately |
+| `delivery.authoring.precision.max-calls-per-job` | `50` | Cap on Cursor `groundRank` + `solve` calls per Automate/Execute job |
+
+## Authoring engine (Automate + Execute)
+
+Per job, the portal sends `authoringEngine: keel | precision` (stored in `automate-runs/{jobId}/request.json` or `execute-runs/{jobId}/request.json`). Default is **Keel**.
+
+| Engine | Bind path |
+| --- | --- |
+| **Keel** | Existing deterministic bind → Ollama pick → Cursor heal cascade (unchanged) |
+| **Precision** | DOM shortlist → one multimodal Cursor `groundRank` call → bind on high/medium confidence; one `solve` on low confidence; auto-fallback to Keel on cap, missing `CURSOR_API_KEY`, or sidecar errors |
+
+Precision skips UI-TARS Layer 1.5 on the initial bind (vision is inside `groundRank`). Job messages include `PRECISION_FALLBACK` when any intent fell back; the status page shows a muted banner.

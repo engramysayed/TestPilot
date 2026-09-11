@@ -1,5 +1,6 @@
 package delivery.portal.worker;
 
+import delivery.authoring.PrecisionJobConfig;
 import delivery.job.ConversionJobRequest;
 import delivery.job.ConversionJobResult;
 import delivery.job.ConversionJobRunner;
@@ -52,8 +53,9 @@ public class ConversionWorker {
             if (props.getFinalReviseApiKey() != null && !props.getFinalReviseApiKey().isBlank()) {
                 System.setProperty("delivery.final-revise.api-key", props.getFinalReviseApiKey());
             }
-
             boolean effectiveFinalRevise = props.isFinalReviseEnabled() && job.isFinalRevise();
+            PrecisionJobConfig precisionConfig = PrecisionJobConfig.fromPortal(
+                    props.isPrecisionAuthoringEnabled(), props.getPrecisionMaxCallsPerJob());
             ConversionJobRequest request = new ConversionJobRequest(
                     job.getProjectId(),
                     job.getExcelPath(),
@@ -67,7 +69,9 @@ public class ConversionWorker {
                     props.getLlmBaseUrl(),
                     props.getLlmModel(),
                     effectiveFinalRevise,
-                    props.isCodegenOllamaNaming()
+                    props.isCodegenOllamaNaming(),
+                    job.getAuthoringEngine(),
+                    precisionConfig
             );
 
             ConversionJobResult result;

@@ -1,12 +1,17 @@
 package delivery.job;
 
+import delivery.authoring.AuthoringEngine;
 import delivery.authoring.AuthoringService;
+import delivery.authoring.DummyValueInventor;
 import delivery.authoring.LocalLlmClient;
 import delivery.authoring.LocatorValidator;
 import delivery.authoring.LoginStepDetector;
+import delivery.authoring.PrecisionBindOutcome;
+import delivery.authoring.PrecisionBindService;
+import delivery.authoring.PrecisionCallBudget;
+import delivery.authoring.PrecisionJobConfig;
 import delivery.authoring.RequiredControlFiller;
 import delivery.authoring.StepIntentBinder;
-import delivery.authoring.DummyValueInventor;
 import delivery.codegen.PageClusterer;
 import delivery.codegen.PageNameNormalizer;
 import delivery.codegen.ProvenStep;
@@ -65,6 +70,52 @@ public class ProvePhase {
     private Path mirrorRoot;
     private BooleanSupplier cancelCheck = () -> false;
     private HealWorkbookApplier healWorkbookApplier;
+    private PrecisionBindService precisionBindService;
+    private PrecisionJobTracker precisionTracker = new PrecisionJobTracker(AuthoringEngine.KEEL);
+
+    private static final class PrecisionJobTracker {
+        final AuthoringEngine engine;
+        private boolean tcFallback;
+        private String tcFallbackReason = "";
+        private int tcCallsAtStart;
+
+        PrecisionJobTracker(AuthoringEngine engine) {
+            this.engine = engine == null ? AuthoringEngine.KEEL : engine;
+        }
+
+        void beginTc(int callsUsedNow) {
+            tcCallsAtStart = callsUsedNow;
+            tcFallback = false;
+            tcFallbackReason = "";
+        }
+
+        int tcCallsUsed(int callsUsedNow) {
+            return Math.max(0, callsUsedNow - tcCallsAtStart);
+        }
+
+        void noteTcFallback(String reason) {
+            tcFallback = true;
+            if (reason != null && !reason.isBlank()) {
+                tcFallbackReason = reason;
+            }
+        }
+
+        boolean tcFallback() {
+            return tcFallback;
+        }
+
+        String tcFallbackReason() {
+            return tcFallbackReason;
+        }
+    }
+
+    private record PrecisionBindResult(
+            List<ProvenStep> steps,
+            String tier,
+            boolean fellBack,
+            String fallbackReason
+    ) {
+    }
 
     @FunctionalInterface
     public interface HealWorkbookApplier {
@@ -119,6 +170,19 @@ public class ProvePhase {
                         () -> new SeleniumGroundingBrowser(driverFactory.get()))
                 : new HealCascade(authoring, new CursorHealClient());
         TcExecutionService execution = new TcExecutionService(driverFactory, request);
+        AuthoringEngine jobEngine = request == null || request.authoringEngine() == null
+                ? AuthoringEngine.KEEL : request.authoringEngine();
+        precisionTracker = new PrecisionJobTracker(jobEngine);
+        precisionBindService = null;
+        PrecisionJobConfig precisionConfig = request == null || request.precisionConfig() == null
+                ? PrecisionJobConfig.DEFAULTS : request.precisionConfig();
+        if (jobEngine == AuthoringEngine.PRECISION) {
+            PrecisionCallBudget budget = PrecisionCallBudget.fromProperties(
+                    precisionConfig.enabled(), precisionConfig.maxCallsPerJob());
+            precisionBindService = new PrecisionBindService(
+                    authoring, new CursorHealClient(), budget, precisionConfig.enabled());
+            healCascade.attachPrecisionBudget(budget);
+        }
         JobLoginService jobLogin = new JobLoginService();
         boolean jobHasCredentials = request.username() != null && !request.username().isBlank()
                 && request.password() != null;
@@ -146,10 +210,12 @@ public class ProvePhase {
                 int jobTotal = progress.effectiveTotal(allCases.size());
                 progress.update(index, jobTotal, "Phase1 prove " + tc.tcId());
                 if (tcIdsToAuthor != null && !tcIdsToAuthor.contains(tc.tcId())) {
-                    TcDraft reused = new TcDraft(
+                    precisionTracker.beginTc(
+                            precisionBindService == null ? 0 : precisionBindService.callsUsed());
+                    TcDraft reused = stampPrecision(new TcDraft(
                             tc.tcId(), tc.title(), tc.steps(), tc.expectedResult(),
                             TcDraftStatus.REUSED, List.of(), List.of(), false,
-                            -1, "", "reused", "", 0, "");
+                            -1, "", "reused", "", 0, ""));
                     drafts.write(reused);
                     mirrorDraft(workDir, reused.tcId());
                     out.add(reused);
@@ -179,6 +245,7 @@ public class ProvePhase {
                 // Fresh browser at each leaf-chain start; Call-before → leaf keep the same session.
                 TcDraft draft = proveOne(tc, request, authoring, healCascade, execution, jobLogin,
                         driverFactory, evidence, jobHasCredentials, index, jobTotal, freshSession);
+                draft = stampPrecision(draft);
                 draft = scrubDraftSecrets(draft, request);
                 drafts.write(draft);
                 mirrorDraft(workDir, draft.tcId());
@@ -349,6 +416,8 @@ public class ProvePhase {
                     needsLogin, loginSteps, loginFormUrl, driverFactory, tcIndex, tcTotal);
         }
 
+        precisionTracker.beginTc(
+                precisionBindService == null ? 0 : precisionBindService.callsUsed());
         List<ProvenStep> provenAll = new ArrayList<>();
         List<FailedLocator> failedThisTc = new ArrayList<>();
         int intentIndex = 0;
@@ -621,15 +690,31 @@ public class ProvePhase {
                 }
 
                 byte[] healPng = execution.capturePngBytes();
+                Path bindShot = writeHealScreenshot(evidence, tc.tcId(), intentIndex, healPng);
+                boolean precisionPath = precisionBindService != null;
                 // Bind only — heal cascade owns Ollama + Cursor after bind/execute failure
-                List<ProvenStep> stepBatch = authoring.authorIntent(
-                        tc.tcId(), intent, html, healPng, false, provenSoFar, failedThisIntent);
+                List<ProvenStep> stepBatch;
+                if (precisionPath) {
+                    PrecisionBindResult precision = bindWithPrecision(
+                            authoring, tc.tcId(), intent, html, bindShot, priorSteps,
+                            provenSoFar, failedThisIntent, healPng, probe);
+                    stepBatch = precision.steps();
+                    if (precision.fellBack()) {
+                        precisionTracker.noteTcFallback(precision.fallbackReason());
+                    }
+                    if (precision.tier() != null && !precision.tier().isBlank()) {
+                        healTier = mergeHealTier(healTier, precision.tier());
+                    }
+                } else {
+                    stepBatch = authoring.authorIntent(
+                            tc.tcId(), intent, html, healPng, false, provenSoFar, failedThisIntent);
+                }
                 boolean bindFailed = stepBatch.isEmpty()
                         || stepBatch.stream().anyMatch(s -> !s.validated())
                         || refusesSubmitNavigation(intent, stepBatch);
                 boolean ollamaUsed = false;
                 boolean cursorUsed = false;
-                if (bindFailed && VisionGroundingConfig.enabled()
+                if (bindFailed && !precisionPath && VisionGroundingConfig.enabled()
                         && VisionTriggers.isEligible(intent)
                         && VisionTriggers.isWeakBind(stepBatch)) {
                     java.util.Optional<java.util.List<ProvenStep>> grounded = VisionProveHook.tryLayer15(
@@ -663,7 +748,7 @@ public class ProvePhase {
                     Path shot = writeHealScreenshot(evidence, tc.tcId(), intentIndex, healPng);
                     prepareHealPresence(healCascade, driverFactory);
                     HealResult healed = healCascade.heal(
-                            tc.tcId(), intent, html, healPng, lastReason, shot, true, priorSteps,
+                            tc.tcId(), intent, html, healPng, lastReason, shot, !precisionPath, priorSteps,
                             true, provenSoFar, failedThisIntent, probe);
                     if (!healed.ok()) {
                         lastPartial = autoFillSteps;
@@ -719,8 +804,8 @@ public class ProvePhase {
                         Path shot = writeHealScreenshot(evidence, tc.tcId(), intentIndex, failPng);
                         prepareHealPresence(healCascade, driverFactory);
                         HealResult healed = healCascade.heal(
-                                tc.tcId(), intent, freshHtml, failPng, lastReason, shot, true, priorSteps,
-                                true, provenSoFar, failedThisIntent, probe);
+                                tc.tcId(), intent, freshHtml, failPng, lastReason, shot, !precisionPath,
+                                priorSteps, true, provenSoFar, failedThisIntent, probe);
                         RecoveryOutcome recovery = tryRecoveryHeal(
                                 healed, tc, execution, evidence, recoveryAttemptsThisIntent, recoveredActions,
                                 request);
@@ -1233,6 +1318,71 @@ public class ProvePhase {
                 step.rationale(), step.screenshotRelPath());
     }
 
+    private PrecisionBindResult bindWithPrecision(
+            AuthoringService authoring,
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String html,
+            Path screenshotPath,
+            List<String> priorSteps,
+            List<ProvenStep> provenSoFar,
+            List<FailedLocator> failedThisIntent,
+            byte[] healPng,
+            CandidateLivenessProbe probe
+    ) throws Exception {
+        PrecisionBindOutcome outcome = precisionBindService.bindIntent(
+                tcId, intent, html, screenshotPath, priorSteps, provenSoFar, failedThisIntent, probe);
+        if (outcome instanceof PrecisionBindOutcome.Bound bound) {
+            return new PrecisionBindResult(bound.steps(), bound.tier(), false, "");
+        }
+        if (outcome instanceof PrecisionBindOutcome.NeedsSolve needs) {
+            PrecisionBindOutcome solved = precisionBindService.solveOnce(
+                    tcId, intent, needs.candidates(), needs.shortlist(), needs.table(),
+                    needs.htmlExcerpt(), screenshotPath, priorSteps);
+            if (solved instanceof PrecisionBindOutcome.Bound bound) {
+                return new PrecisionBindResult(bound.steps(), bound.tier(), false, "");
+            }
+            if (solved instanceof PrecisionBindOutcome.FallbackKeel fallback) {
+                return keelFallbackBind(authoring, tcId, intent, html, healPng, provenSoFar,
+                        failedThisIntent, fallback.reason());
+            }
+        }
+        if (outcome instanceof PrecisionBindOutcome.FallbackKeel fallback) {
+            return keelFallbackBind(authoring, tcId, intent, html, healPng, provenSoFar,
+                    failedThisIntent, fallback.reason());
+        }
+        return keelFallbackBind(authoring, tcId, intent, html, healPng, provenSoFar,
+                failedThisIntent, "PROVIDER_ERROR");
+    }
+
+    private PrecisionBindResult keelFallbackBind(
+            AuthoringService authoring,
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String html,
+            byte[] healPng,
+            List<ProvenStep> provenSoFar,
+            List<FailedLocator> failedThisIntent,
+            String reason
+    ) throws Exception {
+        LogsManager.info("PRECISION_FALLBACK: Keel bind for " + intent.text() + " (" + reason + ")");
+        List<ProvenStep> steps = authoring.authorIntent(
+                tcId, intent, html, healPng, false, provenSoFar, failedThisIntent);
+        return new PrecisionBindResult(steps, "keel-fallback", true, reason);
+    }
+
+    private TcDraft stampPrecision(TcDraft draft) {
+        if (draft == null) {
+            return null;
+        }
+        int callsNow = precisionBindService == null ? 0 : precisionBindService.callsUsed();
+        return draft.withPrecisionJob(
+                precisionTracker.engine.wireValue(),
+                precisionTracker.tcCallsUsed(callsNow),
+                precisionTracker.tcFallback(),
+                precisionTracker.tcFallbackReason());
+    }
+
     private static String hostOf(String url) {
         if (url == null || url.isBlank()) {
             return "";
@@ -1522,7 +1672,7 @@ public class ProvePhase {
             case "recovery" -> 6;
             case "invent" -> 5;
             case "vision" -> 4;
-            case "cursor" -> 3;
+            case "cursor", "groundrank", "solve" -> 3;
             case "ollama" -> 2;
             case "retry" -> 1;
             default -> 0;

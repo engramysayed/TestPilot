@@ -39,6 +39,7 @@ public class DeliveryPortalProperties {
     private CodegenProperties codegen = new CodegenProperties();
     private RetentionProperties retention = new RetentionProperties();
     private HuntProperties hunt = new HuntProperties();
+    private AuthoringProperties authoring = new AuthoringProperties();
 
     public static class CodegenProperties {
         /** Optional Ollama polish for generated test method names only (pages stay deterministic). */
@@ -62,6 +63,27 @@ public class DeliveryPortalProperties {
 
         public String getDomMode() { return domMode == null ? "auto" : domMode; }
         public void setDomMode(String domMode) { this.domMode = domMode; }
+    }
+
+    public static class AuthoringProperties {
+        private PrecisionProperties precision = new PrecisionProperties();
+
+        public PrecisionProperties getPrecision() { return precision; }
+        public void setPrecision(PrecisionProperties precision) {
+            this.precision = precision == null ? new PrecisionProperties() : precision;
+        }
+    }
+
+    public static class PrecisionProperties {
+        /** When false, Precision engine requests fall back to Keel immediately. */
+        private boolean enabled = true;
+        /** Max Cursor groundRank/solve calls per conversion or execute job. */
+        private int maxCallsPerJob = 50;
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+        public int getMaxCallsPerJob() { return maxCallsPerJob; }
+        public void setMaxCallsPerJob(int maxCallsPerJob) { this.maxCallsPerJob = maxCallsPerJob; }
     }
 
     public boolean isDryRun() { return dryRun; }
@@ -119,4 +141,14 @@ public class DeliveryPortalProperties {
     public void setRetention(RetentionProperties retention) { this.retention = retention; }
     public HuntProperties getHunt() { return hunt; }
     public void setHunt(HuntProperties hunt) { this.hunt = hunt == null ? new HuntProperties() : hunt; }
+    public AuthoringProperties getAuthoring() { return authoring; }
+    public void setAuthoring(AuthoringProperties authoring) {
+        this.authoring = authoring == null ? new AuthoringProperties() : authoring;
+    }
+    public boolean isPrecisionAuthoringEnabled() {
+        return authoring.getPrecision().isEnabled();
+    }
+    public int getPrecisionMaxCallsPerJob() {
+        return authoring.getPrecision().getMaxCallsPerJob();
+    }
 }

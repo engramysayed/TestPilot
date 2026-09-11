@@ -1,5 +1,6 @@
 package delivery.portal.api;
 
+import delivery.authoring.AuthoringEngine;
 import delivery.portal.model.ProjectRecord;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.PipelineService;
@@ -21,7 +22,7 @@ import java.util.Map;
 @RequestMapping("/api")
 public class PipelineController {
 
-    public record PipelineStartRequest(String stories) {}
+    public record PipelineStartRequest(String stories, String authoringEngine) {}
 
     private final PortalStore store;
     private final PipelineService pipelines;
@@ -50,8 +51,9 @@ public class PipelineController {
         }
 
         String stories = body == null ? null : body.stories();
+        AuthoringEngine engine = AuthoringEngine.parse(body == null ? null : body.authoringEngine());
         try {
-            Map<String, Object> started = pipelines.start(projectId, ownerId, stories);
+            Map<String, Object> started = pipelines.start(projectId, ownerId, stories, engine);
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("pipelineId", started.get("pipelineId"));
             out.put("status", started.get("status"));

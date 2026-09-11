@@ -1,5 +1,6 @@
 package delivery.portal.worker;
 
+import delivery.authoring.PrecisionJobConfig;
 import delivery.job.ConversionJobRequest;
 import delivery.job.DryRunExecuteService;
 import delivery.job.ExecuteJobResult;
@@ -41,6 +42,8 @@ public class ExecuteWorker {
         job.setMessage(props.isDryRun() ? "Dry-run execute" : "Starting execute");
         portalStore.syncJobPersistence(job);
         try {
+            PrecisionJobConfig precisionConfig = PrecisionJobConfig.fromPortal(
+                    props.isPrecisionAuthoringEnabled(), props.getPrecisionMaxCallsPerJob());
             ConversionJobRequest request = new ConversionJobRequest(
                     job.getProjectId(),
                     job.getExcelPath(),
@@ -53,7 +56,10 @@ public class ExecuteWorker {
                     job.getMode(),
                     props.getLlmBaseUrl(),
                     props.getLlmModel(),
-                    false
+                    false,
+                    false,
+                    job.getAuthoringEngine(),
+                    precisionConfig
             );
 
             ExecuteJobResult result;

@@ -1,6 +1,7 @@
 package delivery.portal.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import delivery.authoring.AuthoringEngine;
 import delivery.excel.KeelPathCounts;
 import delivery.excel.ManualTestCase;
 import delivery.portal.DeliveryPortalProperties;
@@ -73,7 +74,7 @@ public class PipelineServiceTest {
     }
 
     @Test
-    public void start_skipsAutomate_whenOnlyExecuteRunnable() throws Exception {
+    public void start_runsAutomateThenExecute_whenOnlyExecuteKeelPath() throws Exception {
         seedWorkbook("proj-exec-only", List.of(
                 new ManualTestCase("TC_E", "Exec", "", "1. Open", "ok", "P1", "", "", "", "EXECUTE")
         ));
@@ -82,7 +83,11 @@ public class PipelineServiceTest {
         String pipelineId = String.valueOf(started.get("pipelineId"));
 
         service.tick(pipelineId);
-        Assert.assertTrue(jobStarter.convertCalls.isEmpty());
+        Assert.assertEquals(jobStarter.convertCalls.size(), 1);
+        Assert.assertTrue(jobStarter.executeCalls.isEmpty());
+
+        jobStatus.complete(jobStarter.convertCalls.get(0).jobId());
+        service.tick(pipelineId);
         Assert.assertEquals(jobStarter.executeCalls.size(), 1);
 
         jobStatus.complete(jobStarter.executeCalls.get(0).jobId());
@@ -90,7 +95,7 @@ public class PipelineServiceTest {
 
         Assert.assertEquals(done.get("status"), "COMPLETED");
         Map<String, Object> saved = readPipeline(pipelineId);
-        Assert.assertEquals(stageStatus(saved, "AUTOMATE"), "SKIPPED");
+        Assert.assertEquals(stageStatus(saved, "AUTOMATE"), "COMPLETED");
         Assert.assertEquals(stageStatus(saved, "EXECUTE"), "COMPLETED");
     }
 
@@ -157,8 +162,38 @@ public class PipelineServiceTest {
         Assert.assertEquals(stageStatus(saved, "GENERATE"), "COMPLETED");
 
         service.tick(pipelineId);
-        Assert.assertTrue(jobStarter.convertCalls.isEmpty());
+        Assert.assertEquals(jobStarter.convertCalls.size(), 1);
+        Assert.assertTrue(jobStarter.executeCalls.isEmpty());
+
+        jobStatus.complete(jobStarter.convertCalls.get(0).jobId());
+        service.tick(pipelineId);
         Assert.assertEquals(jobStarter.executeCalls.size(), 1);
+    }
+
+    @Test
+    public void start_propagatesPrecisionEngine_toAutomateAndExecute() throws Exception {
+        seedWorkbook("proj-precision", List.of(
+                new ManualTestCase("TC_A", "Auto", "", "1. Click", "ok", "P1", "", "", "", "AUTOMATE"),
+                new ManualTestCase("TC_E", "Exec", "", "1. Open", "ok", "P1", "", "", "", "EXECUTE")
+        ));
+
+        Map<String, Object> started = service.start("proj-precision", OWNER, null, AuthoringEngine.PRECISION);
+        String pipelineId = String.valueOf(started.get("pipelineId"));
+        Assert.assertEquals("precision", started.get("authoringEngine"));
+
+        service.tick(pipelineId);
+        Assert.assertEquals(AuthoringEngine.PRECISION, jobStarter.convertCalls.get(0).authoringEngine());
+
+        jobStatus.complete(jobStarter.convertCalls.get(0).jobId());
+        service.tick(pipelineId);
+
+        Assert.assertEquals(AuthoringEngine.PRECISION, jobStarter.executeCalls.get(0).authoringEngine());
+
+        jobStatus.complete(jobStarter.executeCalls.get(0).jobId());
+        service.tick(pipelineId);
+
+        Map<String, Object> saved = readPipeline(pipelineId);
+        Assert.assertEquals("precision", saved.get("authoringEngine"));
     }
 
     @Test
@@ -205,21 +240,25 @@ public class PipelineServiceTest {
         private int seq;
 
         @Override
-        public String startConvert(String projectId, Long ownerUserId, boolean useGenerated) {
+        public String startConvert(String projectId, Long ownerUserId, boolean useGenerated,
+                                   AuthoringEngine authoringEngine) {
             String jobId = "job_fake_" + (++seq);
-            convertCalls.add(new ConvertCall(projectId, ownerUserId, useGenerated, jobId));
+            convertCalls.add(new ConvertCall(projectId, ownerUserId, useGenerated, authoringEngine, jobId));
             return jobId;
         }
 
         @Override
-        public String startExecute(String projectId, Long ownerUserId, boolean useGenerated) {
+        public String startExecute(String projectId, Long ownerUserId, boolean useGenerated,
+                                   AuthoringEngine authoringEngine) {
             String jobId = "exec_fake_" + (++seq);
-            executeCalls.add(new ExecuteCall(projectId, ownerUserId, useGenerated, jobId));
+            executeCalls.add(new ExecuteCall(projectId, ownerUserId, useGenerated, authoringEngine, jobId));
             return jobId;
         }
 
-        record ConvertCall(String projectId, Long ownerUserId, boolean useGenerated, String jobId) {}
-        record ExecuteCall(String projectId, Long ownerUserId, boolean useGenerated, String jobId) {}
+        record ConvertCall(String projectId, Long ownerUserId, boolean useGenerated,
+                         AuthoringEngine authoringEngine, String jobId) {}
+        record ExecuteCall(String projectId, Long ownerUserId, boolean useGenerated,
+                         AuthoringEngine authoringEngine, String jobId) {}
     }
 
     static final class FakeJobStatus implements JobStatusLookup {

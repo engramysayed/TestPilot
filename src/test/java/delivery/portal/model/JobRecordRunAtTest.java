@@ -44,4 +44,15 @@ public class JobRecordRunAtTest {
         Instant now = Instant.parse("2026-08-31T10:01:05Z");
         Assert.assertEquals(JobRecord.workingForLabel(created, now), "Working for 1:05");
     }
+
+    @Test
+    public void setMessageClampsToVarchar1024() {
+        JobRecord job = new JobRecord(
+                "job_4", "prj_1", 1L, "HEADLESS", Path.of("x.xlsx"),
+                "https://example.com", "", "", false, JobRecord.JobKind.HUNT);
+        String huge = "x".repeat(2000);
+        job.setMessage(huge);
+        Assert.assertTrue(job.getMessage().length() <= JobRecord.MESSAGE_MAX_CHARS);
+        Assert.assertTrue(job.getMessage().endsWith("…"));
+    }
 }

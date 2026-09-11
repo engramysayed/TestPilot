@@ -1,6 +1,8 @@
 package delivery.portal.api;
 
+import delivery.authoring.AuthoringEngine;
 import delivery.excel.ExcelTcReader;
+import delivery.job.AuthoringJobRequestFiles;
 import delivery.excel.GenerateQualityGate;
 import delivery.excel.InvalidExcelTemplateException;
 import delivery.excel.KeelPathCaseFilter;
@@ -69,7 +71,8 @@ public class JobController {
             @RequestParam(value = "tcIds", required = false) List<String> tcIds,
             @RequestParam(value = "credentialProfile", required = false) String credentialProfile,
             @RequestParam(value = "mode", defaultValue = "NEW") String mode,
-            @RequestParam(value = "finalRevise", required = false, defaultValue = "false") String finalRevise
+            @RequestParam(value = "finalRevise", required = false, defaultValue = "false") String finalRevise,
+            @RequestParam(value = "authoringEngine", required = false, defaultValue = "keel") String authoringEngine
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
         if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
@@ -152,6 +155,7 @@ public class JobController {
                 || "on".equalsIgnoreCase(finalRevise);
         boolean wantFinalRevise = portalProperties.isFinalReviseEnabled() && clientWantsFinalRevise;
         String jobId = "job_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        AuthoringEngine engine = AuthoringEngine.parse(authoringEngine);
         JobRecord job = new JobRecord(
                 jobId,
                 projectId,
@@ -164,6 +168,10 @@ public class JobController {
                 wantFinalRevise,
                 JobRecord.JobKind.CONVERT
         );
+        job.setAuthoringEngine(engine);
+        Path requestPath = AuthoringJobRequestFiles.requestPath(
+                store.projectDiskRoot(projectId), JobRecord.JobKind.CONVERT, jobId);
+        AuthoringJobRequestFiles.write(requestPath, engine);
         store.saveJob(job);
         worker.submit(jobId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
@@ -238,6 +246,7 @@ public class JobController {
                     body.put("downloadable", JobRecord.isDownloadable(job.getJobKind(), job.getStatus()));
                     body.put("softBlocked", job.getStatus() == JobRecord.Status.COMPLETED_WITH_BLOCK);
                     body.put("finalRevise", job.isFinalRevise());
+                    body.put("authoringEngine", job.getAuthoringEngine().wireValue());
                     body.put("cancellable", isCancellable(job.getStatus()));
                     return ResponseEntity.ok(body);
                 })

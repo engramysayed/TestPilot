@@ -48,13 +48,18 @@ async function main() {
     process.exit(2);
   }
 
-  const mode = ["invent", "solve", "authoring-review", "hunt"].includes(req.mode) ? req.mode : "pick";
+  const mode = ["invent", "solve", "authoring-review", "hunt", "groundRank"].includes(req.mode)
+    ? req.mode
+    : "pick";
   const intent = req.intent || "";
   const failureReason = req.failureReason || "";
   const shortlist = req.shortlist || "";
   const priorSteps = Array.isArray(req.priorSteps) ? req.priorSteps.slice(0, 12) : [];
   const visionAttempts = Array.isArray(req.visionAttempts) ? req.visionAttempts.slice(0, 8) : [];
-  const slimHtmlExcerpt = (req.slimHtmlExcerpt || "").slice(0, mode === "pick" ? 8000 : mode === "hunt" ? 24000 : 16000);
+  const slimHtmlExcerpt = (req.slimHtmlExcerpt || "").slice(
+    0,
+    mode === "pick" ? 8000 : mode === "groundRank" ? 12000 : mode === "hunt" ? 24000 : 16000
+  );
   const screenshotPath = req.screenshotPath || "";
 
   let screenshotNote = "";
@@ -77,6 +82,32 @@ async function main() {
 - Your entire reply must be a short Thought plus the Action JSON object described below.
 - If you cannot decide, still return JSON with an empty candidateId and empty steps.
 
+`;
+
+  const groundRankPrompt = `${guard}You are the Precision authoring engine for one Excel UI intent.
+Rank the shortlist candidates using the intent, prior steps, slim HTML, and screenshot.
+Pick EXACTLY ONE candidateId from the shortlist — never invent ids or locators.
+
+Respond with a short Thought, then Action JSON:
+{"candidateId":"<id from shortlist>","confidence":"high|medium|low","rationale":"one line","ranked":[{"candidateId":"c1","score":0.0,"reason":"..."}]}
+
+Rules:
+- candidateId MUST appear in the shortlist
+- confidence high|medium only when you are sure; otherwise low
+- ranked may list up to 5 rows from the shortlist with scores 0-1
+
+Excel intent:
+${intent}
+
+## Already completed in this TC
+${history}
+${visionBlock}
+Shortlist (id | strategy | value | tag | label):
+${shortlist}
+
+Slim HTML excerpt:
+${slimHtmlExcerpt}
+${screenshotNote}
 `;
 
   const pickPrompt = `${guard}You are healing a failed Selenium UI test step.
@@ -216,15 +247,27 @@ ${req.suite || ""}
 Break the feature and invent edge-case scenarios within the remaining scenario budget.
 Return ONLY one JSON object:
 {"decision":"continue"|"finish","rationale":"...","actions":[],"bugs":[],"scenarios":[]}
-actions allowlist only: navigate{url}, back{}, forward{}, refresh{}, execute_js{script},
+actions allowlist only: navigate{url}, back{}, forward{}, refresh{}, restart_browser{login?},
+execute_js{script},
 click{locator}, type{locator,value}, clear{locator},
 wait{ms}, assert_visible{locator}, assert_text{text}.
 Never use fill — use type. Copy locators exactly from the page map (e.g. [data-axis-test-id='username_Input']).
-Aliases: navigate_back→back, reload→refresh, js→execute_js.
-Current URL is in the page map (## URL). Prefer UI locators; use execute_js only for short page probes (max ~4000 chars).
+Aliases: navigate_back→back, reload→refresh, js→execute_js, fresh_session|reset_browser|restart→restart_browser.
+Current URL is in the page map (## URL). Prefer UI logout when Sign out is on the map; else restart_browser for a clean session (base URL only — no server auto-login). restart_browser{login:true} means YOU log in again via type/click on next cycles. Max 2 restarts/hunt.
+LOGIN: server never auto-logs in. When credential tokens are in the prompt, YOU drive username→password→Sign In→OTP using mapped locators and \${TARGET_*} tokens. Probe empty/invalid credentials before happy-path when Untested lists them.
+Prefer UI locators; use execute_js only for short page probes (max ~4000 chars).
 Respect actionCapPerCycle from Caps (default 5). wait with blank ms becomes 5000ms server-side.
-Use the steps journal to remember prior actions.
-Locator rules: only emit locators from the page map / slim excerpt; prefer preferred-hook attrs, then id, data-test*, name; never invent volatile framework ids.
+After Sign In/submit, prefer wait{ms:1000} before assert_text.
+Emit at most 2-3 new scenarios per cycle; do not fill scenarioCap in cycle 1.
+Do not re-file the same bug theme. Prefer observed UI copy over outdated TC wording.
+When credentials tokens appear in the user prompt, happy-path type values MUST be
+\${TARGET_USERNAME} / \${TARGET_PASSWORD} / \${TARGET_OTP} (never invent real passwords).
+Prefer Untested coverage gaps over repeating probed paths.
+HISTORY: read steps journal + coverage; do not repeat succeeded steps or blocked locators; continue from latest sub-goal.
+SAFETY: blank URL or empty page map → refresh or navigate first; do not invent selectors without DOM.
+FORM DATA: realistic dummy for non-credential fields; credential fields use \${TARGET_*} tokens only.
+BUGS: file only with evidence (network failure, failed mapped assert, clear wrong UI copy); no speculative/toast/assert_text noise.
+Locator rules: only emit locators from the page map / slim excerpt; when ## Locator preference lists attrs those are RANK 1 over id/name twins; if absent prefer id, name, data-test*, css; xpath last resort; never jQuery pseudo (:contains/:has); never volatile framework ids.
 Do not use tools, edit files, or narrate outside JSON.
 
 ${req.prompt || ""}
@@ -236,6 +279,7 @@ ${screenshotNote}
 
   const prompts = {
     pick: pickPrompt,
+    groundRank: groundRankPrompt,
     invent: inventPrompt,
     solve: solvePrompt,
     "authoring-review": authoringReviewPrompt,
@@ -265,6 +309,21 @@ ${screenshotNote}
     return;
   }
   const parsed = extractJsonObject(String(text));
+  if (mode === "groundRank") {
+    const id = parsed && parsed.candidateId ? String(parsed.candidateId).trim() : "";
+    const confidence = parsed && parsed.confidence ? String(parsed.confidence).trim().toLowerCase() : "low";
+    if (!id) {
+      process.stdout.write(JSON.stringify({ candidateId: "", confidence: "low", rationale: "no pick", ranked: [] }) + "\n");
+      return;
+    }
+    process.stdout.write(JSON.stringify({
+      candidateId: id,
+      confidence: confidence || "low",
+      rationale: parsed && parsed.rationale ? String(parsed.rationale) : "",
+      ranked: parsed && Array.isArray(parsed.ranked) ? parsed.ranked : [],
+    }) + "\n");
+    return;
+  }
   if (mode === "solve") {
     const id = parsed && parsed.candidateId ? String(parsed.candidateId).trim() : "";
     const steps = parsed && Array.isArray(parsed.steps) ? parsed.steps : [];

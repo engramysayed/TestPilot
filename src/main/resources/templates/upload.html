@@ -18,7 +18,7 @@
         <h2>Start a conversion</h2>
         <p class="panel-intro">Pick a project with a configured base URL and credential profile, attach the workbook, and start.
             Vision default is <code>ui-tars</code> (Ollama). To fall back: <code>delivery.vision.provider=qwen</code>.</p>
-        <form id="job-form" th:attr="data-final-revise-enabled=${finalReviseEnabled}" class="execute-start-form">
+        <form id="job-form" th:attr="data-final-revise-enabled=${finalReviseEnabled},data-precision-enabled=${precisionAuthoringEnabled}" class="execute-start-form">
             <label>Project
                 <select name="projectId" id="projectId" required>
                     <option value="">— Select project —</option>
@@ -84,6 +84,21 @@
                     <option value="UPDATE">UPDATE — changed TCs only (needs a prior NEW)</option>
                 </select>
             </label>
+            <fieldset class="authoring-engine">
+                <legend>Authoring engine</legend>
+                <label class="check">
+                    <input type="radio" name="authoringEngine" value="keel" checked/>
+                    Keel engine — fast, deterministic DOM grounding
+                </label>
+                <label class="check">
+                    <input type="radio" name="authoringEngine" value="precision"/>
+                    Precision (Cursor) — higher accuracy on complex UIs; uses Cursor API
+                </label>
+                <p class="muted generate-option-hint">Precision requires <code>CURSOR_API_KEY</code>, falls back to Keel if unavailable (~50 API calls per job).</p>
+                <p class="error" id="precisionDisabledWarn" hidden>
+                    Precision is disabled on this server — jobs will fall back to Keel.
+                </p>
+            </fieldset>
             <label class="check" title="Extra quality check before download when the package goes to a client">
                 <input type="checkbox" name="finalRevise" id="finalRevise" value="true"/>
                 Client delivery — extra quality check before download
@@ -164,6 +179,8 @@
     const finalReviseDisabledWarn = document.getElementById('finalReviseDisabledWarn');
     const formEl = document.getElementById('job-form');
     const finalReviseEnabled = formEl && formEl.dataset.finalReviseEnabled === 'true';
+    const precisionEnabled = formEl && formEl.dataset.precisionEnabled === 'true';
+    const precisionDisabledWarn = document.getElementById('precisionDisabledWarn');
     let hasGeneratedWorkbook = false;
     let generatedWorkbookMeta = null;
 
@@ -327,6 +344,18 @@
     if (finalReviseCheckbox) {
         finalReviseCheckbox.addEventListener('change', updateFinalReviseWarning);
         updateFinalReviseWarning();
+    }
+
+    function updatePrecisionWarning() {
+        if (!precisionDisabledWarn) return;
+        const precisionSelected = formEl && formEl.querySelector('input[name="authoringEngine"][value="precision"]:checked');
+        precisionDisabledWarn.hidden = !(precisionSelected && !precisionEnabled);
+    }
+    if (formEl) {
+        formEl.querySelectorAll('input[name="authoringEngine"]').forEach(radio => {
+            radio.addEventListener('change', updatePrecisionWarning);
+        });
+        updatePrecisionWarning();
     }
 
     function automateRunnable(counts) {
@@ -658,6 +687,8 @@
         }
         body.append('mode', form.mode.value);
         body.append('finalRevise', form.finalRevise && form.finalRevise.checked ? 'true' : 'false');
+        const engineChoice = form.querySelector('input[name="authoringEngine"]:checked');
+        body.append('authoringEngine', engineChoice ? engineChoice.value : 'keel');
         const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/jobs', {
             method: 'POST',
             headers: API_HEADERS,

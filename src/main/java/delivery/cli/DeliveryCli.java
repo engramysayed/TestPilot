@@ -1,6 +1,8 @@
 package delivery.cli;
 
 import delivery.excel.InvalidExcelTemplateException;
+import delivery.authoring.AuthoringEngine;
+import delivery.authoring.PrecisionJobConfig;
 import delivery.job.ConversionJobRequest;
 import delivery.job.ConversionJobResult;
 import delivery.job.ConversionJobRunner;
@@ -29,7 +31,10 @@ public final class DeliveryCli {
                     parsed.mode,
                     parsed.llmBaseUrl,
                     parsed.llmModel,
-                    parsed.finalRevise
+                    parsed.finalRevise,
+                    false,
+                    AuthoringEngine.parse(parsed.authoringEngine),
+                    PrecisionJobConfig.DEFAULTS
             );
             ConversionJobResult result = new ConversionJobRunner().run(request);
             JSONObject out = new JSONObject();
@@ -76,7 +81,8 @@ public final class DeliveryCli {
             String mode,
             String llmBaseUrl,
             String llmModel,
-            boolean finalRevise
+            boolean finalRevise,
+            String authoringEngine
     ) {
         static Args parse(String[] args) {
             String projectId = null;
@@ -91,6 +97,7 @@ public final class DeliveryCli {
             String llmBaseUrl = "http://127.0.0.1:11434";
             String llmModel = "gemma4:e2b";
             boolean finalRevise = false;
+            String authoringEngine = "keel";
             for (int i = 0; i < args.length; i++) {
                 switch (args[i]) {
                     case "--project-id" -> projectId = args[++i];
@@ -105,6 +112,7 @@ public final class DeliveryCli {
                     case "--llm-base-url" -> llmBaseUrl = args[++i];
                     case "--llm-model" -> llmModel = args[++i];
                     case "--final-revise" -> finalRevise = true;
+                    case "--authoring-engine" -> authoringEngine = args[++i];
                     default -> throw new IllegalArgumentException("Unknown arg: " + args[i]);
                 }
             }
@@ -114,7 +122,8 @@ public final class DeliveryCli {
             if (projectId == null || projectId.isBlank()) {
                 projectId = delivery.util.ProjectNaming.hostSlug(baseUrl);
             }
-            return new Args(projectId, excel, baseUrl, username, password, workDir, storeRoot, templateRoot, mode, llmBaseUrl, llmModel, finalRevise);
+            return new Args(projectId, excel, baseUrl, username, password, workDir, storeRoot, templateRoot,
+                    mode, llmBaseUrl, llmModel, finalRevise, authoringEngine);
         }
     }
 }

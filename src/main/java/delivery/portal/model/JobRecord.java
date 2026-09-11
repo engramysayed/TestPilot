@@ -1,5 +1,7 @@
 package delivery.portal.model;
 
+import delivery.authoring.AuthoringEngine;
+
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -8,6 +10,8 @@ import java.util.concurrent.atomic.AtomicReference;
 public class JobRecord {
     public enum Status { QUEUED, RUNNING, COMPLETED, COMPLETED_WITH_BLOCK, FAILED, CANCELLED }
     public enum JobKind { CONVERT, EXECUTE, GENERATE_BATCH, GENERATE_COMPARE, HUNT }
+
+    public static final int MESSAGE_MAX_CHARS = 1024;
 
     private final String jobId;
     private final String projectId;
@@ -19,6 +23,7 @@ public class JobRecord {
     private final String password;
     private final boolean finalRevise;
     private final JobKind jobKind;
+    private AuthoringEngine authoringEngine = AuthoringEngine.KEEL;
     private String generateModel;
     private volatile Instant createdAt;
     private volatile Instant completedAt;
@@ -65,6 +70,12 @@ public class JobRecord {
     public String getPassword() { return password; }
     public boolean isFinalRevise() { return finalRevise; }
     public JobKind getJobKind() { return jobKind; }
+    public AuthoringEngine getAuthoringEngine() {
+        return authoringEngine == null ? AuthoringEngine.KEEL : authoringEngine;
+    }
+    public void setAuthoringEngine(AuthoringEngine authoringEngine) {
+        this.authoringEngine = authoringEngine == null ? AuthoringEngine.KEEL : authoringEngine;
+    }
     public String getGenerateModel() { return generateModel; }
     public void setGenerateModel(String generateModel) { this.generateModel = generateModel; }
     public Instant getCreatedAt() { return createdAt; }
@@ -97,11 +108,25 @@ public class JobRecord {
     public int getProgressTotal() { return progressTotal.get(); }
     public void setProgressTotal(int v) { progressTotal.set(v); }
     public String getMessage() { return message.get(); }
-    public void setMessage(String m) { message.set(m == null ? "" : m); }
+    public void setMessage(String m) {
+        message.set(clampMessage(m));
+    }
     public Path getZipPath() { return zipPath.get(); }
     public void setZipPath(Path p) { zipPath.set(p); }
     public String getError() { return error.get(); }
     public void setError(String e) { error.set(e); }
+
+    /** Fits {@code jobs.message} VARCHAR(1024); full detail stays in worker logs. */
+    public static String clampMessage(String m) {
+        if (m == null || m.isEmpty()) {
+            return "";
+        }
+        String cleaned = m.replace('\r', ' ').replace('\n', ' ').trim();
+        if (cleaned.length() <= MESSAGE_MAX_CHARS) {
+            return cleaned;
+        }
+        return cleaned.substring(0, MESSAGE_MAX_CHARS - 1) + "…";
+    }
 
     public static boolean isDownloadable(JobKind kind, Status s) {
         if (kind == JobKind.EXECUTE) {

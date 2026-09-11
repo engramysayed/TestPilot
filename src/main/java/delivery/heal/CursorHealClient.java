@@ -1,5 +1,6 @@
 package delivery.heal;
 
+import delivery.authoring.GroundRankResult;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import utils.LogsManager;
@@ -50,6 +51,19 @@ public class CursorHealClient {
 
     public boolean isEnabled() {
         return enabled;
+    }
+
+    public static boolean hasApiKey() {
+        String apiKey = System.getenv("CURSOR_API_KEY");
+        if (apiKey == null || apiKey.isBlank()) {
+            apiKey = System.getProperty("CURSOR_API_KEY", "");
+        }
+        return apiKey != null && !apiKey.isBlank();
+    }
+
+    /** Sidecar enabled and API key present. */
+    public boolean isRuntimeReady() {
+        return enabled && hasApiKey();
     }
 
     /**
@@ -175,6 +189,42 @@ public class CursorHealClient {
      * Bug Hunter planner: brief + slim DOM + optional screenshot → HuntPlannerDecision JSON.
      * Returns raw JSON; blank when sidecar disabled/unavailable (caller must fail closed).
      */
+    /**
+     * Precision engine: multimodal shortlist rank — pick candidateId with confidence.
+     * Returns blank when skipped / failed.
+     */
+    public String groundRank(
+            String intentText,
+            String shortlistTable,
+            String slimHtmlExcerpt,
+            Path screenshotPathOrNull,
+            List<String> priorSteps
+    ) {
+        JSONObject req = new JSONObject();
+        req.put("mode", "groundRank");
+        req.put("intent", intentText == null ? "" : intentText);
+        req.put("shortlist", shortlistTable == null ? "" : shortlistTable);
+        req.put("shortlistTable", shortlistTable == null ? "" : shortlistTable);
+        req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
+        req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
+        putVisionAttempts(req);
+        if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
+            req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
+        }
+        return invoke(req);
+    }
+
+    public GroundRankResult groundRankResult(
+            String intentText,
+            String shortlistTable,
+            String slimHtmlExcerpt,
+            Path screenshotPathOrNull,
+            List<String> priorSteps
+    ) {
+        return GroundRankResult.parse(groundRank(
+                intentText, shortlistTable, slimHtmlExcerpt, screenshotPathOrNull, priorSteps));
+    }
+
     public String huntPlan(String userPrompt, String slimHtmlExcerpt, Path screenshotPathOrNull) {
         JSONObject req = new JSONObject();
         req.put("mode", "hunt");
@@ -330,7 +380,7 @@ public class CursorHealClient {
         return userDir;
     }
 
-    static String parseCandidateId(String raw) {
+    public static String parseCandidateId(String raw) {
         if (raw == null || raw.isBlank()) {
             return "";
         }

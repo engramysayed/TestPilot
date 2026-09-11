@@ -1,6 +1,8 @@
 package delivery.portal.service;
 
+import delivery.authoring.AuthoringEngine;
 import delivery.excel.ExcelTcReader;
+import delivery.job.AuthoringJobRequestFiles;
 import delivery.excel.KeelPathCaseFilter;
 import delivery.excel.KeelPathCounts;
 import delivery.excel.KeelPathSurfaceGuard;
@@ -37,13 +39,15 @@ public class PortalJobStarter implements JobStarter {
     }
 
     @Override
-    public String startConvert(String projectId, Long ownerUserId, boolean useGenerated) {
-        return startJob(projectId, ownerUserId, useGenerated, JobRecord.JobKind.CONVERT, "job_");
+    public String startConvert(String projectId, Long ownerUserId, boolean useGenerated, AuthoringEngine authoringEngine) {
+        return startJob(projectId, ownerUserId, useGenerated, JobRecord.JobKind.CONVERT, "job_",
+                authoringEngine);
     }
 
     @Override
-    public String startExecute(String projectId, Long ownerUserId, boolean useGenerated) {
-        return startJob(projectId, ownerUserId, useGenerated, JobRecord.JobKind.EXECUTE, "exec_");
+    public String startExecute(String projectId, Long ownerUserId, boolean useGenerated, AuthoringEngine authoringEngine) {
+        return startJob(projectId, ownerUserId, useGenerated, JobRecord.JobKind.EXECUTE, "exec_",
+                authoringEngine);
     }
 
     private String startJob(
@@ -51,7 +55,8 @@ public class PortalJobStarter implements JobStarter {
             Long ownerUserId,
             boolean useGenerated,
             JobRecord.JobKind kind,
-            String idPrefix
+            String idPrefix,
+            AuthoringEngine authoringEngine
     ) {
         ProjectRecord project = store.getOwnedProject(projectId, ownerUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown project"));
@@ -90,6 +95,7 @@ public class PortalJobStarter implements JobStarter {
 
         String jobId = idPrefix + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         String mode = kind == JobRecord.JobKind.CONVERT ? "NEW" : "EXECUTE";
+        AuthoringEngine engine = authoringEngine == null ? AuthoringEngine.KEEL : authoringEngine;
         JobRecord job = new JobRecord(
                 jobId,
                 projectId,
@@ -102,6 +108,14 @@ public class PortalJobStarter implements JobStarter {
                 false,
                 kind
         );
+        job.setAuthoringEngine(engine);
+        try {
+            Path requestPath = AuthoringJobRequestFiles.requestPath(
+                    store.projectDiskRoot(projectId), kind, jobId);
+            AuthoringJobRequestFiles.write(requestPath, engine);
+        } catch (Exception e) {
+            throw new IllegalStateException("REQUEST_JSON_WRITE_FAILED", e);
+        }
         store.saveJob(job);
         if (kind == JobRecord.JobKind.CONVERT) {
             convertWorker.submit(jobId);

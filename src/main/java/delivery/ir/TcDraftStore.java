@@ -92,6 +92,10 @@ public class TcDraftStore {
         o.put("healTier", d.healTier());
         o.put("healSkipReason", d.healSkipReason());
         o.put("loginFormUrl", d.loginFormUrl());
+        o.put("jobAuthoringEngine", d.jobAuthoringEngine());
+        o.put("precisionCallsUsed", d.precisionCallsUsed());
+        o.put("precisionFallback", d.precisionFallback());
+        o.put("precisionFallbackReason", d.precisionFallbackReason());
         return o;
     }
 
@@ -113,7 +117,11 @@ public class TcDraftStore {
                 o.optString("lastPageUrl", ""),
                 o.optString("healTier", "none"),
                 o.optString("healSkipReason", ""),
-                o.optString("loginFormUrl", "")
+                o.optString("loginFormUrl", ""),
+                o.optString("jobAuthoringEngine", "keel"),
+                o.optInt("precisionCallsUsed", 0),
+                o.optBoolean("precisionFallback", false),
+                o.optString("precisionFallbackReason", "")
         );
     }
 
