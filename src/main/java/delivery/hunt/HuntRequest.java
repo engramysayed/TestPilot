@@ -8,9 +8,11 @@ import java.util.Locale;
 public final class HuntRequest {
     public static final int DEFAULT_SCENARIO_CAP = 5;
     public static final int DEFAULT_CYCLE_CEILING = 8;
+    public static final int DEFAULT_ITERATION_CEILING = 2;
     public static final int DEFAULT_ACTION_CAP = 5;
     public static final int MAX_SCENARIO_CAP = 20;
     public static final int MAX_CYCLE_CEILING = 30;
+    public static final int MAX_ITERATION_CEILING = 5;
     public static final int MAX_ACTION_CAP = 15;
 
     private String projectId;
@@ -21,9 +23,12 @@ public final class HuntRequest {
     private String planner = "ollama"; // ollama | cursor
     private int scenarioCap = DEFAULT_SCENARIO_CAP;
     private int cycleCeiling = DEFAULT_CYCLE_CEILING;
+    private int iterationCeiling = DEFAULT_ITERATION_CEILING;
     private int actionCapPerCycle = DEFAULT_ACTION_CAP;
     private String domMode = "auto";
     private boolean strategiesEnabled = true;
+    /** Optional static OTP for hunt credential tokens — blank means no ${TARGET_OTP}. */
+    private String otp = "";
 
     public String getProjectId() { return projectId; }
     public void setProjectId(String projectId) { this.projectId = projectId; }
@@ -45,6 +50,10 @@ public final class HuntRequest {
     public void setScenarioCap(int scenarioCap) { this.scenarioCap = scenarioCap; }
     public int getCycleCeiling() { return cycleCeiling; }
     public void setCycleCeiling(int cycleCeiling) { this.cycleCeiling = cycleCeiling; }
+    public int getIterationCeiling() { return iterationCeiling; }
+    public void setIterationCeiling(int iterationCeiling) { this.iterationCeiling = iterationCeiling; }
+    public String getOtp() { return otp == null ? "" : otp; }
+    public void setOtp(String otp) { this.otp = otp == null ? "" : otp.trim(); }
     public int getActionCapPerCycle() { return actionCapPerCycle; }
     public void setActionCapPerCycle(int actionCapPerCycle) { this.actionCapPerCycle = actionCapPerCycle; }
     public String getDomMode() { return domMode == null ? "auto" : domMode; }
@@ -70,6 +79,17 @@ public final class HuntRequest {
         }
         if (cycleCeiling > MAX_CYCLE_CEILING) {
             cycleCeiling = MAX_CYCLE_CEILING;
+        }
+        if (iterationCeiling < 1) {
+            iterationCeiling = DEFAULT_ITERATION_CEILING;
+        }
+        if (iterationCeiling > MAX_ITERATION_CEILING) {
+            iterationCeiling = MAX_ITERATION_CEILING;
+        }
+        if (otp != null) {
+            otp = otp.trim();
+        } else {
+            otp = "";
         }
         if (actionCapPerCycle < 1) {
             actionCapPerCycle = DEFAULT_ACTION_CAP;

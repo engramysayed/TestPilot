@@ -13,6 +13,7 @@ import delivery.job.JobCancelledException;
 import delivery.job.JobProgressTracker;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.JobRecord;
+import delivery.portal.service.FailureReasonHumanizer;
 import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.PortalStore;
 import org.apache.logging.log4j.LogManager;
@@ -111,7 +112,8 @@ public class HuntWorker {
             if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
             } else {
-                fail(job, e.getMessage() == null ? "Hunt failed" : e.getMessage(), e);
+                String raw = e.getMessage() == null ? "Hunt failed" : e.getMessage();
+                fail(job, FailureReasonHumanizer.forUser(raw), e);
             }
         } finally {
             portalStore.clearCancelRequest(jobId);
@@ -164,10 +166,12 @@ public class HuntWorker {
     }
 
     private void fail(JobRecord job, String message, Exception e) {
-        log.error("Hunt job {} failed: {}", job.getJobId(), message, e);
+        String publicMessage = message == null || message.isBlank() ? "Hunt failed" : message;
+        log.error("Hunt job {} failed: {}", job.getJobId(),
+                e.getMessage() == null ? publicMessage : e.getMessage(), e);
         job.setStatus(JobRecord.Status.FAILED);
-        job.setError(message);
-        job.setMessage(message);
+        job.setError(publicMessage);
+        job.setMessage(publicMessage);
         portalStore.syncJobPersistence(job);
     }
 

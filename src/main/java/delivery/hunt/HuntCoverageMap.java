@@ -31,6 +31,8 @@ public final class HuntCoverageMap {
     private final Map<String, String> controls = new LinkedHashMap<>();
     private final List<String> strategiesCompleted = new ArrayList<>();
     private final Map<String, Integer> failStreaks = new HashMap<>();
+    private final List<String> untested = new ArrayList<>();
+    private final Set<String> blocked = new LinkedHashSet<>();
 
     public HuntCoverageMap(Path huntRoot) {
         this.file = huntRoot.resolve(FILE_NAME);
@@ -89,6 +91,35 @@ public final class HuntCoverageMap {
         flush();
     }
 
+    public void noteUntested(String gap) throws Exception {
+        if (gap == null || gap.isBlank()) {
+            return;
+        }
+        String g = gap.trim();
+        if (!untested.contains(g)) {
+            untested.add(g);
+            flush();
+        }
+    }
+
+    public void markTestedHint(String gapPrefix) throws Exception {
+        if (gapPrefix == null || gapPrefix.isBlank() || untested.isEmpty()) {
+            return;
+        }
+        String p = gapPrefix.trim().toLowerCase();
+        untested.removeIf(g -> g.toLowerCase().contains(p));
+        flush();
+    }
+
+    /** Seed common login-hunt gaps once at start. */
+    public void seedLoginGaps() throws Exception {
+        noteUntested("Valid login with ${TARGET_USERNAME}/${TARGET_PASSWORD}");
+        noteUntested("OTP challenge after successful sign-in");
+        noteUntested("Empty username validation");
+        noteUntested("Empty password validation");
+        noteUntested("Invalid credentials error UI");
+    }
+
     public int failStreak(String type, String locatorKey) {
         if (type == null || locatorKey == null) {
             return 0;
@@ -111,6 +142,36 @@ public final class HuntCoverageMap {
         }
         failStreaks.clear();
         flush();
+    }
+
+    /**
+     * Moves every locator at or past the stuck threshold onto the blocked list and clears its
+     * streak. The blocked list reaches the planner via {@link #forPrompt()} so it changes
+     * approach instead of the hunt stopping early.
+     *
+     * @return newly blocked entries (empty when nothing was stuck)
+     */
+    public List<String> markBlockedFromStreaks() throws Exception {
+        List<String> newlyBlocked = new ArrayList<>();
+        for (Map.Entry<String, Integer> e : failStreaks.entrySet()) {
+            if (e.getValue() < STUCK_FAIL_STREAK) {
+                continue;
+            }
+            String[] parts = e.getKey().split("\0", 2);
+            String entry = parts[0] + " `" + (parts.length > 1 ? parts[1] : "") + "`";
+            if (blocked.add(entry)) {
+                newlyBlocked.add(entry);
+            }
+        }
+        if (!newlyBlocked.isEmpty()) {
+            failStreaks.entrySet().removeIf(e -> e.getValue() >= STUCK_FAIL_STREAK);
+            flush();
+        }
+        return newlyBlocked;
+    }
+
+    public List<String> blockedLocators() {
+        return List.copyOf(blocked);
     }
 
     public String forPrompt() {
@@ -143,6 +204,8 @@ public final class HuntCoverageMap {
         json.put("controls", controls);
         json.put("strategiesCompleted", strategiesCompleted);
         json.put("failStreaks", failStreaks);
+        json.put("blocked", List.copyOf(blocked));
+        json.put("untested", untested);
         Files.writeString(jsonFile, new org.json.JSONObject(json).toString(2), StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
     }
@@ -194,12 +257,33 @@ public final class HuntCoverageMap {
 
         sb.append("## Failure streaks\n\n");
         if (failStreaks.isEmpty()) {
-            sb.append("_none_\n");
+            sb.append("_none_\n\n");
         } else {
             for (Map.Entry<String, Integer> e : failStreaks.entrySet()) {
                 String[] parts = e.getKey().split("\0", 2);
                 sb.append("- ").append(parts[0]).append(" `").append(parts[1])
                         .append("`: ").append(e.getValue()).append('\n');
+            }
+            sb.append('\n');
+        }
+
+        sb.append("## Do not retry (blocked)\n\n");
+        if (blocked.isEmpty()) {
+            sb.append("_none_\n\n");
+        } else {
+            for (String b : blocked) {
+                sb.append("- ").append(b).append('\n');
+            }
+            sb.append("\nThese failed repeatedly — pick a different control, or use "
+                    + "navigate/refresh/restart_browser instead of retrying them.\n\n");
+        }
+
+        sb.append("## Untested\n\n");
+        if (untested.isEmpty()) {
+            sb.append("_none_\n");
+        } else {
+            for (String g : untested) {
+                sb.append("- ").append(g).append('\n');
             }
         }
         return sb.toString();

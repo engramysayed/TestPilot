@@ -84,7 +84,7 @@ public final class HuntStrategySequencer {
         g.put("empty", "Probe empty/cleared required fields and submit/continue.");
         g.put("boundary", "Probe max-length, special characters, or unicode in visible inputs.");
         g.put("abuse", "Try double-submit, repeat click, or Back after a success signal.");
-        g.put("session", "If logged in, probe stale session / logout mid-flow; else skip via advance.");
+        g.put("session", "If logged in, probe stale session / logout mid-flow; prefer UI Sign out when on the map, else restart_browser (optional login:true). Else skip via advance.");
         g.put("invent", "Prefer emitting candidate edge scenarios; still record bugs if found.");
         return Collections.unmodifiableMap(g);
     }

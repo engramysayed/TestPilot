@@ -28,6 +28,7 @@ This document points engineers at deeper material already in the tree.
 | Generate authoring preflight review | `docs/superpowers/specs/2026-09-06-authoring-preflight-review-design.md` |
 | Bug Hunter (HUNT) | `docs/superpowers/specs/2026-09-09-bug-hunter-design.md` |
 | Bug Hunter quality (page map + strategies) | `docs/superpowers/specs/2026-09-10-bug-hunter-quality-design.md` |
+| Bug Hunter quality pass 2 (hooks login, tokens, dedupe/triage) | `docs/superpowers/specs/2026-09-10-bug-hunter-quality-pass2-design.md` |
 | Precision authoring engine (Keel vs Cursor groundRank) | `docs/superpowers/specs/2026-09-11-authoring-precision-engine-design.md` |
 
 Matching plans/tasks/notes sit beside each spec under `docs/superpowers/plans/`. Review fix checklist: `docs/superpowers/plans/2026-09-11-precision-engine-fixes.md`.
@@ -37,13 +38,14 @@ Matching plans/tasks/notes sit beside each spec under `docs/superpowers/plans/`.
 1. Job kind `HUNT` — UI `/bug-hunter`, worker `HuntWorker`, pack download via jobs API.
 2. Live loop: page map (B) + slim fallback (A) → Ollama/Cursor planner → grounded actions → journal + coverage.
 3. Phase 2: strategy sequencer (happy→…→invent), `HuntOracle` drafts, stop reasons `STUCK` / `COMPLETE` / finish / cycle cap.
-4. Phase 3 (two-pass DOM neighborhoods) is **out of scope** until AxisPay proves map+slim still too large.
+4. **Quality pass 2** — preferred-hook `JobLoginService` login; `HuntSecretResolver` token expansion at execute; post-click settle; strategy auto-advance on login block; `HuntBugDedupe` + `HuntBugTriage`; login-feature oracle fix; `restart_browser` via `HuntBrowserSession`.
+5. Phase 3 (two-pass DOM neighborhoods) is **out of scope** until AxisPay proves map+slim still too large.
    - Gaps backlog: `docs/superpowers/plans/2026-09-10-bug-hunter-phase12-gaps.md`
    - Deferred Phase 3: `docs/superpowers/plans/2026-09-10-bug-hunter-phase3-twopass-dom.md`
-5. Package: `delivery.hunt.*` under `src/main/java/delivery/hunt/`. Focused tests: `Hunt*Test`, `HuntApiTest`.
+6. Package: `delivery.hunt.*` under `src/main/java/delivery/hunt/`. Never put plaintext passwords in planner prompts or pack artifacts.
 
 ```bat
-mvn -q "-Dtest=HuntCoreTest,HuntApiTest,HuntPageMapTest,HuntCoverageMapTest,HuntActionGuardTest,HuntDomModeTest,HuntStrategySequencerTest,HuntOracleTest,HuntStopRulesTest" test
+mvn -q "-Dtest=HuntCoreTest,HuntBugDedupeTest,HuntBugTriageTest,HuntSecretResolverTest,HuntOracleLoginFeatureTest,HuntPlannerPromptCredsTest,JobLoginServiceHooksTest,HuntStopRulesTest,HuntOracleTest" test
 ```
 
 ## Precision authoring engine (summary)

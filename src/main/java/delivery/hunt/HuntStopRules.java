@@ -1,5 +1,6 @@
 package delivery.hunt;
 
+import java.util.List;
 import java.util.Optional;
 
 /** Stop-reason rules evaluated after each hunt cycle's actions are recorded. */
@@ -8,33 +9,41 @@ public final class HuntStopRules {
     }
 
     /**
-     * Returns {@code STUCK} when coverage reports a hard fail streak; empty otherwise.
-     * FINISH and other stop reasons remain the caller's responsibility.
+     * Outcome of a repeated-failure recovery. A hunt never stops for being stuck: the failing
+     * locators are blocked and (when strategies are on) the next strategy starts.
      */
-    public static Optional<String> afterActions(HuntCoverageMap coverage,
-                                                HuntPlannerDecision.Decision decision) throws Exception {
-        return afterActions(coverage, decision, false, null);
+    public record Recovery(List<String> blockedLocators, String advancedFrom, String advancedTo) {
+        public static Recovery none() {
+            return new Recovery(List.of(), "", "");
+        }
+
+        public boolean triggered() {
+            return !blockedLocators.isEmpty() || !advancedFrom.isBlank();
+        }
     }
 
     /**
-     * When strategies are enabled and coverage would stop as stuck, advance the sequencer
-     * (unless already on the last mode) and clear fail streaks instead of stopping.
+     * Called after each cycle's actions. When coverage reports a hard fail streak, the stuck
+     * locators are blocked (surfaced to the planner as "do not retry") and the strategy
+     * sequencer advances when it can, so remaining cycles keep hunting.
      */
-    public static Optional<String> afterActions(HuntCoverageMap coverage,
-                                                HuntPlannerDecision.Decision decision,
-                                                boolean strategiesEnabled,
-                                                HuntStrategySequencer sequencer) throws Exception {
+    public static Recovery recoverFromStuck(HuntCoverageMap coverage,
+                                            boolean strategiesEnabled,
+                                            HuntStrategySequencer sequencer) throws Exception {
         if (coverage == null || !coverage.shouldStopStuck()) {
-            return Optional.empty();
+            return Recovery.none();
         }
+        List<String> blocked = coverage.markBlockedFromStreaks();
+        String from = "";
+        String to = "";
         if (strategiesEnabled && sequencer != null && !sequencer.isLast()) {
-            String prev = sequencer.current().mode();
+            from = sequencer.current().mode();
             sequencer.advance();
-            coverage.markStrategyDone(prev);
-            coverage.clearFailStreaks();
-            return Optional.empty();
+            coverage.markStrategyDone(from);
+            to = sequencer.current().mode();
         }
-        return Optional.of("STUCK");
+        coverage.clearFailStreaks();
+        return new Recovery(blocked, from, to);
     }
 
     /**

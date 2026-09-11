@@ -38,4 +38,21 @@ public class FailureReasonHumanizerTest {
         Assert.assertEquals(FailureReasonHumanizer.forUser(""), "");
         Assert.assertEquals(FailureReasonHumanizer.forUser(null), "");
     }
+
+    @Test
+    public void dnsNameNotResolvedIsPlainEnglish() {
+        String out = FailureReasonHumanizer.forUser(
+                "unknown error: net::ERR_NAME_NOT_RESOLVED\n  (Session info: chrome=153.0.8010.37)\n"
+                        + "Command: [id, get {url=https://opssit.axispay.app/}]");
+        Assert.assertTrue(out.toLowerCase().contains("dns") || out.toLowerCase().contains("host not found"), out);
+        Assert.assertFalse(out.contains("Session info"));
+        Assert.assertTrue(out.length() < 200, out);
+    }
+
+    @Test
+    public void invalidSessionIsPlainEnglish() {
+        String out = FailureReasonHumanizer.forUser("invalid session id\nBuild info: version: '4.49.0'");
+        Assert.assertTrue(out.toLowerCase().contains("chrome") || out.toLowerCase().contains("browser"), out);
+        Assert.assertFalse(out.contains("Build info"));
+    }
 }

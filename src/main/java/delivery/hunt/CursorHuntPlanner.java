@@ -27,6 +27,32 @@ public final class CursorHuntPlanner implements HuntPlanner {
         if (raw == null || raw.isBlank()) {
             throw new IllegalStateException("Cursor planner returned empty response");
         }
-        return HuntPlannerDecision.parse(raw);
+        try {
+            return HuntPlannerDecision.parse(raw);
+        } catch (Exception first) {
+            String repair = prompt + "\n\n## Repair\nPrevious reply was invalid JSON ("
+                    + first.getMessage()
+                    + "). Return ONLY one valid JSON object with keys decision, rationale, actions, bugs, scenarios.";
+            String repaired = cursor.huntPlan(repair, slimForCursor, ctx.screenshotPath());
+            try {
+                return HuntPlannerDecision.parse(repaired);
+            } catch (Exception second) {
+                return HuntPlannerDecision.parse("""
+                        {"decision":"continue","rationale":"Planner JSON invalid after repair — skipping actions this cycle.",
+                        "actions":[],"bugs":[],"scenarios":[]}
+                        """.trim());
+            }
+        }
+    }
+
+    @Override
+    public String triageBugs(String triageUserPrompt) throws Exception {
+        if (cursor == null || !cursor.isEnabled()) {
+            return "";
+        }
+        String prompt = (triageUserPrompt == null ? "" : triageUserPrompt)
+                + "\n\nReturn ONLY the triage JSON object.";
+        String raw = cursor.huntPlan(prompt, "", null);
+        return raw == null ? "" : raw;
     }
 }

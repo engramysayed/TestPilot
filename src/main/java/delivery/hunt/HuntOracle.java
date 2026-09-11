@@ -26,10 +26,22 @@ public final class HuntOracle {
             int mainTextLength,
             List<String> visitedUrlsBeforeCycle,
             String strategyMode,
-            boolean lastActionWasNavigateOrClick
+            boolean lastActionWasNavigateOrClick,
+            boolean loginFeature
     ) {
+        public PageSignals(
+                String currentUrl,
+                int mainTextLength,
+                List<String> visitedUrlsBeforeCycle,
+                String strategyMode,
+                boolean lastActionWasNavigateOrClick
+        ) {
+            this(currentUrl, mainTextLength, visitedUrlsBeforeCycle, strategyMode,
+                    lastActionWasNavigateOrClick, false);
+        }
+
         public static PageSignals empty() {
-            return new PageSignals("", -1, List.of(), "", false);
+            return new PageSignals("", -1, List.of(), "", false, false);
         }
     }
 
@@ -119,6 +131,7 @@ public final class HuntOracle {
                     || "back".equals(type)
                     || "forward".equals(type)
                     || "refresh".equals(type)
+                    || "restart_browser".equals(type)
                     || "execute_js".equals(type);
         }
         return false;
@@ -208,6 +221,9 @@ public final class HuntOracle {
         if (mode.contains("session")) {
             return List.of();
         }
+        if (signals.loginFeature() && HuntFeatureHints.looksLikeLoginUrl(url)) {
+            return List.of();
+        }
         List<String> prior = signals.visitedUrlsBeforeCycle() == null
                 ? List.of() : signals.visitedUrlsBeforeCycle();
         boolean hadOther = false;
@@ -250,8 +266,18 @@ public final class HuntOracle {
             if (!"fail".equals(str(row.get("status"))) || !type.startsWith("assert_")) {
                 continue;
             }
-            String title = "Assert failed: " + type;
-            if (plannerAlreadyHas(plannerBugs, title, str(row.get("reason")))) {
+            String reason = HuntFailureText.shorten(str(row.get("reason")));
+            // A missing asserted string is the planner's guess about the page (often a toast that
+            // already auto-dismissed), not product evidence. assert_visible runs on a mapped
+            // control, so its failure is still worth filing.
+            if ("assert_text".equals(type) && HuntFailureText.isHunterMiss(reason)) {
+                continue;
+            }
+            String expectedText = str(row.get("text")).isBlank()
+                    ? str(row.get("expected")) : str(row.get("text"));
+            String title = "Assert failed: " + type
+                    + (expectedText.isBlank() ? "" : " (" + abbreviate(expectedText, 60) + ")");
+            if (plannerAlreadyHas(plannerBugs, title, reason)) {
                 continue;
             }
             Map<String, Object> bug = new LinkedHashMap<>();
@@ -259,7 +285,7 @@ public final class HuntOracle {
             bug.put("severity", "major");
             bug.put("repro", repro.isBlank() ? "Planner action " + type + " failed during hunt" : repro);
             bug.put("expected", str(row.get("expected")).isBlank() ? "Assertion to pass" : str(row.get("expected")));
-            bug.put("actual", str(row.get("reason")));
+            bug.put("actual", reason);
             bugs.add(bug);
         }
         return bugs;
@@ -270,12 +296,12 @@ public final class HuntOracle {
             List<Map<String, Object>> actionLog,
             String repro
     ) {
-        if (alertTexts == null || alertTexts.isEmpty() || !hasFailAction(actionLog)) {
+        if (alertTexts == null || alertTexts.isEmpty() || !hasProductInteractionFailure(actionLog)) {
             return List.of();
         }
         String alertSummary = String.join("; ", alertTexts);
         Map<String, Object> bug = new LinkedHashMap<>();
-        bug.put("title", "Alert shown after failed action");
+        bug.put("title", "Alert after failed interaction: " + abbreviate(alertSummary, 60));
         bug.put("severity", "major");
         bug.put("expected", "No error alert after a successful interaction");
         bug.put("actual", alertSummary);
@@ -283,14 +309,27 @@ public final class HuntOracle {
         return List.of(bug);
     }
 
-    private static boolean hasFailAction(List<Map<String, Object>> actionLog) {
+    /**
+     * A failed action only counts as product evidence when the hunter actually interacted with a
+     * control. Locator misses and vanished assert text are hunter mistakes, so an alert sitting on
+     * screen next to them is not a finding on its own.
+     */
+    private static boolean hasProductInteractionFailure(List<Map<String, Object>> actionLog) {
         if (actionLog == null) {
             return false;
         }
         for (Map<String, Object> row : actionLog) {
-            if ("fail".equals(str(row.get("status")))) {
-                return true;
+            if (!"fail".equals(str(row.get("status")))) {
+                continue;
             }
+            String type = str(row.get("type")).toLowerCase(Locale.ROOT);
+            if (type.startsWith("assert_")) {
+                continue;
+            }
+            if (HuntFailureText.isHunterMiss(str(row.get("reason")))) {
+                continue;
+            }
+            return true;
         }
         return false;
     }
@@ -346,6 +385,14 @@ public final class HuntOracle {
         } catch (Exception e) {
             return 0;
         }
+    }
+
+    private static String abbreviate(String s, int max) {
+        if (s == null) {
+            return "";
+        }
+        String flat = s.replaceAll("\\s+", " ").trim();
+        return flat.length() <= max ? flat : flat.substring(0, max) + "…";
     }
 
     private static String shortenUrl(String url) {

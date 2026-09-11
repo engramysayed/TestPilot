@@ -58,8 +58,10 @@ public class HuntController {
             String planner,
             Integer scenarioCap,
             Integer cycleCeiling,
+            Integer iterationCeiling,
             Integer actionCapPerCycle,
             String credentialProfile,
+            String otp,
             String domMode,
             Boolean strategiesEnabled
     ) {
@@ -92,7 +94,7 @@ public class HuntController {
                             "No generated workbook for this project — generate or upload TCs first").asMap());
         }
         StartHuntBody req = body == null
-                ? new StartHuntBody(List.of(), "", "ollama", null, null, null, null, null, null)
+                ? new StartHuntBody(List.of(), "", "ollama", null, null, null, null, null, null, null, null)
                 : body;
         List<String> tcIds = req.tcIds() == null ? List.of() : req.tcIds();
         if (tcIds.isEmpty()) {
@@ -131,6 +133,12 @@ public class HuntController {
         }
         if (req.cycleCeiling() != null) {
             hunt.setCycleCeiling(req.cycleCeiling());
+        }
+        if (req.iterationCeiling() != null) {
+            hunt.setIterationCeiling(req.iterationCeiling());
+        }
+        if (req.otp() != null && !req.otp().isBlank()) {
+            hunt.setOtp(req.otp());
         }
         if (req.actionCapPerCycle() != null) {
             hunt.setActionCapPerCycle(req.actionCapPerCycle());

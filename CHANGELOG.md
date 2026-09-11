@@ -16,6 +16,39 @@ Internal design notes stay under `docs/superpowers/`. Engineers can start from `
 
 ---
 
+## 2026-09-11 — Bug Hunter quality pass 2
+
+**Surfaces:** **Bug Hunter** (`/bug-hunter`), shared `JobLoginService` login CSS.
+
+### What you can do
+
+- Pick a **credential profile** on Bug Hunter — the planner sees `$TARGET_USERNAME` / `$TARGET_PASSWORD` / `$TARGET_OTP` tokens only (password resolved at execute time, never written to prompts or pack files).
+- Choose **Open site only** when you do not want auto-login.
+- Benefit from **preferred-hook-aware login** when the project has locator hook attributes configured.
+- Get fewer duplicate bugs: **fingerprint dedupe** plus an optional end-of-hunt **triage** pass (`bug-dedupe.json`, `bug-triage.json`).
+- Hunts auto-**advance strategy** when happy-path is stuck on login; login-feature hunts no longer get false “unexpected redirect to login” oracle noise.
+- Planner may use **`restart_browser`** (capped) and post-click **settle waits** for more reliable asserts.
+
+### Why
+
+Live hunts on Axis-style apps were noisy (dozens of duplicate bug rows) and often failed login because hooks and credential tokens were not wired through to the planner/executor.
+
+### How to use it
+
+1. Set project **base URL** and a **credential profile** (or Open site only).
+2. Configure **preferred hooks** on the project if your app uses custom `data-*` test ids.
+3. Start a hunt; download the pack and review `bug-triage.json` if triage ran.
+
+### Known limits
+
+- End triage adds one planner call; soft-skips on invalid JSON (keeps deduped list).
+- Auto-login success may skip the login page — for login-page testing prefer Open site only or `restart_browser`.
+- Phase 3 two-pass DOM neighborhoods still not built.
+
+**Specs:** `docs/superpowers/specs/2026-09-10-bug-hunter-quality-pass2-design.md`.
+
+---
+
 ## 2026-09-11 — Precision authoring engine (Keel vs Cursor)
 
 **Commit:** `d4927cc` — *feat(authoring): add Precision engine with review fixes and pipeline toggle*  

@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 /** Rejects planner actions whose locators are not grounded in the page map or slim HTML. */
 public final class HuntActionGuard {
     private static final Set<String> GROUNDED_TYPES = Set.of(
-            "click", "type", "clear", "assert_visible");
+            "click", "type", "clear", "assert_visible", "drag_drop", "dragdrop", "click_shadow", "shadow_click");
 
     private static final Set<String> KNOWN_HTML_STRATEGIES = Set.of(
             "id", "name", "data-test", "testid", "data-testid", "data-qa",
@@ -27,6 +27,9 @@ public final class HuntActionGuard {
     private static final Pattern XPATH_NESTED_LABEL = Pattern.compile(
             "label\\[(?:normalize-space\\(\\.\\)\\s*=\\s*'([^']+)'"
                     + "|contains\\(normalize-space\\(\\.\\),\\s*'([^']+)'\\))\\]");
+    /** jQuery-style pseudo-classes that Selenium's CSS engine cannot execute. */
+    private static final Pattern UNSUPPORTED_CSS_PSEUDO = Pattern.compile(
+            "(?i):(contains|has|eq|visible|hidden|first|last|parent)\\b");
 
     private final HuntPageMap pageMap;
     private final String slimHtml;
@@ -42,14 +45,57 @@ public final class HuntActionGuard {
         }
         String type = resolveType(action);
         type = HuntActionExecutor.normalizeType(type);
+        if ("drag_drop".equals(type) || "dragdrop".equals(type)) {
+            return rejectDragDrop(action);
+        }
+        if ("click_shadow".equals(type) || "shadow_click".equals(type)) {
+            Optional<String> host = rejectLocator(action);
+            if (host.isPresent()) {
+                return host;
+            }
+            String inner = str(action.get("value"));
+            if (inner.isBlank()) {
+                inner = str(action.get("innerSelector"));
+            }
+            if (inner.isBlank()) {
+                return Optional.of("click_shadow requires inner selector in value");
+            }
+            return Optional.empty();
+        }
         if (!GROUNDED_TYPES.contains(type)) {
             return Optional.empty();
         }
 
+        return rejectLocator(action);
+    }
+
+    private Optional<String> rejectDragDrop(Map<String, Object> action) {
+        Optional<String> source = rejectLocator(action);
+        if (source.isPresent()) {
+            return source;
+        }
+        String targetRaw = str(action.get("value"));
+        if (targetRaw.isBlank()) {
+            targetRaw = str(action.get("targetLocator"));
+        }
+        if (targetRaw.isBlank()) {
+            return Optional.of("drag_drop requires target locator in value");
+        }
+        Map<String, Object> targetAction = new java.util.LinkedHashMap<>(action);
+        targetAction.put("locator", targetRaw);
+        targetAction.remove("value");
+        return rejectLocator(targetAction);
+    }
+
+    private Optional<String> rejectLocator(Map<String, Object> action) {
         String rawLocator = str(action.get("locator"));
         String value = rawLocator.isBlank() ? str(action.get("locatorValue")) : rawLocator;
         if (value.isBlank()) {
             return Optional.of("missing locator");
+        }
+        if (!value.startsWith("//") && !value.startsWith("(//")
+                && UNSUPPORTED_CSS_PSEUDO.matcher(value).find()) {
+            return Optional.of("unsupported CSS pseudo-class (use XPath for text): " + value);
         }
 
         String explicitStrategy = str(action.get("locatorStrategy")).trim().toLowerCase(Locale.ROOT);

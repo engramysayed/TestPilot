@@ -2,8 +2,8 @@ package delivery.hunt;
 
 import delivery.excel.ManualTestCase;
 import delivery.job.ConversionJobRequest;
+import delivery.job.DeadBrowserSession;
 import delivery.job.JobCancelledException;
-import delivery.job.JobLoginService;
 import delivery.job.JobProgressTracker;
 import delivery.job.PageSnapshot;
 import delivery.store.PreferredHooksStore;
@@ -12,11 +12,13 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openqa.selenium.WebDriver;
 import parsingLayer.HtmlSlimmer;
+import utils.LogsManager;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,9 +29,9 @@ import java.util.function.BooleanSupplier;
  */
 public final class LiveHuntService {
 
-    /** Contract hint for tests: navigate before optional login prelude. */
+    /** Contract hint for tests: navigate first; login is hunter-driven via credential tokens. */
     public static String openThenLoginOrderHint() {
-        return "baseUrl-then-optional-login";
+        return "baseUrl-then-hunter-login";
     }
 
     public HuntJobResult run(
@@ -68,40 +70,100 @@ public final class LiveHuntService {
         boolean hasLoginUsername = loginRequest != null
                 && loginRequest.username() != null
                 && !loginRequest.username().isBlank();
-        String preferredHooksLine = PreferredHooksStore.join(
-                storeRoot == null ? List.of() : PreferredHooksStore.load(storeRoot, request.getBaseUrl()));
+        List<String> preferredHooks = storeRoot == null
+                ? List.of()
+                : PreferredHooksStore.load(storeRoot, request.getBaseUrl());
+        String preferredHooksLine = PreferredHooksStore.join(preferredHooks);
+        boolean loginFeature = HuntFeatureHints.looksLikeLoginFeature(
+                request.getBaseUrl(), request.getUserStory(), brief);
+        HuntSecretResolver secrets = HuntSecretResolver.of(
+                hasLoginUsername ? loginRequest.username() : "",
+                hasLoginUsername && loginRequest.password() != null ? loginRequest.password() : "",
+                request.getOtp());
+        boolean hasOtp = secrets.hasOtp();
         int groundedRejects = 0;
+        int bugsAttempted = 0;
+        int happyStreak = 0;
+        boolean leftLoginOnce = false;
 
         if (tracker != null) {
             tracker.update(0, request.getCycleCeiling(), "Opening browser");
         }
         checkCancel(cancelCheck);
 
-        WebDriverFactory driverFactory = new WebDriverFactory();
         List<Map<String, Object>> allBugs = new ArrayList<>();
         List<Map<String, Object>> allScenarios = new ArrayList<>();
-        String stopReason = "CYCLE_CAP";
+        String stopReason = "ITERATION_CAP";
         String networkStatus = "unsupported";
         int cyclesUsed = 0;
+        int iterationsUsed = 0;
         int oracleBugCount = 0;
+        boolean stopEntireHunt = false;
 
-        try (HuntNetworkCapture network = HuntNetworkCapture.attach(driverFactory.get())) {
-            networkStatus = network.statusLabel();
-            WebDriver driver = driverFactory.get();
-            openSiteThenMaybeLogin(driver, driverFactory, request, loginRequest, hasLoginUsername, huntRoot, journal);
+        HuntRunLog.info("job=" + request.getJobId()
+                + " baseUrl=" + request.getBaseUrl()
+                + " iterations=" + request.getIterationCeiling()
+                + " cyclesPerIteration=" + request.getCycleCeiling()
+                + " actionCap=" + request.getActionCapPerCycle()
+                + " planner=" + request.getPlanner()
+                + " strategies=" + request.isStrategiesEnabled()
+                + " hasCreds=" + hasLoginUsername
+                + " hasOtp=" + hasOtp
+                + " loginFeature=" + loginFeature
+                + " hooks=" + (preferredHooksLine.isBlank() ? "none" : preferredHooksLine));
 
-            HuntActionExecutor actions = new HuntActionExecutor(driver);
+        if (loginFeature) {
+            coverage.seedLoginGaps();
+        }
 
-            for (int cycle = 1; cycle <= request.getCycleCeiling(); cycle++) {
+        try (PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks);
+             HuntBrowserSession session = HuntBrowserSession.open(
+                request.getBaseUrl(), loginRequest, hasLoginUsername, preferredHooks)) {
+            networkStatus = session.networkStatus();
+            HuntRunLog.info("browser open network=" + networkStatus);
+            WebDriver driver = session.driver();
+            openSiteThenMaybeLogin(driver, session.driverFactory(), request, loginRequest,
+                    hasLoginUsername, huntRoot, journal, preferredHooks);
+
+            HuntActionExecutor actions = HuntActionExecutor.forSession(session);
+            actions.setSecretResolver(secrets);
+
+            iterationLoop:
+            for (int iteration = 1; iteration <= request.getIterationCeiling() && !stopEntireHunt; iteration++) {
+                iterationsUsed = iteration;
+                Path iterDir = huntRoot.resolve("iterations").resolve(String.format(
+                        java.util.Locale.ROOT, "iteration-%02d", iteration));
+                Files.createDirectories(iterDir);
+                HuntIterationJournal iterJournal = new HuntIterationJournal(iterDir, iteration);
+                String priorIterResults = iteration > 1
+                        ? HuntIterationJournal.readResults(huntRoot, iteration - 1) : "";
+
+                HuntRunLog.info("iteration " + iteration + "/" + request.getIterationCeiling() + " start");
+
+                boolean iterationEndedByPlanner = false;
+                for (int cycle = 1; cycle <= request.getCycleCeiling(); cycle++) {
                 checkCancel(cancelCheck);
-                cyclesUsed = cycle;
+                cyclesUsed++;
                 if (tracker != null) {
-                    tracker.update(cycle, request.getCycleCeiling(), "Hunt cycle " + cycle);
+                    tracker.update(cycle, request.getCycleCeiling(),
+                            "Iteration " + iteration + " cycle " + cycle);
                 }
 
-                Path cycleDir = huntRoot.resolve("cycles").resolve(String.format(
+                Path cycleDir = iterDir.resolve("cycles").resolve(String.format(
                         java.util.Locale.ROOT, "cycle-%02d", cycle));
                 Files.createDirectories(cycleDir);
+
+                driver = session.driver();
+                HuntNetworkCapture network = session.network();
+
+                if (!ensureAliveOrRestart(session, journal, cycle, false)) {
+                    stopReason = "BROWSER_DEAD";
+                    iterJournal.flushResults(stopReason);
+                    stopEntireHunt = true;
+                    break iterationLoop;
+                }
+                driver = session.driver();
+                network = session.network();
 
                 String slim = HtmlSlimmer.slim(PageSnapshot.html(driver), 80000);
                 Files.writeString(cycleDir.resolve("dom-slim.txt"), slim, StandardCharsets.UTF_8);
@@ -116,7 +178,7 @@ public final class LiveHuntService {
                     shot = null;
                 }
 
-                List<Map<String, Object>> netFails = network.supported()
+                List<Map<String, Object>> netFails = network != null && network.supported()
                         ? network.snapshotAndClear()
                         : List.of();
                 Files.writeString(cycleDir.resolve("network-failures.json"),
@@ -141,7 +203,9 @@ public final class LiveHuntService {
                 String strategyHint = request.isStrategiesEnabled()
                         ? sequencer.forPrompt()
                         : "mode=explore";
+                HuntRunLog.cycleStart(cycle, request.getCycleCeiling(), map.url(), strategyHint);
 
+                iterJournal.flushPlan();
                 HuntPlanner.Context ctx = new HuntPlanner.Context(
                         brief,
                         cycle,
@@ -159,7 +223,15 @@ public final class LiveHuntService {
                         coverage.forPrompt(),
                         strategyHint,
                         request.getDomMode(),
-                        preferredHooksLine
+                        preferredHooksLine,
+                        hasLoginUsername,
+                        hasLoginUsername ? loginRequest.username() : "",
+                        hasOtp,
+                        loginFeature,
+                        iteration,
+                        request.getIterationCeiling(),
+                        iterJournal.planMarkdown(),
+                        priorIterResults
                 );
                 String userPrompt = OllamaHuntPlanner.buildUserPrompt(ctx);
                 // TestPilot-style evidence: exact prompt + response as text + screenshot
@@ -172,10 +244,13 @@ public final class LiveHuntService {
                     tracker.update(cycle, request.getCycleCeiling(),
                             "Waiting for planner (cycle " + cycle + ")…");
                 }
+                HuntRunLog.info("cycle " + cycle + " waiting for planner...");
 
                 HuntPlannerDecision decision = planner.plan(ctx);
+                int planned = decision.actions() == null ? 0 : decision.actions().size();
+                HuntRunLog.planner(cycle, decision.decision().name().toLowerCase(),
+                        planned, decision.rationale());
                 if (tracker != null) {
-                    int planned = decision.actions() == null ? 0 : decision.actions().size();
                     tracker.update(cycle, request.getCycleCeiling(),
                             "Running " + planned + " action(s) for cycle " + cycle);
                 }
@@ -197,6 +272,7 @@ public final class LiveHuntService {
                 HuntActionExecutor.writeActionsLog(cycleDir, actionLog);
                 groundedRejects += countGroundedRejects(actionLog);
                 coverage.recordActions(actionLog);
+                updateCoverageGaps(coverage, actionLog);
 
                 journal.appendCycleHeader(cycle,
                         decision.decision().name().toLowerCase(),
@@ -206,34 +282,75 @@ public final class LiveHuntService {
                 List<Map<String, Object>> plannerBugs = decision.bugs();
                 for (Map<String, Object> bug : plannerBugs) {
                     attachEvidence(bug, cycle, shot);
-                    allBugs.add(bug);
+                    bugsAttempted++;
+                    if (HuntBugDedupe.addUnique(allBugs, bug)) {
+                        // kept
+                    }
                 }
 
-                String postSlim = HtmlSlimmer.slim(PageSnapshot.html(driver), 80000);
-                HuntPageMap postMap = HuntPageMapBuilder.build(
-                        driver.getCurrentUrl(), driver.getTitle(), postSlim);
+                driver = session.driver();
+                String postSlim;
+                HuntPageMap postMap;
+                try {
+                    postSlim = HtmlSlimmer.slim(PageSnapshot.html(driver), 80000);
+                    postMap = HuntPageMapBuilder.build(
+                            driver.getCurrentUrl(), driver.getTitle(), postSlim);
+                } catch (Exception postEx) {
+                    if (!DeadBrowserSession.isDead(postEx)) {
+                        throw postEx;
+                    }
+                    LogsManager.warn("HUNT_POST_CYCLE_DEAD: cycle=" + cycle + " — " + postEx.getMessage());
+                    if (!ensureAliveOrRestart(session, journal, cycle, false)) {
+                        stopReason = "BROWSER_DEAD";
+                        iterJournal.flushResults(stopReason);
+                        stopEntireHunt = true;
+                        break iterationLoop;
+                    }
+                    driver = session.driver();
+                    postSlim = HtmlSlimmer.slim(PageSnapshot.html(driver), 80000);
+                    postMap = HuntPageMapBuilder.build(
+                            driver.getCurrentUrl(), driver.getTitle(), postSlim);
+                }
+
+                List<String> alertTexts = new ArrayList<>(postMap.alerts());
+                if (HuntAlertPoller.networkSuggestsAuthFailure(netFails)) {
+                    HuntRunLog.info("cycle " + cycle + " polling alerts after auth failure status");
+                    for (String a : HuntAlertPoller.poll(driver, HuntAlertPoller.DEFAULT_TIMEOUT_MS)) {
+                        if (!alertTexts.contains(a)) {
+                            alertTexts.add(a);
+                        }
+                    }
+                }
+
+                if (!HuntFeatureHints.looksLikeLoginUrl(postMap.url())) {
+                    leftLoginOnce = true;
+                }
+
                 HuntOracle.PageSignals pageSignals = new HuntOracle.PageSignals(
-                        driver.getCurrentUrl(),
+                        postMap.url(),
                         HuntOracle.mainTextLength(postSlim),
                         urlsBefore,
                         request.isStrategiesEnabled() ? sequencer.current().mode() : "explore",
-                        HuntOracle.lastActionNavigateOrClick(actionLog));
+                        HuntOracle.lastActionNavigateOrClick(actionLog),
+                        loginFeature);
                 List<Map<String, Object>> oracleBugs = HuntOracle.collect(
                         cycle,
                         netFails,
-                        postMap.alerts(),
+                        alertTexts,
                         actionLog,
                         journal.reproSlice(),
                         plannerBugs,
                         pageSignals);
                 Files.writeString(cycleDir.resolve("oracle.json"),
                         new JSONObject(HuntOracle.signalSnapshot(
-                                netFails, postMap.alerts(), pageSignals, oracleBugs)).toString(2),
+                                netFails, alertTexts, pageSignals, oracleBugs)).toString(2),
                         StandardCharsets.UTF_8);
                 for (Map<String, Object> bug : oracleBugs) {
                     attachEvidence(bug, cycle, shot);
-                    allBugs.add(bug);
-                    oracleBugCount++;
+                    bugsAttempted++;
+                    if (HuntBugDedupe.addUnique(allBugs, bug)) {
+                        oracleBugCount++;
+                    }
                 }
                 int remaining = request.getScenarioCap() - allScenarios.size();
                 for (Map<String, Object> sc : decision.scenarios()) {
@@ -241,7 +358,30 @@ public final class LiveHuntService {
                         break;
                     }
                     allScenarios.add(sc);
+                    iterJournal.noteScenario(sc);
                     remaining--;
+                }
+                iterJournal.flushPlan();
+
+                HuntRunLog.cycleDone(cycle, allBugs.size(), allScenarios.size());
+
+                if (request.isStrategiesEnabled()) {
+                    String mode = sequencer.current().mode();
+                    if ("happy".equals(mode)) {
+                        happyStreak++;
+                    } else {
+                        happyStreak = 0;
+                    }
+                    if (HuntFeatureHints.shouldAdvanceHappy(
+                            mode, happyStreak, postMap.url(), hasLoginUsername, leftLoginOnce)
+                            && !sequencer.isLast()) {
+                        String prev = mode;
+                        sequencer.advance();
+                        coverage.markStrategyDone(prev);
+                        happyStreak = 0;
+                        HuntRunLog.info("strategy advance " + prev + "->" + sequencer.current().mode()
+                                + " reason=happy_blocked_on_login");
+                    }
                 }
 
                 if (request.isStrategiesEnabled() && sequencer.isLast()
@@ -250,14 +390,15 @@ public final class LiveHuntService {
                     coverage.markStrategyDone("invent");
                 }
 
-                Optional<String> stuckStop = HuntStopRules.afterActions(
+                HuntStopRules.Recovery recovery = HuntStopRules.recoverFromStuck(
                         coverage,
-                        decision.decision(),
                         request.isStrategiesEnabled(),
                         request.isStrategiesEnabled() ? sequencer : null);
-                if (stuckStop.isPresent()) {
-                    stopReason = stuckStop.get();
-                    break;
+                if (recovery.triggered()) {
+                    HuntRunLog.info("cycle " + cycle + " repeated failures — blocked="
+                            + recovery.blockedLocators()
+                            + (recovery.advancedFrom().isBlank() ? " (continuing)"
+                            : " strategy " + recovery.advancedFrom() + "->" + recovery.advancedTo()));
                 }
                 Optional<String> completeStop = HuntStopRules.completeStop(
                         request.isStrategiesEnabled(),
@@ -269,6 +410,15 @@ public final class LiveHuntService {
                     stopReason = completeStop.get();
                     break;
                 }
+                if (decision.decision() == HuntPlannerDecision.Decision.FINISH_ITERATION) {
+                    stopReason = "FINISH_ITERATION";
+                    iterationEndedByPlanner = true;
+                    iterJournal.appendExecutionNote("Planner finish_iteration at cycle " + cycle
+                            + ": " + decision.rationale());
+                    iterJournal.flushResults(stopReason);
+                    HuntRunLog.info("iteration " + iteration + " finished by planner");
+                    break;
+                }
                 if (decision.decision() == HuntPlannerDecision.Decision.FINISH) {
                     stopReason = HuntStopRules.resolveFinishStopReason(
                             request.isStrategiesEnabled(),
@@ -276,22 +426,37 @@ public final class LiveHuntService {
                             allScenarios.size(),
                             request.getScenarioCap(),
                             allBugs.size());
-                    break;
+                    stopEntireHunt = true;
+                    iterJournal.appendExecutionNote("Planner finish_hunt at cycle " + cycle
+                            + ": " + decision.rationale());
+                    iterJournal.flushResults(stopReason);
+                    break iterationLoop;
+                }
+                }
+                if (!iterationEndedByPlanner) {
+                    iterJournal.appendExecutionNote("Cycle cap reached for iteration " + iteration);
+                    iterJournal.flushResults("CYCLE_CAP");
                 }
             }
-            if (cyclesUsed >= request.getCycleCeiling()
+            if (iterationsUsed >= request.getIterationCeiling()
+                    && !stopEntireHunt
                     && !"FINISH".equals(stopReason)
                     && !"COMPLETE".equals(stopReason)
-                    && !"STUCK".equals(stopReason)) {
-                stopReason = "CYCLE_CAP";
-            }
-        } finally {
-            try {
-                driverFactory.quit();
-            } catch (Exception ignored) {
+                    && !"BROWSER_DEAD".equals(stopReason)) {
+                stopReason = "ITERATION_CAP";
             }
         }
 
+        try {
+            Files.writeString(huntRoot.resolve("bug-dedupe.json"),
+                    new JSONObject(HuntBugDedupe.stats(allBugs, bugsAttempted)).toString(2),
+                    StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
+        }
+
+        allBugs = runBugTriage(planner, allBugs, journal, coverage, huntRoot);
+
+        HuntRunLog.finished(stopReason, cyclesUsed, allBugs.size(), allScenarios.size());
         Path zip = HuntPackWriter.writePack(
                 huntRoot, request, brief, stopReason, allBugs, allScenarios, cyclesUsed, networkStatus,
                 groundedRejects, sequencer.completed(), oracleBugCount, coverage.visitedUrlCount());
@@ -311,9 +476,8 @@ public final class LiveHuntService {
     }
 
     /**
-     * Always open the project base URL first. Optional credential login runs after that.
-     * Login failures are soft for Bug Hunter (continue on the open page) so login-feature hunts
-     * and mismatched selectors do not abort before cycle 1.
+     * Always open the project base URL first. Credentials (if any) are passed to the planner
+     * as tokens — the hunter performs login through UI actions, not {@link JobLoginService}.
      */
     static void openSiteThenMaybeLogin(
             WebDriver driver,
@@ -324,31 +488,129 @@ public final class LiveHuntService {
             Path huntRoot,
             HuntStepsJournal journal
     ) throws Exception {
+        openSiteThenMaybeLogin(driver, driverFactory, request, loginRequest,
+                hasLoginUsername, huntRoot, journal, List.of());
+    }
+
+    static void openSiteThenMaybeLogin(
+            WebDriver driver,
+            WebDriverFactory driverFactory,
+            HuntRequest request,
+            ConversionJobRequest loginRequest,
+            boolean hasLoginUsername,
+            Path huntRoot,
+            HuntStepsJournal journal,
+            List<String> preferredHooks
+    ) throws Exception {
         String base = request.getBaseUrl() == null ? "" : request.getBaseUrl().trim();
         if (!base.isBlank()) {
+            HuntRunLog.info("open site " + base);
             driver.get(base);
         }
-        if (!hasLoginUsername || loginRequest == null) {
-            Files.writeString(huntRoot.resolve("login-prelude.txt"),
-                    "Opened site only (no auto-login credentials).\nurl=" + safeUrl(driver) + "\n",
-                    StandardCharsets.UTF_8);
+        String prelude = "Opened site only — hunter-driven login (no server auto-login).\n"
+                + "url=" + safeUrl(driver) + "\n";
+        if (hasLoginUsername && loginRequest != null) {
+            prelude += "credentials=available via ${TARGET_USERNAME}/${TARGET_PASSWORD} in planner prompt\n";
+            if (preferredHooks != null && !preferredHooks.isEmpty()) {
+                prelude += "hooks=" + String.join(",", preferredHooks) + "\n";
+            }
+            HuntRunLog.info("open site only; creds passed to hunter url=" + safeUrl(driver));
+        } else {
+            HuntRunLog.info("open site only (no credential profile) url=" + safeUrl(driver));
+        }
+        Files.writeString(huntRoot.resolve("login-prelude.txt"), prelude, StandardCharsets.UTF_8);
+    }
+
+    private static void updateCoverageGaps(HuntCoverageMap coverage, List<Map<String, Object>> actionLog)
+            throws Exception {
+        if (actionLog == null) {
             return;
         }
-        try {
-            new JobLoginService().loginIfNeeded(driverFactory, loginRequest);
-            Files.writeString(huntRoot.resolve("login-prelude.txt"),
-                    "Auto-login OK.\nurl=" + safeUrl(driver) + "\n",
-                    StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
-            Files.writeString(huntRoot.resolve("login-prelude.txt"),
-                    "Auto-login failed — continuing hunt on current page.\n"
-                            + "url=" + safeUrl(driver) + "\n"
-                            + "error=" + msg + "\n",
-                    StandardCharsets.UTF_8);
-            journal.appendCycleHeader(0, "login_prelude",
-                    "Auto-login failed; hunt continues from open page. " + msg);
+        for (Map<String, Object> row : actionLog) {
+            String type = String.valueOf(row.get("type")).toLowerCase();
+            String status = String.valueOf(row.get("status")).toLowerCase();
+            String value = String.valueOf(row.get("value"));
+            if ("type".equals(type) && "ok".equals(status)
+                    && HuntSecretResolver.containsToken(value)) {
+                coverage.markTestedHint("Valid login");
+            }
+            if ("assert_text".equals(type) && ("ok".equals(status) || "fail".equals(status))) {
+                String text = String.valueOf(row.get("text"));
+                if (text.toLowerCase().contains("username") && text.toLowerCase().contains("required")) {
+                    coverage.markTestedHint("Empty username");
+                }
+                if (text.toLowerCase().contains("password") && text.toLowerCase().contains("required")) {
+                    coverage.markTestedHint("Empty password");
+                }
+                if (text.toLowerCase().contains("invalid")) {
+                    coverage.markTestedHint("Invalid credentials");
+                }
+            }
+            if ("type".equals(type) && HuntSecretResolver.containsToken(value)
+                    && value.toUpperCase().contains("OTP")) {
+                coverage.markTestedHint("OTP");
+            }
         }
+    }
+
+    private static List<Map<String, Object>> runBugTriage(
+            HuntPlanner planner,
+            List<Map<String, Object>> allBugs,
+            HuntStepsJournal journal,
+            HuntCoverageMap coverage,
+            Path huntRoot
+    ) {
+        if (allBugs == null || allBugs.isEmpty() || planner == null) {
+            return allBugs == null ? List.of() : allBugs;
+        }
+        try {
+            String prompt = HuntBugTriage.triagePrompt(allBugs, journal.reproSlice(), coverage.forPrompt());
+            String raw = planner.triageBugs(prompt);
+            Map<String, Object> audit = new LinkedHashMap<>();
+            audit.put("attempted", true);
+            if (raw == null || raw.isBlank()) {
+                audit.put("status", "skipped");
+                audit.put("reason", "empty triage response");
+                Files.writeString(huntRoot.resolve("bug-triage.json"),
+                        new JSONObject(audit).toString(2), StandardCharsets.UTF_8);
+                HuntRunLog.info("bug triage skipped (empty)");
+                return allBugs;
+            }
+            HuntBugTriage.Decision decision = HuntBugTriage.parse(raw);
+            List<Map<String, Object>> kept = HuntBugTriage.apply(allBugs, decision);
+            audit.put("status", "ok");
+            audit.put("before", allBugs.size());
+            audit.put("after", kept.size());
+            audit.put("raw", decision.rawJson());
+            audit.put("dropCount", decision.drops().size());
+            audit.put("mergeCount", decision.merges().size());
+            Files.writeString(huntRoot.resolve("bug-triage.json"),
+                    new JSONObject(audit).toString(2), StandardCharsets.UTF_8);
+            HuntRunLog.info("bug triage before=" + allBugs.size() + " after=" + kept.size());
+            return kept;
+        } catch (Exception e) {
+            try {
+                Map<String, Object> audit = new LinkedHashMap<>();
+                audit.put("status", "skipped");
+                audit.put("reason", e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+                Files.writeString(huntRoot.resolve("bug-triage.json"),
+                        new JSONObject(audit).toString(2), StandardCharsets.UTF_8);
+            } catch (Exception ignored) {
+            }
+            HuntRunLog.warn("bug triage skipped: " + e.getMessage());
+            return allBugs;
+        }
+    }
+
+    private static String abbreviateOneLine(String s, int max) {
+        if (s == null) {
+            return "";
+        }
+        String one = s.replace('\r', ' ').replace('\n', ' ').trim();
+        if (one.length() <= max) {
+            return one;
+        }
+        return one.substring(0, max) + "...";
     }
 
     private static String safeUrl(WebDriver driver) {
@@ -357,6 +619,45 @@ public final class LiveHuntService {
             return u == null ? "" : u;
         } catch (Exception e) {
             return "";
+        }
+    }
+
+    /**
+     * If Chrome/CDP died mid-hunt, restart once via the shared restart budget and reopen base URL.
+     * Returns false when recovery is exhausted or restart fails.
+     */
+    static boolean ensureAliveOrRestart(
+            HuntBrowserControls session,
+            HuntStepsJournal journal,
+            int cycle,
+            boolean softLogin
+    ) throws Exception {
+        try {
+            session.driver().getCurrentUrl();
+            return true;
+        } catch (Exception e) {
+            if (!DeadBrowserSession.isDead(e)) {
+                throw e;
+            }
+            LogsManager.warn("HUNT_BROWSER_DEAD: cycle=" + cycle + " — attempting restart. " + e.getMessage());
+            HuntRunLog.warn("browser dead at cycle " + cycle + " -- attempting restart");
+            Map<String, Object> restart = session.restart(softLogin);
+            boolean ok = Boolean.TRUE.equals(restart.get("ok"));
+            String reason = String.valueOf(restart.getOrDefault("reason",
+                    ok ? "restarted" : "restart failed"));
+            if (ok) {
+                HuntRunLog.info("auto restart ok url=" + restart.getOrDefault("url", ""));
+            } else {
+                HuntRunLog.warn("auto restart failed: " + reason);
+            }
+            if (journal != null) {
+                journal.appendCycleHeader(cycle, ok ? "browser_restart" : "browser_dead",
+                        ok
+                                ? "Chrome session died; auto restart_browser login=" + softLogin
+                                + " url=" + restart.getOrDefault("url", "")
+                                : "Chrome session died; could not restart (" + reason + ")");
+            }
+            return ok;
         }
     }
 

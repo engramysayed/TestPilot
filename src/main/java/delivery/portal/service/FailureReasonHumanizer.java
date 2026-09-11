@@ -38,6 +38,24 @@ public final class FailureReasonHumanizer {
         if (lower.contains("login_failed")) {
             return "Login did not succeed with the credentials used for this run.";
         }
+        if (lower.contains("err_name_not_resolved") || lower.contains("unknown host")
+                || lower.contains("nodename nor servname")) {
+            return "Could not open the site URL — DNS lookup failed (host not found). "
+                    + "Check VPN, base URL spelling, and that this machine can resolve the host.";
+        }
+        if (lower.contains("invalid session id") || lower.contains("chrome not reachable")
+                || lower.contains("not connected to devtools") || lower.contains("no such window")) {
+            return "The Chrome browser session closed mid-hunt (window closed or crashed). "
+                    + "Re-run the hunt and leave the browser window open.";
+        }
+        if (lower.contains("err_connection_refused") || lower.contains("connection refused")) {
+            return "Could not open the site URL — connection refused. "
+                    + "Check that the app is up and reachable from this machine.";
+        }
+        if (lower.contains("err_connection_timed_out") || lower.contains("err_timed_out")) {
+            return "Could not open the site URL — connection timed out. "
+                    + "Check network/VPN and that the host is reachable.";
+        }
         if (r.length() > 180) {
             return r.substring(0, 177) + "…";
         }

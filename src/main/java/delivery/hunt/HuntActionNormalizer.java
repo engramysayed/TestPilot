@@ -1,6 +1,9 @@
 package delivery.hunt;
 
+import delivery.store.PreferredHooksStore;
+
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -16,6 +19,8 @@ public final class HuntActionNormalizer {
             "^(?i)([a-z][\\w-]*)\\s*=\\s*['\"]([^'\"]+)['\"]\\s*,?$");
     private static final Pattern ATTR_SELECTOR = Pattern.compile(
             "^\\[([\\w-]+)\\s*=\\s*['\"]([^'\"]+)['\"]\\]$");
+    private static final Pattern HOOK_VALUE_TOKEN = Pattern.compile(
+            "^[A-Za-z][\\w-]*(?:_Input|_Button|_Btn|-input|-button)$");
 
     private HuntActionNormalizer() {
     }
@@ -77,6 +82,12 @@ public final class HuntActionNormalizer {
             value = "[" + bare.group(1) + "='" + bare.group(2) + "']";
         } else if (ATTR_SELECTOR.matcher(value).matches()) {
             strategy = strategy.isBlank() ? "css" : strategy;
+        } else if (HOOK_VALUE_TOKEN.matcher(value).matches()) {
+            String hook = firstPreferredHook();
+            if (!hook.isBlank()) {
+                strategy = "css";
+                value = "[" + hook + "='" + value + "']";
+            }
         } else if (value.startsWith("#") || value.contains("[") || value.contains(".")) {
             strategy = strategy.isBlank() ? "css" : strategy;
         } else if (value.startsWith("//") || value.startsWith("(//")) {
@@ -112,6 +123,15 @@ public final class HuntActionNormalizer {
                 out.put("text", out.get("assert_text"));
             }
         }
+    }
+
+    private static String firstPreferredHook() {
+        List<String> hooks = PreferredHooksStore.current();
+        if (hooks == null || hooks.isEmpty()) {
+            return "";
+        }
+        String hook = hooks.get(0);
+        return hook == null ? "" : hook.trim();
     }
 
     private static String firstNonBlank(Object a, Object b) {

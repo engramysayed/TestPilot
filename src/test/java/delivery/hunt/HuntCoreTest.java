@@ -171,7 +171,7 @@ public class HuntCoreTest {
                 "auto");
         String p = OllamaHuntPlanner.buildUserPrompt(ctx);
         Assert.assertTrue(p.contains("## Page map"));
-        Assert.assertTrue(p.contains("## Locator preference"));
+        Assert.assertFalse(p.contains("## Locator preference"));
         Assert.assertFalse(p.contains("## Slim DOM"));
         Assert.assertFalse(p.contains("…(DOM truncated"));
         Assert.assertTrue(OllamaHuntPlanner.systemPrompt().toLowerCase().contains("locator"));

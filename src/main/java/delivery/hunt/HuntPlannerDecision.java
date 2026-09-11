@@ -10,7 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 
 public final class HuntPlannerDecision {
-    public enum Decision { CONTINUE, FINISH }
+    public enum Decision { CONTINUE, FINISH_ITERATION, FINISH }
 
     private final Decision decision;
     private final String rationale;
@@ -56,15 +56,42 @@ public final class HuntPlannerDecision {
             o = new JSONObject(trimmed);
         }
         String d = o.optString("decision", "continue").trim().toLowerCase(Locale.ROOT);
-        Decision decision = "finish".equals(d) ? Decision.FINISH : Decision.CONTINUE;
+        Decision decision = parseDecision(d, o.optBoolean("stopIteration", false),
+                o.optBoolean("stopHunt", false));
+        List<Map<String, Object>> actions = toMapList(o.optJSONArray("actions"));
+        actions = normalizeActions(actions);
         return new HuntPlannerDecision(
                 decision,
                 o.optString("rationale", ""),
-                toMapList(o.optJSONArray("actions")),
+                actions,
                 toMapList(o.optJSONArray("bugs")),
                 toMapList(o.optJSONArray("scenarios")),
                 trimmed
         );
+    }
+
+    static Decision parseDecision(String decisionRaw, boolean stopIteration, boolean stopHunt) {
+        String d = decisionRaw == null ? "" : decisionRaw.trim().toLowerCase(Locale.ROOT);
+        if (stopHunt || "finish".equals(d) || "finish_hunt".equals(d) || "stop_hunt".equals(d)
+                || "stop".equals(d)) {
+            return Decision.FINISH;
+        }
+        if (stopIteration || "finish_iteration".equals(d) || "stop_iteration".equals(d)
+                || "finishiteration".equals(d)) {
+            return Decision.FINISH_ITERATION;
+        }
+        return Decision.CONTINUE;
+    }
+
+    static List<Map<String, Object>> normalizeActions(List<Map<String, Object>> actions) {
+        if (actions == null || actions.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> a : actions) {
+            out.add(HuntActionNormalizer.normalize(a));
+        }
+        return out;
     }
 
     /** Remove NULs / illegal controls that small local models sometimes emit inside JSON strings. */

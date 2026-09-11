@@ -32,7 +32,7 @@
         <h2>Start a hunt</h2>
         <p class="panel-intro">
             Pick a few related test cases, choose how the AI plans steps, then start.
-            Keel opens your project website first, then can sign in if you pick a credential profile.
+            Keel opens your website — the hunter signs in itself when you pick a credential profile (no server auto-login).
         </p>
 
         <div class="hunt-base-card" id="base-url-row" hidden>
@@ -46,7 +46,13 @@
 
         <label id="cred-label" class="hunt-cred" hidden>Sign-in profile
             <select id="credential-profile"></select>
-            <span class="field-hint">Use <em>Open site only</em> when you want to test login yourself (no auto sign-in).</span>
+            <span class="field-hint">Credentials are sent to the hunter as tokens — it chooses when/how to type them. Use <em>Open site only</em> for no credentials.</span>
+        </label>
+
+        <label id="otp-label" class="hunt-cred" hidden>Static OTP (optional)
+            <input type="text" id="hunt-otp" inputmode="numeric" autocomplete="off"
+                   placeholder="e.g. 245345 — only if your app uses a fixed OTP"/>
+            <span class="field-hint">Leave blank unless you need <code>${TARGET_OTP}</code> during the hunt. Not read from notes.</span>
         </label>
 
         <label>Notes for the hunter (optional)
@@ -106,9 +112,13 @@
                 <input type="number" id="scenario-cap" min="1" max="20" value="5"/>
                 <span class="field-hint">Max new ideas to keep</span>
             </label>
-            <label>Cycle ceiling
+            <label>Iterations
+                <input type="number" id="iteration-ceiling" min="1" max="5" value="2"/>
+                <span class="field-hint">Plan → execute → replan loops</span>
+            </label>
+            <label>Cycles / iteration
                 <input type="number" id="cycle-ceiling" min="1" max="30" value="8"/>
-                <span class="field-hint">Max planning rounds</span>
+                <span class="field-hint">Planning rounds per iteration</span>
             </label>
             <label>Actions / cycle
                 <input type="number" id="action-cap" min="1" max="15" value="5"/>
@@ -215,6 +225,18 @@
         strategyExplain.hidden = !strategiesCb.checked;
     }
 
+    function syncOtpField() {
+        const credSel = document.getElementById('credential-profile');
+        const otpLabel = document.getElementById('otp-label');
+        const credLabel = document.getElementById('cred-label');
+        if (!credSel || !otpLabel) return;
+        const showOtp = !credLabel.hidden && credSel.value !== '';
+        otpLabel.hidden = !showOtp;
+        if (!showOtp) {
+            document.getElementById('hunt-otp').value = '';
+        }
+    }
+
     function setStarting(on) {
         huntStarting.hidden = !on;
         huntStarting.setAttribute('aria-busy', on ? 'true' : 'false');
@@ -279,6 +301,7 @@
         sel.innerHTML = '';
         if (!list.length) {
             label.hidden = true;
+            syncOtpField();
             return;
         }
         label.hidden = false;
@@ -293,6 +316,8 @@
             sel.appendChild(opt);
         });
         sel.value = '';
+        sel.onchange = syncOtpField;
+        syncOtpField();
     }
 
     function shortMessage(msg) {
@@ -457,12 +482,17 @@
             planner: planner,
             scenarioCap: Number(document.getElementById('scenario-cap').value) || 5,
             cycleCeiling: Number(document.getElementById('cycle-ceiling').value) || 8,
+            iterationCeiling: Number(document.getElementById('iteration-ceiling').value) || 2,
             actionCapPerCycle: Number(document.getElementById('action-cap').value) || 5,
             domMode: document.getElementById('dom-mode').value || 'auto',
             strategiesEnabled: document.getElementById('strategies-enabled').checked
         };
         if (!document.getElementById('cred-label').hidden) {
             body.credentialProfile = document.getElementById('credential-profile').value || '';
+        }
+        const otpVal = (document.getElementById('hunt-otp').value || '').trim();
+        if (otpVal) {
+            body.otp = otpVal;
         }
         try {
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/hunt-runs', {

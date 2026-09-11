@@ -56,16 +56,44 @@ public class HuntOracleTest {
     @Test
     public void failedAssertDraftedWhenNotInPlannerBugs() {
         List<Map<String, Object>> actionLog = List.of(
-                Map.of("type", "assert_text", "status", "fail", "reason", "text not found",
-                        "expected", "Welcome")
+                Map.of("type", "assert_visible", "status", "fail", "reason", "element hidden",
+                        "expected", "Welcome banner")
         );
 
         List<Map<String, Object>> bugs = HuntOracle.collect(
                 2, List.of(), List.of(), actionLog, "steps so far", List.of());
 
         Assert.assertEquals(bugs.size(), 1);
-        Assert.assertTrue(String.valueOf(bugs.get(0).get("title")).contains("assert_text"));
+        Assert.assertTrue(String.valueOf(bugs.get(0).get("title")).contains("assert_visible"));
         Assert.assertEquals(bugs.get(0).get("repro"), "steps so far");
+    }
+
+    @Test
+    public void missingAssertTextIsNotFiledAsBug() {
+        List<Map<String, Object>> actionLog = List.of(
+                Map.of("type", "assert_text", "status", "fail",
+                        "reason", "text not found on page", "text", "Expired Token")
+        );
+
+        List<Map<String, Object>> bugs = HuntOracle.collect(
+                2, List.of(), List.of(), actionLog, "steps so far", List.of());
+
+        Assert.assertTrue(bugs.isEmpty(), "vanished toast text is a hunter miss, not a defect: " + bugs);
+    }
+
+    @Test
+    public void alertNotFiledWhenOnlyFailuresAreHunterMisses() {
+        List<Map<String, Object>> actionLog = List.of(
+                Map.of("type", "assert_text", "status", "fail",
+                        "reason", "text not found on page", "text", "Expired Token"),
+                Map.of("type", "click", "status", "fail", "locator", "a[aria-label='Close']",
+                        "reason", "no such element: Unable to locate element: {\"method\":\"css selector\"}")
+        );
+
+        List<Map<String, Object>> bugs = HuntOracle.collect(
+                3, List.of(), List.of("Expired Token"), actionLog, "journal tail", List.of());
+
+        Assert.assertTrue(bugs.isEmpty(), "hunter locator miss must not turn a toast into a bug: " + bugs);
     }
 
     @Test

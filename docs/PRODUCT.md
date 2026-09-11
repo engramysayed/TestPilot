@@ -187,25 +187,37 @@ Exploratory live hunting from the project library. Goal: **break features** and 
 ### Start a hunt (`/bug-hunter`)
 
 - Pick project (needs base URL when not dry-run).
-- Multi-select library TCs; optional free-text user story.
+- **Credential profile** — hunter receives `$TARGET_USERNAME` / `$TARGET_PASSWORD` / `$TARGET_OTP` **tokens only** (never plaintext password in planner prompts or pack text). Choose **Open site only** for hunts without credentials.
+- Multi-select library TCs; optional free-text user story (OTP hints can be parsed from story text).
 - Planner: **Ollama** or **Cursor**.
 - Caps: scenario invent budget, cycle ceiling, **actions per cycle** (default 5).
 - **DOM mode**: Auto (structured page map; full slim HTML if the map is thin) · Map only · Full slim.
 - **Use hunt strategies** (default on): happy path → empty fields → boundary → abuse → session → invent.
 
+**Preferred hooks:** if the project has preferred locator attributes configured, auto-login and hunt grounding prefer those patterns before generic CSS (configure on the project — no hardcoded vendor attrs in code).
+
 ### What each cycle does
 
 1. Capture slim DOM + **one screenshot at cycle start** + optional network failures.
 2. Build a **page map** (controls, headings, alerts, dialogs) for the planner; keep full slim on disk.
-3. Send brief + **steps journal** + **coverage map** + page map (± slim) + screenshot (when the model is multimodal, e.g. `gemma4:e2b`).
-4. Execute allowlisted actions only; **reject invented locators** (`ungrounded_locator`).
-5. Default **wait = 5s** when the model omits `ms`.
-6. Append journal + coverage; advance strategy on repeated fails (or **STUCK** on last mode / when strategies are off).
+3. Send brief + **steps journal** + **coverage map** (including untested hints) + page map (± slim) + screenshot (when the model is multimodal, e.g. `gemma4:e2b`).
+4. Execute allowlisted actions only; **reject invented locators** (`ungrounded_locator`). Actions include `restart_browser` (capped per hunt).
+5. **Credential tokens** resolve at `type` time only (`HuntSecretResolver`); actions-log keeps token form.
+6. **Post-click settle** (~1s) before the next action; optional alert/toast poll after login API failures.
+7. Default **wait = 5s** when the model omits `ms`.
+8. Append journal + coverage; **auto-advance strategy** when happy-path is blocked on login (≥2 cycles, still on login URL); **STUCK** on last mode / when strategies are off.
+
+### End of hunt
+
+- **Bug dedupe** — fingerprint duplicate titles/themes before pack write (`bug-dedupe.json`).
+- **Bug triage** — one optional planner pass to keep/drop/merge accumulated bugs (`bug-triage.json`; soft-skips on bad JSON; when unsure, **keep**).
+- **Login-feature hunts** — oracle does not flag “unexpected redirect to login” when the hunt is explicitly testing login.
 
 ### Outputs (downloadable ZIP)
 
 - `brief.md`, `SUMMARY.md`, `steps-journal.md`, `coverage-map.md`
-- `bug-report.json` / `.csv` (severity, repro, evidence hints)
+- `bug-report.json` / `.csv` (severity, repro, evidence hints) — post-dedupe/triage
+- `bug-dedupe.json`, `bug-triage.json`, `login-prelude.txt` (hooks used / soft-fail; no password)
 - `candidate-scenarios.json` / `.csv` (≤ invent cap)
 - `cycles/cycle-NN/` — `page-map.*`, `dom-slim.txt`, screenshot, `planner-prompt.txt`, `planner-response.txt`, actions + network
 
@@ -217,6 +229,7 @@ Stop reasons: planner `finish`, cycle ceiling, **STUCK**, or **COMPLETE** (strat
 - Oracle drafts cover HTTP 4xx/5xx, failed asserts, and alerts; not full blank-main / unexpected-URL / `net::ERR_*` promotion yet.
 - Dry-run simulates one cycle (stubs map/coverage); live needs `delivery.dry-run=false`.
 - Candidate scenarios stay review-only until you import them yourself.
+- End triage adds one extra planner call (cost/latency).
 
 ---
 

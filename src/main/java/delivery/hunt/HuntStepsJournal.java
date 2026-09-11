@@ -41,7 +41,7 @@ public final class HuntStepsJournal {
         for (Map<String, Object> row : actionLog) {
             String type = str(row.get("type"));
             String status = str(row.get("status"));
-            String reason = str(row.get("reason"));
+            String reason = HuntFailureText.shorten(str(row.get("reason")));
             String detail = summarizeAction(row);
             memory.append(i++).append(". **").append(type).append("** → `").append(status).append("`");
             if (!detail.isBlank()) {
@@ -87,6 +87,8 @@ public final class HuntStepsJournal {
         String type = str(row.get("type")).toLowerCase();
         return switch (type) {
             case "navigate" -> "url=" + str(row.get("url"));
+            case "restart_browser" -> "login=" + str(row.get("login"))
+                    + " url=" + str(row.get("url"));
             case "back", "forward", "refresh" -> "";
             case "execute_js" -> {
                 String script = str(row.get("script"));

@@ -12,7 +12,7 @@ import java.util.Optional;
 public class HuntStopRulesTest {
 
     @Test
-    public void afterActionsReturnsStuckWhenFailStreakReached() throws Exception {
+    public void recoveryBlocksLocatorInsteadOfStoppingWhenStrategiesDisabled() throws Exception {
         Path root = Files.createTempDirectory("hunt-stop-stuck");
         HuntCoverageMap coverage = new HuntCoverageMap(root);
         coverage.recordActions(List.of(Map.of(
@@ -21,13 +21,18 @@ public class HuntStopRulesTest {
                 "type", "click", "status", "fail", "locator", "#go", "reason", "missing")));
 
         Assert.assertTrue(coverage.shouldStopStuck());
-        Assert.assertEquals(
-                HuntStopRules.afterActions(coverage, HuntPlannerDecision.Decision.CONTINUE),
-                Optional.of("STUCK"));
+        HuntStopRules.Recovery recovery = HuntStopRules.recoverFromStuck(coverage, false, null);
+
+        Assert.assertTrue(recovery.triggered());
+        Assert.assertEquals(recovery.blockedLocators(), List.of("click `#go`"));
+        Assert.assertEquals(recovery.advancedFrom(), "");
+        Assert.assertFalse(coverage.shouldStopStuck(), "streak must be cleared so the hunt continues");
+        Assert.assertTrue(coverage.forPrompt().contains("## Do not retry (blocked)"));
+        Assert.assertTrue(coverage.forPrompt().contains("click `#go`"));
     }
 
     @Test
-    public void afterActionsAdvancesStrategyWhenEnabledAndNotLast() throws Exception {
+    public void recoveryAdvancesStrategyWhenEnabledAndNotLast() throws Exception {
         Path root = Files.createTempDirectory("hunt-stop-advance");
         HuntCoverageMap coverage = new HuntCoverageMap(root);
         coverage.recordActions(List.of(Map.of(
@@ -38,15 +43,15 @@ public class HuntStopRulesTest {
         HuntStrategySequencer seq = new HuntStrategySequencer(true);
         Assert.assertEquals(seq.current().mode(), "happy");
 
-        Assert.assertEquals(
-                HuntStopRules.afterActions(coverage, HuntPlannerDecision.Decision.CONTINUE, true, seq),
-                Optional.empty());
+        HuntStopRules.Recovery recovery = HuntStopRules.recoverFromStuck(coverage, true, seq);
+        Assert.assertEquals(recovery.advancedFrom(), "happy");
+        Assert.assertEquals(recovery.advancedTo(), "empty");
         Assert.assertFalse(coverage.shouldStopStuck());
         Assert.assertEquals(seq.current().mode(), "empty");
     }
 
     @Test
-    public void afterActionsStuckOnLastModeWhenStrategiesEnabled() throws Exception {
+    public void recoveryOnLastModeStillContinuesWithBlockedLocator() throws Exception {
         Path root = Files.createTempDirectory("hunt-stop-invent");
         HuntCoverageMap coverage = new HuntCoverageMap(root);
         coverage.recordActions(List.of(Map.of(
@@ -61,37 +66,21 @@ public class HuntStopRulesTest {
         Assert.assertEquals(seq.current().mode(), "invent");
         Assert.assertTrue(seq.isLast());
 
-        Assert.assertEquals(
-                HuntStopRules.afterActions(coverage, HuntPlannerDecision.Decision.CONTINUE, true, seq),
-                Optional.of("STUCK"));
+        HuntStopRules.Recovery recovery = HuntStopRules.recoverFromStuck(coverage, true, seq);
+        Assert.assertEquals(recovery.blockedLocators(), List.of("click `#go`"));
+        Assert.assertEquals(recovery.advancedFrom(), "");
+        Assert.assertFalse(coverage.shouldStopStuck());
     }
 
     @Test
-    public void afterActionsStuckWhenStrategiesDisabled() throws Exception {
-        Path root = Files.createTempDirectory("hunt-stop-disabled");
-        HuntCoverageMap coverage = new HuntCoverageMap(root);
-        coverage.recordActions(List.of(Map.of(
-                "type", "click", "status", "fail", "locator", "#go", "reason", "missing")));
-        coverage.recordActions(List.of(Map.of(
-                "type", "click", "status", "fail", "locator", "#go", "reason", "missing")));
-
-        Assert.assertTrue(coverage.shouldStopStuck());
-        Assert.assertEquals(
-                HuntStopRules.afterActions(coverage, HuntPlannerDecision.Decision.CONTINUE, false, null),
-                Optional.of("STUCK"));
-    }
-
-    @Test
-    public void afterActionsEmptyWhenNotStuck() throws Exception {
+    public void recoveryNotTriggeredWhenNotStuck() throws Exception {
         Path root = Files.createTempDirectory("hunt-stop-ok");
         HuntCoverageMap coverage = new HuntCoverageMap(root);
         coverage.recordActions(List.of(Map.of(
                 "type", "click", "status", "fail", "locator", "#go", "reason", "missing")));
 
         Assert.assertFalse(coverage.shouldStopStuck());
-        Assert.assertEquals(
-                HuntStopRules.afterActions(coverage, HuntPlannerDecision.Decision.CONTINUE),
-                Optional.empty());
+        Assert.assertFalse(HuntStopRules.recoverFromStuck(coverage, false, null).triggered());
     }
 
     @Test
@@ -157,23 +146,17 @@ public class HuntStopRulesTest {
     }
 
     @Test
-    public void stuckStopReasonAppearsInSummary() throws Exception {
+    public void repeatedFailuresBlockLocatorAcrossCyclesWithoutStopping() throws Exception {
         Path root = Files.createTempDirectory("hunt-stop-summary");
         HuntCoverageMap coverage = new HuntCoverageMap(root);
-        coverage.recordActions(List.of(Map.of(
-                "type", "click", "status", "fail", "locator", "#go", "reason", "missing")));
-        coverage.recordActions(List.of(Map.of(
-                "type", "click", "status", "fail", "locator", "#go", "reason", "missing")));
-
-        Assert.assertEquals(
-                HuntStopRules.afterActions(coverage, HuntPlannerDecision.Decision.CONTINUE),
-                Optional.of("STUCK"));
-
-        HuntRequest req = new HuntRequest();
-        req.setJobId("hunt_stuck");
-        req.setProjectId("prj_s");
-        req.normalize();
-        String summary = HuntPackWriter.buildSummary(req, "STUCK", 2, 0, 0, "unsupported", 0);
-        Assert.assertTrue(summary.contains("Stop reason: STUCK"));
+        for (int cycle = 1; cycle <= 3; cycle++) {
+            coverage.recordActions(List.of(Map.of(
+                    "type", "click", "status", "fail", "locator", "#go", "reason", "missing")));
+            coverage.recordActions(List.of(Map.of(
+                    "type", "click", "status", "fail", "locator", "#go", "reason", "missing")));
+            HuntStopRules.recoverFromStuck(coverage, false, null);
+            Assert.assertFalse(coverage.shouldStopStuck(), "cycle " + cycle + " must not end the hunt");
+        }
+        Assert.assertEquals(coverage.blockedLocators(), List.of("click `#go`"));
     }
 }

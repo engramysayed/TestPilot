@@ -206,21 +206,23 @@ Excel / generated workbook
 ## How Bug Hunter works
 
 ```text
-Selected library TCs + optional user story
+Selected library TCs + optional user story + credential profile (tokens only)
         │
         ▼
-   brief.md → browser (optional login)
+   brief.md → browser (preferred-hook login or open-site-only)
         │
         ▼
    each cycle: page map (± slim) + screenshot + journal + coverage
-        → Ollama/Cursor planner JSON → grounded actions (cap 5)
+        → Ollama/Cursor planner JSON → grounded actions (cap 5, post-click settle)
         → strategies (happy → empty → boundary → abuse → session → invent)
-        → oracle drafts + STUCK / COMPLETE / finish / cycle ceiling
+        → oracle drafts + auto-advance when happy blocked on login
         ▼
-   hunter pack ZIP (bugs, candidate scenarios, cycles/** evidence)
+   dedupe → optional triage recheck → hunter pack ZIP
 ```
 
-Open **Bug Hunter** in the nav (`/bug-hunter`). Nothing merges into the generated library until a human imports candidates. Specs: [`docs/superpowers/specs/2026-09-09-bug-hunter-design.md`](docs/superpowers/specs/2026-09-09-bug-hunter-design.md), [`docs/superpowers/specs/2026-09-10-bug-hunter-quality-design.md`](docs/superpowers/specs/2026-09-10-bug-hunter-quality-design.md).
+Open **Bug Hunter** in the nav (`/bug-hunter`). Credential profiles use `$TARGET_*` tokens — passwords never appear in planner prompts or pack files. Nothing merges into the generated library until a human imports candidates.
+
+Specs: [`docs/superpowers/specs/2026-09-09-bug-hunter-design.md`](docs/superpowers/specs/2026-09-09-bug-hunter-design.md), [`docs/superpowers/specs/2026-09-10-bug-hunter-quality-design.md`](docs/superpowers/specs/2026-09-10-bug-hunter-quality-design.md), [`docs/superpowers/specs/2026-09-10-bug-hunter-quality-pass2-design.md`](docs/superpowers/specs/2026-09-10-bug-hunter-quality-pass2-design.md).
 
 ---
 
