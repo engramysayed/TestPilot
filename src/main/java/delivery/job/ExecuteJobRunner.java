@@ -5,6 +5,8 @@ import delivery.excel.KeelPathCaseFilter;
 import delivery.excel.ManualTestCase;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.service.GeneratedWorkbookService;
+import delivery.ir.TcDraft;
+import delivery.ir.TcDraftStore;
 import delivery.store.ProjectStore;
 import delivery.util.ProjectNaming;
 
@@ -71,7 +73,10 @@ public class ExecuteJobRunner {
             throw e;
         }
 
-        return new ExecuteJobResult(progress.passed(), progress.todo(), "execute completed");
+        TcDraftStore draftStore = new TcDraftStore(work);
+        List<TcDraft> drafts = draftStore.readAll();
+        String message = PrecisionFallbackMessage.appendIfNeeded(drafts, "execute completed");
+        return new ExecuteJobResult(progress.passed(), progress.todo(), message);
     }
 
     static ProvePhase.HealWorkbookApplier healWorkbookApplier(ConversionJobRequest request) {

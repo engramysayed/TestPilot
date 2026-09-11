@@ -182,6 +182,7 @@ public class EmitPhase {
                 ? "Phase2 emit complete (soft block — not client-ready)"
                 : "Phase2 emit complete");
         String message = reviseResult.ran() ? reviseResult.summaryMessage() : "ok";
+        message = PrecisionFallbackMessage.appendIfNeeded(clustered, message);
         return new ConversionJobResult(zip, passed, todo, score, message, portalStatus, reviseVerdict);
     }
 
