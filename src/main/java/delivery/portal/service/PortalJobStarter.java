@@ -39,15 +39,13 @@ public class PortalJobStarter implements JobStarter {
     }
 
     @Override
-    public String startConvert(String projectId, Long ownerUserId, boolean useGenerated, AuthoringEngine authoringEngine) {
-        return startJob(projectId, ownerUserId, useGenerated, JobRecord.JobKind.CONVERT, "job_",
-                authoringEngine);
+    public String startConvert(String projectId, Long ownerUserId, boolean useGenerated) {
+        return startJob(projectId, ownerUserId, useGenerated, JobRecord.JobKind.CONVERT, "job_");
     }
 
     @Override
-    public String startExecute(String projectId, Long ownerUserId, boolean useGenerated, AuthoringEngine authoringEngine) {
-        return startJob(projectId, ownerUserId, useGenerated, JobRecord.JobKind.EXECUTE, "exec_",
-                authoringEngine);
+    public String startExecute(String projectId, Long ownerUserId, boolean useGenerated) {
+        return startJob(projectId, ownerUserId, useGenerated, JobRecord.JobKind.EXECUTE, "exec_");
     }
 
     private String startJob(
@@ -55,8 +53,7 @@ public class PortalJobStarter implements JobStarter {
             Long ownerUserId,
             boolean useGenerated,
             JobRecord.JobKind kind,
-            String idPrefix,
-            AuthoringEngine authoringEngine
+            String idPrefix
     ) {
         ProjectRecord project = store.getOwnedProject(projectId, ownerUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown project"));
@@ -95,7 +92,7 @@ public class PortalJobStarter implements JobStarter {
 
         String jobId = idPrefix + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         String mode = kind == JobRecord.JobKind.CONVERT ? "NEW" : "EXECUTE";
-        AuthoringEngine engine = authoringEngine == null ? AuthoringEngine.KEEL : authoringEngine;
+        AuthoringEngine engine = store.authoringEngineForProject(projectId);
         JobRecord job = new JobRecord(
                 jobId,
                 projectId,

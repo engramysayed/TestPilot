@@ -54,8 +54,7 @@ public class ConversionWorker {
                 System.setProperty("delivery.final-revise.api-key", props.getFinalReviseApiKey());
             }
             boolean effectiveFinalRevise = props.isFinalReviseEnabled() && job.isFinalRevise();
-            PrecisionJobConfig precisionConfig = PrecisionJobConfig.fromPortal(
-                    props.isPrecisionAuthoringEnabled(), props.getPrecisionMaxCallsPerJob());
+            PrecisionJobConfig precisionConfig = portalStore.precisionConfigForProject(job.getProjectId());
             ConversionJobRequest request = new ConversionJobRequest(
                     job.getProjectId(),
                     job.getExcelPath(),

@@ -51,10 +51,11 @@ public class AuthoringEngineApiTest extends AbstractTestNGSpringContextTests {
         MockMultipartFile excel = new MockMultipartFile("excel", "sample.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelBytes);
 
+        patchProjectEngine(projectId, "precision");
+
         MvcResult jobRes = mockMvc.perform(multipart("/api/projects/" + projectId + "/jobs")
                         .file(excel)
                         .param("mode", "NEW")
-                        .param("authoringEngine", "precision")
                         .header("X-Keel-Requested-With", "Keel")
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
                 .andExpect(status().isAccepted())
@@ -75,9 +76,10 @@ public class AuthoringEngineApiTest extends AbstractTestNGSpringContextTests {
         MockMultipartFile excel = new MockMultipartFile("excel", "sample.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelBytes);
 
+        patchProjectEngine(projectId, "precision");
+
         MvcResult jobRes = mockMvc.perform(multipart("/api/projects/" + projectId + "/execute-runs")
                         .file(excel)
-                        .param("authoringEngine", "precision")
                         .header("X-Keel-Requested-With", "Keel")
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
                 .andExpect(status().isAccepted())
@@ -89,6 +91,15 @@ public class AuthoringEngineApiTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(Files.isRegularFile(requestPath), "request.json should exist");
         JSONObject body = new JSONObject(Files.readString(requestPath));
         Assert.assertEquals("precision", body.getString("authoringEngine"));
+    }
+
+    private void patchProjectEngine(String projectId, String engine) throws Exception {
+        mockMvc.perform(patch("/api/projects/" + projectId)
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"authoringEngine\":\"" + engine + "\"}"))
+                .andExpect(status().isOk());
     }
 
     private String createProjectWithBaseUrl() throws Exception {

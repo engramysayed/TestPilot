@@ -36,6 +36,13 @@ public class ProjectEntity {
 
     private Instant archivedAt;
 
+    /** keel | precision — default keel when null/blank */
+    @Column(length = 32)
+    private String authoringEngine;
+
+    /** Per-job Cursor call cap when Precision is selected; null = server default */
+    private Integer precisionMaxCallsPerJob;
+
     public Long getId() { return id; }
     public String getProjectId() { return projectId; }
     public void setProjectId(String projectId) { this.projectId = projectId; }
@@ -51,4 +58,10 @@ public class ProjectEntity {
     public void setArchived(boolean archived) { this.archived = archived; }
     public Instant getArchivedAt() { return archivedAt; }
     public void setArchivedAt(Instant archivedAt) { this.archivedAt = archivedAt; }
+    public String getAuthoringEngine() { return authoringEngine; }
+    public void setAuthoringEngine(String authoringEngine) { this.authoringEngine = authoringEngine; }
+    public Integer getPrecisionMaxCallsPerJob() { return precisionMaxCallsPerJob; }
+    public void setPrecisionMaxCallsPerJob(Integer precisionMaxCallsPerJob) {
+        this.precisionMaxCallsPerJob = precisionMaxCallsPerJob;
+    }
 }

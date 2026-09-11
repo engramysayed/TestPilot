@@ -55,6 +55,7 @@ A project is one target app.
 
 - Rename the project.
 - Set **base URL** (required before Execute or Automate).
+- **Authoring engine**: **Keel** (default) or **Precision — higher accuracy on complex UIs, Higher Cost**; optional per-project **max Cursor calls per job** (blank = server default).
 - **Credential profiles**: named logins (username + write-only password). Used as `${TARGET_USERNAME}` / `${TARGET_PASSWORD}` at run time.
 - **Design mockups**: optional PNG per `TC_ID` (e.g. Figma export). Execute compares that image to the live last screen. This is **not** a live Figma integration.
 - Archive (hide) or permanently delete the project and its files.
@@ -95,10 +96,9 @@ Turn stories or AI output into a Keel workbook stored on the project (`generated
 
 ### All in one pipeline
 
-- Pick **Keel** or **Precision (Cursor)** for the Automate and Execute stages (default Keel).
 - Confirm, then: Generate (with second coverage pass) → Automate → Execute.
 - Stage links show where each part landed (workbook on Generate, ZIP on Automate, run on Execute).
-- Warning when Precision is disabled server-side (`delivery.authoring.precision.enabled=false`).
+- Authoring engine is taken from **project Settings** (not chosen on this page).
 
 ### Bulk generate
 
@@ -245,8 +245,7 @@ Run cases on the live site **without** building a customer ZIP.
 - Mix: library ∪ upload; **same `TC_ID` → upload wins**.
 - Optional PNG design mockup per TC (also on project Settings).
 - Optional **Review selected TCs with Cursor before run** (propose only). **Accept & run** uses that CSV **for this job only** — it does not save the library.
-- **Authoring engine**: **Keel** (default) or **Precision (Cursor)** — higher accuracy on complex UIs; requires `CURSOR_API_KEY`; falls back to Keel if unavailable (~50 API calls per job).
-- **Start execute run**. Cancel while running.
+- **Start execute run**. Cancel while running. (Authoring engine: **project Settings**.)
 
 ### While it runs
 
@@ -284,8 +283,7 @@ Turn the workbook into a **downloadable Java Selenium TestNG** package.
 - **UPDATE** — only TCs whose Steps/ExpectedResult changed; needs a prior NEW (`UPDATE_WITHOUT_FRAMEWORK` if none).
 - **Client delivery** checkbox — extra final-revise audit before download (off unless the server has `delivery.final-revise.enabled=true` and `AGENTROUTER_API_KEY`). You can still download; the job may be marked as needing review.
 - Optional Cursor **pre-run review** (same propose-only rule as Execute).
-- **Authoring engine**: **Keel** (default) or **Precision (Cursor)** — same semantics as Execute.
-- KeelPath guard: cannot start Automate if there are no runnable rows (everything except `MANUAL`).
+- KeelPath guard: cannot start Automate if there are no runnable rows (everything except `MANUAL`). (Authoring engine: **project Settings**.)
 
 ### What the job does (in order)
 
@@ -306,17 +304,19 @@ Locator memory remembers working locators **per live page path**. Auth-only loca
 
 ## Authoring engine (Keel vs Precision)
 
-Per **Automate**, **Execute**, and **All in one** job you choose how intents bind to the live DOM during Prove.
+Per project, under **Settings**, you choose how **Automate**, **Execute**, and **All in one** jobs bind intents to the live DOM during Prove.
 
 | Engine | Bind path | Needs |
 |--------|-----------|--------|
 | **Keel** | Deterministic DOM bind; on failure → heal cascade (Ollama shortlist → Cursor pick/invent → recovery) | Local Ollama (for heal tiers) |
 | **Precision** | DOM shortlist → one Cursor `groundRank` (multimodal) → bind on high/medium confidence; one `solve` on low; Keel fallback on cap/errors | `CURSOR_API_KEY` + `delivery.cursor-heal.enabled=true` |
 
+**Project Settings** store `authoringEngine` and optional `precisionMaxCallsPerJob` per project.
+
 **Server knobs** (`application.properties`):
 
-- `delivery.authoring.precision.enabled` — when `false`, Precision jobs fall back to Keel immediately; the portal shows a warning if you pick Precision.
-- `delivery.authoring.precision.max-calls-per-job` — shared cap for `groundRank`, `solve`, and Precision-era post-fail Cursor heal (default `50`).
+- `delivery.authoring.precision.enabled` — when `false`, Precision projects fall back to Keel immediately; Settings shows a warning if Precision is selected.
+- `delivery.authoring.precision.max-calls-per-job` — default cap when the project leaves max calls blank (default `50`).
 
 **Per-job artifacts**: `automate-runs/{jobId}/request.json` or `execute-runs/{jobId}/request.json` records `authoringEngine`. IR drafts store per-TC precision call counts and fallback flags. Status page shows a muted banner when any intent used Keel fallback (`PRECISION_FALLBACK`).
 

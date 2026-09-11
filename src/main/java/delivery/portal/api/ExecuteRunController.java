@@ -81,8 +81,7 @@ public class ExecuteRunController {
             @RequestParam(value = "excel", required = false) MultipartFile excel,
             @RequestParam(value = "useGenerated", required = false, defaultValue = "false") String useGenerated,
             @RequestParam(value = "tcIds", required = false) List<String> tcIds,
-            @RequestParam(value = "credentialProfile", required = false) String credentialProfile,
-            @RequestParam(value = "authoringEngine", required = false, defaultValue = "keel") String authoringEngine
+            @RequestParam(value = "credentialProfile", required = false) String credentialProfile
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
         if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
@@ -154,7 +153,7 @@ public class ExecuteRunController {
         }
 
         String jobId = "exec_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        AuthoringEngine engine = AuthoringEngine.parse(authoringEngine);
+        AuthoringEngine engine = store.authoringEngineForProject(projectId);
         JobRecord job = new JobRecord(
                 jobId,
                 projectId,

@@ -96,6 +96,31 @@
                            placeholder="data-axis-test-id"/>
                 </label>
                 <p class="muted">Comma-separated attribute names. Ranked above id, data-testid, CSS, and XPath. Shared with every project on this host.</p>
+                <fieldset class="authoring-engine" id="settings-authoring-engine"
+                          th:attr="data-precision-enabled=${precisionAuthoringEnabled},data-default-max-calls=${defaultPrecisionMaxCalls}">
+                    <legend>Authoring engine</legend>
+                    <p class="muted panel-intro" style="margin-top:0">
+                        Applies to Automate, Execute, and All-in-one pipeline jobs for this project.
+                    </p>
+                    <label class="check">
+                        <input type="radio" name="authoringEngine" value="keel" checked/>
+                        Keel engine — fast, deterministic DOM grounding
+                    </label>
+                    <label class="check">
+                        <input type="radio" name="authoringEngine" value="precision"/>
+                        Precision — higher accuracy on complex UIs, Higher Cost
+                    </label>
+                    <label id="settings-precision-max-wrap">Max Cursor calls per job
+                        <input type="number" name="precisionMaxCallsPerJob" id="settings-precision-max-calls"
+                               min="1" max="500" step="1"
+                               th:attr="placeholder=${defaultPrecisionMaxCalls}"/>
+                    </label>
+                    <p class="muted">Leave blank to use the server default
+                        (<span th:text="${defaultPrecisionMaxCalls}">50</span>).</p>
+                    <p class="error" id="settingsPrecisionDisabledWarn" hidden>
+                        Precision is disabled on this server — jobs will use Keel.
+                    </p>
+                </fieldset>
                 <p id="settings-msg" class="muted" hidden></p>
                 <button type="submit">Save settings</button>
             </form>
@@ -501,6 +526,17 @@
         document.getElementById('settings-base-url').value = p.baseUrl || '';
         const hooks = document.getElementById('settings-preferred-hooks');
         if (hooks) hooks.value = p.preferredHooks || '';
+        const enginePanel = document.getElementById('settings-authoring-engine');
+        const precisionEnabled = enginePanel && enginePanel.dataset.precisionEnabled === 'true';
+        const engineValue = (p.authoringEngine || 'keel').toLowerCase();
+        document.querySelectorAll('#settings-form input[name="authoringEngine"]').forEach(radio => {
+            radio.checked = radio.value === engineValue;
+        });
+        const maxCalls = document.getElementById('settings-precision-max-calls');
+        if (maxCalls) {
+            maxCalls.value = p.precisionMaxCallsPerJob > 0 ? String(p.precisionMaxCallsPerJob) : '';
+        }
+        updateSettingsPrecisionWarning(precisionEnabled);
         const heading = document.getElementById('project-name-heading');
         if (heading && p.name) heading.textContent = p.name;
         const badge = document.getElementById('archived-badge');
@@ -509,15 +545,38 @@
         if (archiveBtn) archiveBtn.hidden = !!p.archived;
     }
 
+    function updateSettingsPrecisionWarning(precisionEnabled) {
+        const warn = document.getElementById('settingsPrecisionDisabledWarn');
+        if (!warn) return;
+        const precisionSelected = document.querySelector(
+                '#settings-form input[name="authoringEngine"][value="precision"]:checked');
+        warn.hidden = !(precisionSelected && precisionEnabled === false);
+    }
+    document.querySelectorAll('#settings-form input[name="authoringEngine"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const enginePanel = document.getElementById('settings-authoring-engine');
+            const precisionEnabled = enginePanel && enginePanel.dataset.precisionEnabled === 'true';
+            updateSettingsPrecisionWarning(precisionEnabled);
+        });
+    });
+
     document.getElementById('settings-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const msg = document.getElementById('settings-msg');
         msg.hidden = false;
+        const engineChoice = e.target.querySelector('input[name="authoringEngine"]:checked');
+        const maxRaw = e.target.precisionMaxCallsPerJob.value.trim();
         const body = {
             name: e.target.name.value.trim(),
             baseUrl: e.target.baseUrl.value.trim(),
-            preferredHooks: e.target.preferredHooks.value.trim()
+            preferredHooks: e.target.preferredHooks.value.trim(),
+            authoringEngine: engineChoice ? engineChoice.value : 'keel'
         };
+        if (maxRaw) {
+            body.precisionMaxCallsPerJob = parseInt(maxRaw, 10);
+        } else {
+            body.precisionMaxCallsPerJob = 0;
+        }
         const res = await fetch(apiUrl(''), {
             method: 'PATCH',
             credentials: 'same-origin',

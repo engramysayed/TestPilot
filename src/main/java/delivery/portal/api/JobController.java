@@ -71,8 +71,7 @@ public class JobController {
             @RequestParam(value = "tcIds", required = false) List<String> tcIds,
             @RequestParam(value = "credentialProfile", required = false) String credentialProfile,
             @RequestParam(value = "mode", defaultValue = "NEW") String mode,
-            @RequestParam(value = "finalRevise", required = false, defaultValue = "false") String finalRevise,
-            @RequestParam(value = "authoringEngine", required = false, defaultValue = "keel") String authoringEngine
+            @RequestParam(value = "finalRevise", required = false, defaultValue = "false") String finalRevise
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
         if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
@@ -155,7 +154,7 @@ public class JobController {
                 || "on".equalsIgnoreCase(finalRevise);
         boolean wantFinalRevise = portalProperties.isFinalReviseEnabled() && clientWantsFinalRevise;
         String jobId = "job_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        AuthoringEngine engine = AuthoringEngine.parse(authoringEngine);
+        AuthoringEngine engine = store.authoringEngineForProject(projectId);
         JobRecord job = new JobRecord(
                 jobId,
                 projectId,

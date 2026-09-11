@@ -70,8 +70,6 @@ public class GenerateMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(main.contains("btn-all-in-one"), "All in one button style missing");
         Assert.assertTrue(main.contains("second coverage pass"), "All in one tooltip/hint missing");
         Assert.assertTrue(main.contains("id=\"pipeline-status\""), "pipeline status panel missing");
-        Assert.assertTrue(main.contains("pipelineAuthoringEngine"), "pipeline authoring engine toggle missing");
-        Assert.assertTrue(main.contains("id=\"pipeline-authoring-engine\""), "pipeline authoring engine panel missing");
         Assert.assertTrue(main.contains("keelpath-help"), "KeelPath help missing");
         Assert.assertTrue(main.contains("id=\"download-csv-btn\""), "download CSV button missing");
         Assert.assertTrue(main.contains("id=\"keel-filter\""), "KeelPath filter missing");

@@ -213,4 +213,4 @@ Per job, the portal sends `authoringEngine: keel | precision` (stored in `automa
 
 Precision skips UI-TARS Layer 1.5 on the initial bind (vision is inside `groundRank`). Post-fail heal on Precision jobs shares the same per-job call cap via `HealCascade.attachPrecisionBudget`. Job messages include `PRECISION_FALLBACK` when any intent fell back; the status page shows a muted banner.
 
-**Where to choose engine:** Automate upload, Execute start, Generate → All in one (pipeline API `authoringEngine`), CLI `--authoring-engine`.
+**Where to choose engine:** Project **Settings** (per project); CLI `--authoring-engine` for batch Automate only.

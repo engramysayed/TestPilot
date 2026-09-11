@@ -1,7 +1,6 @@
 package delivery.portal.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import delivery.authoring.AuthoringEngine;
 import delivery.excel.ExcelTcReader;
 import delivery.excel.KeelPathCounts;
 import delivery.excel.ManualTestCase;
@@ -78,17 +77,8 @@ public class PipelineService {
     }
 
     public Map<String, Object> start(String projectId, Long ownerUserId, String stories) throws Exception {
-        return start(projectId, ownerUserId, stories, AuthoringEngine.KEEL);
-    }
-
-    public Map<String, Object> start(
-            String projectId,
-            Long ownerUserId,
-            String stories,
-            AuthoringEngine authoringEngine
-    ) throws Exception {
         String pipelineId = "pipe_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        Map<String, Object> pipeline = newPipelineRecord(pipelineId, projectId, ownerUserId, authoringEngine);
+        Map<String, Object> pipeline = newPipelineRecord(pipelineId, projectId, ownerUserId);
 
         if (stories != null && !stories.isBlank()) {
             if (generator == null) {
@@ -286,8 +276,7 @@ public class PipelineService {
     private void startAutomateStage(Map<String, Object> pipeline) {
         String projectId = String.valueOf(pipeline.get("projectId"));
         Long ownerUserId = ((Number) pipeline.get("ownerUserId")).longValue();
-        AuthoringEngine engine = pipelineAuthoringEngine(pipeline);
-        String jobId = jobStarter.startConvert(projectId, ownerUserId, true, engine);
+        String jobId = jobStarter.startConvert(projectId, ownerUserId, true);
         setStage(pipeline, Stage.AUTOMATE, StageStatus.RUNNING, jobId, null);
         pipeline.put("currentStage", Stage.AUTOMATE.name());
     }
@@ -295,15 +284,9 @@ public class PipelineService {
     private void startExecuteStage(Map<String, Object> pipeline) {
         String projectId = String.valueOf(pipeline.get("projectId"));
         Long ownerUserId = ((Number) pipeline.get("ownerUserId")).longValue();
-        AuthoringEngine engine = pipelineAuthoringEngine(pipeline);
-        String jobId = jobStarter.startExecute(projectId, ownerUserId, true, engine);
+        String jobId = jobStarter.startExecute(projectId, ownerUserId, true);
         setStage(pipeline, Stage.EXECUTE, StageStatus.RUNNING, jobId, null);
         pipeline.put("currentStage", Stage.EXECUTE.name());
-    }
-
-    private static AuthoringEngine pipelineAuthoringEngine(Map<String, Object> pipeline) {
-        Object raw = pipeline.get("authoringEngine");
-        return AuthoringEngine.parse(raw == null ? null : String.valueOf(raw));
     }
 
     private boolean pollJob(Map<String, Object> pipeline, Stage stage, Map<String, Object> stageMap) {
@@ -352,18 +335,11 @@ public class PipelineService {
         }
     }
 
-    private Map<String, Object> newPipelineRecord(
-            String pipelineId,
-            String projectId,
-            Long ownerUserId,
-            AuthoringEngine authoringEngine
-    ) {
+    private Map<String, Object> newPipelineRecord(String pipelineId, String projectId, Long ownerUserId) {
         Map<String, Object> pipeline = new LinkedHashMap<>();
         pipeline.put("pipelineId", pipelineId);
         pipeline.put("projectId", projectId);
         pipeline.put("ownerUserId", ownerUserId);
-        AuthoringEngine engine = authoringEngine == null ? AuthoringEngine.KEEL : authoringEngine;
-        pipeline.put("authoringEngine", engine.wireValue());
         pipeline.put("status", "RUNNING");
         pipeline.put("message", "");
         pipeline.put("createdAt", Instant.now().toString());

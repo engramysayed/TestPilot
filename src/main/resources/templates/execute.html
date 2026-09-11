@@ -27,8 +27,7 @@
         </p>
     </section>
 
-    <section class="panel execute-start" id="execute-form-panel" hidden
-             th:attr="data-precision-enabled=${precisionAuthoringEnabled}">
+    <section class="panel execute-start" id="execute-form-panel" hidden>
         <h2>Start an execute run</h2>
         <p class="panel-intro">Choose credentials and cases, then run against the project base URL.</p>
         <form id="execute-form" class="execute-start-form">
@@ -82,22 +81,6 @@
                     <p id="library-pick-hint" class="muted">No selection = run all library cases.</p>
                 </div>
             </div>
-
-            <fieldset class="authoring-engine">
-                <legend>Authoring engine</legend>
-                <label class="check">
-                    <input type="radio" name="authoringEngine" value="keel" checked/>
-                    Keel engine — fast, deterministic DOM grounding
-                </label>
-                <label class="check">
-                    <input type="radio" name="authoringEngine" value="precision"/>
-                    Precision (Cursor) — higher accuracy on complex UIs; uses Cursor API
-                </label>
-                <p class="muted generate-option-hint">Precision requires <code>CURSOR_API_KEY</code>, falls back to Keel if unavailable (~50 API calls per job).</p>
-                <p class="error" id="precisionDisabledWarn" hidden>
-                    Precision is disabled on this server — runs will fall back to Keel.
-                </p>
-            </fieldset>
 
             <label id="excel-upload-label">Workbook (.xlsx or .csv)
                 <input type="file" name="excel" id="excel-input" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required/>
@@ -245,9 +228,6 @@
     const projectSel = document.getElementById('project-select');
     const projectErr = document.getElementById('project-err');
     const noProjects = document.getElementById('no-projects');
-    const formPanel = document.getElementById('execute-form-panel');
-    const precisionEnabled = formPanel && formPanel.dataset.precisionEnabled === 'true';
-    const precisionDisabledWarn = document.getElementById('precisionDisabledWarn');
     const executeForm = document.getElementById('execute-form');
     const baseUrlRow = document.getElementById('base-url-row');
     const baseUrlDisplay = document.getElementById('base-url-display');
@@ -1545,8 +1525,6 @@
         if (credSel.value) {
             body.append('credentialProfile', credSel.value);
         }
-        const engineChoice = executeForm.querySelector('input[name="authoringEngine"]:checked');
-        body.append('authoringEngine', engineChoice ? engineChoice.value : 'keel');
         try {
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/execute-runs', {
                 method: 'POST',
@@ -1568,18 +1546,6 @@
         }
         submitBtn.disabled = false;
     });
-
-    function updatePrecisionWarning() {
-        if (!precisionDisabledWarn || !executeForm) return;
-        const precisionSelected = executeForm.querySelector('input[name="authoringEngine"][value="precision"]:checked');
-        precisionDisabledWarn.hidden = !(precisionSelected && !precisionEnabled);
-    }
-    if (executeForm) {
-        executeForm.querySelectorAll('input[name="authoringEngine"]').forEach(radio => {
-            radio.addEventListener('change', updatePrecisionWarning);
-        });
-        updatePrecisionWarning();
-    }
 
     projectSel.addEventListener('change', onProjectChange);
     loadProjects();

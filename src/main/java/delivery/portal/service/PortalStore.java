@@ -1,5 +1,7 @@
 package delivery.portal.service;
 
+import delivery.authoring.AuthoringEngine;
+import delivery.authoring.PrecisionJobConfig;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.JobRecord;
 import delivery.portal.model.PatchProjectRequest;
@@ -41,6 +43,7 @@ public class PortalStore {
 
     private final Map<String, JobRecord> jobs = new ConcurrentHashMap<>();
     private final Map<String, java.util.concurrent.atomic.AtomicBoolean> cancelRequested = new ConcurrentHashMap<>();
+    private final DeliveryPortalProperties portalProperties;
     private final Path storeRootPath;
     private final ProjectStore projectStore;
     private final ProjectRepository projectRepository;
@@ -49,10 +52,30 @@ public class PortalStore {
     public PortalStore(DeliveryPortalProperties props,
                        ProjectRepository projectRepository,
                        JobRepository jobRepository) {
+        this.portalProperties = props;
         this.storeRootPath = java.nio.file.Path.of(props.getStoreRoot());
         this.projectStore = new ProjectStore(storeRootPath);
         this.projectRepository = projectRepository;
         this.jobRepository = jobRepository;
+    }
+
+    public AuthoringEngine authoringEngineForProject(String projectId) {
+        return projectRepository.findByProjectId(projectId)
+                .map(e -> AuthoringEngine.parse(e.getAuthoringEngine()))
+                .orElse(AuthoringEngine.KEEL);
+    }
+
+    public PrecisionJobConfig precisionConfigForProject(String projectId) {
+        AuthoringEngine engine = authoringEngineForProject(projectId);
+        Integer projectMax = projectRepository.findByProjectId(projectId)
+                .map(ProjectEntity::getPrecisionMaxCallsPerJob)
+                .orElse(null);
+        int max = projectMax != null && projectMax > 0
+                ? projectMax
+                : portalProperties.getPrecisionMaxCallsPerJob();
+        boolean enabled = portalProperties.isPrecisionAuthoringEnabled()
+                && engine == AuthoringEngine.PRECISION;
+        return new PrecisionJobConfig(enabled, max);
     }
 
     /** Project disk root using entity base URL, falling back to latest job hint. */
@@ -167,13 +190,20 @@ public class PortalStore {
             entity.setArchived(patch.archived());
             entity.setArchivedAt(patch.archived() ? Instant.now() : null);
         }
-        projectRepository.save(entity);
         if (patch.preferredHooks() != null) {
             String url = entity.getBaseUrl() != null && !entity.getBaseUrl().isBlank()
                     ? entity.getBaseUrl()
                     : resolveBaseUrlHint(projectId);
             PreferredHooksStore.save(storeRootPath, url, patch.preferredHooks());
         }
+        if (patch.authoringEngine() != null) {
+            entity.setAuthoringEngine(AuthoringEngine.parse(patch.authoringEngine()).wireValue());
+        }
+        if (patch.precisionMaxCallsPerJob() != null) {
+            int max = patch.precisionMaxCallsPerJob();
+            entity.setPrecisionMaxCallsPerJob(max <= 0 ? null : Math.min(max, 500));
+        }
+        projectRepository.save(entity);
         return Optional.of(toRecord(entity));
     }
 
@@ -544,6 +574,10 @@ public class PortalStore {
         ProjectRecord rec = new ProjectRecord(
                 e.getProjectId(), e.getName(), e.getOwnerUserId(), e.getLatestVersion());
         rec.setBaseUrl(e.getBaseUrl() == null ? "" : e.getBaseUrl());
+        rec.setAuthoringEngine(AuthoringEngine.parse(e.getAuthoringEngine()));
+        rec.setPrecisionMaxCallsPerJob(e.getPrecisionMaxCallsPerJob() == null
+                ? 0
+                : e.getPrecisionMaxCallsPerJob());
         rec.setArchived(e.isArchived());
         if (e.getArchivedAt() != null) {
             rec.setArchivedAt(e.getArchivedAt().toString());

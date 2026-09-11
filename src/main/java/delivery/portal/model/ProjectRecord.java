@@ -1,5 +1,7 @@
 package delivery.portal.model;
 
+import delivery.authoring.AuthoringEngine;
+
 public class ProjectRecord {
     private final String projectId;
     private final String name;
@@ -11,6 +13,9 @@ public class ProjectRecord {
     private String baseUrl = "";
     private boolean archived = false;
     private String archivedAt = "";
+    private AuthoringEngine authoringEngine = AuthoringEngine.KEEL;
+    /** 0 = use server default from application.properties */
+    private int precisionMaxCallsPerJob = 0;
 
     public ProjectRecord(String projectId, String name, Long ownerUserId, int latestVersion) {
         this.projectId = projectId;
@@ -41,5 +46,17 @@ public class ProjectRecord {
     public String getArchivedAt() { return archivedAt; }
     public void setArchivedAt(String archivedAt) {
         this.archivedAt = archivedAt == null ? "" : archivedAt;
+    }
+    public AuthoringEngine getAuthoringEngine() {
+        return authoringEngine == null ? AuthoringEngine.KEEL : authoringEngine;
+    }
+    public void setAuthoringEngine(AuthoringEngine authoringEngine) {
+        this.authoringEngine = authoringEngine == null ? AuthoringEngine.KEEL : authoringEngine;
+    }
+    public int getPrecisionMaxCallsPerJob() {
+        return precisionMaxCallsPerJob;
+    }
+    public void setPrecisionMaxCallsPerJob(int precisionMaxCallsPerJob) {
+        this.precisionMaxCallsPerJob = Math.max(0, precisionMaxCallsPerJob);
     }
 }

@@ -42,8 +42,7 @@ public class ExecuteWorker {
         job.setMessage(props.isDryRun() ? "Dry-run execute" : "Starting execute");
         portalStore.syncJobPersistence(job);
         try {
-            PrecisionJobConfig precisionConfig = PrecisionJobConfig.fromPortal(
-                    props.isPrecisionAuthoringEnabled(), props.getPrecisionMaxCallsPerJob());
+            PrecisionJobConfig precisionConfig = portalStore.precisionConfigForProject(job.getProjectId());
             ConversionJobRequest request = new ConversionJobRequest(
                     job.getProjectId(),
                     job.getExcelPath(),

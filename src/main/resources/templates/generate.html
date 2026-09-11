@@ -71,23 +71,6 @@
                 <p class="muted generate-option-hint">Runs Ollama twice: first generates TCs, then asks the model to fix authoring mistakes and add only gaps vs your stories. Roughly doubles wait time. Keel also auto-repairs known empty-field TestData mistakes even when this is off.</p>
             </div>
 
-            <fieldset class="authoring-engine" id="pipeline-authoring-engine"
-                      th:attr="data-precision-enabled=${precisionAuthoringEnabled}">
-                <legend>Authoring engine (Automate &amp; Execute stages)</legend>
-                <label class="check">
-                    <input type="radio" name="pipelineAuthoringEngine" value="keel" checked/>
-                    Keel engine — fast, deterministic DOM grounding
-                </label>
-                <label class="check">
-                    <input type="radio" name="pipelineAuthoringEngine" value="precision"/>
-                    Precision (Cursor) — higher accuracy on complex UIs; uses Cursor API
-                </label>
-                <p class="muted generate-option-hint">Precision requires <code>CURSOR_API_KEY</code>, falls back to Keel if unavailable (~50 API calls per job).</p>
-                <p class="error" id="pipelinePrecisionDisabledWarn" hidden>
-                    Precision is disabled on this server — pipeline Automate/Execute jobs will fall back to Keel.
-                </p>
-            </fieldset>
-
             <div class="generate-actions">
                 <button type="button" class="button" id="generate-btn" disabled
                         title="Queue a background generate job and open the status page. Respects Second pass checkbox. Safe for long Ollama runs.">Generate</button>
@@ -457,10 +440,6 @@
     const reviewPass = document.getElementById('review-pass');
     const generateBtn = document.getElementById('generate-btn');
     const runPipelineBtn = document.getElementById('run-pipeline-btn');
-    const pipelineAuthoringEnginePanel = document.getElementById('pipeline-authoring-engine');
-    const pipelinePrecisionDisabledWarn = document.getElementById('pipelinePrecisionDisabledWarn');
-    const precisionEnabled = pipelineAuthoringEnginePanel
-            && pipelineAuthoringEnginePanel.dataset.precisionEnabled === 'true';
     const pipelineStatusPanel = document.getElementById('pipeline-status');
     const pipelineStatusSummary = document.getElementById('pipeline-status-summary');
     const pipelineStageList = document.getElementById('pipeline-stage-list');
@@ -1667,22 +1646,6 @@
         });
     }
 
-    function selectedPipelineAuthoringEngine() {
-        const choice = document.querySelector('input[name="pipelineAuthoringEngine"]:checked');
-        return choice ? choice.value : 'keel';
-    }
-
-    function updatePipelinePrecisionWarning() {
-        if (!pipelinePrecisionDisabledWarn) return;
-        const precisionSelected = document.querySelector(
-                'input[name="pipelineAuthoringEngine"][value="precision"]:checked');
-        pipelinePrecisionDisabledWarn.hidden = !(precisionSelected && !precisionEnabled);
-    }
-    document.querySelectorAll('input[name="pipelineAuthoringEngine"]').forEach(function (radio) {
-        radio.addEventListener('change', updatePipelinePrecisionWarning);
-    });
-    updatePipelinePrecisionWarning();
-
     async function pollPipeline(pipelineId) {
         stopPipelinePoll();
         activePipelineId = pipelineId;
@@ -1720,23 +1683,19 @@
             return;
         }
         const stories = storiesInput.value.trim();
-        const authoringEngine = selectedPipelineAuthoringEngine();
-        const engineLabel = authoringEngine === 'precision' ? 'Precision (Cursor)' : 'Keel';
         const ok = window.confirm(
             'All in one will:\n'
             + '1) Generate test cases with a second coverage pass (revise — slower, more complete)\n'
-            + '2) Automate (if AUTOMATE rows exist) — ' + engineLabel + ' engine\n'
-            + '3) Execute (if runnable rows exist) — ' + engineLabel + ' engine\n\n'
+            + '2) Automate (if AUTOMATE rows exist)\n'
+            + '3) Execute (if runnable rows exist)\n\n'
+            + 'Authoring engine comes from project Settings.\n'
             + 'This can take a long time and use the browser/AI. Continue?'
         );
         if (!ok) return;
         runPipelineBtn.disabled = true;
         setGenerateStatus('Starting All in one…', false);
         try {
-            const body = { authoringEngine: authoringEngine };
-            if (stories) {
-                body.stories = stories;
-            }
+            const body = stories ? { stories: stories } : {};
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/pipeline', {
                 method: 'POST',
                 credentials: 'same-origin',

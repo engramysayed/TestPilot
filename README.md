@@ -180,7 +180,7 @@ mvn -q exec:java -Dexec.mainClass=delivery.cli.DeliveryCli -Dexec.args="--excel 
 | **Keel** | Default; fast; no Cursor API | Deterministic DOM bind → heal cascade (Ollama → Cursor pick/invent → recovery) |
 | **Precision** | Complex UIs; needs `CURSOR_API_KEY` | DOM shortlist → one multimodal Cursor `groundRank` → bind on high/medium; one `solve` on low; auto-fallback to Keel on cap or errors |
 
-Choose on **Automate** (`/automate`), **Execute** (`/execute`), and **Generate → All in one** (applies to Automate + Execute stages). Stored per job in `automate-runs/{jobId}/request.json` or `execute-runs/{jobId}/request.json`. When any intent falls back, the status page shows a `PRECISION_FALLBACK` banner.
+Configure per project under **Projects → Settings** (applies to Automate, Execute, and All in one). Optional per-project max Cursor calls per job. Stored per job in `automate-runs/{jobId}/request.json` or `execute-runs/{jobId}/request.json`. When any intent falls back, the status page shows a `PRECISION_FALLBACK` banner.
 
 Details: [`docs/ops/end-to-end-flow.md`](docs/ops/end-to-end-flow.md#authoring-engine-automate--execute).
 
