@@ -38,7 +38,8 @@ public final class CredentialRevision {
                 request.baseUrl(),
                 request.projectId(),
                 request.username(),
-                request.password());
+                request.password(),
+                request.tenantId());
     }
 
     public static String resolve(
@@ -46,7 +47,8 @@ public final class CredentialRevision {
             String baseUrl,
             String projectId,
             String username,
-            String password
+            String password,
+            delivery.identity.TenantId tenant
     ) {
         boolean bound = (username != null && !username.isBlank())
                 || (password != null && !password.isBlank());
@@ -55,8 +57,8 @@ public final class CredentialRevision {
         }
         byte[] key = loadOrCreateKey(storeRoot);
         String mac = hmac(key, normalize(username) + "\0" + (password == null ? "" : password));
-        String memoryId = memoryKey(storeRoot, projectId, mac);
-        Path projectRoot = projectRootOrNull(storeRoot, baseUrl, projectId);
+        String memoryId = memoryKey(storeRoot, tenant, projectId, mac);
+        Path projectRoot = projectRootOrNull(storeRoot, baseUrl, projectId, tenant);
         if (projectRoot != null) {
             Path bindingFile = projectRoot.resolve(BINDING_FILE);
             String existing = readRevisionIfMacMatches(bindingFile, mac);
@@ -81,12 +83,14 @@ public final class CredentialRevision {
         return !abs.equals(cwd);
     }
 
-    private static Path projectRootOrNull(Path storeRoot, String baseUrl, String projectId) {
+    private static Path projectRootOrNull(
+            Path storeRoot, String baseUrl, String projectId, delivery.identity.TenantId tenant
+    ) {
         if (!persistable(storeRoot) || projectId == null || projectId.isBlank()) {
             return null;
         }
         try {
-            return new ProjectStore(storeRoot, baseUrl).projectRoot(projectId);
+            return new ProjectStore(storeRoot, baseUrl, tenant).projectRoot(projectId);
         } catch (Exception e) {
             return null;
         }
@@ -170,8 +174,11 @@ public final class CredentialRevision {
         return "cred_" + UUID.randomUUID().toString().replace("-", "");
     }
 
-    private static String memoryKey(Path storeRoot, String projectId, String mac) {
+    private static String memoryKey(
+            Path storeRoot, delivery.identity.TenantId tenant, String projectId, String mac
+    ) {
         String store = storeRoot == null ? "" : storeRoot.toAbsolutePath().normalize().toString();
-        return store + "\0" + (projectId == null ? "" : projectId) + "\0" + mac;
+        String tenantPart = tenant == null ? "" : tenant.value();
+        return store + "\0" + tenantPart + "\0" + (projectId == null ? "" : projectId) + "\0" + mac;
     }
 }

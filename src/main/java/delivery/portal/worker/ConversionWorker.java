@@ -70,7 +70,9 @@ public class ConversionWorker {
                     effectiveFinalRevise,
                     props.isCodegenOllamaNaming(),
                     job.getAuthoringEngine(),
-                    precisionConfig
+                    precisionConfig,
+                    delivery.identity.TenantId.personal(job.getOwnerUserId()),
+                    job.getJobId()
             );
 
             ConversionJobResult result;

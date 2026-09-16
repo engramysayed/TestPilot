@@ -58,7 +58,9 @@ public class ExecuteWorker {
                     false,
                     false,
                     job.getAuthoringEngine(),
-                    precisionConfig
+                    precisionConfig,
+                    delivery.identity.TenantId.personal(job.getOwnerUserId()),
+                    job.getJobId()
             );
 
             ExecuteJobResult result;

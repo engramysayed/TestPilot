@@ -195,7 +195,8 @@ public class ProvePhase {
         Path previousRoot = null;
         if (request != null && request.storeRoot() != null && request.projectId() != null
                 && request.mode() != null && "UPDATE".equalsIgnoreCase(request.mode().trim())) {
-            ProjectStore previousStore = new ProjectStore(request.storeRoot(), request.baseUrl());
+            ProjectStore previousStore = new ProjectStore(
+                    request.storeRoot(), request.baseUrl(), request.tenantId());
             previousRoot = previousStore.projectRoot(request.projectId());
             previousDrafts = ReuseEligibility.loadStoredDrafts(previousRoot);
             storedContext = ReuseEligibility.read(previousRoot);
@@ -203,7 +204,12 @@ public class ProvePhase {
         locatorMemory = new DomainLocatorMemory();
         if (request != null && request.storeRoot() != null
                 && request.baseUrl() != null && !request.baseUrl().isBlank()) {
-            locatorMemoryFile = locatorMemory.openShared(request.storeRoot(), request.baseUrl());
+            if (request.tenantId() != null) {
+                locatorMemoryFile = locatorMemory.openShared(
+                        request.storeRoot(), request.tenantId(), request.baseUrl());
+            } else {
+                locatorMemoryFile = locatorMemory.openShared(request.storeRoot(), request.baseUrl());
+            }
         } else {
             locatorMemoryFile = memoryFile(request);
             locatorMemory.load(locatorMemoryFile);
@@ -1261,6 +1267,10 @@ public class ProvePhase {
         if (request == null || request.storeRoot() == null) {
             return null;
         }
+        if (request.tenantId() != null) {
+            return DomainLocatorMemory.sharedFile(
+                    request.storeRoot(), request.tenantId(), request.baseUrl());
+        }
         Path shared = DomainLocatorMemory.sharedFile(request.storeRoot(), request.baseUrl());
         if (shared != null) {
             return shared;
@@ -1268,7 +1278,7 @@ public class ProvePhase {
         if (request.projectId() == null || request.projectId().isBlank()) {
             return null;
         }
-        return new ProjectStore(request.storeRoot(), request.baseUrl())
+        return new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId())
                 .projectRoot(request.projectId())
                 .resolve(DomainLocatorMemory.FILE_NAME);
     }

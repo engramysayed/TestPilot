@@ -37,7 +37,7 @@ public class DryRunConversionService {
             BooleanSupplier cancelCheck
     ) throws Exception {
         String mode = request.mode() == null ? "NEW" : request.mode().trim().toUpperCase();
-        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl());
+        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
         if ("UPDATE".equals(mode) && !store.hasFramework(request.projectId())) {
             throw new IllegalStateException("UPDATE_WITHOUT_FRAMEWORK");
         }

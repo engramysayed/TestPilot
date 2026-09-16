@@ -131,7 +131,7 @@ public class EmitPhase {
         Files.createDirectories(mapInProject.getParent());
         Files.writeString(mapInProject, locatorMap.toString(2));
 
-        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl());
+        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
         new LocatorMapStore(store.projectRoot(request.projectId()).resolve("locator-map.json"))
                 .save(locatorMap);
 

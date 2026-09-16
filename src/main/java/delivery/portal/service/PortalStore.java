@@ -78,19 +78,24 @@ public class PortalStore {
         return new PrecisionJobConfig(enabled, max);
     }
 
-    /** Project disk root using entity base URL, falling back to latest job hint. */
-    public Path projectDiskRoot(String projectId) {
-        String hint = resolveBaseUrlHint(projectId);
-        return DomainStorePaths.resolveProjectRoot(storeRootPath, hint, projectId);
-    }
-
     public ProjectStore filesystemStore() {
         return projectStore;
     }
 
-    /** Store helper scoped to a project's known domain (entity base URL or latest job URL). */
     public ProjectStore filesystemStoreFor(String projectId) {
-        return new ProjectStore(storeRootPath, resolveBaseUrlHint(projectId));
+        return projectRepository.findByProjectId(projectId)
+                .map(entity -> {
+                    Long owner = entity.getOwnerUserId();
+                    delivery.identity.TenantId tenant = owner != null && owner > 0
+                            ? delivery.identity.TenantId.personal(owner)
+                            : null;
+                    return new ProjectStore(storeRootPath, resolveBaseUrlHint(projectId), tenant);
+                })
+                .orElseGet(() -> new ProjectStore(storeRootPath, resolveBaseUrlHint(projectId)));
+    }
+
+    public Path projectDiskRoot(String projectId) {
+        return filesystemStoreFor(projectId).projectRoot(projectId);
     }
 
     private String resolveBaseUrlHint(String projectId) {

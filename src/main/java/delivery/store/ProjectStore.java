@@ -8,21 +8,42 @@ import java.nio.file.StandardCopyOption;
 public class ProjectStore {
     private final Path storeRoot;
     private final String domainHint;
+    private final delivery.identity.TenantId tenant;
 
     public ProjectStore(Path storeRoot) {
-        this(storeRoot, null);
+        this(storeRoot, null, null);
     }
 
     public ProjectStore(Path storeRoot, String baseUrlOrHost) {
+        this(storeRoot, baseUrlOrHost, null);
+    }
+
+    public ProjectStore(Path storeRoot, String baseUrlOrHost, delivery.identity.TenantId tenant) {
         this.storeRoot = storeRoot;
         this.domainHint = baseUrlOrHost;
+        this.tenant = tenant;
     }
 
     public Path storeRoot() {
         return storeRoot;
     }
 
+    public delivery.identity.TenantId tenant() {
+        return tenant;
+    }
+
     public Path projectRoot(String projectId) {
+        if (tenant != null) {
+            Path scoped = delivery.identity.ScopePaths.projectRoot(storeRoot, tenant, projectId);
+            if (Files.exists(scoped) || Files.isRegularFile(scoped.resolve("project.json"))) {
+                return scoped;
+            }
+            Path legacy = DomainStorePaths.resolveProjectRoot(storeRoot, domainHint, projectId);
+            if (DomainStorePaths.looksLikeProject(legacy)) {
+                return legacy;
+            }
+            return scoped;
+        }
         return DomainStorePaths.resolveProjectRoot(storeRoot, domainHint, projectId);
     }
 

@@ -41,7 +41,7 @@ public class DryRunExecuteService {
         TcIdentity.requireValidCases(cases);
         progress.update(0, cases.size(), "Dry-run execute (no local AI)");
 
-        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl());
+        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
         Path projectRoot = store.projectRoot(request.projectId());
         Path dest = projectRoot.resolve("execute-runs").resolve(jobId);
         Files.createDirectories(dest);

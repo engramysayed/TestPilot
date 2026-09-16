@@ -40,7 +40,7 @@ public class ConversionJobRunner {
 
     public ConversionJobResult run(ConversionJobRequest request, BooleanSupplier cancelCheck) throws Exception {
         String mode = request.mode() == null ? "NEW" : request.mode().trim().toUpperCase();
-        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl());
+        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
         if ("UPDATE".equals(mode) && !store.hasFramework(request.projectId())) {
             throw new IllegalStateException("UPDATE_WITHOUT_FRAMEWORK");
         }
@@ -70,9 +70,17 @@ public class ConversionJobRunner {
                         ReuseEligibility.current(request), projectRoot)
                 : null;
 
-        String workFolder = ProjectNaming.fromBaseUrl(request.baseUrl(), Instant.now());
-        Path work = request.workDir().resolve(workFolder);
-        Files.createDirectories(work);
+        String workFolder;
+        Path work;
+        if (request.tenantId() != null && request.jobId() != null && !request.jobId().isBlank()) {
+            work = delivery.identity.ScopePaths.createJobWorkDir(
+                    request.workDir(), request.tenantId(), request.jobId());
+            workFolder = work.getFileName().toString();
+        } else {
+            workFolder = ProjectNaming.fromBaseUrl(request.baseUrl(), Instant.now());
+            work = request.workDir().resolve(workFolder);
+            Files.createDirectories(work);
+        }
         Path projectDir = work.resolve("project");
         FrameworkPackager packager = new FrameworkPackager();
         packager.copyTemplate(request.templateRoot(), projectDir);

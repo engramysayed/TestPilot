@@ -27,6 +27,16 @@ public class DomainLocatorMemory {
         return domain == null ? null : domain.resolve(FILE_NAME);
     }
 
+    public static Path sharedFile(Path storeRoot, delivery.identity.TenantId tenant, String baseUrl) {
+        if (tenant == null) {
+            return sharedFile(storeRoot, baseUrl);
+        }
+        if (storeRoot == null) {
+            return null;
+        }
+        return delivery.identity.ScopePaths.siteRoot(storeRoot, tenant, baseUrl).resolve(FILE_NAME);
+    }
+
     /**
      * One file per site. Older per-project copies are merged only when the shared
      * file does not exist yet, so a forgotten slot is not resurrected later.
@@ -50,6 +60,20 @@ public class DomainLocatorMemory {
             } catch (Exception ignored) {
                 // Best-effort migration; prove still runs.
             }
+        }
+        return shared;
+    }
+
+    /**
+     * Tenant-scoped site memory. Does not merge the legacy domain-shared file.
+     */
+    public Path openShared(Path storeRoot, delivery.identity.TenantId tenant, String baseUrl) {
+        Path shared = sharedFile(storeRoot, tenant, baseUrl);
+        if (shared == null) {
+            return null;
+        }
+        if (Files.isRegularFile(shared)) {
+            load(shared);
         }
         return shared;
     }

@@ -26,7 +26,7 @@ public final class DesignComparePhase {
         if (request == null || workDir == null || cases == null || cases.isEmpty()) {
             return;
         }
-        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl());
+        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
         Path projectRoot = store.projectRoot(request.projectId());
         Path evidenceRoot = workDir.resolve("evidence");
         LocalLlmClient client = createClient(request);

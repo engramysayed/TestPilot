@@ -29,6 +29,16 @@ public final class PreferredHooksStore {
         return domain == null ? null : domain.resolve(FILE_NAME);
     }
 
+    public static Path file(Path storeRoot, delivery.identity.TenantId tenant, String baseUrl) {
+        if (tenant == null) {
+            return file(storeRoot, baseUrl);
+        }
+        if (storeRoot == null) {
+            return null;
+        }
+        return delivery.identity.ScopePaths.siteRoot(storeRoot, tenant, baseUrl).resolve(FILE_NAME);
+    }
+
     public static List<String> parse(String raw) {
         if (raw == null || raw.isBlank()) {
             return List.of();
@@ -55,7 +65,14 @@ public final class PreferredHooksStore {
     }
 
     public static List<String> load(Path storeRoot, String baseUrl) {
-        Path file = file(storeRoot, baseUrl);
+        return loadFile(file(storeRoot, baseUrl));
+    }
+
+    public static List<String> load(Path storeRoot, delivery.identity.TenantId tenant, String baseUrl) {
+        return loadFile(file(storeRoot, tenant, baseUrl));
+    }
+
+    private static List<String> loadFile(Path file) {
         if (file == null || !Files.isRegularFile(file)) {
             return List.of();
         }
@@ -79,8 +96,15 @@ public final class PreferredHooksStore {
     }
 
     public static void save(Path storeRoot, String baseUrl, String raw) {
+        saveTo(file(storeRoot, baseUrl), raw);
+    }
+
+    public static void save(Path storeRoot, delivery.identity.TenantId tenant, String baseUrl, String raw) {
+        saveTo(file(storeRoot, tenant, baseUrl), raw);
+    }
+
+    private static void saveTo(Path file, String raw) {
         List<String> hooks = parse(raw);
-        Path file = file(storeRoot, baseUrl);
         if (file == null) {
             return;
         }

@@ -40,17 +40,25 @@ public class ExecuteJobRunner {
         );
         TcIdentity.requireValidCases(cases);
 
-        String workFolder = ProjectNaming.fromBaseUrl(request.baseUrl(), Instant.now()) + "-exec";
-        Path work = request.workDir().resolve(workFolder);
-        Files.createDirectories(work);
+        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
+        Path dest = store.projectRoot(request.projectId()).resolve("execute-runs").resolve(jobId);
+        Files.createDirectories(dest);
+
+        String workFolder;
+        Path work;
+        if (request.tenantId() != null) {
+            String scopedJob = request.jobId() == null || request.jobId().isBlank() ? jobId : request.jobId();
+            work = delivery.identity.ScopePaths.createJobWorkDir(request.workDir(), request.tenantId(), scopedJob);
+            workFolder = work.getFileName().toString();
+        } else {
+            workFolder = ProjectNaming.fromBaseUrl(request.baseUrl(), Instant.now()) + "-exec";
+            work = request.workDir().resolve(workFolder);
+            Files.createDirectories(work);
+        }
 
         int proveUnits = cases.size();
         int jobTotal = proveUnits + 2; // + design compare + evidence save
         progress.update(0, jobTotal, "Execute starting");
-
-        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl());
-        Path dest = store.projectRoot(request.projectId()).resolve("execute-runs").resolve(jobId);
-        Files.createDirectories(dest);
 
         ProvePhase prove = new ProvePhase(progress).withMirrorRoot(dest).withCancelCheck(cancelCheck)
                 .withHealWorkbookApplier(healWorkbookApplier(request));
