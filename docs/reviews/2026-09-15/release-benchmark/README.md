@@ -2,7 +2,7 @@
 
 Controlled fixtures for first-release result trust (F00), Update reuse (P1-02/P1-03), prerequisite replay (P1-04), and sensitive-field sanitation (P2-04). Serve `pages/` as static files. Do not point this benchmark at a customer website.
 
-**Status:** fixture definitions recorded before runs. First recorded execution: [run-2026-09-16.md](run-2026-09-16.md). Proof coverage, assertion correctness, replay success, and stability are separate metrics — do not roll them into one pass rate.
+**Status:** first certified execution is [run-2026-09-16.md](run-2026-09-16.md) on git `3a806d3`. Proof coverage, assertion correctness, replay success, and stability are separate metrics — do not roll them into one pass rate. This run is fixture replay, not live AI proof coverage.
 
 **Serve locally:** from this directory, `python -m http.server 8765 --directory pages` then use base URL `http://127.0.0.1:8765`.
 

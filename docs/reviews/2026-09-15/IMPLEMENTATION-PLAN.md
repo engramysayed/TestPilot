@@ -61,7 +61,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** benchmark runs reproducibly, identifies deliberately wrong behavior, and emits evidence tied to source revision, library revision, environment, and artifact identity.
 
-**Run 2026-09-16:** [release-benchmark/run-2026-09-16.md](release-benchmark/run-2026-09-16.md) — host suite 28/28 green (`ReleaseBenchmarkP003Test` + `ReuseEligibilityTest`) on the working tree above `eb011c4`. Concurrent same-host remains an expected isolation failure until P2-02. Live proof coverage was not measured (fixture IR, not LLM NEW). Credential/password and local-LLM reuse invalidation is enforced in the working tree, not yet on that commit.
+**Run 2026-09-16 (certified):** [release-benchmark/run-2026-09-16.md](release-benchmark/run-2026-09-16.md) — clean checkout of `3a806d3`, host suite 29/29 green (`ReleaseBenchmarkP003Test` + `ReuseEligibilityTest`). Concurrent same-host remains an expected isolation failure until P2-02. Live proof coverage was not measured (fixture IR, not LLM NEW). Credential reuse uses an opaque revision id; password hashes are not stored in prove-context or customer ZIPs.
 
 ## 3. Phase 1 — trustworthy results and generated frameworks
 
@@ -124,7 +124,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Phase 1 exit:** the full P0-03 framework benchmark passes, including negative assertions and a second downloaded replay. Compile success alone does not satisfy this gate.
 
-**2026-09-16 status:** the P0-03 execution gates passed on the dirty working tree (false assertion, failed-setup skip+quit, NEW→UPDATE preservation, TODO/PASS→TODO/repeated reuse, compile-fail retains v1). That is not a clean-`eb011c4` certification. Close Phase 1 on a git revision only after landing the uncommitted template HEADLESS fix, fixture pages, reuse secret/LLM fingerprints, and harness. P0-01 named product/security approval remains open. Next engineering stream is Phase 2 (customer isolation and data controls).
+**2026-09-16 status:** P0-03 execution gates passed on clean checkout `3a806d3` (false assertion, failed-setup skip+quit observed at runtime, NEW→UPDATE preservation, TODO/PASS→TODO/repeated reuse, compile-fail retains previous ZIP SHA-256). This certifies **fixture replay correctness**, not live AI proof coverage and not customer isolation. P0-01 named product/security approval remains open. Next engineering stream is Phase 2 (customer isolation and data controls).
 
 ## 4. Phase 2 — customer boundaries and data controls
 
