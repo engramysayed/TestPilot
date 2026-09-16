@@ -35,6 +35,7 @@ public class JobRecord {
     private final AtomicReference<String> message = new AtomicReference<>("");
     private final AtomicReference<Path> zipPath = new AtomicReference<>();
     private final AtomicReference<String> error = new AtomicReference<>();
+    private volatile String tenantId = "";
 
     public JobRecord(String jobId, String projectId, Long ownerUserId, String mode, Path excelPath,
                      String baseUrl, String username, String password) {
@@ -78,6 +79,8 @@ public class JobRecord {
     }
     public String getGenerateModel() { return generateModel; }
     public void setGenerateModel(String generateModel) { this.generateModel = generateModel; }
+    public String getTenantId() { return tenantId == null ? "" : tenantId; }
+    public void setTenantId(String tenantId) { this.tenantId = tenantId == null ? "" : tenantId; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getCompletedAt() { return completedAt; }

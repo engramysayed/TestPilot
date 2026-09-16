@@ -216,7 +216,7 @@ public class ProvePhase {
         }
         List<String> preferredHooks = request == null
                 ? List.of()
-                : PreferredHooksStore.load(request.storeRoot(), request.baseUrl());
+                : PreferredHooksStore.load(request.storeRoot(), request.tenantId(), request.baseUrl());
 
         try (PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks)) {
             int index = 0;

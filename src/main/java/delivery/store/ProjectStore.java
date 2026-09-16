@@ -64,24 +64,30 @@ public class ProjectStore {
 
     public StoredProject saveVersion(String projectId, Path frameworkDir, Path zipFile) throws Exception {
         Path root = projectRoot(projectId);
-        Path framework = root.resolve("framework");
-        Files.createDirectories(root.resolve("versions"));
-        if (Files.exists(framework)) {
-            deleteRecursive(framework);
-        }
-        copyRecursive(frameworkDir, framework);
-        StoredProject current = load(projectId);
-        int next = current.version() + 1;
-        Path versioned = root.resolve("versions").resolve("v" + next + ".zip");
-        Files.copy(zipFile, versioned, StandardCopyOption.REPLACE_EXISTING);
-        org.json.JSONObject meta = new org.json.JSONObject();
-        meta.put("projectId", projectId);
-        meta.put("version", next);
-        if (domainHint != null && !domainHint.isBlank()) {
-            meta.put("domain", DomainStorePaths.folderNameFromHostOrUrl(domainHint));
-        }
-        Files.writeString(root.resolve("project.json"), meta.toString(2), StandardCharsets.UTF_8);
-        return new StoredProject(projectId, root, next);
+        Path lockFile = root.resolve(".publish.lock");
+        return delivery.identity.PublicationLock.call(lockFile, () -> {
+            Path framework = root.resolve("framework");
+            Files.createDirectories(root.resolve("versions"));
+            if (Files.exists(framework)) {
+                deleteRecursive(framework);
+            }
+            copyRecursive(frameworkDir, framework);
+            StoredProject current = load(projectId);
+            int next = current.version() + 1;
+            Path versioned = root.resolve("versions").resolve("v" + next + ".zip");
+            Files.copy(zipFile, versioned, StandardCopyOption.REPLACE_EXISTING);
+            org.json.JSONObject meta = new org.json.JSONObject();
+            meta.put("projectId", projectId);
+            meta.put("version", next);
+            if (domainHint != null && !domainHint.isBlank()) {
+                meta.put("domain", DomainStorePaths.folderNameFromHostOrUrl(domainHint));
+            }
+            if (tenant != null) {
+                meta.put("tenantId", tenant.value());
+            }
+            Files.writeString(root.resolve("project.json"), meta.toString(2), StandardCharsets.UTF_8);
+            return new StoredProject(projectId, root, next);
+        });
     }
 
     public java.util.Optional<Path> latestVersionZip(String projectId) {

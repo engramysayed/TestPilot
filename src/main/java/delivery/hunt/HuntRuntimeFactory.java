@@ -43,7 +43,12 @@ public final class HuntRuntimeFactory {
                 "HUNT",
                 props.getLlmBaseUrl(),
                 props.getLlmModel(),
-                false
+                false,
+                false,
+                delivery.authoring.AuthoringEngine.KEEL,
+                delivery.authoring.PrecisionJobConfig.DEFAULTS,
+                delivery.identity.TenantResolver.parseOrNull(job.getTenantId()),
+                job.getJobId()
         );
     }
 }

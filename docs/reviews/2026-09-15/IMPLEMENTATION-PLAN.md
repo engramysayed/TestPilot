@@ -139,7 +139,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** two customers targeting the same host and using identical TC IDs cannot read, mutate, execute or export each other's data. Tests cover direct IDs, artifact routes, settings, caches and worker requests, not only project listing.
 
-**2026-09-16:** tenant-storage **groundwork** only — P2-01 remains open. See [P2-01-resolutions.md](P2-01-resolutions.md). `ws_user_{id}` / `ws_install_{slug}` in this slice are bootstrap labels, not the durable identity model.
+**2026-09-16:** tenant-storage **groundwork** only — P2-01 remains open. See [P2-01-resolutions.md](P2-01-resolutions.md). Tenant ids are opaque persisted `ws_`+32 hex; membership and display slugs are separate. This is not completed customer isolation.
 
 ### P2-02 — isolate work files and shared knowledge · F01, F02
 
@@ -153,7 +153,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** simultaneous same-host jobs with overlapping TC IDs and distinct sentinels retain independent files, proof, packages and memory. Version publication cannot lose or overwrite a concurrent result.
 
-**2026-09-16:** tenant-storage **groundwork** only — P2-02 remains open. Exclusive job dirs and tenant-scoped hook/memory overloads exist when a tenant is supplied; Hunt, caches, migration, publication lock, and concurrent same-host sentinels are not done. This is not completed customer isolation.
+**2026-09-16:** tenant-storage **groundwork** only — P2-02 remains open. Exclusive job dirs, tenant-scoped hooks/memory, reversible migration+quarantine, cross-process publication lock, and unit-level same-host sentinels plus artifact cross-tenant rejection exist. Fail-closed hosted paths, role (not only membership) checks, full same-host pipeline, migration crash recovery, and filesystem lock validation are still owed. Broader isolation also depends on P2-03/P2-04. This is not completed customer isolation.
 
 ### P2-03 — enforce browser network and credential scope · F08
 

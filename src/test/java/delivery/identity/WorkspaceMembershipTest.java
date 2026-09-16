@@ -6,22 +6,22 @@ import org.testng.annotations.Test;
 public class WorkspaceMembershipTest {
 
     @Test
-    public void personalOwnerCannotActInsideAnotherUsersWorkspace() {
-        WorkspaceMembership alice = WorkspaceMembership.personalOwner(11L);
-        TenantId bob = TenantId.personal(12L);
-        Assert.assertTrue(alice.belongsTo(TenantId.personal(11L)));
-        Assert.assertFalse(alice.belongsTo(bob));
+    public void membershipDoesNotEncodeTheUserIntoTheTenantId() {
+        TenantId aliceWs = TenantId.mint();
+        TenantId bobWs = TenantId.mint();
+        WorkspaceMembership alice = WorkspaceMembership.ownerOf(aliceWs, 11L);
+        Assert.assertTrue(alice.belongsTo(aliceWs));
+        Assert.assertFalse(alice.belongsTo(bobWs));
         Assert.assertTrue(alice.canMutate());
-        Assert.assertNotEquals(alice.tenant(), bob);
+        Assert.assertNotEquals(alice.tenant().value(), "ws_user_11");
     }
 
     @Test
     public void membersCanReadButNotMutate() {
-        WorkspaceMembership member = new WorkspaceMembership(
-                TenantId.dedicated("acme"), 5L, WorkspaceRole.MEMBER);
+        TenantId dedicated = TenantId.mint();
+        WorkspaceMembership member = new WorkspaceMembership(dedicated, 5L, WorkspaceRole.MEMBER);
         Assert.assertTrue(member.canRead());
         Assert.assertFalse(member.canMutate());
-        Assert.assertTrue(new WorkspaceMembership(
-                TenantId.dedicated("acme"), 5L, WorkspaceRole.ADMIN).canMutate());
+        Assert.assertTrue(new WorkspaceMembership(dedicated, 5L, WorkspaceRole.ADMIN).canMutate());
     }
 }

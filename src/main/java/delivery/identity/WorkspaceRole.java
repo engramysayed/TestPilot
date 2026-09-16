@@ -1,8 +1,8 @@
 package delivery.identity;
 
 /**
- * Minimal workspace membership for P2-01. Personal workspaces map 1:1 to the
- * owning user. Dedicated installations use the same roles on {@code ws_install_*}.
+ * Minimal workspace membership. Roles are bound to an opaque tenant id;
+ * account numbers and installation slugs are not encoded in the tenant.
  */
 public enum WorkspaceRole {
     OWNER,

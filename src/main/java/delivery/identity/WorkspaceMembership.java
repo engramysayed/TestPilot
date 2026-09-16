@@ -13,8 +13,8 @@ public record WorkspaceMembership(TenantId tenant, long userId, WorkspaceRole ro
         }
     }
 
-    public static WorkspaceMembership personalOwner(long userId) {
-        return new WorkspaceMembership(TenantId.personal(userId), userId, WorkspaceRole.OWNER);
+    public static WorkspaceMembership ownerOf(TenantId tenant, long userId) {
+        return new WorkspaceMembership(tenant, userId, WorkspaceRole.OWNER);
     }
 
     public boolean canRead() {

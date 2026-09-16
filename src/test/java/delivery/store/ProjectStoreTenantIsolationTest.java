@@ -12,8 +12,10 @@ public class ProjectStoreTenantIsolationTest {
     @Test
     public void twoTenantsCanUseTheSameProjectIdWithoutSharingFiles() throws Exception {
         Path root = Files.createTempDirectory("store-tenant");
-        ProjectStore alice = new ProjectStore(root, "https://same.example.com", TenantId.personal(1L));
-        ProjectStore bob = new ProjectStore(root, "https://same.example.com", TenantId.personal(2L));
+        TenantId aliceId = TenantId.mint();
+        TenantId bobId = TenantId.mint();
+        ProjectStore alice = new ProjectStore(root, "https://same.example.com", aliceId);
+        ProjectStore bob = new ProjectStore(root, "https://same.example.com", bobId);
         Path fw = Files.createTempDirectory("fw-t");
         Files.writeString(fw.resolve("README.md"), "x");
         Path zip = Files.createTempFile("pkg-t", ".zip");
@@ -21,8 +23,8 @@ public class ProjectStoreTenantIsolationTest {
         alice.saveVersion("prj_same", fw, zip);
         Assert.assertTrue(alice.hasFramework("prj_same"));
         Assert.assertFalse(bob.hasFramework("prj_same"));
-        Assert.assertTrue(alice.projectRoot("prj_same").toString().contains("ws_user_1"));
-        Assert.assertTrue(bob.projectRoot("prj_same").toString().contains("ws_user_2"));
+        Assert.assertTrue(alice.projectRoot("prj_same").toString().contains(aliceId.value()));
+        Assert.assertTrue(bob.projectRoot("prj_same").toString().contains(bobId.value()));
         Assert.assertNotEquals(alice.projectRoot("prj_same"), bob.projectRoot("prj_same"));
     }
 }

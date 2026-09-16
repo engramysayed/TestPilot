@@ -106,6 +106,7 @@ public class PortalJobStarter implements JobStarter {
                 kind
         );
         job.setAuthoringEngine(engine);
+        job.setTenantId(project.getTenantId());
         try {
             Path requestPath = AuthoringJobRequestFiles.requestPath(
                     store.projectDiskRoot(projectId), kind, jobId);

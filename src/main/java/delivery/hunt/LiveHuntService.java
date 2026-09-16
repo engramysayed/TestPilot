@@ -72,7 +72,10 @@ public final class LiveHuntService {
                 && !loginRequest.username().isBlank();
         List<String> preferredHooks = storeRoot == null
                 ? List.of()
-                : PreferredHooksStore.load(storeRoot, request.getBaseUrl());
+                : PreferredHooksStore.load(
+                        storeRoot,
+                        loginRequest == null ? null : loginRequest.tenantId(),
+                        request.getBaseUrl());
         String preferredHooksLine = PreferredHooksStore.join(preferredHooks);
         boolean loginFeature = HuntFeatureHints.looksLikeLoginFeature(
                 request.getBaseUrl(), request.getUserStory(), brief);

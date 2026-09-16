@@ -84,14 +84,41 @@ public class PortalStore {
 
     public ProjectStore filesystemStoreFor(String projectId) {
         return projectRepository.findByProjectId(projectId)
-                .map(entity -> {
-                    Long owner = entity.getOwnerUserId();
-                    delivery.identity.TenantId tenant = owner != null && owner > 0
-                            ? delivery.identity.TenantId.personal(owner)
-                            : null;
-                    return new ProjectStore(storeRootPath, resolveBaseUrlHint(projectId), tenant);
-                })
+                .map(entity -> new ProjectStore(
+                        storeRootPath,
+                        resolveBaseUrlHint(projectId),
+                        resolveTenant(entity)))
                 .orElseGet(() -> new ProjectStore(storeRootPath, resolveBaseUrlHint(projectId)));
+    }
+
+    private delivery.identity.TenantId resolveTenant(ProjectEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        String stored = entity.getTenantId();
+        if (stored != null && !stored.isBlank()) {
+            try {
+                return delivery.identity.TenantId.parse(stored);
+            } catch (IllegalArgumentException ignored) {
+                // fall through to directory bootstrap
+            }
+        }
+        Long owner = entity.getOwnerUserId();
+        if (owner == null || owner <= 0) {
+            return null;
+        }
+        try {
+            delivery.identity.TenantId tenant = delivery.identity.WorkspaceDirectory
+                    .open(storeRootPath)
+                    .ensurePersonalWorkspace(owner);
+            if (entity.getTenantId() == null || entity.getTenantId().isBlank()) {
+                entity.setTenantId(tenant.value());
+                projectRepository.save(entity);
+            }
+            return tenant;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public Path projectDiskRoot(String projectId) {
@@ -145,6 +172,16 @@ public class PortalStore {
         if (baseUrlHint != null && !baseUrlHint.isBlank()) {
             entity.setBaseUrl(baseUrlHint.trim());
         }
+        if (ownerUserId != null && ownerUserId > 0) {
+            try {
+                entity.setTenantId(delivery.identity.WorkspaceDirectory
+                        .open(storeRootPath)
+                        .ensurePersonalWorkspace(ownerUserId)
+                        .value());
+            } catch (Exception ignored) {
+                // tenant bootstrap is best-effort; filesystem still dual-reads
+            }
+        }
         projectRepository.save(entity);
         return toRecord(entity);
     }
@@ -154,13 +191,30 @@ public class PortalStore {
     }
 
     public String preferredHooksJoined(String projectId) {
-        return PreferredHooksStore.join(PreferredHooksStore.load(storeRootPath, resolveBaseUrlHint(projectId)));
+        return PreferredHooksStore.join(PreferredHooksStore.load(
+                storeRootPath, tenantForProject(projectId), resolveBaseUrlHint(projectId)));
     }
 
     public Optional<ProjectRecord> getOwnedProject(String projectId, Long ownerUserId) {
         return projectRepository.findByProjectId(projectId)
-                .filter(p -> p.getOwnerUserId().equals(ownerUserId))
+                .filter(p -> canAccessProject(p, ownerUserId))
                 .map(this::toRecord);
+    }
+
+    private boolean canAccessProject(ProjectEntity project, Long userId) {
+        if (project == null || userId == null) {
+            return false;
+        }
+        String tenantId = project.getTenantId();
+        if (tenantId != null && !tenantId.isBlank()) {
+            try {
+                return delivery.identity.WorkspaceDirectory.open(storeRootPath)
+                        .isMember(delivery.identity.TenantId.parse(tenantId), userId);
+            } catch (Exception e) {
+                return project.getOwnerUserId().equals(userId);
+            }
+        }
+        return project.getOwnerUserId().equals(userId);
     }
 
     public List<ProjectRecord> listProjects(Long ownerUserId) {
@@ -168,10 +222,10 @@ public class PortalStore {
     }
 
     public List<ProjectRecord> listProjects(Long ownerUserId, boolean includeArchived) {
-        List<ProjectEntity> entities = includeArchived
-                ? projectRepository.findByOwnerUserIdOrderByIdDesc(ownerUserId)
-                : projectRepository.findByOwnerUserIdAndArchivedOrderByIdDesc(ownerUserId, false);
-        return entities.stream()
+        return projectRepository.findAll().stream()
+                .filter(p -> canAccessProject(p, ownerUserId))
+                .filter(p -> includeArchived || !p.isArchived())
+                .sorted(Comparator.comparing(ProjectEntity::getId, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(this::toRecord)
                 .collect(Collectors.toList());
     }
@@ -179,7 +233,7 @@ public class PortalStore {
     @Transactional
     public Optional<ProjectRecord> updateOwnedProject(String projectId, Long ownerUserId, PatchProjectRequest patch) {
         Optional<ProjectEntity> owned = projectRepository.findByProjectId(projectId)
-                .filter(p -> p.getOwnerUserId().equals(ownerUserId));
+                .filter(p -> canAccessProject(p, ownerUserId));
         if (owned.isEmpty()) {
             return Optional.empty();
         }
@@ -199,7 +253,7 @@ public class PortalStore {
             String url = entity.getBaseUrl() != null && !entity.getBaseUrl().isBlank()
                     ? entity.getBaseUrl()
                     : resolveBaseUrlHint(projectId);
-            PreferredHooksStore.save(storeRootPath, url, patch.preferredHooks());
+            PreferredHooksStore.save(storeRootPath, tenantForProject(projectId), url, patch.preferredHooks());
         }
         if (patch.authoringEngine() != null) {
             entity.setAuthoringEngine(AuthoringEngine.parse(patch.authoringEngine()).wireValue());
@@ -341,6 +395,14 @@ public class PortalStore {
         entity.setJobId(job.getJobId());
         entity.setProjectId(job.getProjectId());
         entity.setOwnerUserId(job.getOwnerUserId());
+        if (job.getTenantId() != null && !job.getTenantId().isBlank()) {
+            entity.setTenantId(job.getTenantId());
+        } else {
+            projectRepository.findByProjectId(job.getProjectId())
+                    .map(ProjectEntity::getTenantId)
+                    .filter(t -> t != null && !t.isBlank())
+                    .ifPresent(entity::setTenantId);
+        }
         entity.setMode(job.getMode());
         entity.setJobKind(job.getJobKind().name());
         entity.setStatus(job.getStatus().name());
@@ -375,6 +437,9 @@ public class PortalStore {
                 job.getPassword() == null ? "" : job.getPassword()));
         entity.setGenerateModel(job.getGenerateModel());
         jobRepository.save(entity);
+        if (entity.getTenantId() != null && !entity.getTenantId().isBlank()) {
+            job.setTenantId(entity.getTenantId());
+        }
         job.setCreatedAt(entity.getCreatedAt());
         job.setCompletedAt(entity.getCompletedAt());
         return job;
@@ -447,7 +512,34 @@ public class PortalStore {
     }
 
     public Optional<JobRecord> getOwnedJob(String jobId, Long ownerUserId) {
-        return getJob(jobId).filter(j -> j.getOwnerUserId().equals(ownerUserId));
+        return getJob(jobId).filter(j -> canAccessJob(j, ownerUserId));
+    }
+
+    private boolean canAccessJob(JobRecord job, Long userId) {
+        if (job == null || userId == null) {
+            return false;
+        }
+        String tenantId = job.getTenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            tenantId = projectRepository.findByProjectId(job.getProjectId())
+                    .map(ProjectEntity::getTenantId)
+                    .orElse("");
+        }
+        if (tenantId != null && !tenantId.isBlank()) {
+            try {
+                return delivery.identity.WorkspaceDirectory.open(storeRootPath)
+                        .isMember(delivery.identity.TenantId.parse(tenantId), userId);
+            } catch (Exception e) {
+                return userId.equals(job.getOwnerUserId());
+            }
+        }
+        return userId.equals(job.getOwnerUserId());
+    }
+
+    private delivery.identity.TenantId tenantForProject(String projectId) {
+        return projectRepository.findByProjectId(projectId)
+                .map(this::resolveTenant)
+                .orElse(null);
     }
 
     public List<JobEntity> listJobEntities(Long ownerUserId) {
@@ -555,6 +647,12 @@ public class PortalStore {
             job.setZipPath(Path.of(e.getZipPath()));
         }
         job.setGenerateModel(e.getGenerateModel());
+        job.setTenantId(e.getTenantId());
+        if (job.getTenantId() == null || job.getTenantId().isBlank()) {
+            projectRepository.findByProjectId(e.getProjectId())
+                    .map(ProjectEntity::getTenantId)
+                    .ifPresent(job::setTenantId);
+        }
         job.setCreatedAt(e.getCreatedAt());
         job.setCompletedAt(e.getCompletedAt());
         job.setAuthoringEngine(delivery.job.AuthoringJobRequestFiles.read(
@@ -583,6 +681,7 @@ public class PortalStore {
         rec.setPrecisionMaxCallsPerJob(e.getPrecisionMaxCallsPerJob() == null
                 ? 0
                 : e.getPrecisionMaxCallsPerJob());
+        rec.setTenantId(e.getTenantId() == null ? "" : e.getTenantId());
         rec.setArchived(e.isArchived());
         if (e.getArchivedAt() != null) {
             rec.setArchivedAt(e.getArchivedAt().toString());

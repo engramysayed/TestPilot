@@ -171,6 +171,7 @@ public class HuntController {
                 JobRecord.JobKind.HUNT
         );
         job.setGenerateModel(hunt.getPlanner());
+        job.setTenantId(project.getTenantId());
         job.setProgressTotal(hunt.getCycleCeiling());
         store.saveJob(job);
         worker.submit(jobId);

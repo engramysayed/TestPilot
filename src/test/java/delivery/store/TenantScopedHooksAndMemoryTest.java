@@ -14,13 +14,15 @@ public class TenantScopedHooksAndMemoryTest {
     public void preferredHooksOnTheSameHostStayPerTenant() throws Exception {
         Path store = Files.createTempDirectory("hooks-tenant");
         String host = "https://same.example.com/login";
-        PreferredHooksStore.save(store, TenantId.personal(1L), host, "data-tenant-a");
-        PreferredHooksStore.save(store, TenantId.personal(2L), host, "data-tenant-b");
+        TenantId alice = TenantId.mint();
+        TenantId bob = TenantId.mint();
+        PreferredHooksStore.save(store, alice, host, "data-tenant-a");
+        PreferredHooksStore.save(store, bob, host, "data-tenant-b");
         Assert.assertEquals(
-                PreferredHooksStore.load(store, TenantId.personal(1L), host),
+                PreferredHooksStore.load(store, alice, host),
                 List.of("data-tenant-a"));
         Assert.assertEquals(
-                PreferredHooksStore.load(store, TenantId.personal(2L), host),
+                PreferredHooksStore.load(store, bob, host),
                 List.of("data-tenant-b"));
         Path domainShared = store.resolve("same-example-com").resolve(PreferredHooksStore.FILE_NAME);
         Assert.assertFalse(Files.exists(domainShared),
@@ -31,8 +33,8 @@ public class TenantScopedHooksAndMemoryTest {
     public void locatorMemoryOnTheSameHostStaysPerTenant() throws Exception {
         Path store = Files.createTempDirectory("mem-tenant");
         String host = "https://same.example.com";
-        Path alice = DomainLocatorMemory.sharedFile(store, TenantId.personal(1L), host);
-        Path bob = DomainLocatorMemory.sharedFile(store, TenantId.personal(2L), host);
+        Path alice = DomainLocatorMemory.sharedFile(store, TenantId.mint(), host);
+        Path bob = DomainLocatorMemory.sharedFile(store, TenantId.mint(), host);
         Assert.assertNotEquals(alice, bob);
         Files.createDirectories(alice.getParent());
         Files.writeString(alice, "{\"slots\":[]}");

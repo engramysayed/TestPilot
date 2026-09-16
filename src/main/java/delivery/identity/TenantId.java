@@ -2,15 +2,16 @@ package delivery.identity;
 
 import java.util.Locale;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * Immutable customer workspace / tenant identifier. The same model is used for
- * personal workspaces ({@code ws_user_{id}}) and dedicated installations
- * ({@code ws_install_{slug}}).
+ * Opaque, persisted workspace identifier. Account numbers and installation slugs
+ * are membership or display metadata — they are not this id and must not appear
+ * in storage paths.
  */
 public record TenantId(String value) {
-    private static final Pattern PATTERN = Pattern.compile("^ws_(user_\\d+|install_[a-z0-9]+|[a-z0-9]{8,32})$");
+    private static final Pattern PATTERN = Pattern.compile("^ws_[a-f0-9]{32}$");
 
     public TenantId {
         if (value == null || value.isBlank()) {
@@ -29,22 +30,8 @@ public record TenantId(String value) {
         return new TenantId(raw);
     }
 
-    public static TenantId personal(long ownerUserId) {
-        if (ownerUserId <= 0) {
-            throw new IllegalArgumentException("owner user id must be positive");
-        }
-        return new TenantId("ws_user_" + ownerUserId);
-    }
-
-    public static TenantId dedicated(String installationSlug) {
-        if (installationSlug == null || installationSlug.isBlank()) {
-            throw new IllegalArgumentException("installation slug is required");
-        }
-        String slug = installationSlug.trim().toLowerCase(Locale.ROOT);
-        if (!slug.matches("[a-z0-9]+")) {
-            throw new IllegalArgumentException("invalid installation slug: " + installationSlug);
-        }
-        return new TenantId("ws_install_" + slug);
+    public static TenantId mint() {
+        return new TenantId("ws_" + UUID.randomUUID().toString().replace("-", ""));
     }
 
     @Override

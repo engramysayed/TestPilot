@@ -69,6 +69,9 @@ public class JobEntity {
     @Column(length = 128)
     private String generateModel;
 
+    @Column(name = "tenant_id", length = 40)
+    private String tenantId;
+
     public Long getId() { return id; }
     public String getJobId() { return jobId; }
     public void setJobId(String jobId) { this.jobId = jobId; }
@@ -108,4 +111,6 @@ public class JobEntity {
     public void setJobKind(String jobKind) { this.jobKind = jobKind; }
     public String getGenerateModel() { return generateModel; }
     public void setGenerateModel(String generateModel) { this.generateModel = generateModel; }
+    public String getTenantId() { return tenantId; }
+    public void setTenantId(String tenantId) { this.tenantId = tenantId; }
 }

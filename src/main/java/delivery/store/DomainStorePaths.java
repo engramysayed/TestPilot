@@ -139,7 +139,8 @@ public final class DomainStorePaths {
         return n.startsWith("portal-db")
                 || n.equals("delivery.secret")
                 || n.startsWith(".")
-                || n.equals("lost+found");
+                || n.equals("lost+found")
+                || n.equals("tenants");
     }
 
     /**

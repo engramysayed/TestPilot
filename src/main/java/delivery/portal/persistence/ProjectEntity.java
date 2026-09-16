@@ -43,6 +43,10 @@ public class ProjectEntity {
     /** Per-job Cursor call cap when Precision is selected; null = server default */
     private Integer precisionMaxCallsPerJob;
 
+    /** Opaque workspace id; membership is stored separately. */
+    @Column(name = "tenant_id", length = 40)
+    private String tenantId;
+
     public Long getId() { return id; }
     public String getProjectId() { return projectId; }
     public void setProjectId(String projectId) { this.projectId = projectId; }
@@ -64,4 +68,6 @@ public class ProjectEntity {
     public void setPrecisionMaxCallsPerJob(Integer precisionMaxCallsPerJob) {
         this.precisionMaxCallsPerJob = precisionMaxCallsPerJob;
     }
+    public String getTenantId() { return tenantId; }
+    public void setTenantId(String tenantId) { this.tenantId = tenantId; }
 }
