@@ -74,9 +74,9 @@ public class JobController {
             @RequestParam(value = "finalRevise", required = false, defaultValue = "false") String finalRevise
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
-        if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
+        if (denied != null) {
+            return denied;
         }
         store.ensureBaseUrlBackfill(projectId);
         ProjectRecord project = store.getOwnedProject(projectId, ownerId).orElseThrow();

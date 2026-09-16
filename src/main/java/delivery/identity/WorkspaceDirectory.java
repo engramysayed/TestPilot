@@ -108,6 +108,61 @@ public final class WorkspaceDirectory {
         });
     }
 
+    public void addMember(TenantId tenant, long userId, WorkspaceRole role) throws Exception {
+        if (tenant == null || userId <= 0 || role == null) {
+            throw new IllegalArgumentException("tenant, user and role are required");
+        }
+        mutate(root -> {
+            JSONArray memberships = root.getJSONArray("memberships");
+            for (int i = 0; i < memberships.length(); i++) {
+                JSONObject row = memberships.getJSONObject(i);
+                if (tenant.value().equals(row.optString("tenantId")) && row.optLong("userId") == userId) {
+                    row.put("role", role.name());
+                    return tenant;
+                }
+            }
+            addMembership(root, tenant, userId, role);
+            return tenant;
+        });
+    }
+
+    public WorkspaceRole role(TenantId tenant, long userId) {
+        try {
+            JSONObject root = read();
+            JSONArray memberships = root.getJSONArray("memberships");
+            for (int i = 0; i < memberships.length(); i++) {
+                JSONObject row = memberships.getJSONObject(i);
+                if (tenant.value().equals(row.optString("tenantId")) && row.optLong("userId") == userId) {
+                    return WorkspaceRole.valueOf(row.optString("role", WorkspaceRole.MEMBER.name()));
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public boolean canOperate(TenantId tenant, long userId) {
+        WorkspaceRole role = role(tenant, userId);
+        return role == WorkspaceRole.OWNER || role == WorkspaceRole.ADMIN;
+    }
+
+    public boolean canAdminister(TenantId tenant, long userId) {
+        return role(tenant, userId) == WorkspaceRole.OWNER;
+    }
+
+    public void requireOperate(TenantId tenant, long userId) {
+        if (!canOperate(tenant, userId)) {
+            throw new SecurityException("user " + userId + " cannot operate on " + tenant);
+        }
+    }
+
+    public void requireAdminister(TenantId tenant, long userId) {
+        if (!canAdminister(tenant, userId)) {
+            throw new SecurityException("user " + userId + " cannot administer " + tenant);
+        }
+    }
+
     public boolean isMember(TenantId tenant, long userId) {
         try {
             JSONObject root = read();

@@ -9,12 +9,10 @@ import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStore;
 import delivery.ir.TcIdentity;
 import delivery.store.ProjectStore;
-import delivery.util.ProjectNaming;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.time.Instant;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
@@ -45,16 +43,8 @@ public class ExecuteJobRunner {
         Files.createDirectories(dest);
 
         String workFolder;
-        Path work;
-        if (request.tenantId() != null) {
-            String scopedJob = request.jobId() == null || request.jobId().isBlank() ? jobId : request.jobId();
-            work = delivery.identity.ScopePaths.createJobWorkDir(request.workDir(), request.tenantId(), scopedJob);
-            workFolder = work.getFileName().toString();
-        } else {
-            workFolder = ProjectNaming.fromBaseUrl(request.baseUrl(), Instant.now()) + "-exec";
-            work = request.workDir().resolve(workFolder);
-            Files.createDirectories(work);
-        }
+        Path work = JobWorkLayout.create(request);
+        workFolder = work.getFileName().toString();
 
         int proveUnits = cases.size();
         int jobTotal = proveUnits + 2; // + design compare + evidence save

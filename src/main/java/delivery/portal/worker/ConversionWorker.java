@@ -71,9 +71,10 @@ public class ConversionWorker {
                     props.isCodegenOllamaNaming(),
                     job.getAuthoringEngine(),
                     precisionConfig,
-                    delivery.identity.TenantResolver.forJob(
+                    delivery.identity.TenantResolver.require(
                             Path.of(props.getStoreRoot()), job.getTenantId(), job.getOwnerUserId()),
-                    job.getJobId()
+                    job.getJobId(),
+                    delivery.job.TenantScope.HOSTED
             );
 
             ConversionJobResult result;

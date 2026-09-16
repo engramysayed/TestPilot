@@ -62,4 +62,37 @@ public class TenantLayoutMigratorTest {
             Assert.assertTrue(foundHooks);
         }
     }
+
+    @Test
+    public void crashHalfwayThenRecoverFinishesWithoutLosingProjects() throws Exception {
+        Path store = Files.createTempDirectory("mig-crash");
+        TenantId alice = TenantId.mint();
+        TenantId bob = TenantId.mint();
+        Path aliceLegacy = store.resolve("same-example-com").resolve("prj_alice");
+        Path bobLegacy = store.resolve("same-example-com").resolve("prj_bob");
+        Files.createDirectories(aliceLegacy);
+        Files.createDirectories(bobLegacy);
+        Files.writeString(aliceLegacy.resolve("project.json"), "{}");
+        Files.writeString(aliceLegacy.resolve("sentinel.txt"), "ALICE_ONLY");
+        Files.writeString(bobLegacy.resolve("project.json"), "{}");
+        Files.writeString(bobLegacy.resolve("sentinel.txt"), "BOB_ONLY");
+
+        try {
+            TenantLayoutMigrator.migrate(store, Map.of("prj_alice", alice, "prj_bob", bob), 1);
+            Assert.fail("expected simulated crash after the first move");
+        } catch (TenantLayoutMigrator.InterruptedMigrationException expected) {
+            Assert.assertTrue(Files.isRegularFile(TenantLayoutMigrator.journalFile(store)));
+        }
+
+        TenantLayoutMigrator.Result recovered = TenantLayoutMigrator.recover(store);
+        Assert.assertTrue(Files.isRegularFile(ScopePaths.projectRoot(store, alice, "prj_alice").resolve("sentinel.txt")));
+        Assert.assertTrue(Files.isRegularFile(ScopePaths.projectRoot(store, bob, "prj_bob").resolve("sentinel.txt")));
+        Assert.assertEquals(Files.readString(ScopePaths.projectRoot(store, alice, "prj_alice").resolve("sentinel.txt")),
+                "ALICE_ONLY");
+        Assert.assertEquals(Files.readString(ScopePaths.projectRoot(store, bob, "prj_bob").resolve("sentinel.txt")),
+                "BOB_ONLY");
+        Assert.assertFalse(Files.exists(aliceLegacy.resolve("sentinel.txt")));
+        Assert.assertFalse(Files.exists(bobLegacy.resolve("sentinel.txt")));
+        Assert.assertTrue(recovered.migrated() >= 2);
+    }
 }

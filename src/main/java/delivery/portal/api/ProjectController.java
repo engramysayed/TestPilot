@@ -95,6 +95,11 @@ public class ProjectController {
     public ResponseEntity<?> patch(
             @PathVariable("projectId") String projectId,
             @RequestBody(required = false) PatchProjectRequest body) {
+        Long uid = currentUser.requireUserId();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, uid);
+        if (denied != null) {
+            return denied;
+        }
         PatchProjectRequest patch = body == null ? new PatchProjectRequest(null, null, null) : body;
         if (patch.archived() != null && patch.archived() && store.hasRunningJob(projectId)) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -124,9 +129,10 @@ public class ProjectController {
 
     @GetMapping("/{projectId}/credentials")
     public ResponseEntity<?> listCredentials(@PathVariable("projectId") String projectId) {
-        if (store.getOwnedProject(projectId, currentUser.requireUserId()).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
         }
         return ResponseEntity.ok(credentials.list(projectId).stream()
                 .map(this::credentialToMap)
@@ -137,9 +143,10 @@ public class ProjectController {
     public ResponseEntity<?> createCredential(
             @PathVariable("projectId") String projectId,
             @RequestBody(required = false) CreateCredentialRequest body) {
-        if (store.getOwnedProject(projectId, currentUser.requireUserId()).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
         }
         if (body == null) {
             return ResponseEntity.badRequest()
@@ -160,9 +167,10 @@ public class ProjectController {
             @PathVariable("projectId") String projectId,
             @PathVariable("profileName") String profileName,
             @RequestBody(required = false) PatchCredentialRequest body) {
-        if (store.getOwnedProject(projectId, currentUser.requireUserId()).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
         }
         PatchCredentialRequest patch = body == null ? new PatchCredentialRequest(null, null) : body;
         return credentials.update(projectId, profileName, patch.username(), patch.password())
@@ -175,9 +183,10 @@ public class ProjectController {
     public ResponseEntity<?> deleteCredential(
             @PathVariable("projectId") String projectId,
             @PathVariable("profileName") String profileName) {
-        if (store.getOwnedProject(projectId, currentUser.requireUserId()).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
         }
         if (!credentials.delete(projectId, profileName)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -245,9 +254,10 @@ public class ProjectController {
     public ResponseEntity<?> downloadArtifact(
             @PathVariable("projectId") String projectId,
             @RequestParam("path") String path) {
-        if (store.getOwnedProject(projectId, currentUser.requireUserId()).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
         }
         try {
             Path file = artifacts.downloadZip(store.projectDiskRoot(projectId), path);
@@ -271,9 +281,10 @@ public class ProjectController {
     public ResponseEntity<?> deleteArtifact(
             @PathVariable("projectId") String projectId,
             @RequestParam("path") String path) {
-        if (store.getOwnedProject(projectId, currentUser.requireUserId()).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
         }
         if (store.hasRunningJob(projectId)) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -392,7 +403,12 @@ public class ProjectController {
 
     @DeleteMapping("/{projectId}")
     public ResponseEntity<?> delete(@PathVariable("projectId") String projectId) {
-        boolean deleted = store.deleteOwnedProject(projectId, currentUser.requireUserId());
+        Long uid = currentUser.requireUserId();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessAdmin(store, projectId, uid);
+        if (denied != null) {
+            return denied;
+        }
+        boolean deleted = store.deleteOwnedProject(projectId, uid);
         if (!deleted) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", "Unknown project").asMap());

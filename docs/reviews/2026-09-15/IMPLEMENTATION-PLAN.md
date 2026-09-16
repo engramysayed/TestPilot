@@ -153,7 +153,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** simultaneous same-host jobs with overlapping TC IDs and distinct sentinels retain independent files, proof, packages and memory. Version publication cannot lose or overwrite a concurrent result.
 
-**2026-09-16:** tenant-storage **groundwork** only — P2-02 remains open. Exclusive job dirs, tenant-scoped hooks/memory, reversible migration+quarantine, cross-process publication lock, and unit-level same-host sentinels plus artifact cross-tenant rejection exist. Fail-closed hosted paths, role (not only membership) checks, full same-host pipeline, migration crash recovery, and filesystem lock validation are still owed. Broader isolation also depends on P2-03/P2-04. This is not completed customer isolation.
+**2026-09-16:** tenant-storage **groundwork** only — P2-02 remains open. Hosted paths fail closed; roles gate operate vs membership; migrator can recover a crash journal; OS lock was probed on this volume; concurrent dry-run packages keep sentinels apart. Live ProvePhase same-host sequence, generate-path role coverage, and deployment filesystem lock sign-off are still owed. Broader isolation also depends on P2-03/P2-04. This is not completed customer isolation.
 
 ### P2-03 — enforce browser network and credential scope · F08
 

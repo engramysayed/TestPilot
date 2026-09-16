@@ -25,11 +25,44 @@ public record ConversionJobRequest(
         AuthoringEngine authoringEngine,
         /** Server + job Precision settings (cap, feature flag). */
         PrecisionJobConfig precisionConfig,
-        /** Immutable workspace; null keeps legacy host-timestamp work dirs. */
+        /** Immutable workspace; null is allowed only for {@link TenantScope#LEGACY_EXPLICIT}. */
         delivery.identity.TenantId tenantId,
-        /** Immutable job id used for exclusive work directories; null uses host+timestamp. */
-        String jobId
+        /** Immutable job id used for exclusive work directories. */
+        String jobId,
+        /** Hosted jobs fail closed; legacy directories require an explicit opt-in. */
+        TenantScope tenantScope
 ) {
+    public ConversionJobRequest {
+        if (tenantScope == null) {
+            tenantScope = TenantScope.LEGACY_EXPLICIT;
+        }
+    }
+
+    /** Hosted portal request: missing tenant/job must fail closed. */
+    public ConversionJobRequest(
+            String projectId,
+            Path excel,
+            String baseUrl,
+            String username,
+            String password,
+            Path workDir,
+            Path storeRoot,
+            Path templateRoot,
+            String mode,
+            String localLlmBaseUrl,
+            String localLlmModel,
+            boolean finalRevise,
+            boolean codegenOllamaNaming,
+            AuthoringEngine authoringEngine,
+            PrecisionJobConfig precisionConfig,
+            delivery.identity.TenantId tenantId,
+            String jobId
+    ) {
+        this(projectId, excel, baseUrl, username, password, workDir, storeRoot, templateRoot,
+                mode, localLlmBaseUrl, localLlmModel, finalRevise, codegenOllamaNaming,
+                authoringEngine, precisionConfig, tenantId, jobId, TenantScope.LEGACY_EXPLICIT);
+    }
+
     /** Back-compat for callers without tenant/job identity. */
     public ConversionJobRequest(
             String projectId,
@@ -50,7 +83,7 @@ public record ConversionJobRequest(
     ) {
         this(projectId, excel, baseUrl, username, password, workDir, storeRoot, templateRoot,
                 mode, localLlmBaseUrl, localLlmModel, finalRevise, codegenOllamaNaming,
-                authoringEngine, precisionConfig, null, null);
+                authoringEngine, precisionConfig, null, null, TenantScope.LEGACY_EXPLICIT);
     }
     /** Back-compat for callers without final-revise flag. */
     public ConversionJobRequest(

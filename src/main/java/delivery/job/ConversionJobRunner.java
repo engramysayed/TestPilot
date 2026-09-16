@@ -7,7 +7,6 @@ import delivery.ir.TcDraft;
 import delivery.ir.TcIdentity;
 import delivery.packager.FrameworkPackager;
 import delivery.store.ProjectStore;
-import delivery.util.ProjectNaming;
 import org.json.JSONObject;
 
 import java.nio.file.Files;
@@ -71,16 +70,8 @@ public class ConversionJobRunner {
                 : null;
 
         String workFolder;
-        Path work;
-        if (request.tenantId() != null && request.jobId() != null && !request.jobId().isBlank()) {
-            work = delivery.identity.ScopePaths.createJobWorkDir(
-                    request.workDir(), request.tenantId(), request.jobId());
-            workFolder = work.getFileName().toString();
-        } else {
-            workFolder = ProjectNaming.fromBaseUrl(request.baseUrl(), Instant.now());
-            work = request.workDir().resolve(workFolder);
-            Files.createDirectories(work);
-        }
+        Path work = JobWorkLayout.create(request);
+        workFolder = work.getFileName().toString();
         Path projectDir = work.resolve("project");
         FrameworkPackager packager = new FrameworkPackager();
         packager.copyTemplate(request.templateRoot(), projectDir);

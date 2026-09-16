@@ -18,6 +18,14 @@ public final class TenantResolver {
         }
     }
 
+    public static TenantId require(Path storeRoot, String storedTenantId, Long ownerUserId) {
+        TenantId tenant = forJob(storeRoot, storedTenantId, ownerUserId);
+        if (tenant == null) {
+            throw new IllegalStateException("TENANT_REQUIRED");
+        }
+        return tenant;
+    }
+
     public static TenantId forJob(Path storeRoot, String storedTenantId, Long ownerUserId) {
         TenantId parsed = parseOrNull(storedTenantId);
         if (parsed != null) {

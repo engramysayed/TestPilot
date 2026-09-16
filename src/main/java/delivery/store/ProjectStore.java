@@ -34,15 +34,7 @@ public class ProjectStore {
 
     public Path projectRoot(String projectId) {
         if (tenant != null) {
-            Path scoped = delivery.identity.ScopePaths.projectRoot(storeRoot, tenant, projectId);
-            if (Files.exists(scoped) || Files.isRegularFile(scoped.resolve("project.json"))) {
-                return scoped;
-            }
-            Path legacy = DomainStorePaths.resolveProjectRoot(storeRoot, domainHint, projectId);
-            if (DomainStorePaths.looksLikeProject(legacy)) {
-                return legacy;
-            }
-            return scoped;
+            return delivery.identity.ScopePaths.projectRoot(storeRoot, tenant, projectId);
         }
         return DomainStorePaths.resolveProjectRoot(storeRoot, domainHint, projectId);
     }

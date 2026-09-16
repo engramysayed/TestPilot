@@ -11,7 +11,6 @@ import delivery.ir.TcIdentity;
 import delivery.packager.FrameworkPackager;
 import delivery.store.ProjectStore;
 import delivery.store.TcDiffService;
-import delivery.util.ProjectNaming;
 import org.json.JSONObject;
 
 import java.nio.file.Files;
@@ -50,7 +49,7 @@ public class DryRunConversionService {
         TcIdentity.requireValidCases(cases);
         progress.update(0, cases.size(), "Dry-run packaging (no local AI)");
 
-        Path work = request.workDir().resolve(ProjectNaming.fromBaseUrl(request.baseUrl(), Instant.now()) + "-dry");
+        Path work = JobWorkLayout.create(request);
         Path projectDir = work.resolve("project");
         Files.createDirectories(projectDir);
         FrameworkPackager packager = new FrameworkPackager();

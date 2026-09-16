@@ -74,6 +74,43 @@ public class PublicationLockTest {
         Assert.assertEquals(child.waitFor(), 0);
     }
 
+    @Test
+    public void osLockIsExercisedOnThisStoresFileSystemType() throws Exception {
+        Path probe = Files.createDirectories(Path.of("target", "publication-lock-fs-probe"));
+        java.nio.file.FileStore fileStore = Files.getFileStore(probe);
+        String type = fileStore.type();
+        Assert.assertNotNull(type);
+        Assert.assertFalse(type.isBlank());
+        Path lock = probe.resolve("fs.publish.lock");
+        Path flag = probe.resolve("held.flag");
+        Files.deleteIfExists(flag);
+        String cp = System.getProperty("surefire.test.class.path");
+        if (cp == null || cp.isBlank()) {
+            cp = System.getProperty("java.class.path");
+        }
+        Process child = new ProcessBuilder(
+                javaBin(),
+                "-cp", cp,
+                PublicationLockHold.class.getName(),
+                lock.toAbsolutePath().toString(),
+                flag.toAbsolutePath().toString(),
+                "1200")
+                .redirectErrorStream(true)
+                .start();
+        long waitFlag = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+        while (!Files.isRegularFile(flag) && child.isAlive() && System.nanoTime() < waitFlag) {
+            Thread.sleep(25);
+        }
+        Assert.assertTrue(Files.isRegularFile(flag),
+                "OS lock helper failed on FileStore type=" + type + " name=" + fileStore.name());
+        long started = System.nanoTime();
+        PublicationLock.call(lock, () -> "ok");
+        long waitedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+        Assert.assertTrue(waitedMs >= 200,
+                "OS file lock did not block on FileStore type=" + type + " (" + waitedMs + "ms)");
+        Assert.assertEquals(child.waitFor(), 0);
+    }
+
     private static String javaBin() {
         String home = System.getProperty("java.home");
         Path bin = Path.of(home, "bin",

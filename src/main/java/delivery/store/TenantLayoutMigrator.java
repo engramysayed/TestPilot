@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -21,7 +23,14 @@ import java.util.Map;
  */
 public final class TenantLayoutMigrator {
     public static final String MANIFEST_NAME = "migration-manifest.json";
+    public static final String JOURNAL_NAME = "migrate-journal.json";
     public static final String QUARANTINE_DIR = "_quarantine";
+
+    public static final class InterruptedMigrationException extends IllegalStateException {
+        public InterruptedMigrationException() {
+            super("migration interrupted");
+        }
+    }
 
     public record Result(Path manifest, Path quarantine, int migrated, int quarantined) {
     }
@@ -29,47 +38,44 @@ public final class TenantLayoutMigrator {
     private TenantLayoutMigrator() {
     }
 
+    public static Path journalFile(Path storeRoot) {
+        return storeRoot.resolve("tenants").resolve(JOURNAL_NAME);
+    }
+
     public static Result migrate(Path storeRoot, Map<String, TenantId> knownProjects) throws Exception {
+        return migrate(storeRoot, knownProjects, Integer.MAX_VALUE);
+    }
+
+    public static Result migrate(Path storeRoot, Map<String, TenantId> knownProjects, int crashAfterOps)
+            throws Exception {
         if (storeRoot == null) {
             throw new IllegalArgumentException("storeRoot is required");
         }
         Map<String, TenantId> known = knownProjects == null ? Map.of() : knownProjects;
         Path tenantsRoot = storeRoot.resolve("tenants");
         Files.createDirectories(tenantsRoot);
-        String stamp = Instant.now().toString().replace(":", "").replace(".", "");
-        Path quarantine = tenantsRoot.resolve(QUARANTINE_DIR).resolve(stamp);
         Path lock = tenantsRoot.resolve("migrate.lock");
-        return PublicationLock.call(lock, () -> {
-            JSONArray moved = new JSONArray();
-            JSONArray quarantined = new JSONArray();
-            if (Files.isDirectory(storeRoot)) {
-                try (var children = Files.list(storeRoot)) {
-                    for (Path child : children.toList()) {
-                        if (!Files.isDirectory(child)) {
-                            continue;
-                        }
-                        String name = child.getFileName().toString();
-                        if (DomainStorePaths.isStoreRootReserved(name) || "tenants".equalsIgnoreCase(name)) {
-                            continue;
-                        }
-                        if (DomainStorePaths.looksLikeProject(child)) {
-                            relocateProject(storeRoot, child, name, known, moved, quarantined, quarantine);
-                            continue;
-                        }
-                        relocateDomainFolder(storeRoot, child, known, moved, quarantined, quarantine);
-                    }
-                }
-            }
-            Files.createDirectories(quarantine);
-            JSONObject manifest = new JSONObject();
-            manifest.put("version", 1);
-            manifest.put("createdAt", Instant.now().toString());
-            manifest.put("moved", moved);
-            manifest.put("quarantined", quarantined);
-            Path manifestFile = quarantine.resolve(MANIFEST_NAME);
-            Files.writeString(manifestFile, manifest.toString(2), StandardCharsets.UTF_8);
-            return new Result(manifestFile, quarantine, moved.length(), quarantined.length());
-        });
+        return PublicationLock.call(lock, () -> runLocked(storeRoot, known, crashAfterOps));
+    }
+
+    public static Result recover(Path storeRoot) throws Exception {
+        Path journal = journalFile(storeRoot);
+        if (!Files.isRegularFile(journal)) {
+            throw new IllegalStateException("no migration journal");
+        }
+        JSONObject root = new JSONObject(Files.readString(journal, StandardCharsets.UTF_8));
+        Map<String, TenantId> known = knownFrom(root.optJSONObject("known"));
+        if ("complete".equals(root.optString("status"))) {
+            Path quarantine = storeRoot.resolve(root.optString("quarantine"));
+            JSONArray moved = root.optJSONArray("moved");
+            JSONArray quarantined = root.optJSONArray("quarantined");
+            return new Result(
+                    quarantine.resolve(MANIFEST_NAME),
+                    quarantine,
+                    moved == null ? 0 : moved.length(),
+                    quarantined == null ? 0 : quarantined.length());
+        }
+        return migrate(storeRoot, known);
     }
 
     public static void revert(Path storeRoot, Path manifestFile) throws Exception {
@@ -97,14 +103,41 @@ public final class TenantLayoutMigrator {
         });
     }
 
-    private static void relocateDomainFolder(
-            Path storeRoot,
-            Path domain,
-            Map<String, TenantId> known,
-            JSONArray moved,
-            JSONArray quarantined,
-            Path quarantine
-    ) throws Exception {
+    private static Result runLocked(Path storeRoot, Map<String, TenantId> known, int crashAfterOps)
+            throws Exception {
+        Session session = Session.open(storeRoot, known, crashAfterOps);
+        if (Files.isDirectory(storeRoot)) {
+            try (var children = Files.list(storeRoot)) {
+                for (Path child : children.toList()) {
+                    if (!Files.isDirectory(child)) {
+                        continue;
+                    }
+                    String name = child.getFileName().toString();
+                    if (DomainStorePaths.isStoreRootReserved(name) || "tenants".equalsIgnoreCase(name)) {
+                        continue;
+                    }
+                    if (DomainStorePaths.looksLikeProject(child)) {
+                        relocateProject(session, child, name);
+                        continue;
+                    }
+                    relocateDomainFolder(session, child);
+                }
+            }
+        }
+        Files.createDirectories(session.quarantine);
+        JSONObject manifest = new JSONObject();
+        manifest.put("version", 1);
+        manifest.put("createdAt", Instant.now().toString());
+        manifest.put("moved", session.moved);
+        manifest.put("quarantined", session.quarantined);
+        Path manifestFile = session.quarantine.resolve(MANIFEST_NAME);
+        Files.writeString(manifestFile, manifest.toString(2), StandardCharsets.UTF_8);
+        session.status = "complete";
+        session.checkpoint();
+        return new Result(manifestFile, session.quarantine, session.moved.length(), session.quarantined.length());
+    }
+
+    private static void relocateDomainFolder(Session session, Path domain) throws Exception {
         if (!Files.isDirectory(domain)) {
             return;
         }
@@ -115,60 +148,48 @@ public final class TenantLayoutMigrator {
         for (Path child : children) {
             String name = child.getFileName().toString();
             if (Files.isDirectory(child) && DomainStorePaths.looksLikeProject(child)) {
-                relocateProject(storeRoot, child, name, known, moved, quarantined, quarantine);
+                relocateProject(session, child, name);
                 continue;
             }
             if (Files.isRegularFile(child) && isAmbiguousSiteFile(name)) {
-                quarantinePath(storeRoot, child, "ambiguous-domain-shared", quarantined, quarantine);
+                quarantinePath(session, child, "ambiguous-domain-shared");
             }
         }
     }
 
-    private static void relocateProject(
-            Path storeRoot,
-            Path source,
-            String projectId,
-            Map<String, TenantId> known,
-            JSONArray moved,
-            JSONArray quarantined,
-            Path quarantine
-    ) throws Exception {
-        TenantId tenant = known.get(projectId);
+    private static void relocateProject(Session session, Path source, String projectId) throws Exception {
+        TenantId tenant = session.known.get(projectId);
         if (tenant == null) {
-            quarantinePath(storeRoot, source, "unknown-project", quarantined, quarantine);
+            quarantinePath(session, source, "unknown-project");
             return;
         }
-        Path dest = ScopePaths.projectRoot(storeRoot, tenant, projectId);
+        Path dest = ScopePaths.projectRoot(session.storeRoot, tenant, projectId);
         if (Files.exists(dest) && !dest.equals(source)) {
-            quarantinePath(storeRoot, source, "destination-exists", quarantined, quarantine);
+            quarantinePath(session, source, "destination-exists");
             return;
         }
         Files.createDirectories(dest.getParent());
         Files.move(source, dest);
         JSONObject row = new JSONObject();
         row.put("kind", "project");
-        row.put("from", rel(storeRoot, source));
-        row.put("to", rel(storeRoot, dest));
+        row.put("from", rel(session.storeRoot, source));
+        row.put("to", rel(session.storeRoot, dest));
         row.put("tenantId", tenant.value());
-        moved.put(row);
+        session.moved.put(row);
+        session.bump();
     }
 
-    private static void quarantinePath(
-            Path storeRoot,
-            Path source,
-            String reason,
-            JSONArray quarantined,
-            Path quarantine
-    ) throws Exception {
-        Path dest = uniqueDest(quarantine, rel(storeRoot, source));
+    private static void quarantinePath(Session session, Path source, String reason) throws Exception {
+        Path dest = uniqueDest(session.quarantine, rel(session.storeRoot, source));
         Files.createDirectories(dest.getParent());
         Files.move(source, dest);
         JSONObject row = new JSONObject();
         row.put("kind", "quarantine");
-        row.put("from", rel(storeRoot, source));
-        row.put("to", rel(storeRoot, dest));
+        row.put("from", rel(session.storeRoot, source));
+        row.put("to", rel(session.storeRoot, dest));
         row.put("reason", reason);
-        quarantined.put(row);
+        session.quarantined.put(row);
+        session.bump();
     }
 
     private static Path uniqueDest(Path quarantine, String relative) {
@@ -212,5 +233,101 @@ public final class TenantLayoutMigrator {
                 .relativize(path.toAbsolutePath().normalize())
                 .toString()
                 .replace('\\', '/');
+    }
+
+    private static Map<String, TenantId> knownFrom(JSONObject json) {
+        Map<String, TenantId> known = new LinkedHashMap<>();
+        if (json == null) {
+            return known;
+        }
+        Iterator<String> keys = json.keys();
+        while (keys.hasNext()) {
+            String id = keys.next();
+            known.put(id, TenantId.parse(json.getString(id)));
+        }
+        return known;
+    }
+
+    private static final class Session {
+        private final Path storeRoot;
+        private final Map<String, TenantId> known;
+        private final JSONArray moved;
+        private final JSONArray quarantined;
+        private final Path quarantine;
+        private final int crashAfter;
+        private int ops;
+        private String status;
+
+        private Session(
+                Path storeRoot,
+                Map<String, TenantId> known,
+                JSONArray moved,
+                JSONArray quarantined,
+                Path quarantine,
+                int crashAfter,
+                int ops,
+                String status
+        ) {
+            this.storeRoot = storeRoot;
+            this.known = known;
+            this.moved = moved;
+            this.quarantined = quarantined;
+            this.quarantine = quarantine;
+            this.crashAfter = crashAfter;
+            this.ops = ops;
+            this.status = status;
+        }
+
+        static Session open(Path storeRoot, Map<String, TenantId> known, int crashAfter) throws Exception {
+            Path journal = journalFile(storeRoot);
+            if (Files.isRegularFile(journal)) {
+                JSONObject root = new JSONObject(Files.readString(journal, StandardCharsets.UTF_8));
+                if ("in-progress".equals(root.optString("status"))) {
+                    Path quarantine = storeRoot.resolve(root.optString("quarantine"));
+                    JSONArray moved = root.optJSONArray("moved");
+                    JSONArray quarantined = root.optJSONArray("quarantined");
+                    int ops = (moved == null ? 0 : moved.length()) + (quarantined == null ? 0 : quarantined.length());
+                    return new Session(
+                            storeRoot,
+                            known,
+                            moved == null ? new JSONArray() : moved,
+                            quarantined == null ? new JSONArray() : quarantined,
+                            quarantine,
+                            crashAfter,
+                            ops,
+                            "in-progress");
+                }
+            }
+            String stamp = Instant.now().toString().replace(":", "").replace(".", "");
+            Path quarantine = storeRoot.resolve("tenants").resolve(QUARANTINE_DIR).resolve(stamp);
+            Session session = new Session(
+                    storeRoot, known, new JSONArray(), new JSONArray(), quarantine, crashAfter, 0, "in-progress");
+            session.checkpoint();
+            return session;
+        }
+
+        void bump() throws Exception {
+            ops++;
+            checkpoint();
+            if (ops >= crashAfter) {
+                throw new InterruptedMigrationException();
+            }
+        }
+
+        void checkpoint() throws Exception {
+            JSONObject knownJson = new JSONObject();
+            for (Map.Entry<String, TenantId> e : known.entrySet()) {
+                knownJson.put(e.getKey(), e.getValue().value());
+            }
+            JSONObject root = new JSONObject();
+            root.put("status", status);
+            root.put("known", knownJson);
+            root.put("moved", moved);
+            root.put("quarantined", quarantined);
+            root.put("quarantine", rel(storeRoot, quarantine));
+            Path journal = journalFile(storeRoot);
+            Files.createDirectories(journal.getParent());
+            Files.writeString(journal, root.toString(2), StandardCharsets.UTF_8);
+        }
     }
 }

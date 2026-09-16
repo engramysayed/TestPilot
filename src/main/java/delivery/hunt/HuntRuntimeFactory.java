@@ -47,8 +47,10 @@ public final class HuntRuntimeFactory {
                 false,
                 delivery.authoring.AuthoringEngine.KEEL,
                 delivery.authoring.PrecisionJobConfig.DEFAULTS,
-                delivery.identity.TenantResolver.parseOrNull(job.getTenantId()),
-                job.getJobId()
+                delivery.identity.TenantResolver.require(
+                        Path.of(props.getStoreRoot()), job.getTenantId(), job.getOwnerUserId()),
+                job.getJobId(),
+                delivery.job.TenantScope.HOSTED
         );
     }
 }

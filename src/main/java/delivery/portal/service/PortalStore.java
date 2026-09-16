@@ -83,12 +83,13 @@ public class PortalStore {
     }
 
     public ProjectStore filesystemStoreFor(String projectId) {
-        return projectRepository.findByProjectId(projectId)
-                .map(entity -> new ProjectStore(
-                        storeRootPath,
-                        resolveBaseUrlHint(projectId),
-                        resolveTenant(entity)))
-                .orElseGet(() -> new ProjectStore(storeRootPath, resolveBaseUrlHint(projectId)));
+        ProjectEntity entity = projectRepository.findByProjectId(projectId)
+                .orElseThrow(() -> new IllegalStateException("TENANT_REQUIRED"));
+        delivery.identity.TenantId tenant = resolveTenant(entity);
+        if (tenant == null) {
+            throw new IllegalStateException("TENANT_REQUIRED");
+        }
+        return new ProjectStore(storeRootPath, resolveBaseUrlHint(projectId), tenant);
     }
 
     private delivery.identity.TenantId resolveTenant(ProjectEntity entity) {
@@ -534,6 +535,46 @@ public class PortalStore {
             }
         }
         return userId.equals(job.getOwnerUserId());
+    }
+
+    public boolean canOperate(String projectId, Long userId) {
+        return projectRepository.findByProjectId(projectId)
+                .filter(p -> canAccessProject(p, userId))
+                .map(p -> roleAllowsOperate(p, userId))
+                .orElse(false);
+    }
+
+    public boolean canAdminister(String projectId, Long userId) {
+        return projectRepository.findByProjectId(projectId)
+                .filter(p -> canAccessProject(p, userId))
+                .map(p -> roleAllowsAdminister(p, userId))
+                .orElse(false);
+    }
+
+    private boolean roleAllowsOperate(ProjectEntity project, Long userId) {
+        String tenantId = project.getTenantId();
+        if (tenantId != null && !tenantId.isBlank()) {
+            try {
+                return delivery.identity.WorkspaceDirectory.open(storeRootPath)
+                        .canOperate(delivery.identity.TenantId.parse(tenantId), userId);
+            } catch (Exception e) {
+                return project.getOwnerUserId().equals(userId);
+            }
+        }
+        return project.getOwnerUserId().equals(userId);
+    }
+
+    private boolean roleAllowsAdminister(ProjectEntity project, Long userId) {
+        String tenantId = project.getTenantId();
+        if (tenantId != null && !tenantId.isBlank()) {
+            try {
+                return delivery.identity.WorkspaceDirectory.open(storeRootPath)
+                        .canAdminister(delivery.identity.TenantId.parse(tenantId), userId);
+            } catch (Exception e) {
+                return project.getOwnerUserId().equals(userId);
+            }
+        }
+        return project.getOwnerUserId().equals(userId);
     }
 
     private delivery.identity.TenantId tenantForProject(String projectId) {
