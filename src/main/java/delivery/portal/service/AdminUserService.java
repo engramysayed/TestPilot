@@ -1,26 +1,21 @@
 package delivery.portal.service;
 
 import delivery.portal.persistence.InviteRepository;
-import delivery.portal.persistence.JobRepository;
 import delivery.portal.persistence.PortalUser;
 import delivery.portal.persistence.PortalUserRepository;
-import delivery.portal.persistence.ProjectRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AdminUserService {
     private final PortalUserRepository users;
-    private final ProjectRepository projects;
-    private final JobRepository jobs;
     private final InviteRepository invites;
+    private final PortalStore store;
 
-    public AdminUserService(PortalUserRepository users, ProjectRepository projects,
-                            JobRepository jobs, InviteRepository invites) {
+    public AdminUserService(PortalUserRepository users, InviteRepository invites, PortalStore store) {
         this.users = users;
-        this.projects = projects;
-        this.jobs = jobs;
         this.invites = invites;
+        this.store = store;
     }
 
     @Transactional
@@ -41,8 +36,7 @@ public class AdminUserService {
                 throw new IllegalArgumentException("Cannot delete the last admin account");
             }
         }
-        jobs.deleteByOwnerUserId(targetUserId);
-        projects.deleteByOwnerUserId(targetUserId);
+        store.deleteAllOwnedProjects(targetUserId);
         users.delete(target);
     }
 

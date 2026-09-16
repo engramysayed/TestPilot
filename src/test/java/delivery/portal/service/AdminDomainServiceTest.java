@@ -5,7 +5,10 @@ import org.testng.annotations.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AdminDomainServiceTest {
     @Test
@@ -43,6 +46,27 @@ public class AdminDomainServiceTest {
         Assert.assertEquals(deleted.get("domain"), "throwaway-com");
         Assert.assertFalse(Files.exists(domain));
         Assert.assertTrue(Files.isRegularFile(root.resolve("portal-db.mv.db")));
+    }
+
+    @Test
+    public void deleteDomainRoutesProjectsThroughSafeDeletion() throws Exception {
+        Path root = Files.createTempDirectory("admin-domain-purge");
+        Path domain = root.resolve("throwaway-com");
+        Path project = domain.resolve("prj_x");
+        Files.createDirectories(project);
+        Files.writeString(project.resolve("project.json"), "{\"version\":1}");
+        List<String> purged = new ArrayList<>();
+        AtomicBoolean called = new AtomicBoolean(false);
+        AdminDomainService svc = new AdminDomainService(root, null, null, projectId -> {
+            called.set(true);
+            purged.add(projectId);
+            return true;
+        });
+        svc.deleteDomain("throwaway-com", "throwaway-com");
+        Assert.assertTrue(called.get(),
+                "admin domain delete must route nested projects through the same purge lifecycle");
+        Assert.assertEquals(purged, List.of("prj_x"));
+        Assert.assertFalse(Files.exists(domain));
     }
 
     @Test

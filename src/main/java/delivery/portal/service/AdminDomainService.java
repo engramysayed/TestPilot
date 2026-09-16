@@ -31,26 +31,38 @@ import java.util.stream.Stream;
 @Service
 public class AdminDomainService {
     private static final Logger log = LoggerFactory.getLogger(AdminDomainService.class);
+    @FunctionalInterface
+    public interface ProjectPurge {
+        boolean purge(String projectId);
+    }
+
     private final Path storeRoot;
     private final ProjectRepository projects;
     private final JobRepository jobs;
+    private final ProjectPurge projectPurge;
 
     @Autowired
     public AdminDomainService(DeliveryPortalProperties props,
                               ProjectRepository projects,
-                              JobRepository jobs) {
-        this(Path.of(props.getStoreRoot()), projects, jobs);
+                              JobRepository jobs,
+                              PortalStore store) {
+        this(Path.of(props.getStoreRoot()), projects, jobs, store::purgeProjectById);
     }
 
     /** Test / tooling constructor (not used by Spring). */
     AdminDomainService(Path storeRoot) {
-        this(storeRoot, null, null);
+        this(storeRoot, null, null, null);
     }
 
     AdminDomainService(Path storeRoot, ProjectRepository projects, JobRepository jobs) {
+        this(storeRoot, projects, jobs, null);
+    }
+
+    AdminDomainService(Path storeRoot, ProjectRepository projects, JobRepository jobs, ProjectPurge projectPurge) {
         this.storeRoot = storeRoot.toAbsolutePath().normalize();
         this.projects = projects;
         this.jobs = jobs;
+        this.projectPurge = projectPurge;
     }
 
     public List<Map<String, Object>> listDomains() throws Exception {
@@ -106,10 +118,15 @@ public class AdminDomainService {
         Set<String> projectIds = collectProjectIdsForDomain(sanitized, dir);
         int removedProjects = 0;
         int removedJobs = 0;
-        if (projects != null && jobs != null) {
-            for (String projectId : projectIds) {
-                List<JobEntity> jobRows = jobs.findByProjectId(projectId);
-                removedJobs += jobRows.size();
+        for (String projectId : projectIds) {
+            if (jobs != null) {
+                removedJobs += jobs.findByProjectId(projectId).size();
+            }
+            if (projectPurge != null) {
+                if (projectPurge.purge(projectId)) {
+                    removedProjects++;
+                }
+            } else if (projects != null && jobs != null) {
                 jobs.deleteByProjectId(projectId);
                 if (projects.findByProjectId(projectId).isPresent()) {
                     projects.findByProjectId(projectId).ifPresent(projects::delete);

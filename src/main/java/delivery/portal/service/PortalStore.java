@@ -358,7 +358,26 @@ public class PortalStore {
         if (owned.isEmpty()) {
             return false;
         }
-        ProjectEntity entity = owned.get();
+        return purgeProject(owned.get());
+    }
+
+    /**
+     * Admin / lifecycle purge that does not require the acting caller to own the project.
+     * Same tombstone → stop → credentials → jobs → disk sequence as owner delete.
+     */
+    @Transactional
+    public boolean purgeProjectById(String projectId) {
+        if (projectId == null || projectId.isBlank()) {
+            return false;
+        }
+        return projectRepository.findByProjectId(projectId)
+                .map(this::purgeProject)
+                .orElse(false);
+    }
+
+    private boolean purgeProject(ProjectEntity entity) {
+        String projectId = entity.getProjectId();
+        Long ownerUserId = entity.getOwnerUserId();
         entity.setArchived(true);
         entity.setArchivedAt(Instant.now());
         projectRepository.save(entity);
