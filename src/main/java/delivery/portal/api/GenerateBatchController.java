@@ -104,6 +104,16 @@ public class GenerateBatchController {
 
     ) throws Exception {
 
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+
+                store, projectId, currentUser.requireUserId());
+
+        if (denied != null) {
+
+            return denied;
+
+        }
+
         if (storiesFile == null || storiesFile.isEmpty()) {
 
             return ResponseEntity.badRequest()
@@ -147,6 +157,16 @@ public class GenerateBatchController {
             @RequestBody GenerateTcController.GenerateTcRequest body
 
     ) throws Exception {
+
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+
+                store, projectId, currentUser.requireUserId());
+
+        if (denied != null) {
+
+            return denied;
+
+        }
 
         if (body == null || body.stories() == null || body.stories().isBlank()) {
 
@@ -211,6 +231,14 @@ public class GenerateBatchController {
     ) throws Exception {
 
         Long ownerId = currentUser.requireUserId();
+
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
+
+        if (denied != null) {
+
+            return denied;
+
+        }
 
         ProjectRecord project = store.getOwnedProject(projectId, ownerId).orElse(null);
 

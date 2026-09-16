@@ -38,8 +38,17 @@ public class ExecuteWorker {
         if (job == null || job.getJobKind() != JobRecord.JobKind.EXECUTE) {
             return;
         }
-        job.setStatus(JobRecord.Status.RUNNING);
+        var lease = portalStore.beginWork(jobId);
+        if (lease.isEmpty()) {
+            log.info("Job {} not claimed", jobId);
+            return;
+        }
+        job = portalStore.getJob(jobId).orElse(job);
         job.setMessage(props.isDryRun() ? "Dry-run execute" : "Starting execute");
+        if (!props.isDryRun()) {
+            delivery.job.DurableJobClaim.markStage(
+                    job, lease.get().attemptId(), delivery.job.DurableJobClaim.Stage.BROWSER);
+        }
         portalStore.syncJobPersistence(job);
         try {
             PrecisionJobConfig precisionConfig = portalStore.precisionConfigForProject(job.getProjectId());
@@ -80,7 +89,9 @@ public class ExecuteWorker {
             job.setPassedCount(result.passed());
             job.setTodoCount(result.todo());
             job.setMessage(result.message());
-            if (portalStore.shouldAbortCompletion(job)) {
+            if (!delivery.job.DurableJobClaim.sameAttempt(job, lease.get())) {
+                log.info("Execute job {} fenced; skipping publish", jobId);
+            } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
             } else if (!props.isDryRun() && result.passed() == 0 && result.todo() > 0) {
                 job.setStatus(JobRecord.Status.FAILED);

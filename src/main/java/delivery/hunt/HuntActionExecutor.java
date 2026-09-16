@@ -19,6 +19,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
+import delivery.net.TargetBlockedException;
+import delivery.net.WorkerNetworkGuard;
+
 /** Executes allowlisted Bug Hunter planner actions against a live WebDriver. */
 public final class HuntActionExecutor {
     /** Default wait when AI sends wait with no/blank ms. */
@@ -36,6 +39,7 @@ public final class HuntActionExecutor {
     private HuntBrowserControls session;
     private HuntActionGuard guard;
     private HuntSecretResolver secrets = new HuntSecretResolver("", "", "");
+    private WorkerNetworkGuard networkGuard;
 
     public HuntActionExecutor(WebDriver driver) {
         this.driver = driver;
@@ -53,6 +57,10 @@ public final class HuntActionExecutor {
 
     public void setSecretResolver(HuntSecretResolver secrets) {
         this.secrets = secrets == null ? new HuntSecretResolver("", "", "") : secrets;
+    }
+
+    public void setNetworkGuard(delivery.net.WorkerNetworkGuard networkGuard) {
+        this.networkGuard = networkGuard;
     }
 
     static void settleAfterClick() {
@@ -136,6 +144,15 @@ public final class HuntActionExecutor {
                         row.put("reason", "navigate requires url");
                         return row;
                     }
+                    if (networkGuard != null) {
+                        try {
+                            networkGuard.requireNavigate(url);
+                        } catch (delivery.net.TargetBlockedException blocked) {
+                            row.put("status", "rejected");
+                            row.put("reason", blocked.getMessage());
+                            return row;
+                        }
+                    }
                     driver().get(url);
                     row.put("status", "ok");
                 }
@@ -190,8 +207,10 @@ public final class HuntActionExecutor {
                     }
                     Object result = js.executeScript(script);
                     row.put("script", script);
-                    row.put("result", truncate(result == null ? "null" : String.valueOf(result),
-                            EXECUTE_JS_RESULT_MAX_CHARS));
+                    row.put("result", delivery.privacy.SecretSanitizer.scrubJsResult(
+                            truncate(result == null ? "null" : String.valueOf(result),
+                                    EXECUTE_JS_RESULT_MAX_CHARS),
+                            java.util.List.of()));
                     row.put("status", "ok");
                 }
                 case "click" -> {
@@ -204,6 +223,19 @@ public final class HuntActionExecutor {
                     el.clear();
                     String rawValue = str(normalized.get("value"));
                     String resolved = secrets.resolve(rawValue);
+                    if (HuntSecretResolver.containsToken(rawValue) && networkGuard != null) {
+                        String here = "";
+                        try {
+                            here = driver().getCurrentUrl();
+                        } catch (Exception ignored) {
+                            here = "";
+                        }
+                        if (!networkGuard.credentialsAllowedAt(here)) {
+                            row.put("status", "rejected");
+                            row.put("reason", "credentials not allowed off approved origin");
+                            return row;
+                        }
+                    }
                     el.sendKeys(resolved);
                     if (HuntSecretResolver.containsToken(rawValue)) {
                         row.put("value", rawValue);

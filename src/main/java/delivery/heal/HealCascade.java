@@ -312,7 +312,9 @@ public class HealCascade {
         // A row-picker cannot answer when no row carries the name, and the page will not change
         // between attempts, so paying for the pick is a guaranteed loss.
         boolean answerable = shortlistCanAnswer(intent, shortlist);
-        if (tryOllama && answerable) {
+        boolean ollamaAllowed = delivery.privacy.ProviderPolicy.fromEnvironment()
+                .allows(delivery.privacy.ProviderPolicy.Kind.OLLAMA);
+        if (tryOllama && answerable && ollamaAllowed) {
             List<ProvenStep> ollamaSteps = authoring.healIntentWithOllama(
                     tcId, intent, candidates, shortlist, pngOrNull, reason, priorSteps, widened);
             if (validHealSteps(intent, candidates, ollamaSteps, widened, spentSteps)) {
@@ -320,6 +322,8 @@ public class HealCascade {
                 return HealResult.success(ollamaSteps, widened ? "vision" : "ollama");
             }
             LogsManager.info("HEAL_OLLAMA: no valid pick for " + tcId + " — escalating to Cursor");
+        } else if (tryOllama && !ollamaAllowed) {
+            LogsManager.info("HEAL_OLLAMA_SKIPPED: provider_not_allowlisted");
         } else if (tryOllama) {
             LogsManager.info("HEAL_OLLAMA_SKIPPED: no shortlist row carries the name in "
                     + trim(intent.text(), 40) + " — going straight to Cursor");
@@ -374,6 +378,10 @@ public class HealCascade {
             List<FailedLocator> failed) {
         if (!widened || !VisionGroundingConfig.enabled()
                 || visionOrNull == null || groundingBrowserSupplier == null) {
+            return Optional.empty();
+        }
+        if (!delivery.privacy.ProviderPolicy.fromEnvironment()
+                .allows(delivery.privacy.ProviderPolicy.Kind.VISION)) {
             return Optional.empty();
         }
         GroundingBrowser browser = groundingBrowserSupplier.get();

@@ -61,6 +61,10 @@ public class PreRunAuthoringReviewController {
             @RequestParam(value = "tcIds", required = false) List<String> tcIds
     ) {
         Long ownerId = currentUser.requireUserId();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
+        if (denied != null) {
+            return denied;
+        }
         if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", "Unknown project").asMap());

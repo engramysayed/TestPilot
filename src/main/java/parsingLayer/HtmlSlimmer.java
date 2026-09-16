@@ -19,6 +19,7 @@ public class HtmlSlimmer {
         }
 
         Document doc = Jsoup.parse(html);
+        delivery.privacy.SecretSanitizer.maskPasswordFields(doc);
 
         removeComments(doc);
 
@@ -47,7 +48,7 @@ public class HtmlSlimmer {
             out = slimPreferringControls(doc, maxChars);
         }
 
-        return out;
+        return delivery.privacy.SecretSanitizer.scrubText(out);
     }
 
     /**

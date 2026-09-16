@@ -82,6 +82,10 @@ public final class QwenVisionProvider implements VisionGroundingProvider {
         if (client == null) {
             return VisionAnalysisResult.unavailable(unavailableReason);
         }
+        if (!delivery.privacy.ProviderPolicy.fromEnvironment()
+                .allows(delivery.privacy.ProviderPolicy.Kind.VISION)) {
+            return VisionAnalysisResult.unavailable("vision not on provider allowlist");
+        }
         if (intent == null) {
             return VisionAnalysisResult.empty();
         }
@@ -124,6 +128,8 @@ public final class QwenVisionProvider implements VisionGroundingProvider {
                                 + normalized.size() + "): " + normalized.get(0));
             }
             return new VisionAnalysisResult(!ok.isEmpty(), ok, parsed.error());
+        } catch (delivery.privacy.ProviderDisallowedException e) {
+            return VisionAnalysisResult.unavailable(e.getMessage());
         } catch (IOException e) {
             return VisionAnalysisResult.unavailable(e.getMessage());
         } catch (InterruptedException e) {
@@ -141,6 +147,10 @@ public final class QwenVisionProvider implements VisionGroundingProvider {
             return VisionAssertionResult.uncertain(
                     unavailableReason == null ? "vision provider unavailable" : unavailableReason);
         }
+        if (!delivery.privacy.ProviderPolicy.fromEnvironment()
+                .allows(delivery.privacy.ProviderPolicy.Kind.VISION)) {
+            return VisionAssertionResult.uncertain("vision not on provider allowlist");
+        }
         String text = assertionText == null ? "" : assertionText.trim();
         if (text.isBlank()) {
             return VisionAssertionResult.uncertain("empty visual assertion text");
@@ -155,6 +165,8 @@ public final class QwenVisionProvider implements VisionGroundingProvider {
             String retryUser = user + "\n\n" + ASSERT_RETRY_NUDGE;
             String raw2 = client.completeJson(ASSERT_SYSTEM_PROMPT, retryUser, screenshotPng);
             return VisionAssertionParser.parse(raw2);
+        } catch (delivery.privacy.ProviderDisallowedException e) {
+            return VisionAssertionResult.uncertain(e.getMessage());
         } catch (IOException e) {
             return VisionAssertionResult.uncertain(e.getMessage());
         } catch (InterruptedException e) {

@@ -38,8 +38,17 @@ public class ConversionWorker {
         if (job == null) {
             return;
         }
-        job.setStatus(JobRecord.Status.RUNNING);
+        var lease = portalStore.beginWork(jobId);
+        if (lease.isEmpty()) {
+            log.info("Job {} not claimed", jobId);
+            return;
+        }
+        job = portalStore.getJob(jobId).orElse(job);
         job.setMessage(props.isDryRun() ? "Dry-run packaging" : "Starting conversion");
+        if (!props.isDryRun()) {
+            delivery.job.DurableJobClaim.markStage(
+                    job, lease.get().attemptId(), delivery.job.DurableJobClaim.Stage.BROWSER);
+        }
         portalStore.syncJobPersistence(job);
         try {
             // Bridge Spring delivery.final-revise.* into system props for AgentRouterClient
@@ -81,18 +90,21 @@ public class ConversionWorker {
             BooleanSupplier cancelCheck = () -> portalStore.isCancelRequested(jobId);
             if (props.isDryRun()) {
                 JobProgressTracker tracker = new JobProgressTracker();
-                result = runWithProgressMirror(job, tracker,
+                result = runWithProgressMirror(job, tracker, lease.get(),
                         () -> new DryRunConversionService().run(request, tracker, cancelCheck));
             } else {
                 ConversionJobRunner runner = new ConversionJobRunner();
-                result = runWithProgressMirror(job, runner.progress(), () -> runner.run(request, cancelCheck));
+                result = runWithProgressMirror(job, runner.progress(), lease.get(),
+                        () -> runner.run(request, cancelCheck));
             }
 
             job.setPassedCount(result.passed());
             job.setTodoCount(result.todo());
             job.setZipPath(result.zipFile());
             job.setMessage(result.message());
-            if (portalStore.shouldAbortCompletion(job)) {
+            if (!sameAttempt(job, lease.get())) {
+                log.info("Job {} fenced; skipping publish", jobId);
+            } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
             } else if (result.softBlocked() || "COMPLETED_WITH_BLOCK".equals(result.jobStatus())) {
                 job.setStatus(JobRecord.Status.COMPLETED_WITH_BLOCK);
@@ -110,7 +122,8 @@ public class ConversionWorker {
                 portalStore.syncJobPersistence(job);
             }
             if (!portalStore.shouldAbortCompletion(job)
-                    && job.getStatus() != JobRecord.Status.CANCELLED) {
+                    && job.getStatus() != JobRecord.Status.CANCELLED
+                    && sameAttempt(job, lease.get())) {
                 try {
                     int version = portalStore.filesystemStore().load(job.getProjectId()).version();
                     portalStore.updateProjectVersion(job.getProjectId(), version);
@@ -120,15 +133,21 @@ public class ConversionWorker {
             }
             log.info("Job {} completed passed={} todo={}", jobId, result.passed(), result.todo());
         } catch (JobCancelledException e) {
-            cancel(job);
+            if (sameAttempt(job, lease.get())) {
+                cancel(job);
+            }
         } catch (IllegalStateException e) {
-            if (portalStore.shouldAbortCompletion(job)) {
+            if (!sameAttempt(job, lease.get())) {
+                log.info("Job {} fenced after error; skipping fail", jobId);
+            } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
             } else {
                 fail(job, e.getMessage(), e);
             }
         } catch (Exception e) {
-            if (portalStore.shouldAbortCompletion(job)) {
+            if (!sameAttempt(job, lease.get())) {
+                log.info("Job {} fenced after error; skipping fail", jobId);
+            } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
             } else {
                 fail(job, "Conversion failed", e);
@@ -142,6 +161,7 @@ public class ConversionWorker {
     private ConversionJobResult runWithProgressMirror(
             JobRecord job,
             JobProgressTracker tracker,
+            delivery.job.DurableJobClaim.Lease lease,
             ConversionCallable callable
     ) throws Exception {
         AtomicBoolean running = new AtomicBoolean(true);
@@ -151,7 +171,7 @@ public class ConversionWorker {
                 mirrorProgress(job, tracker);
                 long now = System.currentTimeMillis();
                 if (now - lastSync >= 400L) {
-                    portalStore.syncJobPersistence(job);
+                    portalStore.heartbeat(job.getJobId(), lease);
                     lastSync = now;
                 }
                 try {
@@ -170,8 +190,12 @@ public class ConversionWorker {
             running.set(false);
             progressPoll.interrupt();
             mirrorProgress(job, tracker);
-            portalStore.syncJobPersistence(job);
+            portalStore.heartbeat(job.getJobId(), lease);
         }
+    }
+
+    private static boolean sameAttempt(JobRecord job, delivery.job.DurableJobClaim.Lease lease) {
+        return job != null && lease != null && lease.attemptId().equals(job.getAttemptId());
     }
 
     private static void mirrorProgress(JobRecord job, JobProgressTracker tracker) {

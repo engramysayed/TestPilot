@@ -153,7 +153,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** simultaneous same-host jobs with overlapping TC IDs and distinct sentinels retain independent files, proof, packages and memory. Version publication cannot lose or overwrite a concurrent result.
 
-**2026-09-16:** tenant-storage **groundwork** only — P2-02 remains open. Hosted paths fail closed; roles gate operate vs membership; migrator can recover a crash journal; OS lock was probed on this volume; concurrent dry-run packages keep sentinels apart. Live ProvePhase same-host sequence, generate-path role coverage, and deployment filesystem lock sign-off are still owed. Broader isolation also depends on P2-03/P2-04. This is not completed customer isolation.
+**2026-09-16:** tenant-storage **groundwork** only — P2-02 remains open. Hosted paths fail closed; roles gate operate vs membership including generate/compare/workbook/pipeline; MEMBER read-only and OWNER-only delete are a product contract; migrator recover is interruptible and idempotent; OS lock was probed on this volume; concurrent ProvePhase+emit+download on local pages (no LLM) keeps sentinels apart in the working tree. Dedicated-install identity/network notes: [dedicated-install.md](dedicated-install.md). Deployment filesystem lock remains this volume only. P0-03 concurrent benchmark re-run from a commit that includes ProvePhase isolation remains owed. This is not completed customer isolation.
 
 ### P2-03 — enforce browser network and credential scope · F08
 
@@ -167,6 +167,8 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** controlled integration tests show prohibited destinations remain unreachable through navigation, redirects and subresources. Approved targets work. Dedicated private-target access is explicitly configured and cannot broaden another tenant's access.
 
+**2026-09-17 (working tree):** application-layer policy and guard are in place for Hunt navigate and ProvePhase open; dedicated CIDRs do not apply to shared mode. This is not a kernel firewall. P2-03 remains open until deployed worker-network tests and P0-01 hosted-target sign-off.
+
 ### P2-04 — sanitize sensitive data and enforce provider policy · F09
 
 **Owner:** AI platform/security engineering. **Dependencies:** AI policy decision, P2-01.
@@ -179,6 +181,8 @@ No launch date is estimated here: staffing, supported application scope, operati
 - [ ] Set retention/access rules for raw evidence where retention is explicitly authorized.
 
 **Acceptance:** synthetic secret canaries do not appear in intercepted provider requests, stored DOM/logs, screenshots covered by the masking policy, or exported packs. Disallowed cloud fallback is blocked. Tests cover engine selection, fallback and JavaScript output.
+
+**2026-09-17 (working tree):** `SecretSanitizer` and fail-closed `ProviderPolicy` are applied at slim HTML, Hunt packs, JS results, Ollama dispatch, Cursor sidecar, AgentRouter, and vision. Screenshot pixel redaction is not implemented. P2-04 remains open until privacy policy sign-off and intercepted-provider canary tests on a live sidecar.
 
 **Phase 2 exit:** shared-host isolation tests and deployed worker network tests pass. Tenant/data policy is approved and documented; an undecided privacy policy cannot be advertised as a guarantee.
 
@@ -196,6 +200,8 @@ No launch date is estimated here: staffing, supported application scope, operati
 - [ ] Treat potentially side-effecting browser actions carefully: mark interrupted uncertain execution for review when automatic replay could duplicate external actions.
 
 **Acceptance:** process termination before/after claim and before/after publication produces a recoverable or explicit terminal state. Duplicate claims cannot publish twice. Queue saturation is visible and bounded. Changing project settings does not reinterpret queued work.
+
+**2026-09-17 (working tree, started):** `DurableJobClaim` leases, attempt ids, cancel-generation fencing, input-snapshot hash, and browser-stage `INTERRUPTED_UNCERTAIN` recovery. Portal workers claim before run; `JobLeaseReconciler` runs on startup. Queue saturation limits and frozen precision/provider config at the LLM call site remain owed. P3-01 is not closed.
 
 ### P3-02 — enforce process deadlines and confirmed cancellation · F11
 

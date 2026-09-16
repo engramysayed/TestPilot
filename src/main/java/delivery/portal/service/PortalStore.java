@@ -437,6 +437,22 @@ public class PortalStore {
         entity.setPasswordCipher(JobSecretCrypto.encrypt(
                 job.getPassword() == null ? "" : job.getPassword()));
         entity.setGenerateModel(job.getGenerateModel());
+        entity.setAttemptId(job.getAttemptId());
+        entity.setWorkerId(job.getWorkerId());
+        entity.setLeaseUntil(job.getLeaseUntil());
+        entity.setCancelGeneration(job.getCancelGeneration());
+        entity.setClaimStage(job.getClaimStage());
+        if ((job.getProviderAllowlistSnapshot() == null || job.getProviderAllowlistSnapshot().isBlank())
+                && job.getStatus() == JobRecord.Status.QUEUED) {
+            job.setProviderAllowlistSnapshot(
+                    delivery.privacy.ProviderPolicy.fromEnvironment().snapshot());
+        }
+        entity.setProviderAllowlistSnapshot(job.getProviderAllowlistSnapshot());
+        if ((job.getInputSnapshotHash() == null || job.getInputSnapshotHash().isBlank())
+                && job.getStatus() == JobRecord.Status.QUEUED) {
+            job.setInputSnapshotHash(delivery.job.DurableJobClaim.hashInputs(job));
+        }
+        entity.setInputSnapshotHash(job.getInputSnapshotHash());
         jobRepository.save(entity);
         if (entity.getTenantId() != null && !entity.getTenantId().isBlank()) {
             job.setTenantId(entity.getTenantId());
@@ -450,6 +466,44 @@ public class PortalStore {
         saveJob(job);
     }
 
+    public synchronized Optional<delivery.job.DurableJobClaim.Lease> beginWork(String jobId) {
+        JobRecord job = getJob(jobId).orElse(null);
+        Optional<delivery.job.DurableJobClaim.Lease> lease = delivery.job.DurableJobClaim.tryClaim(
+                job, delivery.job.DurableJobClaim.newWorkerId(), Instant.now(),
+                delivery.job.DurableJobClaim.DEFAULT_LEASE);
+        if (lease.isPresent()) {
+            syncJobPersistence(job);
+        }
+        return lease;
+    }
+
+    public synchronized boolean heartbeat(String jobId, delivery.job.DurableJobClaim.Lease lease) {
+        JobRecord job = getJob(jobId).orElse(null);
+        boolean ok = delivery.job.DurableJobClaim.heartbeat(
+                job, lease, Instant.now(), delivery.job.DurableJobClaim.DEFAULT_LEASE);
+        if (ok) {
+            syncJobPersistence(job);
+        }
+        return ok;
+    }
+
+    public boolean ownsAttempt(JobRecord job, delivery.job.DurableJobClaim.Lease lease) {
+        return delivery.job.DurableJobClaim.mayPublish(job, lease) && !shouldAbortCompletion(job);
+    }
+
+    public synchronized int reconcileExpiredLeases() {
+        Instant now = Instant.now();
+        int n = 0;
+        for (JobEntity entity : jobRepository.findAll()) {
+            JobRecord job = jobs.computeIfAbsent(entity.getJobId(), ignored -> hydrate(entity));
+            if (delivery.job.DurableJobClaim.reconcileExpired(job, now)) {
+                syncJobPersistence(job);
+                n++;
+            }
+        }
+        return n;
+    }
+
     /** Cooperative cancel flag (memory-only; status CANCELLED is persisted). */
     public void requestCancel(String jobId) {
         if (jobId == null || jobId.isBlank()) {
@@ -457,6 +511,7 @@ public class PortalStore {
         }
         cancelRequested.computeIfAbsent(jobId, ignored -> new java.util.concurrent.atomic.AtomicBoolean())
                 .set(true);
+        getJob(jobId).ifPresent(delivery.job.DurableJobClaim::requestCancel);
     }
 
     /**
@@ -688,6 +743,13 @@ public class PortalStore {
             job.setZipPath(Path.of(e.getZipPath()));
         }
         job.setGenerateModel(e.getGenerateModel());
+        job.setAttemptId(e.getAttemptId());
+        job.setWorkerId(e.getWorkerId());
+        job.setLeaseUntil(e.getLeaseUntil());
+        job.setCancelGeneration(e.getCancelGeneration());
+        job.setClaimStage(e.getClaimStage());
+        job.setInputSnapshotHash(e.getInputSnapshotHash());
+        job.setProviderAllowlistSnapshot(e.getProviderAllowlistSnapshot());
         job.setTenantId(e.getTenantId());
         if (job.getTenantId() == null || job.getTenantId().isBlank()) {
             projectRepository.findByProjectId(e.getProjectId())

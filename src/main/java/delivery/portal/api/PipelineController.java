@@ -39,6 +39,10 @@ public class PipelineController {
             @RequestBody(required = false) PipelineStartRequest body
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
+        if (denied != null) {
+            return denied;
+        }
         ProjectRecord project = store.getOwnedProject(projectId, ownerId).orElse(null);
         if (project == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)

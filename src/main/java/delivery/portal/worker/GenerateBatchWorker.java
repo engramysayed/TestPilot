@@ -48,7 +48,12 @@ public class GenerateBatchWorker {
         if (job == null || job.getJobKind() != JobRecord.JobKind.GENERATE_BATCH) {
             return;
         }
-        job.setStatus(JobRecord.Status.RUNNING);
+        var lease = portalStore.beginWork(jobId);
+        if (lease.isEmpty()) {
+            log.info("Job {} not claimed", jobId);
+            return;
+        }
+        job = portalStore.getJob(jobId).orElse(job);
         job.setMessage("Starting generate batch");
         portalStore.syncJobPersistence(job);
         try {
@@ -77,7 +82,9 @@ public class GenerateBatchWorker {
             job.setTodoCount(result.failedStoryCount());
             job.setZipPath(result.outputCsv());
             job.setMessage(result.message());
-            if (portalStore.shouldAbortCompletion(job)) {
+            if (!delivery.job.DurableJobClaim.sameAttempt(job, lease.get())) {
+                log.info("Generate batch {} fenced; skipping publish", jobId);
+            } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
             } else {
                 job.setStatus(JobRecord.Status.COMPLETED);

@@ -130,6 +130,8 @@ public final class LiveHuntService {
 
             HuntActionExecutor actions = HuntActionExecutor.forSession(session);
             actions.setSecretResolver(secrets);
+            actions.setNetworkGuard(new delivery.net.WorkerNetworkGuard(
+                    delivery.net.TargetNetworkPolicy.forJob(request.getBaseUrl())));
 
             iterationLoop:
             for (int iteration = 1; iteration <= request.getIterationCeiling() && !stopEntireHunt; iteration++) {

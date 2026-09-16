@@ -69,7 +69,9 @@ public final class HuntPackWriter {
                                  int oracleBugCount,
                                  int coverageUrlCount) throws IOException {
         Files.createDirectories(huntRoot);
-        Files.writeString(huntRoot.resolve("brief.md"), briefMd == null ? "" : briefMd, StandardCharsets.UTF_8);
+        Files.writeString(huntRoot.resolve("brief.md"),
+                delivery.privacy.SecretSanitizer.scrubText(briefMd == null ? "" : briefMd),
+                StandardCharsets.UTF_8);
 
         List<Map<String, Object>> bugRows = bugs == null ? List.of() : bugs;
         List<Map<String, Object>> scenarioRows = scenarios == null ? List.of() : scenarios;
@@ -77,7 +79,8 @@ public final class HuntPackWriter {
         String summary = buildSummary(request, stopReason, cyclesUsed, bugRows.size(), scenarioRows.size(),
                 networkCapture == null ? "best-effort" : networkCapture, groundedRejectCount,
                 strategiesCompleted, oracleBugCount, coverageUrlCount);
-        Files.writeString(huntRoot.resolve("SUMMARY.md"), summary, StandardCharsets.UTF_8);
+        Files.writeString(huntRoot.resolve("SUMMARY.md"),
+                delivery.privacy.SecretSanitizer.scrubText(summary), StandardCharsets.UTF_8);
 
         Map<String, Object> bugReport = new LinkedHashMap<>();
         bugReport.put("jobId", request.getJobId());
@@ -85,17 +88,21 @@ public final class HuntPackWriter {
         bugReport.put("kind", "HUNT");
         bugReport.put("rows", toBugReportRows(bugRows));
         Files.writeString(huntRoot.resolve("bug-report.json"),
-                new org.json.JSONObject(bugReport).toString(2), StandardCharsets.UTF_8);
-        Files.writeString(huntRoot.resolve("bug-report.csv"), toBugCsv(bugRows), StandardCharsets.UTF_8);
+                delivery.privacy.SecretSanitizer.scrubText(new org.json.JSONObject(bugReport).toString(2)),
+                StandardCharsets.UTF_8);
+        Files.writeString(huntRoot.resolve("bug-report.csv"),
+                delivery.privacy.SecretSanitizer.scrubText(toBugCsv(bugRows)), StandardCharsets.UTF_8);
 
         Map<String, Object> candidates = new LinkedHashMap<>();
         candidates.put("jobId", request.getJobId());
         candidates.put("scenarioCap", request.getScenarioCap());
         candidates.put("scenarios", scenarioRows);
         Files.writeString(huntRoot.resolve("candidate-scenarios.json"),
-                new org.json.JSONObject(candidates).toString(2), StandardCharsets.UTF_8);
+                delivery.privacy.SecretSanitizer.scrubText(new org.json.JSONObject(candidates).toString(2)),
+                StandardCharsets.UTF_8);
         Files.writeString(huntRoot.resolve("candidate-scenarios.csv"),
-                toScenarioCsv(scenarioRows), StandardCharsets.UTF_8);
+                delivery.privacy.SecretSanitizer.scrubText(toScenarioCsv(scenarioRows)),
+                StandardCharsets.UTF_8);
 
         Path zipPath = huntRoot.resolve("hunter-pack.zip");
         zipDirectory(huntRoot, zipPath, "hunter-pack.zip");

@@ -1,8 +1,9 @@
 package delivery.identity;
 
 /**
- * Minimal workspace membership. Roles are bound to an opaque tenant id;
- * account numbers and installation slugs are not encoded in the tenant.
+ * Product role contract (not an automatic consequence of tenant isolation):
+ * MEMBER is read-only; OWNER and ADMIN may operate (mutate, execute, export);
+ * only OWNER may delete the project.
  */
 public enum WorkspaceRole {
     OWNER,

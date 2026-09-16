@@ -202,6 +202,16 @@ public class ExecuteRunController {
     @DeleteMapping("/execute-runs/{jobId}")
     public ResponseEntity<?> deleteExecuteRun(@PathVariable("jobId") String jobId) throws Exception {
         Long ownerId = currentUser.requireUserId();
+        Optional<JobRecord> owned = executeRuns.requireOwnedExecuteJob(jobId, ownerId);
+        if (owned.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown execute run").asMap());
+        }
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, owned.get().getProjectId(), ownerId);
+        if (denied != null) {
+            return denied;
+        }
         Optional<String> result = executeRuns.deleteOwnedExecuteRun(jobId, ownerId);
         if (result.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)

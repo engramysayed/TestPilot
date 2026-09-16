@@ -36,6 +36,13 @@ public class JobRecord {
     private final AtomicReference<Path> zipPath = new AtomicReference<>();
     private final AtomicReference<String> error = new AtomicReference<>();
     private volatile String tenantId = "";
+    private volatile String attemptId = "";
+    private volatile String workerId = "";
+    private volatile Instant leaseUntil;
+    private volatile int cancelGeneration;
+    private volatile String claimStage = "";
+    private volatile String inputSnapshotHash = "";
+    private volatile String providerAllowlistSnapshot = "";
 
     public JobRecord(String jobId, String projectId, Long ownerUserId, String mode, Path excelPath,
                      String baseUrl, String username, String password) {
@@ -81,6 +88,26 @@ public class JobRecord {
     public void setGenerateModel(String generateModel) { this.generateModel = generateModel; }
     public String getTenantId() { return tenantId == null ? "" : tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId == null ? "" : tenantId; }
+    public String getAttemptId() { return attemptId == null ? "" : attemptId; }
+    public void setAttemptId(String attemptId) { this.attemptId = attemptId == null ? "" : attemptId; }
+    public String getWorkerId() { return workerId == null ? "" : workerId; }
+    public void setWorkerId(String workerId) { this.workerId = workerId == null ? "" : workerId; }
+    public Instant getLeaseUntil() { return leaseUntil; }
+    public void setLeaseUntil(Instant leaseUntil) { this.leaseUntil = leaseUntil; }
+    public int getCancelGeneration() { return cancelGeneration; }
+    public void setCancelGeneration(int cancelGeneration) { this.cancelGeneration = Math.max(0, cancelGeneration); }
+    public String getClaimStage() { return claimStage == null ? "" : claimStage; }
+    public void setClaimStage(String claimStage) { this.claimStage = claimStage == null ? "" : claimStage; }
+    public String getInputSnapshotHash() { return inputSnapshotHash == null ? "" : inputSnapshotHash; }
+    public void setInputSnapshotHash(String inputSnapshotHash) {
+        this.inputSnapshotHash = inputSnapshotHash == null ? "" : inputSnapshotHash;
+    }
+    public String getProviderAllowlistSnapshot() {
+        return providerAllowlistSnapshot == null ? "" : providerAllowlistSnapshot;
+    }
+    public void setProviderAllowlistSnapshot(String providerAllowlistSnapshot) {
+        this.providerAllowlistSnapshot = providerAllowlistSnapshot == null ? "" : providerAllowlistSnapshot;
+    }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getCompletedAt() { return completedAt; }

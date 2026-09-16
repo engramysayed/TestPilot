@@ -45,12 +45,21 @@ public class HuntWorker {
 
     @Async("huntExecutor")
     public void submit(String jobId) {
-        JobRecord job = portalStore.getJob(jobId).orElse(null);
-        if (job == null || job.getJobKind() != JobRecord.JobKind.HUNT) {
+        JobRecord queued = portalStore.getJob(jobId).orElse(null);
+        if (queued == null || queued.getJobKind() != JobRecord.JobKind.HUNT) {
             return;
         }
-        job.setStatus(JobRecord.Status.RUNNING);
+        var lease = portalStore.beginWork(jobId);
+        if (lease.isEmpty()) {
+            log.info("Job {} not claimed", jobId);
+            return;
+        }
+        JobRecord job = portalStore.getJob(jobId).orElse(queued);
         job.setMessage(props.isDryRun() ? "Dry-run Bug Hunter" : "Starting Bug Hunter");
+        if (!props.isDryRun()) {
+            delivery.job.DurableJobClaim.markStage(
+                    job, lease.get().attemptId(), delivery.job.DurableJobClaim.Stage.BROWSER);
+        }
         portalStore.syncJobPersistence(job);
         try {
             Path requestPath = job.getExcelPath();
@@ -93,6 +102,10 @@ public class HuntWorker {
                 );
             });
 
+            if (!delivery.job.DurableJobClaim.sameAttempt(job, lease.get())) {
+                log.info("Hunt job {} fenced; skipping publish", jobId);
+                return;
+            }
             if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
                 return;

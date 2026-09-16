@@ -324,9 +324,10 @@ public class ProjectController {
 
     @DeleteMapping("/{projectId}/automate-ir")
     public ResponseEntity<?> clearAutomateIr(@PathVariable("projectId") String projectId) {
-        if (store.getOwnedProject(projectId, currentUser.requireUserId()).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
         }
         try {
             int deleted = projectTcs.clearProvenCases(projectId);

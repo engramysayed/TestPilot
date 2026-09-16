@@ -40,7 +40,12 @@ public class CompareGenerateWorker {
         if (job == null || job.getJobKind() != JobRecord.JobKind.GENERATE_COMPARE) {
             return;
         }
-        job.setStatus(JobRecord.Status.RUNNING);
+        var lease = portalStore.beginWork(jobId);
+        if (lease.isEmpty()) {
+            log.info("Job {} not claimed", jobId);
+            return;
+        }
+        job = portalStore.getJob(jobId).orElse(job);
         job.setProgressTotal(2);
         job.setProgressCurrent(0);
         job.setMessage("Starting model comparison");
@@ -80,7 +85,9 @@ public class CompareGenerateWorker {
             CompareJobFiles.writeResult(resultFile, compareResult);
             job.setZipPath(resultFile);
             job.setMessage("Comparison ready — open Generate to pick a model");
-            if (portalStore.shouldAbortCompletion(job)) {
+            if (!delivery.job.DurableJobClaim.sameAttempt(job, lease.get())) {
+                log.info("Compare job {} fenced; skipping publish", jobId);
+            } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
             } else {
                 job.setStatus(JobRecord.Status.COMPLETED);

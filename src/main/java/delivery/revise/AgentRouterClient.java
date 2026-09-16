@@ -49,6 +49,10 @@ public class AgentRouterClient {
         if (!enabled()) {
             return null;
         }
+        if (!delivery.privacy.ProviderPolicy.fromEnvironment()
+                .allows(delivery.privacy.ProviderPolicy.Kind.AGENTROUTER)) {
+            return null;
+        }
         String base = firstNonBlank(
                 System.getProperty("delivery.final-revise.base-url"),
                 System.getenv("AGENTROUTER_BASE_URL"),
@@ -74,6 +78,10 @@ public class AgentRouterClient {
 
     /** Separate one-shot heal configuration; does not depend on final-revise being enabled. */
     public static AgentRouterClient fromInventConfigOrNull() {
+        if (!delivery.privacy.ProviderPolicy.fromEnvironment()
+                .allows(delivery.privacy.ProviderPolicy.Kind.AGENTROUTER)) {
+            return null;
+        }
         String base = firstNonBlank(
                 System.getProperty("delivery.heal.invent.agentrouter.base-url"),
                 utils.PropertyReader.getProperty("delivery.heal.invent.agentrouter.base-url"),
@@ -125,6 +133,10 @@ public class AgentRouterClient {
 
     public String completeJson(String system, String user, byte[] imagePng)
             throws IOException, InterruptedException {
+        delivery.privacy.ProviderPolicy.fromEnvironment()
+                .require(delivery.privacy.ProviderPolicy.Kind.AGENTROUTER);
+        system = delivery.privacy.SecretSanitizer.scrubText(system);
+        user = delivery.privacy.SecretSanitizer.scrubText(user);
         JSONObject body = new JSONObject();
         body.put("model", model);
         body.put("max_tokens", 8192);

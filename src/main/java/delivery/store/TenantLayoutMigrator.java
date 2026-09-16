@@ -59,6 +59,10 @@ public final class TenantLayoutMigrator {
     }
 
     public static Result recover(Path storeRoot) throws Exception {
+        return recover(storeRoot, Integer.MAX_VALUE);
+    }
+
+    public static Result recover(Path storeRoot, int crashAfterOps) throws Exception {
         Path journal = journalFile(storeRoot);
         if (!Files.isRegularFile(journal)) {
             throw new IllegalStateException("no migration journal");
@@ -75,7 +79,7 @@ public final class TenantLayoutMigrator {
                     moved == null ? 0 : moved.length(),
                     quarantined == null ? 0 : quarantined.length());
         }
-        return migrate(storeRoot, known);
+        return migrate(storeRoot, known, crashAfterOps);
     }
 
     public static void revert(Path storeRoot, Path manifestFile) throws Exception {

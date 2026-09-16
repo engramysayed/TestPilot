@@ -103,6 +103,10 @@ public class LocalLlmClient {
             int numPredict,
             byte[]... pngs
     ) throws IOException, InterruptedException {
+        delivery.privacy.ProviderPolicy.fromEnvironment()
+                .require(delivery.privacy.ProviderPolicy.Kind.OLLAMA);
+        system = delivery.privacy.SecretSanitizer.scrubText(system);
+        user = delivery.privacy.SecretSanitizer.scrubText(user);
         String bodyJson = buildChatRequestBody(model, system, user, forceJson, numPredict, pngs);
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/chat"))

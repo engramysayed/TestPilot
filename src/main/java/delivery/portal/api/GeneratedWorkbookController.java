@@ -84,9 +84,9 @@ public class GeneratedWorkbookController {
             @RequestBody UpdateKeelPathsRequest body
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
-        if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
+        if (denied != null) {
+            return denied;
         }
         if (body == null || body.rows() == null || body.rows().isEmpty()) {
             return ResponseEntity.badRequest()
@@ -127,9 +127,9 @@ public class GeneratedWorkbookController {
             @RequestBody UpdateCoverageNotesRequest body
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
-        if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
+        if (denied != null) {
+            return denied;
         }
         try {
             return ResponseEntity.ok(workbooks.updateCoverageNotes(
@@ -174,9 +174,9 @@ public class GeneratedWorkbookController {
             @RequestBody DeleteCasesRequest body
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
-        if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
+        if (denied != null) {
+            return denied;
         }
         try {
             return ResponseEntity.ok(workbooks.deleteCases(
@@ -204,6 +204,10 @@ public class GeneratedWorkbookController {
             @RequestParam("file") MultipartFile file
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
+        if (denied != null) {
+            return denied;
+        }
         var projectOpt = store.getOwnedProject(projectId, ownerId);
         if (projectOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -242,6 +246,10 @@ public class GeneratedWorkbookController {
             @RequestBody UpdateCaseFieldsRequest body
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
+        if (denied != null) {
+            return denied;
+        }
         var projectOpt = store.getOwnedProject(projectId, ownerId);
         if (projectOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)

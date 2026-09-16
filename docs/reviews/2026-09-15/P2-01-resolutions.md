@@ -16,9 +16,10 @@ Tenant ids are opaque `ws_` + 32 hex (`TenantId.mint()`). Account numbers and in
 
 - Filesystem layout: `tenants/{tenant}/projects/{projectId}`, `sites/{host}`, `jobs/{jobId}`. Exclusive job dirs.
 - Hosted portal convert/execute/Hunt use `TenantScope.HOSTED` and fail closed (`TENANT_REQUIRED`) when tenant/job are omitted. CLI and tests that omit them must pass `TenantScope.LEGACY_EXPLICIT`. Tenant-scoped `ProjectStore` no longer dual-reads legacy domain folders.
-- `projects.tenant_id` / `jobs.tenant_id` persist the opaque id. Read access is membership; operate (mutate/execute/export/credentials/artifact download+delete) is OWNER or ADMIN; administer (delete project) is OWNER only. Members may list artifacts.
+- Convert, execute, Hunt, generate, compare, workbook writes, pipeline, design-reference upload, pre-run review, IR clear, job cancel/force-stop, execute-run delete, and artifact download/delete require OWNER or ADMIN to operate. Members may list/read. Project deletion is OWNER only.
+- **Product role contract (approved):** read-only MEMBER and OWNER-only deletion are product decisions, not automatic consequences of tenant isolation. ADMIN may operate but cannot delete the project.
 - Convert, execute, and Hunt login requests carry tenant + job id. Preferred hooks and locator memory use the tenant site tree when a tenant is present. Credential-revision memory keys include tenant.
-- `TenantLayoutMigrator` journals each move. `recover()` resumes an in-progress journal after a crash; `revert()` still undoes a completed manifest. Ambiguous domain-shared hooks/memory are quarantined.
+- `TenantLayoutMigrator` journals each move. `recover()` resumes an in-progress journal after a crash; `recover(store, crashAfterOps)` can be interrupted again; a completed journal returns the same counts without remigrating; `revert()` still undoes a completed manifest. File contents are preserved across repeated interruptions. Ambiguous domain-shared hooks/memory are quarantined.
 - `PublicationLock` is an in-JVM lock plus OS `FileChannel` lock. A helper process was blocked on this workspace volume’s `FileStore` (`target/publication-lock-fs-probe`). That is not a claim for every deployment filesystem.
 
 ## Targeted tests that passed (2026-09-16)
@@ -39,12 +40,35 @@ mvn "-Dtest=HostedTenantScopeTest,WorkspaceRoleEnforcementTest,WorkspaceRoleApiT
 Tests run: 27, Failures: 0, Errors: 0, Skipped: 0 (BUILD SUCCESS, 2026-09-16T19:36:46+03:00).
 ```
 
+Working-tree follow-up (not a commit): remaining operate-role routes, approved MEMBER/OWNER product contract, interruptible idempotent recover, concurrent ProvePhase + emit + download on local pages (no live LLM). Do not attribute this to `0acc31d` or `c652fd9`.
+
+```
+mvn "-Dtest=WorkspaceRoleApiTest,WorkspaceRoleEnforcementTest,TenantLayoutMigratorTest,ConcurrentSameHostProveEmitTest" test
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0 (BUILD SUCCESS, 2026-09-17T01:29:39+03:00).
+```
+
+Phase 2 remaining slices + Phase 3 claim groundwork (working tree, 2026-09-17):
+
+```
+mvn "-Dtest=SecretSanitizerTest,ProviderPolicyTest,SecretSanitizerIntegrationTest,TargetNetworkPolicyTest,WorkerNetworkGuardTest,DurableJobClaimTest,PublicationLockTest,WorkspaceRoleApiTest,WorkspaceRoleEnforcementTest,TenantLayoutMigratorTest,ConcurrentSameHostProveEmitTest,HuntCoreTest,HostedTenantScopeTest" test
+Tests run: 48, Failures: 0, Errors: 0, Skipped: 0 (BUILD SUCCESS, 2026-09-17T01:53+03:00).
+```
+
+```
+mvn "-Dtest=LocalLlmClientTest,PhraseAssertBindTest,AccessibleNameCaptionTest,DryRunConversionServiceTest,TenantIsolationApiTest,AuthOwnershipTest,ProjectArtifactsApiTest,WorkspaceRoleApiTest,HuntApiTest,DurableJobClaimTest,SecretSanitizerIntegrationTest,ProviderPolicyTest" test
+Tests run: 40, Failures: 0, Errors: 0, Skipped: 0 (BUILD SUCCESS, 2026-09-17T01:54:16+03:00).
+```
+
 ## Still open (do not treat as done)
 
-- Live ProvePhase / P0-03 concurrent same-host sequence (browser proof, not only dry-run packages).
-- Role checks on every remaining mutate path (generate/compare/workbook writes still use membership in places).
-- Dedicated single-tenant product behavior documented as the same identity model.
-- OS file lock on each **supported deployment** filesystem (network shares, Linux production volume) — this machine’s volume only so far.
-- Broader customer isolation also depends on P2-03 worker/network boundaries and P2-04 data/provider controls.
+- This working-tree slice is uncommitted until asked. P2-01 and P2-02 stay open until remaining isolation gates close. Do not advertise completed customer isolation.
+- Dedicated single-tenant product behavior is documented in [dedicated-install.md](dedicated-install.md) (same identity model; dedicated CIDRs do not broaden shared host). Product/security sign-off of that document is still P0-01.
+- OS file lock: probed on this workspace volume at `target/publication-lock-fs-probe` (`PublicationLockTest.osLockIsExercisedOnThisStoresFileSystemType`). This machine’s data volume is **NTFS**. Other FileStore types (NFS/SMB/production Linux volumes) remain unverified.
+- The P0-03 concurrent same-host **benchmark** case has not been re-run from a commit that includes live ProvePhase isolation.
 
-The P0-03 concurrent same-host sequence remains an expected isolation failure until live ProvePhase isolation is shown.
+## P2-03 / P2-04 (working tree)
+
+Application-layer worker network policy (`TargetNetworkPolicy` / `WorkerNetworkGuard`) on Hunt navigate and ProvePhase `driver.get`. Shared vs dedicated modes; dedicated CIDRs do not widen shared jobs. Credentials stay on the approved origin. `WorkerCredentialScope` holds target creds only.
+
+`SecretSanitizer` masks password DOM values, token query/userinfo, and `password=` assignments before slim HTML, Hunt packs, and JS results. `ProviderPolicy` allowlist is fail-closed when empty and is checked on Ollama, Cursor, AgentRouter, and vision fallbacks. Default `delivery.provider.allowlist` in `application.properties` keeps current engines allowed; an unset/empty list blocks dispatch.
+

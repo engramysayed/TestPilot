@@ -63,7 +63,9 @@ public class CursorHealClient {
 
     /** Sidecar enabled and API key present. */
     public boolean isRuntimeReady() {
-        return enabled && hasApiKey();
+        return enabled && hasApiKey()
+                && delivery.privacy.ProviderPolicy.fromEnvironment()
+                .allows(delivery.privacy.ProviderPolicy.Kind.CURSOR);
     }
 
     /**
@@ -270,6 +272,15 @@ public class CursorHealClient {
         if (!enabled) {
             LogsManager.warn("CURSOR_HEAL_SKIPPED: delivery.cursor-heal.enabled=false");
             return "";
+        }
+        if (!delivery.privacy.ProviderPolicy.fromEnvironment()
+                .allows(delivery.privacy.ProviderPolicy.Kind.CURSOR)) {
+            LogsManager.warn("CURSOR_HEAL_SKIPPED: provider_not_allowlisted");
+            return "";
+        }
+        if (req != null && req.has("slimHtmlExcerpt")) {
+            req.put("slimHtmlExcerpt", delivery.privacy.SecretSanitizer.scrubHtml(
+                    req.optString("slimHtmlExcerpt")));
         }
         String apiKey = System.getenv("CURSOR_API_KEY");
         if (apiKey == null || apiKey.isBlank()) {

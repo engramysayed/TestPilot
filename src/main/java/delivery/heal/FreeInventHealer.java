@@ -49,6 +49,13 @@ public class FreeInventHealer {
         this.presenceHtml = html == null ? "" : html;
     }
 
+    private boolean providerAllowlisted() {
+        delivery.privacy.ProviderPolicy.Kind kind = "agentrouter".equalsIgnoreCase(provider)
+                ? delivery.privacy.ProviderPolicy.Kind.AGENTROUTER
+                : delivery.privacy.ProviderPolicy.Kind.CURSOR;
+        return delivery.privacy.ProviderPolicy.fromEnvironment().allows(kind);
+    }
+
     public static FreeInventHealer fromConfig(CursorHealClient cursor) {
         String provider = property("delivery.heal.invent.provider", "cursor");
         boolean enabled = booleanProperty("delivery.heal.invent.enabled", true);
@@ -84,6 +91,10 @@ public class FreeInventHealer {
             String allowedOpenPath
     ) {
         if (!enabled || intent == null) {
+            return Optional.empty();
+        }
+        if (!providerAllowlisted()) {
+            LogsManager.info("HEAL_INVENT_SKIPPED: provider_not_allowlisted:" + provider);
             return Optional.empty();
         }
         boolean allowNavigate = allowedOpenPath != null && !allowedOpenPath.isBlank();
@@ -167,6 +178,10 @@ public class FreeInventHealer {
     ) {
         LAST_INVENT_RESULT.remove();
         if (!enabled || intent == null) {
+            return Optional.empty();
+        }
+        if (!providerAllowlisted()) {
+            LogsManager.info("HEAL_INVENT_SKIPPED: provider_not_allowlisted:" + provider);
             return Optional.empty();
         }
         boolean allowNavigate = allowedOpenPath != null && !allowedOpenPath.isBlank();

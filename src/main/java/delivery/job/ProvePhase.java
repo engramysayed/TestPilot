@@ -17,6 +17,9 @@ import delivery.codegen.PageNameNormalizer;
 import delivery.codegen.ProvenStep;
 import delivery.excel.CallBefore;
 import delivery.excel.ManualTestCase;
+import delivery.net.TargetBlockedException;
+import delivery.net.TargetNetworkPolicy;
+import delivery.net.WorkerNetworkGuard;
 import delivery.store.DomainLocatorMemory;
 import delivery.store.PreferredHooksStore;
 import delivery.store.ProjectStore;
@@ -1656,7 +1659,14 @@ public class ProvePhase {
         } catch (Exception ignored) {
             // Some drivers reject storage access on blank pages — navigate then clear again
         }
+        WorkerNetworkGuard guard = new WorkerNetworkGuard(TargetNetworkPolicy.forJob(baseUrl));
+        guard.requireNavigate(baseUrl);
         driver.get(baseUrl);
+        try {
+            guard.requireNavigate(driver.getCurrentUrl());
+        } catch (TargetBlockedException redirected) {
+            throw redirected;
+        }
         LoginFormNavigator.waitForDocumentReady(driver, java.time.Duration.ofSeconds(12));
         try {
             org.openqa.selenium.JavascriptExecutor js =

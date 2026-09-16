@@ -27,6 +27,13 @@ public class JobsSchemaPatch implements ApplicationRunner {
         addColumnQuietly("message", "VARCHAR(1024)");
         addColumnQuietly("job_kind", "VARCHAR(16) DEFAULT 'CONVERT'");
         addColumnQuietly("tenant_id", "VARCHAR(40)");
+        addColumnQuietly("attempt_id", "VARCHAR(64)");
+        addColumnQuietly("worker_id", "VARCHAR(64)");
+        addColumnQuietly("lease_until", "TIMESTAMP");
+        addColumnQuietly("cancel_generation", "INT DEFAULT 0 NOT NULL");
+        addColumnQuietly("claim_stage", "VARCHAR(16)");
+        addColumnQuietly("input_snapshot_hash", "VARCHAR(64)");
+        addColumnQuietly("provider_allowlist_snapshot", "VARCHAR(128)");
         try {
             jdbc.update("UPDATE jobs SET progress_current = 0 WHERE progress_current IS NULL");
             jdbc.update("UPDATE jobs SET progress_total = 0 WHERE progress_total IS NULL");

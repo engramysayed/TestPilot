@@ -72,6 +72,27 @@ public class JobEntity {
     @Column(name = "tenant_id", length = 40)
     private String tenantId;
 
+    @Column(name = "attempt_id", length = 64)
+    private String attemptId;
+
+    @Column(name = "worker_id", length = 64)
+    private String workerId;
+
+    @Column(name = "lease_until")
+    private Instant leaseUntil;
+
+    @Column(name = "cancel_generation", nullable = false, columnDefinition = "integer default 0")
+    private int cancelGeneration;
+
+    @Column(name = "claim_stage", length = 16)
+    private String claimStage;
+
+    @Column(name = "input_snapshot_hash", length = 64)
+    private String inputSnapshotHash;
+
+    @Column(name = "provider_allowlist_snapshot", length = 128)
+    private String providerAllowlistSnapshot;
+
     public Long getId() { return id; }
     public String getJobId() { return jobId; }
     public void setJobId(String jobId) { this.jobId = jobId; }
@@ -113,4 +134,20 @@ public class JobEntity {
     public void setGenerateModel(String generateModel) { this.generateModel = generateModel; }
     public String getTenantId() { return tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId; }
+    public String getAttemptId() { return attemptId; }
+    public void setAttemptId(String attemptId) { this.attemptId = attemptId; }
+    public String getWorkerId() { return workerId; }
+    public void setWorkerId(String workerId) { this.workerId = workerId; }
+    public Instant getLeaseUntil() { return leaseUntil; }
+    public void setLeaseUntil(Instant leaseUntil) { this.leaseUntil = leaseUntil; }
+    public int getCancelGeneration() { return cancelGeneration; }
+    public void setCancelGeneration(int cancelGeneration) { this.cancelGeneration = cancelGeneration; }
+    public String getClaimStage() { return claimStage; }
+    public void setClaimStage(String claimStage) { this.claimStage = claimStage; }
+    public String getInputSnapshotHash() { return inputSnapshotHash; }
+    public void setInputSnapshotHash(String inputSnapshotHash) { this.inputSnapshotHash = inputSnapshotHash; }
+    public String getProviderAllowlistSnapshot() { return providerAllowlistSnapshot; }
+    public void setProviderAllowlistSnapshot(String providerAllowlistSnapshot) {
+        this.providerAllowlistSnapshot = providerAllowlistSnapshot;
+    }
 }

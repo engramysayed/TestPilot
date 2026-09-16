@@ -73,6 +73,11 @@ public class GenerateTcController {
             @PathVariable("projectId") String projectId,
             @RequestBody AuthoringReviewRequest body
     ) {
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
+        }
         try {
             Map<String, Object> result = authoringReviews.review(
                     projectId,
@@ -118,6 +123,11 @@ public class GenerateTcController {
             @PathVariable("projectId") String projectId,
             @RequestBody CompareGenerateRequest body
     ) throws Exception {
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
+        }
         if (body == null || body.stories() == null || body.stories().isBlank()) {
             return ResponseEntity.badRequest()
                     .body(new ApiError("BAD_REQUEST", "stories field is required").asMap());
@@ -183,6 +193,11 @@ public class GenerateTcController {
             @PathVariable("projectId") String projectId,
             @RequestBody CompareGenerateRequest body
     ) {
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
+        }
         if (body == null || body.stories() == null || body.stories().isBlank()) {
             return ResponseEntity.badRequest()
                     .body(new ApiError("BAD_REQUEST", "stories field is required").asMap());
@@ -218,6 +233,11 @@ public class GenerateTcController {
             @PathVariable("projectId") String projectId,
             @RequestBody SaveComparedRequest body
     ) {
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
+        }
         if (body == null || body.csv() == null || body.csv().isBlank()) {
             return ResponseEntity.badRequest()
                     .body(new ApiError("BAD_REQUEST", "csv field is required").asMap());
@@ -245,6 +265,11 @@ public class GenerateTcController {
             @PathVariable("projectId") String projectId,
             @RequestBody ImportGenerateRequest body
     ) {
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
+        }
         if (body == null || body.raw() == null || body.raw().isBlank()) {
             return ResponseEntity.badRequest()
                     .body(new ApiError("BAD_REQUEST", "raw field is required").asMap());
@@ -272,6 +297,11 @@ public class GenerateTcController {
             @PathVariable("projectId") String projectId,
             @RequestBody GenerateTcRequest body
     ) {
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
+        }
         if (body == null || body.stories() == null || body.stories().isBlank()) {
             return ResponseEntity.badRequest()
                     .body(new ApiError("BAD_REQUEST", "stories field is required").asMap());

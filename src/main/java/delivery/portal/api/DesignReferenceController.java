@@ -68,8 +68,10 @@ public class DesignReferenceController {
             @RequestParam("tcId") String tcId,
             @RequestParam("file") MultipartFile file
     ) {
-        if (store.getOwnedProject(projectId, currentUser.requireUserId()).isEmpty()) {
-            return notFound();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
         }
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest()

@@ -255,8 +255,14 @@ public class JobController {
 
     @PostMapping("/jobs/{jobId}/cancel")
     public ResponseEntity<?> cancelJob(@PathVariable("jobId") String jobId) {
-        return store.getOwnedJob(jobId, currentUser.requireUserId())
+        Long uid = currentUser.requireUserId();
+        return store.getOwnedJob(jobId, uid)
                 .<ResponseEntity<?>>map(job -> {
+                    ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                            store, job.getProjectId(), uid);
+                    if (denied != null) {
+                        return denied;
+                    }
                     if (!isCancellable(job.getStatus())) {
                         return ResponseEntity.status(HttpStatus.CONFLICT)
                                 .body(new ApiError("NOT_CANCELLABLE",
@@ -278,7 +284,17 @@ public class JobController {
      */
     @PostMapping("/jobs/{jobId}/force-stop")
     public ResponseEntity<?> forceStopJob(@PathVariable("jobId") String jobId) {
-        Optional<String> result = store.forceStopOwnedJob(jobId, currentUser.requireUserId());
+        Long uid = currentUser.requireUserId();
+        JobRecord owned = store.getOwnedJob(jobId, uid).orElse(null);
+        if (owned == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown job").asMap());
+        }
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, owned.getProjectId(), uid);
+        if (denied != null) {
+            return denied;
+        }
+        Optional<String> result = store.forceStopOwnedJob(jobId, uid);
         if (result.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", "Unknown job").asMap());
@@ -324,10 +340,15 @@ public class JobController {
 
     @GetMapping("/jobs/{jobId}/download")
     public ResponseEntity<?> download(@PathVariable("jobId") String jobId) {
-        JobRecord job = store.getOwnedJob(jobId, currentUser.requireUserId()).orElse(null);
+        Long uid = currentUser.requireUserId();
+        JobRecord job = store.getOwnedJob(jobId, uid).orElse(null);
         if (job == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", "Unknown job").asMap());
+        }
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, job.getProjectId(), uid);
+        if (denied != null) {
+            return denied;
         }
         if (job.getJobKind() == JobRecord.JobKind.GENERATE_BATCH) {
             if (!JobRecord.isDownloadable(job.getJobKind(), job.getStatus())) {

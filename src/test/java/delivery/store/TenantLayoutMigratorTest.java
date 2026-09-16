@@ -95,4 +95,63 @@ public class TenantLayoutMigratorTest {
         Assert.assertFalse(Files.exists(bobLegacy.resolve("sentinel.txt")));
         Assert.assertTrue(recovered.migrated() >= 2);
     }
+
+    @Test
+    public void recoverIsIdempotentAcrossRepeatedInterruptionsAndPreservesContents() throws Exception {
+        Path store = Files.createTempDirectory("mig-repeat");
+        TenantId alice = TenantId.mint();
+        TenantId bob = TenantId.mint();
+        TenantId cara = TenantId.mint();
+        Path aliceLegacy = store.resolve("same-example-com").resolve("prj_alice");
+        Path bobLegacy = store.resolve("same-example-com").resolve("prj_bob");
+        Path caraLegacy = store.resolve("same-example-com").resolve("prj_cara");
+        Files.createDirectories(aliceLegacy);
+        Files.createDirectories(bobLegacy);
+        Files.createDirectories(caraLegacy);
+        Files.writeString(aliceLegacy.resolve("project.json"), "{}");
+        Files.writeString(aliceLegacy.resolve("sentinel.txt"), "ALICE_ONLY");
+        Files.writeString(bobLegacy.resolve("project.json"), "{}");
+        Files.writeString(bobLegacy.resolve("sentinel.txt"), "BOB_ONLY");
+        Files.writeString(caraLegacy.resolve("project.json"), "{}");
+        Files.writeString(caraLegacy.resolve("sentinel.txt"), "CARA_ONLY");
+        Map<String, TenantId> known = Map.of(
+                "prj_alice", alice,
+                "prj_bob", bob,
+                "prj_cara", cara);
+
+        try {
+            TenantLayoutMigrator.migrate(store, known, 1);
+            Assert.fail("expected first interruption");
+        } catch (TenantLayoutMigrator.InterruptedMigrationException expected) {
+            Assert.assertTrue(Files.isRegularFile(TenantLayoutMigrator.journalFile(store)));
+        }
+
+        try {
+            TenantLayoutMigrator.recover(store, 2);
+            Assert.fail("expected second interruption during recover");
+        } catch (TenantLayoutMigrator.InterruptedMigrationException expected) {
+            Assert.assertTrue(Files.isRegularFile(TenantLayoutMigrator.journalFile(store)));
+        }
+
+        TenantLayoutMigrator.Result finished = TenantLayoutMigrator.recover(store);
+        TenantLayoutMigrator.Result again = TenantLayoutMigrator.recover(store);
+        Assert.assertEquals(again.migrated(), finished.migrated());
+        Assert.assertEquals(
+                Files.readString(ScopePaths.projectRoot(store, alice, "prj_alice").resolve("sentinel.txt")),
+                "ALICE_ONLY");
+        Assert.assertEquals(
+                Files.readString(ScopePaths.projectRoot(store, bob, "prj_bob").resolve("sentinel.txt")),
+                "BOB_ONLY");
+        Assert.assertEquals(
+                Files.readString(ScopePaths.projectRoot(store, cara, "prj_cara").resolve("sentinel.txt")),
+                "CARA_ONLY");
+        Assert.assertFalse(Files.readString(
+                ScopePaths.projectRoot(store, alice, "prj_alice").resolve("sentinel.txt")).contains("BOB"));
+        Assert.assertFalse(Files.readString(
+                ScopePaths.projectRoot(store, bob, "prj_bob").resolve("sentinel.txt")).contains("ALICE"));
+        Assert.assertFalse(Files.exists(aliceLegacy.resolve("sentinel.txt")));
+        Assert.assertFalse(Files.exists(bobLegacy.resolve("sentinel.txt")));
+        Assert.assertFalse(Files.exists(caraLegacy.resolve("sentinel.txt")));
+        Assert.assertTrue(finished.migrated() >= 3);
+    }
 }
