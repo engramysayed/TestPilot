@@ -114,9 +114,9 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Owner:** ingestion/IR engineering. **Dependencies:** none; coordinate occurrence identity with P1-04.
 
-- [ ] Enforce the same ID validation at the engine boundary for portal, workbook, CLI, and direct invocation.
-- [ ] Use storage keys that cannot collide after filename normalization; retain the original display ID separately.
-- [ ] Define migration/error behavior for legacy ambiguous drafts instead of silently choosing one.
+- [x] Enforce the same ID validation at the engine boundary for portal, workbook, CLI, and direct invocation.
+- [x] Use storage keys that cannot collide after filename normalization; retain the original display ID separately.
+- [x] Define migration/error behavior for legacy ambiguous drafts instead of silently choosing one.
 
 **Acceptance:** `TC/1` and `TC_1` cannot overwrite one another through any entry point. Invalid IDs receive consistent errors; valid repeated execution occurrences remain distinguishable.
 

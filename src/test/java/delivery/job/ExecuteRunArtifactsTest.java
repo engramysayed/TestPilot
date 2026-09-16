@@ -3,6 +3,7 @@ package delivery.job;
 import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStatus;
 import delivery.ir.TcDraftStore;
+import delivery.ir.TcIdentity;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -25,7 +26,7 @@ public class ExecuteRunArtifactsTest {
 
         ExecuteRunArtifacts.syncTc(work, dest, "TC_001");
 
-        Path copied = dest.resolve("ir").resolve(TcDraftStore.safeFileName("TC_001") + ".json");
+        Path copied = dest.resolve("ir").resolve(TcIdentity.storageKey("TC_001") + ".json");
         Assert.assertTrue(Files.isRegularFile(copied));
         Assert.assertEquals(TcDraftStore.fromJson(
                 new org.json.JSONObject(Files.readString(copied))).tcId(), "TC_001");

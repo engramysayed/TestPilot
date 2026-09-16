@@ -4,6 +4,7 @@ import delivery.authoring.LoginStepDetector;
 import delivery.authoring.StepIntentBinder;
 import delivery.codegen.ProvenStep;
 import delivery.excel.ManualTestCase;
+import delivery.ir.EvidencePaths;
 import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStatus;
 import delivery.ir.TcDraftStore;
@@ -99,8 +100,9 @@ public class ProjectTcService {
                 || fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")) {
             return Optional.empty();
         }
-        Path file = store.filesystemStoreFor(projectId).projectRoot(projectId)
-                .resolve("evidence").resolve(tcId).resolve(fileName);
+        Path file = EvidencePaths.resolve(
+                store.filesystemStoreFor(projectId).projectRoot(projectId).resolve("evidence"), tcId)
+                .resolve(fileName);
         if (!Files.isRegularFile(file)) {
             return Optional.empty();
         }

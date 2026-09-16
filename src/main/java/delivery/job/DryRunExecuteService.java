@@ -6,6 +6,7 @@ import delivery.excel.ManualTestCase;
 import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStatus;
 import delivery.ir.TcDraftStore;
+import delivery.ir.TcIdentity;
 import delivery.portal.service.DesignReferenceService;
 import delivery.store.ProjectStore;
 import delivery.vision.DesignCompareEvidence;
@@ -37,6 +38,7 @@ public class DryRunExecuteService {
                 KeelPathCaseFilter.Surface.EXECUTE,
                 "No runnable test cases in workbook — only MANUAL rows are skipped on Execute"
         );
+        TcIdentity.requireValidCases(cases);
         progress.update(0, cases.size(), "Dry-run execute (no local AI)");
 
         ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl());
@@ -70,7 +72,7 @@ public class DryRunExecuteService {
             );
             drafts.write(draft);
             if (references.resolve(projectRoot, tc.tcId()).isPresent()) {
-                Path evidenceDir = dest.resolve("evidence").resolve(tc.tcId());
+                Path evidenceDir = dest.resolve("evidence").resolve(TcIdentity.storageKey(tc.tcId()));
                 DesignCompareEvidence.write(
                         evidenceDir,
                         tc.tcId(),

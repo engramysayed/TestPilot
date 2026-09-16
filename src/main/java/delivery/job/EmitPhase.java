@@ -9,6 +9,7 @@ import delivery.excel.ManualTestCase;
 import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStatus;
 import delivery.ir.TcDraftStore;
+import delivery.ir.TcIdentity;
 import delivery.packager.FrameworkPackager;
 import delivery.revise.AgentRouterClient;
 import delivery.revise.FinalRevisePhase;
@@ -98,7 +99,7 @@ public class EmitPhase {
             JSONObject json = TcDraftStore.toJson(d);
             json.put("setupTcIds", new JSONArray(CallBeforeSetup.prerequisiteIds(allCases, d.tcId())));
             Files.writeString(
-                    draftStore.irDir().resolve(TcDraftStore.safeFileName(d.tcId()) + ".json"),
+                    draftStore.irDir().resolve(TcIdentity.storageKey(d.tcId()) + ".json"),
                     json.toString(2));
         }
 
@@ -140,7 +141,7 @@ public class EmitPhase {
         for (TcDraft d : clustered) {
             JSONObject json = TcDraftStore.toJson(d);
             json.put("setupTcIds", new JSONArray(CallBeforeSetup.prerequisiteIds(allCases, d.tcId())));
-            Files.writeString(irStore.resolve(TcDraftStore.safeFileName(d.tcId()) + ".json"),
+            Files.writeString(irStore.resolve(TcIdentity.storageKey(d.tcId()) + ".json"),
                     json.toString(2));
         }
 

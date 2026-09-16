@@ -5,14 +5,12 @@ import delivery.portal.model.KeelPath;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Pattern;
 
 /**
  * Validates LLM-generated manual test cases before save. Returns human-readable errors
  * (empty list = pass).
  */
 public final class GenerateQualityGate {
-    private static final Pattern TC_ID = Pattern.compile("^TC_(\\d+|[A-Z0-9_]+)$");
 
     private GenerateQualityGate() {
     }
@@ -56,8 +54,8 @@ public final class GenerateQualityGate {
 
     private static void validateOne(ManualTestCase tc, List<String> errors) {
         String tcId = tc.tcId() == null ? "" : tc.tcId().trim();
-        if (!TC_ID.matcher(tcId).matches()) {
-            errors.add("Invalid tcId '" + tcId + "': must match TC_<digits> or TC_<ALNUM_UNDERSCORE>");
+        if (!delivery.ir.TcIdentity.isValid(tcId)) {
+            errors.add(delivery.ir.TcIdentity.invalidMessage(tcId));
         } else if (looksLikeStepProseInTcId(tcId)) {
             errors.add("tcId '" + tcId + "' looks like step prose, not an identifier");
         }

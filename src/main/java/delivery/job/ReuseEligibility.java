@@ -7,6 +7,7 @@ import delivery.excel.ManualTestCase;
 import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStatus;
 import delivery.ir.TcDraftStore;
+import delivery.ir.TcIdentity;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
@@ -209,7 +210,7 @@ public final class ReuseEligibility {
 
     public static Path durableEvidenceDir(Path projectRoot, String tcId) {
         Path root = projectRoot == null ? Path.of("evidence") : projectRoot.resolve("evidence");
-        return root.resolve(TcDraftStore.safeFileName(tcId == null ? "tc" : tcId));
+        return root.resolve(TcIdentity.storageKey(tcId == null ? "tc" : tcId));
     }
 
     public static boolean evidenceAvailable(TcDraft prior, Path projectRoot) {
@@ -223,6 +224,11 @@ public final class ReuseEligibility {
             return true;
         }
         if (hasFiles(durableEvidenceDir(projectRoot, prior.tcId()))) {
+            return true;
+        }
+        Path legacy = projectRoot.resolve("evidence")
+                .resolve(TcDraftStore.safeFileName(prior.tcId() == null ? "tc" : prior.tcId()));
+        if (hasFiles(legacy)) {
             return true;
         }
         if (latestOccurrenceDir(projectRoot.resolve("evidence"), prior.tcId()) != null) {
@@ -243,10 +249,14 @@ public final class ReuseEligibility {
         Path claimed = (prior.evidenceDir() == null || prior.evidenceDir().isBlank())
                 ? null : Path.of(prior.evidenceDir());
         Path durable = durableEvidenceDir(projectRoot, prior.tcId());
+        Path legacyDurable = projectRoot.resolve("evidence")
+                .resolve(TcDraftStore.safeFileName(prior.tcId() == null ? "tc" : prior.tcId()));
         if (claimed != null && hasFiles(claimed)) {
             source = claimed;
         } else if (hasFiles(durable)) {
             source = durable;
+        } else if (hasFiles(legacyDurable)) {
+            source = legacyDurable;
         } else {
             source = latestOccurrenceDir(projectRoot.resolve("evidence"), prior.tcId());
         }
@@ -255,7 +265,7 @@ public final class ReuseEligibility {
         }
         copyTree(source, durable);
         if (workDir != null) {
-            copyTree(source, workDir.resolve("evidence").resolve(TcDraftStore.safeFileName(prior.tcId())));
+            copyTree(source, workDir.resolve("evidence").resolve(TcIdentity.storageKey(prior.tcId())));
         }
     }
 
@@ -343,7 +353,8 @@ public final class ReuseEligibility {
         if (evidenceRoot == null || !Files.isDirectory(evidenceRoot)) {
             return null;
         }
-        String prefix = TcDraftStore.safeFileName(tcId == null ? "tc" : tcId) + "__occ_";
+        String encodedPrefix = TcIdentity.storageKey(tcId == null ? "tc" : tcId) + "__occ_";
+        String legacyPrefix = TcDraftStore.safeFileName(tcId == null ? "tc" : tcId) + "__occ_";
         Path best = null;
         int bestN = -1;
         try (var stream = Files.list(evidenceRoot)) {
@@ -352,11 +363,14 @@ public final class ReuseEligibility {
                     continue;
                 }
                 String name = dir.getFileName().toString();
-                if (!name.startsWith(prefix)) {
+                if (!name.startsWith(encodedPrefix) && !name.startsWith(legacyPrefix)) {
                     continue;
                 }
+                String digits = name.startsWith(encodedPrefix)
+                        ? name.substring(encodedPrefix.length())
+                        : name.substring(legacyPrefix.length());
                 try {
-                    int n = Integer.parseInt(name.substring(prefix.length()));
+                    int n = Integer.parseInt(digits);
                     if (n >= bestN) {
                         bestN = n;
                         best = dir;

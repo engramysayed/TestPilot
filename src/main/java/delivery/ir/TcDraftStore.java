@@ -25,13 +25,23 @@ public class TcDraftStore {
 
     public void write(TcDraft draft) throws Exception {
         Files.createDirectories(irDir);
-        Path file = irDir.resolve(safeFileName(draft.tcId()) + ".json");
+        Path file = irDir.resolve(TcIdentity.storageKey(draft.tcId()) + ".json");
         Files.writeString(file, toJson(draft).toString(2), StandardCharsets.UTF_8);
+        Path legacy = irDir.resolve(safeFileName(draft.tcId()) + ".json");
+        if (!legacy.equals(file) && Files.isRegularFile(legacy)) {
+            TcDraft existing = fromJson(new JSONObject(Files.readString(legacy, StandardCharsets.UTF_8)));
+            if (existing.tcId() != null && existing.tcId().equals(draft.tcId())) {
+                Files.deleteIfExists(legacy);
+            } else {
+                throw new IllegalArgumentException(
+                        "ID_STORAGE_COLLISION: " + draft.tcId() + " vs " + existing.tcId());
+            }
+        }
     }
 
     public TcDraft read(String tcId) throws Exception {
-        Path file = irDir.resolve(safeFileName(tcId) + ".json");
-        if (!Files.exists(file)) {
+        Path file = resolveFile(tcId);
+        if (!Files.isRegularFile(file)) {
             throw new IllegalArgumentException("IR draft not found: " + tcId);
         }
         return fromJson(new JSONObject(Files.readString(file, StandardCharsets.UTF_8)));
@@ -130,5 +140,23 @@ public class TcDraftStore {
             return "tc";
         }
         return tcId.replaceAll("[^A-Za-z0-9._-]", "_");
+    }
+
+    private Path resolveFile(String tcId) throws Exception {
+        Path encoded = irDir.resolve(TcIdentity.storageKey(tcId) + ".json");
+        if (Files.isRegularFile(encoded)) {
+            return encoded;
+        }
+        Path legacy = irDir.resolve(safeFileName(tcId) + ".json");
+        if (Files.isRegularFile(legacy)) {
+            TcDraft loaded = fromJson(new JSONObject(Files.readString(legacy, StandardCharsets.UTF_8)));
+            String requested = TcIdentity.displayId(tcId);
+            if (loaded.tcId() != null && !requested.equals(loaded.tcId().trim())) {
+                throw new IllegalArgumentException(
+                        "ID_STORAGE_COLLISION: requested " + requested + " but file holds " + loaded.tcId());
+            }
+            return legacy;
+        }
+        return encoded;
     }
 }

@@ -1,5 +1,6 @@
 package delivery.portal.service;
 
+import delivery.ir.EvidencePaths;
 import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStatus;
 import delivery.ir.TcDraftStore;
@@ -96,7 +97,7 @@ public class ExecuteRunService {
         if (job.isEmpty() || job.get().getJobKind() != JobRecord.JobKind.EXECUTE) {
             return Optional.empty();
         }
-        Path file = runRoot(job.get()).resolve("evidence").resolve(tcId).resolve(fileName);
+        Path file = EvidencePaths.resolve(runRoot(job.get()).resolve("evidence"), tcId).resolve(fileName);
         if (!Files.isRegularFile(file)) {
             return Optional.empty();
         }
@@ -171,7 +172,7 @@ public class ExecuteRunService {
     }
 
     private Path tcEvidenceDir(JobRecord job, String tcId) {
-        return runRoot(job).resolve("evidence").resolve(tcId);
+        return EvidencePaths.resolve(runRoot(job).resolve("evidence"), tcId);
     }
 
     List<String> listScreenshotUrls(String jobId, String tcId) {

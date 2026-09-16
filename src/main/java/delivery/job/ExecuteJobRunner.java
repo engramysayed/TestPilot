@@ -7,6 +7,7 @@ import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.service.GeneratedWorkbookService;
 import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStore;
+import delivery.ir.TcIdentity;
 import delivery.store.ProjectStore;
 import delivery.util.ProjectNaming;
 
@@ -37,6 +38,7 @@ public class ExecuteJobRunner {
                 KeelPathCaseFilter.Surface.EXECUTE,
                 "No runnable test cases in workbook — only MANUAL rows are skipped on Execute"
         );
+        TcIdentity.requireValidCases(cases);
 
         String workFolder = ProjectNaming.fromBaseUrl(request.baseUrl(), Instant.now()) + "-exec";
         Path work = request.workDir().resolve(workFolder);

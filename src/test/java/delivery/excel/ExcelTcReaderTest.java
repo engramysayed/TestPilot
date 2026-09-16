@@ -1,5 +1,6 @@
 package delivery.excel;
 
+import delivery.ir.TcIdentity;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -132,6 +133,22 @@ public class ExcelTcReaderTest {
                     .findFirst()
                     .orElseThrow();
             Assert.assertEquals(first.testData(), "John");
+        } finally {
+            Files.deleteIfExists(path);
+        }
+    }
+
+    @Test
+    public void rejectsSlashIdThatWouldCollideWithUnderscore() throws Exception {
+        Path path = writeSheet(new String[] {
+                "TC_ID", "Title", "Steps", "ExpectedResult"
+        }, new String[] {"TC/1", "Slash", "1. Open", "ok"});
+        try {
+            reader.read(path);
+            Assert.fail("expected InvalidExcelTemplateException");
+        } catch (InvalidExcelTemplateException e) {
+            Assert.assertEquals(e.getErrorCode(), ExcelValidationMessages.INVALID_EXCEL);
+            Assert.assertEquals(e.getMessage(), TcIdentity.invalidMessage("TC/1"));
         } finally {
             Files.deleteIfExists(path);
         }

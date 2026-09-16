@@ -33,4 +33,12 @@ public class EmitGeneratedLayerContractTest {
         int writeAt = source.indexOf("new CodeWriter");
         Assert.assertTrue(honestyAt >= 0 && writeAt > honestyAt, source);
     }
+
+    @Test
+    public void conversionRunnerValidatesIdsAtEngineBoundary() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/delivery/job/ConversionJobRunner.java"));
+        Assert.assertTrue(source.contains("TcIdentity.requireValidCases")
+                        || source.contains("TcIdentity.requireValid"),
+                "CLI/direct conversion must apply the same TC ID contract as the portal");
+    }
 }

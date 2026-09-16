@@ -1,7 +1,6 @@
 package delivery.job;
 
 import delivery.codegen.PageClusterer;
-import delivery.ir.TcDraftStore;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -20,7 +19,7 @@ public class TwoPhaseConversionGateTest {
         Assert.assertNotNull(new ProvePhase(new JobProgressTracker()));
         Assert.assertNotNull(new EmitPhase(new JobProgressTracker()));
         Assert.assertEquals(PageClusterer.pageNameFromUrl("https://example.com/inventory.html"), "Inventory");
-        Assert.assertEquals(TcDraftStore.safeFileName("TC/SD:01"), "TC_SD_01");
+        Assert.assertNotEquals(delivery.ir.TcIdentity.storageKey("TC/1"), delivery.ir.TcIdentity.storageKey("TC_1"));
     }
 
     @Test

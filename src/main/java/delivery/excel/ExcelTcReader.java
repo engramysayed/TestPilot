@@ -78,6 +78,12 @@ public class ExcelTcReader {
                             ExcelValidationMessages.INVALID_EXCEL,
                             ExcelValidationMessages.blankTcId(r + 1));
                 }
+                try {
+                    delivery.ir.TcIdentity.requireValid(tcId);
+                } catch (IllegalArgumentException e) {
+                    throw new InvalidExcelTemplateException(
+                            ExcelValidationMessages.INVALID_EXCEL, e.getMessage());
+                }
                 if (!allowDuplicateTcIds && !seenIds.add(tcId)) {
                     throw new InvalidExcelTemplateException(
                             ExcelValidationMessages.INVALID_EXCEL,

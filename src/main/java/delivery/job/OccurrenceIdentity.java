@@ -1,6 +1,6 @@
 package delivery.job;
 
-import delivery.ir.TcDraftStore;
+import delivery.ir.TcIdentity;
 
 /**
  * Evidence identity for one execution of a logical TC ID.
@@ -12,7 +12,7 @@ public final class OccurrenceIdentity {
     }
 
     public static String folder(String tcId, int occurrence) {
-        String id = TcDraftStore.safeFileName(tcId == null || tcId.isBlank() ? "tc" : tcId);
+        String id = TcIdentity.storageKey(tcId == null || tcId.isBlank() ? "tc" : tcId);
         int n = Math.max(1, occurrence);
         return id + "__occ_" + n;
     }

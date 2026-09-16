@@ -7,6 +7,7 @@ import delivery.excel.ExcelTcReader;
 import delivery.excel.KeelPathCaseFilter;
 import delivery.excel.ManualTestCase;
 import delivery.ir.TcDraftStatus;
+import delivery.ir.TcIdentity;
 import delivery.packager.FrameworkPackager;
 import delivery.store.ProjectStore;
 import delivery.store.TcDiffService;
@@ -46,6 +47,7 @@ public class DryRunConversionService {
                 KeelPathCaseFilter.Surface.AUTOMATE,
                 "No runnable test cases in workbook — MANUAL rows are skipped on Automate; use AUTOMATE/EXECUTE/VISION_ONLY or blank KeelPath"
         );
+        TcIdentity.requireValidCases(cases);
         progress.update(0, cases.size(), "Dry-run packaging (no local AI)");
 
         Path work = request.workDir().resolve(ProjectNaming.fromBaseUrl(request.baseUrl(), Instant.now()) + "-dry");

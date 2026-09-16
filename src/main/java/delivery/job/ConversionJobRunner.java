@@ -4,6 +4,7 @@ import delivery.excel.ExcelTcReader;
 import delivery.excel.KeelPathCaseFilter;
 import delivery.excel.ManualTestCase;
 import delivery.ir.TcDraft;
+import delivery.ir.TcIdentity;
 import delivery.packager.FrameworkPackager;
 import delivery.store.ProjectStore;
 import delivery.util.ProjectNaming;
@@ -49,6 +50,7 @@ public class ConversionJobRunner {
                 KeelPathCaseFilter.Surface.AUTOMATE,
                 "No runnable test cases in workbook — MANUAL rows are skipped on Automate; use AUTOMATE/EXECUTE/VISION_ONLY or blank KeelPath"
         );
+        TcIdentity.requireValidCases(allCases);
 
         Map<String, String> storedHashes = new HashMap<>();
         Path hashFile = store.projectRoot(request.projectId()).resolve("tc-hashes.json");

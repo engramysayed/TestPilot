@@ -29,11 +29,11 @@ public class GenerateQualityGateTest {
     }
 
     @Test
-    public void validate_rejectsInvalidTcId() {
+    public void validate_rejectsSlashIdWithSharedContractMessage() {
         List<String> errors = GenerateQualityGate.validate(List.of(
-                tc("LOGIN_01", "1. Open", "AUTOMATE")));
-        Assert.assertFalse(errors.isEmpty());
-        Assert.assertTrue(errors.stream().anyMatch(e -> e.contains("TC_01") || e.contains("tcId")));
+                tc("TC/1", "1. Open", "AUTOMATE")));
+        Assert.assertTrue(errors.contains(delivery.ir.TcIdentity.invalidMessage("TC/1")),
+                String.join("; ", errors));
     }
 
     @Test

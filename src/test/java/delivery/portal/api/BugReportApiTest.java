@@ -172,23 +172,17 @@ public class BugReportApiTest extends AbstractTestNGSpringContextTests {
         Assert.assertEquals(jobStatus, "COMPLETED");
 
         Path irFile = locateIrFile(jobId, "TC_002");
-        if (irFile != null && Files.isRegularFile(irFile)) {
-            JSONObject ir = new JSONObject(Files.readString(irFile));
-            ir.put("status", "PASSED");
-            ir.put("failureReason", "");
-            Files.writeString(irFile, ir.toString(2));
-        } else {
+        if (irFile == null || !Files.isRegularFile(irFile)) {
             irFile = locateIrFile(jobId, "TC_001");
-            Assert.assertNotNull(irFile, "expected IR draft for bug report mismatch test");
-            JSONObject ir = new JSONObject(Files.readString(irFile));
-            ir.put("status", "PASSED");
-            ir.put("failureReason", "");
-            Files.writeString(irFile, ir.toString(2));
         }
-
-        String tcId = irFile.getFileName().toString().replace(".json", "");
+        Assert.assertNotNull(irFile, "expected IR draft for bug report mismatch test");
+        JSONObject ir = new JSONObject(Files.readString(irFile));
+        ir.put("status", "PASSED");
+        ir.put("failureReason", "");
+        Files.writeString(irFile, ir.toString(2));
+        String tcId = ir.getString("tcId");
         Path evidenceDir = irFile.getParent().getParent()
-                .resolve("evidence").resolve(tcId);
+                .resolve("evidence").resolve(delivery.ir.TcIdentity.storageKey(tcId));
         Files.createDirectories(evidenceDir);
         Files.writeString(evidenceDir.resolve("design-compare.json"),
                 new JSONObject()
@@ -218,7 +212,7 @@ public class BugReportApiTest extends AbstractTestNGSpringContextTests {
 
     private Path locateIrFile(String jobId, String tcId) throws Exception {
         Path runsRoot = Path.of(props.getStoreRoot());
-        String suffix = "/execute-runs/" + jobId + "/ir/" + tcId + ".json";
+        String suffix = "/execute-runs/" + jobId + "/ir/" + delivery.ir.TcIdentity.storageKey(tcId) + ".json";
         try (var walk = Files.walk(runsRoot)) {
             return walk.filter(p -> p.toString().replace('\\', '/').endsWith(suffix))
                     .findFirst()

@@ -11,10 +11,11 @@ public class OccurrenceIdentityTest {
         String first = OccurrenceIdentity.folder("TC_CART", 1);
         String second = OccurrenceIdentity.folder("TC_CART", 2);
         Assert.assertNotEquals(first, second);
-        Assert.assertTrue(first.startsWith("TC_CART"), first);
-        Assert.assertTrue(second.startsWith("TC_CART"), second);
         Assert.assertTrue(first.contains("occ"), first);
         Assert.assertTrue(second.contains("occ"), second);
+        Assert.assertTrue(first.contains(delivery.ir.TcIdentity.storageKey("TC_CART"))
+                        || first.startsWith("TC_CART"),
+                first);
     }
 
     @Test

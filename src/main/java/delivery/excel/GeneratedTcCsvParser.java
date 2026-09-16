@@ -1,5 +1,6 @@
 package delivery.excel;
 
+import delivery.ir.TcIdentity;
 import delivery.portal.model.KeelPath;
 
 import java.util.ArrayList;
@@ -70,12 +71,7 @@ public final class GeneratedTcCsvParser {
             throw new IllegalArgumentException("CSV has no data rows");
         }
         out = GeneratedTcCsvRepair.repair(out);
-        for (ManualTestCase tc : out) {
-            if (!GeneratedTcCsvRepair.isWellFormedTcId(tc.tcId())) {
-                throw new IllegalArgumentException(
-                        "Invalid TC_ID '" + tc.tcId() + "' — must be TC_01, TC_02, … with steps in the Steps column");
-            }
-        }
+        TcIdentity.requireValidCases(out);
         return out;
     }
 

@@ -1,6 +1,7 @@
 package delivery.job;
 
 import delivery.ir.TcDraftStore;
+import delivery.ir.TcIdentity;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,8 +20,14 @@ public final class ExecuteRunArtifacts {
         if (work == null || dest == null || tcId == null || tcId.isBlank()) {
             return;
         }
-        String safe = TcDraftStore.safeFileName(tcId);
+        String safe = TcIdentity.storageKey(tcId);
         Path irSrc = work.resolve("ir").resolve(safe + ".json");
+        if (!Files.isRegularFile(irSrc)) {
+            Path legacy = work.resolve("ir").resolve(TcDraftStore.safeFileName(tcId) + ".json");
+            if (Files.isRegularFile(legacy)) {
+                irSrc = legacy;
+            }
+        }
         if (!Files.isRegularFile(irSrc)) {
             return;
         }
@@ -28,10 +35,24 @@ public final class ExecuteRunArtifacts {
         Files.createDirectories(irDest.getParent());
         Files.copy(irSrc, irDest, StandardCopyOption.REPLACE_EXISTING);
 
-        Path evidenceSrc = work.resolve("evidence").resolve(tcId);
+        Path evidenceSrc = work.resolve("evidence").resolve(safe);
+        if (!Files.isDirectory(evidenceSrc)) {
+            evidenceSrc = work.resolve("evidence").resolve(tcId);
+        }
         if (Files.isDirectory(evidenceSrc)) {
-            Path evidenceDest = dest.resolve("evidence").resolve(tcId);
+            Path evidenceDest = dest.resolve("evidence").resolve(safe);
             copyTree(evidenceSrc, evidenceDest);
+        }
+        Path evidenceRoot = work.resolve("evidence");
+        if (Files.isDirectory(evidenceRoot)) {
+            String prefix = safe + "__occ_";
+            try (var stream = Files.list(evidenceRoot)) {
+                for (Path dir : stream.toList()) {
+                    if (Files.isDirectory(dir) && dir.getFileName().toString().startsWith(prefix)) {
+                        copyTree(dir, dest.resolve("evidence").resolve(dir.getFileName().toString()));
+                    }
+                }
+            }
         }
     }
 

@@ -167,14 +167,15 @@ public class ExecuteRunApiTest extends AbstractTestNGSpringContextTests {
                 .resolve("execute-runs")
                 .resolve(jobId)
                 .resolve("evidence")
-                .resolve("TC_001")
+                .resolve(delivery.ir.TcIdentity.storageKey("TC_001"))
                 .resolve("design-compare.json");
         if (!Files.isRegularFile(compareJson)) {
             // Domain folder may vary; locate by walking execute-runs
             Path runsRoot = Path.of(props.getStoreRoot());
+            String suffix = "/execute-runs/" + jobId + "/evidence/"
+                    + delivery.ir.TcIdentity.storageKey("TC_001") + "/design-compare.json";
             try (var walk = Files.walk(runsRoot)) {
-                compareJson = walk.filter(p -> p.toString().replace('\\', '/').endsWith(
-                                "/execute-runs/" + jobId + "/evidence/TC_001/design-compare.json"))
+                compareJson = walk.filter(p -> p.toString().replace('\\', '/').endsWith(suffix))
                         .findFirst()
                         .orElse(compareJson);
             }
