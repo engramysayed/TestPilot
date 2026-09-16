@@ -34,6 +34,8 @@ public class JobsSchemaPatch implements ApplicationRunner {
         addColumnQuietly("claim_stage", "VARCHAR(16)");
         addColumnQuietly("input_snapshot_hash", "VARCHAR(64)");
         addColumnQuietly("provider_allowlist_snapshot", "VARCHAR(128)");
+        addColumnQuietly("library_revision_id", "VARCHAR(64)");
+        addColumnQuietly("precision_max_snapshot", "INT DEFAULT 0 NOT NULL");
         try {
             jdbc.update("UPDATE jobs SET progress_current = 0 WHERE progress_current IS NULL");
             jdbc.update("UPDATE jobs SET progress_total = 0 WHERE progress_total IS NULL");

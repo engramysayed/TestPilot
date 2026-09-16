@@ -201,7 +201,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** process termination before/after claim and before/after publication produces a recoverable or explicit terminal state. Duplicate claims cannot publish twice. Queue saturation is visible and bounded. Changing project settings does not reinterpret queued work.
 
-**2026-09-17 (working tree, started):** `DurableJobClaim` leases, attempt ids, cancel-generation fencing, input-snapshot hash, and browser-stage `INTERRUPTED_UNCERTAIN` recovery. Portal workers claim before run; `JobLeaseReconciler` runs on startup. Queue saturation limits and frozen precision/provider config at the LLM call site remain owed. P3-01 is not closed.
+**2026-09-17:** `DurableJobClaim` leases, attempt ids, cancel-generation fencing, input snapshots, and browser-stage `INTERRUPTED_UNCERTAIN`. Queue limits (`delivery.jobs.max-queued-per-tenant` / `max-running-per-install`) reject before a QUEUED row is stored. Precision max and provider allowlist are snapshotted at admit. Isolated backup restoration remains a Phase 4/5 deployment drill.
 
 ### P3-02 — enforce process deadlines and confirmed cancellation · F11
 
@@ -213,6 +213,8 @@ No launch date is estimated here: staffing, supported application scope, operati
 - [ ] Fence publication after cancellation or lease loss.
 
 **Acceptance:** a controlled hanging subprocess is killed within the configured deadline/tolerance, the worker slot is released, and no orphan process or post-cancel package publication remains.
+
+**2026-09-17:** `ProcessSupervisor` drains output asynchronously, enforces a deadline, kills the process tree, and cooperates with cancel. `EmitCompileCheck` uses it. Cancel requested (`CANCELLING`) is distinct from worker ack (`CANCELLED`); publication is fenced after cancel or lease loss. Isolated OS-level orphan audits on production hosts remain a deployment check.
 
 ### P3-03 — bind jobs to immutable artifacts and stable project storage · F06, F07
 
@@ -226,6 +228,8 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** changing a host preserves historical libraries and artifacts. Expired v1 never downloads v2 or another artifact kind. Concurrent publication preserves both identities. Failed migration can roll back using the verified backup.
 
+**2026-09-17:** Job downloads bind to that job’s own file (`ArtifactResolver`); missing/expired artifacts do not fall back to latest ZIP. `ProjectStore.saveVersion` records checksums and marks prior versions expired under the existing publication lock. Hosted project dirs remain tenant/project-id based so a URL edit does not rename storage. Isolated backup restoration is still a Phase 4 drill.
+
 ### P3-04 — complete deletion safely · F12
 
 **Owner:** backend/security engineering. **Dependencies:** P3-01/P3-02/P3-03.
@@ -238,6 +242,8 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** queued, running, cancelling and force-stopped deletion tests leave no live credentials/artifacts or resurrected records. Partial cleanup failure is retryable and accurately reported.
 
+**2026-09-17:** Delete tombstones (archives) first, force-stops active jobs, deletes credential rows, then purges jobs and disk. Stale workers cannot claim tombstoned projects. Partial disk failure is logged after DB removal. Admin domain-folder delete is a separate legacy path and still needs the same credential purge.
+
 ### P3-05 — version the test library and detect conflicting edits
 
 **Owner:** library/backend engineering. **Dependencies:** immutable storage identity, P3-01 input snapshots.
@@ -249,7 +255,9 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** two concurrent editors cannot silently lose changes. An AI review based on an old revision cannot overwrite a newer edit. A historical run's inputs can be reconstructed after rollback.
 
-**Phase 3 exit:** restart, saturation, cancellation, retention, host-change, concurrent-edit and deletion scenarios pass; database/artifact/key backup restoration is demonstrated in an isolated environment.
+**2026-09-17:** `LibraryRevisionStore` writes immutable revisions; stale `baseRevision` conflicts. Generate/import/heal saves commit a revision. Upload merge accepts `baseRevision`. Restore creates a new revision. Jobs snapshot `libraryRevisionId` at admit. Field-level diff UI is Phase 4.
+
+**Phase 3 engineering exit (local):** restart/lease, saturation, cancellation/timeout, retention sweeper, host-stable project identity, concurrent-edit conflict, and project deletion unit/API paths pass in this workspace. Database/artifact/key backup restoration in an isolated environment remains a **release blocker** (P4-02 / Phase 5).
 
 ## 6. Phase 4 — release engineering, observability and product clarity
 

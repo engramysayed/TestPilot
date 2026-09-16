@@ -9,11 +9,16 @@ import delivery.portal.model.ProjectRecord;
 import delivery.portal.security.JobSecretCrypto;
 import delivery.portal.persistence.JobEntity;
 import delivery.portal.persistence.JobRepository;
+import delivery.portal.persistence.ProjectCredentialRepository;
 import delivery.portal.persistence.ProjectEntity;
 import delivery.portal.persistence.ProjectRepository;
+import delivery.store.ArtifactResolver;
 import delivery.store.DomainStorePaths;
+import delivery.store.GeneratedStoreLayout;
+import delivery.store.LibraryRevisionStore;
 import delivery.store.PreferredHooksStore;
 import delivery.store.ProjectStore;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,15 +53,25 @@ public class PortalStore {
     private final ProjectStore projectStore;
     private final ProjectRepository projectRepository;
     private final JobRepository jobRepository;
+    private final ProjectCredentialRepository credentialRepository;
 
     public PortalStore(DeliveryPortalProperties props,
                        ProjectRepository projectRepository,
                        JobRepository jobRepository) {
+        this(props, projectRepository, jobRepository, null);
+    }
+
+    @Autowired
+    public PortalStore(DeliveryPortalProperties props,
+                       ProjectRepository projectRepository,
+                       JobRepository jobRepository,
+                       ProjectCredentialRepository credentialRepository) {
         this.portalProperties = props;
         this.storeRootPath = java.nio.file.Path.of(props.getStoreRoot());
         this.projectStore = new ProjectStore(storeRootPath);
         this.projectRepository = projectRepository;
         this.jobRepository = jobRepository;
+        this.credentialRepository = credentialRepository;
     }
 
     public AuthoringEngine authoringEngineForProject(String projectId) {
@@ -333,8 +348,8 @@ public class PortalStore {
     }
 
     /**
-     * Owner-only delete: jobs for the project, DB project row, and on-disk store folder.
-     * Disk cleanup is best-effort so a missing store folder cannot resurrect the DB row.
+     * Owner-only delete: tombstone, stop workers, then purge credentials, jobs, and disk.
+     * Partial disk failure is logged and retryable because the DB row is already gone.
      */
     @Transactional
     public boolean deleteOwnedProject(String projectId, Long ownerUserId) {
@@ -343,17 +358,28 @@ public class PortalStore {
         if (owned.isEmpty()) {
             return false;
         }
+        ProjectEntity entity = owned.get();
+        entity.setArchived(true);
+        entity.setArchivedAt(Instant.now());
+        projectRepository.save(entity);
         for (JobEntity job : jobRepository.findByProjectId(projectId)) {
+            JobRecord mem = jobs.get(job.getJobId());
+            if (mem != null && (mem.getStatus() == JobRecord.Status.QUEUED
+                    || mem.getStatus() == JobRecord.Status.RUNNING
+                    || mem.getStatus() == JobRecord.Status.CANCELLING)) {
+                forceStopOwnedJob(job.getJobId(), ownerUserId);
+            }
             jobs.remove(job.getJobId());
         }
+        if (credentialRepository != null) {
+            credentialRepository.deleteByProjectId(projectId);
+        }
         jobRepository.deleteByProjectId(projectId);
-        projectRepository.delete(owned.get());
+        projectRepository.delete(entity);
         try {
             filesystemStoreFor(projectId).deleteProject(projectId);
-            // Also try flat legacy path if nested was empty
             ProjectStore.deleteRecursive(storeRootPath.resolve(projectId));
         } catch (Exception e) {
-            // DB already removed — do not roll back; dashboard must go to zero.
             org.slf4j.LoggerFactory.getLogger(PortalStore.class)
                     .warn("Project {} removed from portal DB; store folder cleanup failed: {}",
                             projectId, e.getMessage());
@@ -391,6 +417,20 @@ public class PortalStore {
 
     @Transactional
     public JobRecord saveJob(JobRecord job) {
+        boolean creating = job.getStatus() == JobRecord.Status.QUEUED
+                && jobRepository.findByJobId(job.getJobId()).isEmpty();
+        if (creating) {
+            projectRepository.findByProjectId(job.getProjectId()).ifPresent(p -> {
+                if (p.isArchived()) {
+                    throw new IllegalStateException("PROJECT_ARCHIVED");
+                }
+            });
+            freezeQueuedInputs(job);
+            delivery.job.JobAdmission.require(
+                    countActiveJobsForTenant(job.getTenantId()),
+                    countRunningJobs(),
+                    delivery.job.JobAdmission.Limits.fromEnvironment());
+        }
         jobs.put(job.getJobId(), job);
         JobEntity entity = jobRepository.findByJobId(job.getJobId()).orElseGet(JobEntity::new);
         entity.setJobId(job.getJobId());
@@ -448,6 +488,8 @@ public class PortalStore {
                     delivery.privacy.ProviderPolicy.fromEnvironment().snapshot());
         }
         entity.setProviderAllowlistSnapshot(job.getProviderAllowlistSnapshot());
+        entity.setLibraryRevisionId(job.getLibraryRevisionId());
+        entity.setPrecisionMaxSnapshot(job.getPrecisionMaxSnapshot());
         if ((job.getInputSnapshotHash() == null || job.getInputSnapshotHash().isBlank())
                 && job.getStatus() == JobRecord.Status.QUEUED) {
             job.setInputSnapshotHash(delivery.job.DurableJobClaim.hashInputs(job));
@@ -468,6 +510,14 @@ public class PortalStore {
 
     public synchronized Optional<delivery.job.DurableJobClaim.Lease> beginWork(String jobId) {
         JobRecord job = getJob(jobId).orElse(null);
+        if (job != null) {
+            boolean archived = projectRepository.findByProjectId(job.getProjectId())
+                    .map(ProjectEntity::isArchived)
+                    .orElse(false);
+            if (archived) {
+                return Optional.empty();
+            }
+        }
         Optional<delivery.job.DurableJobClaim.Lease> lease = delivery.job.DurableJobClaim.tryClaim(
                 job, delivery.job.DurableJobClaim.newWorkerId(), Instant.now(),
                 delivery.job.DurableJobClaim.DEFAULT_LEASE);
@@ -511,7 +561,17 @@ public class PortalStore {
         }
         cancelRequested.computeIfAbsent(jobId, ignored -> new java.util.concurrent.atomic.AtomicBoolean())
                 .set(true);
-        getJob(jobId).ifPresent(delivery.job.DurableJobClaim::requestCancel);
+        getJob(jobId).ifPresent(job -> {
+            delivery.job.DurableJobClaim.requestCancel(job);
+            if (job.getStatus() == JobRecord.Status.QUEUED) {
+                job.setStatus(JobRecord.Status.CANCELLED);
+                job.setMessage("Cancelled before claim");
+            } else if (job.getStatus() == JobRecord.Status.RUNNING) {
+                job.setStatus(JobRecord.Status.CANCELLING);
+                job.setMessage("Cancellation requested");
+            }
+            syncJobPersistence(job);
+        });
     }
 
     /**
@@ -526,7 +586,9 @@ public class PortalStore {
             return Optional.empty();
         }
         JobRecord job = owned.get();
-        if (job.getStatus() != JobRecord.Status.QUEUED && job.getStatus() != JobRecord.Status.RUNNING) {
+        if (job.getStatus() != JobRecord.Status.QUEUED
+                && job.getStatus() != JobRecord.Status.RUNNING
+                && job.getStatus() != JobRecord.Status.CANCELLING) {
             return Optional.of("ALREADY_DONE");
         }
         requestCancel(jobId);
@@ -541,7 +603,9 @@ public class PortalStore {
         if (job == null) {
             return false;
         }
-        return job.getStatus() == JobRecord.Status.CANCELLED || isCancelRequested(job.getJobId());
+        return job.getStatus() == JobRecord.Status.CANCELLED
+                || job.getStatus() == JobRecord.Status.CANCELLING
+                || isCancelRequested(job.getJobId());
     }
 
     public boolean isCancelRequested(String jobId) {
@@ -683,20 +747,18 @@ public class PortalStore {
     }
 
     /**
-     * Resolve a downloadable ZIP for a completed job: in-memory path, persisted path, or latest project version.
+     * Bound download for this job only. Never substitutes another version's ZIP.
      */
     public Optional<Path> resolveZip(JobRecord job) {
-        if (job.getZipPath() != null && Files.isRegularFile(job.getZipPath())) {
-            return Optional.of(job.getZipPath());
+        if (job == null) {
+            return Optional.empty();
         }
+        Path persisted = null;
         Optional<JobEntity> entity = jobRepository.findByJobId(job.getJobId());
-        if (entity.isPresent() && entity.get().getZipPath() != null) {
-            Path p = Path.of(entity.get().getZipPath());
-            if (Files.isRegularFile(p)) {
-                return Optional.of(p);
-            }
+        if (entity.isPresent() && entity.get().getZipPath() != null && !entity.get().getZipPath().isBlank()) {
+            persisted = Path.of(entity.get().getZipPath());
         }
-        return filesystemStoreFor(job.getProjectId()).latestVersionZip(job.getProjectId());
+        return ArtifactResolver.boundFile(job.getZipPath(), persisted);
     }
 
     public boolean hasStoredFramework(String projectId) {
@@ -750,6 +812,8 @@ public class PortalStore {
         job.setClaimStage(e.getClaimStage());
         job.setInputSnapshotHash(e.getInputSnapshotHash());
         job.setProviderAllowlistSnapshot(e.getProviderAllowlistSnapshot());
+        job.setLibraryRevisionId(e.getLibraryRevisionId());
+        job.setPrecisionMaxSnapshot(e.getPrecisionMaxSnapshot());
         job.setTenantId(e.getTenantId());
         if (job.getTenantId() == null || job.getTenantId().isBlank()) {
             projectRepository.findByProjectId(e.getProjectId())
@@ -798,5 +862,53 @@ public class PortalStore {
             rec.setLastModifiedLabel("Never converted");
         }
         return rec;
+    }
+
+    private void freezeQueuedInputs(JobRecord job) {
+        if (job.getProviderAllowlistSnapshot() == null || job.getProviderAllowlistSnapshot().isBlank()) {
+            job.setProviderAllowlistSnapshot(delivery.privacy.ProviderPolicy.fromEnvironment().snapshot());
+        }
+        if (job.getPrecisionMaxSnapshot() <= 0) {
+            job.setPrecisionMaxSnapshot(precisionConfigForProject(job.getProjectId()).maxCallsPerJob());
+        }
+        if (job.getLibraryRevisionId() == null || job.getLibraryRevisionId().isBlank()) {
+            try {
+                Path gen = GeneratedStoreLayout.resolveGeneratedDir(
+                        storeRootPath, projectDiskRoot(job.getProjectId()), job.getProjectId());
+                new LibraryRevisionStore(gen).head().ifPresent(h -> job.setLibraryRevisionId(h.id()));
+            } catch (Exception ignored) {
+                // no library yet
+            }
+        }
+        if (job.getInputSnapshotHash() == null || job.getInputSnapshotHash().isBlank()) {
+            job.setInputSnapshotHash(delivery.job.DurableJobClaim.hashInputs(job));
+        }
+    }
+
+    private int countActiveJobsForTenant(String tenantId) {
+        String tenant = tenantId == null ? "" : tenantId;
+        int n = 0;
+        for (JobEntity e : jobRepository.findAll()) {
+            if (!tenant.isBlank() && tenant.equals(e.getTenantId()) && isActiveStatus(e.getStatus())) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private int countRunningJobs() {
+        int n = 0;
+        for (JobEntity e : jobRepository.findAll()) {
+            if (JobRecord.Status.RUNNING.name().equals(e.getStatus())) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private static boolean isActiveStatus(String status) {
+        return JobRecord.Status.QUEUED.name().equals(status)
+                || JobRecord.Status.RUNNING.name().equals(status)
+                || JobRecord.Status.CANCELLING.name().equals(status);
     }
 }

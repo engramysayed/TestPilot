@@ -64,6 +64,10 @@ public class ConversionWorker {
             }
             boolean effectiveFinalRevise = props.isFinalReviseEnabled() && job.isFinalRevise();
             PrecisionJobConfig precisionConfig = portalStore.precisionConfigForProject(job.getProjectId());
+            if (job.getPrecisionMaxSnapshot() > 0) {
+                precisionConfig = new PrecisionJobConfig(
+                        precisionConfig.enabled(), job.getPrecisionMaxSnapshot());
+            }
             ConversionJobRequest request = new ConversionJobRequest(
                     job.getProjectId(),
                     job.getExcelPath(),

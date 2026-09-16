@@ -93,6 +93,12 @@ public class JobEntity {
     @Column(name = "provider_allowlist_snapshot", length = 128)
     private String providerAllowlistSnapshot;
 
+    @Column(name = "library_revision_id", length = 64)
+    private String libraryRevisionId;
+
+    @Column(name = "precision_max_snapshot", nullable = false, columnDefinition = "integer default 0")
+    private int precisionMaxSnapshot;
+
     public Long getId() { return id; }
     public String getJobId() { return jobId; }
     public void setJobId(String jobId) { this.jobId = jobId; }
@@ -150,4 +156,8 @@ public class JobEntity {
     public void setProviderAllowlistSnapshot(String providerAllowlistSnapshot) {
         this.providerAllowlistSnapshot = providerAllowlistSnapshot;
     }
+    public String getLibraryRevisionId() { return libraryRevisionId; }
+    public void setLibraryRevisionId(String libraryRevisionId) { this.libraryRevisionId = libraryRevisionId; }
+    public int getPrecisionMaxSnapshot() { return precisionMaxSnapshot; }
+    public void setPrecisionMaxSnapshot(int precisionMaxSnapshot) { this.precisionMaxSnapshot = precisionMaxSnapshot; }
 }

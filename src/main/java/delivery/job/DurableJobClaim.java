@@ -46,7 +46,8 @@ public final class DurableJobClaim {
         if (status == JobRecord.Status.COMPLETED
                 || status == JobRecord.Status.COMPLETED_WITH_BLOCK
                 || status == JobRecord.Status.FAILED
-                || status == JobRecord.Status.CANCELLED) {
+                || status == JobRecord.Status.CANCELLED
+                || status == JobRecord.Status.CANCELLING) {
             return Optional.empty();
         }
         if (status == JobRecord.Status.RUNNING) {
@@ -126,7 +127,8 @@ public final class DurableJobClaim {
             return false;
         }
         JobRecord.Status status = job.getStatus();
-        if (status == JobRecord.Status.CANCELLED || status == JobRecord.Status.COMPLETED
+        if (status == JobRecord.Status.CANCELLED || status == JobRecord.Status.CANCELLING
+                || status == JobRecord.Status.COMPLETED
                 || status == JobRecord.Status.COMPLETED_WITH_BLOCK
                 || status == JobRecord.Status.FAILED) {
             return false;

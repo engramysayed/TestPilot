@@ -15,6 +15,7 @@ import delivery.heal.HealWorkbookPatcher;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.KeelPath;
 import delivery.store.GeneratedStoreLayout;
+import delivery.store.LibraryRevisionStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -72,13 +73,36 @@ public class GeneratedWorkbookService {
             String sourceRef,
             String model
     ) throws Exception {
+        saveFromCases(projectId, cases, source, sourceRef, model, null);
+    }
+
+    public void saveFromCases(
+            String projectId,
+            List<ManualTestCase> cases,
+            String source,
+            String sourceRef,
+            String model,
+            String baseRevision
+    ) throws Exception {
         if (cases == null || cases.isEmpty()) {
             throw new IllegalArgumentException("No test cases to save");
         }
         Path dir = generatedDir(projectId);
         Files.createDirectories(dir);
         Path excelPath = dir.resolve(EXCEL_FILE);
-        ManualTcExcelWriter.write(excelPath, cases);
+        Path incoming = dir.resolve("incoming.xlsx");
+        ManualTcExcelWriter.write(incoming, cases);
+        byte[] payload = Files.readAllBytes(incoming);
+        LibraryRevisionStore.Revision rev;
+        try {
+            rev = new LibraryRevisionStore(dir)
+                    .commit(baseRevision, source == null ? "GENERATE" : source,
+                            sourceRef == null ? "" : sourceRef, payload);
+        } catch (Exception e) {
+            Files.deleteIfExists(incoming);
+            throw e;
+        }
+        Files.move(incoming, excelPath, StandardCopyOption.REPLACE_EXISTING);
         Files.writeString(dir.resolve(CSV_FILE), GeneratedTcCsvParser.toCsv(cases), StandardCharsets.UTF_8);
 
         KeelPathCounts keelPathCounts = KeelPathCounts.from(cases);
@@ -90,6 +114,8 @@ public class GeneratedWorkbookService {
         meta.put("keelPathCounts", keelPathCounts.toMap());
         meta.put("source", source == null ? "GENERATE" : source);
         meta.put("sourceRef", sourceRef == null ? "" : sourceRef);
+        meta.put("revisionId", rev.id());
+        meta.put("parentRevisionId", rev.parentId());
         if (model != null && !model.isBlank()) {
             meta.put("model", model);
         } else if (previous.get("model") != null && !String.valueOf(previous.get("model")).isBlank()) {
@@ -170,6 +196,16 @@ public class GeneratedWorkbookService {
             byte[] bytes,
             String baseUrl
     ) throws Exception {
+        return mergeUploadFile(projectId, originalFilename, bytes, baseUrl, null);
+    }
+
+    public Map<String, Object> mergeUploadFile(
+            String projectId,
+            String originalFilename,
+            byte[] bytes,
+            String baseUrl,
+            String baseRevision
+    ) throws Exception {
         if (bytes == null || bytes.length == 0) {
             throw new IllegalArgumentException("file is required");
         }
@@ -196,7 +232,7 @@ public class GeneratedWorkbookService {
         String sourceRef = originalFilename == null || originalFilename.isBlank()
                 ? projectId
                 : originalFilename.trim();
-        saveFromCases(projectId, merged.cases(), "LIBRARY_UPLOAD", sourceRef, null);
+        saveFromCases(projectId, merged.cases(), "LIBRARY_UPLOAD", sourceRef, null, baseRevision);
         Map<String, Object> out = listCases(projectId);
         out.put("replacedCount", merged.replacedCount());
         out.put("addedCount", merged.addedCount());

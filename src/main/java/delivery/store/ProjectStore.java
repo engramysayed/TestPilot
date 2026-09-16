@@ -68,9 +68,30 @@ public class ProjectStore {
             int next = current.version() + 1;
             Path versioned = root.resolve("versions").resolve("v" + next + ".zip");
             Files.copy(zipFile, versioned, StandardCopyOption.REPLACE_EXISTING);
+            String sha256 = sha256(versioned);
             org.json.JSONObject meta = new org.json.JSONObject();
             meta.put("projectId", projectId);
             meta.put("version", next);
+            meta.put("sha256", sha256);
+            org.json.JSONArray artifacts = new org.json.JSONArray();
+            Path metaFile = root.resolve("project.json");
+            if (Files.exists(metaFile)) {
+                org.json.JSONObject prior = new org.json.JSONObject(Files.readString(metaFile, StandardCharsets.UTF_8));
+                org.json.JSONArray old = prior.optJSONArray("artifacts");
+                if (old != null) {
+                    for (int i = 0; i < old.length(); i++) {
+                        org.json.JSONObject row = old.getJSONObject(i);
+                        row.put("expired", true);
+                        artifacts.put(row);
+                    }
+                }
+            }
+            artifacts.put(new org.json.JSONObject()
+                    .put("version", next)
+                    .put("sha256", sha256)
+                    .put("kind", "CONVERT")
+                    .put("expired", false));
+            meta.put("artifacts", artifacts);
             if (domainHint != null && !domainHint.isBlank()) {
                 meta.put("domain", DomainStorePaths.folderNameFromHostOrUrl(domainHint));
             }
@@ -154,5 +175,15 @@ public class ProjectStore {
                         throw new RuntimeException(e);
                     }
                 });
+    }
+
+    private static String sha256(Path file) {
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(Files.readAllBytes(file));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (Exception e) {
+            return "";
+        }
     }
 }

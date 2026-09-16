@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class JobRecord {
-    public enum Status { QUEUED, RUNNING, COMPLETED, COMPLETED_WITH_BLOCK, FAILED, CANCELLED }
+    public enum Status { QUEUED, RUNNING, CANCELLING, COMPLETED, COMPLETED_WITH_BLOCK, FAILED, CANCELLED }
     public enum JobKind { CONVERT, EXECUTE, GENERATE_BATCH, GENERATE_COMPARE, HUNT }
 
     public static final int MESSAGE_MAX_CHARS = 1024;
@@ -43,6 +43,8 @@ public class JobRecord {
     private volatile String claimStage = "";
     private volatile String inputSnapshotHash = "";
     private volatile String providerAllowlistSnapshot = "";
+    private volatile String libraryRevisionId = "";
+    private volatile int precisionMaxSnapshot;
 
     public JobRecord(String jobId, String projectId, Long ownerUserId, String mode, Path excelPath,
                      String baseUrl, String username, String password) {
@@ -107,6 +109,14 @@ public class JobRecord {
     }
     public void setProviderAllowlistSnapshot(String providerAllowlistSnapshot) {
         this.providerAllowlistSnapshot = providerAllowlistSnapshot == null ? "" : providerAllowlistSnapshot;
+    }
+    public String getLibraryRevisionId() { return libraryRevisionId == null ? "" : libraryRevisionId; }
+    public void setLibraryRevisionId(String libraryRevisionId) {
+        this.libraryRevisionId = libraryRevisionId == null ? "" : libraryRevisionId;
+    }
+    public int getPrecisionMaxSnapshot() { return precisionMaxSnapshot; }
+    public void setPrecisionMaxSnapshot(int precisionMaxSnapshot) {
+        this.precisionMaxSnapshot = Math.max(0, precisionMaxSnapshot);
     }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

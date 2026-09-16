@@ -15,6 +15,18 @@ import java.util.Map;
 public class PortalExceptionHandler {
     private static final Logger log = LogManager.getLogger(PortalExceptionHandler.class);
 
+    @ExceptionHandler(delivery.job.JobAdmissionException.class)
+    public ResponseEntity<Map<String, String>> admissionRejected(delivery.job.JobAdmissionException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(new ApiError(e.code(), e.getMessage()).asMap());
+    }
+
+    @ExceptionHandler(delivery.store.StaleLibraryRevisionException.class)
+    public ResponseEntity<Map<String, String>> staleLibrary(delivery.store.StaleLibraryRevisionException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiError("LIBRARY_CONFLICT", e.getMessage()).asMap());
+    }
+
     @ExceptionHandler(InvalidExcelTemplateException.class)
     public ResponseEntity<Map<String, String>> invalidExcel(InvalidExcelTemplateException e) {
         return ResponseEntity.badRequest().body(new ApiError(e.getErrorCode(), e.getMessage()).asMap());

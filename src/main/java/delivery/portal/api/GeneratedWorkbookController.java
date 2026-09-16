@@ -201,7 +201,8 @@ public class GeneratedWorkbookController {
     )
     public ResponseEntity<?> uploadMerge(
             @PathVariable("projectId") String projectId,
-            @RequestParam("file") MultipartFile file
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "baseRevision", required = false) String baseRevision
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
         ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
@@ -222,7 +223,8 @@ public class GeneratedWorkbookController {
                     projectId,
                     file.getOriginalFilename(),
                     file.getBytes(),
-                    projectOpt.get().getBaseUrl()));
+                    projectOpt.get().getBaseUrl(),
+                    baseRevision));
         } catch (InvalidExcelTemplateException e) {
             return ResponseEntity.badRequest()
                     .body(new ApiError(

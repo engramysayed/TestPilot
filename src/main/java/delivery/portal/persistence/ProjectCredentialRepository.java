@@ -9,4 +9,5 @@ public interface ProjectCredentialRepository extends JpaRepository<ProjectCreden
     List<ProjectCredentialEntity> findByProjectIdOrderByProfileNameAsc(String projectId);
     Optional<ProjectCredentialEntity> findByProjectIdAndProfileName(String projectId, String profileName);
     void deleteByProjectIdAndProfileName(String projectId, String profileName);
+    void deleteByProjectId(String projectId);
 }

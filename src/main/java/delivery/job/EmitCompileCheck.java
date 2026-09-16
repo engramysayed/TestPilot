@@ -2,12 +2,10 @@ package delivery.job;
 
 import utils.LogsManager;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
+import java.util.function.BooleanSupplier;
 
 /**
  * Optional Maven smoke on the generated customer project before COMPLETED.
@@ -20,6 +18,10 @@ public final class EmitCompileCheck {
     }
 
     public static void runIfEnabled(Path projectDir) throws Exception {
+        runIfEnabled(projectDir, Duration.ofMinutes(10), () -> false);
+    }
+
+    public static void runIfEnabled(Path projectDir, Duration deadline, BooleanSupplier cancel) throws Exception {
         if (!enabled()) {
             LogsManager.info("EMIT_COMPILE_CHECK skipped (delivery.emit-compile-check=false)");
             return;
@@ -35,28 +37,21 @@ public final class EmitCompileCheck {
                 "-Dmaven.compiler.release=21",
                 "test-compile");
         pb.directory(projectDir.toFile());
-        pb.redirectErrorStream(true);
-        Process proc = pb.start();
-        StringBuilder out = new StringBuilder();
-        try (BufferedReader r = new BufferedReader(
-                new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = r.readLine()) != null) {
-                out.append(line).append('\n');
-            }
+        ProcessSupervisor.Result result = ProcessSupervisor.run(
+                pb, deadline == null ? Duration.ofMinutes(10) : deadline, cancel, 32_000);
+        if (result.cancelled()) {
+            throw new JobCancelledException();
         }
-        boolean finished = proc.waitFor(10, TimeUnit.MINUTES);
-        if (!finished) {
-            proc.destroyForcibly();
-            throw new IllegalStateException("EMIT_COMPILE_CHECK timed out after 10m");
+        if (result.timedOut()) {
+            throw new IllegalStateException("EMIT_COMPILE_CHECK timed out after " + deadline);
         }
-        if (proc.exitValue() != 0) {
+        if (!result.completedNormally()) {
             Path log = projectDir.resolve("docs/EMIT_COMPILE_FAIL.log");
             Files.createDirectories(log.getParent());
-            Files.writeString(log, out.toString(), StandardCharsets.UTF_8);
+            Files.writeString(log, result.output() == null ? "" : result.output());
             throw new IllegalStateException(
                     "EMIT_COMPILE_CHECK failed (test-compile) — see " + log.toAbsolutePath()
-                            + " (exit=" + proc.exitValue() + ")");
+                            + " (exit=" + result.exitCode() + ")");
         }
         LogsManager.info("EMIT_COMPILE_CHECK ok (test-compile) for " + projectDir.getFileName());
     }
@@ -70,7 +65,7 @@ public final class EmitCompileCheck {
             p = utils.PropertyReader.getProperty("delivery.emit-compile-check");
         }
         if (p == null || p.isBlank()) {
-            return true; // default on after Phase A
+            return true;
         }
         return "true".equalsIgnoreCase(p.trim()) || "1".equals(p.trim());
     }
