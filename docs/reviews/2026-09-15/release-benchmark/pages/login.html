@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Keel benchmark login</title>
+</head>
+<body>
+  <h1>Sign in</h1>
+  <form id="login-form">
+    <label>Username <input id="username" name="username" autocomplete="username"></label>
+    <label>Password <input id="password" name="password" type="password" data-sensitive="credential" autocomplete="current-password"></label>
+    <button id="sign-in" type="submit">Sign in</button>
+  </form>
+  <p id="error" hidden>Invalid credentials</p>
+  <script>
+    document.getElementById("login-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var user = document.getElementById("username").value;
+      var pass = document.getElementById("password").value;
+      if (user === "demo" && pass === "demo-pass") {
+        sessionStorage.setItem("keel-bench-auth", "1");
+        window.location.href = "home.html";
+      } else {
+        document.getElementById("error").hidden = false;
+      }
+    });
+  </script>
+</body>
+</html>

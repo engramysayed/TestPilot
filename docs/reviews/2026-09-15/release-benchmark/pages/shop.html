@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Keel benchmark shop</title>
+</head>
+<body>
+  <h1>Shop</h1>
+  <label>Size
+    <select id="size" name="size">
+      <option>S</option>
+      <option selected>M</option>
+      <option>L</option>
+    </select>
+  </label>
+  <button id="add-widget" type="button">Add widget to cart</button>
+  <p id="added" hidden>Widget added</p>
+  <nav>
+    <a href="cart.html">Cart</a>
+    <a href="home.html">Home</a>
+  </nav>
+  <script>
+    document.getElementById("add-widget").addEventListener("click", function () {
+      sessionStorage.setItem("keel-bench-cart", "1");
+      document.getElementById("added").hidden = false;
+    });
+  </script>
+</body>
+</html>

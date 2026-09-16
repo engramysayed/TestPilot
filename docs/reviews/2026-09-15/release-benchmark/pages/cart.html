@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Keel benchmark cart</title>
+</head>
+<body>
+  <h1>Cart</h1>
+  <p id="cart-status">Cart is empty</p>
+  <nav>
+    <a href="shop.html">Shop</a>
+    <a href="checkout.html">Checkout</a>
+  </nav>
+  <script>
+    if (sessionStorage.getItem("keel-bench-cart") === "1") {
+      document.getElementById("cart-status").textContent = "Cart: 1 item";
+    }
+  </script>
+</body>
+</html>

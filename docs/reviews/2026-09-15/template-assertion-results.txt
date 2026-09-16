@@ -1,0 +1,4 @@
+[31m[ERROR] - [15-09-2026 15:35:03] [main] [project.validations.Assertion] - Soft assertion failed: AUDIT: deliberately false customer assertion
+[m[31m[ERROR] - [15-09-2026 15:35:03] [main] [project.validations.Validation] - Assertion Failed The following asserts failed:
+	AUDIT: deliberately false customer assertion expected [true] but found [false]
+[mF00 | DEFECT REPRODUCED | Deliberately false customer assertion propagated to runner: false

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Keel benchmark checkout</title>
+</head>
+<body>
+  <h1>Checkout</h1>
+  <p id="checkout-status">Cannot checkout</p>
+  <button id="place-order" type="button" hidden>Place order</button>
+  <nav>
+    <a href="cart.html">Cart</a>
+    <a href="home.html">Home</a>
+  </nav>
+  <script>
+    var hasCart = sessionStorage.getItem("keel-bench-cart") === "1";
+    var status = document.getElementById("checkout-status");
+    var button = document.getElementById("place-order");
+    if (hasCart) {
+      status.textContent = "Ready to pay";
+      button.hidden = false;
+      button.addEventListener("click", function () {
+        sessionStorage.removeItem("keel-bench-cart");
+        status.textContent = "Order confirmed";
+        button.hidden = true;
+      });
+    }
+  </script>
+</body>
+</html>

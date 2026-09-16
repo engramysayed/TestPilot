@@ -1,0 +1,3362 @@
+[
+  {
+    "path": ".specify/memory/constitution.md",
+    "bytes": 7002,
+    "title": "TestPilot Delivery Platform Constitution",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# TestPilot Delivery Platform Constitution",
+      "## Core Principles",
+      "### I. Deliver Ready Automation Packages",
+      "### II. Controlled Input Contract",
+      "### III. Local AI Authoring with Deterministic Codegen",
+      "### IV. Validate Before Persist",
+      "### V. Adaptable Core, Invite Portal, Phase Discipline",
+      "## Delivery Platform Constraints",
+      "## Development Workflow",
+      "## Governance"
+    ],
+    "sha256": "305BD52AAEBB2C528779CD94226160F35A76C79E920914BEE043642F824EBD00"
+  },
+  {
+    "path": "CHANGELOG.md",
+    "bytes": 14894,
+    "title": "Keel changelog\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Keel changelog",
+      "## How to add a publish note",
+      "## 2026-09-11 — Bug Hunter quality pass 2",
+      "### What you can do",
+      "### Why",
+      "### How to use it",
+      "### Known limits",
+      "## 2026-09-11 — Precision authoring engine (Keel vs Cursor)",
+      "### What you can do",
+      "### Why",
+      "### How to use it",
+      "### What we did not change",
+      "### Known limits",
+      "## 2026-09-10 — Bug Hunter (exploratory) + quality loop",
+      "### What you can do",
+      "### Why",
+      "### How to use it",
+      "### What we did not change",
+      "### Known limits",
+      "## 2026-09-07 — Project library, honest runs, optional Cursor pre-run",
+      "### 1. Generated cases stay on the project",
+      "### 2. Execute / Automate: pick library cases and mix an upload",
+      "### 3. CSV download can be uploaded again",
+      "### 4. Optional Cursor review right before a run",
+      "### 5. Generate does not invent TestData unless you allow it",
+      "### 6. Login cases run as the case, not a hidden prelude",
+      "### 7. Jobs that cannot prove anything fail honestly",
+      "### 8. Locator memory does not treat every click as login",
+      "### 9. Login page wait before typing",
+      "### 10. Execute Results button",
+      "## What this release did not change",
+      "## Known limits (read before you demo)",
+      "## Earlier published work (short)",
+      "### 2026-09-06 — Generate authoring preflight review",
+      "### 2026-09-02 — Heal recovery written back to the workbook",
+      "### Portal publish — Generate, Automate, Execute",
+      "## Suggested demo path for this release"
+    ],
+    "sha256": "9356EA3C9D11F944F5056B243F713C91F438EDDB5FEA389428C8E9832D8888F0"
+  },
+  {
+    "path": "customer-framework-template/README.md",
+    "bytes": 4596,
+    "title": "Customer framework core (static TAF)\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Customer framework core (static TAF)",
+      "## Package map",
+      "### `project.drivers` — browser lifecycle",
+      "### `project.utils.Actions` — Selenium verbs",
+      "### `project.validations` — assert strategy",
+      "### `project.utils` — cross-cutting",
+      "### `project.utils.reports` — Allure",
+      "### `project.media`",
+      "### `project.listeners`",
+      "### `project.tests` (base only)",
+      "## Domain pages (added by Delivery codegen)",
+      "### How to run generated tests"
+    ],
+    "sha256": "F8303467D5B585C47F05791C19C6CEDACB0429E5B87FC1788309AD14AFC771E2"
+  },
+  {
+    "path": "docs/ENGINEERING_HANDOFF.md",
+    "bytes": 6435,
+    "title": "Keel — Engineering handoff\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Keel — Engineering handoff",
+      "## Core flows",
+      "## Recent design specs (authoring, import, heal)",
+      "## Bug Hunter (summary)",
+      "## Precision authoring engine (summary)",
+      "## Heal contract (summary)",
+      "## Quality gate (summary)",
+      "## Conventions",
+      "## Tests (focused)"
+    ],
+    "sha256": "B744C92EAB9D1D7E741BDD07849DC8E66E8F05386C4FB4869053909781FF4ABB"
+  },
+  {
+    "path": "docs/ops/any-site-hard-ladder.md",
+    "bytes": 2634,
+    "title": "Any-site hard ladder (site-agnostic stress pack)\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Any-site hard ladder (site-agnostic stress pack)",
+      "## How to use",
+      "## Ladder (difficulty)",
+      "## Placeholder cheat sheet",
+      "## Regenerate template"
+    ],
+    "sha256": "4F3E4CC3E19711EA3F2003A83056404197C9D100DFF90A346877CA383FD0049E"
+  },
+  {
+    "path": "docs/ops/architecture-audit.md",
+    "bytes": 7454,
+    "title": "Architecture audit — flow, defects, enhancements\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Architecture audit — flow, defects, enhancements",
+      "## Flow to lowest nodes (runtime)",
+      "## Defects (prioritized todos)",
+      "### P0 — fix before treating ZIPs as production-ready",
+      "### P1 — honesty / ops / security",
+      "### P2 — clustering / coverage",
+      "## Required enhancement backlog (ship order)",
+      "## Brainstorm — high-value product ideas",
+      "### Differentiation (why customers pay)",
+      "### Reliability",
+      "### Cursor / AI leverage (cost-aware)",
+      "### Platform",
+      "### Domain quality",
+      "### Suggested next 3 (highest ROI)",
+      "## Graphify ops"
+    ],
+    "sha256": "D00027AFD912D6D1E0A358C78293655A5EE9A820A8FE5F3D2170C8765187607D"
+  },
+  {
+    "path": "docs/ops/bug-hunter-live-smoke.md",
+    "bytes": 1035,
+    "title": "Bug Hunter — live smoke checklist\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Bug Hunter — live smoke checklist"
+    ],
+    "sha256": "0739A6BBFBB4F08B7BD926F56BD22751B262D55159C8AF478386AB0151E31386"
+  },
+  {
+    "path": "docs/ops/draft-final-revise-layer.md",
+    "bytes": 6228,
+    "title": "Plan — Final revise layer (AgentRouter + Opus)\r",
+    "status": "**Status:** Implemented (v1 Mode B + soft block) — pilot next  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Plan — Final revise layer (AgentRouter + Opus)",
+      "## Flow (confirm this)",
+      "## Locked choices",
+      "## Mode B (v1)",
+      "## What reviser checks (per TC)",
+      "## Cost guardrails (~$175 AgentRouter)",
+      "## Prompt injection (your question)",
+      "## Build steps",
+      "## Block behavior — **LOCKED: Soft block**",
+      "## Pilot success",
+      "## Risks",
+      "## Troubleshooting the gateway"
+    ],
+    "sha256": "76EA9E185444494A3B67CC954EE9D911055DC1E48D6A8DA70DD9537A9AB13D4C"
+  },
+  {
+    "path": "docs/ops/e2e-conversion-gate.md",
+    "bytes": 1696,
+    "title": "E2E conversion gate (NEW + UPDATE) — site-agnostic\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# E2E conversion gate (NEW + UPDATE) — site-agnostic",
+      "## Prerequisites",
+      "## Gate A — NEW (T041)",
+      "## Gate B — UPDATE (T049)",
+      "## Helper script",
+      "# Optional: -ExcelPath path\\to\\your.xlsx"
+    ],
+    "sha256": "4F317311C48F3DDDEB6DC67CB88E37396B75F0222C533987BFCE50FDAEC996AF"
+  },
+  {
+    "path": "docs/ops/end-to-end-flow.md",
+    "bytes": 10868,
+    "title": "TestPilot end-to-end flow\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# TestPilot end-to-end flow",
+      "## 1. Whole job",
+      "## 2. One test case in Phase 1",
+      "## 3. One step: bind, execute, heal, re-execute",
+      "## 4. Inside the heal cascade",
+      "## Heal tiers",
+      "## Client delivery — final revise",
+      "## Configuration flags",
+      "## Authoring engine (Automate + Execute)"
+    ],
+    "sha256": "23E4596C17ADD657D726E1EB2DF45609A5F2584AD6172547A27BA261AE3B3F28"
+  },
+  {
+    "path": "docs/ops/local-live-ollama.md",
+    "bytes": 3979,
+    "title": "Live local conversion (Ollama on this PC)\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Live local conversion (Ollama on this PC)",
+      "## Prerequisites",
+      "## Heal cascade (DOM → Ollama → Cursor Auto)",
+      "### Cursor sidecar setup",
+      "## CLI smoke (SauceDemo)",
+      "## Portal smoke",
+      "## Codegen rules",
+      "## Later: Windows VPS"
+    ],
+    "sha256": "A1C63958DCEB5C29C1574B44F8EDFB56A2BB402DC6918DDF311420552C9AD1E5"
+  },
+  {
+    "path": "docs/ops/ollama-local.md",
+    "bytes": 1122,
+    "title": "Local Ollama for Delivery conversion\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Local Ollama for Delivery conversion",
+      "## Do you need `curl …/api/tags` every time?",
+      "## Vision heal",
+      "## iframe / Shadow DOM"
+    ],
+    "sha256": "BC9AE4D32C888D148FEB0811E9306D863AE1661A3FD24F67730A52C5725DD14C"
+  },
+  {
+    "path": "docs/ops/portal-restart.md",
+    "bytes": 826,
+    "title": "Portal restart (pick up conversion fixes)\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Portal restart (pick up conversion fixes)",
+      "## When you must restart",
+      "## Steps (Windows)"
+    ],
+    "sha256": "EB3207FCB9E28B397F883084CEEAA06C1E8205943B113B17D4DDA70FCD0AA01E"
+  },
+  {
+    "path": "docs/ops/windows-vps-setup.md",
+    "bytes": 2785,
+    "title": "Windows VPS setup (no Docker)\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 5,
+    "headings": [
+      "# Windows VPS setup (no Docker)",
+      "## Recommended machine",
+      "## One-time installs (RDP in)",
+      "## Deploy the app",
+      "## Enable real conversion (optional)",
+      "## HTTPS (recommended)",
+      "## Survive reboot",
+      "## Backups",
+      "## Security checklist"
+    ],
+    "sha256": "4DF2FAB6DAA792D55DB34EBCECF84D0E19597BCF868442551FA0F89CA7D222EA"
+  },
+  {
+    "path": "docs/PRODUCT.md",
+    "bytes": 18684,
+    "title": "Keel — what the product can do today\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Keel — what the product can do today",
+      "## Sign in and accounts",
+      "## Dashboard",
+      "## Projects",
+      "### Create and list",
+      "### Settings",
+      "### Automation tab",
+      "### Test cases tab",
+      "## Generate",
+      "### From stories (Ollama)",
+      "### Compare two models",
+      "### All in one pipeline",
+      "### Bulk generate",
+      "### Paste from external AI",
+      "### Preview and edit",
+      "### Quality gate (always)",
+      "### Review with AI (Generate)",
+      "## Guide",
+      "## KeelPath (routing)",
+      "## Bug Hunter",
+      "### Start a hunt (`/bug-hunter`)",
+      "### What each cycle does",
+      "### End of hunt",
+      "### Outputs (downloadable ZIP)",
+      "### Limits (today)",
+      "## Execute & verify",
+      "### Start a run",
+      "### While it runs",
+      "### Results",
+      "## Automate",
+      "### Hub (`/automate`)",
+      "### Upload & convert (`/upload`)",
+      "### What the job does (in order)",
+      "### Jobs & status",
+      "## Authoring engine (Keel vs Precision)",
+      "## Vision (optional)",
+      "## Command line",
+      "## What Keel does **not** do (today)",
+      "## Suggested first-time path",
+      "## Where the other docs fit"
+    ],
+    "sha256": "9153E98B0E2E1A7188BEBBDDE2535C5948891B5A305FDFAFE1C084B5C7B1BD9A"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-04-testpilot-delivery-platform.md",
+    "bytes": 19743,
+    "title": "TestPilot Delivery Platform MVP — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Deliver a hosted MVP where customers upload our Excel TCs + URL/login, choose New or Update, and download a Java/Selenium/TestNG ZIP (reports + CI) with passed tests and TODO stubs for failures — authored by **local AI only**."
+    ],
+    "checked": 0,
+    "unchecked": 51,
+    "headings": [
+      "# TestPilot Delivery Platform MVP — Implementation Plan",
+      "## Global Constraints",
+      "## Scope note (phases)",
+      "## File map (target)",
+      "### Task 1: Customer framework core template",
+      "### Task 2: Excel TC model + reader",
+      "### Task 3: Locator policy + validator",
+      "### Task 4: Local LLM client (Ollama) — replace cloud for delivery path",
+      "### Task 5: AuthoringService (Excel TC + DOM → proven steps JSON)",
+      "### Task 6: Execute + validate loop for one TC",
+      "### Task 7: Code writer (templates → pages + tests)",
+      "### Task 8: Packager + New job runner (CLI)",
+      "### Task 9: Project store + Update mode",
+      "### Task 10: Thin portal + API",
+      "### Task 11: Hardening checklist (before calling MVP done)",
+      "## Spec coverage check",
+      "## Execution handoff"
+    ],
+    "sha256": "4752635AC9A983031D09EA4C40AA0B133A2CA68FACE2A220828541F71ECE6845"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-05-local-ollama-track-a.md",
+    "bytes": 3632,
+    "title": "Track A — Local Ollama live conversion (then server later)\r",
+    "status": "**Status**: Awaiting your OK on smoke app + “build”",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Track A — Local Ollama live conversion (then server later)",
+      "## What you already have (verified on this PC)",
+      "## What YOU do (explained)",
+      "### 1) Keep Ollama running",
+      "### 2) Have Chrome installed",
+      "### 3) Choose the first test website (answer needed)",
+      "### 4) After we change the code/config — restart portal",
+      "### 5) Do **not** move to a VPS yet",
+      "## What I will do (detailed)",
+      "### Step 1 — Wire config to your model",
+      "### Step 2 — Fix login (critical gap)",
+      "### Step 3 — Better generated tests",
+      "### Step 4 — Local smoke tests",
+      "### Step 5 — Docs",
+      "## Honest expectations",
+      "## Out of this slice",
+      "## Locked codegen / locator rules (product owner)",
+      "## Decision gate"
+    ],
+    "sha256": "B0DBB10EE333E77517F47878072FD85804DFE8AA277F3A046D689E6F455FB0AE"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-10-startup-api-keys.md",
+    "bytes": 4414,
+    "title": "Startup API Keys Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Load `AGENTROUTER_API_KEY` (and optional `CURSOR_API_KEY`) from a gitignored local BAT whenever the portal starts."
+    ],
+    "checked": 0,
+    "unchecked": 7,
+    "headings": [
+      "# Startup API Keys Implementation Plan",
+      "## Global Constraints",
+      "### Task 1: Gitignored local keys + BAT wiring",
+      "## Spec coverage"
+    ],
+    "sha256": "09AD257E18CD89BC936F794CD3C4E67B1B8A9ECB2143AEFFE182B87CAAC79496"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-13-heal-cascade-hardening-ledger.md",
+    "bytes": 1928,
+    "title": "Heal cascade hardening — progress ledger\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Heal cascade hardening — progress ledger",
+      "## Commits",
+      "## Post-review fixes (2026-08-13)",
+      "## Known open issue (pre-existing, not from this work)"
+    ],
+    "sha256": "7E6439F1FF91E4E20202073488AC9B8C1DB1EE836431FEDE7B01F22677B46D01"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-13-heal-cascade-hardening.md",
+    "bytes": 17909,
+    "title": "Heal Cascade Hardening Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Make live heal recover more Excel steps before honest TODO/PARTIAL by adding action history, Thought+Action prompts, vision when the DOM shortlist is weak/empty, and a validated free-invent last hope — without changing AgentRouter’s post-prove client-delivery role."
+    ],
+    "checked": 0,
+    "unchecked": 28,
+    "headings": [
+      "# Heal Cascade Hardening Implementation Plan",
+      "## Global Constraints",
+      "## AgentRouter role (locked)",
+      "## Target heal flow",
+      "### Task 0: Spec lock + heal API shape",
+      "### Task 1: Action history plumbing (`ProvePhase` → `HealCascade`)",
+      "### Task 2: Thought + Action prompts (shortlist path only)",
+      "### Task 3: Vision heal when DOM is weak / shortlist empty",
+      "### Task 4: Free-invent last hope (empty candidates + post-Cursor)",
+      "### Task 5: Honesty / final revise awareness of new tiers",
+      "### Task 6: Verification + ambiguity checklist pass",
+      "## Ambiguities & likely bugs (resolve during implementation)",
+      "### Product / policy",
+      "### Technical bugs to watch",
+      "### Open questions (defaults if unanswered)",
+      "## Spec coverage",
+      "## Out of scope",
+      "## What you will see after this ships"
+    ],
+    "sha256": "39607F14E785A6DB794679ED0C48A375612CE25C1E9C04FC188731392C42E212"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-17-codegen-void-pages-and-assert-helpers.md",
+    "bytes": 18469,
+    "title": "Codegen Void Pages, Merge, and Assert Helpers Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Emit one page class pair per screen (no Login/LoginForm twins), void action/assert methods, prefer submit/button locators over form containers, and drive asserts through Assertion helpers instead of invented Freemarker bodies."
+    ],
+    "checked": 0,
+    "unchecked": 26,
+    "headings": [
+      "# Codegen Void Pages, Merge, and Assert Helpers Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: PageNameNormalizer",
+      "### Task 2: LocatorPreference + PageAccumulator click merge",
+      "### Task 3: Assertion helpers on customer template",
+      "### Task 4: Void PageActions template + helper-only asserts",
+      "### Task 5: Integration smoke — one login page pair",
+      "## Spec coverage self-review",
+      "## Execution handoff"
+    ],
+    "sha256": "8704FF9341E50E92AF11F6BB75F2523724D48F1227ABCDFBD1A5CF84DB8C70A2"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-17-honest-bind-and-heal-recovery.md",
+    "bytes": 29802,
+    "title": "Honest Bind + Heal Recovery Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Make bind honest on generic layout chrome and text-phrase asserts, then make execute-fail heal ban dead locators and try remaining named controls before Ollama — without any site-specific rules."
+    ],
+    "checked": 0,
+    "unchecked": 37,
+    "headings": [
+      "# Honest Bind + Heal Recovery Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "## Target flows",
+      "### Task 1: Adjacent caption (no layout-div theft)",
+      "### Task 2: Phrase asserts skip scoring / AMBIGUOUS",
+      "### Task 3: Same-control identity (id vs css vs xpath)",
+      "### Task 4: Word-ish token match",
+      "### Task 5: Failed-locator ledger types + exclusion",
+      "### Task 6: Heal named retry before Ollama",
+      "### Task 7: Live liveness probe",
+      "### Task 8: ProvePhase failed-locator collection",
+      "### Task 9: Verification",
+      "## Spec coverage",
+      "## Self-review"
+    ],
+    "sha256": "FA844E254EE89DCE328554CECDF6AE98EC282AD509647396129B0EB7F6C22E57"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-17-layer1-bind-hardening.md",
+    "bytes": 12723,
+    "title": "Layer-1 Bind Hardening Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Fix the Important (and highest-impact Minor) defects in DOM extract → score → winner binding so emitted locators stay correct under apostrophes, caption layouts, label collisions, fragile ordinals, and aggressive near-ties."
+    ],
+    "checked": 0,
+    "unchecked": 23,
+    "headings": [
+      "# Layer-1 Bind Hardening Implementation Plan",
+      "## Global Constraints",
+      "## Impact order (why this sequence)",
+      "## File map",
+      "### Task 1: Shared xpath literal escape (P1)",
+      "### Task 2: AccessibleName skip non-caption siblings (P2)",
+      "### Task 3: Exact label uniqueness (P3)",
+      "### Task 4: Safer indexed selectors (P4)",
+      "### Task 5: Near-tie policy + AMBIGUOUS fallback (P5)",
+      "### Task 6: Failed locators on in-TC bind (P6)",
+      "### Task 7: Drop checkbox nth-of-type CSS (P7)",
+      "## Spec coverage self-review",
+      "## Execution handoff"
+    ],
+    "sha256": "E0AFADDF2751856276C7CC0F0C6F5DCE8B65EDB674D963B4AE1FF09E3614642D"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-18-testdata-locator-memory.md",
+    "bytes": 4991,
+    "title": "TestData, Locator Memory, Submit CTA, Visual Honesty — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Fix the Facebook 153010 failures (wrong Submit, visual UNCERTAIN demotion), add optional per-step TestData with Faker when blank, and reuse proven locators per host+Excel path."
+    ],
+    "checked": 0,
+    "unchecked": 12,
+    "headings": [
+      "# TestData, Locator Memory, Submit CTA, Visual Honesty — Implementation Plan",
+      "## Global Constraints",
+      "### Task 1: Form Submit CTA honesty",
+      "### Task 2: Visual assert does not demote UNCERTAIN",
+      "### Task 3: Optional TestData column + Faker when blank",
+      "### Task 4: Domain locator memory",
+      "### Task 5: Verify"
+    ],
+    "sha256": "4AC6BEC9DAF0F2F95F3FC100EB7BFFBFED2D520C680881F4E4D41F8132ADAD7E"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-18-vision-grounding.md",
+    "bytes": 24955,
+    "title": "Vision Grounding (Layer 1.5 / Heal 2.5) Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Add a pluggable vision candidate generator that maps screenshot bboxes to live DOM nodes via `elementFromPoint`, used only when Layer 1 bind is weak or heal needs a spatial widen — never as execution authority and never as a Midscene rewrite."
+    ],
+    "checked": 0,
+    "unchecked": 21,
+    "headings": [
+      "# Vision Grounding (Layer 1.5 / Heal 2.5) Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: DTOs, provider interface, config, fake",
+      "# Vision grounding (Layer 1.5 + heal bbox). Off = DOM bind only.",
+      "# delivery.vision.grounding.enabled=false",
+      "# delivery.vision.provider=qwen",
+      "# delivery.vision.model=",
+      "### Task 2: CoordinateMapper (CSS pixels)",
+      "### Task 3: ElementGrounder (fromPoint → candidate)",
+      "### Task 4: Weak-bind detector + VisionGroundingEngine (no live VLM)",
+      "### Task 5: ViewportSweep (cap 8)",
+      "### Task 6: QwenVisionProvider (local Ollama)",
+      "### Task 7: SeleniumGroundingBrowser + ProvePhase Layer 1.5 + Heal bbox + logs",
+      "### Task 8: UiTarsVisionProvider stub",
+      "## Spec coverage self-review",
+      "## Execution handoff"
+    ],
+    "sha256": "3A15A2D1C6450ACCA611F5F5FB14F82C2918B02A5AB76BE896E341AA69E4F824"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-18-visual-assertions.md",
+    "bytes": 6866,
+    "title": "Visual Assertions + Heal Vision Hints Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Opt-in Excel `VisualAssertion` after a TC proves, plus compact VLM attempt lines in Ollama/Cursor/invent heal prompts."
+    ],
+    "checked": 0,
+    "unchecked": 14,
+    "headings": [
+      "# Visual Assertions + Heal Vision Hints Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: Excel optional VisualAssertion",
+      "### Task 2: Assertion parser + provider method",
+      "### Task 3: Config flags + gate + evidence + ProvePhase hook",
+      "### Task 4: VisionAttempt heal hints",
+      "### Task 5: Enable for local testing",
+      "## Spec coverage"
+    ],
+    "sha256": "C44775A0F284221A104045869070F8F0C4A18A0349F4E55A2B3B6A366ACACCA9"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-19-tc-guide-testdata-ux.md",
+    "bytes": 1961,
+    "title": "TC guide TestData UX — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Document TestData / VisualAssertion on `/tc-guide` and surface a compact strip on `/upload` that deep-links to those rules."
+    ],
+    "checked": 8,
+    "unchecked": 0,
+    "headings": [
+      "# TC guide TestData UX — Implementation Plan",
+      "## Global Constraints",
+      "### Task 1: Update `/tc-guide` content + visuals",
+      "### Task 2: Upload compact strip",
+      "### Task 3: Smoke-check"
+    ],
+    "sha256": "E09533F3713E60492881BAFAFBA5EB36B3D8A1210717A495DAD937FD96A45FB4"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-21-codegen-control-identity.md",
+    "bytes": 12567,
+    "title": "Codegen Control Identity Fix Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Make each proven control emit a unique, human field/method/property identity so Facebook-style forms (First name, Surname, Day, Month, Year, Gender, email, Password, Submit) do not collapse into `type_Type` / `select_Select` / one shared testdata key."
+    ],
+    "checked": 2,
+    "unchecked": 17,
+    "headings": [
+      "# Codegen Control Identity Fix Implementation Plan",
+      "## Global Constraints",
+      "## Evidence (last Facebook run)",
+      "## File map",
+      "### Task 1: semanticToken extracts label and aria-label",
+      "### Task 2: PageAccumulator + testdata stay 1:1 with locators",
+      "### Task 3: Emit smell gate (fail closed)",
+      "### Task 4: Re-emit Facebook IR and prove package is sane",
+      "### Task 5 (thin, optional follow-up): Submit vs Sign up bind",
+      "## Verification (definition of done)",
+      "## Self-review",
+      "## Execution handoff"
+    ],
+    "sha256": "024C9C40DB9FF1570A5E48802114F7AE8C61799E143C4F40109758638B25FF7B"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-21-delivery-polish-uitars-emit.md",
+    "bytes": 12472,
+    "title": "Delivery polish: UI-TARS honesty, Submit bind proof, emit hygiene — Implementation Plan\r",
+    "status": "**Status: DEFERRED LIVE.** Unit bind preference (2A) is in place; package IR unchanged until you run portal re-prove.",
+    "goals": [
+      "**Goal:** Close the highest-risk gaps left after codegen identity + Submit scoring + gender `field=` work: make UI-TARS visual results trustworthy, prove Submit prefers buttons on Facebook-shaped DOM, and harden emit so bad packages fail closed before partial writes."
+    ],
+    "checked": 22,
+    "unchecked": 5,
+    "headings": [
+      "# Delivery polish: UI-TARS honesty, Submit bind proof, emit hygiene — Implementation Plan",
+      "## Global Constraints",
+      "## Recommendation (read this first)",
+      "## File map",
+      "### Task 1: UI-TARS honesty — prove gate + prompt parity (P0)",
+      "### Task 2A: Submit bind — Facebook-shaped candidate table (P1, no live browser)",
+      "### Task 2B: Live Facebook Submit re-prove (P3, optional)",
+      "### Task 3: Emit hygiene — smell before write + naming leftovers (P2)",
+      "### Task 4: UI-TARS heal stress run (P4, optional / learning)",
+      "## Verification (definition of done for the recommended trio)",
+      "## Self-review",
+      "## Execution handoff"
+    ],
+    "sha256": "7278CB1ECCD3C86D6252E28BB892F7DD3E17E812EA98F0D16AA7B8CB0EF4622C"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-21-delivery-polish-uitars-scorecard.md",
+    "bytes": 2060,
+    "title": "UI-TARS / Submit polish — execution scorecard (2026-08-21)\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# UI-TARS / Submit polish — execution scorecard (2026-08-21)",
+      "## Task 1 — UI-TARS honesty (DONE)",
+      "## Task 2A — Submit bind Facebook-shaped (DONE)",
+      "## Task 2B — Facebook Submit live rebind (DONE — evening follow-up)",
+      "## Task 3 — Smell before write (DONE)",
+      "## Task 4 — Heal stress + live UI-TARS",
+      "## Still optional"
+    ],
+    "sha256": "9D6543300E94BC46D7B7854D83961B875631F3F084F17E51BBA3086EC59F694E"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-21-delivery-quality-hardening.md",
+    "bytes": 17372,
+    "title": "Delivery Quality Hardening Implementation Plan\r",
+    "status": "**Status:** Tasks 0–6 implemented (2026-08-21). Remaining work is live SauceDemo re-prove to confirm healTier=none / overview enrichment on a fresh run.",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 31,
+    "headings": [
+      "# Delivery Quality Hardening Implementation Plan",
+      "## Global Constraints",
+      "## Findings snapshot (last SauceDemo run)",
+      "## File map",
+      "### Task 0: Fix PageAccumulator over-merge + fail packaging on test-compile",
+      "### Task 1: Visual assert honesty (template echo PASS)",
+      "### Task 2: Reduce prove heal/retry flakiness (settle)",
+      "### Task 3: Stronger expected-result coverage",
+      "### Task 4: Prefer durable locators over body-text XPath",
+      "### Task 5: Externalize invented type values",
+      "### Task 6: Customer docs — DOMAIN_CATALOG + README appendix",
+      "# Domain catalog (this delivery)",
+      "## Pages",
+      "## Tests",
+      "## How to run",
+      "## Verification checklist (definition of done)",
+      "## Self-review",
+      "## Execution handoff"
+    ],
+    "sha256": "F774A1E82AF03FF3336DAEFE5AED1F4A616378F1139C50F7E7F1C41E82E9B17E"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-21-facebook-submit-rebind-notes.md",
+    "bytes": 490,
+    "title": "Facebook Submit live rebind — 2026-08-21T17:53:45.214064Z\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Facebook Submit live rebind — 2026-08-21T17:53:45.214064Z"
+    ],
+    "sha256": "ACBC48E28F3F5652ADA227A44CE3183BBAFA55F8D1A75F579E02D5C74647DB5E"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-21-keel-portal-domains-uitars.md",
+    "bytes": 5570,
+    "title": "Keel portal + domain admin + ui-tars — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Rebrand the portal as **Keel** with a brighter enterprise UX and 2:1 login, add admin full-domain store wipe, nest store under `domain/projectId`, and document/switch vision to **ui-tars** on capable local GPUs."
+    ],
+    "checked": 0,
+    "unchecked": 30,
+    "headings": [
+      "# Keel portal + domain admin + ui-tars — Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: Logo + favicon assets",
+      "### Task 2: Login 2:1 + Keel brand panel",
+      "### Task 3: Shell + whole-portal rebrand + brighter theme",
+      "### Task 4: Store layout `domain/projectId`",
+      "### Task 5: Admin domains API + UI (full folder wipe)",
+      "### Task 6: Vision ui-tars switch (C)",
+      "### Task 7: Verification",
+      "## Notes"
+    ],
+    "sha256": "537C6990BF0443150546C30B250A2FB30EE17106A7B6F4A0F3053A44B74B39F6"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-21-qwen-both-live-notes.md",
+    "bytes": 990,
+    "title": "Qwen both (ground+assert) live — 2026-09-10T14:00:05.370192500Z",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Qwen both (ground+assert) live — 2026-09-10T14:00:05.370192500Z"
+    ],
+    "sha256": "7EB520FF1A01A5E2AC1AFD1FCC97FA411B95B1ADD070A4B028D46FAAECAC244A"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-21-settle-testdata-vision-edge.md",
+    "bytes": 8038,
+    "title": "Settle wait + TestData + Vision prompt + Edge prefs — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Make post-action settle + fresh DOM the default, keep customer TestData through heal/auto-fill, upgrade Qwen vision prompt contract, and suppress Edge password bubbles like Chrome."
+    ],
+    "checked": 31,
+    "unchecked": 1,
+    "headings": [
+      "# Settle wait + TestData + Vision prompt + Edge prefs — Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: Edge password-manager prefs",
+      "### Task 2: TestData wins on invent + heal (unit)",
+      "### Task 3: RequiredControlFiller respects TestData",
+      "### Task 4: Excel TestData line alignment",
+      "### Task 5: Post-action settle (5s default)",
+      "### Task 6: Vision prompt template + structured user message",
+      "### Task 7: Smoke verification",
+      "## Notes for implementers"
+    ],
+    "sha256": "79D423D1F7157F31110CEA6FD7D14256EF4E53703C40834429B213DD25616510"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-21-uitars-bbox-quality.md",
+    "bytes": 11066,
+    "title": "UI-TARS bbox & assert quality — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Make `UiTarsVisionProvider` return heal-usable grounding (tight bbox, honest confidence) and non-empty honest visual asserts, via native+JSON parsing and quality gates — without changing Qwen behavior."
+    ],
+    "checked": 5,
+    "unchecked": 19,
+    "headings": [
+      "# UI-TARS bbox & assert quality — Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: `VisionBboxQualityGate`",
+      "### Task 2: `UiTarsResponseParser` (JSON + native)",
+      "### Task 3: `UiTarsPrompt` + wire grounding in provider",
+      "### Task 4: Assert prompt + one empty-body retry",
+      "### Task 5: Strengthen live smoke",
+      "## Verification (definition of done)",
+      "## Self-review",
+      "## Execution handoff"
+    ],
+    "sha256": "528FFC4340A7DA4D5F3452D68CAD206B253AC525662ED8455545A6B57252229C"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-21-uitars-live-smoke-notes.md",
+    "bytes": 349,
+    "title": "UI-TARS live smoke — 2026-09-10T14:00:55.438820900Z",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# UI-TARS live smoke — 2026-09-10T14:00:55.438820900Z"
+    ],
+    "sha256": "974875A99FC66358D2480B9E523AB478D8455CA2FF534E54953E6C2AA93E5F86"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-21-vision-role-split-live-notes.md",
+    "bytes": 684,
+    "title": "Vision role-split live — 2026-09-10T14:02:03.471621900Z",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Vision role-split live — 2026-09-10T14:02:03.471621900Z"
+    ],
+    "sha256": "D988661736265ED9F00657BD91A30EA862C0A3A4D49611F974AB0DD9DC69D3B5"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-21-vision-role-split.md",
+    "bytes": 5453,
+    "title": "Vision role split + Qwen assert prompt — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Independently configure grounding vs assert VLM providers (default UI-TARS / Qwen) and harden Qwen’s assert prompt so live scorecards can prove the split."
+    ],
+    "checked": 4,
+    "unchecked": 10,
+    "headings": [
+      "# Vision role split + Qwen assert prompt — Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: Config split",
+      "### Task 2: Qwen assert prompt + retry",
+      "### Task 3: Provider model resolution",
+      "### Task 4: Live role-split smoke",
+      "## Verification",
+      "## Execution handoff"
+    ],
+    "sha256": "2C827962FBCF8137C49FC1DFD75D593B26916896BA97DA34D72022BC1FEE9C9C"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-23-dashboard-refresh.md",
+    "bytes": 5520,
+    "title": "Dashboard refresh — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Refresh `/dashboard` with balanced hero (compact stats + three verb cards), subtle motion, empty states, and extended `DashboardService` stats wired to real data."
+    ],
+    "checked": 0,
+    "unchecked": 13,
+    "headings": [
+      "# Dashboard refresh — Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: DashboardService stats extension",
+      "### Task 2: Dashboard template hero + verb cards",
+      "### Task 3: Dashboard CSS + motion",
+      "### Task 4: Dashboard MVC tests",
+      "## Spec self-review (plan vs spec)"
+    ],
+    "sha256": "4A624E1DFA12164EE483C0F98EA88BAEDEED3AFB2C62CE35ECE493A41739DD20"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-23-execute-design-bugs.md",
+    "bytes": 576,
+    "title": "Execute design + bug report — Implementation Plan\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Execute design + bug report — Implementation Plan",
+      "## Delivered",
+      "## Verify"
+    ],
+    "sha256": "2DE717966873D02D4F84964A15BAB707389E52568D3965F614369B092FCD8D2F"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-23-execute-verify.md",
+    "bytes": 636,
+    "title": "Execute & verify E1–E2 — Implementation Plan\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Execute & verify E1–E2 — Implementation Plan",
+      "## Tasks (complete)",
+      "## Verify"
+    ],
+    "sha256": "94F8BC1D8C12AAF5E48C3D7239D67105434F491C24C0BC8A3000B99E31FD6624"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-23-generate-tcs.md",
+    "bytes": 1710,
+    "title": "Generate TCs v1 — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Replace `/generate` coming-soon with prompt-first Generate page + static stories→CSV prompt."
+    ],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Generate TCs v1 — Implementation Plan",
+      "## Global Constraints",
+      "### Task 1: Generate prompt file + resource test",
+      "### Task 2: generate.html full page",
+      "### Task 3: Dashboard Generate card live",
+      "### Task 4: GenerateMvcTest"
+    ],
+    "sha256": "76A852AF6896DB28A39C92255AF605B846BE01B0B48C053DBEAFD3E8ED00DE4A"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-23-guide-ai-csv-prompt.md",
+    "bytes": 17630,
+    "title": "Guide AI rewrite → CSV prompt — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Replace `/tc-guide` §9 with a how-to + copyable static prompt that rewrites rough TCs into Keel-header CSV for Excel → Upload."
+    ],
+    "checked": 0,
+    "unchecked": 13,
+    "headings": [
+      "# Guide AI rewrite → CSV prompt — Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: Prompt file + security + resource test",
+      "### Task 2: §9 UI + copy script + CSS",
+      "## Spec coverage (self-review)",
+      "## Execution handoff"
+    ],
+    "sha256": "1BC8C77A767FF138E032E164689284D2F32D249BD4E19E6E85EF3E87B81DB378"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-23-guide-motion.md",
+    "bytes": 2342,
+    "title": "Guide motion polish — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Add scroll-spy TOC, IntersectionObserver section reveals, smooth scroll, and Automate link fixes on `/tc-guide`."
+    ],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Guide motion polish — Implementation Plan",
+      "## Global Constraints",
+      "### Task 1: Guide motion CSS",
+      "### Task 2: tc-guide.html markup + links",
+      "### Task 3: Guide motion JavaScript",
+      "### Task 4: GuideMotionMvcTest"
+    ],
+    "sha256": "9FF08F5FC4A6FDDAA0721300C4D1E7157EA11EA3B5AACC5A5B9AC512B3082F10"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-23-nav-automate-shell.md",
+    "bytes": 14045,
+    "title": "Nav IA + Automate shell — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Restructure sidebar to Generate | Execute | Automate (nested Upload/Jobs), add `/automate` hub with project picker + recent jobs, and coming-soon pages for Generate/Execute."
+    ],
+    "checked": 0,
+    "unchecked": 20,
+    "headings": [
+      "# Nav IA + Automate shell — Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: Jobs API project filter",
+      "### Task 2: Sidebar nav groups",
+      "### Task 3: Controller routes + navActive",
+      "### Task 4: New pages (automate, generate, execute)",
+      "### Task 5: Cross-page links + MVC tests",
+      "## Spec coverage (self-review)",
+      "## Execution handoff"
+    ],
+    "sha256": "1FD6FEB8547CB040E74ACF4DC73BD94E477F6A73612F982F5241D1914DA7ACFA"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-23-post-roadmap-hardening.md",
+    "bytes": 11557,
+    "title": "Post-roadmap hardening — Fix-all plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Fix defects, IA conflicts, and gaps found in the P0–P8 audit (execute vs conversion job mixing, bogus ZIP downloads, status page, bug report, copy, project UX, docs)."
+    ],
+    "checked": 0,
+    "unchecked": 29,
+    "headings": [
+      "# Post-roadmap hardening — Fix-all plan",
+      "## Global Constraints",
+      "## File map",
+      "## Locked decisions (audit resolutions)",
+      "### Task 1: Job downloadable semantics (P0)",
+      "### Task 2: Filter conversion surfaces (P0)",
+      "### Task 3: Status page execute branch (P1)",
+      "### Task 4: Bug report includes design mismatches (P1)",
+      "### Task 5: Re-enable conversion TC screenshots (P2)",
+      "### Task 6: Design references on project Settings (P2)",
+      "### Task 7: Execute run history on `/execute` (P2)",
+      "### Task 8: Copy / IA polish (P3)",
+      "### Task 9: Schema backfill + docs (P3)",
+      "### Task 10: Integration verification",
+      "## Task dependency graph",
+      "## Spec self-review",
+      "## Out of scope (this plan)"
+    ],
+    "sha256": "22034266DE36E6A7C4FFE4C56557F44B6C8C0C5C54C6CABE5620354BD38466E2"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-23-projects-hub.md",
+    "bytes": 20308,
+    "title": "Projects hub v1 — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Projects hub as the only config surface (name, base URL, named credentials, automation artifact tree) and Upload wired to project + credential profile only."
+    ],
+    "checked": 0,
+    "unchecked": 39,
+    "headings": [
+      "# Projects hub v1 — Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: Project schema, PATCH, archive, backfill",
+      "### Task 2: Named credentials API",
+      "### Task 3: Automation artifacts API",
+      "### Task 4: Job start from project config + deprecate targets",
+      "### Task 5: Projects list UI",
+      "### Task 6: Project detail — tabbed hub",
+      "### Task 7: Upload simplification",
+      "## Spec coverage (self-review)",
+      "## Execution handoff"
+    ],
+    "sha256": "F7DB4A8E2286E38B4A505C3A7478C0D50CD7ECC9BB5D9487FA4671BFE34029D2"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-25-post-fix-enhancements-all.md",
+    "bytes": 17550,
+    "title": "Post-fix Enhancements All (A→B→C→D) Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Ship the full post-fix enhancement program (KeelPath UX, mid-run Execute, Generate JSON/quality/async, cancel + pipeline, final-revise off + retention + model compare) with nothing from the coverage checklist dropped."
+    ],
+    "checked": 0,
+    "unchecked": 52,
+    "headings": [
+      "# Post-fix Enhancements All (A→B→C→D) Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: A1 — KeelPathCounts + workbook meta",
+      "### Task 2: A2 — Surface mismatch hard block + soft warn",
+      "### Task 3: A3 — Editable KeelPath on Generate preview",
+      "### Task 4: A4 — Automate Phase2 progress reserve",
+      "### Task 5: A5 — Mid-run Execute IR copy + UI poll",
+      "### Task 6: B1 — GeneratedTcJsonParser + prompt",
+      "### Task 7: B2 — GenerateQualityGate + one retry",
+      "### Task 8: B3 — Async single Generate job UX",
+      "### Task 9: C1 — Job cancel",
+      "### Task 10: C2 — Continue-on-fail UI copy",
+      "### Task 11: C3 — Pipeline Generate→Automate→Execute",
+      "### Task 12: D1 — Final-revise off by default",
+      "### Task 13: D2 — Retention sweeper",
+      "### Task 14: D3 — Model compare",
+      "## Spec coverage self-check",
+      "## Execution handoff"
+    ],
+    "sha256": "F882F8B3EADB71BAE12699A3C3DDDDEFCDE656071C9AF40B169A9494B5259C18"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-27-generate-excel-quality-fixes-tasks.md",
+    "bytes": 1311,
+    "title": "Generate Excel Quality Fixes — Tasks\r",
+    "status": "",
+    "goals": [],
+    "checked": 12,
+    "unchecked": 0,
+    "headings": [
+      "# Generate Excel Quality Fixes — Tasks",
+      "## Phase 1 — Semantic rules",
+      "## Phase 2 — Gate integration",
+      "## Phase 3 — Prompts",
+      "## Phase 4 — Verify"
+    ],
+    "sha256": "FDA9EBDB05393FEE6AE16781DE33648B30E2B153F16D186C2663A3D3867FD38B"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-27-generate-excel-quality-fixes.md",
+    "bytes": 4522,
+    "title": "Generate Excel Quality Fixes — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Stop Generate from producing Excel rows that fail Execute (ambiguous Phone field, empty-email cases that type values, vague assert steps)."
+    ],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Generate Excel Quality Fixes — Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: Semantic authoring rules (TDD)",
+      "### Task 2: Wire gate + service",
+      "### Task 3: Prompt updates (JSON + CSV)",
+      "### Task 4: Verification"
+    ],
+    "sha256": "3512A63B5BA9339B4B172E4856C884BF4AC3A99580D88D65EBE1B4537507C513"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-28-facebook-login-generate-fix-notes.md",
+    "bytes": 1506,
+    "title": "Facebook Login Generate Fix — Investigation Notes\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Facebook Login Generate Fix — Investigation Notes",
+      "## Repro run 2026-08-28 (job genb_0c264bf9bea3)",
+      "## Classification (T002)",
+      "## Live verification"
+    ],
+    "sha256": "9628A8B2E03E143EF3071F67E574FCEEB6CB028E92D16D787EEFD53F2488B288"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-28-facebook-login-generate-fix-tasks.md",
+    "bytes": 2222,
+    "title": "Facebook Login Generate Fix — Tasks\r",
+    "status": "",
+    "goals": [],
+    "checked": 15,
+    "unchecked": 3,
+    "headings": [
+      "# Facebook Login Generate Fix — Tasks",
+      "## Phase 0 — Confirm",
+      "## Phase 1 — Fail loud",
+      "## Phase 2 — Prompt alignment",
+      "## Phase 3 — Golden regression",
+      "## Phase 4 — Optional gate tweak",
+      "## Phase 5 — Live verify",
+      "## Phase 6 — Done"
+    ],
+    "sha256": "FC79CEBB8C64C8110CDA467A4B7C49BA63F7203FDB3C803E09663E84989E11F3"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-28-facebook-login-generate-fix.md",
+    "bytes": 14720,
+    "title": "Facebook Login Generate Fix — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Make Generate succeed for the Facebook Login negative-testing user story below, with clear failure messages when it does not, and automated regression tests so the fix stays fixed."
+    ],
+    "checked": 0,
+    "unchecked": 29,
+    "headings": [
+      "# Facebook Login Generate Fix — Implementation Plan",
+      "## Global Constraints",
+      "## User story fixture (exact input for all tests)",
+      "# User Story: Facebook Login — Negative Testing",
+      "## Root-cause hypotheses (confirm in Task 1)",
+      "## File map",
+      "### Task 1: Reproduce and capture the real failure",
+      "## Repro run YYYY-MM-DD",
+      "### Task 2: Surface per-story failure in batch jobs (TDD)",
+      "### Task 3: Fix prompt contradiction for Email / Mobile combined field",
+      "### Task 4: Golden stub-LLM integration test for fixture US",
+      "### Task 5: Optional gate tweak for Mobile wording",
+      "### Task 6: Live Ollama verification (manual gate)",
+      "## Live verification",
+      "### Task 7: Full automated verification bundle",
+      "## Self-review (spec coverage)",
+      "## Execution handoff"
+    ],
+    "sha256": "0EFFC596FF84CE7FD0683FDCC0B47C925C64EEC8074E6D611A17052F12539961"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-31-generate-authoring-repair.md",
+    "bytes": 24192,
+    "title": "Generate Authoring Repair Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Auto-repair known generate authoring mistakes (especially empty-email TestData) so Gemma jobs save instead of `QUALITY_GATE`, and make the optional second pass fix mistakes plus coverage."
+    ],
+    "checked": 0,
+    "unchecked": 25,
+    "headings": [
+      "# Generate Authoring Repair Implementation Plan",
+      "## Global Constraints",
+      "### File map",
+      "### Task 1: Repair blanks empty-field TestData (keep later lines)",
+      "### Task 2: Repair combined-login labels and Leave-empty wording",
+      "### Task 3: Repair literal backslash-n in steps",
+      "### Task 4: Wire repair into generateStory (no extra LLM when repairable)",
+      "### Task 5: Second-pass prompt + Generate checkbox copy",
+      "## Spec coverage",
+      "## Placeholder scan"
+    ],
+    "sha256": "8385975BFA78AED3C29E48A96BE2048B65286E7E82304D4851EAF6B9072184E4"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-08-31-job-activity-loader.md",
+    "bytes": 18063,
+    "title": "Job Activity Loader Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Show that Keel is working while jobs are `QUEUED`/`RUNNING` on Job status (spinner, moving bar, elapsed), Jobs/Dashboard badges, and a sidebar chip on every app page."
+    ],
+    "checked": 0,
+    "unchecked": 12,
+    "headings": [
+      "# Job Activity Loader Implementation Plan",
+      "## Global Constraints",
+      "### Task 1: Job status busy UI",
+      "### Task 2: Jobs and Dashboard running badges",
+      "### Task 3: Sidebar activity chip",
+      "## Spec coverage"
+    ],
+    "sha256": "214C2EF086254CBC996CCFCED43A12B9F0B8385F73E60F3FDF71ED57C9801E8B"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-02-authoring-heal-recovery-notes.md",
+    "bytes": 1109,
+    "title": "Authoring + Heal Recovery — Verification Notes\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Authoring + Heal Recovery — Verification Notes",
+      "## Automated",
+      "## Manual (user after portal restart)",
+      "## Docs"
+    ],
+    "sha256": "3FC41A4482532F98AAF2E23995BA8935EEF8069480E3248421E7E25B2C477A5F"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-02-authoring-heal-recovery-tasks.md",
+    "bytes": 1200,
+    "title": "Authoring + Heal Recovery — Tasks\r",
+    "status": "",
+    "goals": [],
+    "checked": 12,
+    "unchecked": 1,
+    "headings": [
+      "# Authoring + Heal Recovery — Tasks",
+      "## Phase A — Correctness (start now)",
+      "## Phase B — Editable TC preview",
+      "## Phase C — Heal recovery era",
+      "## Phase V — Verify"
+    ],
+    "sha256": "62967C9C55DB4C6C9F404075489AF035810541867092E90E6012EC485A74CF61"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-02-authoring-heal-recovery.md",
+    "bytes": 2559,
+    "title": "Authoring Gate + Editable TC + Heal Recovery — Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Fix empty-field/testData disasters, show coverage notes, add click-to-edit TC preview, then ship structured heal recovery invent."
+    ],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Authoring Gate + Editable TC + Heal Recovery — Implementation Plan",
+      "## Global Constraints",
+      "### Task A1: Coverage notes on import",
+      "### Task A2–A3: Gate Leave-empty + vague assert",
+      "### Task A4–A5: Never type angle tokens; Leave-empty → clear",
+      "### Task B1–B3: Editable TC modal",
+      "### Task C1–C3: Recovery invent",
+      "### Task V: Verification bundle + notes doc",
+      "## Tasks checklist"
+    ],
+    "sha256": "E56EECE631D428CA0E4BC9E6A0E812857E816FEAE0FDA5334B6319E41FC79524"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-02-defect-fix-authoring-heal-notes.md",
+    "bytes": 2096,
+    "title": "Defect Fix Pass — Notes\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Defect Fix Pass — Notes",
+      "## Closable follow-ups (closed)",
+      "## Still out of scope (honest)",
+      "## Shipped after defect pass",
+      "## Manual smoke",
+      "## Maven focus"
+    ],
+    "sha256": "1BC35E4CC593A82F07F9DF90EB19EDBD33F0FA17C97E8B9BA0FD6CC72BF6FE85"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-02-defect-fix-authoring-heal-tasks.md",
+    "bytes": 2132,
+    "title": "Defect Fix Pass — Tasks\r",
+    "status": "",
+    "goals": [],
+    "checked": 14,
+    "unchecked": 1,
+    "headings": [
+      "# Defect Fix Pass — Tasks",
+      "## P0 — Execute blockers",
+      "## P1 — Contract + Automate fidelity",
+      "## P2 — UX + polish",
+      "## Mapping (brainstorm → task)"
+    ],
+    "sha256": "5408CD776DC676FA59B87821E53803692DC8AB03AA0975DA78A58718417371C9"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-02-defect-fix-authoring-heal.md",
+    "bytes": 12344,
+    "title": "Defect Fix Pass — Authoring / Preview / Heal Recovery Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Close every blocking defect from the post–recovery-era review so leave-empty Execute, heal recovery, Automate proven trail, and TC preview editing cannot silently fail."
+    ],
+    "checked": 0,
+    "unchecked": 55,
+    "headings": [
+      "# Defect Fix Pass — Authoring / Preview / Heal Recovery Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: P0 — Recovery on Cursor escalate path (D1, D9)",
+      "### Task 2: P0 — Auto-fill skips leave-empty fields (D2)",
+      "### Task 3: P0 — Leave-empty clear on TYPE_USER / TYPE_PASS (D3)",
+      "### Task 4: P1 — All-or-nothing recovery parse (D4)",
+      "### Task 5: P1 — Proven recovery trail (D5)",
+      "### Task 6: P1 — Invent budget after successful parse (D6)",
+      "### Task 7: P1 — Hardened clear (D7)",
+      "### Task 8: P1 — Broader vague-assert + leave phrasing (D8, D15 partial)",
+      "### Task 9: P1 — Quality gate on Excel load for Execute/Automate (D10)",
+      "### Task 10: P1 — Prompt/schema cleanup (D11)",
+      "### Task 11: P2 — Step-grid TC editor (D12)",
+      "### Task 12: P2 — Coverage notes edit + Escape (D13, D14)",
+      "### Task 13: P2 — Slim-HTML recovery presence fallback (D16)",
+      "### Task 14: P2 — Document intentional limits (D17)",
+      "### Task 15: Verification bundle",
+      "## Execution order",
+      "## Done when"
+    ],
+    "sha256": "93DBF803670DCDB64472DA54B64917736AC385929C2B8077668BC36D377FD895"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-02-heal-workbook-patch.md",
+    "bytes": 30626,
+    "title": "Heal Recovery → Workbook Patch Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** After successful heal recovery on Execute, deterministically patch the project’s generated workbook (leave-empty Steps + blank TestData) and append unmatched automationNotes to coverage notes / meta."
+    ],
+    "checked": 1,
+    "unchecked": 17,
+    "headings": [
+      "# Heal Recovery → Workbook Patch Implementation Plan",
+      "## Global Constraints",
+      "## File structure",
+      "### Task 1: HealWorkbookPatcher (pure)",
+      "### Task 2: GeneratedWorkbookService.applyHealRecoveryPatch",
+      "### Task 3: Wire ProvePhase + runners",
+      "### Task 4: Docs + verification bundle",
+      "## Spec coverage checklist",
+      "## Self-review"
+    ],
+    "sha256": "FB630FB1D048766FA3CD61DBAE6090ADA8B1D6E7210A21B69C996B1A884E4C87"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-02-unified-tc-import-notes.md",
+    "bytes": 3390,
+    "title": "Unified TC Import — Verification Notes\r",
+    "status": "**Status:** BLOCKED — portal not running in this session (no live server on `/generate`).",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Unified TC Import — Verification Notes",
+      "## Automated Maven bundle",
+      "### Coverage by phase",
+      "## Manual smoke checklist",
+      "## Observations"
+    ],
+    "sha256": "3649F45AE497716382A503F67803415D24E1E46C928E75BED960F3719293D796"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-02-unified-tc-import-tasks.md",
+    "bytes": 990,
+    "title": "Unified TC Import — Tasks\r",
+    "status": "",
+    "goals": [],
+    "checked": 9,
+    "unchecked": 0,
+    "headings": [
+      "# Unified TC Import — Tasks",
+      "## Phase 1 — Core import",
+      "## Phase 2 — UI + prompts",
+      "## Phase 3 — All doors gated",
+      "## Phase 4 — Verify"
+    ],
+    "sha256": "E7073FD6C148E4A2FBDA02EA268F51A7AC6CF5F91426396772C15B70BCD78136"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-02-unified-tc-import.md",
+    "bytes": 14756,
+    "title": "Unified TC Import Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Give users one reliable door from external AI (JSON/CSV paste) or portal Generate into a project workbook that Automate/Execute can run, with shared repair + quality gate and fixed copy-prompts."
+    ],
+    "checked": 0,
+    "unchecked": 32,
+    "headings": [
+      "# Unified TC Import Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: Safe import repair (TDD)",
+      "### Task 2: `TcImportService` core (TDD)",
+      "### Task 3: Import API endpoint",
+      "### Task 4: Generate UI — Paste/Import panel",
+      "### Task 5: Rewrite copy-prompts",
+      "### Task 6: Route Compare save through import gate",
+      "### Task 7: Gate Excel upload on Automate + Execute job create",
+      "### Task 8: KeelPath blank regression + docs touch",
+      "### Task 9: Full verification bundle + manual smoke checklist",
+      "## Spec coverage check",
+      "## Placeholder scan",
+      "## Execution handoff"
+    ],
+    "sha256": "50FFA1B397481B35D4AA283FF3CA28803AA3D5C4B61B83B1E72B4EB372301629"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-06-authoring-preflight-review.md",
+    "bytes": 19000,
+    "title": "Authoring Preflight Review Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Add Generate “Review with AI” (user picks Cursor or Ollama) that returns findings + a proposed suite for Accept/Discard without overwriting Excel until Accept."
+    ],
+    "checked": 0,
+    "unchecked": 22,
+    "headings": [
+      "# Authoring Preflight Review Implementation Plan",
+      "## Global Constraints",
+      "## File structure",
+      "### Task 1: AuthoringReviewParser",
+      "### Task 2: AuthoringReviewService (+ provider hooks)",
+      "### Task 3: API endpoint",
+      "### Task 4: Generate UI — panel, banner, Accept/Discard",
+      "### Task 5: Docs + verification",
+      "## Spec coverage checklist",
+      "## Self-review"
+    ],
+    "sha256": "49671B993293895DD0D95610B0B7642384734183A49A2B38AB1A809EA5C2DFAE"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-07-preferred-test-hooks.md",
+    "bytes": 2121,
+    "title": "Preferred Test Hooks Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Project Settings can name extra HTML attributes (e.g. `data-axis-test-id`) that outrank `id` / `data-testid` / CSS / XPath and are shared per host folder."
+    ],
+    "checked": 4,
+    "unchecked": 0,
+    "headings": [
+      "# Preferred Test Hooks Implementation Plan",
+      "## Global Constraints",
+      "### Task 1: Store + sanitize",
+      "### Task 2: Extractor ranks preferred first",
+      "### Task 3: Settings API + UI",
+      "### Task 4: Execute uses the store"
+    ],
+    "sha256": "54F4C7E6A1C5896853BD8072ADB7F92A58F07F1681BA7A0E81CD5478D354932E"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-08-call-before-test.md",
+    "bytes": 13811,
+    "title": "Call-before Test + UI Polish Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Add ordered Call-before TC references (runtime expand on Automate/Execute), and polish Projects + TCs library chrome (Delete all, Select all, toolbar alignment)."
+    ],
+    "checked": 0,
+    "unchecked": 27,
+    "headings": [
+      "# Call-before Test + UI Polish Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: CallBefore parse + Expander (TDD)",
+      "### Task 2: Excel / CSV / JSON I/O",
+      "### Task 3: Wire materializer + job start errors",
+      "### Task 4: Case update API + validation",
+      "### Task 5: Projects page UI polish",
+      "### Task 6: Library toolbar + Select all in table",
+      "### Task 7: Call-before picker UI (library edit + Generate modal)",
+      "### Task 8: Verification sweep",
+      "## Spec coverage (self-review)",
+      "## Placeholder scan"
+    ],
+    "sha256": "AFADEC0CEDB57D0287D6DEA5DA1B31E2582C8C5AB542F00F444984AF8B16A533"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-09-bug-hunter.md",
+    "bytes": 2411,
+    "title": "Bug Hunter (HUNT) Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Ship Bug Hunter v1 — top-nav page, `HUNT` jobs, brief → capped observe/plan loop (dry-run complete; live planner hooks), hunter pack ZIP download."
+    ],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Bug Hunter (HUNT) Implementation Plan",
+      "## Global Constraints",
+      "### Task 1: Job kind + downloadability",
+      "### Task 2: Hunt domain core (brief, planner JSON, pack)",
+      "### Task 3: API + worker",
+      "### Task 4: Portal UI",
+      "### Task 5: Integration test"
+    ],
+    "sha256": "5D93943858156A7020856415061515760CADD86FDF55F2C63198BE604C2630E1"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-09-codegen-naming-ux.md",
+    "bytes": 21311,
+    "title": "Codegen Naming UX Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Emit customer ZIP tests as `TC_01` (not `TC_01Test`), title-based `@Test` methods, smarter page stems (`LoginPage`, `NewOperationUser`), locator-first text asserts, short TODO reasons, and optional Ollama polish for **test method names only**."
+    ],
+    "checked": 0,
+    "unchecked": 32,
+    "headings": [
+      "# Codegen Naming UX Implementation Plan",
+      "## Global Constraints",
+      "## File map",
+      "### Task 1: Test class naming (`TC_01` / `TC_06Todo`)",
+      "### Task 2: Title-based test method names (deterministic)",
+      "### Task 3: Optional Ollama method naming (config)",
+      "### Task 4: Smarter page stems",
+      "### Task 5: Locator-first text asserts",
+      "### Task 6: Short TODO reasons",
+      "### Task 7: Surefire discovers `TC_*.java`",
+      "### Task 8: Full regression",
+      "## Spec coverage checklist",
+      "## Self-review"
+    ],
+    "sha256": "10CF04F0B8A39FD7B120D53A4A8B5F0E5756DDC59F294F2EA8D360677D9FA7B2"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-09-project-summary-tab.md",
+    "bytes": 1294,
+    "title": "Project Summary Tab Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Default project landing = Summary (mini strip + recent jobs feed with kind-aware click)."
+    ],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Project Summary Tab Implementation Plan",
+      "### Task 1: Summary API + tests",
+      "### Task 2: Default Summary tab UI"
+    ],
+    "sha256": "AFD37C55047B3CED8099D984CF8B193FA51C75FD1B2E8E9F3F2334031DA2AA28"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-10-bug-hunter-phase12-gaps.md",
+    "bytes": 5350,
+    "title": "Bug Hunter — Phase 1–2 gaps (follow-up)\r",
+    "status": "**Status:** Implemented (gaps closed 2026-09-10)  ",
+    "goals": [
+      "**Goal:** Close remaining quality-spec items that were deferred after Phase 1–2 shipped (page map, coverage, grounding, strategies, basic oracles, STUCK/COMPLETE)."
+    ],
+    "checked": 0,
+    "unchecked": 10,
+    "headings": [
+      "# Bug Hunter — Phase 1–2 gaps (follow-up)",
+      "## Global Constraints",
+      "## Gap inventory (from ship review)",
+      "### Task 1: Network oracle completeness (G1)",
+      "### Task 2: Page-state oracles (G2, G3)",
+      "### Task 3: Evidence pack polish (G4–G8)",
+      "### Task 4: API test + smoke notes (G9–G10)",
+      "## Out of scope (this gaps plan)",
+      "## Exit criteria"
+    ],
+    "sha256": "9F79D3FC4D6E63AE4A3C21842486D3620EAF1A776958742D963F27C81F70F655"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-10-bug-hunter-phase3-twopass-dom.md",
+    "bytes": 5032,
+    "title": "Bug Hunter — Phase 3: two-pass DOM neighborhoods (deferred)\r",
+    "status": "**Status:** Draft — deferred  ",
+    "goals": [
+      "**Goal:** Shrink per-cycle LLM context by splitting planning into (1) target selection from the page map + screenshot + journal, then (2) a second call with **only HTML neighborhoods** around chosen controls — not the full slim DOM."
+    ],
+    "checked": 0,
+    "unchecked": 11,
+    "headings": [
+      "# Bug Hunter — Phase 3: two-pass DOM neighborhoods (deferred)",
+      "## Global Constraints",
+      "## When to build (evidence checklist)",
+      "## Design (locked intent)",
+      "### Pass 1 — Select",
+      "### Pass 2 — Act",
+      "### Neighborhood extractor",
+      "### Wiring",
+      "### UI / config",
+      "## Tasks (when un-deferred)",
+      "### Task 1: Neighborhood extractor + tests",
+      "### Task 2: Pass-1 / Pass-2 planner API",
+      "### Task 3: LiveHuntService + evidence + config/UI",
+      "### Task 4: Verification",
+      "## Non-goals",
+      "## Rollback"
+    ],
+    "sha256": "20B28D9E79E220E23D7A3D8B7757F597C8746D228DB16FA414D649C200F2BB9E"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-10-bug-hunter-quality-pass2.md",
+    "bytes": 10341,
+    "title": "Bug Hunter Quality Pass 2 Implementation Plan\r",
+    "status": "**Status:** Implemented 2026-09-11.",
+    "goals": [
+      "**Goal:** Preferred-hook Axis login, safe `$TARGET_*` credential tokens for planners, settle/toast waits, strategy auto-advance, bug dedupe + end-of-hunt triage, login-feature oracle fix, plus coverage/JSON hardening."
+    ],
+    "checked": 0,
+    "unchecked": 25,
+    "headings": [
+      "# Bug Hunter Quality Pass 2 Implementation Plan",
+      "## Global Constraints",
+      "### Task 1: Preferred-hook login CSS in JobLoginService",
+      "### Task 2: HuntSecretResolver + type token expansion",
+      "### Task 3: Planner context + prompt credentials section (tokens only)",
+      "### Task 4: Post-click settle wait",
+      "### Task 5: Toast/alert settle after 401",
+      "### Task 6: Strategy auto-advance when happy blocked",
+      "### Task 7: Bug fingerprint dedupe",
+      "### Task 8: Login-feature mode — suppress unexpected login URL oracle",
+      "### Task 9: End-of-hunt bug triage (planner recheck)",
+      "### Task 10: Coverage “untested” hints (item 10)",
+      "### Task 11: Stronger planner JSON repair (item 11)",
+      "### Task 12: Verification + pack smoke",
+      "## Out of scope (this plan)"
+    ],
+    "sha256": "D56257F71C698226D3AE31E51258B87E53CD373314C408B7D372B8F09A4C1791"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-10-bug-hunter-quality.md",
+    "bytes": 21850,
+    "title": "Bug Hunter Quality Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Upgrade Bug Hunter so the planner gets a structured page map (with full slim fallback), compounding coverage memory, grounded actions, stuck stop, then Phase 2 strategies + oracles + smarter finish."
+    ],
+    "checked": 0,
+    "unchecked": 36,
+    "headings": [
+      "# Bug Hunter Quality Implementation Plan",
+      "## Global Constraints",
+      "## File structure (locked)",
+      "# Phase 1 — Context, memory, grounding",
+      "### Task 1: Page map model + builder",
+      "### Task 2: Dom mode enum + planner prompt (map primary, no 32k cut)",
+      "### Task 3: Coverage map",
+      "### Task 4: Grounded action guard",
+      "### Task 5: Wire Phase 1 into LiveHuntService + dry-run + pack + UI/config",
+      "# Phase 2 — Strategies, oracles, finish",
+      "### Task 6: Strategy sequencer",
+      "### Task 7: Oracle + COMPLETE stop + pack polish",
+      "### Task 8: Spec cross-check + manual smoke notes",
+      "## Self-review (plan vs spec)",
+      "## Execution handoff"
+    ],
+    "sha256": "6AAAF1AA3BABA1D36A618925D9F0A53BDA3848BA77E827DEAD5054E2EC363D1A"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-11-authoring-precision-engine.md",
+    "bytes": 10060,
+    "title": "Authoring Precision Engine Implementation Plan\r",
+    "status": "",
+    "goals": [
+      "**Goal:** Add per-job **Keel vs Precision** engine choice on Automate/Execute; Precision uses one multimodal Cursor `groundRank` call per intent with A+B hybrid shortlist policy, 50-call job cap, and Keel fallback."
+    ],
+    "checked": 0,
+    "unchecked": 35,
+    "headings": [
+      "# Authoring Precision Engine Implementation Plan",
+      "## Global Constraints",
+      "### Task 1: Job model + properties",
+      "### Task 2: Portal API + UI toggle",
+      "### Task 3: Precision call budget",
+      "### Task 4: Ground rank response model + client stub",
+      "### Task 5: Sidecar `groundRank` mode",
+      "### Task 6: PrecisionBindService",
+      "### Task 7: ProvePhase integration",
+      "### Task 8: Execute workbook patch + job message",
+      "### Task 9: Docs + ops",
+      "## Self-review (plan vs spec)",
+      "## Execution handoff"
+    ],
+    "sha256": "F06365297041AC39D69AD92A6CACC1BADE571E5AA5EEF8EB162F8052A6669786"
+  },
+  {
+    "path": "docs/superpowers/plans/2026-09-11-precision-engine-fixes.md",
+    "bytes": 1508,
+    "title": "Precision Engine — Review Fix Plan\r",
+    "status": "**Status:** Implemented 2026-09-11. All precision-related unit/API tests pass.",
+    "goals": [
+      "**Goal:** Close all defects from the 2026-09-11 review without changing Keel default behavior."
+    ],
+    "checked": 10,
+    "unchecked": 0,
+    "headings": [
+      "# Precision Engine — Review Fix Plan",
+      "## Tasks"
+    ],
+    "sha256": "274F3602D6911C15DCB39EA4C2A4F12421C278BD526F414C1E5CB263E9CDE064"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-04-testpilot-delivery-platform-design.md",
+    "bytes": 13009,
+    "title": "TestPilot Delivery Platform — MVP Design\r",
+    "status": "**Status:** Spec reviewed and approved by product owner (2026-08-04)  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# TestPilot Delivery Platform — MVP Design",
+      "## 1. Problem & goal",
+      "### Problem",
+      "### Goal",
+      "## 2. MVP scope",
+      "### In scope",
+      "### Out of scope (later)",
+      "## 3. Architecture",
+      "### Boundaries",
+      "## 4. Customer flows",
+      "### 4.1 New framework",
+      "### 4.2 Update framework",
+      "## 5. Excel template (only accepted input)",
+      "## 6. Authoring, AI, and locator policy",
+      "### 6.1 Role of AI",
+      "### 6.2 Rules vs AI",
+      "### 6.3 Local AI (cost)",
+      "### 6.4 Locator policy (must enforce)",
+      "## 7. Conversion pipeline (per TC)",
+      "## 8. Customer framework design",
+      "### 8.1 Principle",
+      "### 8.2 Who designs what",
+      "### 8.3 Suggested ZIP layout",
+      "### 8.4 Page & test pattern",
+      "## 9. Portal, jobs, security",
+      "### Portal (MVP)",
+      "### Jobs",
+      "### Security",
+      "### Server stores per project",
+      "## 10. Success criteria (MVP)",
+      "## 11. Risks & mitigations",
+      "## 12. Phased follow-ons (not MVP)",
+      "## 13. Implementation stance",
+      "## Approval record"
+    ],
+    "sha256": "F808810728C1EB262E729C2E8784D0A6C1B0E25D1B29896464CC7DCF90439A6B"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-05-codegen-rules.md",
+    "bytes": 1956,
+    "title": "Customer codegen rules (locked for Track A)\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Customer codegen rules (locked for Track A)",
+      "## Locator priority (MUST)",
+      "## Page classes (POM only)",
+      "## Test classes",
+      "## Hard limits"
+    ],
+    "sha256": "8130570E8EB2C20505F2618232188178B46BEF9AE38413B97D36A19ABBE036BF"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-05-delivery-gap-analysis.md",
+    "bytes": 2376,
+    "title": "Gap analysis — TestPilot Delivery (refreshed 2026-08-06)\r",
+    "status": "**Status**: Living checklist after two-phase conversion landing",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Gap analysis — TestPilot Delivery (refreshed 2026-08-06)",
+      "## Favicon noise (answered)",
+      "## What is already done (keep)",
+      "## Remaining gaps",
+      "## Explicitly out of scope (YAGNI)",
+      "## Recommended next"
+    ],
+    "sha256": "64A243E8699FB52F80FF35BEE4012004448928131CE01E8F6E851513C68DF221"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-10-startup-api-keys-design.md",
+    "bytes": 1310,
+    "title": "Startup API keys design\r",
+    "status": "**Status:** Draft for approval  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Startup API keys design",
+      "## Goal",
+      "## Design",
+      "## Security",
+      "## Verification"
+    ],
+    "sha256": "424FF1EAA9DD411F76394BF3EBA8C6DE45E78B2407F4616DC51ED68AC522E836"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-17-codegen-void-pages-and-assert-helpers-design.md",
+    "bytes": 7023,
+    "title": "Codegen page reuse, void actions, and assertion helpers\r",
+    "status": "**Status:** Approved  ",
+    "goals": [
+      "**Scope:** Customer ZIP codegen + customer-framework validation helpers (generic; no site hardcoding)"
+    ],
+    "checked": 4,
+    "unchecked": 0,
+    "headings": [
+      "# Codegen page reuse, void actions, and assertion helpers",
+      "## Problem",
+      "## Goals",
+      "## Non-goals",
+      "## Decisions",
+      "## Design",
+      "### 1. Canonical page stem",
+      "### 2. Locator merge preference",
+      "### 3. Void codegen",
+      "### 4. Assertion helpers",
+      "### 5. Tests",
+      "## Out of scope for follow-ups",
+      "## Success criteria",
+      "## Spec self-review"
+    ],
+    "sha256": "F0A20F021BAAA304230312E9EAAFB22B69B09611DEDA2E688E6CD57809975033"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-17-honest-bind-and-heal-recovery-design.md",
+    "bytes": 2172,
+    "title": "Honest bind + heal recovery\r",
+    "status": "**Status:** approved (chat), pending implementation plan approval",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Honest bind + heal recovery",
+      "## Problem",
+      "## Non-negotiable",
+      "## Layer 1 — bind",
+      "## Layer 2 — Ollama",
+      "## Layer 3 — execute-fail recovery",
+      "## Out of scope"
+    ],
+    "sha256": "BCCD06D5D6CD4337B3A25ED99B196376BD18C4C42F4DB1942BD6698F896828D8"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-17-layer1-bind-hardening-design.md",
+    "bytes": 1068,
+    "title": "Layer-1 bind hardening design\r",
+    "status": "**Status:** Approved for planning (from audit findings)  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Layer-1 bind hardening design",
+      "## Problem",
+      "## Goals",
+      "## Non-goals"
+    ],
+    "sha256": "5035F11F0C2BE380AFDBE87EEB04F4953026EE551AE8175AD4DAA2DCA90073E3"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-17-vision-grounding-design.md",
+    "bytes": 12118,
+    "title": "Vision grounding (Layer 1.5 / heal 2.5) — design\r",
+    "status": "**Status:** Approved  ",
+    "goals": [
+      "**Scope:** Pluggable vision as a **candidate generator** folded into existing TestPilot bind + heal. Not a Midscene rewrite. Not coordinate-click automation."
+    ],
+    "checked": 5,
+    "unchecked": 0,
+    "headings": [
+      "# Vision grounding (Layer 1.5 / heal 2.5) — design",
+      "## Problem",
+      "## Goals",
+      "## Non-goals",
+      "## Locked decisions",
+      "## Architecture",
+      "## Feature flags",
+      "## When Layer 1 is “weak” (Layer 1.5 trigger)",
+      "## Provider interface",
+      "## Coordinate → DOM",
+      "## Confidence (configurable, not one magic formula)",
+      "## Scroll and long pages",
+      "## Heal integration (pass A)",
+      "## Logging (every vision-touched step)",
+      "## Testing (v1 minimum)",
+      "## Implementation order (incremental)",
+      "## Spec self-review"
+    ],
+    "sha256": "DD19500A1BB55DE5FB3D871DD479B3698E4743884A130D298DA518FA97F906C5"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-18-testdata-locator-memory-design.md",
+    "bytes": 2674,
+    "title": "Test data column, locator memory, and Facebook-run honesty\r",
+    "status": "**Status:** Locked (user approved: implement after plan)  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Test data column, locator memory, and Facebook-run honesty",
+      "## Root causes from that run",
+      "## Locked decisions",
+      "## Non-goals"
+    ],
+    "sha256": "508EDEDA50526FDB16A59DB05EAD3CD8EF01CB87E516F725BAA59BDFE10C5C9D"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-18-visual-assertions-design.md",
+    "bytes": 13947,
+    "title": "Visual assertions + heal vision hints — design (Phase 1)\r",
+    "status": "**Status:** Approved  ",
+    "goals": [
+      "**Scope:** Opt-in VLM **visual assertions** after a case succeeds, plus compact **VLM attempt history** into Ollama and Cursor heal. Not a Midscene rewrite. Not Figma. Not dual-VLM voting."
+    ],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Visual assertions + heal vision hints — design (Phase 1)",
+      "## Problem",
+      "## Goals",
+      "## Non-goals (Phase 1)",
+      "## Answer already locked: heal history today vs Phase 1",
+      "## Locked decisions",
+      "## Architecture",
+      "## Feature flags",
+      "## Excel and `ManualTestCase`",
+      "## Provider interface",
+      "### Assertion JSON (model must return only this)",
+      "## Prove outcomes (honesty)",
+      "## Evidence",
+      "## Heal / Cursor / Ollama vision hints",
+      "### Collection",
+      "### Injection",
+      "## Fusion (document only — already shipped)",
+      "## iframe / canvas (follow-up, not this implementation)",
+      "## Error handling",
+      "## Testing (Phase 1 plan will expand)",
+      "## Out of scope reminders",
+      "## Self-review"
+    ],
+    "sha256": "4D95B0AC7CBC1AC7BCE9A81DC91518A9B40CAE3CB1ED9C4471D8C13FDEB18D08"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-19-tc-guide-testdata-ux-design.md",
+    "bytes": 2475,
+    "title": "TC guide + Upload strip for TestData / VisualAssertion\r",
+    "status": "**Status:** Approved (user chose approach C)  ",
+    "goals": [
+      "**Goal:** Clients see the same Excel rules the converter uses, with clearer visuals on `/tc-guide` and a compact strip on `/upload`."
+    ],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# TC guide + Upload strip for TestData / VisualAssertion",
+      "## Locked decisions",
+      "## Content updates (`tc-guide.html`)",
+      "## Upload strip (`upload.html`)",
+      "## Visual / motion",
+      "## Non-goals",
+      "## Success"
+    ],
+    "sha256": "8C98A84F60A0565A531F03460E8C6D81B70C5834FECD88004C4870DC9F5E8F68"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-21-keel-portal-domains-uitars-design.md",
+    "bytes": 4827,
+    "title": "Keel portal redesign, domain store admin, ui-tars vision\r",
+    "status": "**Status:** Approved  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Keel portal redesign, domain store admin, ui-tars vision",
+      "## Locked decisions",
+      "## A — Brand + whole-portal UX",
+      "### Logo",
+      "### Visual system",
+      "### Login (2:1)",
+      "### Portal chrome",
+      "### Pages in scope",
+      "## B — Domain store layout + admin delete",
+      "### Layout",
+      "### Admin UI (`/admin/domains`) — ROLE_ADMIN only",
+      "### API",
+      "## C — Vision provider default / switch",
+      "## Success criteria",
+      "## Non-goals"
+    ],
+    "sha256": "A95B1721715EC000E07238128819887C6D9E6725A4B6751AE1916F932E8BDC4C"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-21-settle-testdata-vision-edge-design.md",
+    "bytes": 4585,
+    "title": "SauceDemo follow-ups — settle wait, TestData, vision prompt, Edge prefs\r",
+    "status": "**Status:** Approved (user: 5s default wait; full combined scope)  ",
+    "goals": [
+      "**Goal:** Fix customer TestData loss on heal/auto-fill, stop stale DOM binds after actions, upgrade Qwen vision *contract* (not rebuild), and mirror Chrome password-bubble prefs on Edge."
+    ],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# SauceDemo follow-ups — settle wait, TestData, vision prompt, Edge prefs",
+      "## Context (evidence)",
+      "## Locked decisions",
+      "## Workstreams",
+      "### 1. Edge password bubble",
+      "### 2. TestData integrity",
+      "### 3. Post-action settle",
+      "### 4. Vision prompt / contract upgrade",
+      "## Success criteria",
+      "## Non-goals"
+    ],
+    "sha256": "399BC270CEB163B33F7CECF3A62F8584D211F396F9956E156F8B6322B9151551"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-21-uitars-bbox-quality-design.md",
+    "bytes": 8382,
+    "title": "UI-TARS bbox & assert quality — design\r",
+    "status": "**Status:** Approved (product owner: yes)  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# UI-TARS bbox & assert quality — design",
+      "## Problem",
+      "## Goals (success = option C)",
+      "## Non-goals",
+      "## Locked decisions",
+      "## Architecture",
+      "## 1. UiTars grounding prompts",
+      "## 2. Native response adapter",
+      "## 3. Quality gate (`VisionBboxQualityGate`)",
+      "## 4. Assert path",
+      "## 5. Shared parse cleanup (careful)",
+      "## 6. Proof / tests",
+      "## 7. Config",
+      "## File map (implementation)",
+      "## Risks",
+      "## Self-review",
+      "## Approval"
+    ],
+    "sha256": "C480BC3F96A086DB430594A321F6CAEF8020A713D10D47E45005DED1389A45BD"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-21-vision-gap-close-design.md",
+    "bytes": 1081,
+    "title": "Gap close: role split defaults + DOM post-click + miss journal — design\r",
+    "status": "**Status:** Implementing (user directed: close high/med/low gaps; no commits)",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Gap close: role split defaults + DOM post-click + miss journal — design",
+      "## Decisions",
+      "## Components"
+    ],
+    "sha256": "CB8FFBAB67BB401BDFACE874D0C46AE682800EBAC1594408F1C10E3C043D1E1C"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-21-vision-role-split-design.md",
+    "bytes": 4524,
+    "title": "Vision role split + Qwen assert prompt — design\r",
+    "status": "**Status:** Approved (product: approach A, models = caller-configured / skip if missing)  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Vision role split + Qwen assert prompt — design",
+      "## Problem",
+      "## Goals",
+      "## Non-goals",
+      "## Locked decisions",
+      "## Architecture",
+      "### Config keys",
+      "### Qwen assert prompt changes",
+      "### Tests / live",
+      "## Success criteria"
+    ],
+    "sha256": "644AA5A4CBA9EC7EBEFF9B78A4927263EF527EC5E50F86FC5F5832665DF1830D"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-23-dashboard-refresh-design.md",
+    "bytes": 8599,
+    "title": "P4 — Dashboard refresh\r",
+    "status": "**Status:** Approved (2026-08-23)  ",
+    "goals": [],
+    "checked": 6,
+    "unchecked": 0,
+    "headings": [
+      "# P4 — Dashboard refresh",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. Scope",
+      "### In scope",
+      "### Out of scope",
+      "## 4. Page layout",
+      "### 4.1 Hero row (above the fold)",
+      "### 4.2 Main grid (below hero)",
+      "### 4.3 Empty states",
+      "## 5. Data & API",
+      "### 5.1 `DashboardService` additions",
+      "### 5.2 `GET /api/dashboard/stats`",
+      "## 6. Motion & accessibility",
+      "## 7. Navigation & deep links",
+      "## 8. Testing",
+      "## 9. Success criteria",
+      "## 10. Approaches considered",
+      "## 11. Spec self-review"
+    ],
+    "sha256": "FE7FC51DAB975F6134FCCAC2AE884EA7A9EB776BEEC48BBE0E4785FBF2A5951C"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-23-dashboard-stats-only-design.md",
+    "bytes": 2319,
+    "title": "Dashboard stats-only refresh (v2)\r",
+    "status": "**Status:** Approved — implementing  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Dashboard stats-only refresh (v2)",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. Bug report reference (product doc)",
+      "## 4. Bug report format & rules",
+      "## 5. Out of scope"
+    ],
+    "sha256": "BE4D73F91FD2951D33FE26120244CB3BEF224F4A45CE2B0BF0FDC829CD27A733"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-23-execute-design-bugs-design.md",
+    "bytes": 1087,
+    "title": "P8 — Execute & verify E3–E4\r",
+    "status": "**Status:** Approved (2026-08-23)  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# P8 — Execute & verify E3–E4",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. Out of scope"
+    ],
+    "sha256": "C53FA7CD5C0039BDD40727984FB9A22ED0D171759848C898E53FEDBF5167CBCB"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-23-execute-verify-design.md",
+    "bytes": 1455,
+    "title": "P7 — Execute & verify E1–E2\r",
+    "status": "**Status:** Approved (2026-08-23)  ",
+    "goals": [],
+    "checked": 4,
+    "unchecked": 0,
+    "headings": [
+      "# P7 — Execute & verify E1–E2",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. Spec self-review"
+    ],
+    "sha256": "41C472D08CC97E08AA087824F9744FC6BD1B8B14293AA8126BE211181E3DAC60"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-23-generate-ollama-design.md",
+    "bytes": 8352,
+    "title": "P6.5 — Generate TCs with Ollama + KeelPath routing\r",
+    "status": "**Status:** Approved — implemented 2026-08-23  ",
+    "goals": [],
+    "checked": 6,
+    "unchecked": 0,
+    "headings": [
+      "# P6.5 — Generate TCs with Ollama + KeelPath routing",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. What Ollama “knows” (prompt stack)",
+      "### 3.1 Capability manifest (summary)",
+      "### 3.2 Testing techniques playbook (summary)",
+      "## 4. CSV schema (v2)",
+      "## 5. API",
+      "### `POST /api/projects/{projectId}/generate-tcs`",
+      "### Config (`delivery.*`)",
+      "## 6. UI (`/generate`)",
+      "## 7. Backend components",
+      "## 8. Ollama setup (ops doc, not code)",
+      "## 9. Testing",
+      "## 10. Phasing",
+      "## 11. Out of scope",
+      "## 12. Spec self-review"
+    ],
+    "sha256": "586D6E1A81E7259FC1320220C312050CD37B516CA1DA3F8080D2A5ACF4A90CB6"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-23-generate-tcs-design.md",
+    "bytes": 3923,
+    "title": "P6 — Generate TCs v1 (prompt-first)\r",
+    "status": "**Status:** Approved (2026-08-23)  ",
+    "goals": [],
+    "checked": 5,
+    "unchecked": 0,
+    "headings": [
+      "# P6 — Generate TCs v1 (prompt-first)",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. Scope",
+      "### In scope",
+      "### Out of scope",
+      "## 4. User flow",
+      "## 5. Page layout",
+      "## 6. Prompt rules (generate vs rewrite)",
+      "## 7. Testing",
+      "## 8. Spec self-review"
+    ],
+    "sha256": "6A8FE3BDE87708693AD32F4DF10604A58B26E22C26FF46E96733B729F206B1B9"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-23-guide-ai-csv-prompt-design.md",
+    "bytes": 5900,
+    "title": "P1 — Guide AI rewrite → CSV prompt\r",
+    "status": "**Status:** Approved (2026-08-23)  ",
+    "goals": [],
+    "checked": 5,
+    "unchecked": 0,
+    "headings": [
+      "# P1 — Guide AI rewrite → CSV prompt",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. Scope",
+      "### In scope",
+      "### Out of scope",
+      "## 4. User flow",
+      "## 5. UX (section 9)",
+      "## 6. Prompt contract (`keel-tc-rewrite-to-csv.txt`)",
+      "### Output",
+      "### Fidelity (anti-hallucination)",
+      "### Authoring rules (mirror guide)",
+      "## 7. Components",
+      "## 8. Error handling",
+      "## 9. Testing",
+      "## 10. Success criteria",
+      "## 11. Spec self-review"
+    ],
+    "sha256": "99F9634237F311438424B21C952420C6BE7593400F7FC1B7942BA11DD3963A59"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-23-guide-motion-design.md",
+    "bytes": 4100,
+    "title": "P5 — Guide motion polish\r",
+    "status": "**Status:** Approved (2026-08-23)  ",
+    "goals": [],
+    "checked": 5,
+    "unchecked": 0,
+    "headings": [
+      "# P5 — Guide motion polish",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. Scope",
+      "### In scope",
+      "### Out of scope",
+      "## 4. UX behavior",
+      "## 5. CSS additions",
+      "## 6. Testing",
+      "## 7. Success criteria",
+      "## 8. Spec self-review"
+    ],
+    "sha256": "949EA851E078D216C1CF305BC985EA8C66F13E0E422C5082266C46F90B7E5178"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-23-keel-product-roadmap.md",
+    "bytes": 9854,
+    "title": "Keel product roadmap — three workspaces, projects hub, guide & dashboard\r",
+    "status": "**Status:** Approved (2026-08-23) — roadmap only; implement via per-phase designs  ",
+    "goals": [
+      "**Goal:** Single place to create and fully manage a project.",
+      "**Goal:** Best-in-class authoring standard + one-click **Copy prompt** for external AIs.",
+      "**Goal:** Turn **manual TCs (Keel Excel)** into maintainable automation packages.",
+      "**Goal:** From **user stories / PRD / acceptance criteria** → Keel-format TC workbook (CSV/xlsx).",
+      "**Goal:** Execute manual TCs **without** generating Selenium packages first — explore / bug-find / compare.",
+      "**Goal:** One glance at everything the user owns: projects, jobs, pass/TODO, recent packages, health of last runs."
+    ],
+    "checked": 4,
+    "unchecked": 0,
+    "headings": [
+      "# Keel product roadmap — three workspaces, projects hub, guide & dashboard",
+      "## 1. Vision (one sentence)",
+      "## 2. Locked decisions (from product conversation)",
+      "## 3. Information architecture (target)",
+      "## 4. Pillars (detailed)",
+      "### 4.1 Projects hub",
+      "### 4.2 Guide (revamp + AI CSV prompt)",
+      "### 4.3 Automate (evolve current Upload → Jobs)",
+      "### 4.4 Generate TCs (new)",
+      "### 4.5 Execute & verify (new)",
+      "### 4.6 Dashboard (modern animated)",
+      "## 5. Implementation phases (ordered)",
+      "## 6. Cross-cutting concerns",
+      "## 7. Success criteria (roadmap level)",
+      "## 8. Explicit non-goals (this roadmap)",
+      "## 9. Next after approval",
+      "## 10. Spec self-review"
+    ],
+    "sha256": "32AF04A9E86F1B899F37F5BF685AC8D22CE8B113DCD9BCCEF6E72F7CA64E3B4A"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-23-nav-automate-shell-design.md",
+    "bytes": 6938,
+    "title": "P3 — Nav IA + Automate shell\r",
+    "status": "**Status:** Approved (2026-08-23)  ",
+    "goals": [],
+    "checked": 5,
+    "unchecked": 0,
+    "headings": [
+      "# P3 — Nav IA + Automate shell",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. Scope",
+      "### In scope",
+      "### Out of scope",
+      "## 4. Navigation & routes",
+      "### 4.1 Sidebar order (Workspace)",
+      "### 4.2 Expand/collapse",
+      "### 4.3 `navActive` values",
+      "### 4.4 Routes",
+      "## 5. Page content",
+      "### 5.1 `/automate` hub",
+      "### 5.2 `/generate` (coming soon)",
+      "### 5.3 `/execute` (coming soon)",
+      "### 5.4 Cross-page updates",
+      "## 6. API",
+      "### 6.1 Jobs list filter",
+      "## 7. UX / CSS",
+      "## 8. Testing",
+      "## 9. Success criteria",
+      "## 10. Key files (implementation)",
+      "## 11. Spec self-review"
+    ],
+    "sha256": "E01341DC36BBC01B25A2888164CFC4B41382941E15C18BB54287DA0A281FE259"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-23-projects-hub-design.md",
+    "bytes": 11581,
+    "title": "P2 — Projects hub v1 (full §4.1)\r",
+    "status": "**Status:** Approved (2026-08-23)  ",
+    "goals": [],
+    "checked": 7,
+    "unchecked": 0,
+    "headings": [
+      "# P2 — Projects hub v1 (full §4.1)",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. Scope",
+      "### In scope",
+      "### Out of scope",
+      "## 4. Data model",
+      "### 4.1 `projects` (extend `ProjectEntity`)",
+      "### 4.2 `project_credentials` (new)",
+      "### 4.3 Disk layout (unchanged; visibility rules new)",
+      "## 5. APIs",
+      "### 5.1 Projects",
+      "### 5.2 Credentials",
+      "### 5.3 Automation artifacts",
+      "### 5.4 Jobs (Upload)",
+      "### 5.5 TC / evidence",
+      "### 5.6 Deprecated",
+      "## 6. UX",
+      "### 6.1 `/projects`",
+      "### 6.2 `/projects/{id}` — tabs",
+      "### 6.3 `/upload`",
+      "## 7. Security & errors",
+      "## 8. Legacy migration",
+      "## 9. Testing",
+      "## 10. Key files (implementation)",
+      "## 11. Success criteria",
+      "## 12. Spec self-review"
+    ],
+    "sha256": "283DF29D5C47E9B3D2B4BB62BE687BD15A7FC39CB047F9AFAF8180FA1A2FDB10"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-25-post-fix-enhancements-all-design.md",
+    "bytes": 9136,
+    "title": "Post-fix enhancements — All (A→B→C→D)\r",
+    "status": "**Status:** Approved in chat (2026-08-25); awaiting file review  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 14,
+    "headings": [
+      "# Post-fix enhancements — All (A→B→C→D)",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. Out of scope",
+      "## 4. Slice A — UX, progress, mid-run",
+      "### A1 — KeelPath counts on Automate / Execute",
+      "### A2 — Surface mismatch guard",
+      "### A3 — Editable KeelPath on Generate preview",
+      "### A4 — Automate Phase2 progress reserve",
+      "### A5 — Mid-run Execute TC list",
+      "## 5. Slice B — Generate quality",
+      "### B1 — Structured JSON",
+      "### B2 — Quality gate + retry",
+      "### B3 — Async single Generate",
+      "## 6. Slice C — Control plane",
+      "### C1 — Cancel",
+      "### C2 — Skip-failed-and-continue",
+      "### C3 — One-click pipeline",
+      "## 7. Slice D — Ops",
+      "### D1 — Final revise off by default (locked Option C)",
+      "### D2 — Retention sweeper",
+      "### D3 — Model comparison",
+      "## 8. Data / API sketch",
+      "## 9. Testing strategy",
+      "## 10. Implementation notes",
+      "## 11. Coverage checklist (must not drop)",
+      "## 12. Next step"
+    ],
+    "sha256": "692CC98A700BE9B15DD6B8AC49795A2076280F1E3D51508C526B3252E2DEE77D"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-31-generate-authoring-repair-design.md",
+    "bytes": 8232,
+    "title": "Generate authoring repair + smarter second pass\r",
+    "status": "**Status:** Approved — 2026-08-31  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Generate authoring repair + smarter second pass",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. Scope",
+      "### In",
+      "### Out",
+      "## 4. Generate flow",
+      "## 5. Auto-repair catalog",
+      "### Still fail (do not invent)",
+      "## 6. Second pass prompt",
+      "### UX copy (`generate.html`)",
+      "## 7. Architecture",
+      "## 8. Error handling",
+      "## 9. Testing",
+      "## 10. Non-goals / YAGNI"
+    ],
+    "sha256": "CE850A8505A5970683A9A5213198267AE2175E7F38265FFB8FDF245046B44C96"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-08-31-job-activity-loader-design.md",
+    "bytes": 5640,
+    "title": "Job activity loader\r",
+    "status": "**Status:** Draft — pending user review  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Job activity loader",
+      "## 1. Goal",
+      "## 2. Locked decisions",
+      "## 3. Scope",
+      "### In",
+      "### Out",
+      "## 4. UX copy",
+      "## 5. Behavior",
+      "### Job status",
+      "### Jobs / Dashboard",
+      "### Sidebar chip",
+      "## 6. Architecture",
+      "## 7. Error handling",
+      "## 8. Testing",
+      "## 9. Non-goals / YAGNI"
+    ],
+    "sha256": "C335185C2D32CAAE95801127903DD1D4A438CFCB428389C4AA4B48BCC034697A"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-02-authoring-heal-recovery-design.md",
+    "bytes": 4007,
+    "title": "Design: Authoring Gate Hardening + Editable TC Preview + Heal Recovery Era\r",
+    "status": "**Status:** Approved to implement (user: go ahead)  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Design: Authoring Gate Hardening + Editable TC Preview + Heal Recovery Era",
+      "## Goals",
+      "## Non-goals (v1 of heal recovery)",
+      "## Phase A — Gate + Import correctness (ship first)",
+      "## Phase B — Editable TC preview (Generate UI)",
+      "## Phase C — Heal recovery invent (“another era”)",
+      "### Contract (structured JSON)",
+      "### Runtime",
+      "### Safety",
+      "## Success criteria",
+      "## Implementation order"
+    ],
+    "sha256": "DE20748493A2568F60174C84189188EC4A3ED09496A1DCFF236A71CD2A5B9507"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-02-defect-fix-authoring-heal-design.md",
+    "bytes": 8058,
+    "title": "Design: Defect Fix Pass — Authoring / Preview / Heal Recovery\r",
+    "status": "**Status:** Draft for approval (blocks Execute correctness + Automate fidelity)  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Design: Defect Fix Pass — Authoring / Preview / Heal Recovery",
+      "## Problem",
+      "## Goals",
+      "## Non-goals (this pass)",
+      "## Approach (chosen)",
+      "## P0 — Execute blockers",
+      "### D1 — Cursor escalate must use `tryRecoveryHeal`",
+      "### D2 — Auto-fill must skip leave-empty fields",
+      "### D3 — Leave-empty clear on TYPE_USER / TYPE_PASS",
+      "## P1 — Contract + Automate fidelity",
+      "### D4 — All-or-nothing recovery parse",
+      "### D5 — Proven recovery trail + evidence",
+      "### D6 — Invent budget after successful parse",
+      "### D7 — Stronger clear",
+      "### D8 — Broader vague-assert gate",
+      "### D9 — Recovery vs SUBMIT_REFUSE",
+      "### D10 — Gate on Excel paths that feed Execute/Automate",
+      "### D11 — Prompt / schema cleanup",
+      "## P2 — UX + polish",
+      "### D12 — Step-grid TC editor",
+      "### D13 — Editable coverage notes",
+      "### D14 — Modal Escape + a11y",
+      "### D15 — Extra leave-empty phrasing (gate + binder)",
+      "### D16 — Slim-HTML false reject mitigation",
+      "### D17 — Document intentional limits",
+      "## Testing strategy",
+      "## Success criteria",
+      "## Out of scope follow-ups (explicit)"
+    ],
+    "sha256": "591B5665C94DA70A71418FD6DCAE16187A3EC7017220AD74461026EA33F2E419"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-02-heal-workbook-patch-design.md",
+    "bytes": 5937,
+    "title": "Design: Heal Recovery → Generated Workbook Patch\r",
+    "status": "**Status:** Implemented  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Design: Heal Recovery → Generated Workbook Patch",
+      "## Problem",
+      "## Goals",
+      "## Non-goals",
+      "## Chosen approach",
+      "## Architecture",
+      "### `HealWorkbookPatcher` (pure)",
+      "### `GeneratedWorkbookService.applyHealRecoveryPatch(...)`",
+      "### ProvePhase wiring",
+      "### UI",
+      "## Data flow",
+      "## Error handling",
+      "## Testing",
+      "## Success criteria"
+    ],
+    "sha256": "C2E8528010FD882B80D4BBD9D129D3DBCB1421961D19C25A8AA7208A8E6E27C8"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-02-unified-tc-import-design.md",
+    "bytes": 10462,
+    "title": "Design: Unified TC Import + Fixed External Generate Path\r",
+    "status": "**Status:** Approved in brainstorming (Approach 2) — awaiting user review of this file before implementation plan  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Design: Unified TC Import + Fixed External Generate Path",
+      "## Problem",
+      "## Goals",
+      "## Non-goals",
+      "## Decisions (locked)",
+      "## Architecture",
+      "### New / central component",
+      "### Callers (must use the service)",
+      "## Auto-repair (safe only)",
+      "## KeelPath matrix (product contract)",
+      "## UI",
+      "### Generate page",
+      "### Automate / Execute",
+      "## Prompts",
+      "### Keep both prompt files; fix content",
+      "### Prompt requirements",
+      "## API",
+      "## Error handling",
+      "## Testing / verification (implementation must pass)",
+      "## File map (expected)",
+      "## Open follow-ups (out of v1 unless trivial)",
+      "## Success criteria",
+      "## Spec self-review"
+    ],
+    "sha256": "D89ACBB67F2017D7396DA0AC33001F561CC591A3DEA59162FC23A7BA3C50A42D"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-06-authoring-preflight-review-design.md",
+    "bytes": 7062,
+    "title": "Design: Authoring Preflight Review (Cursor | Ollama)\r",
+    "status": "**Status:** Implemented  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Design: Authoring Preflight Review (Cursor | Ollama)",
+      "## Problem",
+      "## Goals",
+      "## Non-goals",
+      "## Locked decisions",
+      "## Approach",
+      "## Architecture",
+      "### UI (Generate)",
+      "### API",
+      "### Services",
+      "### Shared LLM contract",
+      "## Data flow",
+      "## Error handling",
+      "## Testing",
+      "## Success criteria"
+    ],
+    "sha256": "3843C6423A58461FC69682F9344301D0EE55D9017A921EF900344AB3BAF490FF"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-07-preferred-test-hooks-design.md",
+    "bytes": 2534,
+    "title": "Preferred test-hook attributes (project Settings)\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Preferred test-hook attributes (project Settings)",
+      "## Goal",
+      "## Why",
+      "## Design",
+      "## Non-goals",
+      "## Tests"
+    ],
+    "sha256": "8D272FE464FDBF5310916918BDD34208549AB07952B45F50E70ECBFFC1967DC5"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-07-project-tc-library-design.md",
+    "bytes": 965,
+    "title": "Project TC library + run selection (option B)\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Project TC library + run selection (option B)",
+      "## Goal",
+      "## Design",
+      "## APIs",
+      "## Non-goals"
+    ],
+    "sha256": "895901BDCD2A965539FBC0DE7B9350FF1C210C798EFE5DEAED9A79A93846649F"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-08-call-before-test-design.md",
+    "bytes": 7583,
+    "title": "Call-before test + library/projects UI polish\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Call-before test + library/projects UI polish",
+      "## Problem",
+      "## Goals",
+      "## Non-goals (this pass)",
+      "## Decisions (from brainstorming)",
+      "## Part A — UI polish",
+      "### A1. Projects page (`projects.html`)",
+      "### A2. Create project row alignment",
+      "### A3. TCs library (`project-detail.html` tab `tcs`)",
+      "## Part B — Call before test",
+      "### B1. Data model",
+      "### B2. Edit UI (library + Generate edit modal)",
+      "### B3. Runtime expansion",
+      "### B4. Automate implications",
+      "### B5. API surface",
+      "## Testing",
+      "## Risks",
+      "## Success criteria"
+    ],
+    "sha256": "8D74D12B4FCB4CB7FBCB6A1CD26D3577593BE3E4AE37CDBCC8FC205CB0FDEBD1"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-08-execute-case-picker-cancel-design.md",
+    "bytes": 830,
+    "title": "Execute page UX polish — case picker, delete modal, cancel\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Execute page UX polish — case picker, delete modal, cancel",
+      "## Goals",
+      "## Non-goals",
+      "## Behavior"
+    ],
+    "sha256": "F26CDEBF41BBAF0558975DB2BD28946149A1AAA9F88F1CDFADB341974917A75F"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-08-execute-page-ux-design.md",
+    "bytes": 1117,
+    "title": "Execute page: recent-run expand, hard delete, quieter start form\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Execute page: recent-run expand, hard delete, quieter start form",
+      "## Goals",
+      "## Page order",
+      "## Recent runs",
+      "## Start form",
+      "## Non-goals"
+    ],
+    "sha256": "57608AE4E8B3C9F456ECF4836427BE4B1A862D6F9AA96B86406B1BD1E0330CB3"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-09-bug-hunter-design.md",
+    "bytes": 7061,
+    "title": "Bug Hunter (Exploratory) — design\r",
+    "status": "**Status:** Implemented (dry-run + live loop). Live path: browser observe → Ollama/Cursor planner → allowlisted actions → hunter pack. Network CDP best-effort.  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Bug Hunter (Exploratory) — design",
+      "## Goal",
+      "## Product placement",
+      "## High-level flow",
+      "## Stop rules",
+      "## Cycle contract",
+      "### Inputs to planner (each cycle)",
+      "### Planner JSON (strict)",
+      "## Evidence & network",
+      "## Outputs — hunter pack ZIP",
+      "## Job / control plane",
+      "## Planner backends",
+      "## Portal UX (v1)",
+      "## Non-goals (v1)",
+      "## Open implementation notes",
+      "## Success criteria"
+    ],
+    "sha256": "C366B5088785E0B360B734115216FF41317181798CEECB4CB338A55A2F91A636"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-09-codegen-naming-ux-design.md",
+    "bytes": 8507,
+    "title": "Codegen naming UX + assert/TODO polish\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Codegen naming UX + assert/TODO polish",
+      "## Problem",
+      "## Goals",
+      "## Non-goals",
+      "## Decisions (from brainstorming)",
+      "## Design",
+      "### 1. Test class naming",
+      "### 2. Test method naming",
+      "### 3. Page stems (deterministic)",
+      "### 4. Assert strategy (locator-first)",
+      "### 5. TODO emit",
+      "### 6. Configuration",
+      "# Optional Ollama polish for generated *test method* names only (pages stay deterministic)",
+      "# Reuse delivery.llm-base-url / delivery.llm-model unless overridden later",
+      "### 7. Touch points (implementation map)",
+      "## Acceptance criteria",
+      "## Spec self-review"
+    ],
+    "sha256": "54726FD6D91585DA951236660D7DC4F81563DDC0D079CB44CF8ECB13A2E57D7F"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-09-project-summary-tab-design.md",
+    "bytes": 1861,
+    "title": "Project Summary tab — design\r",
+    "status": "**Status:** Approved for implementation",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Project Summary tab — design",
+      "## Goal",
+      "## Tabs & default",
+      "## Mini strip",
+      "## Activity feed",
+      "## Click behavior (kind-aware)",
+      "## API",
+      "## Out of scope (v1)"
+    ],
+    "sha256": "D9E14370F1E8207B9CEFCE9788EB7208097072A1AAC257382F0C3440B836DC25"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-10-bug-hunter-nav-js-actions-design.md",
+    "bytes": 1470,
+    "title": "Bug Hunter navigation + JS actions\r",
+    "status": "**Status:** Approved (chat) / implemented",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Bug Hunter navigation + JS actions",
+      "## Problem",
+      "## Decision"
+    ],
+    "sha256": "67EA821ACDF7DE7C305964485A71A5CC8124BBF796837B0B20EB7098ACF6D77A"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-10-bug-hunter-quality-design.md",
+    "bytes": 13103,
+    "title": "Bug Hunter Quality — design (page map + strategies)\r",
+    "status": "**Status:** Implemented (Phase 1 + Phase 2)  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Bug Hunter Quality — design (page map + strategies)",
+      "## Goal",
+      "## Non-goals",
+      "## Phase 1 — Context, memory, grounding",
+      "### 1.1 Page map (B) — primary planner DOM",
+      "### 1.2 Full slim fallback (A) — no 32k cut",
+      "### 1.3 Steps journal (already shipped — keep)",
+      "### 1.4 Coverage map (new)",
+      "### 1.5 Grounded actions",
+      "### 1.6 Stop when stuck (Phase 1)",
+      "### 1.7 Evidence (keep + extend)",
+      "## Phase 2 — Strategies, oracles, finish, pack polish",
+      "### 2.1 What “hunt strategies” means",
+      "## Hunt strategy",
+      "### 2.2 Oracle quality",
+      "### 2.3 Stop when useful",
+      "### 2.4 Human-usable pack polish",
+      "## Architecture (components)",
+      "### Planner prompt order (stable)",
+      "### Data flow (Phase 1 cycle)",
+      "## Config & API / UI",
+      "## Testing",
+      "## Success criteria",
+      "## Ship order",
+      "## Open decisions (locked for this spec)"
+    ],
+    "sha256": "E847F568BD3CA85535E78F9C285100B4DF54B05499C3AE2DF53CB128F561DA53"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-10-bug-hunter-quality-pass2-design.md",
+    "bytes": 10679,
+    "title": "Bug Hunter Quality Pass 2 — hooks login, safe creds, noise cut\r",
+    "status": "**Status:** Implemented (2026-09-10) — revise notes below  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Bug Hunter Quality Pass 2 — hooks login, safe creds, noise cut",
+      "## Post-implement revise — early defects found & mitigated",
+      "## Remaining watch-outs (manual)",
+      "## Goal",
+      "## Decisions (locked)",
+      "## Non-goals",
+      "## Phase A — Login that works on Axis / preferred hooks",
+      "### A.1 Preferred-hook-aware `JobLoginService`",
+      "### A.2 Hunt credential tokens (option B)",
+      "## Hunt credentials (use tokens — never invent other real passwords)",
+      "## Phase B — Kill Cursor mistakes (prompt + engine)",
+      "### B.1 System / heal prompt updates (`OllamaHuntPlanner` + `heal.mjs`)",
+      "### B.2 Settle wait (item 4)",
+      "### B.3 Toast/alert settle (item 8)",
+      "### B.4 Strategy auto-advance (item 5)",
+      "### B.5 Bug fingerprint dedupe (item 6)",
+      "### B.6 Login-feature mode (item 7)",
+      "### B.7 End-of-hunt bug recheck (new — user request)",
+      "## Phase C — Later (same plan, lower priority tasks)",
+      "### C.1 Coverage → planner (item 10)",
+      "### C.2 Stronger JSON repair (item 11)",
+      "## Pack / observability",
+      "## Success criteria",
+      "## Risks"
+    ],
+    "sha256": "CE7D23B5BE17A4486C4C7309101EBC9286E7EE7DA631416DF735ED91025736CF"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-09-11-authoring-precision-engine-design.md",
+    "bytes": 8027,
+    "title": "Authoring Precision Engine — Keel vs Cursor (Option B)\r",
+    "status": "**Status:** Implemented (2026-09-11)  ",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Authoring Precision Engine — Keel vs Cursor (Option B)",
+      "## Goal",
+      "## Decisions (locked)",
+      "## Non-goals (v1)",
+      "## Architecture",
+      "### New sidecar mode: `groundRank`",
+      "### Confidence thresholds (v1)",
+      "### Job call budget",
+      "### Fallback triggers",
+      "## Data model changes",
+      "### `ConversionJobRequest` / job JSON",
+      "### `TcDraft` metadata (extend)",
+      "## UI",
+      "### Automate (`upload.html`)",
+      "### Execute (`execute.html`)",
+      "### API",
+      "## Configuration (`application.properties`)",
+      "## Testing strategy",
+      "## Rollout",
+      "## Success criteria"
+    ],
+    "sha256": "594C10CF658C8B294501E58366574577E64CC4A44EACF8CA361977CABF157F52"
+  },
+  {
+    "path": "README.md",
+    "bytes": 13648,
+    "title": "Keel\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Keel",
+      "## What you get",
+      "## Choose your path — entire solution flow",
+      "### Decision table",
+      "### Recommended happy path (full solution)",
+      "## Stack",
+      "## Quick start",
+      "### Prerequisites",
+      "### Run the portal",
+      "### Configuration",
+      "### CLI",
+      "## Authoring engine (Automate, Execute, All in one)",
+      "## How Automate works",
+      "## How Bug Hunter works",
+      "## Repository layout",
+      "## Security notes",
+      "## License"
+    ],
+    "sha256": "DF3875530A6F223CBBA8660076E5FF99FE496884272DEF43BC21AFF0E7376FD3"
+  },
+  {
+    "path": "specs/001-delivery-platform/checklists/requirements.md",
+    "bytes": 1560,
+    "title": "Specification Quality Checklist: Manual TC to Automation Delivery Platform\r",
+    "status": "",
+    "goals": [],
+    "checked": 16,
+    "unchecked": 0,
+    "headings": [
+      "# Specification Quality Checklist: Manual TC to Automation Delivery Platform",
+      "## Content Quality",
+      "## Requirement Completeness",
+      "## Feature Readiness",
+      "## Notes"
+    ],
+    "sha256": "26A522D68C7D28CA240DECEC98C0E19F72E7E542303C823589B06BD291B32E0C"
+  },
+  {
+    "path": "specs/001-delivery-platform/contracts/conversion-cli.md",
+    "bytes": 891,
+    "title": "Contract: Conversion CLI (pre-portal / worker entry)\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Contract: Conversion CLI (pre-portal / worker entry)",
+      "## Command",
+      "## Exit codes",
+      "## Stdout (JSON line on success)",
+      "## Guarantees"
+    ],
+    "sha256": "C593F93AF06000F802C24A72CE4ABBBA15FAEC21A846031B6D7A2A2B325350BE"
+  },
+  {
+    "path": "specs/001-delivery-platform/contracts/excel-template.md",
+    "bytes": 981,
+    "title": "Contract: Manual TC Excel Template\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Contract: Manual TC Excel Template",
+      "## File",
+      "## Columns",
+      "## Rejection rules",
+      "## Content hash (Update)"
+    ],
+    "sha256": "50F64255E15A79A328C4E98A265D33818C1A55FE9E1E1649B8AC325F9BB06F7D"
+  },
+  {
+    "path": "specs/001-delivery-platform/contracts/portal-api.md",
+    "bytes": 1628,
+    "title": "Contract: Portal HTTP API (MVP)\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Contract: Portal HTTP API (MVP)",
+      "## POST /api/projects",
+      "## GET /api/projects/{projectId}",
+      "## POST /api/projects/{projectId}/jobs",
+      "## GET /api/jobs/{jobId}",
+      "## GET /api/jobs/{jobId}/download",
+      "## Error conventions"
+    ],
+    "sha256": "EE198CBEF3AE13D6B6B6FAC8306321BBAAF888D2DD160390746F223BD4B29A1E"
+  },
+  {
+    "path": "specs/001-delivery-platform/data-model.md",
+    "bytes": 3030,
+    "title": "Data Model: 001-delivery-platform\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Data Model: 001-delivery-platform",
+      "## Entities",
+      "### Account",
+      "### Project",
+      "### ManualTestCase (from Excel row)",
+      "### ConversionJob",
+      "### CaseOutcome",
+      "### ProvenStep",
+      "### StoredFramework",
+      "### LocatorMap",
+      "### AutomationPackage (ZIP artifact)",
+      "## Validation summary",
+      "## State diagram (Job)"
+    ],
+    "sha256": "71F0AC6A91BA30A64C39BD8C9AB536D9DFE167BE9D8F37E6E155456A0DED28E6"
+  },
+  {
+    "path": "specs/001-delivery-platform/plan.md",
+    "bytes": 5542,
+    "title": "Implementation Plan: Manual TC to Automation Delivery Platform\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Implementation Plan: Manual TC to Automation Delivery Platform",
+      "## Summary",
+      "## Technical Context",
+      "## Constitution Check",
+      "## Project Structure",
+      "### Documentation (this feature)",
+      "### Source Code (repository root)",
+      "## Complexity Tracking"
+    ],
+    "sha256": "B138C5288839D9448817B564653EADF6AAFDBF9E81242ACFB49478F1C6D8DB65"
+  },
+  {
+    "path": "specs/001-delivery-platform/quickstart.md",
+    "bytes": 2511,
+    "title": "Quickstart Validation: 001-delivery-platform\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Quickstart Validation: 001-delivery-platform",
+      "## Prerequisites",
+      "## Phase A — Template builds",
+      "## Phase B — Excel + validators (unit)",
+      "## Phase C — CLI New ZIP (engine smoke)",
+      "## Phase D — Update",
+      "## Phase E — Portal (after CLI works)",
+      "## Mapping to success criteria",
+      "## References"
+    ],
+    "sha256": "38C6D48B2F687EEE7E38E21E9D41D9340E940BDF7DB15633DDE7718AD71A9827"
+  },
+  {
+    "path": "specs/001-delivery-platform/research.md",
+    "bytes": 4142,
+    "title": "Research: 001-delivery-platform\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Research: 001-delivery-platform",
+      "## 1. Local AI runtime for authoring",
+      "## 2. How AI relates to code generation",
+      "## 3. Customer package stack",
+      "## 4. Project / artifact storage for Update",
+      "## 5. Portal vs engine sequencing",
+      "## 6. Excel contract",
+      "## 7. Partial success packaging",
+      "## 8. Secrets handling",
+      "## 9. Reuse of existing TestPilot",
+      "## 10. Alignment with Superpowers plan"
+    ],
+    "sha256": "A7617F71B8C743254124685D4F8A22D3D34D2A2685C24DE5304B4725D713FFFB"
+  },
+  {
+    "path": "specs/001-delivery-platform/spec.md",
+    "bytes": 11436,
+    "title": "Feature Specification: Manual TC to Automation Delivery Platform\r",
+    "status": "**Status**: Draft",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Feature Specification: Manual TC to Automation Delivery Platform",
+      "## User Scenarios & Testing *(mandatory)*",
+      "### User Story 1 - First-time package delivery (New) (Priority: P1)",
+      "### User Story 2 - Add more cases to an existing package (Update) (Priority: P1)",
+      "### User Story 3 - Reject bad uploads early (Priority: P2)",
+      "### User Story 4 - Track job status and automation score (Priority: P2)",
+      "### Edge Cases",
+      "## Requirements *(mandatory)*",
+      "### Functional Requirements",
+      "### Key Entities",
+      "## Success Criteria *(mandatory)*",
+      "### Measurable Outcomes",
+      "## Assumptions"
+    ],
+    "sha256": "16B0803FE56CFEB20D5B90B1CA3B63CE339249570B91D3913784DC0A950BCE97"
+  },
+  {
+    "path": "specs/001-delivery-platform/tasks.md",
+    "bytes": 14904,
+    "title": "Tasks: Manual TC to Automation Delivery Platform\r",
+    "status": "",
+    "goals": [
+      "**Goal**: Excel + URL/login → live author → validate → generate pages/tests → ZIP downloadable via CLI",
+      "**Goal**: Server-stored framework + locator map; Update merges new/changed TCs only",
+      "**Goal**: Invalid Excel fails fast with actionable errors before conversion",
+      "**Goal**: Visible job lifecycle + pass/TODO score; thin portal upload/status/download"
+    ],
+    "checked": 61,
+    "unchecked": 7,
+    "headings": [
+      "# Tasks: Manual TC to Automation Delivery Platform",
+      "## Format: `[ID] [P?] [Story] Description`",
+      "## Path Conventions",
+      "## Phase 1: Setup (Shared Infrastructure)",
+      "## Phase 2: Foundational (Blocking Prerequisites)",
+      "## Phase 3: User Story 1 — First-time package delivery (New) (Priority: P1) 🎯 MVP",
+      "### Implementation for User Story 1",
+      "## Phase 4: User Story 2 — Update existing package (Priority: P1)",
+      "### Implementation for User Story 2",
+      "## Phase 5: User Story 3 — Reject bad uploads early (Priority: P2)",
+      "### Implementation for User Story 3",
+      "## Phase 6: User Story 4 — Job status and automation score (Priority: P2)",
+      "### Implementation for User Story 4",
+      "## Phase 7: Polish & Cross-Cutting Concerns",
+      "## Dependencies & Execution Order",
+      "### Phase Dependencies",
+      "### User Story Dependencies",
+      "### Parallel Opportunities",
+      "## Parallel Example: User Story 1",
+      "# After Foundational:",
+      "## Implementation Strategy",
+      "### MVP First (User Story 1 Only)",
+      "### Incremental Delivery",
+      "### Parallel Team Strategy",
+      "## Notes"
+    ],
+    "sha256": "DB7565C40AEB3162C1921928F696F0A27B979AA1C519429AD12920006D908198"
+  },
+  {
+    "path": "specs/002-portal-product/plan.md",
+    "bytes": 924,
+    "title": "Implementation Plan: 002-portal-product\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Implementation Plan: 002-portal-product",
+      "## Technical approach",
+      "## Out of scope"
+    ],
+    "sha256": "DB92A5A2C3F42485D788D2103A793B18955709DFFB65BDE312368D5CD098AEF7"
+  },
+  {
+    "path": "specs/002-portal-product/spec.md",
+    "bytes": 4839,
+    "title": "Feature Specification: Portal Product (Invite Auth, Dashboard, TAF Core)\r",
+    "status": "**Status**: Draft",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Feature Specification: Portal Product (Invite Auth, Dashboard, TAF Core)",
+      "## User Scenarios & Testing *(mandatory)*",
+      "### User Story 1 - Invite login and owned workspace (Priority: P1)",
+      "### User Story 2 - Dashboard stats and charts (Priority: P1)",
+      "### User Story 3 - Project pick/create then upload (Priority: P1)",
+      "### User Story 4 - TAF-based customer ZIP (Priority: P1)",
+      "### User Story 5 - Windows VPS ops runbook (Priority: P2)",
+      "## Edge Cases",
+      "## Requirements *(mandatory)*",
+      "## Success Criteria"
+    ],
+    "sha256": "2A164F49B165025CED674ECD3282D5FC87529BF30E1A571FB5B79307DF00F94F"
+  },
+  {
+    "path": "specs/002-portal-product/tasks.md",
+    "bytes": 696,
+    "title": "Tasks: 002-portal-product\r",
+    "status": "",
+    "goals": [],
+    "checked": 9,
+    "unchecked": 0,
+    "headings": [
+      "# Tasks: 002-portal-product"
+    ],
+    "sha256": "0DCC625B16B4C339B6903227EE998C9F5F23FDE8DB18E757769E922259F40FDD"
+  },
+  {
+    "path": "specs/003-two-phase-conversion/spec.md",
+    "bytes": 2823,
+    "title": "Feature Specification: Two-Phase Conversion (Prove IR → Emit)\r",
+    "status": "**Status**: Implemented (engine + portal job history)",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Feature Specification: Two-Phase Conversion (Prove IR → Emit)",
+      "## User Scenarios & Testing *(mandatory)*",
+      "### User Story 1 - Phase-1 IR with retry and blocker (Priority: P1)",
+      "### User Story 2 - Phase-2 emit with page clustering (Priority: P1)",
+      "### User Story 3 - Portal step progress and job history (Priority: P1)",
+      "## Requirements *(mandatory)*",
+      "## Success Criteria"
+    ],
+    "sha256": "319D539CA3D3F60C3812A7F4701C4AAC03C95A251BBED354E6A212E8B2B03535"
+  },
+  {
+    "path": "specs/003-two-phase-conversion/tasks.md",
+    "bytes": 852,
+    "title": "Tasks: 003-two-phase-conversion\r",
+    "status": "",
+    "goals": [],
+    "checked": 11,
+    "unchecked": 1,
+    "headings": [
+      "# Tasks: 003-two-phase-conversion",
+      "## Phase 1 IR + prove",
+      "## Phase 2 emit",
+      "## Portal",
+      "## Verification"
+    ],
+    "sha256": "014842DAF6B73AD1D5C048A8C72FD84C10834E4C12B4F5FE3B6ED0393E5FB5A2"
+  },
+  {
+    "path": "src/main/java/delivery/README.md",
+    "bytes": 512,
+    "title": "Delivery engine\r",
+    "status": "",
+    "goals": [],
+    "checked": 0,
+    "unchecked": 0,
+    "headings": [
+      "# Delivery engine"
+    ],
+    "sha256": "7BDBB8EFFAE3066902520700C8643982DEE8EA35DE04B6772E3C0125A28B3C79"
+  }
+]

@@ -1,0 +1,17 @@
+F01 | DEFECT REPRODUCED | Distinct jobs within one second use identical work folder: example-com-20260915-130000
+F05 | DEFECT REPRODUCED | Two distinct TC IDs persisted as 1 draft
+F04a | DEFECT REPRODUCED | Incremental emit retains TC_A but drops its page method
+F04b | DEFECT REPRODUCED | Incremental emit drops previous test-data keys
+F04c | DEFECT REPRODUCED | Demoting TC_B to TODO leaves old executable PASSED class
+F02 | DEFECT REPRODUCED | Second account's domain settings overwrite first account's settings
+F06 | DEFECT REPRODUCED | Changing base URL host resolves to an empty folder despite old project metadata
+WARNING: A Java agent has been loaded dynamically (C:\Users\rsayed\.m2\repository\net\bytebuddy\byte-buddy-agent\1.14.12\byte-buddy-agent-1.14.12.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+Java HotSpot(TM) 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+F07 | DEFECT REPRODUCED | Expired old job returns v2.zip instead of its own package or an unavailable response
+F03 | DEFECT REPRODUCED | Stored TODO with unchanged hash becomes REUSED/PASSED without browser proof
+[32m[INFO] - [15-09-2026 15:33:45] [main] [utils.LogsManager] - HUNT: action navigate -> ok -- url=http://127.0.0.1:9876/audit
+[mF08 | DEFECT REPRODUCED | Navigation guard passes loopback URL to WebDriver (mock only; no request sent)
+F09 | DEFECT REPRODUCED | Password value attribute survives HTML preparation used for planner context and hunt artifacts

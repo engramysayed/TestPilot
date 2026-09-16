@@ -1,0 +1,11 @@
+id,title,keel_path,call_before,steps,expected
+TC-LOGIN-OK,Valid login,AUTOMATE,,Open login.html; type user demo; type password demo-pass; click Sign in,Dashboard is visible
+TC-LOGIN-BAD,Invalid login,AUTOMATE,,Open login.html; type user demo; type password wrong; click Sign in,Invalid credentials
+TC-ASSERT-FALSE,Deliberately false heading,AUTOMATE,TC-LOGIN-OK,Open home.html,heading equals Admin Home
+TC-ASSERT-TRUE,True heading,AUTOMATE,TC-LOGIN-OK,Open home.html,heading contains Dashboard
+TC-URL-OK,Home URL,AUTOMATE,TC-LOGIN-OK,Open home.html,URL contains home.html
+TC-SELECTED,Size remains M,AUTOMATE,TC-LOGIN-OK,Open shop.html,size select is M
+TC-CART,Add widget to cart,AUTOMATE,TC-LOGIN-OK,Open shop.html; click Add widget to cart; open cart.html,Cart: 1 item
+TC-CHECKOUT,Checkout after cart,AUTOMATE,TC-CART,Open checkout.html; click Place order,Order confirmed
+TC-CHECKOUT-EMPTY,Checkout empty cart,AUTOMATE,TC-LOGIN-OK,Open checkout.html,Cannot checkout
+TC-SECRET,Canary password,AUTOMATE,,Open login.html; type user demo; type password CANARY-SECRET-001; click Sign in,Invalid credentials
