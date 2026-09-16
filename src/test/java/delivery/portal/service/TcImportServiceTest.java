@@ -149,5 +149,13 @@ public class TcImportServiceTest {
             lastSource.set(source);
             lastCases.set(cases);
         }
+
+        @Override
+        public Map<String, Object> updateCoverageNotes(String projectId, String coverageNotes) {
+            Map<String, Object> out = new java.util.LinkedHashMap<>();
+            out.put("projectId", projectId);
+            out.put("coverageNotes", coverageNotes == null ? "" : coverageNotes);
+            return out;
+        }
     }
 }

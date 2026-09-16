@@ -95,9 +95,7 @@ public class AuthoringServiceTest {
         List<ProvenStep> forced = service.stepsPreferringCandidate("TC1", intent, candidates, "c1");
         Assert.assertTrue(forced.get(0).validated(), forced.get(0).rationale());
         Assert.assertEquals(forced.get(0).action(), "type");
-        Assert.assertNotNull(forced.get(0).value());
-        Assert.assertFalse(forced.get(0).value().isBlank());
-        Assert.assertNotEquals(forced.get(0).value().toLowerCase(), "fname");
-        Assert.assertFalse(forced.get(0).value().toLowerCase().contains("first name"));
+        Assert.assertEquals(forced.get(0).value(), "",
+                "Excel without a literal must not invent faker TestData");
     }
 }

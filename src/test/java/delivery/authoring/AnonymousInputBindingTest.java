@@ -43,8 +43,8 @@ public class AnonymousInputBindingTest {
         StepIntentBinder.BindResult r = StepIntentBinder.bind(tc, LABELLED_FORM);
         Assert.assertTrue(r.ok(), r.rejectReason());
         Assert.assertEquals(r.steps().get(0).locatorValue(), "firstName");
-        Assert.assertNotEquals(r.steps().get(0).value(), "Test");
-        Assert.assertFalse(r.steps().get(0).value().isBlank());
+        // "Test" is unspecified placeholder language — do not invent faker TestData.
+        Assert.assertEquals(r.steps().get(0).value(), "");
     }
 
     @Test
@@ -69,7 +69,7 @@ public class AnonymousInputBindingTest {
     }
 
     @Test
-    public void plainFieldMentionStillFallsBackToInventedValue() {
+    public void plainFieldMentionIsNotAnExplicitTypedValue() {
         Assert.assertNull(DummyValueInventor.extractExplicitValue("Enter the username"));
     }
 }

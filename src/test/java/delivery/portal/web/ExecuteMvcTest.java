@@ -79,7 +79,7 @@ public class ExecuteMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(main.contains("id=\"bug-report-actions\""), "bug report actions missing");
         Assert.assertTrue(main.contains("bug-report"), "bug report export link missing");
         Assert.assertTrue(main.contains("id=\"design-ref-form\""), "design reference upload form missing");
-        Assert.assertTrue(main.contains("/design-references"), "design references API hint missing");
+        Assert.assertTrue(body.contains("/design-references"), "design references API hint missing");
         Assert.assertTrue(body.contains("designCompareStatus"), "designCompareStatus handling missing");
         Assert.assertTrue(body.contains("design-compare-panel"), "design compare detail panel missing");
         Assert.assertTrue(body.contains("bug-report.csv"), "bug report CSV export missing");

@@ -94,7 +94,7 @@ public class ConversionWorker {
                 job.setStatus(JobRecord.Status.COMPLETED_WITH_BLOCK);
                 job.setError("FINAL_REVISE_BLOCK");
                 portalStore.syncJobPersistence(job);
-            } else if (result.passed() == 0 && result.todo() > 0) {
+            } else if (!props.isDryRun() && result.passed() == 0 && result.todo() > 0) {
                 job.setStatus(JobRecord.Status.FAILED);
                 job.setError("ALL_CASES_TODO");
                 job.setMessage(result.message() == null || result.message().isBlank()

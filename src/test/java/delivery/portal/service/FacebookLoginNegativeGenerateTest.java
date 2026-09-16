@@ -1,5 +1,6 @@
 package delivery.portal.service;
 
+import delivery.authoring.LocalLlmClient;
 import delivery.excel.GenerateQualityGate;
 import delivery.excel.GeneratedTcJsonParser;
 import delivery.excel.ManualTestCase;
@@ -137,9 +138,11 @@ public class FacebookLoginNegativeGenerateTest {
         }
 
         @Override
-        String callOllama(String system, String user, String model) {
+        LocalLlmClient.ChatOutcome callOllamaDetailed(
+                String system, String user, String model, java.util.function.BooleanSupplier cancelCheck) {
             llmCallCount++;
-            return llmResponses.get(llmCallCount - 1);
+            return new LocalLlmClient.ChatOutcome(
+                    llmResponses.get(llmCallCount - 1), "stop");
         }
     }
 }

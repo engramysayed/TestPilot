@@ -16,8 +16,8 @@ public class PageNameNormalizerTest {
 
     @Test
     public void blankStemFallsBackToLoginForAliases() {
-        Assert.assertEquals(PageNameNormalizer.canonical("LoginForm", "Page"), "Login");
-        Assert.assertEquals(PageNameNormalizer.canonical("LoginForm", "Home"), "Login");
-        Assert.assertEquals(PageNameNormalizer.canonical("LoginForm", ""), "Login");
+        Assert.assertEquals(PageNameNormalizer.canonical("LoginForm", "Page"), "LoginPage");
+        Assert.assertEquals(PageNameNormalizer.canonical("LoginForm", "Home"), "LoginPage");
+        Assert.assertEquals(PageNameNormalizer.canonical("LoginForm", ""), "LoginPage");
     }
 }

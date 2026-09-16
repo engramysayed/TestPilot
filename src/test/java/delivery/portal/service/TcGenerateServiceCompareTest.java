@@ -1,5 +1,6 @@
 package delivery.portal.service;
 
+import delivery.authoring.LocalLlmClient;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.ProjectRecord;
 import org.testng.Assert;
@@ -117,15 +118,16 @@ public class TcGenerateServiceCompareTest {
         }
 
         @Override
-        String callOllama(String system, String user, String model) {
+        LocalLlmClient.ChatOutcome callOllamaDetailed(
+                String system, String user, String model, java.util.function.BooleanSupplier cancelCheck) {
             llmCallCount++;
             if ("gemma4:e2b".equals(model)) {
-                return MODEL_A_JSON;
+                return new LocalLlmClient.ChatOutcome(MODEL_A_JSON, "stop");
             }
             if ("qwen2.5:latest".equals(model)) {
-                return MODEL_B_JSON;
+                return new LocalLlmClient.ChatOutcome(MODEL_B_JSON, "stop");
             }
-            return MODEL_A_JSON;
+            return new LocalLlmClient.ChatOutcome(MODEL_A_JSON, "stop");
         }
     }
 
