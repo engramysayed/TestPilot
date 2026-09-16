@@ -57,6 +57,8 @@ public class ElementsHandler {
             scrollToElement(locator);
             waitHandler.waitForElementToBeVisible(locator);
             findElement(locator).click();
+            LogsManager.info("Clicked element: " + locator);
+            waitHandler.waitForPageReady();
 
         } catch (Exception e) {
             LogsManager.error("Failed to click  element: " + locator);

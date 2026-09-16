@@ -10,6 +10,9 @@ import project.utils.dataReader.PropertyReader;
 import project.validations.Validation;
 import project.validations.Verification;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 public class WebDriverFactory {
 
     public final static String browser = PropertyReader.getProperty("BROWSER_TYPE");
@@ -34,10 +37,24 @@ public class WebDriverFactory {
         }
         try {
             driver.quit();
+            LogsManager.info("Quitting Driver");
+            writeQuitMarker();
         } catch (Exception e) {
             LogsManager.error("Error quitting driver: " + e.getMessage());
         } finally {
             driverThreadLocal.remove();
+        }
+    }
+
+    private static void writeQuitMarker() {
+        try {
+            Path dir = Path.of("test-output");
+            Files.createDirectories(dir);
+            String name = "driver-quit-" + Thread.currentThread().threadId() + "-"
+                    + System.nanoTime() + ".marker";
+            Files.writeString(dir.resolve(name), "quit");
+        } catch (Exception ignored) {
+            // Marker is observational evidence for downloaded replay; quit must still complete.
         }
     }
 

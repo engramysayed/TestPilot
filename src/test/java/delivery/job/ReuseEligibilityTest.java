@@ -250,6 +250,104 @@ public class ReuseEligibilityTest {
     }
 
     @Test
+    public void passwordRotationWithSameUsernameInvalidatesReuse() throws Exception {
+        ManualTestCase pass = tc("TC_PASS", "1. Click Go", "");
+        Map<String, String> hashes = Map.of("TC_PASS", pass.contentHash());
+        Map<String, TcDraft> stored = Map.of(
+                "TC_PASS", draft("TC_PASS", TcDraftStatus.PASSED, List.of(step("TC_PASS"))));
+        ConversionJobRequest original = new ConversionJobRequest(
+                "prj_reuse", Path.of("unused.xlsx"), "https://example.com", "demo", "secret",
+                Path.of("."), Path.of("."), Path.of("customer-framework-template"),
+                "UPDATE", "", "", false, false, AuthoringEngine.KEEL);
+        ConversionJobRequest rotated = new ConversionJobRequest(
+                "prj_reuse", Path.of("unused.xlsx"), "https://example.com", "demo", "rotated-secret",
+                Path.of("."), Path.of("."), Path.of("customer-framework-template"),
+                "UPDATE", "", "", false, false, AuthoringEngine.KEEL);
+        Set<String> author = ReuseEligibility.authorIds(
+                List.of(pass), hashes, stored,
+                ReuseEligibility.current(original), ReuseEligibility.current(rotated));
+        Assert.assertTrue(author.contains("TC_PASS"),
+                "password rotation with the same username must invalidate reuse");
+        Assert.assertFalse(
+                ReuseEligibility.environmentMatches(
+                        ReuseEligibility.current(original), ReuseEligibility.current(rotated)),
+                "prove-context must not match after password rotation");
+        Path secretRoot = java.nio.file.Files.createTempDirectory("prove-secret");
+        ReuseEligibility.Context writtenContext = ReuseEligibility.current(original);
+        ReuseEligibility.write(secretRoot, writtenContext);
+        String json = java.nio.file.Files.readString(
+                secretRoot.resolve(ReuseEligibility.CONTEXT_FILE));
+        Assert.assertFalse(json.contains("secret"),
+                "raw password must never be stored in prove-context");
+        Assert.assertFalse(json.contains("rotated-secret"), json);
+        Assert.assertFalse(json.contains("credentialSecretFingerprint"),
+                "unsalted password hashes must not be stored in prove-context:\n" + json);
+        Assert.assertTrue(json.contains("credentialRevision"), json);
+        Assert.assertTrue(writtenContext.credentialRevision().startsWith("cred_"),
+                writtenContext.credentialRevision());
+        Assert.assertFalse(json.toLowerCase().contains(sha256Hex("secret")),
+                "SHA-256 of the password must not appear in prove-context:\n" + json);
+        Assert.assertFalse(
+                java.nio.file.Files.exists(secretRoot.resolve(CredentialRevision.BINDING_FILE)),
+                "MAC binding belongs in the server store, not beside prove-context written for tests");
+    }
+
+    @Test
+    public void credentialRevisionIsStableThenRotatesAndStaysOffCustomerArtifacts() throws Exception {
+        Path store = java.nio.file.Files.createTempDirectory("cred-rev-store");
+        ConversionJobRequest first = new ConversionJobRequest(
+                "prj_reuse", Path.of("unused.xlsx"), "https://example.com", "demo", "secret",
+                Path.of("."), store, Path.of("customer-framework-template"),
+                "UPDATE", "", "", false, false, AuthoringEngine.KEEL);
+        ConversionJobRequest again = new ConversionJobRequest(
+                "prj_reuse", Path.of("unused.xlsx"), "https://example.com", "demo", "secret",
+                Path.of("."), store, Path.of("customer-framework-template"),
+                "UPDATE", "", "", false, false, AuthoringEngine.KEEL);
+        ConversionJobRequest rotated = new ConversionJobRequest(
+                "prj_reuse", Path.of("unused.xlsx"), "https://example.com", "demo", "rotated-secret",
+                Path.of("."), store, Path.of("customer-framework-template"),
+                "UPDATE", "", "", false, false, AuthoringEngine.KEEL);
+        ReuseEligibility.Context firstCtx = ReuseEligibility.current(first);
+        String firstRev = firstCtx.credentialRevision();
+        String againRev = ReuseEligibility.current(again).credentialRevision();
+        String rotatedRev = ReuseEligibility.current(rotated).credentialRevision();
+        Assert.assertEquals(againRev, firstRev, "same credentials must keep the same revision id");
+        Assert.assertNotEquals(rotatedRev, firstRev, "password rotation must mint a new revision id");
+        Path project = new delivery.store.ProjectStore(store, "https://example.com").projectRoot("prj_reuse");
+        String binding = java.nio.file.Files.readString(project.resolve(CredentialRevision.BINDING_FILE));
+        Assert.assertFalse(binding.contains("secret"), binding);
+        Assert.assertFalse(binding.contains("rotated-secret"), binding);
+        Path context = java.nio.file.Files.createTempDirectory("cred-rev-ctx");
+        ReuseEligibility.write(context, firstCtx);
+        String prove = java.nio.file.Files.readString(context.resolve(ReuseEligibility.CONTEXT_FILE));
+        Assert.assertTrue(prove.contains(firstRev), prove);
+        Assert.assertFalse(prove.contains("secretMac"), prove);
+        Assert.assertFalse(
+                java.nio.file.Files.exists(context.resolve(CredentialRevision.BINDING_FILE)));
+    }
+
+    @Test
+    public void localLlmConfigurationChangeInvalidatesReuse() {
+        ManualTestCase pass = tc("TC_PASS", "1. Click Go", "");
+        Map<String, String> hashes = Map.of("TC_PASS", pass.contentHash());
+        Map<String, TcDraft> stored = Map.of(
+                "TC_PASS", draft("TC_PASS", TcDraftStatus.PASSED, List.of(step("TC_PASS"))));
+        ConversionJobRequest ollama = new ConversionJobRequest(
+                "prj_reuse", Path.of("unused.xlsx"), "https://example.com", "", "",
+                Path.of("."), Path.of("."), Path.of("customer-framework-template"),
+                "UPDATE", "http://127.0.0.1:11434", "qwen2.5", false, false, AuthoringEngine.KEEL);
+        ConversionJobRequest otherModel = new ConversionJobRequest(
+                "prj_reuse", Path.of("unused.xlsx"), "https://example.com", "", "",
+                Path.of("."), Path.of("."), Path.of("customer-framework-template"),
+                "UPDATE", "http://127.0.0.1:11434", "llama3.1", false, false, AuthoringEngine.KEEL);
+        Set<String> author = ReuseEligibility.authorIds(
+                List.of(pass), hashes, stored,
+                ReuseEligibility.current(ollama), ReuseEligibility.current(otherModel));
+        Assert.assertTrue(author.contains("TC_PASS"),
+                "local LLM URL/model change must invalidate reuse");
+    }
+
+    @Test
     public void precisionBudgetChangeInvalidatesReuse() {
         ManualTestCase pass = tc("TC_PASS", "1. Click Go", "");
         Map<String, String> hashes = Map.of("TC_PASS", pass.contentHash());
@@ -349,5 +447,15 @@ public class ReuseEligibilityTest {
         Assert.assertEquals(java.nio.file.Files.readString(occ2.resolve("step-001.png")), "second");
         Assert.assertNotEquals(occ1, occ2);
         Assert.assertTrue(ReuseEligibility.evidenceAvailable(prior, project));
+    }
+
+    private static String sha256Hex(String value) {
+        try {
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(hash);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

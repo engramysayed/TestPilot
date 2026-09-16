@@ -6,12 +6,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.CapabilityType;
-import org.openqa.selenium.remote.RemoteWebDriver;
-import project.utils.Logs.LogsManager;
 import project.utils.dataReader.PropertyReader;
-
-import java.net.URI;
-import java.util.Map;
 
 public class ChromeFactory extends AbstractDriver{
 
@@ -27,13 +22,15 @@ public class ChromeFactory extends AbstractDriver{
         options.setCapability(CapabilityType.UNHANDLED_PROMPT_BEHAVIOUR, UnexpectedAlertBehaviour.IGNORE);
         options.setCapability(CapabilityType.ENABLE_DOWNLOADS, true);
         options.setAcceptInsecureCerts(true);
-        switch (PropertyReader.getProperty("EXECUTION_TYPE")) {
-            case "LocalHeadless" -> options.addArguments("--headless=new");
-            case "Remote" -> {
-                options.addArguments("--disable-gpu");
-                options.addArguments("--disable-extensions");
-                options.addArguments("--headless=new");
-            }
+        String execution = executionType();
+        if (isHeadless(execution)) {
+            options.addArguments("--headless=new");
+            options.addArguments("--disable-gpu");
+            options.addArguments("--window-size=1920,1080");
+        } else if ("Remote".equalsIgnoreCase(execution)) {
+            options.addArguments("--disable-gpu");
+            options.addArguments("--disable-extensions");
+            options.addArguments("--headless=new");
         }
         options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
         return options;
@@ -41,20 +38,29 @@ public class ChromeFactory extends AbstractDriver{
 
     @Override
     public WebDriver createDriver() {
-        if(PropertyReader.getProperty("EXECUTION_TYPE").equalsIgnoreCase("HEADLESS")
-                ||PropertyReader.getProperty("EXECUTION_TYPE").equalsIgnoreCase("LOCAL")) {
+        String execution = executionType();
+        if (isLocal(execution)) {
             return new ChromeDriver(getOptions());
-        }else{
-            try {
-               // return new RemoteWebDriver(
-                    //    new URI("http://" + remoteHost + ":" + remotePort + "/wd/hub").toURL(), getOptions()
-               // );
-            } catch (Exception e) {
-                LogsManager.error("Error creating RemoteWebDriver: " + e.getMessage());
-                throw new RuntimeException("Failed to create RemoteWebDriver", e);
-            }
-         }
+        }
+        throw new IllegalStateException("Unsupported EXECUTION_TYPE: " + execution);
+    }
 
-        return null;
+    private static String executionType() {
+        String type = PropertyReader.getProperty("EXECUTION_TYPE");
+        return type == null || type.isBlank() ? "LOCAL" : type.trim();
+    }
+
+    private static boolean isLocal(String execution) {
+        return "LOCAL".equalsIgnoreCase(execution)
+                || "HEADLESS".equalsIgnoreCase(execution)
+                || "LocalHeadless".equalsIgnoreCase(execution);
+    }
+
+    private static boolean isHeadless(String execution) {
+        if ("HEADLESS".equalsIgnoreCase(execution) || "LocalHeadless".equalsIgnoreCase(execution)) {
+            return true;
+        }
+        String flag = PropertyReader.getProperty("BROWSER_HEADLESS");
+        return flag != null && ("true".equalsIgnoreCase(flag.trim()) || "1".equals(flag.trim()));
     }
 }

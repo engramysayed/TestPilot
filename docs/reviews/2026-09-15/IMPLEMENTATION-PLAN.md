@@ -54,12 +54,14 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Owner:** QA with framework engineering. **Dependencies:** P0-01.
 
-- [ ] Create controlled pages and datasets for positive and deliberately false assertions, negative login, shared page methods, stateful non-login prerequisites, and sensitive fields.
-- [ ] Define NEW → downloaded replay → UPDATE → downloaded replay → repeated UPDATE sequences.
-- [ ] Include unchanged PASS reuse, TODO retry, PASS→TODO, case removal, changed prerequisite, changed environment, and concurrent same-host jobs.
-- [ ] Record expected outcomes before running; keep proof coverage, assertion correctness, replay success, and stability as separate metrics.
+- [x] Create controlled pages and datasets for positive and deliberately false assertions, negative login, shared page methods, stateful non-login prerequisites, and sensitive fields.
+- [x] Define NEW → downloaded replay → UPDATE → downloaded replay → repeated UPDATE sequences.
+- [x] Include unchanged PASS reuse, TODO retry, PASS→TODO, case removal, changed prerequisite, changed environment, and concurrent same-host jobs.
+- [x] Record expected outcomes before running; keep proof coverage, assertion correctness, replay success, and stability as separate metrics.
 
 **Acceptance:** benchmark runs reproducibly, identifies deliberately wrong behavior, and emits evidence tied to source revision, library revision, environment, and artifact identity.
+
+**Run 2026-09-16:** [release-benchmark/run-2026-09-16.md](release-benchmark/run-2026-09-16.md) — host suite 28/28 green (`ReleaseBenchmarkP003Test` + `ReuseEligibilityTest`) on the working tree above `eb011c4`. Concurrent same-host remains an expected isolation failure until P2-02. Live proof coverage was not measured (fixture IR, not LLM NEW). Credential/password and local-LLM reuse invalidation is enforced in the working tree, not yet on that commit.
 
 ## 3. Phase 1 — trustworthy results and generated frameworks
 
@@ -121,6 +123,8 @@ No launch date is estimated here: staffing, supported application scope, operati
 **Acceptance:** `TC/1` and `TC_1` cannot overwrite one another through any entry point. Invalid IDs receive consistent errors; valid repeated execution occurrences remain distinguishable.
 
 **Phase 1 exit:** the full P0-03 framework benchmark passes, including negative assertions and a second downloaded replay. Compile success alone does not satisfy this gate.
+
+**2026-09-16 status:** the P0-03 execution gates passed on the dirty working tree (false assertion, failed-setup skip+quit, NEW→UPDATE preservation, TODO/PASS→TODO/repeated reuse, compile-fail retains v1). That is not a clean-`eb011c4` certification. Close Phase 1 on a git revision only after landing the uncommitted template HEADLESS fix, fixture pages, reuse secret/LLM fingerprints, and harness. P0-01 named product/security approval remains open. Next engineering stream is Phase 2 (customer isolation and data controls).
 
 ## 4. Phase 2 — customer boundaries and data controls
 

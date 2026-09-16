@@ -31,11 +31,9 @@ import java.util.Set;
  * Unchanged TODO/PARTIAL/empty IR must be re-proven and must not count as PASS.
  *
  * <p>Environment fingerprint includes base URL, authoring engine, IR schema,
- * credential <em>username</em> fingerprint, whether credentials are bound, and
- * Precision budget. Password values are not stored. Password rotation with an
- * unchanged username is unsupported for reuse — run a fresh prove.
- * Local LLM URL/model and codegen Ollama naming are emit/authoring settings and
- * do not participate in reuse eligibility.
+ * an opaque credential revision (never a password hash), credentials-bound flag,
+ * Precision budget, and local LLM URL/model. Codegen Ollama naming is emit-only
+ * and does not participate. Credential MAC material stays on the server store.
  */
 public final class ReuseEligibility {
     public static final int IR_SCHEMA = 1;
@@ -46,23 +44,25 @@ public final class ReuseEligibility {
             String baseUrl,
             String authoringEngine,
             int irSchema,
-            String credentialUserFingerprint,
+            String credentialRevision,
             boolean credentialsBound,
             boolean precisionEnabled,
-            int precisionMaxCalls
+            int precisionMaxCalls,
+            String authoringConfigFingerprint
     ) {
         public Context {
             baseUrl = normalizeBaseUrl(baseUrl);
             authoringEngine = authoringEngine == null || authoringEngine.isBlank()
                     ? AuthoringEngine.KEEL.wireValue()
                     : authoringEngine.trim().toLowerCase(Locale.ROOT);
-            credentialUserFingerprint = credentialUserFingerprint == null
-                    ? "" : credentialUserFingerprint;
+            credentialRevision = credentialRevision == null ? "" : credentialRevision;
+            authoringConfigFingerprint = authoringConfigFingerprint == null
+                    ? "" : authoringConfigFingerprint;
         }
 
         /** Test helper: URL + engine + schema with default execution settings. */
         public Context(String baseUrl, String authoringEngine, int irSchema) {
-            this(baseUrl, authoringEngine, irSchema, "", false, true, 50);
+            this(baseUrl, authoringEngine, irSchema, "", false, true, 50, "");
         }
     }
 
@@ -85,18 +85,23 @@ public final class ReuseEligibility {
                 : request.authoringEngine();
         String baseUrl = request == null ? "" : request.baseUrl();
         String username = request == null ? "" : request.username();
-        boolean bound = username != null && !username.isBlank();
+        String password = request == null ? "" : request.password();
+        boolean bound = (username != null && !username.isBlank())
+                || (password != null && !password.isBlank());
         PrecisionJobConfig precision = request == null || request.precisionConfig() == null
                 ? PrecisionJobConfig.DEFAULTS
                 : request.precisionConfig();
+        String llmUrl = request == null ? "" : request.localLlmBaseUrl();
+        String llmModel = request == null ? "" : request.localLlmModel();
         return new Context(
                 baseUrl,
                 engine.wireValue(),
                 IR_SCHEMA,
-                credentialUserFingerprint(username),
+                CredentialRevision.resolve(request),
                 bound,
                 precision.enabled(),
-                precision.maxCallsPerJob());
+                precision.maxCallsPerJob(),
+                authoringConfigFingerprint(llmUrl, llmModel));
     }
 
     public static boolean environmentMatches(Context stored, Context current) {
@@ -108,10 +113,11 @@ public final class ReuseEligibility {
         }
         return stored.baseUrl().equals(current.baseUrl())
                 && stored.authoringEngine().equals(current.authoringEngine())
-                && stored.credentialUserFingerprint().equals(current.credentialUserFingerprint())
+                && stored.credentialRevision().equals(current.credentialRevision())
                 && stored.credentialsBound() == current.credentialsBound()
                 && stored.precisionEnabled() == current.precisionEnabled()
-                && stored.precisionMaxCalls() == current.precisionMaxCalls();
+                && stored.precisionMaxCalls() == current.precisionMaxCalls()
+                && stored.authoringConfigFingerprint().equals(current.authoringConfigFingerprint());
     }
 
     public static Set<String> authorIds(
@@ -300,10 +306,11 @@ public final class ReuseEligibility {
                     json.optString("baseUrl", ""),
                     json.optString("authoringEngine", AuthoringEngine.KEEL.wireValue()),
                     json.optInt("irSchema", 0),
-                    json.optString("credentialUserFingerprint", ""),
+                    json.optString("credentialRevision", ""),
                     json.optBoolean("credentialsBound", false),
                     json.optBoolean("precisionEnabled", true),
-                    json.optInt("precisionMaxCalls", PrecisionJobConfig.DEFAULTS.maxCallsPerJob()));
+                    json.optInt("precisionMaxCalls", PrecisionJobConfig.DEFAULTS.maxCallsPerJob()),
+                    json.optString("authoringConfigFingerprint", ""));
         } catch (Exception e) {
             return new Context("", "", -1);
         }
@@ -318,10 +325,11 @@ public final class ReuseEligibility {
         json.put("baseUrl", context.baseUrl());
         json.put("authoringEngine", context.authoringEngine());
         json.put("irSchema", context.irSchema());
-        json.put("credentialUserFingerprint", context.credentialUserFingerprint());
+        json.put("credentialRevision", context.credentialRevision());
         json.put("credentialsBound", context.credentialsBound());
         json.put("precisionEnabled", context.precisionEnabled());
         json.put("precisionMaxCalls", context.precisionMaxCalls());
+        json.put("authoringConfigFingerprint", context.authoringConfigFingerprint());
         Files.writeString(projectRoot.resolve(CONTEXT_FILE), json.toString(2), StandardCharsets.UTF_8);
     }
 
@@ -336,16 +344,22 @@ public final class ReuseEligibility {
         return value;
     }
 
-    static String credentialUserFingerprint(String username) {
-        if (username == null || username.isBlank()) {
+    static String authoringConfigFingerprint(String localLlmBaseUrl, String localLlmModel) {
+        String url = localLlmBaseUrl == null ? "" : normalizeBaseUrl(localLlmBaseUrl);
+        String model = localLlmModel == null ? "" : localLlmModel.trim().toLowerCase(Locale.ROOT);
+        if (url.isBlank() && model.isBlank()) {
             return "";
         }
+        return sha256Hex(url + "\0" + model);
+    }
+
+    static String sha256Hex(String value) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(username.trim().toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8));
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hash);
         } catch (Exception e) {
-            return Integer.toHexString(username.trim().toLowerCase(Locale.ROOT).hashCode());
+            return Integer.toHexString(value.hashCode());
         }
     }
 

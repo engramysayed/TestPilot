@@ -71,4 +71,14 @@ public class WaitHandler {
             return null;
         }
     }
+
+    public void waitForPageReady() {
+        try {
+            getWait().until(driver -> "complete".equals(String.valueOf(
+                    ((JavascriptExecutor) driver).executeScript("return document.readyState"))));
+            Thread.sleep(500);
+        } catch (Exception e) {
+            LogsManager.error("waitForPageReady: " + e.getMessage());
+        }
+    }
 }

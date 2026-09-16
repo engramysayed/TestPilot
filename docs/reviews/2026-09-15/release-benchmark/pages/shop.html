@@ -13,17 +13,10 @@
       <option>L</option>
     </select>
   </label>
-  <button id="add-widget" type="button">Add widget to cart</button>
-  <p id="added" hidden>Widget added</p>
+  <a id="add-widget" href="cart-full.html">Add widget to cart</a>
   <nav>
-    <a href="cart.html">Cart</a>
-    <a href="home.html">Home</a>
+    <a id="nav-cart" href="cart.html">Cart</a>
+    <a id="nav-home" href="home.html">Home</a>
   </nav>
-  <script>
-    document.getElementById("add-widget").addEventListener("click", function () {
-      sessionStorage.setItem("keel-bench-cart", "1");
-      document.getElementById("added").hidden = false;
-    });
-  </script>
 </body>
 </html>
