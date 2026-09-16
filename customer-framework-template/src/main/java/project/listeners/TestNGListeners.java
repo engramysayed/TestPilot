@@ -49,16 +49,27 @@ public class TestNGListeners implements ITestListener, IExecutionListener, IInvo
     public void afterInvocation(IInvokedMethod method, ITestResult testResult) {
         WebDriver driver=null;
         if(method.isTestMethod()){
-            Validation.assertAll();
+            try {
+                Validation.assertAll();
+            } catch (AssertionError e) {
+                testResult.setStatus(ITestResult.FAILURE);
+                testResult.setThrowable(e);
+            }
             if(testResult.getInstance() instanceof WebDriverProvider provider){
-                driver=provider.getWebDriver();
-                switch (testResult.getStatus()){
-                case ITestResult.FAILURE->
-                    ScreenShotManager.takeFullPageScreenshot(driver,"TC Failed: " + testResult.getName());
-                case ITestResult.SUCCESS->
-                    ScreenShotManager.takeFullPageScreenshot(driver,"TC passed: " + testResult.getName());
-                case ITestResult.SKIP->
-                    ScreenShotManager.takeFullPageScreenshot(driver,"TC skipped: " + testResult.getName());
+                try {
+                    driver=provider.getWebDriver();
+                } catch (RuntimeException ignored) {
+                    driver = null;
+                }
+                if (driver != null) {
+                    switch (testResult.getStatus()){
+                    case ITestResult.FAILURE->
+                        ScreenShotManager.takeFullPageScreenshot(driver,"TC Failed: " + testResult.getName());
+                    case ITestResult.SUCCESS->
+                        ScreenShotManager.takeFullPageScreenshot(driver,"TC passed: " + testResult.getName());
+                    case ITestResult.SKIP->
+                        ScreenShotManager.takeFullPageScreenshot(driver,"TC skipped: " + testResult.getName());
+                    }
                 }
                 AllureAttachmentManager.attachLogs();
             }

@@ -28,7 +28,17 @@ public class WebDriverFactory {
     }
 
     public void quit(){
-        driverThreadLocal.get().quit();
+        WebDriver driver = driverThreadLocal.get();
+        if (driver == null) {
+            return;
+        }
+        try {
+            driver.quit();
+        } catch (Exception e) {
+            LogsManager.error("Error quitting driver: " + e.getMessage());
+        } finally {
+            driverThreadLocal.remove();
+        }
     }
 
     public ElementsHandler element(){

@@ -39,9 +39,12 @@ public class ${className} extends BaseTest {
 
     @AfterMethod
     public void tearDown() {
-        Validation.assertAll();
-        if (driver != null) {
-            driver.quit();
+        try {
+            Validation.assertAll();
+        } finally {
+            if (driver != null) {
+                driver.quit();
+            }
         }
     }
 
