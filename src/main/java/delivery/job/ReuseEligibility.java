@@ -225,6 +225,9 @@ public final class ReuseEligibility {
         if (hasFiles(durableEvidenceDir(projectRoot, prior.tcId()))) {
             return true;
         }
+        if (latestOccurrenceDir(projectRoot.resolve("evidence"), prior.tcId()) != null) {
+            return true;
+        }
         try {
             return hasFiles(Path.of(prior.evidenceDir()));
         } catch (Exception e) {
@@ -244,6 +247,8 @@ public final class ReuseEligibility {
             source = claimed;
         } else if (hasFiles(durable)) {
             source = durable;
+        } else {
+            source = latestOccurrenceDir(projectRoot.resolve("evidence"), prior.tcId());
         }
         if (source == null) {
             return;
@@ -332,6 +337,38 @@ public final class ReuseEligibility {
         } catch (Exception e) {
             return Integer.toHexString(username.trim().toLowerCase(Locale.ROOT).hashCode());
         }
+    }
+
+    static Path latestOccurrenceDir(Path evidenceRoot, String tcId) {
+        if (evidenceRoot == null || !Files.isDirectory(evidenceRoot)) {
+            return null;
+        }
+        String prefix = TcDraftStore.safeFileName(tcId == null ? "tc" : tcId) + "__occ_";
+        Path best = null;
+        int bestN = -1;
+        try (var stream = Files.list(evidenceRoot)) {
+            for (Path dir : stream.toList()) {
+                if (!Files.isDirectory(dir) || !hasFiles(dir)) {
+                    continue;
+                }
+                String name = dir.getFileName().toString();
+                if (!name.startsWith(prefix)) {
+                    continue;
+                }
+                try {
+                    int n = Integer.parseInt(name.substring(prefix.length()));
+                    if (n >= bestN) {
+                        bestN = n;
+                        best = dir;
+                    }
+                } catch (NumberFormatException ignored) {
+                    // skip
+                }
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        return best;
     }
 
     private static boolean hasFiles(Path dir) {

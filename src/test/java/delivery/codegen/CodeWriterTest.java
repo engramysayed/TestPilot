@@ -167,4 +167,64 @@ public class CodeWriterTest {
         Assert.assertTrue(actions.contains("public void click_"), actions);
         Assert.assertFalse(actions.contains("return this;"), actions);
     }
+
+    @Test
+    public void emitsCallBeforeSetupInBeforeMethodFromFreshBrowser() throws Exception {
+        Path temp = Files.createTempDirectory("codegen-call-before");
+        CodeWriter writer = new CodeWriter(Path.of("customer-framework-template/templates"));
+        ProvenStep addToCart = new ProvenStep("TC_CART", "Shop", "elementAction", "click",
+                "id", "add-backpack", "", "", "", true, "intent:CLICK");
+        ProvenStep checkoutBtn = new ProvenStep("TC_CHECKOUT", "Cart", "elementAction", "click",
+                "id", "checkout", "", "", "", true, "intent:CLICK");
+        TcOutcome checkout = new TcOutcome(
+                "TC_CHECKOUT", "Checkout backpack", TcStatus.PASSED, List.of(checkoutBtn),
+                "", null, false, List.of())
+                .withSetup(List.of(addToCart));
+        writer.write(temp, List.of(checkout));
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_CHECKOUT.java"));
+        int setUp = java.indexOf("public void setUp()");
+        int test = java.indexOf("public void Checkout_backpack()");
+        int setupCall = java.indexOf("click_Add_Backpack");
+        int bodyCall = java.indexOf("click_Checkout");
+        Assert.assertTrue(setUp >= 0 && test > setUp, java);
+        Assert.assertTrue(setupCall > setUp && setupCall < test,
+                "cart setup must run in @BeforeMethod, not depend on TestNG class order:\n" + java);
+        Assert.assertTrue(bodyCall > test, java);
+        Assert.assertTrue(java.contains("Shop_Actions"), java);
+        Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Shop_Actions.java")));
+    }
+
+    @Test
+    public void inlinedSetupKeepsPrereqTestDataAssertionsAndPageMethods() throws Exception {
+        Path temp = Files.createTempDirectory("codegen-call-before-data");
+        CodeWriter writer = new CodeWriter(Path.of("customer-framework-template/templates"));
+        ProvenStep qty = new ProvenStep("TC_CART", "Shop", "elementAction", "type",
+                "id", "qty", "2", "", "", true, "intent:TYPE");
+        ProvenStep cartVisible = new ProvenStep("TC_CART", "Shop", "elementAction", "assert",
+                "id", "cart-badge", "", "visible", "", true, "intent:ASSERT_VISIBLE");
+        ProvenStep checkoutBtn = new ProvenStep("TC_CHECKOUT", "Cart", "elementAction", "click",
+                "id", "checkout", "", "", "", true, "intent:CLICK");
+        TcOutcome checkout = new TcOutcome(
+                "TC_CHECKOUT", "Checkout backpack", TcStatus.PASSED, List.of(checkoutBtn),
+                "", null, false, List.of())
+                .withSetup(List.of(qty, cartVisible));
+        writer.write(temp, List.of(checkout));
+
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_CHECKOUT.java"));
+        int setUp = java.indexOf("public void setUp()");
+        int test = java.indexOf("public void Checkout_backpack()");
+        int typeCall = java.indexOf("type_Qty");
+        int assertCall = java.indexOf("assert_Cart_Badge");
+        Assert.assertTrue(typeCall > setUp && typeCall < test, java);
+        Assert.assertTrue(assertCall > setUp && assertCall < test, java);
+        Assert.assertTrue(java.contains("PropertyReader.getProperty(\"TC_CART."), java);
+        Assert.assertFalse(java.contains("PropertyReader.getProperty(\"TC_CHECKOUT.type_Qty"), java);
+
+        String data = Files.readString(temp.resolve("src/test/resources/test-data/delivery-testdata.properties"));
+        Assert.assertTrue(data.contains("TC_CART.type_Qty=2"), data);
+
+        String actions = Files.readString(temp.resolve("src/main/java/project/pages/Shop_Actions.java"));
+        Assert.assertTrue(actions.contains("public void type_Qty"), actions);
+        Assert.assertTrue(actions.contains("public void assert_Cart_Badge"), actions);
+    }
 }

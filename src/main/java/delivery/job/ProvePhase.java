@@ -48,6 +48,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -215,6 +216,7 @@ public class ProvePhase {
             int index = 0;
             Set<String> failedCallBeforeIds = new LinkedHashSet<>();
             List<Boolean> freshSession = CallBeforeExpander.freshSessionAt(allCases);
+            Map<String, Integer> occurrences = new HashMap<>();
             for (ManualTestCase tc : allCases) {
                 JobCancelSupport.checkCancelled(cancelCheck);
                 index++;
@@ -256,8 +258,11 @@ public class ProvePhase {
                 }
 
                 // Fresh browser at each leaf-chain start; Call-before → leaf keep the same session.
+                int occurrence = occurrences.merge(tc.tcId(), 1, Integer::sum);
+                String evidenceFolder = OccurrenceIdentity.folder(tc.tcId(), occurrence);
                 TcDraft draft = proveOne(tc, request, authoring, healCascade, execution, jobLogin,
-                        driverFactory, evidence, jobHasCredentials, index, jobTotal, freshSession);
+                        driverFactory, evidence, jobHasCredentials, index, jobTotal, freshSession,
+                        evidenceFolder);
                 draft = stampPrecision(draft);
                 draft = scrubDraftSecrets(draft, request);
                 drafts.write(draft);
@@ -307,7 +312,8 @@ public class ProvePhase {
             boolean jobHasCredentials,
             int tcIndex,
             int tcTotal,
-            List<Boolean> freshSession
+            List<Boolean> freshSession,
+            String evidenceFolder
     ) {
         boolean wipeSession = wipeAt(tcIndex, freshSession);
         try {
@@ -334,7 +340,7 @@ public class ProvePhase {
             }
         }
 
-        execution.beginTc();
+        execution.beginTc(evidenceFolder);
         healCascade.setExcelOpenPath(StepIntentBinder.firstOpenPath(
                 tc.preconditions(), tc.steps()));
 
@@ -1432,9 +1438,14 @@ public class ProvePhase {
         if (result == null) {
             return draft;
         }
-        Path evDir = evidence == null
-                ? Path.of("evidence", sanitize(tc.tcId()))
-                : evidence.resolve(sanitize(tc.tcId()));
+        Path evDir;
+        String folder = execution == null
+                ? sanitize(tc.tcId())
+                : execution.currentEvidenceFolder(tc.tcId());
+        if (folder == null || folder.isBlank()) {
+            folder = sanitize(tc.tcId());
+        }
+        evDir = evidence == null ? Path.of("evidence", folder) : evidence.resolve(folder);
         VisionAssertionEvidence.write(evDir, tc.tcId(), tc.visualAssertion(), result, png);
         LogsManager.info("VISION_ASSERT: tc=" + tc.tcId()
                 + " status=" + result.status()

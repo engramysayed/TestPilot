@@ -13,8 +13,17 @@ public record TcOutcome(
         String failureReason,
         Path evidenceDir,
         boolean needsLoginBeforeMethod,
-        List<ProvenStep> loginSteps
+        List<ProvenStep> loginSteps,
+        List<ProvenStep> setupSteps
 ) {
+    public TcOutcome {
+        provenSteps = provenSteps == null ? List.of() : List.copyOf(provenSteps);
+        loginSteps = loginSteps == null ? List.of() : List.copyOf(loginSteps);
+        setupSteps = setupSteps == null ? List.of() : List.copyOf(setupSteps);
+        failureReason = failureReason == null ? "" : failureReason;
+        title = title == null ? "" : title;
+    }
+
     public TcOutcome(
             String tcId,
             TcStatus status,
@@ -23,7 +32,7 @@ public record TcOutcome(
             Path evidenceDir
     ) {
         this(tcId, "", status, provenSteps, failureReason, evidenceDir, false,
-                provenSteps == null ? List.of() : List.of());
+                List.of(), List.of());
     }
 
     public TcOutcome(
@@ -36,7 +45,21 @@ public record TcOutcome(
             List<ProvenStep> loginSteps
     ) {
         this(tcId, "", status, provenSteps, failureReason, evidenceDir,
-                needsLoginBeforeMethod, loginSteps);
+                needsLoginBeforeMethod, loginSteps, List.of());
+    }
+
+    public TcOutcome(
+            String tcId,
+            String title,
+            TcStatus status,
+            List<ProvenStep> provenSteps,
+            String failureReason,
+            Path evidenceDir,
+            boolean needsLoginBeforeMethod,
+            List<ProvenStep> loginSteps
+    ) {
+        this(tcId, title, status, provenSteps, failureReason, evidenceDir,
+                needsLoginBeforeMethod, loginSteps, List.of());
     }
 
     public TcOutcome withLogin(boolean needsLogin, List<ProvenStep> loginPrelude) {
@@ -48,7 +71,8 @@ public record TcOutcome(
                 failureReason,
                 evidenceDir,
                 needsLogin,
-                loginPrelude == null ? List.of() : List.copyOf(loginPrelude)
+                loginPrelude == null ? List.of() : List.copyOf(loginPrelude),
+                setupSteps
         );
     }
 
@@ -61,7 +85,22 @@ public record TcOutcome(
                 failureReason,
                 evidenceDir,
                 needsLoginBeforeMethod,
-                loginSteps
+                loginSteps,
+                setupSteps
+        );
+    }
+
+    public TcOutcome withSetup(List<ProvenStep> setup) {
+        return new TcOutcome(
+                tcId,
+                title,
+                status,
+                provenSteps,
+                failureReason,
+                evidenceDir,
+                needsLoginBeforeMethod,
+                loginSteps,
+                setup
         );
     }
 }

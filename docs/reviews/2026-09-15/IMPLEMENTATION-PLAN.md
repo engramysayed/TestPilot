@@ -102,11 +102,11 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Owner:** IR and framework engineering. **Dependencies:** P0-01, P1-02, P1-03.
 
-- [ ] Represent prerequisite ordering, required shared session state, failure behavior, and reusable setup explicitly in IR.
-- [ ] Emit setup for each dependent execution; do not rely on incidental TestNG class ordering.
-- [ ] Define cycle detection, failed-prerequisite blocking, repeated leaves, and cleanup behavior.
-- [ ] Give each execution occurrence its own evidence identity while retaining its logical TC ID.
-- [ ] Invalidate dependent proof when prerequisites change.
+- [x] Represent prerequisite ordering, required shared session state, failure behavior, and reusable setup explicitly in IR.
+- [x] Emit setup for each dependent execution; do not rely on incidental TestNG class ordering.
+- [x] Define cycle detection, failed-prerequisite blocking, repeated leaves, and cleanup behavior.
+- [x] Give each execution occurrence its own evidence identity while retaining its logical TC ID.
+- [x] Invalidate dependent proof when prerequisites change.
 
 **Acceptance:** a checkout case requiring cart creation passes from a fresh downloaded framework, and a failed cart prerequisite blocks checkout with a clear reason. Repeated prerequisites retain separate evidence; dependency cycles produce actionable validation errors.
 

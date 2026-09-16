@@ -17,6 +17,7 @@ import delivery.store.LocatorMapBuilder;
 import delivery.store.LocatorMapStore;
 import delivery.store.ProjectStore;
 import delivery.store.TcDiffService;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.nio.file.Files;
@@ -91,9 +92,19 @@ public class EmitPhase {
             }
         }
 
+        clustered = CallBeforeSetup.applyHonesty(clustered, allCases);
+        Files.createDirectories(draftStore.irDir());
+        for (TcDraft d : clustered) {
+            JSONObject json = TcDraftStore.toJson(d);
+            json.put("setupTcIds", new JSONArray(CallBeforeSetup.prerequisiteIds(allCases, d.tcId())));
+            Files.writeString(
+                    draftStore.irDir().resolve(TcDraftStore.safeFileName(d.tcId()) + ".json"),
+                    json.toString(2));
+        }
+
         List<TcOutcome> outcomes = new ArrayList<>();
         for (TcDraft d : clustered) {
-            outcomes.add(toOutcome(d));
+            outcomes.add(toOutcome(d).withSetup(CallBeforeSetup.stepsFor(d, clustered, allCases)));
         }
 
         bumpProgress("Phase2 emit: writing pages and tests");
@@ -127,8 +138,10 @@ public class EmitPhase {
         Path irStore = store.projectRoot(request.projectId()).resolve("ir");
         Files.createDirectories(irStore);
         for (TcDraft d : clustered) {
+            JSONObject json = TcDraftStore.toJson(d);
+            json.put("setupTcIds", new JSONArray(CallBeforeSetup.prerequisiteIds(allCases, d.tcId())));
             Files.writeString(irStore.resolve(TcDraftStore.safeFileName(d.tcId()) + ".json"),
-                    TcDraftStore.toJson(d).toString(2));
+                    json.toString(2));
         }
 
         // Persist per-step screenshots for portal timeline

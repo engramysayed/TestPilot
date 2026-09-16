@@ -295,4 +295,59 @@ public class ReuseEligibilityTest {
         Assert.assertTrue(java.nio.file.Files.isRegularFile(
                 ReuseEligibility.durableEvidenceDir(project, "TC_OK").resolve("step-001.png")));
     }
+
+    @Test
+    public void occurrenceEvidenceCountsAsAvailableForReuse() throws Exception {
+        Path project = java.nio.file.Files.createTempDirectory("reuse-occ");
+        Path occ = ReuseEligibility.durableEvidenceDir(project, "TC_CART")
+                .getParent()
+                .resolve(OccurrenceIdentity.folder("TC_CART", 2));
+        java.nio.file.Files.createDirectories(occ);
+        java.nio.file.Files.writeString(occ.resolve("step-001.png"), "png");
+        TcDraft prior = draft("TC_CART", TcDraftStatus.PASSED, List.of(step("TC_CART")));
+        prior = new TcDraft(
+                prior.tcId(), prior.title(), prior.stepsText(), prior.expectedResult(),
+                prior.status(), prior.provenSteps(), prior.loginSteps(),
+                prior.needsLoginBeforeMethod(), prior.blockerStepIndex(), prior.blockerIntent(),
+                prior.failureReason(), occ.toString(), prior.retryCountOnBlocker(), prior.lastPageUrl());
+        Assert.assertTrue(ReuseEligibility.evidenceAvailable(prior, project),
+                "occurrence-scoped evidence must satisfy UPDATE reuse");
+        Path work = java.nio.file.Files.createTempDirectory("reuse-occ-work");
+        ReuseEligibility.preserveEvidence(prior, project, work);
+        Assert.assertTrue(java.nio.file.Files.isRegularFile(
+                ReuseEligibility.durableEvidenceDir(project, "TC_CART").resolve("step-001.png")));
+    }
+
+    @Test
+    public void occurrenceFoldersStayDistinctAfterUpdatePreserveAndRetention() throws Exception {
+        Path store = java.nio.file.Files.createTempDirectory("reuse-occ-store");
+        Path project = store.resolve("prj_reuse");
+        Path evidence = project.resolve("evidence");
+        Path occ1 = evidence.resolve(OccurrenceIdentity.folder("TC_CART", 1));
+        Path occ2 = evidence.resolve(OccurrenceIdentity.folder("TC_CART", 2));
+        java.nio.file.Files.createDirectories(occ1);
+        java.nio.file.Files.createDirectories(occ2);
+        java.nio.file.Files.writeString(occ1.resolve("step-001.png"), "first");
+        java.nio.file.Files.writeString(occ2.resolve("step-001.png"), "second");
+        TcDraft prior = new TcDraft(
+                "TC_CART", "TC_CART", "1. Click", "ok", TcDraftStatus.PASSED,
+                List.of(step("TC_CART")), List.of(), false, -1, "", "",
+                occ2.toString(), 0, "https://example.com/cart");
+        Path work = java.nio.file.Files.createTempDirectory("reuse-occ-work");
+        ReuseEligibility.preserveEvidence(prior, project, work);
+        Path agedWorkChild = work.resolve("old-job");
+        java.nio.file.Files.createDirectories(agedWorkChild);
+        java.nio.file.Files.setLastModifiedTime(agedWorkChild,
+                java.nio.file.attribute.FileTime.from(java.time.Instant.now().minus(60, java.time.temporal.ChronoUnit.DAYS)));
+        delivery.portal.DeliveryPortalProperties props = new delivery.portal.DeliveryPortalProperties();
+        props.setStoreRoot(store.toString());
+        props.setWorkDir(work.toString());
+        props.getRetention().setDays(14);
+        new delivery.portal.service.RetentionSweeper(props).sweep();
+
+        Assert.assertEquals(java.nio.file.Files.readString(occ1.resolve("step-001.png")), "first");
+        Assert.assertEquals(java.nio.file.Files.readString(occ2.resolve("step-001.png")), "second");
+        Assert.assertNotEquals(occ1, occ2);
+        Assert.assertTrue(ReuseEligibility.evidenceAvailable(prior, project));
+    }
 }

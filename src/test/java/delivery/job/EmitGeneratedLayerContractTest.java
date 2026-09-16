@@ -20,4 +20,17 @@ public class EmitGeneratedLayerContractTest {
         Assert.assertTrue(compileAt >= 0 && publishAt > compileAt,
                 "compile check must run before publishing a new version");
     }
+
+    @Test
+    public void emitAppliesCallBeforeHonestyAndSetupBeforeCodegen() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/delivery/job/EmitPhase.java"));
+        Assert.assertTrue(source.contains("CallBeforeSetup.applyHonesty"),
+                "emit must demote leaves whose Call-before proof is not reusable");
+        Assert.assertTrue(source.contains("CallBeforeSetup.stepsFor")
+                        || source.contains("withSetup"),
+                "emit must attach setup steps so downloaded tests replay the chain");
+        int honestyAt = source.indexOf("CallBeforeSetup.applyHonesty");
+        int writeAt = source.indexOf("new CodeWriter");
+        Assert.assertTrue(honestyAt >= 0 && writeAt > honestyAt, source);
+    }
 }

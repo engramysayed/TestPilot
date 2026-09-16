@@ -1,7 +1,10 @@
 package delivery.excel;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public final class CallBefore {
@@ -55,5 +58,43 @@ public final class CallBefore {
                 throw new IllegalArgumentException("UNKNOWN_CALL_BEFORE: " + ref);
             }
         }
+    }
+
+    /** Self-refs, unknown ids, and cycles. */
+    public static void validateGraph(List<ManualTestCase> cases) {
+        if (cases == null || cases.isEmpty()) {
+            return;
+        }
+        Map<String, ManualTestCase> byId = new LinkedHashMap<>();
+        for (ManualTestCase tc : cases) {
+            if (tc == null || tc.tcId() == null || tc.tcId().isBlank()) {
+                continue;
+            }
+            byId.put(tc.tcId().trim(), tc);
+        }
+        Set<String> known = byId.keySet();
+        for (ManualTestCase tc : byId.values()) {
+            validateRefs(tc.callBefore(), tc.tcId(), known);
+        }
+        for (String id : byId.keySet()) {
+            detectCycle(id, byId, new LinkedHashSet<>());
+        }
+    }
+
+    private static void detectCycle(String id, Map<String, ManualTestCase> byId, Set<String> path) {
+        if (path.contains(id)) {
+            List<String> cycle = new ArrayList<>(path);
+            cycle.add(id);
+            throw new IllegalArgumentException("CALL_BEFORE_CYCLE: " + String.join(" → ", cycle));
+        }
+        ManualTestCase tc = byId.get(id);
+        if (tc == null) {
+            return;
+        }
+        path.add(id);
+        for (String ref : parse(tc.callBefore())) {
+            detectCycle(ref, byId, path);
+        }
+        path.remove(id);
     }
 }

@@ -91,4 +91,15 @@ public class GenerateQualityGateTest {
         Assert.assertFalse(errors.isEmpty());
         Assert.assertTrue(errors.stream().anyMatch(e -> e.toLowerCase().contains("keelpath")));
     }
+
+    @Test
+    public void validate_rejectsCallBeforeCycle() {
+        ManualTestCase a = new ManualTestCase(
+                "TC_A", "A", "", "1. Go", "ok", "P1", "", "", "", "AUTOMATE", "TC_B");
+        ManualTestCase b = new ManualTestCase(
+                "TC_B", "B", "", "1. Go", "ok", "P1", "", "", "", "AUTOMATE", "TC_A");
+        List<String> errors = GenerateQualityGate.validate(List.of(a, b));
+        Assert.assertTrue(errors.stream().anyMatch(e -> e.startsWith("CALL_BEFORE_CYCLE:")),
+                String.join("; ", errors));
+    }
 }

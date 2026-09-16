@@ -35,6 +35,9 @@ public final class DomainCatalogWriter {
             if (outcome.needsLoginBeforeMethod() && outcome.loginSteps() != null) {
                 pages.addAll(outcome.loginSteps());
             }
+            if (outcome.setupSteps() != null) {
+                pages.addAll(outcome.setupSteps());
+            }
         }
 
         StringBuilder md = new StringBuilder();
@@ -140,6 +143,7 @@ public final class DomainCatalogWriter {
     private static String pagesUsed(TcOutcome o) {
         Set<String> names = new LinkedHashSet<>();
         appendPageNames(names, o.loginSteps());
+        appendPageNames(names, o.setupSteps());
         appendPageNames(names, o.provenSteps());
         if (names.isEmpty()) {
             return "—";

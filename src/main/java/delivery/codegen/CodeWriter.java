@@ -61,6 +61,9 @@ public class CodeWriter {
             if (outcome.needsLoginBeforeMethod() && outcome.loginSteps() != null) {
                 pages.addAll(outcome.loginSteps());
             }
+            if (outcome.setupSteps() != null) {
+                pages.addAll(outcome.setupSteps());
+            }
         }
         return pages;
     }
@@ -116,6 +119,10 @@ public class CodeWriter {
                     outcome.title(), outcome.tcId(), namingClient, namingOptions.ollamaNaming());
             List<Map<String, Object>> chronCalls = buildChronologicalCalls(outcome.tcId(), outcome.provenSteps());
             List<Map<String, Object>> loginChron = buildChronologicalCalls(outcome.tcId(), outcome.loginSteps());
+            List<Map<String, Object>> setupChron = buildChronologicalCalls(outcome.tcId(), outcome.setupSteps());
+            List<Map<String, Object>> beforeCalls = new ArrayList<>();
+            beforeCalls.addAll(loginChron);
+            beforeCalls.addAll(setupChron);
             Map<String, Object> model = new HashMapModel();
             model.put("className", className);
             model.put("tcId", outcome.tcId());
@@ -128,7 +135,9 @@ public class CodeWriter {
             model.put("pageVars", pageVarsFor(chronCalls));
             model.put("loginChronCalls", loginChron);
             model.put("loginPageVars", pageVarsFor(loginChron));
-            model.put("pageImports", pageImportsFor(chronCalls, loginChron));
+            model.put("setupChronCalls", setupChron);
+            model.put("beforePageVars", pageVarsFor(beforeCalls));
+            model.put("pageImports", pageImportsFor(chronCalls, beforeCalls));
             model.put("needsLoginBeforeMethod", outcome.needsLoginBeforeMethod());
             model.put("reviewComments", List.of());
             Path out = (passed ? generatedDir : todoDir).resolve(className + ".java");
@@ -197,8 +206,9 @@ public class CodeWriter {
                 call.put("method", method);
                 call.put("needsValue", "type".equals(action) || "select".equals(action));
                 String value = step.value() == null ? "" : step.value();
+                String ownerId = step.tcId() == null || step.tcId().isBlank() ? tcId : step.tcId();
                 call.put("value", value);
-                call.put("propKey", propKeyFor(tcId, method, value));
+                call.put("propKey", propKeyFor(ownerId, method, value));
             }
             calls.add(call);
             if (isAction && isAssert && !"assert".equals(action)) {

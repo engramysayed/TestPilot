@@ -30,6 +30,8 @@ public class TcExecutionService {
     /** Monotonic across all execute() batches for one TC (avoids overwriting step-001.png). */
     private final AtomicInteger shotSeq = new AtomicInteger(0);
 
+    private String evidenceFolder;
+
     public TcExecutionService(WebDriverFactory driverFactory) {
         this(driverFactory, null);
     }
@@ -42,13 +44,26 @@ public class TcExecutionService {
 
     /** Call at the start of each TC so screenshot names restart at 001. */
     public void beginTc() {
+        beginTc(null);
+    }
+
+    public void beginTc(String evidenceFolder) {
         shotSeq.set(0);
+        this.evidenceFolder = evidenceFolder;
+    }
+
+    private String evidenceKey(String tcId) {
+        return (evidenceFolder == null || evidenceFolder.isBlank()) ? tcId : evidenceFolder;
+    }
+
+    String currentEvidenceFolder(String tcId) {
+        return evidenceKey(tcId);
     }
 
     public TcOutcome execute(String tcId, List<ProvenStep> steps, Path evidenceRoot) {
         steps = LoginSecretResolver.resolveForLive(steps, request);
         List<ProvenStep> proven = new ArrayList<>();
-        Path evidenceDir = evidenceRoot == null ? null : evidenceRoot.resolve(tcId);
+        Path evidenceDir = evidenceRoot == null ? null : evidenceRoot.resolve(evidenceKey(tcId));
         try {
             if (evidenceDir != null) {
                 Files.createDirectories(evidenceDir);
@@ -481,7 +496,7 @@ public class TcExecutionService {
         if (tcId == null || tcId.isBlank() || evidenceRoot == null) {
             return "";
         }
-        Path evidenceDir = evidenceRoot.resolve(tcId);
+        Path evidenceDir = evidenceRoot.resolve(evidenceKey(tcId));
         captureFailure(evidenceDir);
         return Files.isRegularFile(evidenceDir.resolve("failure.png"))
                 ? evidenceDir.toString()

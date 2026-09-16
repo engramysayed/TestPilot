@@ -34,6 +34,11 @@ public final class GenerateQualityGate {
             validateOne(tc, errors);
             GenerateAuthoringRules.validate(tc, baseUrl, errors);
         }
+        try {
+            CallBefore.validateGraph(cases);
+        } catch (IllegalArgumentException e) {
+            errors.add(e.getMessage());
+        }
         return List.copyOf(errors);
     }
 

@@ -29,6 +29,7 @@ public final class TestDataPropertiesWriter {
             if (outcome.needsLoginBeforeMethod()) {
                 collect(props, outcome.tcId(), outcome.loginSteps());
             }
+            collect(props, outcome.tcId(), outcome.setupSteps());
         }
         Path dir = projectRoot.resolve("src/test/resources/test-data");
         Files.createDirectories(dir);
@@ -50,7 +51,8 @@ public final class TestDataPropertiesWriter {
                 continue;
             }
             String value = step.value() == null ? "" : step.value();
-            String key = CodeWriter.propKeyFor(tcId, PageAccumulator.actionMethodName(step), value);
+            String ownerId = step.tcId() == null || step.tcId().isBlank() ? tcId : step.tcId();
+            String key = CodeWriter.propKeyFor(ownerId, PageAccumulator.actionMethodName(step), value);
             if (key.isBlank() || "TARGET_USERNAME".equals(key) || "TARGET_PASSWORD".equals(key)) {
                 continue;
             }

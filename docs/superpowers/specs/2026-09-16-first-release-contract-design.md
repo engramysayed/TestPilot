@@ -62,12 +62,13 @@ Tests that assert dry-run jobs complete are aligned with this contract. Producti
 
 ## 4. Dependent tests (Call-before)
 
-**First-release advertising:** do **not** claim that a downloaded ZIP replayably recreates non-login prerequisite chains (F13).
+**First-release advertising:** a downloaded ZIP is replay-ready for Call-before when emit copied each prerequisite's proven steps into the leaf `@BeforeMethod` (same fresh browser as login).
 
-- Prove-time Call-before may run a prerequisite in the same session.
-- Emitted tests start a fresh browser per class and currently have no setup-chain model.
-- Until P1-04: dependent cases that require another TC's side effects are **not** replay-ready. Prefer blocking them from being advertised as PASSED automation, or document them as prove-only.
-- P1-04 will represent explicit setup chains in IR and emit them. Cycles produce validation errors; failed prerequisites block dependents.
+- Prove-time Call-before still shares a session within a leaf chain.
+- Emitted tests start a fresh browser per class and replay setup from IR (`setupTcIds` plus prerequisite proven steps). They do not rely on TestNG class order.
+- Failed or incomplete prerequisites demote the dependent leaf (`CALL_BEFORE_BLOCKED`) instead of advertising PASSED automation.
+- Cycles are validation errors (`CALL_BEFORE_CYCLE`) at ingest and expand time.
+- Repeated executions of the same logical TC keep distinct evidence folders (`{tcId}__occ_{n}`).
 
 ---
 

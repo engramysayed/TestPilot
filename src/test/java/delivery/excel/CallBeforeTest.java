@@ -69,4 +69,17 @@ public class CallBeforeTest {
             throw e;
         }
     }
+
+    @Test
+    public void validateGraph_rejectsCycle() {
+        List<ManualTestCase> cases = List.of(
+                new ManualTestCase("TC_A", "A", "", "1. Go", "ok", "P1", "", "", "", "AUTOMATE", "TC_B"),
+                new ManualTestCase("TC_B", "B", "", "1. Go", "ok", "P1", "", "", "", "AUTOMATE", "TC_A"));
+        try {
+            CallBefore.validateGraph(cases);
+            Assert.fail("expected CALL_BEFORE_CYCLE");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage().startsWith("CALL_BEFORE_CYCLE:"), e.getMessage());
+        }
+    }
 }

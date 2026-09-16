@@ -24,10 +24,10 @@ public class ${className} extends BaseTest {
         if (base != null && !base.isBlank()) {
             driver.browser().navigateToUrl(base);
         }
-<#if needsLoginBeforeMethod!false>
-<#list loginPageVars as p>
+<#list beforePageVars as p>
         ${p.className} ${p.varName} = new ${p.className}(driver);
 </#list>
+<#if needsLoginBeforeMethod!false>
 <#list loginChronCalls as call>
 <#if call.propKey?has_content>
         ${call.pageVar}.${call.method}(nullToEmpty(PropertyReader.getProperty("${call.propKey?j_string}")));
@@ -38,9 +38,19 @@ public class ${className} extends BaseTest {
 </#if>
 </#list>
 </#if>
+<#list setupChronCalls as call>
+<#if call.propKey?has_content>
+        ${call.pageVar}.${call.method}(nullToEmpty(PropertyReader.getProperty("${call.propKey?j_string}")));
+<#elseif call.needsValue>
+        ${call.pageVar}.${call.method}("${call.value?j_string}");
+<#else>
+        ${call.pageVar}.${call.method}();
+</#if>
+</#list>
+        Validation.assertAll();
     }
 
-    @AfterMethod
+    @AfterMethod(alwaysRun = true)
     public void tearDown() {
         try {
             Validation.assertAll();
