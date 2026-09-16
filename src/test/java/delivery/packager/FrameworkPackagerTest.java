@@ -34,5 +34,23 @@ public class FrameworkPackagerTest {
         packager.zip(dest, zip2);
         try (java.util.zip.ZipFile zf = new java.util.zip.ZipFile(zip2.toFile())) {
             Assert.assertNull(zf.getEntry("src/test/java/project/tests/LoginTest.java"));
-        }    }
+        }
+    }
+
+    @Test
+    public void overlayCustomerConfigPreservesWebappProperties() throws Exception {
+        Path temp = Files.createTempDirectory("overlay-config");
+        Path previous = temp.resolve("previous");
+        Path dest = temp.resolve("dest");
+        Path config = previous.resolve("src/test/resources/config");
+        Files.createDirectories(config);
+        Files.writeString(config.resolve("webapp.properties"), "BASE_WEB=https://customer.example");
+        Files.writeString(config.resolve("webapp.properties.example"), "BASE_WEB=");
+        Files.createDirectories(dest);
+        new FrameworkPackager().overlayCustomerConfig(previous, dest);
+        Path copied = dest.resolve("src/test/resources/config/webapp.properties");
+        Assert.assertTrue(Files.isRegularFile(copied));
+        Assert.assertEquals(Files.readString(copied).trim(), "BASE_WEB=https://customer.example");
+        Assert.assertFalse(Files.exists(dest.resolve("src/test/resources/config/webapp.properties.example")));
+    }
 }

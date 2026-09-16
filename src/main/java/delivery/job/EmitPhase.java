@@ -92,20 +92,14 @@ public class EmitPhase {
         }
 
         List<TcOutcome> outcomes = new ArrayList<>();
-        List<TcOutcome> toCodegen = new ArrayList<>();
         for (TcDraft d : clustered) {
-            TcOutcome outcome = toOutcome(d);
-            outcomes.add(outcome);
-            // UPDATE reuse: keep classes already copied from stored framework
-            if (d.status() != TcDraftStatus.REUSED) {
-                toCodegen.add(outcome);
-            }
+            outcomes.add(toOutcome(d));
         }
 
         bumpProgress("Phase2 emit: writing pages and tests");
         CodegenOptions codegenOpts = new CodegenOptions(
                 request.codegenOllamaNaming(), request.localLlmBaseUrl(), request.localLlmModel());
-        new CodeWriter(request.templateRoot().resolve("templates"), codegenOpts).write(projectDir, toCodegen);
+        new CodeWriter(request.templateRoot().resolve("templates"), codegenOpts).write(projectDir, outcomes);
         DomainCatalogWriter.write(projectDir, outcomes);
 
         FrameworkPackager packager = new FrameworkPackager();

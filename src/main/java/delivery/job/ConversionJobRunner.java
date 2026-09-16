@@ -73,10 +73,10 @@ public class ConversionJobRunner {
         Files.createDirectories(work);
         Path projectDir = work.resolve("project");
         FrameworkPackager packager = new FrameworkPackager();
+        packager.copyTemplate(request.templateRoot(), projectDir);
         if ("UPDATE".equals(mode) && store.hasFramework(request.projectId())) {
-            packager.copyTemplate(store.projectRoot(request.projectId()).resolve("framework"), projectDir);
-        } else {
-            packager.copyTemplate(request.templateRoot(), projectDir);
+            packager.overlayCustomerConfig(
+                    store.projectRoot(request.projectId()).resolve("framework"), projectDir);
         }
 
         int proveUnits = allCases.size();

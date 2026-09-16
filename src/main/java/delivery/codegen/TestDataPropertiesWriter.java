@@ -30,9 +30,6 @@ public final class TestDataPropertiesWriter {
                 collect(props, outcome.tcId(), outcome.loginSteps());
             }
         }
-        if (props.isEmpty()) {
-            return;
-        }
         Path dir = projectRoot.resolve("src/test/resources/test-data");
         Files.createDirectories(dir);
         StringBuilder sb = new StringBuilder();

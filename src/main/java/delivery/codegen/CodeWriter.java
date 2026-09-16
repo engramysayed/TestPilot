@@ -77,6 +77,9 @@ public class CodeWriter {
         Files.createDirectories(pagesDir);
         Files.createDirectories(generatedDir);
         Files.createDirectories(todoDir);
+        java.util.Set<String> keepPages = new java.util.HashSet<>();
+        java.util.Set<String> keepGenerated = new java.util.HashSet<>();
+        java.util.Set<String> keepTodo = new java.util.HashSet<>();
 
         Template locatorsTpl = cfg.getTemplate("PageLocators.java.ftl");
         Template actionsTpl = cfg.getTemplate("PageActions.java.ftl");
@@ -95,10 +98,12 @@ public class CodeWriter {
             try (Writer w = Files.newBufferedWriter(locatorsOut, StandardCharsets.UTF_8)) {
                 locatorsTpl.process(model, w);
             }
+            keepPages.add(page.locatorsClassName() + ".java");
             Path actionsOut = pagesDir.resolve(page.actionsClassName() + ".java");
             try (Writer w = Files.newBufferedWriter(actionsOut, StandardCharsets.UTF_8)) {
                 actionsTpl.process(model, w);
             }
+            keepPages.add(page.actionsClassName() + ".java");
         }
 
         Template genTpl = cfg.getTemplate("GeneratedTest.java.ftl");
@@ -131,9 +136,17 @@ public class CodeWriter {
             try (Writer w = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
                 tpl.process(model, w);
             }
+            if (passed) {
+                keepGenerated.add(className + ".java");
+            } else {
+                keepTodo.add(className + ".java");
+            }
         }
 
         TestDataPropertiesWriter.write(projectRoot, safeOutcomes);
+        deleteObsoleteJava(pagesDir, keepPages);
+        deleteObsoleteJava(generatedDir, keepGenerated);
+        deleteObsoleteJava(todoDir, keepTodo);
     }
 
     static String testDescription(String tcId, String title) {
@@ -264,6 +277,21 @@ public class CodeWriter {
 
     public static String toClassName(String tcId) {
         return CodegenNaming.tcIdToClassName(tcId);
+    }
+
+    private static void deleteObsoleteJava(Path dir, java.util.Set<String> keepFileNames) throws IOException {
+        if (dir == null || !Files.isDirectory(dir)) {
+            return;
+        }
+        java.util.Set<String> keep = keepFileNames == null ? java.util.Set.of() : keepFileNames;
+        try (var stream = Files.list(dir)) {
+            for (Path file : stream.toList()) {
+                String name = file.getFileName().toString();
+                if (name.endsWith(".java") && !keep.contains(name)) {
+                    Files.deleteIfExists(file);
+                }
+            }
+        }
     }
 
     private static final class HashMapModel extends LinkedHashMap<String, Object> {

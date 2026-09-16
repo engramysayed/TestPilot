@@ -52,10 +52,10 @@ public class DryRunConversionService {
         Path projectDir = work.resolve("project");
         Files.createDirectories(projectDir);
         FrameworkPackager packager = new FrameworkPackager();
+        packager.copyTemplate(request.templateRoot(), projectDir);
         if ("UPDATE".equals(mode) && store.hasFramework(request.projectId())) {
-            packager.copyTemplate(store.projectRoot(request.projectId()).resolve("framework"), projectDir);
-        } else {
-            packager.copyTemplate(request.templateRoot(), projectDir);
+            packager.overlayCustomerConfig(
+                    store.projectRoot(request.projectId()).resolve("framework"), projectDir);
         }
 
         List<TcOutcome> outcomes = new ArrayList<>();

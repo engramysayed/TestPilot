@@ -60,6 +60,30 @@ public class FrameworkPackager {
         Files.deleteIfExists(dest.resolve("src/main/java/project/pages/DashboardPage.java"));
     }
 
+    /**
+     * Customer-editable config only. Generated pages/tests/data are rewritten from IR.
+     */
+    public void overlayCustomerConfig(Path previousFramework, Path dest) throws IOException {
+        if (previousFramework == null || dest == null || !Files.isDirectory(previousFramework)) {
+            return;
+        }
+        Path src = previousFramework.resolve("src/test/resources/config");
+        if (!Files.isDirectory(src)) {
+            return;
+        }
+        Path dst = dest.resolve("src/test/resources/config");
+        Files.createDirectories(dst);
+        try (var files = Files.list(src)) {
+            for (Path file : files.toList()) {
+                String name = file.getFileName().toString();
+                if (!Files.isRegularFile(file) || name.endsWith(".example")) {
+                    continue;
+                }
+                Files.copy(file, dst.resolve(name), StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+    }
+
     public void writeScoreReport(Path projectRoot, List<TcOutcome> outcomes) throws IOException {
         Path docs = projectRoot.resolve("docs");
         Files.createDirectories(docs);
