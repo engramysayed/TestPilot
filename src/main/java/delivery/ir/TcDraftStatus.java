@@ -8,6 +8,6 @@ public enum TcDraftStatus {
     PARTIAL,
     /** Failed before any body step (login/bind) or zero proven. */
     TODO,
-    /** UPDATE mode: unchanged TC reused from store. */
+    /** UPDATE mode: unchanged TC reused from complete prior proof — not automatically PASSED. */
     REUSED
 }

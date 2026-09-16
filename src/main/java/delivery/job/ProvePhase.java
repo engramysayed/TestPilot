@@ -51,6 +51,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
@@ -186,8 +187,18 @@ public class ProvePhase {
         JobLoginService jobLogin = new JobLoginService();
         boolean jobHasCredentials = request.username() != null && !request.username().isBlank()
                 && request.password() != null;
-        // null = author every TC (NEW); non-null = UPDATE author set (others REUSED)
+        // null = author every TC (NEW); UPDATE author set = re-prove; others may reuse eligible proof
         List<TcDraft> out = new ArrayList<>();
+        Map<String, TcDraft> previousDrafts = Map.of();
+        ReuseEligibility.Context storedContext = null;
+        Path previousRoot = null;
+        if (request != null && request.storeRoot() != null && request.projectId() != null
+                && request.mode() != null && "UPDATE".equalsIgnoreCase(request.mode().trim())) {
+            ProjectStore previousStore = new ProjectStore(request.storeRoot(), request.baseUrl());
+            previousRoot = previousStore.projectRoot(request.projectId());
+            previousDrafts = ReuseEligibility.loadStoredDrafts(previousRoot);
+            storedContext = ReuseEligibility.read(previousRoot);
+        }
         locatorMemory = new DomainLocatorMemory();
         if (request != null && request.storeRoot() != null
                 && request.baseUrl() != null && !request.baseUrl().isBlank()) {
@@ -212,19 +223,21 @@ public class ProvePhase {
                 if (tcIdsToAuthor != null && !tcIdsToAuthor.contains(tc.tcId())) {
                     precisionTracker.beginTc(
                             precisionBindService == null ? 0 : precisionBindService.callsUsed());
-                    TcDraft reused = stampPrecision(new TcDraft(
-                            tc.tcId(), tc.title(), tc.steps(), tc.expectedResult(),
-                            TcDraftStatus.REUSED, List.of(), List.of(), false,
-                            -1, "", "reused", "", 0, ""));
-                    drafts.write(reused);
-                    mirrorDraft(workDir, reused.tcId());
-                    out.add(reused);
-                    progress.recordOutcome(TcDraftStatus.REUSED);
-                    progress.update(index, jobTotal,
-                            "Phase1 reused " + tc.tcId()
-                                    + " — passed " + progress.passed()
-                                    + ", blocked " + progress.todo());
-                    continue;
+                    TcDraft prior = previousDrafts.get(tc.tcId());
+                    if (ReuseEligibility.environmentMatches(storedContext, ReuseEligibility.current(request))
+                            && ReuseEligibility.canReuse(prior)) {
+                        TcDraft reused = ReuseEligibility.copyForReuse(prior, tc, previousRoot);
+                        ReuseEligibility.preserveEvidence(prior, previousRoot, workDir);
+                        drafts.write(reused);
+                        mirrorDraft(workDir, reused.tcId());
+                        out.add(reused);
+                        progress.recordOutcome(TcDraftStatus.REUSED);
+                        progress.update(index, jobTotal,
+                                "Phase1 reused " + tc.tcId()
+                                        + " — passed " + progress.passed()
+                                        + ", blocked " + progress.todo());
+                        continue;
+                    }
                 }
                 if (callBeforeBlocked(tc, failedCallBeforeIds)) {
                     String reason = "Call-before did not pass ("

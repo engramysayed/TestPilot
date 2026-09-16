@@ -150,6 +150,46 @@ public class RetentionSweeperTest {
 
     @Test
 
+    public void neverTouchesProjectEvidenceOrIr() throws Exception {
+
+        Path store = Files.createTempDirectory("retention-store-evidence-");
+
+        Path project = store.resolve("example-com").resolve("prj_keep");
+
+        Path evidence = project.resolve("evidence").resolve("TC_OK");
+
+        Path ir = project.resolve("ir");
+
+        Files.createDirectories(evidence);
+
+        Files.createDirectories(ir);
+
+        Files.writeString(evidence.resolve("step-001.png"), "png");
+
+        Files.writeString(ir.resolve("TC_OK.json"), "{}");
+
+        age(evidence, 60);
+
+        age(ir, 60);
+
+        age(project, 60);
+
+
+
+        sweep(store, null, 14);
+
+
+
+        Assert.assertTrue(Files.isRegularFile(evidence.resolve("step-001.png")));
+
+        Assert.assertTrue(Files.isRegularFile(ir.resolve("TC_OK.json")));
+
+    }
+
+
+
+    @Test
+
     public void retentionDaysZeroDisablesSweeper() throws Exception {
 
         Path store = Files.createTempDirectory("retention-store-off-");

@@ -26,10 +26,28 @@ public class EmitPhaseMappingTest {
     }
 
     @Test
-    public void reusedMapsToPassed() {
+    public void reusedWithoutProofDoesNotCountAsPassed() {
         TcDraft draft = new TcDraft(
                 "TC2", "t", "steps", "exp", TcDraftStatus.REUSED,
                 List.of(), List.of(), false, -1, "", "reused", "", 0, "");
-        Assert.assertEquals(EmitPhase.toOutcome(draft).status(), TcStatus.PASSED);
+        Assert.assertEquals(EmitPhase.toOutcome(draft).status(), TcStatus.TODO,
+                "empty REUSED IR must not silently pass");
+    }
+
+    @Test
+    public void reusedWithProofCountsAsPassedAndKeepsProvenance() {
+        ProvenStep step = new ProvenStep(
+                "TC2", "Home", "elementAction", "click",
+                "id", "go", "", "", "", true, "proven");
+        TcDraft draft = new TcDraft(
+                "TC2", "t", "steps", "exp", TcDraftStatus.REUSED,
+                List.of(step), List.of(), false, -1, "",
+                "reused prior PASSED proof; not a fresh browser run",
+                "evidence/TC2", 0, "https://example.com/home");
+        TcOutcome outcome = EmitPhase.toOutcome(draft);
+        Assert.assertEquals(outcome.status(), TcStatus.PASSED);
+        Assert.assertEquals(outcome.provenSteps().size(), 1);
+        Assert.assertTrue(outcome.failureReason().toLowerCase().contains("reused"));
+        Assert.assertFalse(outcome.failureReason().isBlank());
     }
 }

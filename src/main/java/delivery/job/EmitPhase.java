@@ -153,6 +153,7 @@ public class EmitPhase {
         JSONObject hashes = new JSONObject(diffService.hashesOf(allCases));
         Files.createDirectories(hashFile.getParent());
         Files.writeString(hashFile, hashes.toString(2));
+        ReuseEligibility.write(store.projectRoot(request.projectId()), ReuseEligibility.current(request));
 
         store.saveVersion(request.projectId(), projectDir, zip);
 
@@ -188,7 +189,8 @@ public class EmitPhase {
 
     public static TcOutcome toOutcome(TcDraft d) {
         TcStatus status = switch (d.status()) {
-            case PASSED, REUSED -> TcStatus.PASSED;
+            case PASSED -> TcStatus.PASSED;
+            case REUSED -> ReuseEligibility.canReuse(d) ? TcStatus.PASSED : TcStatus.TODO;
             case PARTIAL -> TcStatus.PARTIAL;
             case TODO -> TcStatus.TODO;
         };
@@ -199,7 +201,9 @@ public class EmitPhase {
             reason = "Blocked at step " + d.blockerStepIndex() + " [" + d.blockerIntent() + "]: " + reason;
         }
         if (d.status() == TcDraftStatus.REUSED) {
-            reason = "reused";
+            if (reason == null || reason.isBlank()) {
+                reason = ReuseEligibility.PROVENANCE;
+            }
         }
         return new TcOutcome(
                 d.tcId(), d.title() == null ? "" : d.title(), status, d.provenSteps(), reason, evidence,

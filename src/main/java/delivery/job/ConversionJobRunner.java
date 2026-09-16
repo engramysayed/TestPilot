@@ -3,9 +3,9 @@ package delivery.job;
 import delivery.excel.ExcelTcReader;
 import delivery.excel.KeelPathCaseFilter;
 import delivery.excel.ManualTestCase;
+import delivery.ir.TcDraft;
 import delivery.packager.FrameworkPackager;
 import delivery.store.ProjectStore;
-import delivery.store.TcDiffService;
 import delivery.util.ProjectNaming;
 import org.json.JSONObject;
 
@@ -13,12 +13,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
-import java.util.stream.Collectors;
 
 /**
  * Orchestrates two-phase conversion:
@@ -61,14 +59,13 @@ public class ConversionJobRunner {
             }
         }
 
-        TcDiffService diffService = new TcDiffService();
-        List<ManualTestCase> toAuthor = allCases;
-        if ("UPDATE".equals(mode)) {
-            toAuthor = diffService.diff(allCases, storedHashes).toAuthor();
-        }
-        // UPDATE: only re-author changed TCs; NEW: null means author all
+        Path projectRoot = store.projectRoot(request.projectId());
+        Map<String, TcDraft> storedDrafts = ReuseEligibility.loadStoredDrafts(projectRoot);
+        ReuseEligibility.Context storedContext = ReuseEligibility.read(projectRoot);
         Set<String> authorIds = "UPDATE".equals(mode)
-                ? toAuthor.stream().map(ManualTestCase::tcId).collect(Collectors.toCollection(HashSet::new))
+                ? ReuseEligibility.authorIds(
+                        allCases, storedHashes, storedDrafts, storedContext,
+                        ReuseEligibility.current(request), projectRoot)
                 : null;
 
         String workFolder = ProjectNaming.fromBaseUrl(request.baseUrl(), Instant.now());

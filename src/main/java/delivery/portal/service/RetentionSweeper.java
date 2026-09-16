@@ -150,7 +150,8 @@ public class RetentionSweeper {
 
                 String name = dir.getFileName().toString();
 
-                if ("generated".equals(name)) {
+                if ("generated".equals(name) || "evidence".equals(name)
+                        || "ir".equals(name) || "framework".equals(name) || "versions".equals(name)) {
 
                     return FileVisitResult.SKIP_SUBTREE;
 
