@@ -153,7 +153,9 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** simultaneous same-host jobs with overlapping TC IDs and distinct sentinels retain independent files, proof, packages and memory. Version publication cannot lose or overwrite a concurrent result.
 
-**2026-09-16:** tenant-storage **groundwork** only — P2-02 remains open. Hosted paths fail closed; roles gate operate vs membership including generate/compare/workbook/pipeline; MEMBER read-only and OWNER-only delete are a product contract; migrator recover is interruptible and idempotent; OS lock was probed on this volume; concurrent ProvePhase+emit+download on local pages (no LLM) keeps sentinels apart in the working tree. Dedicated-install identity/network notes: [dedicated-install.md](dedicated-install.md). Deployment filesystem lock remains this volume only. P0-03 concurrent benchmark re-run from a commit that includes ProvePhase isolation remains owed. This is not completed customer isolation.
+**2026-09-16:** tenant-storage **groundwork** only — P2-02 remains open. Hosted paths fail closed; roles gate operate vs membership including generate/compare/workbook/pipeline; MEMBER read-only and OWNER-only delete are a product contract; migrator recover is interruptible and idempotent; OS lock was probed on this volume. Dedicated-install identity/network notes: [dedicated-install.md](dedicated-install.md). Deployment filesystem lock remains this volume only.
+
+**2026-09-17 (`f44c76a`):** P0-03 concurrent same-host sequence 10 re-run **PASS** ([run-2026-09-17-concurrent-f44c76a.md](release-benchmark/run-2026-09-17-concurrent-f44c76a.md)). This is not completed customer isolation.
 
 ### P2-03 — enforce browser network and credential scope · F08
 
@@ -167,7 +169,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** controlled integration tests show prohibited destinations remain unreachable through navigation, redirects and subresources. Approved targets work. Dedicated private-target access is explicitly configured and cannot broaden another tenant's access.
 
-**2026-09-17 (working tree):** application-layer policy and guard are in place for Hunt navigate and ProvePhase open; dedicated CIDRs do not apply to shared mode. This is not a kernel firewall. P2-03 remains open until deployed worker-network tests and P0-01 hosted-target sign-off.
+**2026-09-17 (`f44c76a`):** application-layer policy and per-thread PAC are in place for Hunt and ProvePhase Chrome/Edge. Dedicated CIDRs do not appear in the shared PAC. Loopback page loads still use `WorkerNetworkGuard`. This is not a kernel firewall. **No deployed shared or dedicated installation was available.** P2-03 remains open until those drills and P0-01 hosted-target sign-off.
 
 ### P2-04 — sanitize sensitive data and enforce provider policy · F09
 
@@ -182,7 +184,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** synthetic secret canaries do not appear in intercepted provider requests, stored DOM/logs, screenshots covered by the masking policy, or exported packs. Disallowed cloud fallback is blocked. Tests cover engine selection, fallback and JavaScript output.
 
-**2026-09-17 (working tree):** `SecretSanitizer` and fail-closed `ProviderPolicy` are applied at slim HTML, Hunt packs, JS results, Ollama dispatch, Cursor sidecar, AgentRouter, and vision. Screenshot pixel redaction is not implemented. P2-04 remains open until privacy policy sign-off and intercepted-provider canary tests on a live sidecar.
+**2026-09-17 (`f44c76a`):** `SecretSanitizer` plus `ScreenshotRedactor` at capture; Cursor sidecar stdin canary intercepted (`SidecarCanaryTest`). Fail-closed `ProviderPolicy` unchanged. P2-04 remains open until named privacy sign-off ([APPROVALS.md](APPROVALS.md)).
 
 **Phase 2 exit:** shared-host isolation tests and deployed worker network tests pass. Tenant/data policy is approved and documented; an undecided privacy policy cannot be advertised as a guarantee.
 
@@ -309,6 +311,8 @@ No launch date is estimated here: staffing, supported application scope, operati
 **Acceptance:** a new user/operator can follow the supported path without relying on contradictory historical plans. Every advertised privacy and replay guarantee has a matching enforcement test.
 
 **Phase 4 engineering (2026-09-17, local):** CI workflow `.github/workflows/release.yml` (deterministic profile excludes `*LiveSmoke*`, template compile, sha256 provenance, secret grep). Production startup guard, login throttle, `/api/health`+`/api/ready`, `StoreBackup` unit restore of tenant path+checksum, job diagnostics (`FRESH`/`REUSED`/`BLOCKED`/`UNCHECKED`/`SIMULATED`/`INTERRUPTED`), library field-level diff, constitution 1.2.0 supersession, SUPPORT/deployment/runbook docs. **P4-02 deployed shared/dedicated restore drill remains a release blocker.** Phase 2 isolation/privacy gates stay open.
+
+**Phase 5 validation (2026-09-17, `f44c76a`):** screenshot redaction and sidecar canary tests pass locally; concurrent same-host ProveEmit recorded PASS; backup/tenant/lock checks pass on this NTFS volume only. Deployed shared/dedicated isolation, production restore, named approvals, and P5-01 representative acceptance remain open. **Launch decision: HOLD.** Evidence: [phase5-validation.md](phase5-validation.md), [LAUNCH-DECISION.md](LAUNCH-DECISION.md).
 
 ## 7. Phase 5 — controlled pilot and launch decision
 

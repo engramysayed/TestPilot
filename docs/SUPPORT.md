@@ -14,14 +14,14 @@ This is the support contract **as implemented locally**. Product/privacy sign-of
 ## Not yet a support guarantee
 
 - Customer isolation on a shared host (P2-01 / P2-02)
-- Kernel/worker network isolation (P2-03)
-- Screenshot pixel redaction and live-sidecar provider canaries (P2-04)
+- Kernel/worker network isolation on a **deployed** shared or dedicated host (P2-03)
+- Named privacy policy covering screenshots and providers (P2-04 engineering exists locally; sign-off is unsigned)
 - Restored backups on a production host (P4-02)
 - Live LLM proof coverage (P0-03 certified fixture replay only)
 
 ## Data flow (high level)
 
-Browser DOM / URLs / JS results / Hunt packs pass through `SecretSanitizer` before model dispatch and persistence. Provider allowlist is fail-closed. Passwords are job-scoped and not written into customer ZIPs. Hunt credentials use `$TARGET_*` tokens in planner prompts.
+Browser DOM / URLs / JS results / Hunt packs / sidecar JSON pass through `SecretSanitizer` before model dispatch and persistence. Password-field pixels in PNG captures are painted over by `ScreenshotRedactor`. Provider allowlist is fail-closed. Passwords are job-scoped and not written into customer ZIPs. Hunt credentials use `$TARGET_*` tokens in planner prompts.
 
 Retention: `delivery.retention.days` (default 14). Deletion tombstones then purges credentials, jobs, and disk. Admin domain-folder and admin-user delete use the same purge.
 

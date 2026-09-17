@@ -25,4 +25,4 @@ Controlled fixtures for first-release result trust (F00), Update reuse (P1-02/P1
 
 ## Sequences
 
-See `sequences.md` for NEW → downloaded replay → UPDATE → downloaded replay → repeated UPDATE, including concurrent same-host jobs (those remain expected **fail** until P2-02).
+See `sequences.md` for NEW → downloaded replay → UPDATE → downloaded replay → repeated UPDATE, including concurrent same-host jobs (sequence 10 **PASS** on `f44c76a`; customer isolation P2-01/P2-02 still open).

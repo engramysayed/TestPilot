@@ -11,4 +11,4 @@ Run against the static pages in `pages/` and `datasets/cases.csv`. Capture ZIP i
 7. **Case removal** — drop TC_LOGIN_OK from the CSV; its generated class must disappear.
 8. **PASS→TODO** — make TC_URL_OK unprovable (wrong URL in data). Stale passed class must not remain.
 9. **Changed environment** — point BASE_WEB at a second fixture port; prior PASS is not reused.
-10. **Concurrent same-host** — two jobs, overlapping TC IDs, distinct sentinels in expected text. After P2-02 they must not share work files. Until P2-02, treat a collision as the known F01 risk.
+10. **Concurrent same-host** — two jobs, overlapping TC IDs, distinct sentinels in expected text. Recorded **PASS** on `f44c76a` via `ConcurrentSameHostProveEmitTest` ([run-2026-09-17-concurrent-f44c76a.md](run-2026-09-17-concurrent-f44c76a.md)). That closes the committed-revision re-run; it does not close customer isolation (P2-01/P2-02).

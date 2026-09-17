@@ -61,14 +61,14 @@ Tests run: 40, Failures: 0, Errors: 0, Skipped: 0 (BUILD SUCCESS, 2026-09-17T01:
 
 ## Still open (do not treat as done)
 
-- This working-tree slice is uncommitted until asked. P2-01 and P2-02 stay open until remaining isolation gates close. Do not advertise completed customer isolation.
+- P2-01 and P2-02 stay open until remaining isolation gates close. Do not advertise completed customer isolation.
 - Dedicated single-tenant product behavior is documented in [dedicated-install.md](dedicated-install.md) (same identity model; dedicated CIDRs do not broaden shared host). Product/security sign-off of that document is still P0-01.
 - OS file lock: probed on this workspace volume at `target/publication-lock-fs-probe` (`PublicationLockTest.osLockIsExercisedOnThisStoresFileSystemType`). This machine’s data volume is **NTFS**. Other FileStore types (NFS/SMB/production Linux volumes) remain unverified.
-- The P0-03 concurrent same-host **benchmark** case has not been re-run from a commit that includes live ProvePhase isolation.
+- The P0-03 concurrent same-host **benchmark** was re-run on committed `f44c76a`: `ConcurrentSameHostProveEmitTest` **PASS** (1/1, 2026-09-17T12:14:37+03:00). See [run-2026-09-17-concurrent-f44c76a.md](release-benchmark/run-2026-09-17-concurrent-f44c76a.md). That does not close P2-01/P2-02.
 
-## P2-03 / P2-04 (working tree)
+## P2-03 / P2-04 (`f44c76a`)
 
-Application-layer worker network policy (`TargetNetworkPolicy` / `WorkerNetworkGuard`) on Hunt navigate and ProvePhase `driver.get`. Shared vs dedicated modes; dedicated CIDRs do not widen shared jobs. Credentials stay on the approved origin. `WorkerCredentialScope` holds target creds only.
+Application-layer worker network policy (`TargetNetworkPolicy` / `WorkerNetworkGuard`) on Hunt navigate and ProvePhase `driver.get`, plus per-thread `WorkerPac` for Chrome/Edge. Shared vs dedicated modes; dedicated CIDRs do not widen shared jobs or the shared PAC. Credentials stay on the approved origin. `WorkerCredentialScope` holds target creds only. Deployed shared/dedicated worker-network drills were **not** run.
 
-`SecretSanitizer` masks password DOM values, token query/userinfo, and `password=` assignments before slim HTML, Hunt packs, and JS results. `ProviderPolicy` allowlist is fail-closed when empty and is checked on Ollama, Cursor, AgentRouter, and vision fallbacks. Default `delivery.provider.allowlist` in `application.properties` keeps current engines allowed; an unset/empty list blocks dispatch.
+`SecretSanitizer` masks password DOM values, token query/userinfo, `password=` assignments, and `type password` prompt tokens. `ScreenshotRedactor` paints password-field pixels at capture. Cursor sidecar stdin canaries are intercepted (`SidecarCanaryTest`). `ProviderPolicy` allowlist is fail-closed. Named privacy sign-off remains unsigned.
 
