@@ -12,7 +12,7 @@ A customer-operated runner connects **outbound** to the control plane. The contr
 - Jobs still freeze library/environment pins, provider allowlist snapshots, and budget reservations at queue time. Complete rejects a changed input hash or allowlist.
 - Agent: `delivery.runner.PrivateRunnerAgent` (`--portal --token --work-dir --dry-run`). Installer scripts write a start wrapper under `scripts/private-runner/`. The agent heartbeats the job lease during work and posts `CANCELLED` instead of `COMPLETED` when the portal requested cancel.
 - Dry-run execution uses `DryRunExecuteService` on the runner host. Live browser/CDP uses `ExecuteJobRunner` when `--dry-run false`. The agent posts claim stage `BROWSER` before live execution so expired disconnects follow `INTERRUPTED_UNCERTAIN` instead of silent re-queue.
-- Local live validation (`PrivateRunnerLiveBrowserProcessTest`): separate portal + agent processes, `--dry-run false`, headless Chrome, controlled `127.0.0.1` pages. Covers claim → frozen inputs → browser execution → signed artifact upload → completion, plus cancel and BROWSER-stage disconnect. This does not close deployed isolation or customer-app acceptance.
+- Local live validation (`0c49603`, `PrivateRunnerLiveBrowserProcessTest`): separate portal + agent processes, `--dry-run false`, headless Chrome, controlled `127.0.0.1` pages. Covers claim → frozen inputs → browser execution → signed artifact upload → completion, plus cancel and BROWSER-stage disconnect. This does not close deployed isolation or customer-app acceptance.
 
 ## Not included
 
