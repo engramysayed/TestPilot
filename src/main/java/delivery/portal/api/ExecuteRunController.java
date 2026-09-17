@@ -167,6 +167,9 @@ public class ExecuteRunController {
                 JobRecord.JobKind.EXECUTE
         );
         job.setAuthoringEngine(engine);
+        if (useStoredWorkbook) {
+            workbooks.headRevisionId(projectId).ifPresent(job::setLibraryRevisionId);
+        }
         Path requestPath = AuthoringJobRequestFiles.requestPath(
                 store.projectDiskRoot(projectId), JobRecord.JobKind.EXECUTE, jobId);
         AuthoringJobRequestFiles.write(requestPath, engine);

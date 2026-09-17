@@ -67,15 +67,107 @@ public class GeneratedWorkbookService {
     }
 
     public LibraryRevisionDiff.Result diffRevisions(String projectId, String fromId, String toId) throws Exception {
+        return diffRevisions(projectId, fromId, toId, null, null);
+    }
+
+    public LibraryRevisionDiff.Result diffRevisions(
+            String projectId, String fromId, String toId, String kinds, String field
+    ) throws Exception {
         LibraryRevisionStore store = new LibraryRevisionStore(generatedDir(projectId));
         byte[] from = Files.readAllBytes(store.bytes(fromId));
         byte[] to = Files.readAllBytes(store.bytes(toId));
+        LibraryRevisionDiff.Result diff;
         if (looksLikeCsv(from) && looksLikeCsv(to)) {
-            return LibraryRevisionDiff.compareCsv(from, to);
+            diff = LibraryRevisionDiff.compareCsv(from, to);
+        } else {
+            Map<String, Map<String, String>> left = casesToFields(readRevisionCases(from));
+            Map<String, Map<String, String>> right = casesToFields(readRevisionCases(to));
+            diff = LibraryRevisionDiff.compare(left, right);
         }
-        Map<String, Map<String, String>> left = casesToFields(readRevisionCases(from));
-        Map<String, Map<String, String>> right = casesToFields(readRevisionCases(to));
-        return LibraryRevisionDiff.compare(left, right);
+        return diff.filter(kinds, field);
+    }
+
+    public Optional<String> headRevisionId(String projectId) throws Exception {
+        return new LibraryRevisionStore(generatedDir(projectId)).head().map(LibraryRevisionStore.Revision::id);
+    }
+
+    public List<ManualTestCase> readRevisionCases(String projectId, String revisionId) throws Exception {
+        LibraryRevisionStore store = new LibraryRevisionStore(generatedDir(projectId));
+        return readRevisionCases(Files.readAllBytes(store.bytes(revisionId)));
+    }
+
+    public Map<String, Object> describeRevision(String projectId, String revisionId) throws Exception {
+        LibraryRevisionStore store = new LibraryRevisionStore(generatedDir(projectId));
+        LibraryRevisionStore.Revision rev = store.list().stream()
+                .filter(r -> r.id().equals(revisionId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("unknown library revision: " + revisionId));
+        List<ManualTestCase> cases = readRevisionCases(projectId, revisionId);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("id", rev.id());
+        out.put("parentId", rev.parentId());
+        out.put("source", rev.source());
+        out.put("author", rev.author());
+        out.put("createdAt", rev.createdAt().toString());
+        out.put("sha256", rev.sha256());
+        out.put("head", headRevisionId(projectId).orElse("").equals(rev.id()));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (ManualTestCase tc : cases) {
+            rows.add(toRowMap(tc));
+        }
+        out.put("cases", rows);
+        return out;
+    }
+
+    public Path copyRevisionForJob(String projectId, String revisionId) throws Exception {
+        LibraryRevisionStore store = new LibraryRevisionStore(generatedDir(projectId));
+        Path src = store.bytes(revisionId);
+        if (!Files.isRegularFile(src)) {
+            throw new IllegalArgumentException("unknown library revision: " + revisionId);
+        }
+        Path uploadDir = Path.of(System.getProperty("java.io.tmpdir"), "delivery-uploads", projectId, "generated");
+        Files.createDirectories(uploadDir);
+        Path dest = uploadDir.resolve(UUID.randomUUID() + ".xlsx");
+        Files.copy(src, dest);
+        return dest;
+    }
+
+    public Map<String, Object> restoreRevision(String projectId, String revisionId, String author) throws Exception {
+        Path dir = generatedDir(projectId);
+        Files.createDirectories(dir);
+        LibraryRevisionStore store = new LibraryRevisionStore(dir);
+        LibraryRevisionStore.Revision rev = store.restoreAsNew(revisionId, author);
+        byte[] body = Files.readAllBytes(store.bytes(rev.id()));
+        Files.write(dir.resolve(EXCEL_FILE), body);
+        List<ManualTestCase> cases = readRevisionCases(body);
+        Files.writeString(dir.resolve(CSV_FILE), GeneratedTcCsvParser.toCsv(cases), StandardCharsets.UTF_8);
+        Map<String, Object> previous = readMeta(dir);
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("projectId", projectId);
+        meta.put("tcCount", cases.size());
+        meta.put("keelPathCounts", KeelPathCounts.from(cases).toMap());
+        meta.put("source", rev.source());
+        meta.put("sourceRef", author == null ? "" : author);
+        meta.put("revisionId", rev.id());
+        meta.put("parentRevisionId", rev.parentId());
+        if (previous.get("model") != null && !String.valueOf(previous.get("model")).isBlank()) {
+            meta.put("model", previous.get("model"));
+        }
+        Object priorNotes = previous.get("coverageNotes");
+        if (priorNotes != null) {
+            meta.put("coverageNotes", String.valueOf(priorNotes));
+        }
+        Object priorAuto = previous.get("automationNotesByTc");
+        if (priorAuto != null) {
+            meta.put("automationNotesByTc", priorAuto);
+        }
+        meta.put("createdAt", Instant.now().toString());
+        meta.put("excelFile", EXCEL_FILE);
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(dir.resolve(META_FILE).toFile(), meta);
+        Map<String, Object> out = listCases(projectId);
+        out.put("revisionId", rev.id());
+        out.put("source", rev.source());
+        return out;
     }
 
     private static boolean looksLikeCsv(byte[] raw) {
@@ -498,6 +590,8 @@ public class GeneratedWorkbookService {
         out.put("keelPathCounts", meta.getOrDefault("keelPathCounts", Map.of()));
         out.put("source", meta.getOrDefault("source", "GENERATE"));
         out.put("sourceRef", meta.getOrDefault("sourceRef", ""));
+        out.put("revisionId", meta.getOrDefault("revisionId", ""));
+        out.put("parentRevisionId", meta.getOrDefault("parentRevisionId", ""));
         out.put("model", meta.getOrDefault("model", ""));
         out.put("createdAt", meta.getOrDefault("createdAt", ""));
         out.put("excelFileName", EXCEL_FILE);
@@ -599,6 +693,16 @@ public class GeneratedWorkbookService {
             Map<String, String> fields,
             String baseUrl
     ) throws Exception {
+        return updateCaseFields(projectId, tcId, fields, baseUrl, null);
+    }
+
+    public Map<String, Object> updateCaseFields(
+            String projectId,
+            String tcId,
+            Map<String, String> fields,
+            String baseUrl,
+            String baseRevision
+    ) throws Exception {
         if (tcId == null || tcId.isBlank()) {
             throw new IllegalArgumentException("tcId is required");
         }
@@ -653,7 +757,7 @@ public class GeneratedWorkbookService {
             model = null;
         }
 
-        saveFromCases(projectId, repaired, source, sourceRef, model);
+        saveFromCases(projectId, repaired, source, sourceRef, model, baseRevision);
 
         ManualTestCase savedRow = repaired.stream()
                 .filter(tc -> normalizedTcId.equals(tc.tcId()))
@@ -803,8 +907,23 @@ public class GeneratedWorkbookService {
             List<String> selectedTcIds,
             List<ManualTestCase> uploadCases
     ) throws Exception {
+        return materializeForJob(projectId, selectedTcIds, uploadCases, null);
+    }
+
+    public Path materializeForJob(
+            String projectId,
+            List<String> selectedTcIds,
+            List<ManualTestCase> uploadCases,
+            String revisionId
+    ) throws Exception {
+        List<ManualTestCase> library;
+        if (revisionId != null && !revisionId.isBlank()) {
+            library = readRevisionCases(projectId, revisionId);
+        } else {
+            library = hasWorkbook(projectId) ? readCases(projectId) : List.of();
+        }
         List<ManualTestCase> merged = WorkbookJobMaterializer.merge(
-                hasWorkbook(projectId) ? readCases(projectId) : List.of(),
+                library,
                 selectedTcIds,
                 uploadCases == null ? List.of() : uploadCases
         );

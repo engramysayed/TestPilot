@@ -284,6 +284,58 @@
             </div>
         </section>
 
+        <section class="panel" id="lib-history">
+            <h2>Library history</h2>
+            <p class="panel-intro">
+                Each save is an immutable revision. Open a run’s pinned revision, review added/changed/removed
+                cases, then restore as a <em>new</em> revision (history is never rewritten).
+            </p>
+            <p id="lib-hist-empty" class="muted" hidden>No revisions yet.</p>
+            <p id="lib-hist-err" class="error" hidden></p>
+            <p id="lib-hist-msg" class="muted" hidden></p>
+            <div class="actions lib-toolbar" id="lib-hist-toolbar" hidden>
+                <label>Changes
+                    <select id="lib-hist-kind" aria-label="Filter change kind">
+                        <option value="all">All</option>
+                        <option value="added">Added</option>
+                        <option value="removed">Removed</option>
+                        <option value="changed">Changed</option>
+                    </select>
+                </label>
+                <label>Field
+                    <select id="lib-hist-field" aria-label="Filter changed field">
+                        <option value="">All fields</option>
+                        <option>Title</option>
+                        <option>Steps</option>
+                        <option>ExpectedResult</option>
+                        <option>Preconditions</option>
+                        <option>Priority</option>
+                        <option>Tags</option>
+                        <option>VisualAssertion</option>
+                        <option>TestData</option>
+                        <option>KeelPath</option>
+                        <option>CallBefore</option>
+                    </select>
+                </label>
+                <button type="button" class="button ghost" id="lib-hist-restore" disabled>Restore as new revision</button>
+            </div>
+            <div id="lib-hist-list" class="lib-table-wrap" hidden>
+                <table class="table lib-table">
+                    <thead>
+                    <tr>
+                        <th></th>
+                        <th>When</th>
+                        <th>Source</th>
+                        <th>Author</th>
+                        <th>Revision</th>
+                    </tr>
+                    </thead>
+                    <tbody id="lib-hist-tbody"></tbody>
+                </table>
+            </div>
+            <div id="lib-hist-diff" class="lib-diff" hidden></div>
+        </section>
+
         <section class="panel" id="lib-edit-panel" hidden>
             <h2>Edit <span id="lib-edit-id" class="mono"></span></h2>
             <form id="lib-edit-form">
@@ -1226,6 +1278,9 @@
     const libSearch = document.getElementById('lib-search');
     let libCases = [];
     let libEditingId = null;
+    let libHeadRevisionId = '';
+    let libRevisions = [];
+    let libSelectedRevisionId = '';
 
     function selectedLibIds() {
         return Array.from(document.querySelectorAll('.lib-check:checked')).map(el => el.value);
@@ -1544,6 +1599,7 @@
             return;
         }
         libCases = data.cases || [];
+        libHeadRevisionId = data.revisionId || '';
         libEmpty.hidden = libCases.length > 0;
         libList.hidden = libCases.length === 0;
         libTbody.innerHTML = '';
@@ -1642,7 +1698,8 @@
             tags: document.getElementById('lib-edit-tags').value,
             visualAssertion: document.getElementById('lib-edit-visual').value,
             keelPath: document.getElementById('lib-edit-keel').value,
-            callBefore: document.getElementById('lib-edit-call-before').value || ''
+            callBefore: document.getElementById('lib-edit-call-before').value || '',
+            baseRevision: libHeadRevisionId || ''
         };
         const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
             + '/generated-workbook/cases/' + encodeURIComponent(libEditingId), {
@@ -1655,7 +1712,11 @@
         try { data = await res.json(); } catch (ex) { /* ignore */ }
         if (!res.ok) {
             err.hidden = false;
-            err.textContent = (data.message || data.error || 'Save failed');
+            if (data.error === 'LIBRARY_CONFLICT') {
+                err.textContent = 'This library changed since you opened it. Refresh and review the latest revision before saving.';
+            } else {
+                err.textContent = (data.message || data.error || 'Save failed');
+            }
             return;
         }
         libEditPanel.hidden = true;
@@ -1663,9 +1724,13 @@
         libMsg.hidden = false;
         libMsg.textContent = 'Saved.';
         await loadLibrary();
+        await loadLibraryHistory();
     });
 
-    document.getElementById('lib-refresh-btn')?.addEventListener('click', loadLibrary);
+    document.getElementById('lib-refresh-btn')?.addEventListener('click', function () {
+        loadLibrary();
+        loadLibraryHistory();
+    });
     libSearch?.addEventListener('input', applyLibFilter);
     document.getElementById('lib-upload-input')?.addEventListener('change', async (e) => {
         const input = e.target;
@@ -1676,7 +1741,11 @@
         libMsg.hidden = true;
         const form = new FormData();
         form.append('file', file);
-        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/upload', {
+        let uploadUrl = '/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/upload';
+        if (libHeadRevisionId) {
+            uploadUrl += '?baseRevision=' + encodeURIComponent(libHeadRevisionId);
+        }
+        const res = await fetch(uploadUrl, {
             method: 'POST',
             credentials: 'same-origin',
             headers: { ...API_HEADERS, 'Accept': 'application/json' },
@@ -1686,7 +1755,9 @@
         try { data = await res.json(); } catch (ex) { /* ignore */ }
         if (!res.ok) {
             libErr.hidden = false;
-            libErr.textContent = (data && data.message) || 'Upload failed';
+            libErr.textContent = data.error === 'LIBRARY_CONFLICT'
+                ? 'This library changed since you opened it. Refresh and review the latest revision before uploading.'
+                : ((data && data.message) || 'Upload failed');
             return;
         }
         libMsg.hidden = false;
@@ -1695,6 +1766,7 @@
             + (data.addedCount || 0) + ' added'
             + ' (library now ' + (data.tcCount || (data.cases || []).length) + ').';
         await loadLibrary();
+        await loadLibraryHistory();
     });
     document.getElementById('lib-select-all')?.addEventListener('change', (e) => {
         document.querySelectorAll('.lib-check').forEach(cb => {
@@ -1780,6 +1852,173 @@
         libMsg.hidden = false;
         libMsg.textContent = 'Deleted ' + (data.removedCount || ids.length) + ' case(s).';
         await loadLibrary();
+        await loadLibraryHistory();
+    });
+
+    /* —— Library history —— */
+    async function loadLibraryHistory() {
+        const empty = document.getElementById('lib-hist-empty');
+        const err = document.getElementById('lib-hist-err');
+        const toolbar = document.getElementById('lib-hist-toolbar');
+        const list = document.getElementById('lib-hist-list');
+        const tbody = document.getElementById('lib-hist-tbody');
+        if (!tbody) return;
+        if (err) err.hidden = true;
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/library/revisions', {
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Accept': 'application/json' }
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            if (err) {
+                err.hidden = false;
+                err.textContent = (data && data.message) || 'Failed to load history';
+            }
+            return;
+        }
+        libRevisions = data.revisions || [];
+        if (empty) empty.hidden = libRevisions.length > 0;
+        if (toolbar) toolbar.hidden = libRevisions.length === 0;
+        if (list) list.hidden = libRevisions.length === 0;
+        const focus = new URLSearchParams(location.search).get('revision') || libSelectedRevisionId;
+        if (focus && libRevisions.some(function (r) { return r.id === focus; })) {
+            libSelectedRevisionId = focus;
+        } else if (libRevisions.length) {
+            libSelectedRevisionId = libRevisions[libRevisions.length - 1].id;
+        } else {
+            libSelectedRevisionId = '';
+        }
+        tbody.innerHTML = '';
+        libRevisions.slice().reverse().forEach(function (rev) {
+            const tr = document.createElement('tr');
+            tr.className = 'lib-hist-row' + (rev.id === libSelectedRevisionId ? ' is-selected' : '');
+            tr.setAttribute('data-rev', rev.id);
+            const when = rev.createdAt ? String(rev.createdAt).replace('T', ' ').replace(/\.\d+.*/, '') : '';
+            const head = rev.id === libHeadRevisionId ? ' <span class="badge muted lib-badge-head">head</span>' : '';
+            tr.innerHTML =
+                '<td><input type="radio" name="lib-hist-pick" ' + (rev.id === libSelectedRevisionId ? 'checked' : '') + '/></td>' +
+                '<td>' + escapeHtml(when) + '</td>' +
+                '<td>' + escapeHtml(rev.source || '') + '</td>' +
+                '<td>' + escapeHtml(rev.author || '') + '</td>' +
+                '<td class="mono">' + escapeHtml(rev.id) + head + '</td>';
+            tr.addEventListener('click', function () {
+                libSelectedRevisionId = rev.id;
+                loadLibraryHistoryDiff();
+                document.querySelectorAll('#lib-hist-tbody tr').forEach(function (row) {
+                    row.classList.toggle('is-selected', row.getAttribute('data-rev') === rev.id);
+                    const radio = row.querySelector('input[type="radio"]');
+                    if (radio) radio.checked = row.getAttribute('data-rev') === rev.id;
+                });
+                const restoreBtn = document.getElementById('lib-hist-restore');
+                if (restoreBtn) restoreBtn.disabled = !libSelectedRevisionId || libSelectedRevisionId === libHeadRevisionId;
+            });
+            tbody.appendChild(tr);
+        });
+        const restoreBtn = document.getElementById('lib-hist-restore');
+        if (restoreBtn) restoreBtn.disabled = !libSelectedRevisionId || libSelectedRevisionId === libHeadRevisionId;
+        await loadLibraryHistoryDiff();
+    }
+
+    async function loadLibraryHistoryDiff() {
+        const mount = document.getElementById('lib-hist-diff');
+        if (!mount) return;
+        if (!libSelectedRevisionId || libRevisions.length === 0) {
+            mount.hidden = true;
+            mount.innerHTML = '';
+            return;
+        }
+        const selected = libRevisions.find(function (r) { return r.id === libSelectedRevisionId; });
+        const fromId = selected && selected.parentId ? selected.parentId : '';
+        if (!fromId) {
+            mount.hidden = false;
+            mount.innerHTML = '<p class="muted">First revision — no earlier cases to compare.</p>';
+            return;
+        }
+        const kind = document.getElementById('lib-hist-kind');
+        const field = document.getElementById('lib-hist-field');
+        const params = new URLSearchParams();
+        if (kind && kind.value && kind.value !== 'all') params.set('kind', kind.value);
+        if (field && field.value) params.set('field', field.value);
+        const qs = params.toString() ? ('?' + params.toString()) : '';
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
+            + '/library/revisions/' + encodeURIComponent(fromId)
+            + '/diff/' + encodeURIComponent(libSelectedRevisionId) + qs, {
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Accept': 'application/json' }
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            mount.hidden = false;
+            mount.innerHTML = '<p class="error">' + escapeHtml((data && data.message) || 'Diff failed') + '</p>';
+            return;
+        }
+        const added = data.added || [];
+        const removed = data.removed || [];
+        const changed = data.changed || {};
+        const changedIds = Object.keys(changed);
+        if (!added.length && !removed.length && !changedIds.length) {
+            mount.hidden = false;
+            mount.innerHTML = '<p class="muted">No matching changes for this filter.</p>';
+            return;
+        }
+        let html = '<h3>Review vs parent</h3>';
+        added.forEach(function (id) {
+            html += '<div class="lib-diff-case"><h4 class="mono">' + escapeHtml(id) + ' <span class="badge ok">added</span></h4></div>';
+        });
+        removed.forEach(function (id) {
+            html += '<div class="lib-diff-case"><h4 class="mono">' + escapeHtml(id) + ' <span class="badge err">removed</span></h4></div>';
+        });
+        changedIds.forEach(function (id) {
+            const fields = changed[id] || {};
+            html += '<div class="lib-diff-case"><h4 class="mono">' + escapeHtml(id) + ' <span class="badge warn">changed</span></h4>';
+            html += '<div class="lib-diff-grid"><strong></strong><strong>Before</strong><strong>After</strong>';
+            const names = [];
+            Object.keys(fields).forEach(function (key) {
+                const name = key.replace(/\.before$/, '').replace(/\.after$/, '');
+                if (names.indexOf(name) < 0) names.push(name);
+            });
+            names.forEach(function (name) {
+                html += '<strong>' + escapeHtml(name) + '</strong>';
+                html += '<div class="lib-diff-before">' + escapeHtml(fields[name + '.before'] || '') + '</div>';
+                html += '<div class="lib-diff-after">' + escapeHtml(fields[name + '.after'] || '') + '</div>';
+            });
+            html += '</div></div>';
+        });
+        mount.hidden = false;
+        mount.innerHTML = html;
+    }
+
+    document.getElementById('lib-hist-kind')?.addEventListener('change', loadLibraryHistoryDiff);
+    document.getElementById('lib-hist-field')?.addEventListener('change', loadLibraryHistoryDiff);
+    document.getElementById('lib-hist-restore')?.addEventListener('click', async function () {
+        if (!libSelectedRevisionId) return;
+        const msg = document.getElementById('lib-hist-msg');
+        const err = document.getElementById('lib-hist-err');
+        if (msg) msg.hidden = true;
+        if (err) err.hidden = true;
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
+            + '/library/revisions/' + encodeURIComponent(libSelectedRevisionId) + '/restore', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Accept': 'application/json' }
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            if (err) {
+                err.hidden = false;
+                err.textContent = (data && data.message) || 'Restore failed';
+            }
+            return;
+        }
+        if (msg) {
+            msg.hidden = false;
+            msg.textContent = 'Restored as ' + (data.revisionId || 'a new revision') + '.';
+        }
+        await loadLibrary();
+        await loadLibraryHistory();
     });
 
     /* —— Summary —— */
@@ -1924,6 +2163,7 @@
         startJobPoll();
     } else if (activeTab === 'tcs') {
         loadLibrary();
+        loadLibraryHistory();
     }
 
     document.addEventListener('visibilitychange', () => {

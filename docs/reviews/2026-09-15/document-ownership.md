@@ -13,7 +13,7 @@ When behavior changes, update the contract in the same change. Historical plans 
 | Durable jobs / cancel | `DurableJobClaim`, `ProcessSupervisor` | `DurableJobClaimTest`, `ProcessSupervisorTest` |
 | Artifacts | `ArtifactResolver` | `ArtifactResolverTest` |
 | Deletion | `PortalStore.purgeProjectById` | `AdminUserDeletionApiTest`, `AdminDomainsApiTest` |
-| Library revisions | `LibraryRevisionStore`, `LibraryRevisionDiff` | `LibraryRevisionStoreTest`, `LibraryRevisionDiffTest` |
+| Library revisions | `LibraryRevisionStore`, `LibraryRevisionDiff`, project Test cases history UI | `LibraryRevisionStoreTest`, `LibraryRevisionDiffTest`, `GeneratedWorkbookRevisionFlowTest`, `LibraryRevisionApiTest` |
 | Production config | `ProductionSafetyGuard` | `ProductionSafetyGuardTest` |
 | Backup identity | `StoreBackup` | `StoreBackupTest` (local only) |
 | Release CI | `.github/workflows/release.yml` | `ReleaseCiContractTest` |

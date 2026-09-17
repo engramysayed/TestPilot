@@ -257,7 +257,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** two concurrent editors cannot silently lose changes. An AI review based on an old revision cannot overwrite a newer edit. A historical run's inputs can be reconstructed after rollback.
 
-**2026-09-17:** `LibraryRevisionStore` writes immutable revisions; stale `baseRevision` conflicts. Generate/import/heal saves commit a revision. Upload merge accepts `baseRevision`. Restore creates a new revision. Jobs snapshot `libraryRevisionId` at admit. Field-level diff is available via `LibraryRevisionDiff` and `/api/projects/{id}/library/revisions/{from}/diff/{to}` (no side-by-side review UI yet).
+**2026-09-17 (`75e6996` candidate unchanged):** `LibraryRevisionStore` writes immutable revisions; stale `baseRevision` conflicts on case edit and upload. Generate/import/heal saves commit a revision. Jobs pin `libraryRevisionId` and copy that revision’s bytes. Field-level diff supports quoted/multiline CSV and all editable fields; `kind`/`field` filters; restore creates a new revision. Project Test cases tab shows author/source history and before/after diffs. Members can review history; restore remains an operable role. This is implemented product behavior, not a Phase 5 launch guarantee.
 
 **Phase 3 engineering exit (local):** restart/lease, saturation, cancellation/timeout, retention sweeper, host-stable project identity, concurrent-edit conflict, and project deletion unit/API paths pass in this workspace. Database/artifact/key backup restoration in an isolated environment remains a **release blocker** (P4-02 / Phase 5).
 
@@ -352,8 +352,8 @@ These are proposed product priorities, not validated market demand. Foundational
 
 **User value:** understand what changed and reproduce an older result.
 
-- [ ] Ship immutable revisions, stale-edit protection, run pinning and basic diff/restore with the foundation.
-- [ ] Add side-by-side field diffs, change filtering, author/source history, and review of bulk edits.
+- [x] Ship immutable revisions, stale-edit protection, run pinning and basic diff/restore with the foundation.
+- [x] Add side-by-side field diffs, change filtering, author/source history, and review of bulk edits.
 - [ ] Add approvals only where pilot teams need them; distinguish review authorization from general edit permission.
 
 **Done when:** any run can open its exact test revision; restore creates a new revision; reviewers can identify added, changed and removed scenarios before acceptance.

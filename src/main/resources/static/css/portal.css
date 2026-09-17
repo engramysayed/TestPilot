@@ -2075,6 +2075,33 @@ button.danger,
 .lib-table tbody tr.lib-row-hidden,
 .lib-table tbody tr.lib-detail.lib-row-hidden { display: none !important; }
 .lib-col-check { width: 2.2rem; }
+.lib-diff {
+    margin-top: 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--panel-solid);
+    padding: 0.85rem 1rem;
+}
+.lib-diff h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+.lib-diff-case { margin: 0.75rem 0 0; }
+.lib-diff-case h4 { margin: 0 0 0.35rem; }
+.lib-diff-grid {
+    display: grid;
+    grid-template-columns: 7rem 1fr 1fr;
+    gap: 0.35rem 0.75rem;
+    font-size: 0.9rem;
+}
+.lib-diff-grid strong { font-weight: 600; }
+.lib-diff-before, .lib-diff-after {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: #f7fafc;
+    border-radius: 8px;
+    padding: 0.4rem 0.5rem;
+}
+.lib-hist-row { cursor: pointer; }
+.lib-hist-row.is-selected { background: rgba(13, 154, 168, 0.1); }
+.lib-badge-head { margin-left: 0.35rem; }
 .lib-detail-wrap {
     padding: 0.35rem 0 0.15rem;
 }

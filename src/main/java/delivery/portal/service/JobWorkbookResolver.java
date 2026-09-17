@@ -58,10 +58,12 @@ public final class JobWorkbookResolver {
         }
 
         try {
+            String pinned = useLibrary ? workbooks.headRevisionId(projectId).orElse(null) : null;
             return workbooks.materializeForJob(
                     projectId,
                     selected.isEmpty() ? null : selected,
-                    uploadCases
+                    uploadCases,
+                    pinned
             );
         } catch (IllegalStateException e) {
             if ("NO_CASES_FOR_JOB".equals(e.getMessage())) {

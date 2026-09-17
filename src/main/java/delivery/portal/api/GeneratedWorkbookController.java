@@ -57,7 +57,8 @@ public class GeneratedWorkbookController {
             String tags,
             String visualAssertion,
             String keelPath,
-            String callBefore
+            String callBefore,
+            String baseRevision
     ) {
     }
 
@@ -102,18 +103,59 @@ public class GeneratedWorkbookController {
     @GetMapping("/{projectId}/library/revisions/{fromId}/diff/{toId}")
     public ResponseEntity<?> diffLibraryRevisions(@PathVariable("projectId") String projectId,
                                                   @PathVariable("fromId") String fromId,
-                                                  @PathVariable("toId") String toId) throws Exception {
+                                                  @PathVariable("toId") String toId,
+                                                  @RequestParam(value = "kind", required = false) String kind,
+                                                  @RequestParam(value = "field", required = false) String field) throws Exception {
         Long ownerId = currentUser.requireUserId();
         if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
         }
-        var diff = workbooks.diffRevisions(projectId, fromId, toId);
+        var diff = workbooks.diffRevisions(projectId, fromId, toId, kind, field);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("added", diff.added());
         body.put("removed", diff.removed());
         body.put("changed", diff.changed());
         return ResponseEntity.ok(body);
+    }
+
+    @GetMapping("/{projectId}/library/revisions/{revisionId}")
+    public ResponseEntity<?> getLibraryRevision(@PathVariable("projectId") String projectId,
+                                                @PathVariable("revisionId") String revisionId) throws Exception {
+        Long ownerId = currentUser.requireUserId();
+        if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        }
+        try {
+            return ResponseEntity.ok(workbooks.describeRevision(projectId, revisionId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
+        } catch (java.io.IOException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "unknown library revision: " + revisionId).asMap());
+        }
+    }
+
+    @PostMapping("/{projectId}/library/revisions/{revisionId}/restore")
+    public ResponseEntity<?> restoreLibraryRevision(@PathVariable("projectId") String projectId,
+                                                    @PathVariable("revisionId") String revisionId) throws Exception {
+        Long ownerId = currentUser.requireUserId();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
+        if (denied != null) {
+            return denied;
+        }
+        try {
+            String author = currentUser.requireUser().getEmail();
+            return ResponseEntity.ok(workbooks.restoreRevision(projectId, revisionId, author));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
+        } catch (java.io.IOException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "unknown library revision: " + revisionId).asMap());
+        }
     }
 
     @PutMapping(value = "/{projectId}/generated-workbook/rows", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -312,7 +354,7 @@ public class GeneratedWorkbookController {
         fields.put("callBefore", body.callBefore());
         try {
             return ResponseEntity.ok(workbooks.updateCaseFields(
-                    projectId, tcId, fields, projectOpt.get().getBaseUrl()));
+                    projectId, tcId, fields, projectOpt.get().getBaseUrl(), body.baseRevision()));
         } catch (IllegalStateException e) {
             if ("NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)

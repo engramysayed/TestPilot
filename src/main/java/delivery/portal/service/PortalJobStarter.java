@@ -66,11 +66,15 @@ public class PortalJobStarter implements JobStarter {
         }
 
         Path excelPath;
+        String pinnedRevision = "";
         try {
             if (!useGenerated) {
                 throw new IllegalArgumentException("Pipeline requires useGenerated workbook");
             }
-            excelPath = workbooks.copyForJob(projectId);
+            pinnedRevision = workbooks.headRevisionId(projectId).orElse("");
+            excelPath = pinnedRevision.isBlank()
+                    ? workbooks.copyForJob(projectId)
+                    : workbooks.copyRevisionForJob(projectId, pinnedRevision);
         } catch (Exception e) {
             throw new IllegalStateException("NO_GENERATED_WORKBOOK", e);
         }
@@ -107,6 +111,9 @@ public class PortalJobStarter implements JobStarter {
         );
         job.setAuthoringEngine(engine);
         job.setTenantId(project.getTenantId());
+        if (!pinnedRevision.isBlank()) {
+            job.setLibraryRevisionId(pinnedRevision);
+        }
         try {
             Path requestPath = AuthoringJobRequestFiles.requestPath(
                     store.projectDiskRoot(projectId), kind, jobId);

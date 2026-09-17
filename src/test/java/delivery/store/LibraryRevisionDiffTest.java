@@ -47,4 +47,35 @@ public class LibraryRevisionDiffTest {
         Assert.assertEquals(fields.get("ExpectedResult.after"), "Welcome");
         Assert.assertFalse(fields.containsKey("Title.before"));
     }
+
+    @Test
+    public void filterKeepsOnlyRequestedChangeKindsAndFields() {
+        byte[] before = """
+                TC_ID,Title,Steps,ExpectedResult
+                TC_1,Login,Open login,Dashboard
+                TC_2,Cart,Add item,Cart has 1
+                """.getBytes(StandardCharsets.UTF_8);
+        byte[] after = """
+                TC_ID,Title,Steps,ExpectedResult
+                TC_1,Login,Open login,Welcome
+                TC_3,Pay,Place order,Confirmed
+                """.getBytes(StandardCharsets.UTF_8);
+        LibraryRevisionDiff.Result full = LibraryRevisionDiff.compareCsv(before, after);
+
+        LibraryRevisionDiff.Result changed = full.filter("changed", null);
+        Assert.assertTrue(changed.added().isEmpty());
+        Assert.assertTrue(changed.removed().isEmpty());
+        Assert.assertEquals(changed.changed().keySet(), java.util.Set.of("TC_1"));
+
+        LibraryRevisionDiff.Result added = full.filter("added", null);
+        Assert.assertEquals(added.added(), List.of("TC_3"));
+        Assert.assertTrue(added.removed().isEmpty());
+        Assert.assertTrue(added.changed().isEmpty());
+
+        LibraryRevisionDiff.Result titleOnly = full.filter("changed", "Title");
+        Assert.assertTrue(titleOnly.changed().isEmpty(), "TC_1 title did not change");
+
+        LibraryRevisionDiff.Result expected = full.filter("changed", "ExpectedResult");
+        Assert.assertEquals(expected.changed().get("TC_1").get("ExpectedResult.after"), "Welcome");
+    }
 }

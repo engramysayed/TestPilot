@@ -10,6 +10,48 @@ import java.util.Map;
 /** Field-level library diff keyed by TC_ID. */
 public final class LibraryRevisionDiff {
     public record Result(List<String> added, List<String> removed, Map<String, Map<String, String>> changed) {
+        public Result filter(String kinds, String field) {
+            boolean wantAdded = includesKind(kinds, "added");
+            boolean wantRemoved = includesKind(kinds, "removed");
+            boolean wantChanged = includesKind(kinds, "changed");
+            List<String> nextAdded = wantAdded ? added : List.of();
+            List<String> nextRemoved = wantRemoved ? removed : List.of();
+            Map<String, Map<String, String>> nextChanged = new LinkedHashMap<>();
+            if (wantChanged) {
+                String fieldKey = field == null || field.isBlank() ? null : field.trim();
+                for (Map.Entry<String, Map<String, String>> e : changed.entrySet()) {
+                    if (fieldKey == null) {
+                        nextChanged.put(e.getKey(), e.getValue());
+                        continue;
+                    }
+                    Map<String, String> subset = new LinkedHashMap<>();
+                    String before = e.getValue().get(fieldKey + ".before");
+                    String after = e.getValue().get(fieldKey + ".after");
+                    if (before != null) {
+                        subset.put(fieldKey + ".before", before);
+                    }
+                    if (after != null) {
+                        subset.put(fieldKey + ".after", after);
+                    }
+                    if (!subset.isEmpty()) {
+                        nextChanged.put(e.getKey(), Map.copyOf(subset));
+                    }
+                }
+            }
+            return new Result(List.copyOf(nextAdded), List.copyOf(nextRemoved), Map.copyOf(nextChanged));
+        }
+
+        private static boolean includesKind(String kinds, String kind) {
+            if (kinds == null || kinds.isBlank() || "all".equalsIgnoreCase(kinds.trim())) {
+                return true;
+            }
+            for (String part : kinds.split(",")) {
+                if (kind.equalsIgnoreCase(part.trim())) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     private static final List<String> FIELDS = List.of("Title", "Steps", "ExpectedResult",

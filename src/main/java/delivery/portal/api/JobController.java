@@ -168,6 +168,9 @@ public class JobController {
                 JobRecord.JobKind.CONVERT
         );
         job.setAuthoringEngine(engine);
+        if (useStoredWorkbook) {
+            workbooks.headRevisionId(projectId).ifPresent(job::setLibraryRevisionId);
+        }
         Path requestPath = AuthoringJobRequestFiles.requestPath(
                 store.projectDiskRoot(projectId), JobRecord.JobKind.CONVERT, jobId);
         AuthoringJobRequestFiles.write(requestPath, engine);

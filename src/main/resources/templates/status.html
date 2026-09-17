@@ -130,6 +130,14 @@
         return Number.isNaN(t) ? NaN : t;
     }
 
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
     function isActiveStatus(status) {
         return status === 'QUEUED' || status === 'RUNNING' || status === 'CANCELLING';
     }
@@ -279,7 +287,16 @@
             proofEl.textContent = labels[kind] || kind;
         }
         const revEl = document.getElementById('library-revision');
-        if (revEl) revEl.textContent = data.libraryRevisionId || '—';
+        if (revEl) {
+            const rev = data.libraryRevisionId || '';
+            if (rev && data.projectId) {
+                const href = '/projects/' + encodeURIComponent(data.projectId)
+                    + '?tab=tcs&revision=' + encodeURIComponent(rev) + '#lib-history';
+                revEl.innerHTML = '<a class="mono" href="' + href + '">' + escapeHtml(rev) + '</a>';
+            } else {
+                revEl.textContent = rev || '—';
+            }
+        }
         const provEl = document.getElementById('provider-allowlist');
         if (provEl) provEl.textContent = data.providerAllowlist || '—';
         const dlEl = document.getElementById('download-state');
