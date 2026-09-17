@@ -10,6 +10,23 @@ import java.util.Map;
 public class LibraryRevisionDiffTest {
 
     @Test
+    public void quotedMultilineFieldsAndSetupChangesRemainReviewable() {
+        String header = "TC_ID,Title,Steps,ExpectedResult,CallBefore,TestData\n";
+        String before = header + "TC_1,\"Cart, checkout\",\"Click \"\"Add\"\"\nOpen cart\",Ready,TC_LOGIN,qty=1\n";
+        String after = header + "TC_1,\"Cart, checkout\",\"Click \"\"Add\"\"\nOpen checkout\",Ready,TC_CART,qty=2\n";
+        var diff = LibraryRevisionDiff.compareCsv(before.getBytes(StandardCharsets.UTF_8),
+                after.getBytes(StandardCharsets.UTF_8));
+        Assert.assertTrue(diff.added().isEmpty());
+        Assert.assertTrue(diff.removed().isEmpty());
+        var fields = diff.changed().get("TC_1");
+        Assert.assertEquals(fields.get("Steps.before"), "Click \"Add\"\nOpen cart");
+        Assert.assertEquals(fields.get("Steps.after"), "Click \"Add\"\nOpen checkout");
+        Assert.assertEquals(fields.get("CallBefore.after"), "TC_CART");
+        Assert.assertEquals(fields.get("TestData.after"), "qty=2");
+        Assert.assertFalse(fields.containsKey("Title.before"));
+    }
+
+    @Test
     public void fieldLevelDiffShowsAddedChangedRemovedCases() {
         byte[] before = """
                 TC_ID,Title,Steps,ExpectedResult

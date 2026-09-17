@@ -216,7 +216,7 @@ public final class GeneratedTcCsvParser {
                 || lower.contains("wrongpass");
     }
 
-    static List<String[]> parseRows(String csv) {
+    public static List<String[]> parseRows(String csv) {
         List<String[]> rows = new ArrayList<>();
         List<String> current = new ArrayList<>();
         StringBuilder field = new StringBuilder();

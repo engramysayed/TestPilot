@@ -12,7 +12,8 @@ public final class LibraryRevisionDiff {
     public record Result(List<String> added, List<String> removed, Map<String, Map<String, String>> changed) {
     }
 
-    private static final List<String> FIELDS = List.of("Title", "Steps", "ExpectedResult");
+    private static final List<String> FIELDS = List.of("Title", "Steps", "ExpectedResult",
+            "Preconditions", "Priority", "Tags", "VisualAssertion", "TestData", "KeelPath", "CallBefore");
 
     private LibraryRevisionDiff() {
     }
@@ -61,12 +62,12 @@ public final class LibraryRevisionDiff {
 
     static Map<String, Map<String, String>> parseCsv(byte[] raw) {
         String text = raw == null ? "" : new String(raw, StandardCharsets.UTF_8).replace("\r\n", "\n");
-        String[] lines = text.split("\n");
+        List<String[]> rows = delivery.excel.GeneratedTcCsvParser.parseRows(text);
         Map<String, Map<String, String>> out = new LinkedHashMap<>();
-        if (lines.length == 0) {
+        if (rows.isEmpty()) {
             return out;
         }
-        String[] header = lines[0].split(",", -1);
+        String[] header = rows.get(0);
         Map<String, Integer> cols = new LinkedHashMap<>();
         for (int i = 0; i < header.length; i++) {
             cols.put(header[i].trim().toUpperCase(Locale.ROOT).replace("_", ""), i);
@@ -75,19 +76,16 @@ public final class LibraryRevisionDiff {
         if (idCol == null) {
             return out;
         }
-        for (int r = 1; r < lines.length; r++) {
-            if (lines[r].isBlank()) {
-                continue;
-            }
-            String[] cells = lines[r].split(",", -1);
+        for (int r = 1; r < rows.size(); r++) {
+            String[] cells = rows.get(r);
             String id = cell(cells, idCol);
             if (id.isBlank()) {
                 continue;
             }
             Map<String, String> fields = new LinkedHashMap<>();
-            fields.put("Title", cell(cells, cols.get("TITLE")));
-            fields.put("Steps", cell(cells, cols.get("STEPS")));
-            fields.put("ExpectedResult", cell(cells, cols.get("EXPECTEDRESULT")));
+            for (String field : FIELDS) {
+                fields.put(field, cell(cells, cols.get(field.toUpperCase(Locale.ROOT))));
+            }
             out.put(id, fields);
         }
         return out;

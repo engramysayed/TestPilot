@@ -109,6 +109,13 @@ public class GeneratedWorkbookService {
             fields.put("Title", tc.title() == null ? "" : tc.title());
             fields.put("Steps", tc.steps() == null ? "" : tc.steps());
             fields.put("ExpectedResult", tc.expectedResult() == null ? "" : tc.expectedResult());
+            fields.put("Preconditions", tc.preconditions() == null ? "" : tc.preconditions());
+            fields.put("Priority", tc.priority() == null ? "" : tc.priority());
+            fields.put("Tags", tc.tags() == null ? "" : tc.tags());
+            fields.put("VisualAssertion", tc.visualAssertion() == null ? "" : tc.visualAssertion());
+            fields.put("TestData", tc.testData() == null ? "" : tc.testData());
+            fields.put("KeelPath", tc.keelPath() == null ? "" : tc.keelPath());
+            fields.put("CallBefore", tc.callBefore() == null ? "" : tc.callBefore());
             out.put(tc.tcId().trim(), fields);
         }
         return out;
