@@ -78,4 +78,19 @@ public class BudgetLedgerTest {
         Assert.assertEquals(snap.hardCapUnits(), 10L);
         Assert.assertEquals(snap.warningUnits(), 8L);
     }
+
+    @Test
+    public void storedLimitsOverrideEnvironmentDefaultsAndBlockOverCap() throws Exception {
+        Path dir = Files.createTempDirectory("budget-limits");
+        BudgetLedger ledger = new BudgetLedger(dir.resolve("budget.json"), new BudgetLedger.Limits(1_000_000L, 800_000L));
+        ledger.updateLimits(2, 1);
+        BudgetLedger.Snapshot snap = ledger.snapshot();
+        Assert.assertEquals(snap.hardCapUnits(), 2L);
+        Assert.assertEquals(snap.warningUnits(), 1L);
+        ledger.reserve("job_ok", 2, BudgetLedger.CostKind.ESTIMATED);
+        Assert.assertThrows(BudgetLedger.Rejected.class,
+                () -> ledger.reserve("job_over", 1, BudgetLedger.CostKind.ESTIMATED));
+        BudgetLedger reloaded = new BudgetLedger(dir.resolve("budget.json"), new BudgetLedger.Limits(1_000_000L, 800_000L));
+        Assert.assertEquals(reloaded.snapshot().hardCapUnits(), 2L);
+    }
 }

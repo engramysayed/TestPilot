@@ -90,7 +90,9 @@ public class DashboardMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(body.contains("Results by day"));
         Assert.assertTrue(body.contains("Job status"));
         Assert.assertTrue(body.contains("Automate results"));
-        Assert.assertTrue(body.contains("Pass rate"));
+        Assert.assertTrue(body.contains("Proven pass rate"));
+        Assert.assertTrue(body.contains("No proven cases yet") || body.contains("Pass rate is"),
+                "dashboard must explain the proven-rate denominator");
         Assert.assertTrue(body.contains("Execute runs"));
         Assert.assertFalse(body.contains("class=\"verb-cards"),
                 "dashboard should not show verb navigation cards");

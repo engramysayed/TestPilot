@@ -6,6 +6,8 @@ import delivery.portal.service.PortalStore;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,6 +27,9 @@ public class UsageController {
         this.currentUser = currentUser;
     }
 
+    public record LimitsRequest(Long hardCapUnits, Long warningUnits) {
+    }
+
     @GetMapping
     public ResponseEntity<?> history(@PathVariable("projectId") String projectId) throws Exception {
         Long uid = currentUser.requireUserId();
@@ -32,7 +37,28 @@ public class UsageController {
         if (denied != null) {
             return denied;
         }
-        BudgetLedger.Snapshot snap = store.budgetSnapshot(projectId);
+        return ResponseEntity.ok(toBody(store.budgetSnapshot(projectId)));
+    }
+
+    @PutMapping
+    public ResponseEntity<?> updateLimits(
+            @PathVariable("projectId") String projectId,
+            @RequestBody(required = false) LimitsRequest body
+    ) throws Exception {
+        Long uid = currentUser.requireUserId();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, uid);
+        if (denied != null) {
+            return denied;
+        }
+        if (body == null || body.hardCapUnits() == null || body.warningUnits() == null) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_REQUEST", "hardCapUnits and warningUnits are required").asMap());
+        }
+        return ResponseEntity.ok(toBody(store.updateBudgetLimits(
+                projectId, body.hardCapUnits(), body.warningUnits())));
+    }
+
+    private static Map<String, Object> toBody(BudgetLedger.Snapshot snap) {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (BudgetLedger.UsageRecord rec : snap.usage()) {
             Map<String, Object> row = new LinkedHashMap<>();
@@ -50,6 +76,6 @@ public class UsageController {
         body.put("warningUnits", snap.warningUnits());
         body.put("warning", snap.warningUnits() > 0 && snap.reservedUnits() >= snap.warningUnits());
         body.put("usage", rows);
-        return ResponseEntity.ok(body);
+        return body;
     }
 }

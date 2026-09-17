@@ -192,6 +192,27 @@
             </table>
         </div>
     </section>
+
+    <section class="panel" id="hunt-promote-panel" hidden>
+        <h2>Review hunt candidates</h2>
+        <p class="panel-intro">
+            Nothing is added to the library until you explicitly accept. Edit steps and assertions,
+            check duplicates against the pinned revision, then promote. Automation ready stays false
+            until cases are proven normally.
+        </p>
+        <p id="hunt-promote-job" class="mono muted"></p>
+        <p id="hunt-promote-dups" class="muted"></p>
+        <p id="hunt-promote-err" class="error" hidden></p>
+        <p id="hunt-promote-msg" class="muted" hidden></p>
+        <div id="hunt-promote-cases"></div>
+        <label class="check" id="hunt-promote-accept-label">
+            <input type="checkbox" id="hunt-promote-accept"/>
+            I accept these reviewed candidates into the library
+        </label>
+        <div class="actions">
+            <button type="button" class="button" id="hunt-promote-submit" disabled>Promote to library</button>
+        </div>
+    </section>
 </main>
 </div>
 <script>
@@ -206,6 +227,8 @@
     const strategiesCb = document.getElementById('strategies-enabled');
     const strategyExplain = document.getElementById('strategy-explain');
     let projects = [];
+    let huntWorkspaceRole = '';
+    let huntPromoteJobId = '';
 
     function escapeHtml(s) {
         return String(s == null ? '' : s)
@@ -281,6 +304,7 @@
         document.getElementById('settings-link').href =
             '/projects/' + encodeURIComponent(projectId) + '?tab=settings';
         const proj = projects.find(p => p.projectId === projectId) || {};
+        huntWorkspaceRole = proj.workspaceRole || '';
         const base = proj.baseUrl || '';
         document.getElementById('base-url-row').hidden = !base;
         document.getElementById('base-url-missing').hidden = !!base;
@@ -288,6 +312,7 @@
         await loadCredentials(projectId);
         await loadLibrary(projectId);
         await loadRecent(projectId);
+        document.getElementById('hunt-promote-panel').hidden = true;
         updateStartEnabled();
     }
 
@@ -460,13 +485,17 @@
             const dl = j.downloadable
                 ? ' <a href="/api/jobs/' + encodeURIComponent(j.jobId) + '/download">Download</a>'
                 : '';
+            const review = (j.status === 'COMPLETED' || j.status === 'COMPLETED_WITH_BLOCK')
+                ? ' <button type="button" class="button ghost hunt-review" data-job-id="'
+                    + escapeHtml(j.jobId) + '">Review</button>'
+                : '';
             tr.innerHTML =
                 '<td><code class="mono" title="' + escapeHtml(j.jobId) + '">' + escapeHtml(j.jobId) + '</code></td>' +
                 '<td><span class="badge ' + badgeClass(j.status) + ' badge--busy">' + escapeHtml(j.status) + busy + '</span></td>' +
                 '<td>' + (j.passedCount != null ? j.passedCount : '—') + '</td>' +
                 '<td>' + (j.todoCount != null ? j.todoCount : '—') + '</td>' +
                 '<td class="clip muted" title="' + escapeHtml(j.message || '') + '">' + escapeHtml(shortMessage(j.message)) + '</td>' +
-                '<td class="actions"><a href="/status?jobId=' + encodeURIComponent(j.jobId) + '">Status</a>' + dl + '</td>';
+                '<td class="actions"><a href="/status?jobId=' + encodeURIComponent(j.jobId) + '">Status</a>' + dl + review + '</td>';
             body.appendChild(tr);
         });
     }
@@ -517,6 +546,96 @@
             setStarting(false);
             updateStartEnabled();
         }
+    });
+
+    async function openHuntPromote(jobId) {
+        huntPromoteJobId = jobId;
+        const panel = document.getElementById('hunt-promote-panel');
+        const err = document.getElementById('hunt-promote-err');
+        const msg = document.getElementById('hunt-promote-msg');
+        const accept = document.getElementById('hunt-promote-accept');
+        const submit = document.getElementById('hunt-promote-submit');
+        panel.hidden = false;
+        err.hidden = true;
+        msg.hidden = true;
+        accept.checked = false;
+        const canOperate = huntWorkspaceRole === 'OWNER' || huntWorkspaceRole === 'ADMIN';
+        accept.disabled = !canOperate;
+        submit.disabled = true;
+        document.getElementById('hunt-promote-job').textContent = jobId;
+        const projectId = projectSel.value;
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
+            + '/hunt-runs/' + encodeURIComponent(jobId) + '/promote', {
+            credentials: 'same-origin', headers: API_HEADERS
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = data.message || 'Could not load candidates. If the library moved, rebase and review again.';
+            document.getElementById('hunt-promote-cases').innerHTML = '';
+            return;
+        }
+        const dups = (data.duplicates || []).map(d =>
+            (d.kind || '') + ': ' + (d.candidateTitle || '') + ' ~ ' + (d.libraryTcId || '')).join('; ');
+        document.getElementById('hunt-promote-dups').textContent = dups
+            ? ('Duplicates: ' + dups)
+            : 'No exact or suggested semantic duplicates against the pinned revision.';
+        const mount = document.getElementById('hunt-promote-cases');
+        mount.innerHTML = '';
+        (data.cases || []).forEach((c, i) => {
+            const wrap = document.createElement('fieldset');
+            wrap.className = 'hunt-promote-case';
+            wrap.innerHTML =
+                '<legend class="mono">' + escapeHtml(c.tcId || ('case-' + (i + 1))) + '</legend>' +
+                '<label>Title <input type="text" class="hunt-edit-title" value="' + escapeHtml(c.title || '') + '"/></label>' +
+                '<label>Steps <textarea class="hunt-edit-steps" rows="3">' + escapeHtml(c.steps || '') + '</textarea></label>' +
+                '<label>Expected <textarea class="hunt-edit-expected" rows="2">'
+                    + escapeHtml(c.expectedResult || c.expected || '') + '</textarea></label>';
+            wrap.dataset.tcId = c.tcId || '';
+            mount.appendChild(wrap);
+        });
+        if (!(data.cases || []).length) {
+            mount.innerHTML = '<p class="muted">No candidate scenarios in this pack.</p>';
+        }
+    }
+
+    document.getElementById('recent-body')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.hunt-review');
+        if (!btn) return;
+        openHuntPromote(btn.getAttribute('data-job-id'));
+    });
+    document.getElementById('hunt-promote-accept')?.addEventListener('change', (e) => {
+        const canOperate = huntWorkspaceRole === 'OWNER' || huntWorkspaceRole === 'ADMIN';
+        document.getElementById('hunt-promote-submit').disabled = !e.target.checked || !canOperate;
+    });
+    document.getElementById('hunt-promote-submit')?.addEventListener('click', async () => {
+        const err = document.getElementById('hunt-promote-err');
+        const msg = document.getElementById('hunt-promote-msg');
+        err.hidden = true;
+        msg.hidden = true;
+        const cases = Array.from(document.querySelectorAll('.hunt-promote-case')).map(fs => ({
+            tcId: fs.dataset.tcId,
+            title: fs.querySelector('.hunt-edit-title').value,
+            steps: fs.querySelector('.hunt-edit-steps').value,
+            expectedResult: fs.querySelector('.hunt-edit-expected').value
+        }));
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectSel.value)
+            + '/hunt-runs/' + encodeURIComponent(huntPromoteJobId) + '/promote', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accept: true, cases })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = data.message || 'Promote failed';
+            return;
+        }
+        msg.hidden = false;
+        msg.textContent = 'Promoted ' + (data.caseCount || cases.length)
+            + ' case(s). They still need normal proving before automation ready.';
+        loadRecent(projectSel.value);
     });
 
     document.getElementById('hunt-tc-ms-trigger')?.addEventListener('click', (e) => {

@@ -60,7 +60,9 @@
                 <span th:text="${stats.todoTotal}">0</span><label>Blocked (Automate)</label>
             </div>
             <div class="stat-card stat-card--accent dash-reveal" style="--dash-reveal-delay: 320ms">
-                <span th:text="${stats.passRate} + '%'">0%</span><label>Proven pass rate</label>
+                <span th:if="${stats.hasProvenSample}" th:text="${stats.passRate} + '%'">0%</span>
+                <span th:unless="${stats.hasProvenSample}">—</span>
+                <label>Proven pass rate</label>
             </div>
         </section>
         <p class="muted" th:if="${stats.passRateNote}" th:text="${stats.passRateNote}">Pass rate note</p>

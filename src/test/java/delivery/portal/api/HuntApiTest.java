@@ -152,6 +152,44 @@ public class HuntApiTest extends AbstractTestNGSpringContextTests {
                 .andExpect(jsonPath("$.status").value("PROMOTED"));
     }
 
+    @Test
+    public void huntPromoteAppliesReviewedCaseEdits() throws Exception {
+        String projectId = createProject();
+        workbooks.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_01", "Login", "", "1. Open login", "Home", "P1", "smoke")
+        ), "test", "hunt-promote-edit");
+        MvcResult start = mockMvc.perform(post("/api/projects/" + projectId + "/hunt-runs")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tcIds\":[\"TC_01\"],\"planner\":\"ollama\",\"scenarioCap\":2,\"cycleCeiling\":2}"))
+                .andExpect(status().isAccepted())
+                .andReturn();
+        String jobId = new JSONObject(start.getResponse().getContentAsString()).getString("jobId");
+        Assert.assertEquals(waitTerminal(jobId), "COMPLETED");
+        MvcResult preview = mockMvc.perform(get("/api/projects/" + projectId + "/hunt-runs/" + jobId + "/promote")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JSONObject body = new JSONObject(preview.getResponse().getContentAsString());
+        Assert.assertTrue(body.has("cases"));
+        Assert.assertTrue(body.has("duplicates"));
+        Assert.assertEquals(body.getBoolean("automationReady"), false);
+        String tcId = body.getJSONArray("cases").length() == 0
+                ? "TC_HUNT_001"
+                : body.getJSONArray("cases").getJSONObject(0).getString("tcId");
+        mockMvc.perform(post("/api/projects/" + projectId + "/hunt-runs/" + jobId + "/promote")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"accept\":true,\"cases\":[{\"tcId\":\"" + tcId
+                                + "\",\"title\":\"Reviewed hunt case\",\"steps\":\"1. Open reviewed\","
+                                + "\"expectedResult\":\"Reviewed home\"}]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PROMOTED"));
+    }
+
     private String createProject() throws Exception {
         MvcResult res = mockMvc.perform(post("/api/projects")
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))

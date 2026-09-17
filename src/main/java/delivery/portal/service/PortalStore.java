@@ -946,6 +946,18 @@ public class PortalStore {
                 .snapshot();
     }
 
+    public delivery.job.BudgetLedger.Snapshot updateBudgetLimits(
+            String projectId, long hardCapUnits, long warningUnits) throws Exception {
+        String tenantId = getProject(projectId).map(ProjectRecord::getTenantId).orElse("");
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("tenantId is required");
+        }
+        new delivery.job.BudgetLedger(
+                budgetFile(tenantId), delivery.job.BudgetLedger.Limits.fromEnvironment())
+                .updateLimits(hardCapUnits, warningUnits);
+        return budgetSnapshot(projectId);
+    }
+
     public delivery.job.FailureClassifier.Classification saveFailureClassification(
             JobRecord job, delivery.job.FailureClassifier.Kind effective) throws Exception {
         String raw = (job.getMessage() == null ? "" : job.getMessage())

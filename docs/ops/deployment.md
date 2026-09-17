@@ -43,3 +43,5 @@ Upgrade from a previous layout: `TenantLayoutMigrator` (legacy domain folders â†
 ## Workers
 
 Browser prove/execute/hunt jobs share the portal JVM today. Isolation is tenant-storage + application network policy, not separate worker hosts. Process deadlines use `ProcessSupervisor`. Queue caps: `delivery.jobs.max-queued-per-tenant`, `delivery.jobs.max-running-per-install`.
+
+Private-runner **rules** (claim/heartbeat/offline) are documented in [private-runner.md](private-runner.md). They are not a deployable runner and do not close P2-03.

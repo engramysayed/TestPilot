@@ -44,6 +44,20 @@ public class ResultIntegrityTest {
         Assert.assertEquals(body.get("provenPassed"), 2);
         Assert.assertEquals(body.get("blocked"), 1);
         Assert.assertEquals(body.get("passRate"), 67);
+        Assert.assertEquals(body.get("hasProvenSample"), true);
         Assert.assertTrue(String.valueOf(body.get("denominatorNote")).contains("3"));
+    }
+
+    @Test
+    public void emptyJudgedDoesNotPresentZeroOverZeroAsAMeasuredRate() {
+        ResultIntegrity.Summary empty = ResultIntegrity.summarize();
+        Assert.assertEquals(empty.passRate(), 0);
+        Assert.assertFalse(empty.hasProvenSample());
+        Assert.assertEquals(empty.denominatorNote(), "No proven cases yet");
+        ResultIntegrity.Summary simulatedOnly = ResultIntegrity.summarize(
+                ResultIntegrity.JobSlice.simulated(4, 0));
+        Assert.assertFalse(simulatedOnly.hasProvenSample());
+        Assert.assertEquals(simulatedOnly.denominatorNote(), "No proven cases yet");
+        Assert.assertFalse(simulatedOnly.denominatorNote().contains("0/0"));
     }
 }

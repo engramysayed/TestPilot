@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -92,6 +93,25 @@ public class UsageApiTest extends AbstractTestNGSpringContextTests {
             }
         }
         Assert.assertTrue(matches >= 1, "expected usage row for reserved job");
+    }
+
+    @Test
+    public void ownerCanSetTenantBudgetCaps() throws Exception {
+        String projectId = createProject();
+        mockMvc.perform(put("/api/projects/" + projectId + "/usage")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"hardCapUnits\":12,\"warningUnits\":9}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hardCapUnits").value(12))
+                .andExpect(jsonPath("$.warningUnits").value(9));
+        mockMvc.perform(get("/api/projects/" + projectId + "/usage")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hardCapUnits").value(12))
+                .andExpect(jsonPath("$.warningUnits").value(9));
     }
 
     private String createProject() throws Exception {

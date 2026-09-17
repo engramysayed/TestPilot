@@ -177,6 +177,81 @@
             <p id="workspace-collab-err" class="error" hidden></p>
         </section>
 
+        <section class="panel" id="env-profiles-panel">
+            <h2>Environment profiles</h2>
+            <p class="panel-intro">
+                Named origin, credential, and provider snapshots. Jobs pin a revision; comparing
+                environments does not rename this project’s storage identity.
+            </p>
+            <p id="env-head" class="muted"></p>
+            <p id="env-empty" class="muted" hidden>No environment revisions yet.</p>
+            <p id="env-err" class="error" hidden></p>
+            <p id="env-msg" class="muted" hidden></p>
+            <div class="table-scroll">
+                <table class="table" id="env-table" hidden>
+                    <thead>
+                    <tr><th>Name</th><th>Origin</th><th>Revision</th><th>Head</th></tr>
+                    </thead>
+                    <tbody id="env-body"></tbody>
+                </table>
+            </div>
+            <form id="env-form" class="settings-form" hidden>
+                <label>Name
+                    <input type="text" id="env-name" placeholder="staging" required/>
+                </label>
+                <label>Origin
+                    <input type="url" id="env-origin" placeholder="https://staging.example/" required/>
+                </label>
+                <label>Credential profile ref
+                    <input type="text" id="env-cred" placeholder="qa"/>
+                </label>
+                <label>Provider allowlist
+                    <input type="text" id="env-providers" placeholder="ollama"/>
+                </label>
+                <button type="submit">Save environment revision</button>
+            </form>
+            <div class="actions" id="env-diff-row">
+                <label>From
+                    <select id="env-diff-from"></select>
+                </label>
+                <label>To
+                    <select id="env-diff-to"></select>
+                </label>
+                <button type="button" class="button ghost" id="env-diff-btn">Compare</button>
+            </div>
+            <pre id="env-diff" class="mono" hidden></pre>
+        </section>
+
+        <section class="panel" id="usage-budget-panel">
+            <h2>Usage and budget</h2>
+            <p class="panel-intro">
+                Reservations are atomic per tenant. Estimated and reconciled units stay in history.
+                OWNER and ADMIN can change the hard cap and warning threshold.
+            </p>
+            <p id="usage-summary" class="muted"></p>
+            <p id="usage-warn" class="error" hidden>Spend is at or above the warning threshold.</p>
+            <p id="usage-empty" class="muted" hidden>No usage yet.</p>
+            <p id="usage-err" class="error" hidden></p>
+            <p id="usage-msg" class="muted" hidden></p>
+            <div class="table-scroll">
+                <table class="table" id="usage-table" hidden>
+                    <thead>
+                    <tr><th>Job</th><th>Estimated</th><th>Reconciled</th><th>Kind</th><th>When</th></tr>
+                    </thead>
+                    <tbody id="usage-body"></tbody>
+                </table>
+            </div>
+            <form id="usage-form" class="settings-form" hidden>
+                <label>Hard cap (units)
+                    <input type="number" id="usage-hard" min="0" required/>
+                </label>
+                <label>Warning (units)
+                    <input type="number" id="usage-warn-input" min="0" required/>
+                </label>
+                <button type="submit">Save budget limits</button>
+            </form>
+        </section>
+
         <section class="panel">
             <div class="panel-head-row">
                 <div>
@@ -575,6 +650,7 @@
     const root = document.getElementById('project-root');
     const projectId = root.getAttribute('data-project-id');
     const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+    let settingsRole = '';
     const activeTab = /*[[${activeTab}]]*/ 'summary';
     let jobRunning = false;
     let jobPollTimer = null;
@@ -647,6 +723,9 @@
         const archiveBtn = document.getElementById('archive-btn');
         if (archiveBtn) archiveBtn.hidden = !!p.archived;
         loadWorkspaceCollaboration(p.workspaceRole || '');
+        settingsRole = p.workspaceRole || '';
+        loadEnvironments(settingsRole);
+        loadUsage(settingsRole);
     }
 
     function setCollabMessage(text, isError) {
@@ -733,6 +812,111 @@
                 auditList.appendChild(li);
             });
         }
+    }
+
+    function canOperateRole(role) {
+        return role === 'OWNER' || role === 'ADMIN';
+    }
+
+    async function loadEnvironments(roleHint) {
+        const err = document.getElementById('env-err');
+        const msg = document.getElementById('env-msg');
+        if (err) err.hidden = true;
+        if (msg) msg.hidden = true;
+        const res = await fetch(apiUrl('/environments'), { credentials: 'same-origin', headers: API_HEADERS });
+        const data = res.ok ? await res.json().catch(() => ({})) : {};
+        if (!res.ok) {
+            if (err) {
+                err.hidden = false;
+                err.textContent = data.message || 'Failed to load environments';
+            }
+            return;
+        }
+        const rows = data.environments || [];
+        const empty = document.getElementById('env-empty');
+        const table = document.getElementById('env-table');
+        const tbody = document.getElementById('env-body');
+        const form = document.getElementById('env-form');
+        const role = roleHint || settingsRole || '';
+        if (form) form.hidden = !canOperateRole(role);
+        if (empty) empty.hidden = rows.length > 0;
+        if (table) table.hidden = rows.length === 0;
+        if (tbody) {
+            tbody.innerHTML = '';
+            rows.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + escapeHtml(r.name || '') + '</td><td>'
+                    + escapeHtml(r.origin || '') + '</td><td class="mono">'
+                    + escapeHtml(r.id || '') + '</td><td>'
+                    + (r.head ? 'head' : '') + '</td>';
+                tbody.appendChild(tr);
+            });
+        }
+        const from = document.getElementById('env-diff-from');
+        const to = document.getElementById('env-diff-to');
+        [from, to].forEach(sel => {
+            if (!sel) return;
+            sel.innerHTML = '';
+            rows.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = (r.name || r.id) + (r.head ? ' (head)' : '');
+                sel.appendChild(opt);
+            });
+        });
+        if (from && rows.length) from.selectedIndex = 0;
+        if (to && rows.length) to.selectedIndex = rows.length - 1;
+        const head = document.getElementById('env-head');
+        if (head) {
+            const current = rows.find(r => r.head);
+            head.textContent = current ? ('Head: ' + current.id + ' · ' + (current.origin || '')) : '';
+        }
+    }
+
+    async function loadUsage(roleHint) {
+        const err = document.getElementById('usage-err');
+        if (err) err.hidden = true;
+        const res = await fetch(apiUrl('/usage'), { credentials: 'same-origin', headers: API_HEADERS });
+        const data = res.ok ? await res.json().catch(() => ({})) : {};
+        if (!res.ok) {
+            if (err) {
+                err.hidden = false;
+                err.textContent = data.message || 'Failed to load usage';
+            }
+            return;
+        }
+        const summary = document.getElementById('usage-summary');
+        if (summary) {
+            summary.textContent = 'Reserved ' + (data.reservedUnits || 0)
+                + ' of ' + (data.hardCapUnits || 0)
+                + ' (warning at ' + (data.warningUnits || 0) + ')';
+        }
+        const warn = document.getElementById('usage-warn');
+        if (warn) warn.hidden = !data.warning;
+        const rows = data.usage || [];
+        const empty = document.getElementById('usage-empty');
+        const table = document.getElementById('usage-table');
+        const tbody = document.getElementById('usage-body');
+        if (empty) empty.hidden = rows.length > 0;
+        if (table) table.hidden = rows.length === 0;
+        if (tbody) {
+            tbody.innerHTML = '';
+            rows.slice().reverse().forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td class="mono">' + escapeHtml(r.jobId || '') + '</td><td>'
+                    + escapeHtml(r.estimatedUnits) + '</td><td>'
+                    + escapeHtml(r.reconciledUnits) + '</td><td>'
+                    + escapeHtml(r.reconciledKind || r.estimatedKind || '') + '</td><td>'
+                    + escapeHtml(r.at || '') + '</td>';
+                tbody.appendChild(tr);
+            });
+        }
+        const form = document.getElementById('usage-form');
+        if (form) form.hidden = !canOperateRole(roleHint || settingsRole || '');
+        const hard = document.getElementById('usage-hard');
+        const warning = document.getElementById('usage-warn-input');
+        if (hard && document.activeElement !== hard) hard.value = data.hardCapUnits == null ? '' : data.hardCapUnits;
+        if (warning && document.activeElement !== warning) warning.value = data.warningUnits == null ? '' : data.warningUnits;
     }
 
     async function revokeWorkspaceService(serviceId) {
@@ -822,6 +1006,82 @@
                 setCollabMessage(data.message || 'Could not create service identity.', true);
             }
             loadWorkspaceCollaboration();
+        });
+    }
+
+    const envForm = document.getElementById('env-form');
+    if (envForm) {
+        envForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('env-msg');
+            const err = document.getElementById('env-err');
+            const payload = {
+                name: document.getElementById('env-name').value.trim(),
+                origin: document.getElementById('env-origin').value.trim(),
+                credentialProfileRef: document.getElementById('env-cred').value.trim(),
+                providerAllowlist: document.getElementById('env-providers').value.trim()
+            };
+            const rows = document.querySelectorAll('#env-body tr');
+            const headId = Array.from(document.querySelectorAll('#env-diff-to option')).find(o => (o.textContent || '').includes('(head)'));
+            if (headId && headId.value) payload.baseRevision = headId.value;
+            const res = await fetch(apiUrl('/environments'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json().catch(() => ({}));
+            if (msg) {
+                msg.hidden = !res.ok;
+                msg.textContent = res.ok ? ('Saved ' + (data.id || 'revision')) : '';
+            }
+            if (err) {
+                err.hidden = res.ok;
+                err.textContent = res.ok ? '' : (data.message || 'Could not save environment');
+            }
+            loadEnvironments();
+        });
+    }
+    const envDiffBtn = document.getElementById('env-diff-btn');
+    if (envDiffBtn) {
+        envDiffBtn.addEventListener('click', async () => {
+            const from = document.getElementById('env-diff-from').value;
+            const to = document.getElementById('env-diff-to').value;
+            const mount = document.getElementById('env-diff');
+            if (!from || !to || !mount) return;
+            const res = await fetch(apiUrl('/environments/' + encodeURIComponent(from) + '/diff/' + encodeURIComponent(to)), {
+                credentials: 'same-origin', headers: API_HEADERS
+            });
+            const data = await res.json().catch(() => ({}));
+            mount.hidden = false;
+            mount.textContent = JSON.stringify(data.changed || data, null, 2);
+        });
+    }
+    const usageForm = document.getElementById('usage-form');
+    if (usageForm) {
+        usageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('usage-msg');
+            const err = document.getElementById('usage-err');
+            const res = await fetch(apiUrl('/usage'), {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    hardCapUnits: Number(document.getElementById('usage-hard').value),
+                    warningUnits: Number(document.getElementById('usage-warn-input').value)
+                })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (msg) {
+                msg.hidden = !res.ok;
+                msg.textContent = res.ok ? 'Budget limits saved.' : '';
+            }
+            if (err) {
+                err.hidden = res.ok;
+                err.textContent = res.ok ? '' : (data.message || 'Could not save budget limits');
+            }
+            loadUsage();
         });
     }
 

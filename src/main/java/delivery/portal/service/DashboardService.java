@@ -146,6 +146,7 @@ public class DashboardService {
         map.put("passedTotal", passed);
         map.put("todoTotal", todo);
         map.put("passRate", passRate);
+        map.put("hasProvenSample", integrity.hasProvenSample());
         map.put("provenPassed", integrity.provenPassed());
         map.put("simulatedTotal", integrity.simulated());
         map.put("passRateNote", integrity.denominatorNote());

@@ -7,9 +7,10 @@ import java.time.Duration;
 import java.time.Instant;
 
 /**
- * Customer-operated runner contract. Implementation may progress; deployment readiness
- * stays dependent on P2-03 isolation validation. The control plane never needs inbound
- * access to the customer network.
+ * Customer-operated runner **rules** (enrollment, claim, heartbeat, revocation, offline).
+ * These are a foundation only. Actual remote execution, agent install, claim HTTP, and
+ * artifact upload are unimplemented. Deployment readiness stays dependent on P2-03
+ * isolation validation. See {@code docs/ops/private-runner.md}.
  */
 public final class PrivateRunnerRules {
     public static final Duration DEFAULT_HEARTBEAT_GRACE = Duration.ofSeconds(45);

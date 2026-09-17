@@ -32,7 +32,8 @@ public final class ResultIntegrity {
             int unchecked,
             int simulated,
             int passRate,
-            String denominatorNote
+            String denominatorNote,
+            boolean hasProvenSample
     ) {
         public Map<String, Object> asMap() {
             Map<String, Object> out = new LinkedHashMap<>();
@@ -42,6 +43,7 @@ public final class ResultIntegrity {
             out.put("simulated", simulated);
             out.put("passRate", passRate);
             out.put("denominatorNote", denominatorNote);
+            out.put("hasProvenSample", hasProvenSample);
             return out;
         }
     }
@@ -70,10 +72,13 @@ public final class ResultIntegrity {
         }
         int judged = provenPassed + blocked + unchecked;
         int rate = judged > 0 ? Math.round(100f * provenPassed / judged) : 0;
-        String note = "Pass rate is " + provenPassed + "/" + judged
+        boolean hasSample = judged > 0;
+        String note = hasSample
+                ? "Pass rate is " + provenPassed + "/" + judged
                 + " proven cases (blocked and unchecked stay in the denominator). "
-                + simulated + " simulated dry-run case(s) are excluded.";
-        return new Summary(provenPassed, blocked, unchecked, simulated, rate, note);
+                + simulated + " simulated dry-run case(s) are excluded."
+                : "No proven cases yet";
+        return new Summary(provenPassed, blocked, unchecked, simulated, rate, note, hasSample);
     }
 
     public static String proofSource(String proofKind, boolean frameworkReplay) {

@@ -64,6 +64,20 @@ public class DashboardServiceTest {
     }
 
     @Test
+    public void statsFor_emptyDashboardDoesNotTreatZeroOverZeroAsAMeasuredRate() {
+        ProjectRepository projects = mock(ProjectRepository.class);
+        JobRepository jobs = mock(JobRepository.class);
+        when(projects.findByOwnerUserIdOrderByIdDesc(OWNER)).thenReturn(List.of());
+        when(jobs.findByOwnerUserIdOrderByCreatedAtDesc(OWNER)).thenReturn(List.of());
+
+        Map<String, Object> stats = new DashboardService(projects, jobs).statsFor(OWNER);
+
+        Assert.assertEquals(stats.get("hasProvenSample"), false);
+        Assert.assertEquals(stats.get("passRateNote"), "No proven cases yet");
+        Assert.assertFalse(String.valueOf(stats.get("passRateNote")).contains("0/0"));
+    }
+
+    @Test
     public void statsFor_countsRunningJobs() {
         JobEntity queued = job("j1", "QUEUED");
         JobEntity running = job("j2", "RUNNING");

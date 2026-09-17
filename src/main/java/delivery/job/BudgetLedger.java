@@ -96,12 +96,13 @@ public final class BudgetLedger {
         if (costKind == CostKind.UNKNOWN || estimatedUnits < 0) {
             throw new Rejected("COST_UNKNOWN", "unknown cost cannot be reserved");
         }
-        if (limits.hardCapUnits() <= 0) {
-            throw new Rejected("BUDGET_CLOSED", "budget hard cap is fail-closed");
-        }
         AtomicBoolean warned = new AtomicBoolean(false);
         return PublicationLock.call(file.resolveSibling("budget.lock"), () -> {
             JSONObject root = read();
+            Limits cap = effective(root);
+            if (cap.hardCapUnits() <= 0) {
+                throw new Rejected("BUDGET_CLOSED", "budget hard cap is fail-closed");
+            }
             long reserved = reservedTotal(root);
             if (root.has("reservations") && root.getJSONObject("reservations").has(jobId)) {
                 JSONObject existing = root.getJSONObject("reservations").getJSONObject(jobId);
@@ -111,9 +112,9 @@ public final class BudgetLedger {
                         CostKind.valueOf(existing.optString("kind", CostKind.ESTIMATED.name())),
                         false);
             }
-            if (reserved + estimatedUnits > limits.hardCapUnits()) {
+            if (reserved + estimatedUnits > cap.hardCapUnits()) {
                 throw new Rejected("BUDGET_EXCEEDED",
-                        "tenant reserved " + reserved + " of " + limits.hardCapUnits());
+                        "tenant reserved " + reserved + " of " + cap.hardCapUnits());
             }
             JSONObject reservations = root.optJSONObject("reservations");
             if (reservations == null) {
@@ -125,7 +126,7 @@ public final class BudgetLedger {
             row.put("kind", costKind.name());
             row.put("at", Instant.now().toString());
             reservations.put(jobId, row);
-            boolean warning = reserved + estimatedUnits >= limits.warningUnits() && limits.warningUnits() > 0;
+            boolean warning = reserved + estimatedUnits >= cap.warningUnits() && cap.warningUnits() > 0;
             warned.set(warning);
             appendUsage(root, new UsageRecord(
                     jobId, estimatedUnits, 0, costKind, CostKind.ESTIMATED, Instant.now().toString()));
@@ -163,11 +164,36 @@ public final class BudgetLedger {
 
     public Snapshot snapshot() throws Exception {
         JSONObject root = read();
+        Limits cap = effective(root);
         return new Snapshot(
                 reservedTotal(root),
-                limits.hardCapUnits(),
-                limits.warningUnits(),
+                cap.hardCapUnits(),
+                cap.warningUnits(),
                 parseUsage(root));
+    }
+
+    public Limits updateLimits(long hardCapUnits, long warningUnits) throws Exception {
+        if (hardCapUnits < 0 || warningUnits < 0) {
+            throw new IllegalArgumentException("budget limits cannot be negative");
+        }
+        if (warningUnits > hardCapUnits) {
+            throw new IllegalArgumentException("warningUnits cannot exceed hardCapUnits");
+        }
+        return PublicationLock.call(file.resolveSibling("budget.lock"), () -> {
+            JSONObject root = read();
+            root.put("hardCapUnits", hardCapUnits);
+            root.put("warningUnits", warningUnits);
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, root.toString(2), StandardCharsets.UTF_8);
+            return new Limits(hardCapUnits, warningUnits);
+        });
+    }
+
+    private Limits effective(JSONObject root) {
+        if (root != null && root.has("hardCapUnits")) {
+            return new Limits(root.optLong("hardCapUnits"), root.optLong("warningUnits", 0));
+        }
+        return limits;
     }
 
     private static List<UsageRecord> parseUsage(JSONObject root) {
