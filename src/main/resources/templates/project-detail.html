@@ -171,6 +171,16 @@
             </form>
             <pre id="workspace-service-token" class="mono" hidden></pre>
             <ul id="workspace-services-list"></ul>
+            <form id="workspace-runner-form" class="settings-form" hidden>
+                <h3>Private runners</h3>
+                <p class="muted">Outbound agents use a <code>tp_run_</code> token. OWNER and ADMIN enroll or revoke. MEMBER can list.</p>
+                <label>Label
+                    <input type="text" id="workspace-runner-label" placeholder="office-1"/>
+                </label>
+                <button type="submit">Enroll runner</button>
+            </form>
+            <pre id="workspace-runner-token" class="mono" hidden></pre>
+            <ul id="workspace-runners-list"></ul>
             <h3>Membership audit</h3>
             <ul id="workspace-audit-list" class="muted"></ul>
             <p id="workspace-collab-msg" class="muted" hidden></p>
@@ -755,8 +765,10 @@
         }
         const inviteForm = document.getElementById('workspace-invite-form');
         const serviceForm = document.getElementById('workspace-service-form');
+        const runnerForm = document.getElementById('workspace-runner-form');
         if (inviteForm) inviteForm.hidden = !isOwner;
         if (serviceForm) serviceForm.hidden = !isOwner;
+        if (runnerForm) runnerForm.hidden = !(role === 'OWNER' || role === 'ADMIN');
         body.innerHTML = '';
         (data.members || []).forEach(m => {
             const tr = document.createElement('tr');
@@ -799,6 +811,26 @@
                     list.appendChild(li);
                 });
             }
+        }
+        const runnerRes = await fetch(apiUrl('/runners'), { credentials: 'same-origin', headers: API_HEADERS });
+        const runnerList = document.getElementById('workspace-runners-list');
+        if (runnerList && runnerRes.ok) {
+            const runnerData = await runnerRes.json();
+            runnerList.innerHTML = '';
+            (runnerData.runners || []).forEach(r => {
+                const li = document.createElement('li');
+                li.textContent = (r.label || r.id) + (r.revokedAt ? ' (revoked)' : '')
+                    + (r.lastHeartbeat ? (' beat ' + r.lastHeartbeat) : '');
+                if (!r.revokedAt && (role === 'OWNER' || role === 'ADMIN')) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'button ghost';
+                    btn.textContent = 'Revoke';
+                    btn.addEventListener('click', () => revokeWorkspaceRunner(r.id));
+                    li.appendChild(btn);
+                }
+                runnerList.appendChild(li);
+            });
         }
         const auditRes = await fetch(apiUrl('/audit'), { credentials: 'same-origin', headers: API_HEADERS });
         const auditList = document.getElementById('workspace-audit-list');
@@ -919,6 +951,16 @@
         if (warning && document.activeElement !== warning) warning.value = data.warningUnits == null ? '' : data.warningUnits;
     }
 
+    async function revokeWorkspaceRunner(runnerId) {
+        const res = await fetch(apiUrl('/runners/' + encodeURIComponent(runnerId)), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        setCollabMessage(res.ok ? 'Runner revoked.' : 'Could not revoke runner.', !res.ok);
+        loadWorkspaceCollaboration();
+    }
+
     async function revokeWorkspaceService(serviceId) {
         const res = await fetch(apiUrl('/services/' + encodeURIComponent(serviceId)), {
             method: 'DELETE',
@@ -1004,6 +1046,30 @@
                 setCollabMessage(data.message || 'Copy this token now.', false);
             } else {
                 setCollabMessage(data.message || 'Could not create service identity.', true);
+            }
+            loadWorkspaceCollaboration();
+        });
+    }
+
+    const runnerFormEl = document.getElementById('workspace-runner-form');
+    if (runnerFormEl) {
+        runnerFormEl.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const label = document.getElementById('workspace-runner-label').value.trim();
+            const res = await fetch(apiUrl('/runners'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label })
+            });
+            const data = await res.json().catch(() => ({}));
+            const tokenEl = document.getElementById('workspace-runner-token');
+            if (res.ok && tokenEl) {
+                tokenEl.hidden = false;
+                tokenEl.textContent = data.token || '';
+                setCollabMessage(data.message || 'Copy this runner token now.', false);
+            } else {
+                setCollabMessage(data.message || 'Could not enroll runner.', true);
             }
             loadWorkspaceCollaboration();
         });

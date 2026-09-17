@@ -32,6 +32,19 @@ public final class WorkspaceDirectory {
     public record CreatedService(String id, WorkspaceRole role, String token) {
     }
 
+    public record RunnerEnrollment(
+            String id,
+            TenantId tenant,
+            String label,
+            Instant enrolledAt,
+            Instant revokedAt,
+            Instant lastHeartbeat
+    ) {
+    }
+
+    public record CreatedRunner(String id, String token) {
+    }
+
     public record PendingInvite(String email, WorkspaceRole role, long invitedBy, String at) {
     }
 
@@ -251,6 +264,102 @@ public final class WorkspaceDirectory {
             return tenant;
         });
         return new CreatedService(id, role, token);
+    }
+
+    public CreatedRunner enrollRunner(TenantId tenant, long actorUserId, String label) throws Exception {
+        String token = "tp_run_" + UUID.randomUUID().toString().replace("-", "");
+        String id = "run_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        Instant now = Instant.now();
+        mutate(root -> {
+            requireActorOperates(root, tenant, actorUserId);
+            JSONArray runners = ensureArray(root, "runners");
+            JSONObject row = new JSONObject();
+            row.put("id", id);
+            row.put("tenantId", tenant.value());
+            row.put("label", label == null ? "" : label);
+            row.put("tokenHash", sha256(token));
+            row.put("createdBy", actorUserId);
+            row.put("enrolledAt", now.toString());
+            row.put("revokedAt", "");
+            row.put("lastHeartbeat", "");
+            runners.put(row);
+            appendAudit(root, tenant, actorUserId, "ENROLL_RUNNER", 0L, id);
+            return tenant;
+        });
+        return new CreatedRunner(id, token);
+    }
+
+    public void revokeRunner(TenantId tenant, String runnerId, long actorUserId) throws Exception {
+        mutate(root -> {
+            requireActorOperates(root, tenant, actorUserId);
+            JSONObject row = runnerRow(root, tenant, runnerId);
+            if (row == null) {
+                throw new IllegalArgumentException("unknown runner: " + runnerId);
+            }
+            row.put("revokedAt", Instant.now().toString());
+            appendAudit(root, tenant, actorUserId, "REVOKE_RUNNER", 0L, runnerId);
+            return tenant;
+        });
+    }
+
+    public void touchRunnerHeartbeat(String runnerId, TenantId tenant, Instant at) throws Exception {
+        Instant beat = at == null ? Instant.now() : at;
+        mutate(root -> {
+            JSONObject row = runnerRow(root, tenant, runnerId);
+            if (row == null) {
+                throw new IllegalArgumentException("unknown runner: " + runnerId);
+            }
+            if (!row.optString("revokedAt", "").isBlank()) {
+                throw new SecurityException("runner is revoked");
+            }
+            row.put("lastHeartbeat", beat.toString());
+            return tenant;
+        });
+    }
+
+    public Optional<RunnerEnrollment> authenticateRunner(String token) {
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            String hash = sha256(token);
+            JSONObject root = read();
+            JSONArray runners = root.optJSONArray("runners");
+            if (runners == null) {
+                return Optional.empty();
+            }
+            for (int i = 0; i < runners.length(); i++) {
+                JSONObject row = runners.getJSONObject(i);
+                if (hash.equals(row.optString("tokenHash")) && row.optString("revokedAt", "").isBlank()) {
+                    return Optional.of(parseRunner(row));
+                }
+            }
+            return Optional.empty();
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    public List<RunnerEnrollment> listRunners(TenantId tenant) throws Exception {
+        JSONObject root = read();
+        JSONArray runners = root.optJSONArray("runners");
+        List<RunnerEnrollment> out = new ArrayList<>();
+        if (runners == null || tenant == null) {
+            return List.of();
+        }
+        for (int i = 0; i < runners.length(); i++) {
+            JSONObject row = runners.getJSONObject(i);
+            if (tenant.value().equals(row.optString("tenantId"))) {
+                out.add(parseRunner(row));
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    public Optional<RunnerEnrollment> runner(TenantId tenant, String runnerId) throws Exception {
+        JSONObject root = read();
+        JSONObject row = runnerRow(root, tenant, runnerId);
+        return row == null ? Optional.empty() : Optional.of(parseRunner(row));
     }
 
     public void revokeServiceIdentity(TenantId tenant, String serviceId, long actorUserId) throws Exception {
@@ -566,6 +675,17 @@ public final class WorkspaceDirectory {
         }
     }
 
+    private static void requireActorOperates(JSONObject root, TenantId tenant, long actorUserId) {
+        JSONObject row = membershipRow(root, tenant, actorUserId);
+        if (row == null) {
+            throw new SecurityException("user " + actorUserId + " cannot operate on " + tenant);
+        }
+        String role = row.optString("role", WorkspaceRole.MEMBER.name());
+        if (!WorkspaceRole.OWNER.name().equals(role) && !WorkspaceRole.ADMIN.name().equals(role)) {
+            throw new SecurityException("user " + actorUserId + " cannot operate on " + tenant);
+        }
+    }
+
     private static JSONObject membershipRow(JSONObject root, TenantId tenant, long userId) {
         JSONArray memberships = root.getJSONArray("memberships");
         for (int i = 0; i < memberships.length(); i++) {
@@ -575,6 +695,38 @@ public final class WorkspaceDirectory {
             }
         }
         return null;
+    }
+
+    private static JSONObject runnerRow(JSONObject root, TenantId tenant, String runnerId) {
+        JSONArray runners = ensureArray(root, "runners");
+        for (int i = 0; i < runners.length(); i++) {
+            JSONObject row = runners.getJSONObject(i);
+            if (tenant.value().equals(row.optString("tenantId")) && runnerId.equals(row.optString("id"))) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    private static RunnerEnrollment parseRunner(JSONObject row) {
+        return new RunnerEnrollment(
+                row.optString("id"),
+                TenantId.parse(row.getString("tenantId")),
+                row.optString("label"),
+                parseInstant(row.optString("enrolledAt")),
+                parseInstant(row.optString("revokedAt")),
+                parseInstant(row.optString("lastHeartbeat")));
+    }
+
+    private static Instant parseInstant(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.parse(raw);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static JSONObject serviceRow(JSONObject root, TenantId tenant, String serviceId) {

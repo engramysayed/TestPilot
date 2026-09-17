@@ -1,28 +1,28 @@
-# Private runner — foundation versus execution
+# Private runner
 
-Enrollment, tenant binding, heartbeat, claim, revocation, and offline recovery **rules** live in `delivery.runner.PrivateRunnerRules`. They are a foundation for a customer-operated runner that connects **outbound** to the control plane. The control plane never needs inbound access to the customer network.
+A customer-operated runner connects **outbound** to the control plane. The control plane never needs inbound access to the customer network.
 
-**Deployment isolation validation (P2-03) is a separate requirement.** Passing these unit rules does not certify a shared or dedicated production host. Public rollout stays HOLD; candidate `75e6996` is unchanged.
+**Deployment isolation validation (P2-03) is a separate requirement.** Local runner tests do not certify a shared or dedicated production host. Public rollout stays HOLD; candidate `75e6996` is unchanged.
 
-## Implemented (rules only)
+## What this release implements
 
-- Enrollment record: runner id, tenant id, enrolled-at, revoked-at, last heartbeat
-- Claim allowed only for the bound tenant, while not revoked, and while heartbeat is inside the grace window (default 45s)
-- Cross-tenant or revoked runners cannot claim
-- Offline recovery uses the durable job contract: expired **BROWSER** leases become `INTERRUPTED_UNCERTAIN`; other stages re-queue (`DurableJobClaim.reconcileExpired`)
-- Evidence egress policy defaults: artifacts and screenshots may leave the runner; network bodies and secrets do not
+- Enrollment and revocation APIs on the project (`POST/GET/DELETE /api/projects/{id}/runners`). OWNER and ADMIN may enroll or revoke; MEMBER may list. Tokens are `tp_run_…` and stored as SHA-256 only.
+- Runner HTTP API under `/api/v1/runners/**` (Bearer `tp_run_`): heartbeat, tenant-scoped claim, frozen input download, lease heartbeat, HMAC artifact upload, complete.
+- In-process portal workers skip jobs with `runner=private`. Claim uses existing durable leases; expired **BROWSER** leases become `INTERRUPTED_UNCERTAIN`; other stages re-queue.
+- Jobs still freeze library/environment pins, provider allowlist snapshots, and budget reservations at queue time. Complete rejects a changed input hash or allowlist.
+- Agent: `delivery.runner.PrivateRunnerAgent` (`--portal --token --work-dir --dry-run`). Installer scripts write a start wrapper under `scripts/private-runner/`.
+- Dry-run execution uses `DryRunExecuteService` on the runner host. Live browser/CDP uses `ExecuteJobRunner` when `--dry-run false`.
 
-## Not implemented (actual runner execution)
+## Not included
 
-These capabilities are **not** product-ready. Do not treat the rules class as a shippable runner.
+- Auto-update channel or attested runner builds
+- Network isolation proof that a private app is unreachable from the shared control plane (P2-03)
 
-- No runner agent binary, installer, or auto-update channel
-- No enrollment API, token issuance, or revocation UI for runners
-- No heartbeat/claim HTTP endpoints consumed by an out-of-process worker
-- No job download of pinned library/environment onto a customer host
-- No browser/CDP execution on the customer machine (portal jobs still run **in-process** in the portal JVM)
-- No signed artifact upload from a remote runner, or trust/attestation of runner builds
-- No queue assignment that prefers or requires a private runner instead of in-process workers
-- No network isolation proof that a private app is unreachable from the shared control plane (that is P2-03)
+## Operator steps
 
-Until those exist **and** P2-03 isolation is validated on a deployment host, private applications should not be promised as a supported execution mode.
+1. Project Settings → Private runners → enroll. Copy the `tp_run_` token once.
+2. On the customer host: `scripts/private-runner/install.ps1` or `install.sh`, set `KEEL_PORTAL_URL` and `KEEL_RUNNER_TOKEN`, start the wrapper.
+3. Submit Execute with `"runner":"private"` (public job API) or form field `runner=private`.
+4. Revoke the runner to stop further claims immediately.
+
+Evidence egress defaults from `PrivateRunnerRules.EvidenceEgress`: artifacts and screenshots may upload; network bodies and secrets must not be posted back except the signed artifact zip.

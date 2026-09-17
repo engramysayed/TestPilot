@@ -48,6 +48,8 @@ public class Phase6SettingsAndHuntMvcTest extends AbstractTestNGSpringContextTes
         Assert.assertTrue(body.contains("id=\"usage-budget-panel\""), "usage history panel missing");
         Assert.assertTrue(body.contains("function loadUsage"), "usage loader missing");
         Assert.assertTrue(body.contains("/usage"), "usage API wiring missing");
+        Assert.assertTrue(body.contains("workspace-runner-form"), "private runner panel missing");
+        Assert.assertTrue(body.contains("/runners"), "runner API wiring missing");
     }
 
     @Test

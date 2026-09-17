@@ -81,7 +81,8 @@ public class ExecuteRunController {
             @RequestParam(value = "excel", required = false) MultipartFile excel,
             @RequestParam(value = "useGenerated", required = false, defaultValue = "false") String useGenerated,
             @RequestParam(value = "tcIds", required = false) List<String> tcIds,
-            @RequestParam(value = "credentialProfile", required = false) String credentialProfile
+            @RequestParam(value = "credentialProfile", required = false) String credentialProfile,
+            @RequestParam(value = "runner", required = false) String runner
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
         ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
@@ -173,8 +174,13 @@ public class ExecuteRunController {
         Path requestPath = AuthoringJobRequestFiles.requestPath(
                 store.projectDiskRoot(projectId), JobRecord.JobKind.EXECUTE, jobId);
         AuthoringJobRequestFiles.write(requestPath, engine);
+        if (runner != null && "private".equalsIgnoreCase(runner.trim())) {
+            job.setRequirePrivateRunner(true);
+        }
         store.saveJob(job);
-        worker.submit(jobId);
+        if (!job.isRequirePrivateRunner()) {
+            worker.submit(jobId);
+        }
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
                 "jobId", jobId,
                 "status", JobRecord.Status.QUEUED.name()

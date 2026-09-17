@@ -97,6 +97,33 @@ public class WorkspaceDirectoryTest {
     }
 
     @Test
+    public void privateRunnerEnrollmentIsTenantBoundAndRevocable() throws Exception {
+        Path store = Files.createTempDirectory("ws-runner");
+        WorkspaceDirectory dir = WorkspaceDirectory.open(store);
+        TenantId alice = dir.ensurePersonalWorkspace(1L);
+        TenantId bob = dir.ensurePersonalWorkspace(2L);
+        dir.addMember(alice, 3L, WorkspaceRole.ADMIN, 1L);
+        dir.addMember(alice, 4L, WorkspaceRole.MEMBER, 1L);
+
+        var created = dir.enrollRunner(alice, 3L, "office-1");
+        Assert.assertTrue(created.token().startsWith("tp_run_"));
+        var live = dir.authenticateRunner(created.token()).orElseThrow();
+        Assert.assertEquals(live.tenant().value(), alice.value());
+        Assert.assertNull(live.revokedAt());
+        dir.touchRunnerHeartbeat(created.id(), alice, java.time.Instant.parse("2026-09-17T12:00:00Z"));
+        Assert.assertEquals(dir.authenticateRunner(created.token()).orElseThrow().lastHeartbeat(),
+                java.time.Instant.parse("2026-09-17T12:00:00Z"));
+
+        Assert.assertThrows(SecurityException.class, () -> dir.enrollRunner(alice, 4L, "nope"));
+        Assert.assertThrows(SecurityException.class, () -> dir.revokeRunner(alice, created.id(), 4L));
+        Assert.assertTrue(dir.authenticateRunner(created.token()).isPresent());
+        dir.revokeRunner(alice, created.id(), 1L);
+        Assert.assertTrue(dir.authenticateRunner(created.token()).isEmpty());
+        Assert.assertTrue(dir.listRunners(alice).stream().anyMatch(r -> r.id().equals(created.id()) && r.revokedAt() != null));
+        Assert.assertTrue(dir.listRunners(bob).isEmpty());
+    }
+
+    @Test
     public void pendingInviteBecomesMembershipWhenAccountAppears() throws Exception {
         Path store = Files.createTempDirectory("ws-invite");
         WorkspaceDirectory dir = WorkspaceDirectory.open(store);

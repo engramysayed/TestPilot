@@ -512,6 +512,7 @@ public class PortalStore {
         entity.setEnvironmentRevisionId(job.getEnvironmentRevisionId());
         entity.setParentJobId(job.getParentJobId());
         entity.setPrecisionMaxSnapshot(job.getPrecisionMaxSnapshot());
+        entity.setRequirePrivateRunner(job.isRequirePrivateRunner());
         if ((job.getInputSnapshotHash() == null || job.getInputSnapshotHash().isBlank())
                 && job.getStatus() == JobRecord.Status.QUEUED) {
             job.setInputSnapshotHash(delivery.job.DurableJobClaim.hashInputs(job));
@@ -532,6 +533,9 @@ public class PortalStore {
 
     public synchronized Optional<delivery.job.DurableJobClaim.Lease> beginWork(String jobId) {
         JobRecord job = getJob(jobId).orElse(null);
+        if (job != null && job.isRequirePrivateRunner()) {
+            return Optional.empty();
+        }
         if (job != null) {
             boolean archived = projectRepository.findByProjectId(job.getProjectId())
                     .map(ProjectEntity::isArchived)
@@ -850,6 +854,7 @@ public class PortalStore {
         job.setEnvironmentRevisionId(e.getEnvironmentRevisionId());
         job.setParentJobId(e.getParentJobId());
         job.setPrecisionMaxSnapshot(e.getPrecisionMaxSnapshot());
+        job.setRequirePrivateRunner(e.isRequirePrivateRunner());
         job.setTenantId(e.getTenantId());
         if (job.getTenantId() == null || job.getTenantId().isBlank()) {
             projectRepository.findByProjectId(e.getProjectId())
@@ -1115,6 +1120,121 @@ public class PortalStore {
 
     public int consumePendingWorkspaceInvites(String email, long userId) throws Exception {
         return directory().consumePendingInvites(email, userId);
+    }
+
+    public delivery.identity.WorkspaceDirectory.CreatedRunner enrollWorkspaceRunner(
+            String projectId, long actorUserId, String label
+    ) throws Exception {
+        return directory().enrollRunner(requireTenant(projectId), actorUserId, label);
+    }
+
+    public java.util.List<delivery.identity.WorkspaceDirectory.RunnerEnrollment> listWorkspaceRunners(
+            String projectId
+    ) throws Exception {
+        return directory().listRunners(requireTenant(projectId));
+    }
+
+    public void revokeWorkspaceRunner(String projectId, long actorUserId, String runnerId) throws Exception {
+        directory().revokeRunner(requireTenant(projectId), runnerId, actorUserId);
+    }
+
+    public synchronized Optional<delivery.job.DurableJobClaim.Lease> claimNextForRunner(
+            delivery.identity.WorkspaceDirectory.RunnerEnrollment runner
+    ) throws Exception {
+        if (runner == null) {
+            return Optional.empty();
+        }
+        Instant now = Instant.now();
+        directory().touchRunnerHeartbeat(runner.id(), runner.tenant(), now);
+        var live = directory().runner(runner.tenant(), runner.id()).orElse(runner);
+        var rules = delivery.runner.PrivateRunnerBindings.toRules(live);
+        for (JobEntity entity : jobRepository.findAll()) {
+            JobRecord job = getJob(entity.getJobId()).orElse(null);
+            if (job == null || !job.isRequirePrivateRunner()) {
+                continue;
+            }
+            if (!delivery.runner.PrivateRunnerBindings.sameTenant(live, job)) {
+                continue;
+            }
+            try {
+                delivery.runner.PrivateRunnerRules.claim(rules, job, now);
+                syncJobPersistence(job);
+                return Optional.of(delivery.job.DurableJobClaim.toLease(job));
+            } catch (SecurityException | IllegalStateException ignored) {
+                // try the next queued private job for this tenant
+            }
+        }
+        return Optional.empty();
+    }
+
+    public synchronized boolean heartbeatRunnerLease(
+            delivery.identity.WorkspaceDirectory.RunnerEnrollment runner, String jobId
+    ) throws Exception {
+        JobRecord job = getJob(jobId).orElse(null);
+        if (job == null || !delivery.runner.PrivateRunnerBindings.sameTenant(runner, job)) {
+            return false;
+        }
+        directory().touchRunnerHeartbeat(runner.id(), runner.tenant(), Instant.now());
+        var lease = delivery.job.DurableJobClaim.toLease(job);
+        return heartbeat(jobId, lease);
+    }
+
+    public synchronized void completeFromRunner(
+            delivery.identity.WorkspaceDirectory.RunnerEnrollment runner,
+            String jobId,
+            JobRecord.Status status,
+            int passed,
+            int todo,
+            String message,
+            String inputSnapshotHash
+    ) throws Exception {
+        JobRecord job = getJob(jobId).orElse(null);
+        if (job == null || !delivery.runner.PrivateRunnerBindings.sameTenant(runner, job)) {
+            throw new IllegalArgumentException("unknown job");
+        }
+        if (!runner.id().equals(job.getWorkerId())) {
+            throw new SecurityException("runner does not own this attempt");
+        }
+        if (inputSnapshotHash != null && !inputSnapshotHash.isBlank()
+                && !inputSnapshotHash.equals(job.getInputSnapshotHash())) {
+            throw new IllegalStateException("FROZEN_INPUT_MISMATCH");
+        }
+        if (shouldAbortCompletion(job)) {
+            return;
+        }
+        job.setPassedCount(passed);
+        job.setTodoCount(todo);
+        job.setMessage(message);
+        job.setStatus(status == null ? JobRecord.Status.COMPLETED : status);
+        syncJobPersistence(job);
+        try {
+            new delivery.job.BudgetLedger(
+                    budgetFile(job.getTenantId()), delivery.job.BudgetLedger.Limits.fromEnvironment())
+                    .reconcile(job.getJobId(), 1);
+        } catch (Exception ignored) {
+            // reservation stays until a later reconcile
+        }
+    }
+
+    public synchronized Path storeRunnerArtifact(
+            delivery.identity.WorkspaceDirectory.RunnerEnrollment runner,
+            String jobId,
+            byte[] zipBytes
+    ) throws Exception {
+        JobRecord job = getJob(jobId).orElse(null);
+        if (job == null || !delivery.runner.PrivateRunnerBindings.sameTenant(runner, job)) {
+            throw new IllegalArgumentException("unknown job");
+        }
+        if (!runner.id().equals(job.getWorkerId())) {
+            throw new SecurityException("runner does not own this attempt");
+        }
+        Path dest = projectDiskRoot(job.getProjectId()).resolve("runner-artifacts")
+                .resolve(jobId + ".zip");
+        Files.createDirectories(dest.getParent());
+        Files.write(dest, zipBytes == null ? new byte[0] : zipBytes);
+        job.setZipPath(dest);
+        syncJobPersistence(job);
+        return dest;
     }
 
     private delivery.identity.TenantId requireTenant(String projectId) {

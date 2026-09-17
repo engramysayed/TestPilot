@@ -56,7 +56,7 @@ public class PublicJobApiController {
         this.executeWorker = executeWorker;
     }
 
-    public record SubmitRequest(String kind, String credentialProfile, String environmentRevisionId) {
+    public record SubmitRequest(String kind, String credentialProfile, String environmentRevisionId, String runner) {
     }
 
     @GetMapping("/whoami")
@@ -193,8 +193,13 @@ public class PublicJobApiController {
         if (body != null && body.environmentRevisionId() != null) {
             job.setEnvironmentRevisionId(body.environmentRevisionId());
         }
+        boolean privateRunner = body != null && body.runner() != null
+                && "private".equalsIgnoreCase(body.runner().trim());
+        job.setRequirePrivateRunner(privateRunner);
         store.saveJob(job);
-        executeWorker.submit(jobId);
+        if (!privateRunner) {
+            executeWorker.submit(jobId);
+        }
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
                 "jobId", jobId,
                 "status", JobRecord.Status.QUEUED.name(),

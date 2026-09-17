@@ -90,7 +90,8 @@ public class SecurityConfig {
                 )
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
                 .addFilterAfter(apiHeaderFilter, CsrfFilter.class)
-                .addFilterAfter(new ServiceIdentityFilter(props), CsrfFilter.class);
+                .addFilterAfter(new ServiceIdentityFilter(props), CsrfFilter.class)
+                .addFilterAfter(new PrivateRunnerFilter(props), CsrfFilter.class);
         return http.build();
     }
 }

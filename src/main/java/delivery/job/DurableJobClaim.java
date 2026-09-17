@@ -231,7 +231,7 @@ public final class DurableJobClaim {
         }
     }
 
-    private static Lease toLease(JobRecord job) {
+    public static Lease toLease(JobRecord job) {
         return new Lease(
                 job.getJobId(),
                 job.getAttemptId(),

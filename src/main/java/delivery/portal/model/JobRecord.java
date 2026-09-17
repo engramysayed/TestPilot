@@ -47,6 +47,7 @@ public class JobRecord {
     private volatile String environmentRevisionId = "";
     private volatile String parentJobId = "";
     private volatile int precisionMaxSnapshot;
+    private volatile boolean requirePrivateRunner;
 
     public JobRecord(String jobId, String projectId, Long ownerUserId, String mode, Path excelPath,
                      String baseUrl, String username, String password) {
@@ -127,6 +128,10 @@ public class JobRecord {
     public int getPrecisionMaxSnapshot() { return precisionMaxSnapshot; }
     public void setPrecisionMaxSnapshot(int precisionMaxSnapshot) {
         this.precisionMaxSnapshot = Math.max(0, precisionMaxSnapshot);
+    }
+    public boolean isRequirePrivateRunner() { return requirePrivateRunner; }
+    public void setRequirePrivateRunner(boolean requirePrivateRunner) {
+        this.requirePrivateRunner = requirePrivateRunner;
     }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

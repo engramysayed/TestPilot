@@ -105,6 +105,9 @@ public class JobEntity {
     @Column(name = "precision_max_snapshot", nullable = false, columnDefinition = "integer default 0")
     private int precisionMaxSnapshot;
 
+    @Column(name = "require_private_runner", nullable = false, columnDefinition = "boolean default false")
+    private boolean requirePrivateRunner;
+
     public Long getId() { return id; }
     public String getJobId() { return jobId; }
     public void setJobId(String jobId) { this.jobId = jobId; }
@@ -172,4 +175,8 @@ public class JobEntity {
     public void setParentJobId(String parentJobId) { this.parentJobId = parentJobId; }
     public int getPrecisionMaxSnapshot() { return precisionMaxSnapshot; }
     public void setPrecisionMaxSnapshot(int precisionMaxSnapshot) { this.precisionMaxSnapshot = precisionMaxSnapshot; }
+    public boolean isRequirePrivateRunner() { return requirePrivateRunner; }
+    public void setRequirePrivateRunner(boolean requirePrivateRunner) {
+        this.requirePrivateRunner = requirePrivateRunner;
+    }
 }
