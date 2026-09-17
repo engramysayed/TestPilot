@@ -15,8 +15,8 @@ Engineering for those two P2-04 checks is done **locally**. Named privacy approv
 - Application-layer: `TargetNetworkPolicy` / `WorkerNetworkGuard` (unchanged contract).
 - Stronger local path: per-thread PAC (`WorkerPac`) installed before Chrome/Edge in ProvePhase and Hunt; non-approved hosts go to `PROXY 127.0.0.1:9`. Loopback is bypassed for Chromedriver; unapproved loopback page loads still fail `requireNavigate`.
 - Dedicated CIDRs are emitted only for dedicated PAC scripts.
-- **Deployed shared installation:** UNAVAILABLE.
-- **Deployed dedicated installation:** UNAVAILABLE.
+- Isolated local Spring Boot drills (2026-09-17): Spring `delivery.install.*` is copied into worker system properties (`InstallNetworkBridge`). Shared drill ignores poison CIDRs; dedicated drill allows `10.0.0.0/8` for that install only. Evidence: [phase5-install-drills.md](phase5-install-drills.md).
+- **Production shared/dedicated hosts:** still UNAVAILABLE.
 - P2-03 remains open.
 
 ## Concurrent same-host benchmark
@@ -32,7 +32,7 @@ Recorded on this revision: [run-2026-09-17-concurrent-f44c76a.md](release-benchm
 | `PublicationLockTest` | JVM + OS lock on FileStore type **NTFS** (`New Volume`) | PASS |
 | `Phase5HostEvidenceTest` | writes `target/phase5-host-evidence/evidence.txt` | PASS |
 
-These are **this volume / this JVM**, not a production restore drill.
+These are **this volume / this JVM**, not a production restore drill. Isolated shared/dedicated *test* store-roots were later snapshot/restored in [phase5-install-drills.md](phase5-install-drills.md); still not a production host.
 
 ## Named approvals
 

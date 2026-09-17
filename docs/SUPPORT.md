@@ -14,7 +14,7 @@ This is the support contract **as implemented locally**. Product/privacy sign-of
 ## Not yet a support guarantee
 
 - Customer isolation on a shared host (P2-01 / P2-02)
-- Kernel/worker network isolation on a **deployed** shared or dedicated host (P2-03)
+- Kernel/worker network isolation on a **production** shared or dedicated host (P2-03). Isolated local Spring Boot drills bind install mode into worker policy; they are not that host.
 - Named privacy policy covering screenshots and providers (P2-04 engineering exists locally; sign-off is unsigned)
 - Restored backups on a production host (P4-02)
 - Live LLM proof coverage (P0-03 certified fixture replay only)

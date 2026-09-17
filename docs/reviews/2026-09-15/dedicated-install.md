@@ -13,7 +13,7 @@ Dedicated (single-tenant) installs use the **same identity model** as shared hos
 - Shared hosting (`delivery.install.mode=shared`, the default) allows the approved public origin only. Loopback, private, link-local, ULA, `file:`, and `javascript:` destinations are blocked except when the **approved origin itself** is that loopback/private host (same host+port) so local fixture pages can run.
 - Dedicated mode (`delivery.install.mode=dedicated`) may add `delivery.install.private-cidrs` (comma-separated CIDRs or hosts). That allowlist applies only to dedicated jobs. It does not broaden another tenant or a shared-host worker.
 - Subresources may use public CDNs; they may not hit private IPs. Credentials are sent only on the approved origin (`WorkerNetworkGuard` / `TargetNetworkPolicy.credentialsAllowedAt`).
-- This is an application-layer navigation/redirect/subresource policy plus a per-thread PAC blackhole for Chrome/Edge (`WorkerPac`). It is not a kernel firewall. PAC and policy were exercised on this workstation only; deployed shared and dedicated hosts were not available (P2-03 open).
+- This is an application-layer navigation/redirect/subresource policy plus a per-thread PAC blackhole for Chrome/Edge (`WorkerPac`). Spring install mode is applied to workers via `InstallNetworkBridge`. Isolated local drills: [phase5-install-drills.md](phase5-install-drills.md). It is not a kernel firewall. Production shared and dedicated hosts were not available (P2-03 open).
 
 ## Providers
 

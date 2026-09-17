@@ -26,5 +26,6 @@ public class BrowserConfigEnvironmentPostProcessor implements EnvironmentPostPro
         if (browserType != null && !browserType.isBlank()) {
             System.setProperty("BROWSER_TYPE", browserType.trim());
         }
+        delivery.net.InstallNetworkBridge.apply(environment);
     }
 }

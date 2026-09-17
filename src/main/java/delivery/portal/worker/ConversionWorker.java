@@ -13,6 +13,7 @@ import delivery.portal.service.JobUploadCleanup;
 import delivery.portal.service.PortalStore;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -26,10 +27,12 @@ public class ConversionWorker {
 
     private final DeliveryPortalProperties props;
     private final PortalStore portalStore;
+    private final Environment env;
 
-    public ConversionWorker(DeliveryPortalProperties props, PortalStore portalStore) {
+    public ConversionWorker(DeliveryPortalProperties props, PortalStore portalStore, Environment env) {
         this.props = props;
         this.portalStore = portalStore;
+        this.env = env;
     }
 
     @Async("conversionExecutor")
@@ -51,6 +54,7 @@ public class ConversionWorker {
         }
         portalStore.syncJobPersistence(job);
         try {
+            delivery.net.InstallNetworkBridge.apply(env);
             // Bridge Spring delivery.final-revise.* into system props for AgentRouterClient
             System.setProperty("delivery.final-revise.enabled", String.valueOf(props.isFinalReviseEnabled()));
             if (props.getFinalReviseBaseUrl() != null && !props.getFinalReviseBaseUrl().isBlank()) {

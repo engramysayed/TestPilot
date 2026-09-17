@@ -18,6 +18,7 @@ import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.PortalStore;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -35,12 +36,14 @@ public class HuntWorker {
     private final DeliveryPortalProperties props;
     private final PortalStore portalStore;
     private final GeneratedWorkbookService workbooks;
+    private final Environment env;
 
     public HuntWorker(DeliveryPortalProperties props, PortalStore portalStore,
-                      GeneratedWorkbookService workbooks) {
+                      GeneratedWorkbookService workbooks, Environment env) {
         this.props = props;
         this.portalStore = portalStore;
         this.workbooks = workbooks;
+        this.env = env;
     }
 
     @Async("huntExecutor")
@@ -62,6 +65,7 @@ public class HuntWorker {
         }
         portalStore.syncJobPersistence(job);
         try {
+            delivery.net.InstallNetworkBridge.apply(env);
             Path requestPath = job.getExcelPath();
             HuntRequest request = MAPPER.readValue(requestPath.toFile(), HuntRequest.class);
             request.setJobId(jobId);
