@@ -166,6 +166,7 @@ public class ProvePhase {
         Path evidence = workDir.resolve("evidence");
         LocalLlmClient llm = new LocalLlmClient(request.localLlmBaseUrl(), request.localLlmModel());
         AuthoringService authoring = new AuthoringService(llm, new LocatorValidator());
+        delivery.net.WorkerPac.installForJob(request == null ? "" : request.baseUrl());
         WebDriverFactory driverFactory = new WebDriverFactory();
         HealCascade healCascade = VisionGroundingConfig.enabled()
                 ? new HealCascade(

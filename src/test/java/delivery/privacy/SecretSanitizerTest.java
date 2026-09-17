@@ -16,6 +16,9 @@ public class SecretSanitizerTest {
         String scrubbed = SecretSanitizer.scrubHtml(html, List.of(CANARY));
         Assert.assertFalse(scrubbed.contains(CANARY), scrubbed);
         Assert.assertTrue(scrubbed.contains(SecretSanitizer.MASK), scrubbed);
+        Assert.assertEquals(SecretSanitizer.extractPasswordValues(html), List.of(CANARY));
+        String prompt = SecretSanitizer.scrubPrompt("type password " + CANARY);
+        Assert.assertFalse(prompt.contains(CANARY), prompt);
     }
 
     @Test

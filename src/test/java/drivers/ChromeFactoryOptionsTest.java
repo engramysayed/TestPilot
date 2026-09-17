@@ -53,4 +53,17 @@ public class ChromeFactoryOptionsTest {
         Assert.assertTrue(args.contains("--disable-notifications"), "args=" + args);
         Assert.assertTrue(args.contains("--disable-popup-blocking"), "args=" + args);
     }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void appliesWorkerPacWhenInstalledOnThisThread() {
+        delivery.net.WorkerPac.installForJob("https://shop.example.com");
+        try {
+            var args = (java.util.List<String>) chromeOptionsMap().get("args");
+            Assert.assertTrue(args.stream().anyMatch(a -> a.startsWith("--proxy-pac-url=")), "args=" + args);
+            Assert.assertTrue(args.contains("--proxy-bypass-list=<-loopback>"), "args=" + args);
+        } finally {
+            delivery.net.WorkerPac.clear();
+        }
+    }
 }

@@ -394,7 +394,7 @@ public final class HuntActionExecutor {
         if (!(driver() instanceof TakesScreenshot ts)) {
             return new byte[0];
         }
-        return ts.getScreenshotAs(OutputType.BYTES);
+        return delivery.privacy.ScreenshotRedactor.redactCapture(driver(), ts.getScreenshotAs(OutputType.BYTES));
     }
 
     private WebElement find(Map<String, Object> action) {

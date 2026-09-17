@@ -52,6 +52,7 @@ public final class HuntBrowserSession implements HuntBrowserControls, AutoClosea
             boolean hasLoginUsername,
             List<String> preferredHooks
     ) {
+        delivery.net.WorkerPac.installForJob(baseUrl);
         WebDriverFactory factory = new WebDriverFactory();
         HuntNetworkCapture network = HuntNetworkCapture.attach(factory.get());
         return new HuntBrowserSession(baseUrl, loginRequest, hasLoginUsername, factory, network, preferredHooks);

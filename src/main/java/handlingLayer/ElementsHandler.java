@@ -9,7 +9,6 @@ import utils.WaitHandler;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 public class ElementsHandler {
@@ -420,10 +419,10 @@ public class ElementsHandler {
             Path screenshotsDir = runFolder.resolve("screenshots");
             Files.createDirectories(screenshotsDir);
 
-            File src = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+            byte[] png = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
+            png = delivery.privacy.ScreenshotRedactor.redactCapture(driver, png);
             Path target = screenshotsDir.resolve(nameWithoutExtension + ".png");
-
-            Files.copy(src.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            Files.write(target, png == null ? new byte[0] : png);
             LogsManager.info("Screenshot saved: " + target.toAbsolutePath());
 
         } catch (Exception e) {

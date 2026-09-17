@@ -41,6 +41,7 @@ public class EdgeFactory extends AbstractDriver {
             options.addArguments("--disable-extensions");
         }
         options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
+        delivery.net.WorkerPac.apply(options);
         return options;
     }
 

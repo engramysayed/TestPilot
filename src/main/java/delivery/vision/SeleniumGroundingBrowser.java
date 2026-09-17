@@ -104,7 +104,10 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
         }
         try {
             byte[] png = ts.getScreenshotAs(OutputType.BYTES);
-            return png == null ? new byte[0] : png;
+            if (png == null) {
+                return new byte[0];
+            }
+            return delivery.privacy.ScreenshotRedactor.redactCapture(driver, png);
         } catch (WebDriverException e) {
             return new byte[0];
         }

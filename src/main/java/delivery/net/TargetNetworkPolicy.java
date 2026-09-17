@@ -29,32 +29,42 @@ public final class TargetNetworkPolicy {
     private final int approvedPort;
     private final boolean approvedIsRestrictedHop;
     private final List<Cidr> dedicatedCidrs;
+    private final List<String> dedicatedAllowlist;
 
-    private TargetNetworkPolicy(Mode mode, String approvedHost, int approvedPort, List<Cidr> dedicatedCidrs) {
+    private TargetNetworkPolicy(
+            Mode mode,
+            String approvedHost,
+            int approvedPort,
+            List<Cidr> dedicatedCidrs,
+            List<String> dedicatedAllowlist
+    ) {
         this.mode = mode;
         this.approvedHost = approvedHost;
         this.approvedPort = approvedPort;
         this.approvedIsRestrictedHop = isRestrictedHop(approvedHost);
         this.dedicatedCidrs = dedicatedCidrs;
+        this.dedicatedAllowlist = dedicatedAllowlist;
     }
 
     public static TargetNetworkPolicy shared(String approvedOrigin) {
         Origin o = originOf(approvedOrigin);
-        return new TargetNetworkPolicy(Mode.SHARED, o.host, o.port, List.of());
+        return new TargetNetworkPolicy(Mode.SHARED, o.host, o.port, List.of(), List.of());
     }
 
     public static TargetNetworkPolicy dedicated(String approvedOrigin, List<String> extraCidrsOrHosts) {
         Origin o = originOf(approvedOrigin);
         List<Cidr> cidrs = new ArrayList<>();
+        List<String> allow = new ArrayList<>();
         if (extraCidrsOrHosts != null) {
             for (String raw : extraCidrsOrHosts) {
                 Cidr parsed = Cidr.parse(raw);
                 if (parsed != null) {
                     cidrs.add(parsed);
+                    allow.add(raw.trim());
                 }
             }
         }
-        return new TargetNetworkPolicy(Mode.DEDICATED, o.host, o.port, List.copyOf(cidrs));
+        return new TargetNetworkPolicy(Mode.DEDICATED, o.host, o.port, List.copyOf(cidrs), List.copyOf(allow));
     }
 
     public static TargetNetworkPolicy forJob(String approvedOrigin) {
@@ -86,6 +96,15 @@ public final class TargetNetworkPolicy {
 
     public Mode mode() {
         return mode;
+    }
+
+    public String approvedHost() {
+        return approvedHost;
+    }
+
+    /** Raw dedicated CIDR/host strings. Empty on shared installs. */
+    public List<String> dedicatedAllowlist() {
+        return dedicatedAllowlist;
     }
 
     public Decision inspect(String url) {

@@ -183,9 +183,15 @@ public class TcExecutionService {
     }
 
     public byte[] capturePngBytes() {
+        return captureRedactedPng();
+    }
+
+    private byte[] captureRedactedPng() {
         try {
-            if (driverFactory.get() instanceof TakesScreenshot ts) {
-                return ts.getScreenshotAs(OutputType.BYTES);
+            org.openqa.selenium.WebDriver driver = driverFactory.get();
+            if (driver instanceof TakesScreenshot ts) {
+                return delivery.privacy.ScreenshotRedactor.redactCapture(
+                        driver, ts.getScreenshotAs(OutputType.BYTES));
             }
         } catch (Exception ignored) {
         }
@@ -477,10 +483,11 @@ public class TcExecutionService {
         }
         try {
             Files.createDirectories(evidenceDir);
-            if (driverFactory.get() instanceof TakesScreenshot ts) {
+            byte[] png = captureRedactedPng();
+            if (png.length > 0) {
                 int n = shotSeq.incrementAndGet();
                 String name = String.format("step-%03d.png", n);
-                Files.write(evidenceDir.resolve(name), ts.getScreenshotAs(OutputType.BYTES));
+                Files.write(evidenceDir.resolve(name), png);
                 return name;
             }
         } catch (Exception ignored) {
@@ -509,8 +516,9 @@ public class TcExecutionService {
         }
         try {
             Files.createDirectories(evidenceDir);
-            if (driverFactory.get() instanceof TakesScreenshot ts) {
-                Files.write(evidenceDir.resolve("failure.png"), ts.getScreenshotAs(OutputType.BYTES));
+            byte[] png = captureRedactedPng();
+            if (png.length > 0) {
+                Files.write(evidenceDir.resolve("failure.png"), png);
             }
         } catch (Exception ignored) {
         }

@@ -278,10 +278,7 @@ public class CursorHealClient {
             LogsManager.warn("CURSOR_HEAL_SKIPPED: provider_not_allowlisted");
             return "";
         }
-        if (req != null && req.has("slimHtmlExcerpt")) {
-            req.put("slimHtmlExcerpt", delivery.privacy.SecretSanitizer.scrubHtml(
-                    req.optString("slimHtmlExcerpt")));
-        }
+        sanitizeRequest(req);
         String apiKey = System.getenv("CURSOR_API_KEY");
         if (apiKey == null || apiKey.isBlank()) {
             apiKey = System.getProperty("CURSOR_API_KEY", "");
@@ -364,6 +361,37 @@ public class CursorHealClient {
         } catch (Exception e) {
             LogsManager.warn("CURSOR_HEAL_SKIPPED: " + e.getMessage());
             return "";
+        }
+    }
+
+    private static final java.util.Set<String> SIDECAR_PASSTHROUGH_KEYS = java.util.Set.of(
+            "mode", "screenshotPath", "excelOpenPath");
+
+    static void sanitizeRequest(JSONObject req) {
+        if (req == null) {
+            return;
+        }
+        java.util.List<String> secrets = delivery.privacy.SecretSanitizer.extractPasswordValues(
+                req.optString("slimHtmlExcerpt"));
+        java.util.List<String> keys = new ArrayList<>(req.keySet());
+        for (String key : keys) {
+            if (SIDECAR_PASSTHROUGH_KEYS.contains(key)) {
+                continue;
+            }
+            Object v = req.opt(key);
+            if (v instanceof String s) {
+                if ("slimHtmlExcerpt".equals(key) || "suite".equals(key)) {
+                    req.put(key, delivery.privacy.SecretSanitizer.scrubHtml(s, secrets));
+                } else {
+                    req.put(key, delivery.privacy.SecretSanitizer.scrubPrompt(s, secrets));
+                }
+            } else if (v instanceof JSONArray arr) {
+                for (int i = 0; i < arr.length(); i++) {
+                    if (arr.opt(i) instanceof String s) {
+                        arr.put(i, delivery.privacy.SecretSanitizer.scrubPrompt(s, secrets));
+                    }
+                }
+            }
         }
     }
 

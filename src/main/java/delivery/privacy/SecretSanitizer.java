@@ -19,6 +19,8 @@ public final class SecretSanitizer {
             "(?i)([?&](?:token|password|passwd|secret|api[_-]?key|access[_-]?token)=)[^&]*");
     private static final Pattern PASSWORD_ASSIGN = Pattern.compile(
             "(?i)((?:password|passwd|secret|api[_-]?key)\\s*[=:]\\s*)[^\\s&\"']+");
+    private static final Pattern TYPE_PASSWORD = Pattern.compile(
+            "(?i)((?:type|enter|fill)\\s+password\\s+)[^\\s&\"']+");
 
     private SecretSanitizer() {
     }
@@ -37,6 +39,31 @@ public final class SecretSanitizer {
                 el.attr("value", MASK);
             }
         }
+    }
+
+    public static java.util.List<String> extractPasswordValues(String html) {
+        if (html == null || html.isBlank()) {
+            return List.of();
+        }
+        Document doc = Jsoup.parse(html);
+        java.util.ArrayList<String> values = new java.util.ArrayList<>();
+        for (Element el : doc.select(
+                "input[type=password], input[autocomplete=current-password], input[autocomplete=new-password]")) {
+            String v = el.attr("value");
+            if (v != null && v.length() >= 3) {
+                values.add(v);
+            }
+        }
+        return values;
+    }
+
+    public static String scrubPrompt(String text) {
+        return scrubPrompt(text, List.of());
+    }
+
+    public static String scrubPrompt(String text, Collection<String> secrets) {
+        String out = scrubText(text, secrets);
+        return TYPE_PASSWORD.matcher(out).replaceAll("$1" + MASK);
     }
 
     public static String scrubHtml(String html, Collection<String> secrets) {
