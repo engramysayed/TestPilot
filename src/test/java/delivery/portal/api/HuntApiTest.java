@@ -122,6 +122,36 @@ public class HuntApiTest extends AbstractTestNGSpringContextTests {
         Assert.assertEquals(waitTerminal(jobId), "COMPLETED");
     }
 
+    @Test
+    public void huntPromoteRequiresExplicitAccept() throws Exception {
+        String projectId = createProject();
+        workbooks.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_01", "Login", "", "1. Open login", "Home", "P1", "smoke")
+        ), "test", "hunt-promote");
+        MvcResult start = mockMvc.perform(post("/api/projects/" + projectId + "/hunt-runs")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tcIds\":[\"TC_01\"],\"planner\":\"ollama\",\"scenarioCap\":2,\"cycleCeiling\":2}"))
+                .andExpect(status().isAccepted())
+                .andReturn();
+        String jobId = new JSONObject(start.getResponse().getContentAsString()).getString("jobId");
+        Assert.assertEquals(waitTerminal(jobId), "COMPLETED");
+        mockMvc.perform(post("/api/projects/" + projectId + "/hunt-runs/" + jobId + "/promote")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/projects/" + projectId + "/hunt-runs/" + jobId + "/promote")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"accept\":true}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PROMOTED"));
+    }
+
     private String createProject() throws Exception {
         MvcResult res = mockMvc.perform(post("/api/projects")
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))

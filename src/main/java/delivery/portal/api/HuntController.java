@@ -15,6 +15,7 @@ import delivery.portal.worker.HuntWorker;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -173,6 +174,7 @@ public class HuntController {
         job.setGenerateModel(hunt.getPlanner());
         job.setTenantId(project.getTenantId());
         job.setProgressTotal(hunt.getCycleCeiling());
+        workbooks.headRevisionId(projectId).ifPresent(job::setLibraryRevisionId);
         store.saveJob(job);
         worker.submit(jobId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
@@ -183,5 +185,84 @@ public class HuntController {
                 "cycleCeiling", hunt.getCycleCeiling(),
                 "actionCapPerCycle", hunt.getActionCapPerCycle()
         ));
+    }
+
+    public record PromoteRequest(Boolean accept, String baseRevision) {
+    }
+
+    @GetMapping("/{projectId}/hunt-runs/{jobId}/promote")
+    public ResponseEntity<?> previewPromote(
+            @PathVariable("projectId") String projectId,
+            @PathVariable("jobId") String jobId
+    ) throws Exception {
+        Long uid = currentUser.requireUserId();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessReadable(store, projectId, uid);
+        if (denied != null) {
+            return denied;
+        }
+        return ResponseEntity.ok(promotePreview(projectId, jobId, uid));
+    }
+
+    @PostMapping("/{projectId}/hunt-runs/{jobId}/promote")
+    public ResponseEntity<?> acceptPromote(
+            @PathVariable("projectId") String projectId,
+            @PathVariable("jobId") String jobId,
+            @RequestBody(required = false) PromoteRequest body
+    ) throws Exception {
+        Long uid = currentUser.requireUserId();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, uid);
+        if (denied != null) {
+            return denied;
+        }
+        if (body == null || !Boolean.TRUE.equals(body.accept())) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_REQUEST", "explicit accept=true is required").asMap());
+        }
+        Map<String, Object> preview = promotePreview(projectId, jobId, uid);
+        @SuppressWarnings("unchecked")
+        List<ManualTestCase> cases = (List<ManualTestCase>) preview.get("cases");
+        String pinned = String.valueOf(preview.getOrDefault("pinnedLibraryRevisionId", ""));
+        String base = body.baseRevision() == null || body.baseRevision().isBlank() ? pinned : body.baseRevision();
+        workbooks.saveFromCases(
+                projectId,
+                cases,
+                delivery.hunt.HuntPromotion.provenance(jobId),
+                currentUser.requireUser().getEmail(),
+                null,
+                base);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "status", "PROMOTED",
+                "jobId", jobId,
+                "baseRevision", base,
+                "caseCount", cases.size()
+        ));
+    }
+
+    private Map<String, Object> promotePreview(String projectId, String jobId, Long uid) throws Exception {
+        JobRecord job = store.getOwnedJob(jobId, uid).orElse(null);
+        if (job == null || !projectId.equals(job.getProjectId()) || job.getJobKind() != JobRecord.JobKind.HUNT) {
+            throw new IllegalArgumentException("unknown hunt job");
+        }
+        Path candidates = store.projectDiskRoot(projectId)
+                .resolve("hunt-runs").resolve(jobId).resolve("candidate-scenarios.json");
+        String json = Files.isRegularFile(candidates) ? Files.readString(candidates) : "[]";
+        String pinned = job.getLibraryRevisionId();
+        String head = workbooks.headRevisionId(projectId).orElse("");
+        List<ManualTestCase> library = pinned == null || pinned.isBlank()
+                ? List.of()
+                : workbooks.readRevisionCases(projectId, pinned);
+        var preview = delivery.hunt.HuntPromotion.preview(
+                json, delivery.hunt.HuntPromotion.index(library), pinned, head);
+        return Map.of(
+                "cases", preview.cases(),
+                "duplicates", preview.duplicates().stream().map(d -> Map.of(
+                        "candidateTitle", d.candidateTitle(),
+                        "libraryTcId", d.libraryTcId(),
+                        "kind", d.kind().name()
+                )).toList(),
+                "pinnedLibraryRevisionId", preview.pinnedLibraryRevisionId(),
+                "headRevisionId", head,
+                "automationReady", false
+        );
     }
 }

@@ -43,7 +43,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, ApiRequestHeaderFilter apiHeaderFilter,
-                                           LoginThrottle loginThrottle)
+                                           LoginThrottle loginThrottle,
+                                           delivery.portal.DeliveryPortalProperties props)
             throws Exception {
         // Browser → form login redirect (no HTTP Basic popup). API → 401 JSON/status.
         LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
@@ -88,7 +89,8 @@ public class SecurityConfig {
                         .permitAll()
                 )
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
-                .addFilterAfter(apiHeaderFilter, CsrfFilter.class);
+                .addFilterAfter(apiHeaderFilter, CsrfFilter.class)
+                .addFilterAfter(new ServiceIdentityFilter(props), CsrfFilter.class);
         return http.build();
     }
 }

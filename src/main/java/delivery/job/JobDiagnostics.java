@@ -31,6 +31,11 @@ public final class JobDiagnostics {
         out.put("proofKind", proof);
         out.put("proofSource", ResultIntegrity.proofSource(proof, false));
         out.put("libraryRevisionId", job.getLibraryRevisionId());
+        out.put("environmentRevisionId", job.getEnvironmentRevisionId());
+        out.put("parentJobId", job.getParentJobId());
+        out.put("failureClass", delivery.job.FailureClassifier.suggest(
+                (job.getMessage() == null ? "" : job.getMessage()) + " " + (job.getError() == null ? "" : job.getError())
+        ).name());
         out.put("providerAllowlist", job.getProviderAllowlistSnapshot());
         out.put("claimStage", job.getClaimStage());
         out.put("attemptId", job.getAttemptId());

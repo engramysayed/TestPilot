@@ -449,6 +449,7 @@ public class PortalStore {
                     countActiveJobsForTenant(job.getTenantId()),
                     countRunningJobs(),
                     delivery.job.JobAdmission.Limits.fromEnvironment());
+            reserveBudget(job);
         }
         jobs.put(job.getJobId(), job);
         JobEntity entity = jobRepository.findByJobId(job.getJobId()).orElseGet(JobEntity::new);
@@ -508,6 +509,8 @@ public class PortalStore {
         }
         entity.setProviderAllowlistSnapshot(job.getProviderAllowlistSnapshot());
         entity.setLibraryRevisionId(job.getLibraryRevisionId());
+        entity.setEnvironmentRevisionId(job.getEnvironmentRevisionId());
+        entity.setParentJobId(job.getParentJobId());
         entity.setPrecisionMaxSnapshot(job.getPrecisionMaxSnapshot());
         if ((job.getInputSnapshotHash() == null || job.getInputSnapshotHash().isBlank())
                 && job.getStatus() == JobRecord.Status.QUEUED) {
@@ -841,6 +844,8 @@ public class PortalStore {
         job.setInputSnapshotHash(e.getInputSnapshotHash());
         job.setProviderAllowlistSnapshot(e.getProviderAllowlistSnapshot());
         job.setLibraryRevisionId(e.getLibraryRevisionId());
+        job.setEnvironmentRevisionId(e.getEnvironmentRevisionId());
+        job.setParentJobId(e.getParentJobId());
         job.setPrecisionMaxSnapshot(e.getPrecisionMaxSnapshot());
         job.setTenantId(e.getTenantId());
         if (job.getTenantId() == null || job.getTenantId().isBlank()) {
@@ -893,9 +898,6 @@ public class PortalStore {
     }
 
     private void freezeQueuedInputs(JobRecord job) {
-        if (job.getProviderAllowlistSnapshot() == null || job.getProviderAllowlistSnapshot().isBlank()) {
-            job.setProviderAllowlistSnapshot(delivery.privacy.ProviderPolicy.fromEnvironment().snapshot());
-        }
         if (job.getPrecisionMaxSnapshot() <= 0) {
             job.setPrecisionMaxSnapshot(precisionConfigForProject(job.getProjectId()).maxCallsPerJob());
         }
@@ -908,8 +910,44 @@ public class PortalStore {
                 // no library yet
             }
         }
+        if (job.getEnvironmentRevisionId() != null && !job.getEnvironmentRevisionId().isBlank()) {
+            try {
+                var env = new delivery.env.EnvironmentStore(environmentRoot(job.getProjectId()))
+                        .read(job.getEnvironmentRevisionId());
+                if (env.profile().providerAllowlist() != null && !env.profile().providerAllowlist().isBlank()) {
+                    job.setProviderAllowlistSnapshot(env.profile().providerAllowlist());
+                }
+            } catch (Exception ignored) {
+                // missing environment revision stays as queued with caller fields
+            }
+        }
+        if (job.getProviderAllowlistSnapshot() == null || job.getProviderAllowlistSnapshot().isBlank()) {
+            job.setProviderAllowlistSnapshot(delivery.privacy.ProviderPolicy.fromEnvironment().snapshot());
+        }
         if (job.getInputSnapshotHash() == null || job.getInputSnapshotHash().isBlank()) {
             job.setInputSnapshotHash(delivery.job.DurableJobClaim.hashInputs(job));
+        }
+    }
+
+    public Path environmentRoot(String projectId) {
+        return projectDiskRoot(projectId).resolve("environments");
+    }
+
+    private void reserveBudget(JobRecord job) {
+        String tenantId = job.getTenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            return;
+        }
+        try {
+            Path file = delivery.identity.ScopePaths.tenantRoot(
+                            storeRootPath, delivery.identity.TenantId.parse(tenantId))
+                    .resolve("budget.json");
+            new delivery.job.BudgetLedger(file, delivery.job.BudgetLedger.Limits.fromEnvironment())
+                    .reserve(job.getJobId(), 1, delivery.job.BudgetLedger.CostKind.ESTIMATED);
+        } catch (delivery.job.BudgetLedger.Rejected e) {
+            throw new delivery.job.JobAdmissionException(e.code(), e.getMessage());
+        } catch (Exception ignored) {
+            // missing tenant path is non-fatal for legacy unscoped jobs
         }
     }
 

@@ -44,6 +44,8 @@ public class JobRecord {
     private volatile String inputSnapshotHash = "";
     private volatile String providerAllowlistSnapshot = "";
     private volatile String libraryRevisionId = "";
+    private volatile String environmentRevisionId = "";
+    private volatile String parentJobId = "";
     private volatile int precisionMaxSnapshot;
 
     public JobRecord(String jobId, String projectId, Long ownerUserId, String mode, Path excelPath,
@@ -113,6 +115,14 @@ public class JobRecord {
     public String getLibraryRevisionId() { return libraryRevisionId == null ? "" : libraryRevisionId; }
     public void setLibraryRevisionId(String libraryRevisionId) {
         this.libraryRevisionId = libraryRevisionId == null ? "" : libraryRevisionId;
+    }
+    public String getEnvironmentRevisionId() { return environmentRevisionId == null ? "" : environmentRevisionId; }
+    public void setEnvironmentRevisionId(String environmentRevisionId) {
+        this.environmentRevisionId = environmentRevisionId == null ? "" : environmentRevisionId;
+    }
+    public String getParentJobId() { return parentJobId == null ? "" : parentJobId; }
+    public void setParentJobId(String parentJobId) {
+        this.parentJobId = parentJobId == null ? "" : parentJobId;
     }
     public int getPrecisionMaxSnapshot() { return precisionMaxSnapshot; }
     public void setPrecisionMaxSnapshot(int precisionMaxSnapshot) {

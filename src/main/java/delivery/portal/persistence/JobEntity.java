@@ -96,6 +96,12 @@ public class JobEntity {
     @Column(name = "library_revision_id", length = 64)
     private String libraryRevisionId;
 
+    @Column(name = "environment_revision_id", length = 64)
+    private String environmentRevisionId;
+
+    @Column(name = "parent_job_id", length = 80)
+    private String parentJobId;
+
     @Column(name = "precision_max_snapshot", nullable = false, columnDefinition = "integer default 0")
     private int precisionMaxSnapshot;
 
@@ -158,6 +164,12 @@ public class JobEntity {
     }
     public String getLibraryRevisionId() { return libraryRevisionId; }
     public void setLibraryRevisionId(String libraryRevisionId) { this.libraryRevisionId = libraryRevisionId; }
+    public String getEnvironmentRevisionId() { return environmentRevisionId; }
+    public void setEnvironmentRevisionId(String environmentRevisionId) {
+        this.environmentRevisionId = environmentRevisionId;
+    }
+    public String getParentJobId() { return parentJobId; }
+    public void setParentJobId(String parentJobId) { this.parentJobId = parentJobId; }
     public int getPrecisionMaxSnapshot() { return precisionMaxSnapshot; }
     public void setPrecisionMaxSnapshot(int precisionMaxSnapshot) { this.precisionMaxSnapshot = precisionMaxSnapshot; }
 }
