@@ -23,15 +23,17 @@ public class InviteService {
     private final PasswordEncoder encoder;
     private final DeliveryPortalProperties props;
     private final InviteMailService mail;
+    private final WorkspaceInviteConsumer workspaceInvites;
 
     public InviteService(InviteRepository invites, PortalUserRepository users,
                          PasswordEncoder encoder, DeliveryPortalProperties props,
-                         InviteMailService mail) {
+                         InviteMailService mail, WorkspaceInviteConsumer workspaceInvites) {
         this.invites = invites;
         this.users = users;
         this.encoder = encoder;
         this.props = props;
         this.mail = mail;
+        this.workspaceInvites = workspaceInvites;
     }
 
     @Transactional
@@ -88,6 +90,7 @@ public class InviteService {
         users.save(user);
         invite.setUsed(true);
         invites.save(invite);
+        workspaceInvites.consume(user.getEmail(), user.getId());
         return user;
     }
 

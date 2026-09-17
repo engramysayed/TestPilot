@@ -348,17 +348,17 @@ public class PortalStore {
     }
 
     /**
-     * Owner-only delete: tombstone, stop workers, then purge credentials, jobs, and disk.
+     * Workspace-owner delete: tombstone, stop workers, then purge credentials, jobs, and disk.
      * Partial disk failure is logged and retryable because the DB row is already gone.
      */
     @Transactional
     public boolean deleteOwnedProject(String projectId, Long ownerUserId) {
-        Optional<ProjectEntity> owned = projectRepository.findByProjectId(projectId)
-                .filter(p -> p.getOwnerUserId().equals(ownerUserId));
-        if (owned.isEmpty()) {
+        if (!canAdminister(projectId, ownerUserId)) {
             return false;
         }
-        return purgeProject(owned.get());
+        return projectRepository.findByProjectId(projectId)
+                .map(this::purgeProject)
+                .orElse(false);
     }
 
     /**
@@ -938,5 +938,98 @@ public class PortalStore {
         return JobRecord.Status.QUEUED.name().equals(status)
                 || JobRecord.Status.RUNNING.name().equals(status)
                 || JobRecord.Status.CANCELLING.name().equals(status);
+    }
+
+    public delivery.identity.WorkspaceDirectory directory() {
+        return delivery.identity.WorkspaceDirectory.open(storeRootPath);
+    }
+
+    public String workspaceRole(String projectId, Long userId) {
+        delivery.identity.TenantId tenant = tenantForProject(projectId);
+        if (tenant == null || userId == null) {
+            return "";
+        }
+        delivery.identity.WorkspaceRole role = directory().role(tenant, userId);
+        return role == null ? "" : role.name();
+    }
+
+    public int cancelActiveJobsForUserOnTenant(String tenantId, long userId) {
+        if (tenantId == null || tenantId.isBlank() || userId <= 0) {
+            return 0;
+        }
+        int n = 0;
+        for (JobEntity entity : jobRepository.findByOwnerUserIdOrderByCreatedAtDesc(userId)) {
+            String jobTenant = entity.getTenantId();
+            if (jobTenant == null || jobTenant.isBlank()) {
+                jobTenant = projectRepository.findByProjectId(entity.getProjectId())
+                        .map(ProjectEntity::getTenantId)
+                        .orElse("");
+            }
+            if (!tenantId.equals(jobTenant) || !isActiveStatus(entity.getStatus())) {
+                continue;
+            }
+            requestCancel(entity.getJobId());
+            getJob(entity.getJobId()).ifPresent(job -> {
+                job.setMessage("Cancelled because workspace access was revoked");
+                syncJobPersistence(job);
+            });
+            n++;
+        }
+        return n;
+    }
+
+    @Transactional
+    public int removeWorkspaceMember(String projectId, long actorUserId, long targetUserId) throws Exception {
+        delivery.identity.TenantId tenant = requireTenant(projectId);
+        directory().removeMember(tenant, targetUserId, actorUserId);
+        return cancelActiveJobsForUserOnTenant(tenant.value(), targetUserId);
+    }
+
+    @Transactional
+    public void addWorkspaceMember(
+            String projectId, long actorUserId, long targetUserId, delivery.identity.WorkspaceRole role
+    ) throws Exception {
+        directory().addMember(requireTenant(projectId), targetUserId, role, actorUserId);
+    }
+
+    @Transactional
+    public void inviteWorkspaceEmail(
+            String projectId, long actorUserId, String email, delivery.identity.WorkspaceRole role
+    ) throws Exception {
+        directory().inviteEmail(requireTenant(projectId), actorUserId, email, role);
+    }
+
+    @Transactional
+    public void transferWorkspaceOwnership(String projectId, long actorUserId, long toUserId) throws Exception {
+        delivery.identity.TenantId tenant = requireTenant(projectId);
+        directory().transferOwnership(tenant, actorUserId, toUserId);
+        for (ProjectEntity project : projectRepository.findByTenantId(tenant.value())) {
+            project.setOwnerUserId(toUserId);
+            projectRepository.save(project);
+        }
+    }
+
+    @Transactional
+    public delivery.identity.WorkspaceDirectory.CreatedService createWorkspaceService(
+            String projectId, long actorUserId, delivery.identity.WorkspaceRole role, String label
+    ) throws Exception {
+        return directory().createServiceIdentity(requireTenant(projectId), actorUserId, role, label);
+    }
+
+    @Transactional
+    public void revokeWorkspaceService(String projectId, long actorUserId, String serviceId) throws Exception {
+        directory().revokeServiceIdentity(requireTenant(projectId), serviceId, actorUserId);
+    }
+
+    public int consumePendingWorkspaceInvites(String email, long userId) throws Exception {
+        return directory().consumePendingInvites(email, userId);
+    }
+
+    private delivery.identity.TenantId requireTenant(String projectId) {
+        delivery.identity.TenantId tenant = tenantForProject(projectId);
+        if (tenant == null) {
+            throw new IllegalArgumentException("unknown project");
+        }
+        return tenant;
     }
 }

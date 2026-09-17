@@ -37,6 +37,12 @@ public class PortalExceptionHandler {
         return ResponseEntity.badRequest().body(new ApiError("BAD_PATH", e.getMessage()).asMap());
     }
 
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<Map<String, String>> forbidden(SecurityException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiError("ROLE_REQUIRED", e.getMessage() == null ? "Not allowed" : e.getMessage()).asMap());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> badRequest(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(new ApiError("BAD_REQUEST", e.getMessage()).asMap());

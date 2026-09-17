@@ -9,5 +9,6 @@ public interface ProjectRepository extends JpaRepository<ProjectEntity, Long> {
     Optional<ProjectEntity> findByProjectId(String projectId);
     List<ProjectEntity> findByOwnerUserIdOrderByIdDesc(Long ownerUserId);
     List<ProjectEntity> findByOwnerUserIdAndArchivedOrderByIdDesc(Long ownerUserId, boolean archived);
+    List<ProjectEntity> findByTenantId(String tenantId);
     void deleteByOwnerUserId(Long ownerUserId);
 }

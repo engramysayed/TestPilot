@@ -124,6 +124,11 @@ public class ProjectController {
         map.put("archived", p.isArchived());
         map.put("lastModified", p.getLastModified());
         map.put("lastModifiedLabel", p.getLastModifiedLabel());
+        try {
+            map.put("workspaceRole", store.workspaceRole(p.getProjectId(), currentUser.requireUserId()));
+        } catch (RuntimeException ignored) {
+            map.put("workspaceRole", "");
+        }
         return map;
     }
 

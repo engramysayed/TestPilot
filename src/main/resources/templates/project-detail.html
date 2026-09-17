@@ -126,6 +126,57 @@
             </form>
         </section>
 
+        <section class="panel" id="workspace-collab-panel">
+            <h2>Workspace members</h2>
+            <p class="panel-intro">
+                MEMBER is read-only. OWNER and ADMIN may operate. Only OWNER can change membership,
+                transfer ownership, or manage service identities. Removing someone cancels their
+                queued and running jobs; completed results stay with the workspace.
+            </p>
+            <p id="workspace-role-line" class="muted"></p>
+            <div class="table-scroll">
+                <table class="table" id="workspace-members-table">
+                    <thead>
+                    <tr><th>Email</th><th>Role</th><th></th></tr>
+                    </thead>
+                    <tbody id="workspace-members-body"></tbody>
+                </table>
+            </div>
+            <form id="workspace-invite-form" class="settings-form" hidden>
+                <label>Invite email
+                    <input type="email" id="workspace-invite-email" required/>
+                </label>
+                <label>Role
+                    <select id="workspace-invite-role">
+                        <option value="MEMBER">MEMBER (read-only)</option>
+                        <option value="ADMIN">ADMIN (operate)</option>
+                    </select>
+                </label>
+                <button type="submit">Invite</button>
+            </form>
+            <p id="workspace-pending" class="muted"></p>
+            <form id="workspace-service-form" class="settings-form" hidden>
+                <h3>Service identities</h3>
+                <p class="muted">Tokens start with <code>tp_svc_</code> and can be MEMBER or ADMIN, never OWNER.</p>
+                <label>Label
+                    <input type="text" id="workspace-service-label" placeholder="ci"/>
+                </label>
+                <label>Role
+                    <select id="workspace-service-role">
+                        <option value="MEMBER">MEMBER</option>
+                        <option value="ADMIN">ADMIN</option>
+                    </select>
+                </label>
+                <button type="submit">Create token</button>
+            </form>
+            <pre id="workspace-service-token" class="mono" hidden></pre>
+            <ul id="workspace-services-list"></ul>
+            <h3>Membership audit</h3>
+            <ul id="workspace-audit-list" class="muted"></ul>
+            <p id="workspace-collab-msg" class="muted" hidden></p>
+            <p id="workspace-collab-err" class="error" hidden></p>
+        </section>
+
         <section class="panel">
             <div class="panel-head-row">
                 <div>
@@ -595,6 +646,183 @@
         if (badge) badge.hidden = !p.archived;
         const archiveBtn = document.getElementById('archive-btn');
         if (archiveBtn) archiveBtn.hidden = !!p.archived;
+        loadWorkspaceCollaboration(p.workspaceRole || '');
+    }
+
+    function setCollabMessage(text, isError) {
+        const msg = document.getElementById('workspace-collab-msg');
+        const err = document.getElementById('workspace-collab-err');
+        if (msg) {
+            msg.hidden = isError || !text;
+            msg.textContent = isError ? '' : (text || '');
+        }
+        if (err) {
+            err.hidden = !isError || !text;
+            err.textContent = isError ? (text || '') : '';
+        }
+    }
+
+    async function loadWorkspaceCollaboration(roleHint) {
+        const roleLine = document.getElementById('workspace-role-line');
+        const body = document.getElementById('workspace-members-body');
+        if (!body) return;
+        const res = await fetch(apiUrl('/members'), { credentials: 'same-origin', headers: API_HEADERS });
+        if (!res.ok) return;
+        const data = await res.json();
+        const role = data.workspaceRole || roleHint || '';
+        const isOwner = role === 'OWNER';
+        if (roleLine) {
+            roleLine.textContent = role ? ('Your role: ' + role) : '';
+        }
+        const inviteForm = document.getElementById('workspace-invite-form');
+        const serviceForm = document.getElementById('workspace-service-form');
+        if (inviteForm) inviteForm.hidden = !isOwner;
+        if (serviceForm) serviceForm.hidden = !isOwner;
+        body.innerHTML = '';
+        (data.members || []).forEach(m => {
+            const tr = document.createElement('tr');
+            const email = escapeHtml(m.email || String(m.userId));
+            const memberRole = escapeHtml(m.role || '');
+            let actions = '';
+            if (isOwner && memberRole !== 'OWNER') {
+                actions = '<button type="button" class="button ghost workspace-remove" data-user-id="'
+                    + m.userId + '">Remove</button>'
+                    + '<button type="button" class="button ghost workspace-transfer" data-user-id="'
+                    + m.userId + '">Make owner</button>';
+            }
+            tr.innerHTML = '<td>' + email + '</td><td>' + memberRole + '</td><td>' + actions + '</td>';
+            body.appendChild(tr);
+        });
+        const pendingEl = document.getElementById('workspace-pending');
+        if (pendingEl) {
+            const pending = data.pending || [];
+            pendingEl.textContent = pending.length
+                ? ('Pending invites: ' + pending.map(p => p.email + ' (' + p.role + ')').join(', '))
+                : '';
+        }
+        if (isOwner) {
+            const svcRes = await fetch(apiUrl('/services'), { credentials: 'same-origin', headers: API_HEADERS });
+            const list = document.getElementById('workspace-services-list');
+            if (list && svcRes.ok) {
+                const svcData = await svcRes.json();
+                list.innerHTML = '';
+                (svcData.services || []).forEach(s => {
+                    const li = document.createElement('li');
+                    li.textContent = (s.label || s.id) + ' — ' + s.role + (s.revoked ? ' (revoked)' : '');
+                    if (!s.revoked) {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'button ghost';
+                        btn.textContent = 'Revoke';
+                        btn.addEventListener('click', () => revokeWorkspaceService(s.id));
+                        li.appendChild(btn);
+                    }
+                    list.appendChild(li);
+                });
+            }
+        }
+        const auditRes = await fetch(apiUrl('/audit'), { credentials: 'same-origin', headers: API_HEADERS });
+        const auditList = document.getElementById('workspace-audit-list');
+        if (auditList && auditRes.ok) {
+            const audit = await auditRes.json();
+            auditList.innerHTML = '';
+            (audit.events || []).slice().reverse().slice(0, 20).forEach(ev => {
+                const li = document.createElement('li');
+                li.textContent = (ev.at || '') + ' ' + (ev.action || '') + ' target=' + (ev.targetUserId || '')
+                    + ' ' + (ev.detail || '');
+                auditList.appendChild(li);
+            });
+        }
+    }
+
+    async function revokeWorkspaceService(serviceId) {
+        const res = await fetch(apiUrl('/services/' + encodeURIComponent(serviceId)), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        setCollabMessage(res.ok ? 'Service identity revoked.' : 'Could not revoke service identity.', !res.ok);
+        loadWorkspaceCollaboration();
+    }
+
+    const membersBody = document.getElementById('workspace-members-body');
+    if (membersBody) {
+        membersBody.addEventListener('click', async (e) => {
+            const remove = e.target.closest('.workspace-remove');
+            const transfer = e.target.closest('.workspace-transfer');
+            if (remove) {
+                const userId = remove.getAttribute('data-user-id');
+                const res = await fetch(apiUrl('/members/' + encodeURIComponent(userId)), {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: API_HEADERS
+                });
+                const data = await res.json().catch(() => ({}));
+                setCollabMessage(res.ok
+                    ? ('Member removed. Cancelled jobs: ' + (data.cancelledJobs || 0))
+                    : (data.message || 'Could not remove member.'), !res.ok);
+                loadWorkspaceCollaboration();
+            } else if (transfer) {
+                const userId = Number(transfer.getAttribute('data-user-id'));
+                const res = await fetch(apiUrl('/ownership'), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                const data = await res.json().catch(() => ({}));
+                setCollabMessage(res.ok ? 'Ownership transferred. You are now ADMIN.'
+                    : (data.message || 'Could not transfer ownership.'), !res.ok);
+                loadWorkspaceCollaboration();
+            }
+        });
+    }
+
+    const inviteForm = document.getElementById('workspace-invite-form');
+    if (inviteForm) {
+        inviteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('workspace-invite-email').value.trim();
+            const role = document.getElementById('workspace-invite-role').value;
+            const res = await fetch(apiUrl('/members'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, role })
+            });
+            const data = await res.json().catch(() => ({}));
+            setCollabMessage(res.ok ? (data.status === 'INVITED' ? 'Invite pending until they join.' : 'Member added.')
+                : (data.message || 'Could not invite.'), !res.ok);
+            if (res.ok) {
+                document.getElementById('workspace-invite-email').value = '';
+            }
+            loadWorkspaceCollaboration();
+        });
+    }
+
+    const serviceForm = document.getElementById('workspace-service-form');
+    if (serviceForm) {
+        serviceForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const label = document.getElementById('workspace-service-label').value.trim();
+            const role = document.getElementById('workspace-service-role').value;
+            const res = await fetch(apiUrl('/services'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label, role })
+            });
+            const data = await res.json().catch(() => ({}));
+            const tokenEl = document.getElementById('workspace-service-token');
+            if (res.ok && tokenEl) {
+                tokenEl.hidden = false;
+                tokenEl.textContent = data.token || '';
+                setCollabMessage(data.message || 'Copy this token now.', false);
+            } else {
+                setCollabMessage(data.message || 'Could not create service identity.', true);
+            }
+            loadWorkspaceCollaboration();
+        });
     }
 
     function updateSettingsPrecisionWarning(precisionEnabled) {

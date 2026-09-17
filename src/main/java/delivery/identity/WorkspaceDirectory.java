@@ -6,8 +6,15 @@ import org.json.JSONObject;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * File-backed workspace registry. Tenant ids are opaque; user ids and display
@@ -15,6 +22,18 @@ import java.util.Locale;
  */
 public final class WorkspaceDirectory {
     public static final String FILE_NAME = "directory.json";
+
+    public record AuditEvent(String at, long actorUserId, String action, long targetUserId, String detail) {
+    }
+
+    public record ServiceIdentity(String id, TenantId tenant, WorkspaceRole role, String label, boolean revoked) {
+    }
+
+    public record CreatedService(String id, WorkspaceRole role, String token) {
+    }
+
+    public record PendingInvite(String email, WorkspaceRole role, long invitedBy, String at) {
+    }
 
     private final Path storeRoot;
     private final Path file;
@@ -109,21 +128,170 @@ public final class WorkspaceDirectory {
     }
 
     public void addMember(TenantId tenant, long userId, WorkspaceRole role) throws Exception {
+        addMember(tenant, userId, role, 0L);
+    }
+
+    public void addMember(TenantId tenant, long userId, WorkspaceRole role, long actorUserId) throws Exception {
         if (tenant == null || userId <= 0 || role == null) {
             throw new IllegalArgumentException("tenant, user and role are required");
         }
+        if (role == WorkspaceRole.OWNER) {
+            throw new IllegalArgumentException("use transferOwnership to grant OWNER");
+        }
         mutate(root -> {
+            requireActorAdministers(root, tenant, actorUserId);
             JSONArray memberships = root.getJSONArray("memberships");
             for (int i = 0; i < memberships.length(); i++) {
                 JSONObject row = memberships.getJSONObject(i);
                 if (tenant.value().equals(row.optString("tenantId")) && row.optLong("userId") == userId) {
                     row.put("role", role.name());
+                    appendAudit(root, tenant, actorUserId, "SET_ROLE", userId, role.name());
                     return tenant;
                 }
             }
             addMembership(root, tenant, userId, role);
+            appendAudit(root, tenant, actorUserId, "ADD_MEMBER", userId, role.name());
             return tenant;
         });
+    }
+
+    public void removeMember(TenantId tenant, long userId, long actorUserId) throws Exception {
+        mutate(root -> {
+            requireActorAdministers(root, tenant, actorUserId);
+            JSONArray memberships = root.getJSONArray("memberships");
+            int found = -1;
+            String foundRole = "";
+            for (int i = 0; i < memberships.length(); i++) {
+                JSONObject row = memberships.getJSONObject(i);
+                if (tenant.value().equals(row.optString("tenantId")) && row.optLong("userId") == userId) {
+                    found = i;
+                    foundRole = row.optString("role", "");
+                    break;
+                }
+            }
+            if (found < 0) {
+                throw new IllegalArgumentException("user " + userId + " is not a member of " + tenant);
+            }
+            if (WorkspaceRole.OWNER.name().equals(foundRole)) {
+                throw new IllegalStateException("cannot remove the workspace owner; transfer ownership first");
+            }
+            memberships.remove(found);
+            appendAudit(root, tenant, actorUserId, "REMOVE_MEMBER", userId, foundRole);
+            return tenant;
+        });
+    }
+
+    public void transferOwnership(TenantId tenant, long actorUserId, long toUserId) throws Exception {
+        if (tenant == null || actorUserId <= 0 || toUserId <= 0) {
+            throw new IllegalArgumentException("tenant and users are required");
+        }
+        if (actorUserId == toUserId) {
+            throw new IllegalArgumentException("cannot transfer ownership to self");
+        }
+        mutate(root -> {
+            requireActorAdministers(root, tenant, actorUserId);
+            JSONObject target = membershipRow(root, tenant, toUserId);
+            if (target == null) {
+                throw new IllegalArgumentException("target is not a member of " + tenant);
+            }
+            JSONObject actor = membershipRow(root, tenant, actorUserId);
+            if (actor == null) {
+                throw new SecurityException("user " + actorUserId + " cannot administer " + tenant);
+            }
+            actor.put("role", WorkspaceRole.ADMIN.name());
+            target.put("role", WorkspaceRole.OWNER.name());
+            appendAudit(root, tenant, actorUserId, "TRANSFER_OWNERSHIP", toUserId, "from=" + actorUserId);
+            return tenant;
+        });
+    }
+
+    public List<AuditEvent> audit(TenantId tenant) throws Exception {
+        JSONObject root = read();
+        JSONArray events = root.optJSONArray("audit");
+        List<AuditEvent> out = new ArrayList<>();
+        if (events == null || tenant == null) {
+            return List.of();
+        }
+        for (int i = 0; i < events.length(); i++) {
+            JSONObject row = events.getJSONObject(i);
+            if (tenant.value().equals(row.optString("tenantId"))) {
+                out.add(new AuditEvent(
+                        row.optString("at"),
+                        row.optLong("actorUserId"),
+                        row.optString("action"),
+                        row.optLong("targetUserId"),
+                        row.optString("detail")));
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    public CreatedService createServiceIdentity(
+            TenantId tenant, long actorUserId, WorkspaceRole role, String label
+    ) throws Exception {
+        if (role == null || role == WorkspaceRole.OWNER) {
+            throw new IllegalArgumentException("service identity cannot be OWNER");
+        }
+        String token = "tp_svc_" + UUID.randomUUID().toString().replace("-", "");
+        String id = "svc_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        mutate(root -> {
+            requireActorAdministers(root, tenant, actorUserId);
+            JSONArray services = ensureArray(root, "services");
+            JSONObject row = new JSONObject();
+            row.put("id", id);
+            row.put("tenantId", tenant.value());
+            row.put("role", role.name());
+            row.put("label", label == null ? "" : label);
+            row.put("tokenHash", sha256(token));
+            row.put("createdBy", actorUserId);
+            row.put("createdAt", Instant.now().toString());
+            row.put("revokedAt", "");
+            services.put(row);
+            appendAudit(root, tenant, actorUserId, "CREATE_SERVICE", 0L, id + ":" + role.name());
+            return tenant;
+        });
+        return new CreatedService(id, role, token);
+    }
+
+    public void revokeServiceIdentity(TenantId tenant, String serviceId, long actorUserId) throws Exception {
+        mutate(root -> {
+            requireActorAdministers(root, tenant, actorUserId);
+            JSONObject row = serviceRow(root, tenant, serviceId);
+            if (row == null) {
+                throw new IllegalArgumentException("unknown service identity: " + serviceId);
+            }
+            row.put("revokedAt", Instant.now().toString());
+            appendAudit(root, tenant, actorUserId, "REVOKE_SERVICE", 0L, serviceId);
+            return tenant;
+        });
+    }
+
+    public Optional<ServiceIdentity> authenticateService(String token) {
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            String hash = sha256(token);
+            JSONObject root = read();
+            JSONArray services = root.optJSONArray("services");
+            if (services == null) {
+                return Optional.empty();
+            }
+            for (int i = 0; i < services.length(); i++) {
+                JSONObject row = services.getJSONObject(i);
+                if (hash.equals(row.optString("tokenHash")) && row.optString("revokedAt", "").isBlank()) {
+                    return Optional.of(new ServiceIdentity(
+                            row.optString("id"),
+                            TenantId.parse(row.getString("tenantId")),
+                            WorkspaceRole.valueOf(row.optString("role")),
+                            row.optString("label"),
+                            false));
+                }
+            }
+            return Optional.empty();
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 
     public WorkspaceRole role(TenantId tenant, long userId) {
@@ -185,6 +353,129 @@ public final class WorkspaceDirectory {
         }
     }
 
+    public List<WorkspaceMembership> listMembers(TenantId tenant) throws Exception {
+        JSONObject root = read();
+        JSONArray memberships = root.getJSONArray("memberships");
+        List<WorkspaceMembership> out = new ArrayList<>();
+        if (tenant == null) {
+            return List.of();
+        }
+        for (int i = 0; i < memberships.length(); i++) {
+            JSONObject row = memberships.getJSONObject(i);
+            if (tenant.value().equals(row.optString("tenantId"))) {
+                out.add(new WorkspaceMembership(
+                        tenant,
+                        row.optLong("userId"),
+                        WorkspaceRole.valueOf(row.optString("role", WorkspaceRole.MEMBER.name()))));
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    public List<ServiceIdentity> listServices(TenantId tenant) throws Exception {
+        JSONObject root = read();
+        JSONArray services = root.optJSONArray("services");
+        List<ServiceIdentity> out = new ArrayList<>();
+        if (services == null || tenant == null) {
+            return List.of();
+        }
+        for (int i = 0; i < services.length(); i++) {
+            JSONObject row = services.getJSONObject(i);
+            if (tenant.value().equals(row.optString("tenantId"))) {
+                out.add(new ServiceIdentity(
+                        row.optString("id"),
+                        tenant,
+                        WorkspaceRole.valueOf(row.optString("role", WorkspaceRole.MEMBER.name())),
+                        row.optString("label"),
+                        !row.optString("revokedAt", "").isBlank()));
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    public void inviteEmail(TenantId tenant, long actorUserId, String email, WorkspaceRole role) throws Exception {
+        if (tenant == null || actorUserId <= 0 || role == null) {
+            throw new IllegalArgumentException("tenant, actor and role are required");
+        }
+        if (role == WorkspaceRole.OWNER) {
+            throw new IllegalArgumentException("use transferOwnership to grant OWNER");
+        }
+        String normalized = normalizeEmail(email);
+        mutate(root -> {
+            requireActorAdministers(root, tenant, actorUserId);
+            JSONArray invites = ensureArray(root, "invites");
+            for (int i = 0; i < invites.length(); i++) {
+                JSONObject row = invites.getJSONObject(i);
+                if (tenant.value().equals(row.optString("tenantId"))
+                        && normalized.equals(row.optString("email"))) {
+                    row.put("role", role.name());
+                    row.put("invitedBy", actorUserId);
+                    row.put("at", Instant.now().toString());
+                    appendAudit(root, tenant, actorUserId, "INVITE", 0L, normalized + ":" + role.name());
+                    return tenant;
+                }
+            }
+            JSONObject row = new JSONObject();
+            row.put("tenantId", tenant.value());
+            row.put("email", normalized);
+            row.put("role", role.name());
+            row.put("invitedBy", actorUserId);
+            row.put("at", Instant.now().toString());
+            invites.put(row);
+            appendAudit(root, tenant, actorUserId, "INVITE", 0L, normalized + ":" + role.name());
+            return tenant;
+        });
+    }
+
+    public List<PendingInvite> pendingInvites(TenantId tenant) throws Exception {
+        JSONObject root = read();
+        JSONArray invites = root.optJSONArray("invites");
+        List<PendingInvite> out = new ArrayList<>();
+        if (invites == null || tenant == null) {
+            return List.of();
+        }
+        for (int i = 0; i < invites.length(); i++) {
+            JSONObject row = invites.getJSONObject(i);
+            if (tenant.value().equals(row.optString("tenantId"))) {
+                out.add(new PendingInvite(
+                        row.optString("email"),
+                        WorkspaceRole.valueOf(row.optString("role", WorkspaceRole.MEMBER.name())),
+                        row.optLong("invitedBy"),
+                        row.optString("at")));
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    public int consumePendingInvites(String email, long userId) throws Exception {
+        if (userId <= 0) {
+            throw new IllegalArgumentException("user id must be positive");
+        }
+        String normalized = normalizeEmail(email);
+        return mutate(root -> {
+            JSONArray invites = ensureArray(root, "invites");
+            int consumed = 0;
+            for (int i = invites.length() - 1; i >= 0; i--) {
+                JSONObject row = invites.getJSONObject(i);
+                if (!normalized.equals(row.optString("email"))) {
+                    continue;
+                }
+                TenantId tenant = TenantId.parse(row.getString("tenantId"));
+                WorkspaceRole role = WorkspaceRole.valueOf(row.optString("role", WorkspaceRole.MEMBER.name()));
+                if (role == WorkspaceRole.OWNER) {
+                    role = WorkspaceRole.MEMBER;
+                }
+                if (membershipRow(root, tenant, userId) == null) {
+                    addMembership(root, tenant, userId, role);
+                    appendAudit(root, tenant, row.optLong("invitedBy"), "ADD_MEMBER", userId, role.name());
+                }
+                invites.remove(i);
+                consumed++;
+            }
+            return consumed;
+        });
+    }
+
     public Path file() {
         return file;
     }
@@ -199,6 +490,9 @@ public final class WorkspaceDirectory {
             empty.put("version", 1);
             empty.put("tenants", new JSONObject());
             empty.put("memberships", new JSONArray());
+            empty.put("audit", new JSONArray());
+            empty.put("services", new JSONArray());
+            empty.put("invites", new JSONArray());
             return empty;
         }
         return new JSONObject(Files.readString(file, StandardCharsets.UTF_8));
@@ -260,6 +554,78 @@ public final class WorkspaceDirectory {
         row.put("userId", userId);
         row.put("role", role.name());
         root.getJSONArray("memberships").put(row);
+    }
+
+    private static void requireActorAdministers(JSONObject root, TenantId tenant, long actorUserId) {
+        if (actorUserId <= 0) {
+            return;
+        }
+        JSONObject row = membershipRow(root, tenant, actorUserId);
+        if (row == null || !WorkspaceRole.OWNER.name().equals(row.optString("role"))) {
+            throw new SecurityException("user " + actorUserId + " cannot administer " + tenant);
+        }
+    }
+
+    private static JSONObject membershipRow(JSONObject root, TenantId tenant, long userId) {
+        JSONArray memberships = root.getJSONArray("memberships");
+        for (int i = 0; i < memberships.length(); i++) {
+            JSONObject row = memberships.getJSONObject(i);
+            if (tenant.value().equals(row.optString("tenantId")) && row.optLong("userId") == userId) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    private static JSONObject serviceRow(JSONObject root, TenantId tenant, String serviceId) {
+        JSONArray services = ensureArray(root, "services");
+        for (int i = 0; i < services.length(); i++) {
+            JSONObject row = services.getJSONObject(i);
+            if (tenant.value().equals(row.optString("tenantId")) && serviceId.equals(row.optString("id"))) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    private static JSONArray ensureArray(JSONObject root, String key) {
+        JSONArray existing = root.optJSONArray(key);
+        if (existing != null) {
+            return existing;
+        }
+        JSONArray created = new JSONArray();
+        root.put(key, created);
+        return created;
+    }
+
+    private static void appendAudit(
+            JSONObject root, TenantId tenant, long actorUserId, String action, long targetUserId, String detail
+    ) {
+        JSONArray audit = ensureArray(root, "audit");
+        JSONObject row = new JSONObject();
+        row.put("at", Instant.now().toString());
+        row.put("tenantId", tenant.value());
+        row.put("actorUserId", actorUserId);
+        row.put("action", action);
+        row.put("targetUserId", targetUserId);
+        row.put("detail", detail == null ? "" : detail);
+        audit.put(row);
+    }
+
+    private static String sha256(String token) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            throw new IllegalStateException("sha256 unavailable", e);
+        }
+    }
+
+    private static String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("email is required");
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private static String normalizeSlug(String displaySlug) {
