@@ -56,6 +56,7 @@
         </dl>
         <dl class="status" id="integrity">
             <dt>Proof</dt><dd id="proof-kind">—</dd>
+            <dt>Proof source</dt><dd id="proof-source">—</dd>
             <dt>Library revision</dt><dd id="library-revision">—</dd>
             <dt>Providers</dt><dd id="provider-allowlist">—</dd>
             <dt>Download</dt><dd id="download-state">—</dd>
@@ -285,6 +286,16 @@
                 INTERRUPTED: 'Interrupted — review before replay'
             };
             proofEl.textContent = labels[kind] || kind;
+        }
+        const sourceEl = document.getElementById('proof-source');
+        if (sourceEl) {
+            const sources = {
+                BROWSER_PROOF: 'Live browser proof',
+                FRAMEWORK_REPLAY: 'Generated-framework replay (not live browser proof)',
+                SIMULATED: 'Simulated dry-run',
+                UNCHECKED: 'Not executed'
+            };
+            sourceEl.textContent = sources[data.proofSource] || data.proofSource || '—';
         }
         const revEl = document.getElementById('library-revision');
         if (revEl) {

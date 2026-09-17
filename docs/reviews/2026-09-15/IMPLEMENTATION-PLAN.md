@@ -364,9 +364,11 @@ These are proposed product priorities, not validated market demand. Foundational
 
 **User value:** understand the strength and source of every result.
 
-- [ ] Present fresh execution, reuse, partial coverage, blocked steps and simulation explicitly.
-- [ ] Show expected versus observed assertions and evidence links.
-- [ ] Explain the denominator of coverage/pass rates and distinguish generated-framework replay from browser proof.
+**2026-09-17 (E02, development after candidate `75e6996`):** dashboard proven pass rate excludes simulated dry-run cases from the numerator; blocked and unchecked stay in the denominator. Job status shows proof kind plus proof source (browser vs framework replay vs simulated). Proven case timelines expose expected vs observed and evidence links. This is implemented product behavior, not a Phase 5 launch guarantee.
+
+- [x] Present fresh execution, reuse, partial coverage, blocked steps and simulation explicitly.
+- [x] Show expected versus observed assertions and evidence links.
+- [x] Explain the denominator of coverage/pass rates and distinguish generated-framework replay from browser proof.
 
 **Done when:** users can trace every displayed success to current proof or clearly labeled historical reuse; unchecked work does not inflate the pass rate.
 

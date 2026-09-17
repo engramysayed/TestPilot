@@ -1209,6 +1209,7 @@
                 '<span class="tc-title">' + escapeHtml(tc.title || tc.tcId) + '</span>' +
                 '<span class="mono muted">' + escapeHtml(tc.tcId) + '</span>' +
                 '<span class="badge ' + badgeClass(tc.status) + '">' + escapeHtml(tc.status) + '</span>' +
+                (tc.proofKind ? '<span class="badge muted">' + escapeHtml(tc.proofKind) + '</span>' : '') +
                 '<span class="muted">' + (tc.provenCount || 0) + ' proven</span>' +
                 (tc.runAtLabel ? '<span class="muted">Ran ' + escapeHtml(tc.runAtLabel) + '</span>' : '');
             item.appendChild(summary);
@@ -1255,6 +1256,15 @@
             html += '<span>' + escapeHtml(step.label || '') + '</span>';
             if (step.pageName) {
                 html += ' <span class="mono muted">@' + escapeHtml(step.pageName) + '</span>';
+            }
+            if (step.expected) {
+                html += '<div class="muted"><strong>Expected:</strong> ' + escapeHtml(step.expected) + '</div>';
+            }
+            if (step.observed) {
+                html += '<div class="muted"><strong>Observed:</strong> ' + escapeHtml(step.observed) + '</div>';
+            }
+            if (step.screenshotUrl) {
+                html += '<div><a href="' + escapeHtml(step.screenshotUrl) + '">Evidence</a></div>';
             }
             if (step.reason) {
                 html += '<div class="error">' + escapeHtml(step.reason) + '</div>';

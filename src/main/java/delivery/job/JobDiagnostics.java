@@ -29,6 +29,7 @@ public final class JobDiagnostics {
         out.put("jobId", job.getJobId());
         out.put("status", status.name());
         out.put("proofKind", proof);
+        out.put("proofSource", ResultIntegrity.proofSource(proof, false));
         out.put("libraryRevisionId", job.getLibraryRevisionId());
         out.put("providerAllowlist", job.getProviderAllowlistSnapshot());
         out.put("claimStage", job.getClaimStage());

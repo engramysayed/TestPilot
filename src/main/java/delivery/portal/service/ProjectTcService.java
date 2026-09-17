@@ -127,6 +127,7 @@ public class ProjectTcService {
         m.put("tcId", d.tcId());
         m.put("title", d.title());
         m.put("status", d.status().name());
+        m.put("proofKind", delivery.job.JobDiagnostics.caseProofKind(d.status(), false));
         m.put("provenCount", d.provenSteps().size());
         m.put("blockerStepIndex", d.blockerStepIndex());
         m.put("blockerIntent", d.blockerIntent());
@@ -149,6 +150,8 @@ public class ProjectTcService {
             row.put("action", s.action());
             row.put("locator", formatLocator(s));
             row.put("rationale", s.rationale());
+            row.put("expected", s.assertionExpected() == null ? "" : s.assertionExpected());
+            row.put("observed", s.rationale() == null ? "" : s.rationale());
             String shot = s.screenshotRelPath();
             if (shot != null && !shot.isBlank()) {
                 row.put("screenshot", shot);

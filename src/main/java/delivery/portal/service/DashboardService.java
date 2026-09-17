@@ -1,5 +1,6 @@
 package delivery.portal.service;
 
+import delivery.job.ResultIntegrity;
 import delivery.portal.model.JobRecord;
 import delivery.portal.persistence.JobEntity;
 import delivery.portal.persistence.JobRepository;
@@ -37,8 +38,25 @@ public class DashboardService {
         List<JobEntity> convertJobs = allJobs.stream()
                 .filter(j -> JobRecord.parseJobKind(j.getJobKind()) == JobRecord.JobKind.CONVERT)
                 .toList();
-        int passed = convertJobs.stream().mapToInt(JobEntity::getPassedCount).sum();
-        int todo = convertJobs.stream().mapToInt(JobEntity::getTodoCount).sum();
+        int passed = 0;
+        int todo = 0;
+        java.util.List<ResultIntegrity.JobSlice> slices = new ArrayList<>();
+        for (JobEntity j : convertJobs) {
+            int jobPassed = j.getPassedCount();
+            int jobTodo = j.getTodoCount();
+            passed += jobPassed;
+            todo += jobTodo;
+            if (ResultIntegrity.simulatedMessage(j.getMessage())) {
+                slices.add(ResultIntegrity.JobSlice.simulated(jobPassed, jobTodo));
+            } else if (jobPassed <= 0 && jobTodo > 0 && "COMPLETED".equals(j.getStatus())) {
+                slices.add(ResultIntegrity.JobSlice.unchecked(jobTodo));
+            } else {
+                slices.add(ResultIntegrity.JobSlice.proven(jobPassed, jobTodo));
+            }
+        }
+        ResultIntegrity.Summary integrity = ResultIntegrity.summarize(
+                slices.toArray(ResultIntegrity.JobSlice[]::new));
+        int passRate = integrity.passRate();
         long completed = convertJobs.stream()
                 .filter(j -> JobRecord.isDownloadable(JobRecord.JobKind.CONVERT, j.getStatus()))
                 .count();
@@ -70,7 +88,6 @@ public class DashboardService {
                 default -> { /* ignore */ }
             }
         }
-        int passRate = (passed + todo) > 0 ? Math.round(100f * passed / (passed + todo)) : 0;
 
         Map<String, int[]> byDay = new java.util.LinkedHashMap<>();
         for (JobEntity j : convertJobs) {
@@ -129,6 +146,9 @@ public class DashboardService {
         map.put("passedTotal", passed);
         map.put("todoTotal", todo);
         map.put("passRate", passRate);
+        map.put("provenPassed", integrity.provenPassed());
+        map.put("simulatedTotal", integrity.simulated());
+        map.put("passRateNote", integrity.denominatorNote());
         map.put("statusCompleted", statusCompleted);
         map.put("statusBlocked", statusBlocked);
         map.put("statusFailed", statusFailed);

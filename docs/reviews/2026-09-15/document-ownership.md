@@ -4,7 +4,7 @@ When behavior changes, update the contract in the same change. Historical plans 
 
 | Contract | Owner surface | Enforcement / evidence |
 |----------|---------------|------------------------|
-| Result labels (PASS/FAIL/TODO/PARTIAL/REUSED/SIMULATED/BLOCKED) | `JobDiagnostics`, status page, [SUPPORT.md](../../SUPPORT.md) | `JobDiagnosticsTest` |
+| Result integrity | `JobDiagnostics`, `ResultIntegrity`, status/dashboard | `JobDiagnosticsTest`, `ResultIntegrityTest`, `DashboardServiceTest` |
 | Dry-run ≠ live proof | `DryRun*Service`, diagnostics `SIMULATED` | `DryRunConversionServiceTest` |
 | Tenant identity | `delivery.identity.*` | `HostedTenantScopeTest`, `TenantIsolationApiTest` |
 | Roles | `WorkspaceRole`, portal APIs | `WorkspaceRoleApiTest` |

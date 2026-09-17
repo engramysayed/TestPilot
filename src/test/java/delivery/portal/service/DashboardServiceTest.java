@@ -38,6 +38,32 @@ public class DashboardServiceTest {
     }
 
     @Test
+    public void statsFor_simulatedPassesDoNotInflatePassRate() {
+        JobEntity simulated = job("j-sim", "COMPLETED");
+        simulated.setJobKind("CONVERT");
+        simulated.setPassedCount(10);
+        simulated.setTodoCount(0);
+        simulated.setMessage("dry-run completed");
+        JobEntity live = job("j-live", "COMPLETED");
+        live.setJobKind("CONVERT");
+        live.setPassedCount(1);
+        live.setTodoCount(1);
+        live.setMessage("proven on live browser");
+
+        ProjectRepository projects = mock(ProjectRepository.class);
+        JobRepository jobs = mock(JobRepository.class);
+        when(projects.findByOwnerUserIdOrderByIdDesc(OWNER)).thenReturn(List.of());
+        when(jobs.findByOwnerUserIdOrderByCreatedAtDesc(OWNER)).thenReturn(List.of(simulated, live));
+
+        Map<String, Object> stats = new DashboardService(projects, jobs).statsFor(OWNER);
+
+        Assert.assertEquals(stats.get("passRate"), 50);
+        Assert.assertEquals(stats.get("simulatedTotal"), 10);
+        Assert.assertEquals(stats.get("provenPassed"), 1);
+        Assert.assertTrue(String.valueOf(stats.get("passRateNote")).toLowerCase().contains("simulated"));
+    }
+
+    @Test
     public void statsFor_countsRunningJobs() {
         JobEntity queued = job("j1", "QUEUED");
         JobEntity running = job("j2", "RUNNING");
