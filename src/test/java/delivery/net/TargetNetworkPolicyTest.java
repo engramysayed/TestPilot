@@ -77,4 +77,18 @@ public class TargetNetworkPolicyTest {
         Assert.assertFalse(local.inspect("http://127.0.0.1:9/secrets").allowed());
         Assert.assertFalse(local.inspect("http://127.0.0.1/secrets").allowed());
     }
+
+    @Test
+    public void outboundWebhooksMayUsePublicCiHostsButCannotBypassRestrictedHops() {
+        Assert.assertTrue(shared.inspectOutbound("https://ci.example/hooks/keel").allowed(),
+                "CI webhooks are not limited to the browser approved origin");
+        Assert.assertFalse(shared.inspectOutbound("http://169.254.169.254/latest/meta-data/").allowed());
+        Assert.assertFalse(shared.inspectOutbound("http://127.0.0.1/hook").allowed());
+        Assert.assertFalse(shared.inspectOutbound("http://10.0.0.8/hook").allowed());
+        Assert.assertFalse(shared.inspectOutbound("file:///etc/passwd").allowed());
+        TargetNetworkPolicy dedicated = TargetNetworkPolicy.dedicated(
+                "http://127.0.0.1:8080/app", List.of("127.0.0.0/8"));
+        Assert.assertTrue(dedicated.inspectOutbound("http://127.0.0.1:4079/hook").allowed());
+        Assert.assertFalse(dedicated.inspectOutbound("http://169.254.169.254/latest/meta-data/").allowed());
+    }
 }

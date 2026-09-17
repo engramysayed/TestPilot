@@ -1,6 +1,7 @@
 package delivery.portal.api;
 
 import delivery.job.WebhookDestinationStore;
+import delivery.net.TargetNetworkPolicy;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.PortalStore;
 import org.json.JSONObject;
@@ -61,7 +62,9 @@ public class WebhookController {
                     .body(new ApiError("BAD_REQUEST", "url and secret are required").asMap());
         }
         try {
-            new WebhookDestinationStore(store.webhookFile(projectId)).put(body.url(), body.secret());
+            String baseUrl = store.getProject(projectId).map(p -> p.getBaseUrl()).orElse("");
+            new WebhookDestinationStore(store.webhookFile(projectId))
+                    .put(body.url(), body.secret(), TargetNetworkPolicy.forJob(baseUrl));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
                     .body(new ApiError("BAD_REQUEST", e.getMessage()).asMap());

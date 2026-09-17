@@ -31,6 +31,19 @@ public class RerunSupportTest {
         Assert.assertNull(rerun.getZipPath());
         Assert.assertEquals(source.getStatus(), JobRecord.Status.FAILED);
         Assert.assertEquals(source.getZipPath(), Path.of("out.zip"));
+        Assert.assertEquals(rerun.getExcelPath(), Path.of("in.xlsx"));
         Assert.assertEquals(RerunSupport.hashPinnedInputs(rerun), RerunSupport.hashPinnedInputs(source));
+    }
+
+    @Test
+    public void rerunCanReplaceMissingExcelWithRematerializedPath() {
+        JobRecord source = new JobRecord(
+                "job_orig", "prj_1", 1L, "EXECUTE", Path.of("gone.xlsx"), "https://staging.example", "", "",
+                false, JobRecord.JobKind.EXECUTE);
+        source.setLibraryRevisionId("rev_abc");
+        JobRecord rerun = RerunSupport.newAttempt(source, Path.of("pinned.xlsx"));
+        Assert.assertEquals(rerun.getExcelPath(), Path.of("pinned.xlsx"));
+        Assert.assertEquals(source.getExcelPath(), Path.of("gone.xlsx"));
+        Assert.assertEquals(rerun.getLibraryRevisionId(), "rev_abc");
     }
 }

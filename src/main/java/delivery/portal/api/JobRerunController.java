@@ -3,6 +3,7 @@ package delivery.portal.api;
 import delivery.job.RerunSupport;
 import delivery.portal.model.JobRecord;
 import delivery.portal.security.CurrentUserService;
+import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.PortalStore;
 import delivery.portal.worker.ConversionWorker;
 import delivery.portal.worker.ExecuteWorker;
@@ -14,6 +15,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 @RestController
@@ -24,19 +27,22 @@ public class JobRerunController {
     private final ConversionWorker conversionWorker;
     private final ExecuteWorker executeWorker;
     private final HuntWorker huntWorker;
+    private final GeneratedWorkbookService workbooks;
 
     public JobRerunController(
             PortalStore store,
             CurrentUserService currentUser,
             ConversionWorker conversionWorker,
             ExecuteWorker executeWorker,
-            HuntWorker huntWorker
+            HuntWorker huntWorker,
+            GeneratedWorkbookService workbooks
     ) {
         this.store = store;
         this.currentUser = currentUser;
         this.conversionWorker = conversionWorker;
         this.executeWorker = executeWorker;
         this.huntWorker = huntWorker;
+        this.workbooks = workbooks;
     }
 
     @PostMapping("/{jobId}/rerun")
@@ -51,7 +57,22 @@ public class JobRerunController {
         if (denied != null) {
             return denied;
         }
-        JobRecord copy = RerunSupport.newAttempt(source);
+        Path excel = source.getExcelPath();
+        if (excel == null || !Files.isRegularFile(excel)) {
+            String revisionId = source.getLibraryRevisionId();
+            if (revisionId == null || revisionId.isBlank()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ApiError("PINNED_INPUTS_UNAVAILABLE",
+                                "Pinned workbook is no longer on disk and no library revision is recorded").asMap());
+            }
+            try {
+                excel = workbooks.copyRevisionForJob(source.getProjectId(), revisionId);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ApiError("PINNED_INPUTS_UNAVAILABLE", e.getMessage()).asMap());
+            }
+        }
+        JobRecord copy = RerunSupport.newAttempt(source, excel);
         store.saveJob(copy);
         switch (copy.getJobKind()) {
             case EXECUTE -> executeWorker.submit(copy.getJobId());

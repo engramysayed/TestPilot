@@ -433,6 +433,8 @@ This local validation does **not** close P2-03 deployed isolation, production re
 
 **2026-09-17 (E06 UI, `bd0f7ae`, development after candidate `75e6996`):** status page loads recorded execute-run IR for compare (`GET /api/jobs/{id}/compare?other=`), lists rerun attempts with pinned library/environment/providers, and shows intermittency verdict plus sample size (`MIN_SAMPLE=3`). `POST /api/jobs/{id}/rerun` mints `job_rerun_*` without rewriting the parent. Classification correction remains a separate store. Browser: Attempts and compare, Compare, Failure class, Rerun as new attempt. Public rollout remains HOLD.
 
+**2026-09-17 (E06 rerun pin):** if the job's temp workbook was already deleted, rerun rematerializes bytes from the pinned `libraryRevisionId` instead of failing with "Excel file not found".
+
 ### E07 — reviewed Bug Hunter promotion
 
 **Priority:** after versioned library and trustworthy proving. **Dependencies:** E01, P1-02/P2-04.
@@ -463,6 +465,23 @@ This local validation does **not** close P2-03 deployed isolation, production re
 **Done when:** a repeated CI request cannot create duplicate logical work, revoked credentials stop access, webhook retries are safe, and CI fails on real assertion failure while reporting blocked/expired jobs accurately.
 
 **2026-09-17 (E08 reconcile, `bd0f7ae`, development after candidate `75e6996`):** `/api/v1` job API, `tp_svc_` credentials, idempotency, and `docs/ops/ci-job-api.md` remain in tree. Job-status webhooks now deliver: OWNER/ADMIN configure `PUT /api/projects/{id}/webhook` (URL + secret); MEMBER can read the destination without the secret; missing destination is a no-op. `WebhookDispatcher` POSTs HMAC `X-Keel-Signature` with `X-Keel-Delivery-Id`, up to 5 attempts, and skips duplicate delivery ids. Browser: Settings → Job-status webhook (explicit destination; not an issue tracker). **Issue-tracker / TMS / Git destinations are not built.** Runner auto-update and attestation remain deferred.
+
+### Phase 6 close-out (product acceptance)
+
+**2026-09-17:** Phase 6 **product acceptance is complete** for E01–E08 as specified above. Optional enhancements stay deferred. This is **not** a Phase 5 launch guarantee.
+
+**Suite:** `mvn test` (default `install.drills.skip=true`) **1301 run, 1299 passed, 0 failed, 2 skipped**. Shared/dedicated install drills were not forked from this pom.
+
+**Populated history (project `prj_f935adf07758`, dry-run portal 8081, dedicated `127.0.0.0/8` for the local receiver only):**
+
+- Recorded display: providers allowed `vision,agentrouter,cursor,ollama`; used `keel`; fallback `None`.
+- Compare `exec_3a968739d47b` vs `exec_3cf07b61d74f`: pinned library/providers match; no recorded-step divergence. Original vs failed first rerun showed a presence divergence (original evidence kept).
+- Classification: INFRASTRUCTURE → ASSERTION (API) then **LOCATOR** (browser); original `passedCount=0` / `todoCount=1` / `COMPLETED` unchanged.
+- First rerun `job_rerun_44ef0cfe5650` failed because the temp workbook had been deleted. Rerun now rematerializes the pinned library revision; later attempts `job_rerun_d792bfc2b4bb` and `job_rerun_5d27c54aa366` **COMPLETED** with the same pins; original results unchanged.
+
+**Webhooks (controlled `127.0.0.1:4079`):** first terminal job POSTed 3 times (500, 500, 200) with the same `X-Keel-Delivery-Id` and `sha256=` HMAC. Duplicate delivery ids are not posted again after the log file exists. `PUT` of `http://169.254.169.254/latest/meta-data/` returns 400 `webhook url blocked: blocked link-local destination` (browser Settings showed the same error; saved destination stayed `http://127.0.0.1:4079/hook`). Shared-mode unit tests refuse loopback/private destinations even if a destination file already exists. Public CI hosts such as `ci.example` remain allowed.
+
+**Validation candidate `75e6996`:** unchanged and **predates Phase 6**. Testing that SHA will not certify this functionality. Any replacement release candidate must be **named explicitly** before final release validation.
 
 ### Deferred until evidence supports them
 

@@ -66,6 +66,10 @@ public class WebhookApiTest extends AbstractTestNGSpringContextTests {
             latch.countDown();
         });
         server.start();
+        String previousMode = System.getProperty("delivery.install.mode");
+        String previousCidrs = System.getProperty("delivery.install.private-cidrs");
+        System.setProperty("delivery.install.mode", "dedicated");
+        System.setProperty("delivery.install.private-cidrs", "127.0.0.0/8");
         try {
             String projectId = createProject();
             String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/ci";
@@ -100,7 +104,29 @@ public class WebhookApiTest extends AbstractTestNGSpringContextTests {
             Assert.assertTrue(body.get().contains("FAILED"));
             Assert.assertTrue(sig.get() != null && sig.get().startsWith("sha256="));
         } finally {
+            restoreProp("delivery.install.mode", previousMode);
+            restoreProp("delivery.install.private-cidrs", previousCidrs);
             server.stop(0);
+        }
+    }
+
+    @Test
+    public void metadataWebhookUrlIsRejected() throws Exception {
+        String projectId = createProject();
+        mockMvc.perform(put("/api/projects/" + projectId + "/webhook")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"url\":\"http://169.254.169.254/latest/meta-data/\",\"secret\":\"ci-secret\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("BAD_REQUEST"));
+    }
+
+    private static void restoreProp(String key, String value) {
+        if (value == null) {
+            System.clearProperty(key);
+        } else {
+            System.setProperty(key, value);
         }
     }
 

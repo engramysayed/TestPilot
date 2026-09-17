@@ -4,6 +4,7 @@ import delivery.identity.ScopePaths;
 import delivery.identity.TenantId;
 import delivery.job.WebhookDestinationStore;
 import delivery.job.WebhookSigner;
+import delivery.net.TargetNetworkPolicy;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.JobRecord;
 import org.apache.logging.log4j.LogManager;
@@ -74,6 +75,13 @@ public class WebhookDispatcher {
             WebhookDestinationStore dest = destinationStore(job);
             var config = dest.get();
             if (config.isEmpty()) {
+                return;
+            }
+            TargetNetworkPolicy.Decision decision = TargetNetworkPolicy.forJob(job.getBaseUrl())
+                    .inspectOutbound(config.get().url());
+            if (!decision.allowed()) {
+                log.warn("Webhook destination blocked by network policy for {}: {}",
+                        job.getJobId(), decision.reason());
                 return;
             }
             String deliveryId = "wh_" + job.getJobId() + "_" + job.getStatus().name();

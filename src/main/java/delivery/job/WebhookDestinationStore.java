@@ -1,6 +1,7 @@
 package delivery.job;
 
 import delivery.identity.PublicationLock;
+import delivery.net.TargetNetworkPolicy;
 import delivery.portal.security.JobSecretCrypto;
 import org.json.JSONObject;
 
@@ -23,7 +24,16 @@ public final class WebhookDestinationStore {
     }
 
     public Config put(String url, String secret) throws Exception {
+        return put(url, secret, TargetNetworkPolicy.forJob(""));
+    }
+
+    public Config put(String url, String secret, TargetNetworkPolicy policy) throws Exception {
         String normalized = requireHttpUrl(url);
+        TargetNetworkPolicy net = policy == null ? TargetNetworkPolicy.forJob("") : policy;
+        TargetNetworkPolicy.Decision decision = net.inspectOutbound(normalized);
+        if (!decision.allowed()) {
+            throw new IllegalArgumentException("webhook url blocked: " + decision.reason());
+        }
         if (secret == null || secret.isBlank()) {
             throw new IllegalArgumentException("webhook secret is required");
         }

@@ -113,5 +113,6 @@ When a job becomes `COMPLETED`, `COMPLETED_WITH_BLOCK`, `FAILED`, or `CANCELLED`
 - `X-Keel-Delivery-Id`: `wh_{jobId}_{status}`
 - `X-Keel-Signature`: `sha256=` HMAC of `deliveryId + "." + body`
 - Up to 5 attempts with exponential backoff. The same delivery id is not posted twice.
+- Destinations are checked against the server network policy (`TargetNetworkPolicy`): shared installs cannot target loopback, private, link-local, or metadata hops. Dedicated installs may add explicit CIDRs. Public CI hosts such as `ci.example` remain allowed.
 
 Issue-tracker / TMS destinations are not part of this contract. CI should still poll `/api/v1/jobs/{id}` and fail the build on assertion failure, blocked jobs, or expired artifacts.

@@ -120,6 +120,14 @@ public final class TargetNetworkPolicy {
         return inspectInternal(url, true);
     }
 
+    /**
+     * Server-initiated outbound destinations (job-status webhooks). Public CI hosts
+     * are allowed; loopback/private/link-local/metadata hops follow install mode.
+     */
+    public Decision inspectOutbound(String url) {
+        return inspectInternal(url, true);
+    }
+
     public Decision inspectResolved(String hostname, List<InetAddress> addrs) {
         if (addrs == null || addrs.isEmpty()) {
             return Decision.block(hostname, "unresolved host");

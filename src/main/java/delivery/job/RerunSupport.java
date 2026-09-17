@@ -2,6 +2,7 @@ package delivery.job;
 
 import delivery.portal.model.JobRecord;
 
+import java.nio.file.Path;
 import java.util.UUID;
 
 /** Copy frozen pins onto a new job id so reruns do not overwrite prior evidence. */
@@ -10,16 +11,21 @@ public final class RerunSupport {
     }
 
     public static JobRecord newAttempt(JobRecord source) {
+        return newAttempt(source, source == null ? null : source.getExcelPath());
+    }
+
+    public static JobRecord newAttempt(JobRecord source, Path excelPath) {
         if (source == null) {
             throw new IllegalArgumentException("source job is required");
         }
+        Path excel = excelPath != null ? excelPath : source.getExcelPath();
         String newId = "job_rerun_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         JobRecord copy = new JobRecord(
                 newId,
                 source.getProjectId(),
                 source.getOwnerUserId(),
                 source.getMode(),
-                source.getExcelPath(),
+                excel,
                 source.getBaseUrl(),
                 source.getUsername(),
                 source.getPassword(),
