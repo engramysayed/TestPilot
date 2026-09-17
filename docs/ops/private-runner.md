@@ -2,7 +2,7 @@
 
 A customer-operated runner connects **outbound** to the control plane. The control plane never needs inbound access to the customer network.
 
-**Deployment isolation validation (P2-03) is a separate requirement.** Local runner tests do not certify a shared or dedicated production host. Public rollout stays HOLD; candidate `75e6996` is unchanged.
+**Deployment isolation validation (P2-03) is a separate requirement.** Local runner tests do not certify a shared or dedicated production host. Public rollout stays HOLD; validation candidate is `2721e6d`.
 
 ## What this release implements
 

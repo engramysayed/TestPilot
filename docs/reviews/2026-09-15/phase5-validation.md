@@ -1,52 +1,96 @@
 # Phase 5 validation record (2026-09-17)
 
-Workstation `Ramy-Sayed`. **Candidate for remaining Phase 5 validations:** `75e6996`. Public launch: **HOLD** ([LAUNCH-DECISION.md](LAUNCH-DECISION.md)). Do not re-run unchanged local tests; next evidence must come from deployment environments, representative applications, and named approvers.
+Workstation `Ramy-Sayed`. Public launch: **HOLD** ([LAUNCH-DECISION.md](LAUNCH-DECISION.md)).
+
+**Nominated candidate:** `23f9351` (explicitly replaced `75e6996`).  
+**Current candidate after a test-only fix:** `2721e6d` (`test(phase5): assert preferred hooks write to the tenant site folder`). Product code in `2721e6d` is `23f9351` plus that test. Do not attribute `2721e6d` suite numbers to `23f9351`.
+
+## Environment inspection (this workstation)
+
+| Item | Found |
+|------|--------|
+| Git HEAD at start | `091b5e0` (docs after `23f9351`) on `launch/p0-baseline-and-p1-assertions` |
+| Clean checkout | worktree `D:\priv\testpilot\worktrees\phase5-23f9351` at `23f93514383982fbc53074d6b36abf5bcaa9ce56` |
+| Shared/dedicated production hosts | **unavailable** (`gh` CLI missing; no deploy inventory) |
+| Portal | leftover PID 5136 on 8081 (dedicated `127.0.0.0/8`, dry-run) was holding H2; stopped for restore |
+| Store | local `delivery-store` H2 + two `ws_` tenants + `delivery.secret` on NTFS |
+| Ollama `127.0.0.1:11434` | healthy (`qwen2.5`, `ui-tars`, `qwen2.5vl:3b`, `gemma4:e2b`) |
+| Facebook IR fixture | **missing** (`delivery-store/facebook-com/prj_e9a9fc7313b2/ir`) |
+| Authorized representative apps | **none recorded**. `https://opssit.axispay.app` and Facebook are not treated as authorized for this drill |
+| Named approvers | **none** |
 
 ## Screenshot redaction and sidecar canaries
 
-- `ScreenshotRedactor` paints password-field boxes black. Wired at Selenium grounding, Hunt, prove evidence, and `ElementsHandler.capture`.
-- `CursorHealClient.sanitizeRequest` scrubs HTML, prompts, and string arrays before sidecar stdin.
-- `SidecarCanaryTest` captured Node stdin via `tools/cursor-heal/capture-stdin.mjs`. Canary `SECRET_CANARY_PASSWORD` did not appear.
+Historical local PASS on earlier SHAs still stands as engineering evidence. Named privacy approval remains unsigned, so P2-04 is not a product guarantee.
 
-Engineering for those two P2-04 checks is done **locally**. Named privacy approval remains unsigned, so P2-04 is not a product guarantee.
+## Worker-network isolation (`23f9351` worktree)
 
-## Worker-network isolation
-
-- Application-layer: `TargetNetworkPolicy` / `WorkerNetworkGuard` (unchanged contract).
-- Stronger local path: per-thread PAC (`WorkerPac`) installed before Chrome/Edge in ProvePhase and Hunt; non-approved hosts go to `PROXY 127.0.0.1:9`. Loopback is bypassed for Chromedriver; unapproved loopback page loads still fail `requireNavigate`.
-- Dedicated CIDRs are emitted only for dedicated PAC scripts.
-- Isolated local Spring Boot drills (2026-09-17): Spring `delivery.install.*` is copied into worker system properties (`InstallNetworkBridge`). That policy is **JVM-wide / installation-wide** (not per tenant or job). Shared and dedicated drills run in separate Maven JVMs. Shared drill ignores poison CIDRs; dedicated drill allows `10.0.0.0/8` for that install only. Evidence: [phase5-install-drills.md](phase5-install-drills.md).
+- Application-layer: `TargetNetworkPolicy` / `WorkerNetworkGuard`.
+- Isolated local Spring Boot drills in **separate Maven JVMs**. Shared drill ignores poison CIDRs; dedicated drill allows `10.0.0.0/8` for that install only. Evidence: [phase5-install-drills.md](phase5-install-drills.md).
 - **Production shared/dedicated hosts:** still UNAVAILABLE.
 - P2-03 remains open.
 
 ## Concurrent same-host benchmark
 
-Recorded on this revision: [run-2026-09-17-concurrent-f44c76a.md](release-benchmark/run-2026-09-17-concurrent-f44c76a.md). **PASS.**
+Recorded on `f44c76a`: [run-2026-09-17-concurrent-f44c76a.md](release-benchmark/run-2026-09-17-concurrent-f44c76a.md). **PASS.** Not re-run; not this candidate.
 
 ## This-host backup, tenant boundary, lock
 
 | Check | Scope | Result |
 |-------|--------|--------|
-| `StoreBackupTest` | in-process snapshot/restore of tenant path + SHA-256 | PASS |
-| `TenantIsolationApiTest` | opaque tenants; cross-tenant artifact 404 | PASS |
-| `PublicationLockTest` | JVM + OS lock on FileStore type **NTFS** (`New Volume`) | PASS |
-| `Phase5HostEvidenceTest` | writes `target/phase5-host-evidence/evidence.txt` | PASS |
+| Workstation restore | `delivery-store` consistent copy after stopping PID 5136 | 699 files, 0 SHA-256 mismatches, two tenants, key round-trip. [phase5-restore-drill.md](phase5-restore-drill.md) |
+| Shared/dedicated drill snapshot | each drill `store-root` | PASS on `23f9351` |
+| `StoreBackupTest` / `TenantIsolationApiTest` / `PublicationLockTest` / `Phase5HostEvidenceTest` | included in suites below | see suite rows |
 
-These are **this volume / this JVM**, not a production restore drill. Isolated shared/dedicated *test* store-roots were later snapshot/restored in [phase5-install-drills.md](phase5-install-drills.md); still not a production host.
+These are **this volume**, not a production restore drill.
+
+## Clean-checkout default suite on `23f9351`
+
+Worktree `phase5-23f9351`. Command: `mvn test` (default; LiveSmoke **included**; install drills skipped by pom). Finished 2026-09-17T20:26:43+03:00.
+
+```
+Tests run: 1301, Failures: 3, Errors: 0, Skipped: 2
+```
+
+**Skipped (both):**
+
+1. `FacebookSubmitLiveRebindTest.liveRegPageSubmitBindPrefersButtonWhenPresent` — `SkipException`: Facebook IR missing at `delivery-store/facebook-com/prj_e9a9fc7313b2/ir`.
+2. `FacebookIrCodegenIdentityTest.facebookIrRegeneratesWithDistinctControlIdentity` — `SkipException`: Facebook IR not present at the same path.
+
+**Failures on `23f9351` (do not reassign to a later SHA):**
+
+1. `ProjectPatchApiTest.patch_savesPreferredHooksOnTheDomainFolder` — asserted `target/test-delivery-store-patch/opssit-axispay-app/preferred-hooks.json`. Portal patch already writes tenant `sites/` via `PreferredHooksStore.save(..., tenant, url)`. A dirty `target/` leftover made this pass on the development tree; the clean worktree had no leftover, so it failed. Fixed in **`2721e6d`** (test only).
+2. `UiTarsLiveSmokeTest.uitarsFindsLoginControlAndHonestAssertDoesNotPlaceholderPass` — live `ui-tars` on `https://the-internet.herokuapp.com/login` grounded `input#username` instead of the Login control. Ollama was up. Not a product code change.
+3. `VisionRoleSplitLiveSmokeTest.uitarsGroundsLoginAndQwenAssertsHonestly` — same live miss. Not a product code change.
+
+CI `.github/workflows/release.yml` uses `-Pdeterministic`, which excludes `*LiveSmoke*`. Those two live failures are **not** in the release.yml suite.
+
+## Deterministic suite on `2721e6d`
+
+Command: `mvn -B -Pdeterministic test` (excludes `*LiveSmoke*`; install drills skipped). Finished 2026-09-17T20:34:15+03:00 on `2721e6d6cf0083192718b21a25864c27ffa68702`.
+
+```
+Tests run: 1297, Failures: 0, Errors: 0, Skipped: 2
+```
+
+The two skips are the same Facebook IR fixtures as on `23f9351`. Install drills were not re-run: product code is unchanged from `23f9351`.
 
 ## Named approvals
 
-[APPROVALS.md](APPROVALS.md) — all rows unsigned.
+[APPROVALS.md](APPROVALS.md) / [APPROVAL-PACKET.md](APPROVAL-PACKET.md) — all rows unsigned.
 
-## Consolidated RC suite
+## Live P5-01 Generate → Execute → Automate
 
-```
-Tests run: 121, Failures: 0, Errors: 0, Skipped: 0
-Finished at: 2026-09-17T12:15:35+03:00
-```
+**Not run.** No written authorization for representative applications. Dry-run import→execute→automate on the shared drill is not this gate.
 
-Includes the concurrent ProveEmit case plus screenshot/sidecar/PAC/host-evidence tests. Does not include P5-01 representative live Generate→replay on customer apps, capacity, or a browser UI walkthrough of the portal.
+## Information still needed
 
-## Next (candidate `75e6996`)
+1. Shared production/staging host: hostname, operator access, confirmation `delivery.install.mode=shared`.
+2. Dedicated production/staging host: hostname, operator access, `delivery.install.private-cidrs`.
+3. Those hosts' FileStore type and operator backup destination (if not this NTFS volume).
+4. Written authorization for each representative app: name, origin URL, login ownership, credentials, permission to run live Generate → Execute → Automate NEW → downloaded replay → UPDATE → replay.
+5. Named human approvers (legal names) for Product, Security, and Privacy, and how they will sign [APPROVALS.md](APPROVALS.md).
 
-Local install-network and drill evidence on this candidate is accepted. Do not re-run those checks. Remaining Phase 5 work needs deployed shared/dedicated environments, restore on those FileStores, live representative Generate → Execute → Automate → downloaded replay, and named P0-01 signatures. Development may continue; public rollout stays **HOLD**.
+## Next
+
+Keep HOLD. Do not publish. Remaining Phase 5 work needs deployed shared/dedicated environments, restore on those FileStores, authorized live G→E→A, and named P0-01 signatures.

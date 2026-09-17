@@ -312,7 +312,9 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Phase 4 engineering (2026-09-17, local):** CI workflow `.github/workflows/release.yml` (deterministic profile excludes `*LiveSmoke*`, template compile, sha256 provenance, secret grep). Production startup guard, login throttle, `/api/health`+`/api/ready`, `StoreBackup` unit restore of tenant path+checksum, job diagnostics (`FRESH`/`REUSED`/`BLOCKED`/`UNCHECKED`/`SIMULATED`/`INTERRUPTED`), library field-level diff, constitution 1.2.0 supersession, SUPPORT/deployment/runbook docs. **P4-02 deployed shared/dedicated restore drill remains a release blocker.** Phase 2 isolation/privacy gates stay open.
 
-**Phase 5 validation (2026-09-17, candidate `75e6996`):** screenshot redaction and sidecar canary tests pass locally; concurrent same-host ProveEmit recorded PASS on `f44c76a`; backup/tenant/lock checks pass on this NTFS volume. Isolated shared/dedicated Spring Boot drills bind install-wide (JVM-wide) mode into worker policy and snapshot those store-roots; dry-run Generate-import→Execute→Automate→ZIP test-compile ran on the shared drill. **Launch decision: HOLD.** Do not re-run unchanged local tests. Remaining work needs deployment environments, representative applications, and named approvers. Evidence: [phase5-validation.md](phase5-validation.md), [phase5-install-drills.md](phase5-install-drills.md), [LAUNCH-DECISION.md](LAUNCH-DECISION.md).
+**Phase 5 validation (2026-09-17, candidate `75e6996`, superseded):** screenshot redaction and sidecar canary tests pass locally; concurrent same-host ProveEmit recorded PASS on `f44c76a`; backup/tenant/lock checks pass on this NTFS volume. Isolated shared/dedicated Spring Boot drills bind install-wide (JVM-wide) mode into worker policy and snapshot those store-roots; dry-run Generate-import→Execute→Automate→ZIP test-compile ran on the shared drill. **Launch decision: HOLD.**
+
+**Phase 5 re-nomination (2026-09-17, candidate `23f9351` then `2721e6d`):** `75e6996` is explicitly replaced. Clean worktree drills + workstation restore ran on `23f9351`. Default `mvn test` on that SHA was **1301 run, 3 failed, 2 skipped** (stale preferred-hooks path + two live ui-tars misses). Test-only follow-up **`2721e6d`**; `mvn -Pdeterministic test` **1297 run, 0 failed, 2 skipped**. **Launch decision: HOLD.** Remaining work still needs deployed shared/dedicated hosts, restore on those FileStores, live representative Generate → Execute → Automate, and named approvers. Evidence: [phase5-validation.md](phase5-validation.md), [phase5-install-drills.md](phase5-install-drills.md), [phase5-restore-drill.md](phase5-restore-drill.md), [LAUNCH-DECISION.md](LAUNCH-DECISION.md), [APPROVAL-PACKET.md](APPROVAL-PACKET.md).
 
 ## 7. Phase 5 — controlled pilot and launch decision
 
@@ -401,7 +403,7 @@ These are proposed product priorities, not validated market demand. Foundational
 
 **2026-09-17 live local validation (`0c49603`, development after `435799f`):** `PrivateRunnerLiveBrowserProcessTest` starts a separate `PrivateRunnerAgent` with `--dry-run false` and headless Chrome against controlled loopback pages. Recorded path: claim → frozen input zip → `BROWSER` stage → live click (`DOM_POST_CLICK` url-changed to `confirmed.html`) → HMAC artifact upload → `COMPLETED` with `passedCount >= 1`. Cancel during a hung BROWSER navigation finishes `CANCELLED`. Destroying the agent on `BROWSER` plus an expired lease yields `INTERRUPTED_UNCERTAIN`. In-process portal workers skip `runner=private`. Agent logs (`Starting Driver` / `CHROME` / `DOM_POST_CLICK`) plus the uploaded zip (IR `lastPageUrl`) are the execution evidence; the portal work-dir does not contain the job.
 
-This local validation does **not** close P2-03 deployed isolation, production restore, representative customer-app acceptance, live Generate → Execute → Automate on a customer target, or named P0-01 approvals. Auto-update and attested runner builds are not included. Public rollout remains HOLD; candidate `75e6996` is unchanged.
+This local validation does **not** close P2-03 deployed isolation, production restore, representative customer-app acceptance, live Generate → Execute → Automate on a customer target, or named P0-01 approvals. Auto-update and attested runner builds are not included. Public rollout remains HOLD. The Phase 5 validation candidate is now `23f9351` (explicitly nominated 2026-09-17).
 
 ### E05 — provider policy, budgets and spend visibility
 
@@ -481,7 +483,7 @@ This local validation does **not** close P2-03 deployed isolation, production re
 
 **Webhooks (controlled `127.0.0.1:4079`):** first terminal job POSTed 3 times (500, 500, 200) with the same `X-Keel-Delivery-Id` and `sha256=` HMAC. Duplicate delivery ids are not posted again after the log file exists. `PUT` of `http://169.254.169.254/latest/meta-data/` returns 400 `webhook url blocked: blocked link-local destination` (browser Settings showed the same error; saved destination stayed `http://127.0.0.1:4079/hook`). Shared-mode unit tests refuse loopback/private destinations even if a destination file already exists. Public CI hosts such as `ci.example` remain allowed.
 
-**Validation candidate `75e6996`:** unchanged and **predates Phase 6**. Testing that SHA will not certify this functionality. Any replacement release candidate must be **named explicitly** before final release validation.
+**Validation candidate:** **`2721e6d`** (test-only follow-up after nominated `23f9351` replaced `75e6996` on 2026-09-17). `75e6996` predates Phase 6. `23f9351` remains the Phase 6 product SHA; do not attribute `2721e6d` suite numbers to it. Documentation-only SHAs after `2721e6d` are not the code candidate. Any further **code** change requires naming a new candidate and rerunning affected checks.
 
 ### Deferred until evidence supports them
 
@@ -495,7 +497,7 @@ This local validation does **not** close P2-03 deployed isolation, production re
 
 **Still HOLD / not closed by this local work**
 
-- Public rollout; validation candidate remains `75e6996`.
+- Public rollout; validation candidate is `2721e6d`.
 - P0-01 named first-release approvals.
 - P2-03 deployed shared/dedicated isolation.
 - Production restore on deployment storage (P4-02).
