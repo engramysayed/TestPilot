@@ -4,15 +4,22 @@ Workstation `Ramy-Sayed`. Public launch remains **HOLD**.
 
 These are **two Spring Boot test installations** with distinct store roots and `delivery.install.mode`. They are not production VMs, not a kernel firewall, and not a signed P0-01.
 
-## Command
+`InstallNetworkBridge` writes **JVM-wide** system properties. Install mode/CIDRs are installation-wide and must not vary by tenant or job. Shared and dedicated drills therefore run in **separate Maven JVMs**. Do not pass both test classes in one `-Dtest=`.
+
+## Commands (separate JVMs)
 
 ```
-mvn "-Dtest=InstallNetworkBridgeTest,SharedInstallDrillTest,DedicatedInstallDrillTest" test
+mvn "-Dtest=delivery.ops.SharedInstallDrillTest" "-Ddelivery.install.drill=shared" "-Dinstall.drills.skip=true" test
+mvn "-Dtest=delivery.ops.DedicatedInstallDrillTest" "-Ddelivery.install.drill=dedicated" "-Dinstall.drills.skip=true" test
 ```
 
-**Result:** Tests run: 7, Failures: 0, 2026-09-17T12:54:15+03:00.
+Default `mvn test` excludes these classes so they cannot share a Surefire fork. CI runs the two commands above. Opt-in combined `mvn -Dinstall.drills.skip=false test` still forks each execution separately.
 
-`HuntApiTest` was re-run after `HuntWorker` gained an `Environment` constructor argument (BUILD SUCCESS). The prior 121-test RC suite was **not** repeated.
+Recorded 2026-09-17 on workstation `Ramy-Sayed`:
+
+- Shared: PID **21452**, 3 tests, 0 failures, 2026-09-17T13:20:24+03:00
+- Dedicated: PID **6732**, 2 tests, 0 failures, 2026-09-17T13:20:46+03:00
+- Combined `-Dtest=SharedInstallDrillTest,DedicatedInstallDrillTest` with `-Ddelivery.install.drill=shared`: BUILD FAILURE (`DedicatedInstallDrillTest.requireOwnJvm` expected `dedicated` but found `shared`)
 
 ## Shared drill (`delivery.install.mode=shared`)
 

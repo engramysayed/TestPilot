@@ -4,14 +4,24 @@ import org.springframework.core.env.Environment;
 
 /**
  * Copies Spring {@code delivery.install.mode} / {@code private-cidrs} into the
- * system properties {@link TargetNetworkPolicy#forJob} reads. Without this, a
- * dedicated portal JVM still ran the shared policy.
+ * system properties {@link TargetNetworkPolicy#forJob} reads. Those properties
+ * are <strong>installation-wide and JVM-wide</strong>: they must not vary by
+ * tenant or job. Shared and dedicated installs therefore belong in separate
+ * processes.
  */
 public final class InstallNetworkBridge {
+    private static final String[] FORBIDDEN_SCOPED_KEYS = {
+            "delivery.job.install.mode",
+            "delivery.job.install.private-cidrs",
+            "delivery.tenant.install.mode",
+            "delivery.tenant.install.private-cidrs"
+    };
+
     private InstallNetworkBridge() {
     }
 
     public static void apply(Environment env) {
+        rejectScopedOverrides(env);
         if (env == null) {
             apply("shared", "");
             return;
@@ -27,6 +37,19 @@ public final class InstallNetworkBridge {
             System.clearProperty("delivery.install.private-cidrs");
         } else {
             System.setProperty("delivery.install.private-cidrs", privateCidrs.trim());
+        }
+    }
+
+    static void rejectScopedOverrides(Environment env) {
+        if (env == null) {
+            return;
+        }
+        for (String key : FORBIDDEN_SCOPED_KEYS) {
+            String value = env.getProperty(key);
+            if (value != null && !value.isBlank()) {
+                throw new IllegalStateException(
+                        key + " is not allowed; install network policy is JVM-wide");
+            }
         }
     }
 }

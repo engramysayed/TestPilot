@@ -13,6 +13,9 @@
         <maven.compiler.target>21</maven.compiler.target>
         <maven.compiler.parameters>true</maven.compiler.parameters>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Default skip: run Shared/Dedicated drills as their own Maven JVMs (see release.yml).
+             Set -Dinstall.drills.skip=false to also fork them from this pom during mvn test. -->
+        <install.drills.skip>true</install.drills.skip>
     </properties>
 
 
@@ -227,6 +230,12 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
+                <configuration>
+                    <excludes>
+                        <exclude>**/SharedInstallDrillTest.java</exclude>
+                        <exclude>**/DedicatedInstallDrillTest.java</exclude>
+                    </excludes>
+                </configuration>
                 <dependencies>
                     <dependency>
                         <groupId>org.apache.maven.surefire</groupId>
@@ -234,6 +243,40 @@
                         <version>3.5.2</version>
                     </dependency>
                 </dependencies>
+                <executions>
+                    <execution>
+                        <id>shared-install-drill</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <skipTests>${install.drills.skip}</skipTests>
+                            <test>delivery.ops.SharedInstallDrillTest</test>
+                            <forkCount>1</forkCount>
+                            <reuseForks>false</reuseForks>
+                            <systemPropertyVariables>
+                                <delivery.install.drill>shared</delivery.install.drill>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>dedicated-install-drill</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <skipTests>${install.drills.skip}</skipTests>
+                            <test>delivery.ops.DedicatedInstallDrillTest</test>
+                            <forkCount>1</forkCount>
+                            <reuseForks>false</reuseForks>
+                            <systemPropertyVariables>
+                                <delivery.install.drill>dedicated</delivery.install.drill>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -266,6 +309,8 @@
                         <configuration>
                             <excludes>
                                 <exclude>**/*LiveSmoke*</exclude>
+                                <exclude>**/SharedInstallDrillTest.java</exclude>
+                                <exclude>**/DedicatedInstallDrillTest.java</exclude>
                             </excludes>
                         </configuration>
                     </plugin>

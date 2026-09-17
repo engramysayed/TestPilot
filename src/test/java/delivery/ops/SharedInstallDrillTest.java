@@ -60,6 +60,11 @@ public class SharedInstallDrillTest extends AbstractTestNGSpringContextTests {
     @Autowired
     private PasswordEncoder encoder;
 
+    @org.testng.annotations.BeforeClass(alwaysRun = true)
+    public void requireOwnJvm() {
+        Phase5InstallSupport.requireExclusiveJvm("shared");
+    }
+
     @BeforeMethod
     public void bindThisInstall() {
         Phase5InstallSupport.bindWorkerPolicy(env);

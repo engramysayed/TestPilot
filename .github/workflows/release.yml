@@ -18,7 +18,16 @@ jobs:
           cache: maven
       - name: Deterministic tests
         # LiveSmoke tests are excluded by -Pdeterministic (**/*LiveSmoke*).
+        # Shared/Dedicated install drills are excluded here and run as their own JVMs below.
         run: mvn -B -Pdeterministic test
+        env:
+          MAVEN_OPTS: "-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+      - name: Shared install drill (own JVM)
+        run: mvn -B "-Dtest=delivery.ops.SharedInstallDrillTest" "-Ddelivery.install.drill=shared" "-Dinstall.drills.skip=true" test
+        env:
+          MAVEN_OPTS: "-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+      - name: Dedicated install drill (own JVM)
+        run: mvn -B "-Dtest=delivery.ops.DedicatedInstallDrillTest" "-Ddelivery.install.drill=dedicated" "-Dinstall.drills.skip=true" test
         env:
           MAVEN_OPTS: "-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
       - name: Compile customer framework template

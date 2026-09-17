@@ -34,6 +34,13 @@ final class Phase5InstallSupport {
     private Phase5InstallSupport() {
     }
 
+    static final String DRILL_JVM = "delivery.install.drill";
+
+    static void requireExclusiveJvm(String mode) {
+        org.testng.Assert.assertEquals(System.getProperty(DRILL_JVM), mode,
+                mode + " install drill must run in its own JVM (-D" + DRILL_JVM + "=" + mode + ")");
+    }
+
     static void bindWorkerPolicy(Environment env) {
         InstallNetworkBridge.apply(env);
     }

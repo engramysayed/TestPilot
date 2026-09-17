@@ -53,6 +53,11 @@ public class DedicatedInstallDrillTest extends AbstractTestNGSpringContextTests 
     @Autowired
     private PasswordEncoder encoder;
 
+    @org.testng.annotations.BeforeClass(alwaysRun = true)
+    public void requireOwnJvm() {
+        Phase5InstallSupport.requireExclusiveJvm("dedicated");
+    }
+
     @BeforeMethod
     public void bindThisInstall() {
         Phase5InstallSupport.bindWorkerPolicy(env);

@@ -13,7 +13,7 @@ This document is the engineering checklist. A passing local backup unit test is 
 | Providers | Explicit `delivery.provider.allowlist` | Same; local-only means allowlist `ollama` (or similar), not an unset property |
 | Private CIDRs | Must be empty | Optional extra CIDRs/hosts |
 
-Network checks are application-layer (navigate/redirect/subresource) plus a per-thread PAC. Spring `delivery.install.mode` / `private-cidrs` must be copied into worker system properties (`InstallNetworkBridge`) or Prove/Hunt/Execute jobs still see the default shared policy. Isolated local shared/dedicated drills exist; P2-03 stays open until production-host worker-network tests pass.
+Network checks are application-layer (navigate/redirect/subresource) plus a per-thread PAC. Spring `delivery.install.mode` / `private-cidrs` must be copied into worker system properties (`InstallNetworkBridge`) or Prove/Hunt/Execute jobs still see the default shared policy. Those properties are installation-wide for the JVM; do not set per-job or per-tenant overrides. Isolated local shared/dedicated drills run in separate JVMs; P2-03 stays open until production-host worker-network tests pass.
 
 ## Production configuration
 
