@@ -1,8 +1,10 @@
 package delivery.portal.api;
 
+import delivery.identity.TenantId;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.PortalApplication;
 import delivery.portal.service.PortalStore;
+import delivery.store.PreferredHooksStore;
 import delivery.portal.persistence.JobEntity;
 import delivery.portal.persistence.JobRepository;
 import delivery.portal.persistence.PortalUserRepository;
@@ -77,17 +79,33 @@ public class ProjectPatchApiTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
-    public void patch_savesPreferredHooksOnTheDomainFolder() throws Exception {
+    public void patch_savesPreferredHooksOnTheTenantSiteFolder() throws Exception {
+        Path legacyDir = Path.of(props.getStoreRoot(), "opssit-axispay-app");
+        if (Files.exists(legacyDir)) {
+            Files.walk(legacyDir)
+                    .sorted((a, b) -> b.getNameCount() - a.getNameCount())
+                    .forEach(p -> {
+                        try {
+                            Files.deleteIfExists(p);
+                        } catch (Exception ignored) {
+                        }
+                    });
+        }
         String id = createProject();
+        String url = "https://opssit.axispay.app/login";
         mockMvc.perform(patch("/api/projects/" + id)
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
                         .header("X-Keel-Requested-With", "Keel")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"baseUrl\":\"https://opssit.axispay.app/login\",\"preferredHooks\":\"data-axis-test-id\"}"))
+                        .content("{\"baseUrl\":\"" + url + "\",\"preferredHooks\":\"data-axis-test-id\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.preferredHooks").value("data-axis-test-id"));
-        Path file = Path.of(props.getStoreRoot(), "opssit-axispay-app", "preferred-hooks.json");
-        org.testng.Assert.assertTrue(Files.isRegularFile(file), file.toString());
+        TenantId tenant = TenantId.parse(portalStore.getProject(id).orElseThrow().getTenantId());
+        Path file = PreferredHooksStore.file(Path.of(props.getStoreRoot()), tenant, url);
+        org.testng.Assert.assertTrue(Files.isRegularFile(file), String.valueOf(file));
+        Path legacy = Path.of(props.getStoreRoot(), "opssit-axispay-app", PreferredHooksStore.FILE_NAME);
+        org.testng.Assert.assertFalse(Files.exists(legacy),
+                "project patch must not write the legacy domain-shared hooks file: " + legacy);
         mockMvc.perform(get("/api/projects/" + id)
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
                         .header("X-Keel-Requested-With", "Keel"))
