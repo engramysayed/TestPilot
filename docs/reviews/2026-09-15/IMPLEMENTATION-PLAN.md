@@ -416,7 +416,7 @@ This local validation does **not** close P2-03 deployed isolation, production re
 
 **Done when:** concurrent requests respect the approved limit, forbidden providers are never invoked, and users can explain a job's provider usage and estimated/final cost.
 
-**2026-09-17 (E05 remaining display, development after candidate `75e6996`):** each job persists `providersUsed` / `fallbackUsed` / `fallbackReason` from recorded IR (heal tier, Precision calls, `PRECISION_FALLBACK`) plus the frozen allowlist. `GET /api/jobs/{id}` and the run-status page show allowed vs used and Precision→Keel fallback. This does not close live Generate → Execute → Automate on a customer target.
+**2026-09-17 (E05 remaining display, `bd0f7ae`, development after candidate `75e6996`):** each job persists `providersUsed` / `fallbackUsed` / `fallbackReason` from recorded IR (heal tier, Precision calls, `PRECISION_FALLBACK`) plus the frozen allowlist. `GET /api/jobs/{id}` and the run-status page show allowed vs used and Precision→Keel fallback. Browser: status page exposes Providers allowed/used/Fallback. This does not close live Generate → Execute → Automate on a customer target.
 
 ### E06 — failure triage and rerun stability
 
@@ -431,7 +431,7 @@ This local validation does **not** close P2-03 deployed isolation, production re
 
 **Done when:** a rerun is reproducible from recorded inputs, earlier failure evidence remains available, and a later pass does not erase the original failure.
 
-**2026-09-17 (E06 UI, development after candidate `75e6996`):** status page loads recorded execute-run IR for compare (`GET /api/jobs/{id}/compare?other=`), lists rerun attempts with pinned library/environment/providers, and shows intermittency verdict plus sample size (`MIN_SAMPLE=3`). `POST /api/jobs/{id}/rerun` mints `job_rerun_*` without rewriting the parent. Classification correction remains a separate store. Public rollout remains HOLD.
+**2026-09-17 (E06 UI, `bd0f7ae`, development after candidate `75e6996`):** status page loads recorded execute-run IR for compare (`GET /api/jobs/{id}/compare?other=`), lists rerun attempts with pinned library/environment/providers, and shows intermittency verdict plus sample size (`MIN_SAMPLE=3`). `POST /api/jobs/{id}/rerun` mints `job_rerun_*` without rewriting the parent. Classification correction remains a separate store. Browser: Attempts and compare, Compare, Failure class, Rerun as new attempt. Public rollout remains HOLD.
 
 ### E07 — reviewed Bug Hunter promotion
 
@@ -462,7 +462,7 @@ This local validation does **not** close P2-03 deployed isolation, production re
 
 **Done when:** a repeated CI request cannot create duplicate logical work, revoked credentials stop access, webhook retries are safe, and CI fails on real assertion failure while reporting blocked/expired jobs accurately.
 
-**2026-09-17 (E08 reconcile, development after candidate `75e6996`):** `/api/v1` job API, `tp_svc_` credentials, idempotency, and `docs/ops/ci-job-api.md` remain in tree. Job-status webhooks now deliver: OWNER/ADMIN configure `PUT /api/projects/{id}/webhook` (URL + secret); MEMBER can read the destination without the secret; missing destination is a no-op. `WebhookDispatcher` POSTs HMAC `X-Keel-Signature` with `X-Keel-Delivery-Id`, up to 5 attempts, and skips duplicate delivery ids. **Issue-tracker / TMS / Git destinations are not built.** Runner auto-update and attestation remain deferred.
+**2026-09-17 (E08 reconcile, `bd0f7ae`, development after candidate `75e6996`):** `/api/v1` job API, `tp_svc_` credentials, idempotency, and `docs/ops/ci-job-api.md` remain in tree. Job-status webhooks now deliver: OWNER/ADMIN configure `PUT /api/projects/{id}/webhook` (URL + secret); MEMBER can read the destination without the secret; missing destination is a no-op. `WebhookDispatcher` POSTs HMAC `X-Keel-Signature` with `X-Keel-Delivery-Id`, up to 5 attempts, and skips duplicate delivery ids. Browser: Settings → Job-status webhook (explicit destination; not an issue tracker). **Issue-tracker / TMS / Git destinations are not built.** Runner auto-update and attestation remain deferred.
 
 ### Deferred until evidence supports them
 
