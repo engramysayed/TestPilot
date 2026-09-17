@@ -412,9 +412,11 @@ This local validation does **not** close P2-03 deployed isolation, production re
 - [x] Reserve budget atomically before dispatch so concurrent jobs cannot all spend the same allowance.
 - [x] Enforce per-job/per-tenant limits across retries, fallback and recovery; handle unknown cost explicitly.
 - [x] Add usage history and configurable warning thresholds; distinguish estimated and reconciled cost.
-- [ ] Show permitted providers/models and actual fallback use per job.
+- [x] Show permitted providers/models and actual fallback use per job.
 
 **Done when:** concurrent requests respect the approved limit, forbidden providers are never invoked, and users can explain a job's provider usage and estimated/final cost.
+
+**2026-09-17 (E05 remaining display, development after candidate `75e6996`):** each job persists `providersUsed` / `fallbackUsed` / `fallbackReason` from recorded IR (heal tier, Precision calls, `PRECISION_FALLBACK`) plus the frozen allowlist. `GET /api/jobs/{id}` and the run-status page show allowed vs used and Precision→Keel fallback. This does not close live Generate → Execute → Automate on a customer target.
 
 ### E06 — failure triage and rerun stability
 
@@ -422,12 +424,14 @@ This local validation does **not** close P2-03 deployed isolation, production re
 
 **User value:** spend less time diagnosing failures and understand intermittent behavior.
 
-- [ ] Compare runs using pinned case/environment identities and show the first meaningful divergence.
-- [ ] Distinguish application assertion failures, automation/locator failures, provider failures and infrastructure failures; allow users to correct suggested classifications.
-- [ ] Rerun selected failures using the same pinned inputs and record a new attempt rather than overwriting evidence.
-- [ ] Track intermittent outcomes across comparable runs; show sample size and avoid declaring flakiness from one retry.
+- [x] Compare runs using pinned case/environment identities and show the first meaningful divergence.
+- [x] Distinguish application assertion failures, automation/locator failures, provider failures and infrastructure failures; allow users to correct suggested classifications.
+- [x] Rerun selected failures using the same pinned inputs and record a new attempt rather than overwriting evidence.
+- [x] Track intermittent outcomes across comparable runs; show sample size and avoid declaring flakiness from one retry.
 
 **Done when:** a rerun is reproducible from recorded inputs, earlier failure evidence remains available, and a later pass does not erase the original failure.
+
+**2026-09-17 (E06 UI, development after candidate `75e6996`):** status page loads recorded execute-run IR for compare (`GET /api/jobs/{id}/compare?other=`), lists rerun attempts with pinned library/environment/providers, and shows intermittency verdict plus sample size (`MIN_SAMPLE=3`). `POST /api/jobs/{id}/rerun` mints `job_rerun_*` without rewriting the parent. Classification correction remains a separate store. Public rollout remains HOLD.
 
 ### E07 — reviewed Bug Hunter promotion
 
@@ -454,11 +458,11 @@ This local validation does **not** close P2-03 deployed isolation, production re
 - [x] Add idempotent submission, status polling, cancellation, immutable result/artifact retrieval and documented rate limits.
 - [x] Add signed webhooks with bounded retries, delivery IDs and duplicate handling.
 - [x] Provide one CI reference integration first; validate demand before building TMS/Git connectors.
-- [ ] Require explicit destination configuration and permissions for outbound notifications or issue creation.
+- [x] Require explicit destination configuration and permissions for outbound notifications or issue creation.
 
 **Done when:** a repeated CI request cannot create duplicate logical work, revoked credentials stop access, webhook retries are safe, and CI fails on real assertion failure while reporting blocked/expired jobs accurately.
 
-**2026-09-17 (E08, development after candidate `75e6996`):** `/api/v1` job API, `tp_svc_` credentials, idempotency, and `docs/ops/ci-job-api.md` are in tree. TMS/Git connectors are intentionally not added. Outbound issue-tracker destinations remain unbuilt.
+**2026-09-17 (E08 reconcile, development after candidate `75e6996`):** `/api/v1` job API, `tp_svc_` credentials, idempotency, and `docs/ops/ci-job-api.md` remain in tree. Job-status webhooks now deliver: OWNER/ADMIN configure `PUT /api/projects/{id}/webhook` (URL + secret); MEMBER can read the destination without the secret; missing destination is a no-op. `WebhookDispatcher` POSTs HMAC `X-Keel-Signature` with `X-Keel-Delivery-Id`, up to 5 attempts, and skips duplicate delivery ids. **Issue-tracker / TMS / Git destinations are not built.** Runner auto-update and attestation remain deferred.
 
 ### Deferred until evidence supports them
 
@@ -468,9 +472,7 @@ This local validation does **not** close P2-03 deployed isolation, production re
 - Broad connector expansion: wait for a stable API and recurring requests from pilot customers.
 - Private-runner auto-update channel and attested builds.
 - E01 named approvals beyond MEMBER vs OWNER/ADMIN.
-- E05 per-job display of actual provider fallback.
-- E06 richer operator UI for run compare / intermittency (store/API already exist).
-- E08 outbound notification/issue destinations.
+- E08 outbound issue-tracker / TMS / Git destinations.
 
 **Still HOLD / not closed by this local work**
 

@@ -58,7 +58,9 @@
             <dt>Proof</dt><dd id="proof-kind">—</dd>
             <dt>Proof source</dt><dd id="proof-source">—</dd>
             <dt>Library revision</dt><dd id="library-revision">—</dd>
-            <dt>Providers</dt><dd id="provider-allowlist">—</dd>
+            <dt>Providers allowed</dt><dd id="provider-allowlist">—</dd>
+            <dt>Providers used</dt><dd id="providers-used">—</dd>
+            <dt>Fallback</dt><dd id="fallback-used">—</dd>
             <dt>Download</dt><dd id="download-state">—</dd>
         </dl>
         <p id="next-action" class="hint">—</p>
@@ -73,6 +75,35 @@
         <p id="precision-fallback-banner" class="muted" hidden>
             Precision engine fell back to Keel for some steps — results used deterministic grounding.
         </p>
+        <section class="panel" id="run-compare-panel">
+            <h2>Attempts and compare</h2>
+            <p class="panel-intro">Reruns keep the original evidence and pin the same library, environment, and providers.</p>
+            <p id="attempts-list" class="muted">—</p>
+            <p>
+                <label>Compare with
+                    <select id="compare-other"></select>
+                </label>
+                <button type="button" class="button ghost" id="compare-btn">Compare</button>
+            </p>
+            <pre id="compare-result" class="mono" hidden></pre>
+            <p id="intermittency-verdict" class="muted">—</p>
+            <p>
+                <label>Failure class
+                    <select id="failure-class">
+                        <option value="ASSERTION">ASSERTION</option>
+                        <option value="LOCATOR">LOCATOR</option>
+                        <option value="PROVIDER">PROVIDER</option>
+                        <option value="INFRASTRUCTURE">INFRASTRUCTURE</option>
+                    </select>
+                </label>
+                <button type="button" class="button ghost" id="classify-btn">Save classification</button>
+            </p>
+            <p>
+                <button type="button" class="button" id="rerun-btn">Rerun as new attempt</button>
+            </p>
+            <p id="triage-msg" class="muted" hidden></p>
+            <p id="triage-err" class="error" hidden></p>
+        </section>
         <p id="download-wrap"
            th:hidden="${isExecuteJob or (jobStatus != 'COMPLETED' and jobStatus != 'COMPLETED_WITH_BLOCK' and !(isHuntJob and jobStatus == 'FAILED'))}">
             <a id="download" class="button" th:href="@{/api/jobs/{id}/download(id=${jobId})}"
@@ -310,6 +341,17 @@
         }
         const provEl = document.getElementById('provider-allowlist');
         if (provEl) provEl.textContent = data.providerAllowlist || '—';
+        const usedEl = document.getElementById('providers-used');
+        if (usedEl) usedEl.textContent = data.providersUsed || '—';
+        const fbEl = document.getElementById('fallback-used');
+        if (fbEl) {
+            if (data.fallbackUsed) {
+                fbEl.textContent = (data.fallbackFrom || 'precision') + ' → ' + (data.fallbackTo || 'keel')
+                    + (data.fallbackReason ? ' (' + data.fallbackReason + ')' : '');
+            } else {
+                fbEl.textContent = 'None';
+            }
+        }
         const dlEl = document.getElementById('download-state');
         if (dlEl) {
             if (data.artifactExpired) dlEl.textContent = 'Expired / unavailable';
@@ -438,6 +480,132 @@
         return false;
     }
 
+    let triageLoaded = false;
+    async function loadTriage(data) {
+        if (triageLoaded) return;
+        triageLoaded = true;
+        const classSel = document.getElementById('failure-class');
+        if (classSel && data.failureClass) classSel.value = data.failureClass;
+        try {
+            const [attemptsRes, interRes] = await Promise.all([
+                fetch('/api/jobs/' + encodeURIComponent(jobId) + '/attempts', {
+                    credentials: 'same-origin', headers: { 'Accept': 'application/json' }
+                }),
+                fetch('/api/jobs/' + encodeURIComponent(jobId) + '/intermittency', {
+                    credentials: 'same-origin', headers: { 'Accept': 'application/json' }
+                })
+            ]);
+            const attempts = attemptsRes.ok ? await attemptsRes.json() : { attempts: [] };
+            const inter = interRes.ok ? await interRes.json() : {};
+            const list = document.getElementById('attempts-list');
+            const rows = attempts.attempts || [];
+            if (list) {
+                list.textContent = rows.length
+                    ? rows.map(r => r.jobId + ' · ' + r.status
+                        + (r.parentJobId ? ' (rerun of ' + r.parentJobId + ')' : ' (original)')).join(' · ')
+                    : 'This is the only attempt.';
+            }
+            const sel = document.getElementById('compare-other');
+            if (sel) {
+                sel.innerHTML = '';
+                rows.filter(r => r.jobId !== jobId).forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.jobId;
+                    opt.textContent = r.jobId + ' · ' + r.status;
+                    sel.appendChild(opt);
+                });
+            }
+            const verdict = document.getElementById('intermittency-verdict');
+            if (verdict) {
+                verdict.textContent = 'Intermittency: ' + (inter.verdict || '—')
+                    + ' (sample ' + (inter.sampleSize || 0) + ', min ' + (inter.minSample || 3) + ')';
+            }
+        } catch (e) {
+            triageLoaded = false;
+        }
+    }
+
+    const compareBtn = document.getElementById('compare-btn');
+    if (compareBtn) {
+        compareBtn.addEventListener('click', async () => {
+            const sel = document.getElementById('compare-other');
+            const out = document.getElementById('compare-result');
+            if (!sel || !sel.value) {
+                if (out) { out.hidden = false; out.textContent = 'Select another attempt to compare.'; }
+                return;
+            }
+            const res = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/compare?other='
+                + encodeURIComponent(sel.value), {
+                credentials: 'same-origin', headers: { 'Accept': 'application/json' }
+            });
+            const data = await res.json().catch(() => ({}));
+            if (out) {
+                out.hidden = false;
+                if (!res.ok) {
+                    out.textContent = data.message || 'Compare failed';
+                    return;
+                }
+                const d = data.divergence;
+                out.textContent = (data.pinsMatch ? 'Pinned inputs match. ' : 'Pinned inputs differ. ')
+                    + (d
+                        ? ('First divergence at step ' + d.index + ' (' + d.field + '): '
+                            + ((d.left && d.left.observed) || '—') + ' vs '
+                            + ((d.right && d.right.observed) || '—'))
+                        : 'No meaningful divergence in recorded steps.');
+            }
+        });
+    }
+    const rerunBtn = document.getElementById('rerun-btn');
+    if (rerunBtn) {
+        rerunBtn.addEventListener('click', async () => {
+            const err = document.getElementById('triage-err');
+            const msg = document.getElementById('triage-msg');
+            if (err) err.hidden = true;
+            if (msg) msg.hidden = true;
+            const res = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/rerun', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-Keel-Requested-With': 'Keel' }
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                if (err) { err.hidden = false; err.textContent = data.message || 'Rerun failed'; }
+                return;
+            }
+            window.location.href = '/status?jobId=' + encodeURIComponent(data.jobId);
+        });
+    }
+    const classifyBtn = document.getElementById('classify-btn');
+    if (classifyBtn) {
+        classifyBtn.addEventListener('click', async () => {
+            const sel = document.getElementById('failure-class');
+            const err = document.getElementById('triage-err');
+            const msg = document.getElementById('triage-msg');
+            if (err) err.hidden = true;
+            if (msg) msg.hidden = true;
+            const res = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/classification', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Keel-Requested-With': 'Keel'
+                },
+                body: JSON.stringify({ kind: sel ? sel.value : 'ASSERTION' })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                if (err) { err.hidden = false; err.textContent = data.message || 'Classification failed'; }
+                return;
+            }
+            if (msg) {
+                msg.hidden = false;
+                msg.textContent = 'Saved ' + data.failureClass
+                    + (data.failureClassUserCorrected ? ' (corrected from ' + data.failureClassSuggested + ')' : '');
+            }
+        });
+    }
+
     async function poll() {
         if (!jobId) {
             showFail('Missing jobId in status URL');
@@ -466,6 +634,9 @@
             }
             failEl.hidden = true;
             const done = render(data);
+            if (done) {
+                loadTriage(data);
+            }
             if (!done) {
                 setTimeout(poll, 600);
             }

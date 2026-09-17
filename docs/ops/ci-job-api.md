@@ -96,4 +96,22 @@ jobs:
           exit 1
 ```
 
-Webhooks (HMAC-SHA256, bounded retries, delivery ids) are available for outbound notification once an explicit destination is configured. Do not send job payloads to an unspecified URL.
+## Job-status webhooks
+
+Configure an explicit destination on the project (OWNER/ADMIN) before any payload is sent:
+
+`PUT /api/projects/{projectId}/webhook`
+
+```json
+{ "url": "https://ci.example/hooks/keel", "secret": "shared-secret" }
+```
+
+`GET` returns `url`, `enabled`, and `secretConfigured` (the secret is never echoed). `DELETE` disables the destination.
+
+When a job becomes `COMPLETED`, `COMPLETED_WITH_BLOCK`, `FAILED`, or `CANCELLED`, the portal POSTs a signed JSON body:
+
+- `X-Keel-Delivery-Id`: `wh_{jobId}_{status}`
+- `X-Keel-Signature`: `sha256=` HMAC of `deliveryId + "." + body`
+- Up to 5 attempts with exponential backoff. The same delivery id is not posted twice.
+
+Issue-tracker / TMS destinations are not part of this contract. CI should still poll `/api/v1/jobs/{id}` and fail the build on assertion failure, blocked jobs, or expired artifacts.

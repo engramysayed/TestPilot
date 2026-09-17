@@ -1,5 +1,9 @@
 package delivery.job;
 
+import delivery.codegen.ProvenStep;
+import delivery.ir.TcDraft;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -12,6 +16,38 @@ public final class RunCompare {
     }
 
     private RunCompare() {
+    }
+
+    public static List<Step> fromDrafts(List<TcDraft> drafts) {
+        List<Step> out = new ArrayList<>();
+        if (drafts == null) {
+            return out;
+        }
+        for (TcDraft draft : drafts) {
+            if (draft == null) {
+                continue;
+            }
+            String observed = draft.status() == null ? "" : draft.status().name();
+            if (draft.lastPageUrl() != null && !draft.lastPageUrl().isBlank()) {
+                observed = observed + " @ " + draft.lastPageUrl();
+            }
+            if (draft.failureReason() != null && !draft.failureReason().isBlank()) {
+                observed = observed + " — " + draft.failureReason();
+            }
+            out.add(new Step(draft.tcId(), "case", draft.expectedResult(), observed));
+            for (ProvenStep step : draft.provenSteps()) {
+                if (step == null) {
+                    continue;
+                }
+                String name = step.action() == null || step.action().isBlank() ? "step" : step.action();
+                out.add(new Step(
+                        draft.tcId(),
+                        name,
+                        step.assertionExpected() == null ? "" : step.assertionExpected(),
+                        step.validated() ? "validated" : "unvalidated"));
+            }
+        }
+        return out;
     }
 
     public static Divergence firstMeaningful(List<Step> left, List<Step> right) {

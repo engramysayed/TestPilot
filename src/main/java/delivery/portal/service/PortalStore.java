@@ -18,6 +18,7 @@ import delivery.store.GeneratedStoreLayout;
 import delivery.store.LibraryRevisionStore;
 import delivery.store.PreferredHooksStore;
 import delivery.store.ProjectStore;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,24 +55,34 @@ public class PortalStore {
     private final ProjectRepository projectRepository;
     private final JobRepository jobRepository;
     private final ProjectCredentialRepository credentialRepository;
+    private final ObjectProvider<WebhookDispatcher> webhooks;
 
     public PortalStore(DeliveryPortalProperties props,
                        ProjectRepository projectRepository,
                        JobRepository jobRepository) {
-        this(props, projectRepository, jobRepository, null);
+        this(props, projectRepository, jobRepository, null, null);
+    }
+
+    public PortalStore(DeliveryPortalProperties props,
+                       ProjectRepository projectRepository,
+                       JobRepository jobRepository,
+                       ProjectCredentialRepository credentialRepository) {
+        this(props, projectRepository, jobRepository, credentialRepository, null);
     }
 
     @Autowired
     public PortalStore(DeliveryPortalProperties props,
                        ProjectRepository projectRepository,
                        JobRepository jobRepository,
-                       ProjectCredentialRepository credentialRepository) {
+                       ProjectCredentialRepository credentialRepository,
+                       ObjectProvider<WebhookDispatcher> webhooks) {
         this.portalProperties = props;
         this.storeRootPath = java.nio.file.Path.of(props.getStoreRoot());
         this.projectStore = new ProjectStore(storeRootPath);
         this.projectRepository = projectRepository;
         this.jobRepository = jobRepository;
         this.credentialRepository = credentialRepository;
+        this.webhooks = webhooks;
     }
 
     public AuthoringEngine authoringEngineForProject(String projectId) {
@@ -438,6 +449,9 @@ public class PortalStore {
     public JobRecord saveJob(JobRecord job) {
         boolean creating = job.getStatus() == JobRecord.Status.QUEUED
                 && jobRepository.findByJobId(job.getJobId()).isEmpty();
+        String previousStatus = jobRepository.findByJobId(job.getJobId())
+                .map(JobEntity::getStatus)
+                .orElse("");
         if (creating) {
             projectRepository.findByProjectId(job.getProjectId()).ifPresent(p -> {
                 if (p.isArchived()) {
@@ -513,6 +527,17 @@ public class PortalStore {
         entity.setParentJobId(job.getParentJobId());
         entity.setPrecisionMaxSnapshot(job.getPrecisionMaxSnapshot());
         entity.setRequirePrivateRunner(job.isRequirePrivateRunner());
+        if (JobRecord.isTerminal(job.getStatus())
+                && (job.getProvidersUsed() == null || job.getProvidersUsed().isBlank())) {
+            try {
+                delivery.job.ProviderUsage.apply(job, recordedDrafts(job));
+            } catch (Exception ignored) {
+                delivery.job.ProviderUsage.apply(job, java.util.List.of());
+            }
+        }
+        entity.setProvidersUsed(job.getProvidersUsed());
+        entity.setFallbackUsed(job.isFallbackUsed());
+        entity.setFallbackReason(job.getFallbackReason());
         if ((job.getInputSnapshotHash() == null || job.getInputSnapshotHash().isBlank())
                 && job.getStatus() == JobRecord.Status.QUEUED) {
             job.setInputSnapshotHash(delivery.job.DurableJobClaim.hashInputs(job));
@@ -524,6 +549,14 @@ public class PortalStore {
         }
         job.setCreatedAt(entity.getCreatedAt());
         job.setCompletedAt(entity.getCompletedAt());
+        if (JobRecord.isTerminal(job.getStatus())
+                && !job.getStatus().name().equals(previousStatus)
+                && webhooks != null) {
+            WebhookDispatcher dispatcher = webhooks.getIfAvailable();
+            if (dispatcher != null) {
+                dispatcher.deliverAsync(job);
+            }
+        }
         return job;
     }
 
@@ -855,6 +888,9 @@ public class PortalStore {
         job.setParentJobId(e.getParentJobId());
         job.setPrecisionMaxSnapshot(e.getPrecisionMaxSnapshot());
         job.setRequirePrivateRunner(e.isRequirePrivateRunner());
+        job.setProvidersUsed(e.getProvidersUsed());
+        job.setFallbackUsed(e.isFallbackUsed());
+        job.setFallbackReason(e.getFallbackReason());
         job.setTenantId(e.getTenantId());
         if (job.getTenantId() == null || job.getTenantId().isBlank()) {
             projectRepository.findByProjectId(e.getProjectId())
@@ -939,6 +975,70 @@ public class PortalStore {
 
     public Path environmentRoot(String projectId) {
         return projectDiskRoot(projectId).resolve("environments");
+    }
+
+    public Path webhookFile(String projectId) {
+        return projectDiskRoot(projectId).resolve("notifications").resolve("webhook.json");
+    }
+
+    public java.util.List<delivery.ir.TcDraft> recordedDrafts(JobRecord job) {
+        if (job == null) {
+            return java.util.List.of();
+        }
+        try {
+            return delivery.job.RecordedEvidence.drafts(projectDiskRoot(job.getProjectId()), job);
+        } catch (Exception e) {
+            return java.util.List.of();
+        }
+    }
+
+    public java.util.List<JobRecord> attemptFamily(JobRecord job) {
+        if (job == null) {
+            return java.util.List.of();
+        }
+        String rootId = job.getJobId();
+        JobRecord walk = job;
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        while (walk.getParentJobId() != null && !walk.getParentJobId().isBlank() && seen.add(walk.getJobId())) {
+            JobRecord parent = getJob(walk.getParentJobId()).orElse(null);
+            if (parent == null) {
+                rootId = walk.getParentJobId();
+                break;
+            }
+            walk = parent;
+            rootId = parent.getJobId();
+        }
+        java.util.Set<String> ids = new java.util.LinkedHashSet<>();
+        ids.add(rootId);
+        java.util.List<JobEntity> projectJobs = jobRepository.findByProjectId(job.getProjectId());
+        boolean grew = true;
+        while (grew) {
+            grew = false;
+            for (JobEntity entity : projectJobs) {
+                String parent = entity.getParentJobId();
+                if (parent != null && !parent.isBlank() && ids.contains(parent) && ids.add(entity.getJobId())) {
+                    grew = true;
+                }
+            }
+        }
+        java.util.List<JobRecord> out = new java.util.ArrayList<>();
+        for (String id : ids) {
+            JobRecord found = getJob(id).orElse(null);
+            if (found == null) {
+                for (JobEntity entity : projectJobs) {
+                    if (id.equals(entity.getJobId())) {
+                        found = hydrate(entity);
+                        break;
+                    }
+                }
+            }
+            if (found != null) {
+                out.add(found);
+            }
+        }
+        out.sort(java.util.Comparator.comparing(
+                j -> j.getCreatedAt() == null ? java.time.Instant.EPOCH : j.getCreatedAt()));
+        return out;
     }
 
     public delivery.job.BudgetLedger.Snapshot budgetSnapshot(String projectId) throws Exception {

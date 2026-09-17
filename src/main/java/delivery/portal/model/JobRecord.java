@@ -48,6 +48,9 @@ public class JobRecord {
     private volatile String parentJobId = "";
     private volatile int precisionMaxSnapshot;
     private volatile boolean requirePrivateRunner;
+    private volatile String providersUsed = "";
+    private volatile boolean fallbackUsed;
+    private volatile String fallbackReason = "";
 
     public JobRecord(String jobId, String projectId, Long ownerUserId, String mode, Path excelPath,
                      String baseUrl, String username, String password) {
@@ -132,6 +135,16 @@ public class JobRecord {
     public boolean isRequirePrivateRunner() { return requirePrivateRunner; }
     public void setRequirePrivateRunner(boolean requirePrivateRunner) {
         this.requirePrivateRunner = requirePrivateRunner;
+    }
+    public String getProvidersUsed() { return providersUsed == null ? "" : providersUsed; }
+    public void setProvidersUsed(String providersUsed) {
+        this.providersUsed = providersUsed == null ? "" : providersUsed;
+    }
+    public boolean isFallbackUsed() { return fallbackUsed; }
+    public void setFallbackUsed(boolean fallbackUsed) { this.fallbackUsed = fallbackUsed; }
+    public String getFallbackReason() { return fallbackReason == null ? "" : fallbackReason; }
+    public void setFallbackReason(String fallbackReason) {
+        this.fallbackReason = fallbackReason == null ? "" : fallbackReason;
     }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
@@ -232,5 +245,12 @@ public class JobRecord {
         } catch (IllegalArgumentException e) {
             return JobKind.CONVERT;
         }
+    }
+
+    public static boolean isTerminal(Status status) {
+        return status == Status.COMPLETED
+                || status == Status.COMPLETED_WITH_BLOCK
+                || status == Status.FAILED
+                || status == Status.CANCELLED;
     }
 }

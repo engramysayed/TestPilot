@@ -50,6 +50,25 @@ public class Phase6SettingsAndHuntMvcTest extends AbstractTestNGSpringContextTes
         Assert.assertTrue(body.contains("/usage"), "usage API wiring missing");
         Assert.assertTrue(body.contains("workspace-runner-form"), "private runner panel missing");
         Assert.assertTrue(body.contains("/runners"), "runner API wiring missing");
+        Assert.assertTrue(body.contains("id=\"webhook-panel\""), "job-status webhook panel missing");
+        Assert.assertTrue(body.contains("/webhook"), "webhook API wiring missing");
+    }
+
+    @Test
+    public void statusPageExposesCompareRerunAndProviderFallback() throws Exception {
+        String body = mockMvc.perform(get("/status").param("jobId", "job_phase6_ui")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Assert.assertTrue(body.contains("id=\"providers-used\""), "actual providers display missing");
+        Assert.assertTrue(body.contains("id=\"fallback-used\""), "fallback display missing");
+        Assert.assertTrue(body.contains("id=\"run-compare-panel\""), "run compare panel missing");
+        Assert.assertTrue(body.contains("/compare"), "compare API wiring missing");
+        Assert.assertTrue(body.contains("/rerun"), "rerun API wiring missing");
+        Assert.assertTrue(body.contains("id=\"intermittency-verdict\""), "intermittency UI missing");
+        Assert.assertTrue(body.contains("failure-class"), "classification UI missing");
     }
 
     @Test

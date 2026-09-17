@@ -262,6 +262,27 @@
             </form>
         </section>
 
+        <section class="panel" id="webhook-panel">
+            <h2>Job-status webhook</h2>
+            <p class="panel-intro">
+                Optional signed HTTP notifications when a job reaches a terminal status.
+                Retries are bounded and keyed by delivery id. This is not an issue tracker.
+            </p>
+            <p id="webhook-summary" class="muted"></p>
+            <p id="webhook-err" class="error" hidden></p>
+            <p id="webhook-msg" class="muted" hidden></p>
+            <form id="webhook-form" class="settings-form" hidden>
+                <label>URL
+                    <input type="url" id="webhook-url" placeholder="https://ci.example/hooks/keel"/>
+                </label>
+                <label>Secret
+                    <input type="password" id="webhook-secret" placeholder="required to enable"/>
+                </label>
+                <button type="submit">Save webhook</button>
+                <button type="button" class="button ghost" id="webhook-clear">Disable</button>
+            </form>
+        </section>
+
         <section class="panel">
             <div class="panel-head-row">
                 <div>
@@ -736,6 +757,7 @@
         settingsRole = p.workspaceRole || '';
         loadEnvironments(settingsRole);
         loadUsage(settingsRole);
+        loadWebhook(settingsRole);
     }
 
     function setCollabMessage(text, isError) {
@@ -949,6 +971,77 @@
         const warning = document.getElementById('usage-warn-input');
         if (hard && document.activeElement !== hard) hard.value = data.hardCapUnits == null ? '' : data.hardCapUnits;
         if (warning && document.activeElement !== warning) warning.value = data.warningUnits == null ? '' : data.warningUnits;
+    }
+
+    async function loadWebhook(roleHint) {
+        const err = document.getElementById('webhook-err');
+        const msg = document.getElementById('webhook-msg');
+        if (err) err.hidden = true;
+        if (msg) msg.hidden = true;
+        const res = await fetch(apiUrl('/webhook'), { credentials: 'same-origin', headers: API_HEADERS });
+        const data = res.ok ? await res.json().catch(() => ({})) : {};
+        if (!res.ok) {
+            if (err) {
+                err.hidden = false;
+                err.textContent = data.message || 'Failed to load webhook';
+            }
+            return;
+        }
+        const summary = document.getElementById('webhook-summary');
+        if (summary) {
+            summary.textContent = data.enabled
+                ? ('Enabled → ' + (data.url || ''))
+                : 'Disabled — no destination configured.';
+        }
+        const form = document.getElementById('webhook-form');
+        if (form) form.hidden = !canOperateRole(roleHint || settingsRole || '');
+        const url = document.getElementById('webhook-url');
+        if (url && document.activeElement !== url) url.value = data.url || '';
+    }
+
+    const webhookForm = document.getElementById('webhook-form');
+    if (webhookForm) {
+        webhookForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const err = document.getElementById('webhook-err');
+            const msg = document.getElementById('webhook-msg');
+            if (err) err.hidden = true;
+            if (msg) msg.hidden = true;
+            const res = await fetch(apiUrl('/webhook'), {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify({
+                    url: document.getElementById('webhook-url').value,
+                    secret: document.getElementById('webhook-secret').value
+                })
+            });
+            const data = res.ok ? await res.json().catch(() => ({})) : await res.json().catch(() => ({}));
+            if (!res.ok) {
+                if (err) { err.hidden = false; err.textContent = data.message || 'Could not save webhook'; }
+                return;
+            }
+            const secret = document.getElementById('webhook-secret');
+            if (secret) secret.value = '';
+            if (msg) { msg.hidden = false; msg.textContent = 'Webhook saved.'; }
+            loadWebhook();
+        });
+    }
+    const webhookClear = document.getElementById('webhook-clear');
+    if (webhookClear) {
+        webhookClear.addEventListener('click', async () => {
+            const res = await fetch(apiUrl('/webhook'), {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            if (!res.ok) {
+                const err = document.getElementById('webhook-err');
+                if (err) { err.hidden = false; err.textContent = 'Could not disable webhook'; }
+                return;
+            }
+            loadWebhook();
+        });
     }
 
     async function revokeWorkspaceRunner(runnerId) {

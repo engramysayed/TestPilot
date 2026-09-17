@@ -40,6 +40,8 @@ public class DeliveryPortalProperties {
     private RetentionProperties retention = new RetentionProperties();
     private HuntProperties hunt = new HuntProperties();
     private AuthoringProperties authoring = new AuthoringProperties();
+    /** Base delay unit for webhook retries. 0 skips sleeps (tests). Default 1000ms. */
+    private int webhookRetryUnitMs = 1000;
 
     public static class CodegenProperties {
         /** Optional Ollama polish for generated test method names only (pages stay deterministic). */
@@ -150,5 +152,9 @@ public class DeliveryPortalProperties {
     }
     public int getPrecisionMaxCallsPerJob() {
         return authoring.getPrecision().getMaxCallsPerJob();
+    }
+    public int getWebhookRetryUnitMs() { return webhookRetryUnitMs; }
+    public void setWebhookRetryUnitMs(int webhookRetryUnitMs) {
+        this.webhookRetryUnitMs = Math.max(0, webhookRetryUnitMs);
     }
 }

@@ -37,6 +37,12 @@ public final class JobDiagnostics {
                 (job.getMessage() == null ? "" : job.getMessage()) + " " + (job.getError() == null ? "" : job.getError())
         ).name());
         out.put("providerAllowlist", job.getProviderAllowlistSnapshot());
+        ProviderUsage.Snapshot usage = ProviderUsage.from(job, java.util.List.of());
+        out.put("providersUsed", usage.used());
+        out.put("fallbackUsed", usage.fallbackUsed());
+        out.put("fallbackFrom", usage.fallbackFrom());
+        out.put("fallbackTo", usage.fallbackTo());
+        out.put("fallbackReason", usage.fallbackReason());
         out.put("claimStage", job.getClaimStage());
         out.put("attemptId", job.getAttemptId());
         out.put("downloadAvailable", downloadable);

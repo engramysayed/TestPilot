@@ -108,6 +108,15 @@ public class JobEntity {
     @Column(name = "require_private_runner", nullable = false, columnDefinition = "boolean default false")
     private boolean requirePrivateRunner;
 
+    @Column(name = "providers_used", length = 128)
+    private String providersUsed;
+
+    @Column(name = "fallback_used", nullable = false, columnDefinition = "boolean default false")
+    private boolean fallbackUsed;
+
+    @Column(name = "fallback_reason", length = 256)
+    private String fallbackReason;
+
     public Long getId() { return id; }
     public String getJobId() { return jobId; }
     public void setJobId(String jobId) { this.jobId = jobId; }
@@ -179,4 +188,10 @@ public class JobEntity {
     public void setRequirePrivateRunner(boolean requirePrivateRunner) {
         this.requirePrivateRunner = requirePrivateRunner;
     }
+    public String getProvidersUsed() { return providersUsed; }
+    public void setProvidersUsed(String providersUsed) { this.providersUsed = providersUsed; }
+    public boolean isFallbackUsed() { return fallbackUsed; }
+    public void setFallbackUsed(boolean fallbackUsed) { this.fallbackUsed = fallbackUsed; }
+    public String getFallbackReason() { return fallbackReason; }
+    public void setFallbackReason(String fallbackReason) { this.fallbackReason = fallbackReason; }
 }

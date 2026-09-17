@@ -223,6 +223,10 @@ public class JobController {
                     m.put("downloadable", JobRecord.isDownloadable(
                             JobRecord.parseJobKind(e.getJobKind()), status));
                     m.put("softBlocked", "COMPLETED_WITH_BLOCK".equals(status));
+                    m.put("parentJobId", live.map(JobRecord::getParentJobId)
+                            .orElse(e.getParentJobId() == null ? "" : e.getParentJobId()));
+                    m.put("libraryRevisionId", live.map(JobRecord::getLibraryRevisionId)
+                            .orElse(e.getLibraryRevisionId() == null ? "" : e.getLibraryRevisionId()));
                     return m;
                 })
                 .collect(Collectors.toList());

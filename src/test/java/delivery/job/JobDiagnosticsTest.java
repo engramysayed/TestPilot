@@ -75,6 +75,21 @@ public class JobDiagnosticsTest {
         Assert.assertEquals(JobDiagnostics.caseProofKind(TcDraftStatus.TODO, false), "UNCHECKED");
     }
 
+    @Test
+    public void describesPermittedProvidersAndRecordedFallback() {
+        JobRecord job = job(JobRecord.Status.COMPLETED, "PRECISION_FALLBACK: Precision engine fell back to Keel (timeout)", "");
+        job.setProvidersUsed("precision,keel");
+        job.setFallbackUsed(true);
+        job.setFallbackReason("timeout");
+        Map<String, Object> d = JobDiagnostics.describe(job, false, false);
+        Assert.assertEquals(d.get("providerAllowlist"), "ollama");
+        Assert.assertEquals(d.get("providersUsed"), "precision,keel");
+        Assert.assertEquals(d.get("fallbackUsed"), Boolean.TRUE);
+        Assert.assertEquals(d.get("fallbackFrom"), "precision");
+        Assert.assertEquals(d.get("fallbackTo"), "keel");
+        Assert.assertEquals(d.get("fallbackReason"), "timeout");
+    }
+
     private static JobRecord job(JobRecord.Status status, String message, String error) {
         JobRecord job = new JobRecord("job_d", "prj_d", 1L, "NEW", Path.of("x.xlsx"),
                 "https://example.com", "", "");
