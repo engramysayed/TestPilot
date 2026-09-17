@@ -433,7 +433,7 @@ This local validation does **not** close P2-03 deployed isolation, production re
 
 **2026-09-17 (E06 UI, `bd0f7ae`, development after candidate `75e6996`):** status page loads recorded execute-run IR for compare (`GET /api/jobs/{id}/compare?other=`), lists rerun attempts with pinned library/environment/providers, and shows intermittency verdict plus sample size (`MIN_SAMPLE=3`). `POST /api/jobs/{id}/rerun` mints `job_rerun_*` without rewriting the parent. Classification correction remains a separate store. Browser: Attempts and compare, Compare, Failure class, Rerun as new attempt. Public rollout remains HOLD.
 
-**2026-09-17 (E06 rerun pin):** if the job's temp workbook was already deleted, rerun rematerializes bytes from the pinned `libraryRevisionId` instead of failing with "Excel file not found".
+**2026-09-17 (E06 rerun pin, `23f9351`):** if the job's temp workbook was already deleted, rerun rematerializes bytes from the pinned `libraryRevisionId` instead of failing with "Excel file not found".
 
 ### E07 — reviewed Bug Hunter promotion
 
@@ -468,7 +468,7 @@ This local validation does **not** close P2-03 deployed isolation, production re
 
 ### Phase 6 close-out (product acceptance)
 
-**2026-09-17:** Phase 6 **product acceptance is complete** for E01–E08 as specified above. Optional enhancements stay deferred. This is **not** a Phase 5 launch guarantee.
+**2026-09-17:** Phase 6 **product acceptance is complete** for E01–E08 as specified above on **`23f9351`**. Optional enhancements stay deferred. This is **not** a Phase 5 launch guarantee.
 
 **Suite:** `mvn test` (default `install.drills.skip=true`) **1301 run, 1299 passed, 0 failed, 2 skipped**. Shared/dedicated install drills were not forked from this pom.
 
