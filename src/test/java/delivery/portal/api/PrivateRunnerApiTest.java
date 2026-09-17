@@ -268,6 +268,38 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    public void runnerMarksBrowserStageThenDisconnectIsUncertain() throws Exception {
+        String projectId = createProject();
+        seedWorkbook(projectId, "private-browser-stage");
+        String token = enrollRunner(projectId, "admin@testpilot.local", "ChangeMeAdmin1!", "stage");
+        String jobId = submitPrivateJob(projectId, serviceToken(projectId));
+        mockMvc.perform(post("/api/v1/runners/heartbeat")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/runners/claim")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/runners/jobs/" + jobId + "/stage")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"stage\":\"BROWSER\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.claimStage").value("BROWSER"));
+        Assert.assertEquals(store.getJob(jobId).orElseThrow().getClaimStage(), "BROWSER");
+
+        JobRecord running = store.getJob(jobId).orElseThrow();
+        running.setLeaseUntil(java.time.Instant.now().minusSeconds(5));
+        store.syncJobPersistence(running);
+        Assert.assertTrue(store.reconcileExpiredLeases() >= 1);
+        JobRecord dead = store.getJob(jobId).orElseThrow();
+        Assert.assertEquals(dead.getStatus(), JobRecord.Status.FAILED);
+        Assert.assertEquals(dead.getError(), delivery.job.DurableJobClaim.INTERRUPTED_UNCERTAIN);
+    }
+
+    @Test
     public void agentRunOnceCompletesPrivateDryRunJob() throws Exception {
         String projectId = createProject();
         workbooks.saveFromCases(projectId, List.of(

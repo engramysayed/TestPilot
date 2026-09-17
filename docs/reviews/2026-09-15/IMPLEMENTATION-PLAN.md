@@ -378,11 +378,13 @@ These are proposed product priorities, not validated market demand. Foundational
 
 **User value:** collaborate without shared accounts.
 
-- [ ] Add invitations, membership removal, role management and audit history.
-- [ ] Add project access restrictions, ownership transfer and service identities as customer needs justify them.
-- [ ] Invalidate access promptly after membership removal; define what happens to the removed member's queued work.
+- [x] Add invitations, membership removal, role management and audit history.
+- [x] Add project access restrictions, ownership transfer and service identities as customer needs justify them.
+- [x] Invalidate access promptly after membership removal; define what happens to the removed member's queued work.
 
 **Done when:** role changes are enforced across APIs, workers and artifacts; one customer cannot manage another's membership. Administrative actions have an attributable audit trail.
+
+**2026-09-17 (E03, development after candidate `75e6996`):** MEMBER is read-only; OWNER/ADMIN operate; only OWNER administers/deletes. Membership audit, ownership transfer, revocable `tp_svc_` identities, and cancel-on-remove for the member's active jobs are implemented. This is not a Phase 5 launch guarantee.
 
 ### E04 — environment profiles and private runners
 
@@ -397,7 +399,9 @@ These are proposed product priorities, not validated market demand. Foundational
 
 **Done when:** environment changes cannot redirect existing jobs; revoked runners cannot claim work; private applications are tested without exposing their network to the shared control plane. Disconnection follows the durable job recovery contract.
 
-Local private-runner validation (separate portal + agent processes, disconnect/requeue of ADMITTED leases, cross-tenant claim rejection) does **not** close P2-03 deployed isolation, live Generate → Execute → Automate, or named P0-01 approvals. Auto-update/attested runner builds are not included. Public rollout remains HOLD; candidate `75e6996` is unchanged.
+**2026-09-17 live local validation (development after `435799f`):** `PrivateRunnerLiveBrowserProcessTest` starts a separate `PrivateRunnerAgent` with `--dry-run false` and headless Chrome against controlled loopback pages. Recorded path: claim → frozen input zip → `BROWSER` stage → live click (`DOM_POST_CLICK` url-changed to `confirmed.html`) → HMAC artifact upload → `COMPLETED` with `passedCount >= 1`. Cancel during a hung BROWSER navigation finishes `CANCELLED`. Destroying the agent on `BROWSER` plus an expired lease yields `INTERRUPTED_UNCERTAIN`. In-process portal workers skip `runner=private`. Agent logs (`Starting Driver` / `CHROME` / `DOM_POST_CLICK`) plus the uploaded zip (IR `lastPageUrl`) are the execution evidence; the portal work-dir does not contain the job.
+
+This local validation does **not** close P2-03 deployed isolation, production restore, representative customer-app acceptance, live Generate → Execute → Automate on a customer target, or named P0-01 approvals. Auto-update and attested runner builds are not included. Public rollout remains HOLD; candidate `75e6996` is unchanged.
 
 ### E05 — provider policy, budgets and spend visibility
 
@@ -405,10 +409,10 @@ Local private-runner validation (separate portal + agent processes, disconnect/r
 
 **User value:** control where data goes and avoid unexpected AI cost.
 
+- [x] Reserve budget atomically before dispatch so concurrent jobs cannot all spend the same allowance.
+- [x] Enforce per-job/per-tenant limits across retries, fallback and recovery; handle unknown cost explicitly.
+- [x] Add usage history and configurable warning thresholds; distinguish estimated and reconciled cost.
 - [ ] Show permitted providers/models and actual fallback use per job.
-- [ ] Reserve budget atomically before dispatch so concurrent jobs cannot all spend the same allowance.
-- [ ] Enforce per-job/per-tenant limits across retries, fallback and recovery; handle unknown cost explicitly.
-- [ ] Add usage history and configurable warning thresholds; distinguish estimated and reconciled cost.
 
 **Done when:** concurrent requests respect the approved limit, forbidden providers are never invoked, and users can explain a job's provider usage and estimated/final cost.
 
@@ -431,12 +435,14 @@ Local private-runner validation (separate portal + agent processes, disconnect/r
 
 **User value:** turn useful discoveries into maintainable regression scenarios.
 
-- [ ] Preview candidates with supporting evidence and editable steps/assertions.
-- [ ] Compare against a pinned library revision for exact and suggested semantic duplicates.
-- [ ] Require explicit acceptance; stale acceptance must rebase/review against the latest revision.
-- [ ] Preserve discovery provenance and require normal proving before claiming automation readiness.
+- [x] Preview candidates with supporting evidence and editable steps/assertions.
+- [x] Compare against a pinned library revision for exact and suggested semantic duplicates.
+- [x] Require explicit acceptance; stale acceptance must rebase/review against the latest revision.
+- [x] Preserve discovery provenance and require normal proving before claiming automation readiness.
 
 **Done when:** Hunt never silently merges cases; accepted candidates create an attributable library revision; duplicates and conflicting edits are reviewable.
+
+**2026-09-17 (E07, development after candidate `75e6996`):** in-page Hunt review/edit/accept requires `accept=true`; promotion mints `TC_HUNT_*` as a library revision. Not a Phase 5 launch guarantee.
 
 ### E08 — CI/API integration and connectors
 
@@ -444,13 +450,15 @@ Local private-runner validation (separate portal + agent processes, disconnect/r
 
 **User value:** run and retrieve trusted tests from existing delivery workflows.
 
-- [ ] Version the public job/result API and support tenant-scoped, revocable service credentials.
-- [ ] Add idempotent submission, status polling, cancellation, immutable result/artifact retrieval and documented rate limits.
-- [ ] Add signed webhooks with bounded retries, delivery IDs and duplicate handling.
-- [ ] Provide one CI reference integration first; validate demand before building TMS/Git connectors.
+- [x] Version the public job/result API and support tenant-scoped, revocable service credentials.
+- [x] Add idempotent submission, status polling, cancellation, immutable result/artifact retrieval and documented rate limits.
+- [x] Add signed webhooks with bounded retries, delivery IDs and duplicate handling.
+- [x] Provide one CI reference integration first; validate demand before building TMS/Git connectors.
 - [ ] Require explicit destination configuration and permissions for outbound notifications or issue creation.
 
 **Done when:** a repeated CI request cannot create duplicate logical work, revoked credentials stop access, webhook retries are safe, and CI fails on real assertion failure while reporting blocked/expired jobs accurately.
+
+**2026-09-17 (E08, development after candidate `75e6996`):** `/api/v1` job API, `tp_svc_` credentials, idempotency, and `docs/ops/ci-job-api.md` are in tree. TMS/Git connectors are intentionally not added. Outbound issue-tracker destinations remain unbuilt.
 
 ### Deferred until evidence supports them
 
@@ -458,6 +466,20 @@ Local private-runner validation (separate portal + agent processes, disconnect/r
 - Another generated language: first confirm customer demand and the cost of maintaining runtime assertions, setup semantics and replay parity.
 - Hunt two-pass DOM processing: retain its intentional deferred status until recorded live failures show that it improves coverage/accuracy enough to justify complexity.
 - Broad connector expansion: wait for a stable API and recurring requests from pilot customers.
+- Private-runner auto-update channel and attested builds.
+- E01 named approvals beyond MEMBER vs OWNER/ADMIN.
+- E05 per-job display of actual provider fallback.
+- E06 richer operator UI for run compare / intermittency (store/API already exist).
+- E08 outbound notification/issue destinations.
+
+**Still HOLD / not closed by this local work**
+
+- Public rollout; validation candidate remains `75e6996`.
+- P0-01 named first-release approvals.
+- P2-03 deployed shared/dedicated isolation.
+- Production restore on deployment storage (P4-02).
+- Representative customer-app Generate → Execute → Automate acceptance.
+- P5-01/P5-02 pilot and release.
 
 ## 9. Decisions and dependency checkpoints
 

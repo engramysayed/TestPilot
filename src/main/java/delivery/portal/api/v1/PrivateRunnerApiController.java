@@ -102,7 +102,36 @@ public class PrivateRunnerApiController {
         body.put("inputSnapshotHash", job.getInputSnapshotHash());
         body.put("providerAllowlistSnapshot", job.getProviderAllowlistSnapshot());
         body.put("attemptId", job.getAttemptId());
+        body.put("claimStage", job.getClaimStage() == null ? "" : job.getClaimStage());
         return ResponseEntity.ok(body);
+    }
+
+    public record StageRequest(String stage) {
+    }
+
+    @PostMapping("/jobs/{jobId}/stage")
+    public ResponseEntity<?> stage(
+            @PathVariable("jobId") String jobId,
+            @RequestBody(required = false) StageRequest body
+    ) throws Exception {
+        var runner = requireRunner();
+        if (runner == null) {
+            return unauthorized();
+        }
+        if (body == null || body.stage() == null || body.stage().isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_REQUEST", "stage is required").asMap());
+        }
+        try {
+            String claimStage = store.markRunnerStage(runner, jobId, body.stage());
+            return ResponseEntity.ok(Map.of("jobId", jobId, "claimStage", claimStage));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiError("FORBIDDEN", e.getMessage()).asMap());
+        }
     }
 
     @GetMapping("/jobs/{jobId}/input")

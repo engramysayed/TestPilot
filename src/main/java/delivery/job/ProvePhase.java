@@ -639,6 +639,7 @@ public class ProvePhase {
         List<ProvenStep> recoveredActions = new ArrayList<>();
         try {
         for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            JobCancelSupport.checkCancelled(cancelCheck);
             if (attempt > 0) {
                 retriesUsed = attempt;
                 progress.update(progress.current(), progress.total(),

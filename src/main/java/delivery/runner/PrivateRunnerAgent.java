@@ -85,11 +85,22 @@ public final class PrivateRunnerAgent {
         Files.createDirectories(jobDir);
         Path excel = jobDir.resolve("suite.xlsx");
         JSONObject meta = unzipInput(pack, excel, jobDir);
+        if (!dryRun) {
+            JSONObject stage = new JSONObject();
+            stage.put("stage", "BROWSER");
+            post("/api/v1/runners/jobs/" + jobId + "/stage", stage.toString());
+        }
         if (cancelRequested(jobId)) {
             completeCancelled(jobId, inputHash, meta, allowlist);
             return;
         }
-        ExecuteJobResult result = runJob(jobId, meta, excel, jobDir);
+        ExecuteJobResult result;
+        try {
+            result = runJob(jobId, meta, excel, jobDir);
+        } catch (delivery.job.JobCancelledException e) {
+            completeCancelled(jobId, inputHash, meta, allowlist);
+            return;
+        }
         if (cancelRequested(jobId)) {
             completeCancelled(jobId, inputHash, meta, allowlist);
             return;

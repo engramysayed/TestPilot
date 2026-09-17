@@ -1179,6 +1179,30 @@ public class PortalStore {
         return heartbeat(jobId, lease);
     }
 
+    public synchronized String markRunnerStage(
+            delivery.identity.WorkspaceDirectory.RunnerEnrollment runner,
+            String jobId,
+            String stageName
+    ) throws Exception {
+        JobRecord job = getJob(jobId).orElse(null);
+        if (job == null || !delivery.runner.PrivateRunnerBindings.sameTenant(runner, job)) {
+            throw new IllegalArgumentException("unknown job");
+        }
+        if (!runner.id().equals(job.getWorkerId())) {
+            throw new SecurityException("runner does not own this attempt");
+        }
+        delivery.job.DurableJobClaim.Stage stage =
+                delivery.job.DurableJobClaim.Stage.valueOf(stageName.trim().toUpperCase());
+        if (stage != delivery.job.DurableJobClaim.Stage.BROWSER
+                && stage != delivery.job.DurableJobClaim.Stage.EMIT) {
+            throw new IllegalArgumentException("unsupported stage");
+        }
+        delivery.job.DurableJobClaim.markStage(job, job.getAttemptId(), stage);
+        syncJobPersistence(job);
+        directory().touchRunnerHeartbeat(runner.id(), runner.tenant(), Instant.now());
+        return job.getClaimStage();
+    }
+
     public synchronized void completeFromRunner(
             delivery.identity.WorkspaceDirectory.RunnerEnrollment runner,
             String jobId,
