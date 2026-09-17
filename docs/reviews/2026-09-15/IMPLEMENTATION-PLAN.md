@@ -390,12 +390,14 @@ These are proposed product priorities, not validated market demand. Foundational
 
 **User value:** run the same project safely against staging/UAT and private applications.
 
-- [ ] Add named environments with target origin, scoped credential reference, approved provider policy and execution limits.
-- [ ] Pin jobs to environment versions; compare environments without changing project storage identity.
-- [ ] Design a customer-operated runner with outbound connection, tenant binding, enrollment/revocation, heartbeat and scoped job claims.
-- [ ] Define what evidence leaves the runner, how updates are trusted, and what happens when it goes offline.
+- [x] Add named environments with target origin, scoped credential reference, approved provider policy and execution limits.
+- [x] Pin jobs to environment versions; compare environments without changing project storage identity.
+- [x] Design a customer-operated runner with outbound connection, tenant binding, enrollment/revocation, heartbeat and scoped job claims.
+- [x] Define what evidence leaves the runner, how updates are trusted, and what happens when it goes offline.
 
 **Done when:** environment changes cannot redirect existing jobs; revoked runners cannot claim work; private applications are tested without exposing their network to the shared control plane. Disconnection follows the durable job recovery contract.
+
+Local private-runner validation (separate portal + agent processes, disconnect/requeue of ADMITTED leases, cross-tenant claim rejection) does **not** close P2-03 deployed isolation, live Generate → Execute → Automate, or named P0-01 approvals. Auto-update/attested runner builds are not included. Public rollout remains HOLD; candidate `75e6996` is unchanged.
 
 ### E05 — provider policy, budgets and spend visibility
 

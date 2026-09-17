@@ -154,16 +154,21 @@ public class PrivateRunnerApiController {
             return unauthorized();
         }
         boolean ok = store.heartbeatRunnerLease(runner, jobId);
-        if (!ok) {
+        JobRecord job = store.getJob(jobId).orElse(null);
+        if (job == null || !runner.tenant().value().equals(job.getTenantId())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown job").asMap());
+        }
+        boolean cancelRequested = store.isCancelRequested(jobId)
+                || job.getStatus() == JobRecord.Status.CANCELLING
+                || job.getStatus() == JobRecord.Status.CANCELLED;
+        if (!ok && !cancelRequested) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiError("LEASE_LOST", "lease expired or not owned").asMap());
         }
-        JobRecord job = store.getJob(jobId).orElseThrow();
         return ResponseEntity.ok(Map.of(
                 "jobId", jobId,
-                "cancelRequested", store.isCancelRequested(jobId)
-                        || job.getStatus() == JobRecord.Status.CANCELLING
-                        || job.getStatus() == JobRecord.Status.CANCELLED
+                "cancelRequested", cancelRequested
         ));
     }
 
@@ -229,7 +234,8 @@ public class PrivateRunnerApiController {
             }
             throw e;
         }
-        return ResponseEntity.ok(Map.of("jobId", jobId, "status", status.name()));
+        JobRecord updated = store.getJob(jobId).orElseThrow();
+        return ResponseEntity.ok(Map.of("jobId", jobId, "status", updated.getStatus().name()));
     }
 
     private Map<String, Object> claimBody(JobRecord job, delivery.job.DurableJobClaim.Lease lease) {

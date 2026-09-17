@@ -10,7 +10,7 @@ A customer-operated runner connects **outbound** to the control plane. The contr
 - Runner HTTP API under `/api/v1/runners/**` (Bearer `tp_run_`): heartbeat, tenant-scoped claim, frozen input download, lease heartbeat, HMAC artifact upload, complete.
 - In-process portal workers skip jobs with `runner=private`. Claim uses existing durable leases; expired **BROWSER** leases become `INTERRUPTED_UNCERTAIN`; other stages re-queue.
 - Jobs still freeze library/environment pins, provider allowlist snapshots, and budget reservations at queue time. Complete rejects a changed input hash or allowlist.
-- Agent: `delivery.runner.PrivateRunnerAgent` (`--portal --token --work-dir --dry-run`). Installer scripts write a start wrapper under `scripts/private-runner/`.
+- Agent: `delivery.runner.PrivateRunnerAgent` (`--portal --token --work-dir --dry-run`). Installer scripts write a start wrapper under `scripts/private-runner/`. The agent heartbeats the job lease during work and posts `CANCELLED` instead of `COMPLETED` when the portal requested cancel.
 - Dry-run execution uses `DryRunExecuteService` on the runner host. Live browser/CDP uses `ExecuteJobRunner` when `--dry-run false`.
 
 ## Not included

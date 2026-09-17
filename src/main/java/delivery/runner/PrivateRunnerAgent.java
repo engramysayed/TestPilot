@@ -86,9 +86,14 @@ public final class PrivateRunnerAgent {
         Path excel = jobDir.resolve("suite.xlsx");
         JSONObject meta = unzipInput(pack, excel, jobDir);
         if (cancelRequested(jobId)) {
+            completeCancelled(jobId, inputHash, meta, allowlist);
             return;
         }
         ExecuteJobResult result = runJob(jobId, meta, excel, jobDir);
+        if (cancelRequested(jobId)) {
+            completeCancelled(jobId, inputHash, meta, allowlist);
+            return;
+        }
         byte[] artifacts = zipDir(jobDir);
         String sig = PrivateRunnerArtifacts.signature(token, jobId, meta.optString("attemptId", ""), artifacts);
         HttpRequest upload = authorized(HttpRequest.newBuilder()
@@ -148,7 +153,27 @@ public final class PrivateRunnerAgent {
         });
     }
 
+    private void completeCancelled(String jobId, String inputHash, JSONObject meta, String allowlist)
+            throws Exception {
+        JSONObject complete = new JSONObject();
+        complete.put("status", "CANCELLED");
+        complete.put("passedCount", 0);
+        complete.put("todoCount", 0);
+        complete.put("message", "Cancelled");
+        complete.put("inputSnapshotHash", inputHash == null ? meta.optString("inputSnapshotHash") : inputHash);
+        complete.put("providerAllowlistSnapshot",
+                allowlist == null || allowlist.isBlank() ? meta.optString("providerAllowlistSnapshot") : allowlist);
+        post("/api/v1/runners/jobs/" + jobId + "/complete", complete.toString());
+    }
+
     private boolean cancelRequested(String jobId) throws Exception {
+        HttpResponse<String> lease = post("/api/v1/runners/jobs/" + jobId + "/lease", "");
+        if (lease.statusCode() == 409) {
+            return true;
+        }
+        if (lease.statusCode() == 200 && new JSONObject(lease.body()).optBoolean("cancelRequested", false)) {
+            return true;
+        }
         HttpResponse<String> res = get("/api/v1/runners/jobs/" + jobId);
         if (res.statusCode() != 200) {
             return false;

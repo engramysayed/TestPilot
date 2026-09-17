@@ -1199,7 +1199,12 @@ public class PortalStore {
                 && !inputSnapshotHash.equals(job.getInputSnapshotHash())) {
             throw new IllegalStateException("FROZEN_INPUT_MISMATCH");
         }
-        if (shouldAbortCompletion(job)) {
+        if (shouldAbortCompletion(job) || status == JobRecord.Status.CANCELLED
+                || status == JobRecord.Status.CANCELLING) {
+            job.setStatus(JobRecord.Status.CANCELLED);
+            job.setMessage(message == null || message.isBlank() ? "Cancelled" : message);
+            syncJobPersistence(job);
+            reconcileRunnerBudget(job);
             return;
         }
         job.setPassedCount(passed);
@@ -1207,6 +1212,10 @@ public class PortalStore {
         job.setMessage(message);
         job.setStatus(status == null ? JobRecord.Status.COMPLETED : status);
         syncJobPersistence(job);
+        reconcileRunnerBudget(job);
+    }
+
+    private void reconcileRunnerBudget(JobRecord job) {
         try {
             new delivery.job.BudgetLedger(
                     budgetFile(job.getTenantId()), delivery.job.BudgetLedger.Limits.fromEnvironment())
