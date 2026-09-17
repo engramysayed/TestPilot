@@ -46,3 +46,7 @@ Finished at: 2026-09-17T12:15:35+03:00
 ```
 
 Includes the concurrent ProveEmit case plus screenshot/sidecar/PAC/host-evidence tests. Does not include P5-01 representative live Generate→replay on customer apps, capacity, or a browser UI walkthrough of the portal.
+
+## Next (candidate `75e6996`)
+
+Local install-network and drill evidence on this candidate is accepted. Do not re-run those checks. Remaining Phase 5 work needs deployed shared/dedicated environments, restore on those FileStores, live representative Generate → Execute → Automate → downloaded replay, and named P0-01 signatures. Development may continue; public rollout stays **HOLD**.
