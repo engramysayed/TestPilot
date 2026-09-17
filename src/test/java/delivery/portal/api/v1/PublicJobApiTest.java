@@ -12,8 +12,11 @@ import org.springframework.test.context.testng.AbstractTestNGSpringContextTests;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
@@ -38,6 +41,21 @@ public class PublicJobApiTest extends AbstractTestNGSpringContextTests {
     private MockMvc mockMvc;
     @Autowired
     private GeneratedWorkbookService workbooks;
+
+    @BeforeMethod
+    public void cleanStore() throws Exception {
+        Path root = Path.of("./target/test-delivery-store-public-api");
+        if (Files.exists(root)) {
+            try (var walk = Files.walk(root)) {
+                walk.sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
+                    try {
+                        Files.deleteIfExists(p);
+                    } catch (Exception ignored) {
+                    }
+                });
+            }
+        }
+    }
 
     @Test
     public void serviceTokenWhoamiIdempotentSubmitAndRevoke() throws Exception {

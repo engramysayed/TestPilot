@@ -31,4 +31,18 @@ public class HuntPromotionTest {
         Assert.assertThrows(StaleLibraryRevisionException.class, () ->
                 HuntPromotion.preview("[]", Map.of(), "rev_old", "rev_new"));
     }
+
+    @Test
+    public void applyEditsOverlaysReviewedStepsWithoutAddingUnsignedCases() {
+        List<ManualTestCase> base = List.of(
+                new ManualTestCase("TC_HUNT_001", "Login", "", "Open login", "Home", "P2", "hunt"));
+        List<ManualTestCase> edited = HuntPromotion.applyEdits(base, List.of(
+                new HuntPromotion.CaseEdit("TC_HUNT_001", "Login reviewed", "Open sign-in", "Dashboard"),
+                new HuntPromotion.CaseEdit("TC_HUNT_999", "Injected", "Skip review", "Should not land")));
+        Assert.assertEquals(edited.size(), 1);
+        Assert.assertEquals(edited.get(0).title(), "Login reviewed");
+        Assert.assertEquals(edited.get(0).steps(), "Open sign-in");
+        Assert.assertEquals(edited.get(0).expectedResult(), "Dashboard");
+        Assert.assertEquals(edited.get(0).tcId(), "TC_HUNT_001");
+    }
 }

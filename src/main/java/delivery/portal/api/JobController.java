@@ -257,6 +257,18 @@ public class JobController {
                             || job.getStatus() == JobRecord.Status.COMPLETED_WITH_BLOCK
                             || job.getStatus() == JobRecord.Status.FAILED);
                     body.putAll(delivery.job.JobDiagnostics.describe(job, present, expired));
+                    try {
+                        store.failureClassification(job).ifPresentOrElse(c -> {
+                            body.put("failureClassSuggested", c.suggested().name());
+                            body.put("failureClass", c.effective().name());
+                            body.put("failureClassUserCorrected", c.userCorrected());
+                        }, () -> {
+                            body.putIfAbsent("failureClassSuggested", body.get("failureClass"));
+                            body.putIfAbsent("failureClassUserCorrected", Boolean.FALSE);
+                        });
+                    } catch (Exception ignored) {
+                        body.putIfAbsent("failureClassUserCorrected", Boolean.FALSE);
+                    }
                     return ResponseEntity.ok(body);
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)

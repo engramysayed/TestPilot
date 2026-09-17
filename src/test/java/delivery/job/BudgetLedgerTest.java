@@ -73,5 +73,9 @@ public class BudgetLedgerTest {
         Assert.assertEquals(usage.reconciledKind(), BudgetLedger.CostKind.RECONCILED);
         Assert.assertEquals(usage.reconciledUnits(), 3);
         Assert.assertTrue(ledger.history().stream().anyMatch(h -> "job_ok".equals(h.jobId())));
+        BudgetLedger.Snapshot snap = ledger.snapshot();
+        Assert.assertEquals(snap.reservedUnits(), 0L);
+        Assert.assertEquals(snap.hardCapUnits(), 10L);
+        Assert.assertEquals(snap.warningUnits(), 8L);
     }
 }

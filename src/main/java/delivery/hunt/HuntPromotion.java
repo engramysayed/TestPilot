@@ -22,6 +22,9 @@ public final class HuntPromotion {
     public record Duplicate(String candidateTitle, String libraryTcId, DuplicateKind kind) {
     }
 
+    public record CaseEdit(String tcId, String title, String steps, String expectedResult) {
+    }
+
     public record Preview(
             List<ManualTestCase> cases,
             List<Duplicate> duplicates,
@@ -56,6 +59,44 @@ public final class HuntPromotion {
             }
         }
         return new Preview(List.copyOf(cases), List.copyOf(dups), pinnedRevisionId == null ? "" : pinnedRevisionId);
+    }
+
+    public static List<ManualTestCase> applyEdits(List<ManualTestCase> base, List<CaseEdit> edits) {
+        List<ManualTestCase> source = base == null ? List.of() : base;
+        if (edits == null || edits.isEmpty()) {
+            return List.copyOf(source);
+        }
+        Map<String, CaseEdit> byId = new LinkedHashMap<>();
+        for (CaseEdit edit : edits) {
+            if (edit != null && edit.tcId() != null && !edit.tcId().isBlank()) {
+                byId.put(edit.tcId().trim(), edit);
+            }
+        }
+        List<ManualTestCase> out = new ArrayList<>();
+        for (ManualTestCase candidate : source) {
+            CaseEdit edit = byId.get(candidate.tcId());
+            if (edit == null) {
+                out.add(candidate);
+                continue;
+            }
+            out.add(new ManualTestCase(
+                    candidate.tcId(),
+                    firstNonBlank(edit.title(), candidate.title()),
+                    candidate.preconditions(),
+                    firstNonBlank(edit.steps(), candidate.steps()),
+                    firstNonBlank(edit.expectedResult(), candidate.expectedResult()),
+                    candidate.priority(),
+                    candidate.tags(),
+                    candidate.visualAssertion(),
+                    candidate.testData(),
+                    candidate.keelPath(),
+                    candidate.callBefore()));
+        }
+        return List.copyOf(out);
+    }
+
+    private static String firstNonBlank(String preferred, String fallback) {
+        return preferred == null || preferred.isBlank() ? fallback : preferred;
     }
 
     public static List<ManualTestCase> parseCandidates(String candidatesJson) {

@@ -936,22 +936,61 @@ public class PortalStore {
         return projectDiskRoot(projectId).resolve("environments");
     }
 
+    public delivery.job.BudgetLedger.Snapshot budgetSnapshot(String projectId) throws Exception {
+        String tenantId = getProject(projectId).map(ProjectRecord::getTenantId).orElse("");
+        if (tenantId == null || tenantId.isBlank()) {
+            return new delivery.job.BudgetLedger.Snapshot(0, 0, 0, List.of());
+        }
+        return new delivery.job.BudgetLedger(
+                budgetFile(tenantId), delivery.job.BudgetLedger.Limits.fromEnvironment())
+                .snapshot();
+    }
+
+    public delivery.job.FailureClassifier.Classification saveFailureClassification(
+            JobRecord job, delivery.job.FailureClassifier.Kind effective) throws Exception {
+        String raw = (job.getMessage() == null ? "" : job.getMessage())
+                + " " + (job.getError() == null ? "" : job.getError());
+        delivery.job.FailureClassifier.Kind suggested = delivery.job.FailureClassifier.suggest(raw);
+        return triageStore(job.getTenantId()).put(job.getJobId(), suggested, effective);
+    }
+
+    public java.util.Optional<delivery.job.FailureClassifier.Classification> failureClassification(JobRecord job)
+            throws Exception {
+        if (job == null) {
+            return java.util.Optional.empty();
+        }
+        return triageStore(job.getTenantId()).get(job.getJobId());
+    }
+
     private void reserveBudget(JobRecord job) {
         String tenantId = job.getTenantId();
         if (tenantId == null || tenantId.isBlank()) {
             return;
         }
         try {
-            Path file = delivery.identity.ScopePaths.tenantRoot(
-                            storeRootPath, delivery.identity.TenantId.parse(tenantId))
-                    .resolve("budget.json");
-            new delivery.job.BudgetLedger(file, delivery.job.BudgetLedger.Limits.fromEnvironment())
+            new delivery.job.BudgetLedger(budgetFile(tenantId), delivery.job.BudgetLedger.Limits.fromEnvironment())
                     .reserve(job.getJobId(), 1, delivery.job.BudgetLedger.CostKind.ESTIMATED);
         } catch (delivery.job.BudgetLedger.Rejected e) {
             throw new delivery.job.JobAdmissionException(e.code(), e.getMessage());
         } catch (Exception ignored) {
             // missing tenant path is non-fatal for legacy unscoped jobs
         }
+    }
+
+    private Path budgetFile(String tenantId) {
+        return delivery.identity.ScopePaths.tenantRoot(
+                        storeRootPath, delivery.identity.TenantId.parse(tenantId))
+                .resolve("budget.json");
+    }
+
+    private delivery.job.FailureTriageStore triageStore(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("tenantId is required");
+        }
+        Path file = delivery.identity.ScopePaths.tenantRoot(
+                        storeRootPath, delivery.identity.TenantId.parse(tenantId))
+                .resolve("triage.json");
+        return new delivery.job.FailureTriageStore(file);
     }
 
     private int countActiveJobsForTenant(String tenantId) {

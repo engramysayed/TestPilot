@@ -187,7 +187,7 @@ public class HuntController {
         ));
     }
 
-    public record PromoteRequest(Boolean accept, String baseRevision) {
+    public record PromoteRequest(Boolean accept, String baseRevision, List<delivery.hunt.HuntPromotion.CaseEdit> cases) {
     }
 
     @GetMapping("/{projectId}/hunt-runs/{jobId}/promote")
@@ -220,7 +220,9 @@ public class HuntController {
         }
         Map<String, Object> preview = promotePreview(projectId, jobId, uid);
         @SuppressWarnings("unchecked")
-        List<ManualTestCase> cases = (List<ManualTestCase>) preview.get("cases");
+        List<ManualTestCase> cases = delivery.hunt.HuntPromotion.applyEdits(
+                (List<ManualTestCase>) preview.get("cases"),
+                body.cases());
         String pinned = String.valueOf(preview.getOrDefault("pinnedLibraryRevisionId", ""));
         String base = body.baseRevision() == null || body.baseRevision().isBlank() ? pinned : body.baseRevision();
         workbooks.saveFromCases(

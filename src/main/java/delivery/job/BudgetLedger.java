@@ -59,6 +59,14 @@ public final class BudgetLedger {
     ) {
     }
 
+    public record Snapshot(
+            long reservedUnits,
+            long hardCapUnits,
+            long warningUnits,
+            List<UsageRecord> usage
+    ) {
+    }
+
     public static final class Rejected extends RuntimeException {
         private final String code;
 
@@ -150,7 +158,19 @@ public final class BudgetLedger {
     }
 
     public List<UsageRecord> history() throws Exception {
+        return snapshot().usage();
+    }
+
+    public Snapshot snapshot() throws Exception {
         JSONObject root = read();
+        return new Snapshot(
+                reservedTotal(root),
+                limits.hardCapUnits(),
+                limits.warningUnits(),
+                parseUsage(root));
+    }
+
+    private static List<UsageRecord> parseUsage(JSONObject root) {
         JSONArray usage = root.optJSONArray("usage");
         List<UsageRecord> out = new ArrayList<>();
         if (usage == null) {
