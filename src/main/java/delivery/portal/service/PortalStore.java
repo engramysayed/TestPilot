@@ -567,7 +567,10 @@ public class PortalStore {
         Instant now = Instant.now();
         int n = 0;
         for (JobEntity entity : jobRepository.findAll()) {
-            JobRecord job = jobs.computeIfAbsent(entity.getJobId(), ignored -> hydrate(entity));
+            JobRecord job = jobs.get(entity.getJobId());
+            if (job == null) {
+                job = hydrate(entity);
+            }
             if (delivery.job.DurableJobClaim.reconcileExpired(job, now)) {
                 syncJobPersistence(job);
                 n++;
