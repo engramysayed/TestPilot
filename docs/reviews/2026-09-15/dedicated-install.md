@@ -19,6 +19,10 @@ Dedicated (single-tenant) installs use the **same identity model** as shared hos
 
 `delivery.provider.allowlist` is fail-closed when empty. Engine choice (Keel vs Precision) is not a privacy control. Dedicated installs that want local-only models should set an explicit allowlist (for example `ollama`) rather than relying on an unset property.
 
-## Publication lock
+## Production
+
+Shared and dedicated installs that set `delivery.install.production=true` (or Spring profile `prod`) refuse the default admin password, HTTP public URLs, H2 console, empty provider allowlist, blank DB password, and `private-cidrs` while mode is shared. See [deployment.md](../../ops/deployment.md).
+
+TLS termination, operator access, and backup restoration on a real host remain deployment drills (P4-02).
 
 `PublicationLock` is an in-JVM mutex plus an OS `FileChannel` lock. Closing check on this workspace volume: `target/publication-lock-fs-probe`, DriveFormat `NTFS` (Windows). Other FileStore types (NFS, SMB, clustered volumes) are unverified; do not treat the lock as portable until that type is probed.

@@ -725,6 +725,15 @@ public class PortalStore {
         return jobRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId);
     }
 
+    public Map<String, Integer> jobStatusCounts() {
+        Map<String, Integer> counts = new HashMap<>();
+        for (JobEntity e : jobRepository.findAll()) {
+            String status = e.getStatus() == null ? "UNKNOWN" : e.getStatus();
+            counts.merge(status, 1, Integer::sum);
+        }
+        return counts;
+    }
+
     /**
      * Distinct Base URL targets for the upload form, with last-used username/password.
      * Newest job wins per domain folder key.

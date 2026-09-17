@@ -1,0 +1,67 @@
+name: release
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  deterministic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Deterministic tests
+        # LiveSmoke tests are excluded by -Pdeterministic (**/*LiveSmoke*).
+        run: mvn -B -Pdeterministic test
+        env:
+          MAVEN_OPTS: "-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+      - name: Compile customer framework template
+        run: mvn -B -f customer-framework-template/pom.xml -DskipTests compile
+      - name: Dependency inventory
+        run: mvn -B -q dependency:tree > target/dependency-tree.txt
+      - name: Artifact checksums
+        run: |
+          mkdir -p target/provenance
+          find customer-framework-template -type f \( -name "*.java" -o -name "pom.xml" \) -print0 | sort -z | xargs -0 sha256sum > target/provenance/template.sha256
+          sha256sum pom.xml src/main/resources/application.properties > target/provenance/root.sha256
+          echo "sha256 provenance written"
+      - name: Secret scan (no committed provider keys)
+        run: |
+          if grep -R --include='*.properties' --include='*.yml' --include='*.env' -E 'CURSOR_API_KEY=[^P]|AGENTROUTER_API_KEY=[^$]' .; then
+            echo "Possible committed provider key" >&2
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence
+          path: |
+            target/surefire-reports/
+            target/dependency-tree.txt
+            target/provenance/
+
+  benchmark:
+    runs-on: ubuntu-latest
+    needs: deterministic
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - uses: browser-actions/setup-chrome@v1
+      - name: P0-03 committed-revision benchmark
+        run: mvn -B "-Dtest=ReleaseBenchmarkP003Test,ReuseEligibilityTest" test
+        env:
+          BROWSER_HEADLESS: "true"
+          EXECUTION_TYPE: "HEADLESS"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-evidence
+          path: target/surefire-reports/

@@ -78,6 +78,44 @@ public class GeneratedWorkbookController {
                 });
     }
 
+    @GetMapping("/{projectId}/library/revisions")
+    public ResponseEntity<?> listLibraryRevisions(@PathVariable("projectId") String projectId) throws Exception {
+        Long ownerId = currentUser.requireUserId();
+        if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("revisions", workbooks.listRevisions(projectId).stream().map(r -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", r.id());
+            row.put("parentId", r.parentId());
+            row.put("source", r.source());
+            row.put("author", r.author());
+            row.put("createdAt", r.createdAt().toString());
+            row.put("sha256", r.sha256());
+            return row;
+        }).toList());
+        return ResponseEntity.ok(body);
+    }
+
+    @GetMapping("/{projectId}/library/revisions/{fromId}/diff/{toId}")
+    public ResponseEntity<?> diffLibraryRevisions(@PathVariable("projectId") String projectId,
+                                                  @PathVariable("fromId") String fromId,
+                                                  @PathVariable("toId") String toId) throws Exception {
+        Long ownerId = currentUser.requireUserId();
+        if (store.getOwnedProject(projectId, ownerId).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        }
+        var diff = workbooks.diffRevisions(projectId, fromId, toId);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("added", diff.added());
+        body.put("removed", diff.removed());
+        body.put("changed", diff.changed());
+        return ResponseEntity.ok(body);
+    }
+
     @PutMapping(value = "/{projectId}/generated-workbook/rows", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> updateRows(
             @PathVariable("projectId") String projectId,

@@ -255,7 +255,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** two concurrent editors cannot silently lose changes. An AI review based on an old revision cannot overwrite a newer edit. A historical run's inputs can be reconstructed after rollback.
 
-**2026-09-17:** `LibraryRevisionStore` writes immutable revisions; stale `baseRevision` conflicts. Generate/import/heal saves commit a revision. Upload merge accepts `baseRevision`. Restore creates a new revision. Jobs snapshot `libraryRevisionId` at admit. Field-level diff UI is Phase 4.
+**2026-09-17:** `LibraryRevisionStore` writes immutable revisions; stale `baseRevision` conflicts. Generate/import/heal saves commit a revision. Upload merge accepts `baseRevision`. Restore creates a new revision. Jobs snapshot `libraryRevisionId` at admit. Field-level diff is available via `LibraryRevisionDiff` and `/api/projects/{id}/library/revisions/{from}/diff/{to}` (no side-by-side review UI yet).
 
 **Phase 3 engineering exit (local):** restart/lease, saturation, cancellation/timeout, retention sweeper, host-stable project identity, concurrent-edit conflict, and project deletion unit/API paths pass in this workspace. Database/artifact/key backup restoration in an isolated environment remains a **release blocker** (P4-02 / Phase 5).
 
@@ -307,6 +307,8 @@ No launch date is estimated here: staffing, supported application scope, operati
 - [ ] Add a document-to-feature ownership index so new implementation changes update the correct contract.
 
 **Acceptance:** a new user/operator can follow the supported path without relying on contradictory historical plans. Every advertised privacy and replay guarantee has a matching enforcement test.
+
+**Phase 4 engineering (2026-09-17, local):** CI workflow `.github/workflows/release.yml` (deterministic profile excludes `*LiveSmoke*`, template compile, sha256 provenance, secret grep). Production startup guard, login throttle, `/api/health`+`/api/ready`, `StoreBackup` unit restore of tenant path+checksum, job diagnostics (`FRESH`/`REUSED`/`BLOCKED`/`UNCHECKED`/`SIMULATED`/`INTERRUPTED`), library field-level diff, constitution 1.2.0 supersession, SUPPORT/deployment/runbook docs. **P4-02 deployed shared/dedicated restore drill remains a release blocker.** Phase 2 isolation/privacy gates stay open.
 
 ## 7. Phase 5 — controlled pilot and launch decision
 

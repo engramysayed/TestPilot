@@ -244,8 +244,18 @@ Engineering depth (flows, quality gates, historical workstream notes): [`docs/EN
 ## Security notes
 
 - Do not commit API keys. Use env vars (`CURSOR_API_KEY`, `AGENTROUTER_API_KEY`, …) or gitignored local BAT files (`cursor-api-key.local.bat`).
-- Change the portal admin password before exposing the app beyond localhost.
+- Change the portal admin password before exposing the app beyond localhost. Production (`delivery.install.production=true`) refuses the default password, empty allowlist, H2 console, and HTTP public URLs.
 - `delivery-store/` and `delivery-work/` hold runtime data and are gitignored.
+- Privacy and isolation are **not** launch-complete: screenshot redaction, live-sidecar canaries, and worker-network isolation remain open. See [SUPPORT.md](docs/SUPPORT.md).
+
+## Deployment and support
+
+- Shared vs dedicated: [docs/ops/deployment.md](docs/ops/deployment.md) and [dedicated-install.md](docs/reviews/2026-09-15/dedicated-install.md)
+- Backup/restore drill: [docs/ops/backup-restore.md](docs/ops/backup-restore.md)
+- Operator runbooks: [docs/ops/runbooks.md](docs/ops/runbooks.md)
+- Document ownership: [docs/reviews/2026-09-15/document-ownership.md](docs/reviews/2026-09-15/document-ownership.md)
+
+Automate and Execute run every library row except `MANUAL` (including `EXECUTE`, `VISION_ONLY`, and blank KeelPath). Precision is configured on **Projects → Settings**, not on the Automate/Execute/Generate start forms. Hunt evidence stays in the hunter pack; it does not merge into the library until a human imports candidates. Login credentials are project-owned profiles, not ZIP contents.
 
 ---
 

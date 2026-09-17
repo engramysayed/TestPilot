@@ -32,12 +32,18 @@ public class SecurityConfig {
     }
 
     @Bean
+    public LoginThrottle loginThrottle() {
+        return new LoginThrottle(5, 15 * 60);
+    }
+
+    @Bean
     public ApiRequestHeaderFilter apiRequestHeaderFilter() {
         return new ApiRequestHeaderFilter();
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, ApiRequestHeaderFilter apiHeaderFilter)
+    public SecurityFilterChain filterChain(HttpSecurity http, ApiRequestHeaderFilter apiHeaderFilter,
+                                           LoginThrottle loginThrottle)
             throws Exception {
         // Browser → form login redirect (no HTTP Basic popup). API → 401 JSON/status.
         LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
@@ -51,7 +57,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/css/**", "/js/**", "/img/**", "/prompts/**",
                                 "/favicon.ico", "/favicon.svg",
-                                "/login", "/request-access", "/invite/**", "/error").permitAll()
+                                "/login", "/request-access", "/invite/**", "/error",
+                                "/api/health", "/api/ready").permitAll()
                         .requestMatchers(HttpMethod.POST, "/invite/**", "/api/access-requests").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/access-requests").denyAll()
                         .requestMatchers("/api/admin/**", "/admin/**").hasRole("ADMIN")
@@ -60,6 +67,17 @@ public class SecurityConfig {
                 .formLogin(form -> form
                         .loginPage("/login")
                         .defaultSuccessUrl("/dashboard", true)
+                        .successHandler((request, response, authentication) -> {
+                            loginThrottle.recordSuccess(LoginThrottle.key(
+                                    request.getParameter("username"), request.getRemoteAddr()));
+                            response.sendRedirect("/dashboard");
+                        })
+                        .failureHandler((request, response, exception) -> {
+                            loginThrottle.recordFailure(LoginThrottle.key(
+                                    request.getParameter("username"), request.getRemoteAddr()),
+                                    java.time.Instant.now());
+                            response.sendRedirect("/login?error");
+                        })
                         .permitAll()
                 )
                 // Keep Basic auth for API clients/tests when Authorization header is sent.

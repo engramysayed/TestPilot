@@ -247,6 +247,13 @@ public class JobController {
                     body.put("finalRevise", job.isFinalRevise());
                     body.put("authoringEngine", job.getAuthoringEngine().wireValue());
                     body.put("cancellable", isCancellable(job.getStatus()));
+                    Path zip = store.resolveZip(job).orElse(null);
+                    boolean present = zip != null && Files.isRegularFile(zip);
+                    boolean expired = JobRecord.isDownloadable(job.getJobKind(), job.getStatus()) && !present
+                            && (job.getStatus() == JobRecord.Status.COMPLETED
+                            || job.getStatus() == JobRecord.Status.COMPLETED_WITH_BLOCK
+                            || job.getStatus() == JobRecord.Status.FAILED);
+                    body.putAll(delivery.job.JobDiagnostics.describe(job, present, expired));
                     return ResponseEntity.ok(body);
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)

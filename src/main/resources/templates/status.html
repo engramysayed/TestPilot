@@ -54,6 +54,13 @@
             <dt th:text="${isGenerateCompareJob} ? 'Model A TCs' : 'Passed'">Passed</dt><dd id="passed" th:text="${passedCount}">0</dd>
             <dt th:text="${isGenerateCompareJob} ? 'Model B TCs' : (${isGenerateBatchJob} ? 'Failed stories' : 'Blocked / TODO')">Blocked / TODO</dt><dd id="todo" th:text="${todoCount}">0</dd>
         </dl>
+        <dl class="status" id="integrity">
+            <dt>Proof</dt><dd id="proof-kind">—</dd>
+            <dt>Library revision</dt><dd id="library-revision">—</dd>
+            <dt>Providers</dt><dd id="provider-allowlist">—</dd>
+            <dt>Download</dt><dd id="download-state">—</dd>
+        </dl>
+        <p id="next-action" class="hint">—</p>
         <p id="cancel-wrap" th:hidden="${jobStatus != 'QUEUED' and jobStatus != 'RUNNING'}">
             <button type="button" class="button ghost" id="cancel-btn">Force stop</button>
         </p>
@@ -124,7 +131,7 @@
     }
 
     function isActiveStatus(status) {
-        return status === 'QUEUED' || status === 'RUNNING';
+        return status === 'QUEUED' || status === 'RUNNING' || status === 'CANCELLING';
     }
 
     function formatElapsed(ms) {
@@ -258,6 +265,31 @@
         }
         document.getElementById('passed').textContent = data.passedCount != null ? data.passedCount : 0;
         document.getElementById('todo').textContent = data.todoCount != null ? data.todoCount : 0;
+        const proofEl = document.getElementById('proof-kind');
+        if (proofEl) {
+            const kind = data.proofKind || 'UNCHECKED';
+            const labels = {
+                FRESH: 'Fresh browser proof',
+                REUSED: 'Reused prior proof',
+                BLOCKED: 'Blocked / incomplete',
+                UNCHECKED: 'Not executed',
+                SIMULATED: 'Simulated (dry-run)',
+                INTERRUPTED: 'Interrupted — review before replay'
+            };
+            proofEl.textContent = labels[kind] || kind;
+        }
+        const revEl = document.getElementById('library-revision');
+        if (revEl) revEl.textContent = data.libraryRevisionId || '—';
+        const provEl = document.getElementById('provider-allowlist');
+        if (provEl) provEl.textContent = data.providerAllowlist || '—';
+        const dlEl = document.getElementById('download-state');
+        if (dlEl) {
+            if (data.artifactExpired) dlEl.textContent = 'Expired / unavailable';
+            else if (data.downloadAvailable) dlEl.textContent = 'Available for this job';
+            else dlEl.textContent = 'Not downloadable';
+        }
+        const nextEl = document.getElementById('next-action');
+        if (nextEl) nextEl.textContent = data.nextAction || '—';
         const active = isActiveStatus(data.status || '');
         const pct = tot > 0 ? Math.min(100, Math.round((cur / tot) * 100))
             : (data.status === 'COMPLETED' || data.status === 'COMPLETED_WITH_BLOCK' ? 100 : 0);

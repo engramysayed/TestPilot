@@ -15,6 +15,7 @@ import delivery.heal.HealWorkbookPatcher;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.KeelPath;
 import delivery.store.GeneratedStoreLayout;
+import delivery.store.LibraryRevisionDiff;
 import delivery.store.LibraryRevisionStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -59,6 +60,58 @@ public class GeneratedWorkbookService {
                 ? storeRoot.resolve(projectId)
                 : portalStore.projectDiskRoot(projectId);
         return GeneratedStoreLayout.resolveGeneratedDir(storeRoot, projectRoot, projectId);
+    }
+
+    public List<LibraryRevisionStore.Revision> listRevisions(String projectId) throws Exception {
+        return new LibraryRevisionStore(generatedDir(projectId)).list();
+    }
+
+    public LibraryRevisionDiff.Result diffRevisions(String projectId, String fromId, String toId) throws Exception {
+        LibraryRevisionStore store = new LibraryRevisionStore(generatedDir(projectId));
+        byte[] from = Files.readAllBytes(store.bytes(fromId));
+        byte[] to = Files.readAllBytes(store.bytes(toId));
+        if (looksLikeCsv(from) && looksLikeCsv(to)) {
+            return LibraryRevisionDiff.compareCsv(from, to);
+        }
+        Map<String, Map<String, String>> left = casesToFields(readRevisionCases(from));
+        Map<String, Map<String, String>> right = casesToFields(readRevisionCases(to));
+        return LibraryRevisionDiff.compare(left, right);
+    }
+
+    private static boolean looksLikeCsv(byte[] raw) {
+        if (raw == null || raw.length < 5) {
+            return false;
+        }
+        String head = new String(raw, 0, Math.min(raw.length, 64), StandardCharsets.UTF_8);
+        return head.toUpperCase().contains("TC_ID");
+    }
+
+    private List<ManualTestCase> readRevisionCases(byte[] payload) throws Exception {
+        Path tmp = Files.createTempFile("lib-rev", ".xlsx");
+        try {
+            Files.write(tmp, payload == null ? new byte[0] : payload);
+            return new ExcelTcReader().read(tmp);
+        } finally {
+            Files.deleteIfExists(tmp);
+        }
+    }
+
+    private static Map<String, Map<String, String>> casesToFields(List<ManualTestCase> cases) {
+        Map<String, Map<String, String>> out = new LinkedHashMap<>();
+        if (cases == null) {
+            return out;
+        }
+        for (ManualTestCase tc : cases) {
+            if (tc == null || tc.tcId() == null || tc.tcId().isBlank()) {
+                continue;
+            }
+            Map<String, String> fields = new LinkedHashMap<>();
+            fields.put("Title", tc.title() == null ? "" : tc.title());
+            fields.put("Steps", tc.steps() == null ? "" : tc.steps());
+            fields.put("ExpectedResult", tc.expectedResult() == null ? "" : tc.expectedResult());
+            out.put(tc.tcId().trim(), fields);
+        }
+        return out;
     }
 
     public void saveFromCases(String projectId, List<ManualTestCase> cases, String source, String sourceRef)
