@@ -1,6 +1,6 @@
 # Phase 5 isolated-install drills (2026-09-17)
 
-Workstation `Ramy-Sayed`. Public launch remains **HOLD**.
+Workstation `Ramy-Sayed`. Public launch remains **HOLD**. Candidate for remaining Phase 5 validations: `75e6996`. Do not re-run these local drills unless the candidate SHA changes.
 
 These are **two Spring Boot test installations** with distinct store roots and `delivery.install.mode`. They are not production VMs, not a kernel firewall, and not a signed P0-01.
 
@@ -39,6 +39,8 @@ Store: `./target/p5-dedicated-install/store`.
 - Same tenant-boundary + snapshot/restore on **this** store-root.
 
 ## Still open
+
+These require deployment environments, representative applications, and named approvers — not another local drill on this workstation.
 
 - Production shared/dedicated hosts
 - Kernel / worker-network isolation on those hosts

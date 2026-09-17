@@ -1,6 +1,6 @@
 # Phase 5 validation record (2026-09-17)
 
-Workstation `Ramy-Sayed`, git `f44c76a`. Public launch: **HOLD** ([LAUNCH-DECISION.md](LAUNCH-DECISION.md)).
+Workstation `Ramy-Sayed`. **Candidate for remaining Phase 5 validations:** `75e6996`. Public launch: **HOLD** ([LAUNCH-DECISION.md](LAUNCH-DECISION.md)). Do not re-run unchanged local tests; next evidence must come from deployment environments, representative applications, and named approvers.
 
 ## Screenshot redaction and sidecar canaries
 
