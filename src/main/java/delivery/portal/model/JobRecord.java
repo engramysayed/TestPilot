@@ -47,6 +47,7 @@ public class JobRecord {
     private volatile String environmentRevisionId = "";
     private volatile String parentJobId = "";
     private volatile int precisionMaxSnapshot;
+    private volatile Boolean precisionEnabledSnapshot;
     private volatile boolean requirePrivateRunner;
     private volatile String providersUsed = "";
     private volatile boolean fallbackUsed;
@@ -128,6 +129,8 @@ public class JobRecord {
     public void setParentJobId(String parentJobId) {
         this.parentJobId = parentJobId == null ? "" : parentJobId;
     }
+    public Boolean getPrecisionEnabledSnapshot() { return precisionEnabledSnapshot; }
+    public void setPrecisionEnabledSnapshot(Boolean value) { precisionEnabledSnapshot = value; }
     public int getPrecisionMaxSnapshot() { return precisionMaxSnapshot; }
     public void setPrecisionMaxSnapshot(int precisionMaxSnapshot) {
         this.precisionMaxSnapshot = Math.max(0, precisionMaxSnapshot);

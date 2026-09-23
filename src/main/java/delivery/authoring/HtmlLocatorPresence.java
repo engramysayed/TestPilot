@@ -13,54 +13,42 @@ import java.util.regex.Pattern;
  * Prevents the LLM from inventing attributes that are not on the page.
  */
 public final class HtmlLocatorPresence {
-    private static final Pattern CSS_ATTR = Pattern.compile(
-            "^[a-zA-Z][\\w-]*\\[([\\w-]+)\\s*=\\s*['\"]([^'\"]+)['\"]\\]$");
-    private static final Pattern XPATH_ATTR = Pattern.compile(
-            "^//[a-zA-Z][\\w-]*\\[@([\\w-]+)\\s*=\\s*['\"]([^'\"]+)['\"]");
     private static final Pattern DATA_TEST_ATTR = Pattern.compile(
             "data-test(?:id)?\\s*=\\s*['\"]([^'\"]+)['\"]", Pattern.CASE_INSENSITIVE);
-    private static final Pattern XPATH_LABEL_TEXT = Pattern.compile(
-            "^//label\\[normalize-space\\(\\.\\)\\s*=\\s*'([^']+)'\\]");
-    private static final Pattern XPATH_NESTED_LABEL = Pattern.compile(
-            "label\\[(?:normalize-space\\(\\.\\)\\s*=\\s*'([^']+)'"
-                    + "|contains\\(normalize-space\\(\\.\\),\\s*'([^']+)'\\))\\]");
-
     private HtmlLocatorPresence() {
     }
 
     public static boolean present(String strategy, String value, String slimHtml) {
-        if (slimHtml == null || slimHtml.isBlank() || value == null || value.isBlank()) {
-            return true;
-        }
-        String s = strategy == null ? "" : strategy.trim().toLowerCase(Locale.ROOT);
-        String v = value.trim();
-        return switch (s) {
-            case "id" -> hasAttr(slimHtml, "id", v);
-            case "name" -> hasAttr(slimHtml, "name", v);
-            case "data-test", "testid" -> hasAttr(slimHtml, "data-test", v);
-            case "data-testid" -> hasAttr(slimHtml, "data-testid", v);
-            case "data-qa" -> hasAttr(slimHtml, "data-qa", v);
-            case "css", "cssselector" -> {
-                Matcher m = CSS_ATTR.matcher(v);
-                yield m.matches() && hasAttr(slimHtml, m.group(1), m.group(2));
-            }
-            case "xpath" -> {
-                Matcher label = XPATH_LABEL_TEXT.matcher(v);
-                if (label.find()) {
-                    yield labelWithControlExists(slimHtml, label.group(1));
-                }
-                Matcher nested = XPATH_NESTED_LABEL.matcher(v);
-                if (nested.find()) {
-                    String labelText = nested.group(1) != null ? nested.group(1) : nested.group(2);
-                    yield labelWithControlExists(slimHtml, labelText);
-                }
-                Matcher m = XPATH_ATTR.matcher(v);
-                yield m.find() && hasAttr(slimHtml, m.group(1), m.group(2));
-            }
-            default -> true;
-        };
+        return !matchingElements(strategy, value, slimHtml).isEmpty();
     }
 
+    /** Resolve the selector itself, including tag and case, rather than searching for an attribute substring. */
+    public static java.util.List<org.jsoup.nodes.Element> matchingElements(String strategy, String value, String html) {
+        if (html == null || html.isBlank() || value == null || value.isBlank()) return java.util.List.of();
+        return matchingElements(strategy, value, org.jsoup.Jsoup.parse(html));
+    }
+
+    public static java.util.List<org.jsoup.nodes.Element> matchingElements(String strategy, String value, org.jsoup.nodes.Document doc) {
+        if (doc == null || value == null || value.isBlank()) return java.util.List.of();
+        String s = strategy == null ? "" : strategy.trim().toLowerCase(Locale.ROOT);
+        try {
+            return switch (s) {
+                case "id", "name", "data-test", "data-testid", "data-qa", "testid" -> {
+                    String attr = s.equals("testid") ? "data-test" : s;
+                    yield doc.getAllElements().stream().filter(el -> el.hasAttr(attr) && el.attr(attr).equals(value)).toList();
+                }
+                case "css", "cssselector" -> java.util.List.copyOf(doc.select(value));
+                case "xpath" -> {
+                    var source = doc.getAllElements().stream()
+                            .filter(el -> value.equals(el.attr("data-keel-source-xpath"))).toList();
+                    yield source.isEmpty() ? java.util.List.copyOf(doc.selectXpath(value)) : source;
+                }
+                default -> java.util.List.of();
+            };
+        } catch (RuntimeException invalid) {
+            return java.util.List.of();
+        }
+    }
     /** Up to max values for repair prompts. */
     public static List<String> listDataTestValues(String slimHtml, int max) {
         Set<String> values = new LinkedHashSet<>();
@@ -74,34 +62,4 @@ public final class HtmlLocatorPresence {
         return new ArrayList<>(values);
     }
 
-    /** The label has to exist and actually have a control to point at. */
-    private static boolean labelWithControlExists(String html, String labelText) {
-        try {
-            org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(html);
-            String want = labelText == null ? "" : labelText.trim();
-            for (org.jsoup.nodes.Element label : doc.select("label")) {
-                String t = label.ownText().isBlank() ? label.text() : label.ownText();
-                if (!want.equalsIgnoreCase(t == null ? "" : t.trim())) {
-                    continue;
-                }
-                if (!label.select("input, select, textarea").isEmpty()) {
-                    return true;
-                }
-                if (label.nextElementSibling() != null || label.parent() != null) {
-                    return true;
-                }
-            }
-            return false;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private static boolean hasAttr(String html, String attr, String expected) {
-        String a = attr.toLowerCase(Locale.ROOT);
-        String lower = html.toLowerCase(Locale.ROOT);
-        String exp = expected.toLowerCase(Locale.ROOT);
-        return lower.contains(a + "=\"" + exp + "\"")
-                || lower.contains(a + "='" + exp + "'");
-    }
 }

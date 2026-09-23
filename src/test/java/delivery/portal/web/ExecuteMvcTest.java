@@ -86,6 +86,16 @@ public class ExecuteMvcTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    public void execute_supportsJobIdDeepLinkBootstrap() throws Exception {
+        String body = fetchExecuteBody();
+        Assert.assertTrue(body.contains("deepLinkJobId"), "execute must read ?jobId= query param");
+        Assert.assertTrue(body.contains("pendingDeepLinkTcId"), "execute must read ?tcId= query param");
+        Assert.assertTrue(body.contains("bootstrapDeepLinkJob"), "execute must bootstrap runs from URL");
+        Assert.assertTrue(body.contains("initialProjectId"), "execute must read server projectId param");
+        Assert.assertTrue(body.contains("workspace-launcher"), "execute must offer workspace launcher");
+    }
+
+    @Test
     public void execute_hasOptionalProposeOnlyCursorPreRunReview() throws Exception {
         String body = fetchExecuteBody();
         String main = mainShell(body);

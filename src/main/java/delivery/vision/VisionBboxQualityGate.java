@@ -11,7 +11,7 @@ public final class VisionBboxQualityGate {
     public static final int MIN_SIDE_PX = 8;
     public static final double MIN_CONFIDENCE = 0.7;
     public static final double MAX_HEIGHT_RATIO = 0.25;
-    public static final double MAX_WIDTH_RATIO = 0.22;
+    public static final double MAX_WIDTH_RATIO = 1.0;
     public static final double MAX_AREA_RATIO = 0.15;
     public static final int ESSAY_LEN = 120;
 

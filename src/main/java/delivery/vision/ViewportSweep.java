@@ -42,7 +42,7 @@ public final class ViewportSweep {
 
 
 
-    public record SweepHit(VisualCandidate candidate, ViewportMetrics metrics) {
+    public record SweepHit(VisualCandidate candidate, ViewportMetrics metrics, String observationVersion) {
 
     }
 
@@ -75,10 +75,19 @@ public final class ViewportSweep {
             return Optional.empty();
 
         }
+        Object initialScroll = browser.saveScroll();
+        boolean succeeded = false;
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(60).toNanos();
+        byte[] previous = null;
+        try (var modelDeadline = delivery.authoring.LlmCallDeadline.within(java.time.Duration.ofSeconds(60))) {
 
         for (int i = 0; i < 8; i++) {
+            if (Thread.currentThread().isInterrupted() || System.nanoTime() > deadline) return Optional.empty();
+            String version = browser.observationVersion();
 
             byte[] png = browser.screenshotPng();
+            if (png.length > 0 && previous != null && java.util.Arrays.equals(previous, png)) return Optional.empty();
+            previous = png;
 
             ViewportMetrics metrics = withPngScreenshotDims(browser.metrics(), png);
 
@@ -92,19 +101,22 @@ public final class ViewportSweep {
 
                 LogsManager.error("VISION_GROUND: analyze failed on sweep " + i + ": " + e.getMessage());
 
-                analysis = VisionAnalysisResult.unavailable(e.getMessage());
+                return Optional.empty();
 
             }
 
             if (analysis != null && analysis.error() != null) {
                 VisionAttemptLog.record(VisionAttempt.of(null, 0.5, "none", false, "unavailable"));
+                return Optional.empty();
             }
+            if (!version.equals(browser.observationVersion())) continue;
 
-            Optional<VisualCandidate> hit = firstHit(analysis, browser, metrics);
+            Optional<VisualCandidate> hit = firstHit(analysis, browser, metrics, intent);
 
             if (hit.isPresent()) {
 
-                return Optional.of(new SweepHit(hit.get(), metrics));
+                succeeded = true;
+                return Optional.of(new SweepHit(hit.get(), metrics, version));
 
             }
 
@@ -122,12 +134,18 @@ public final class ViewportSweep {
             if (i < 7) {
 
                 browser.scrollViewport();
+                try { Thread.sleep(100); } catch (InterruptedException stopped) {
+                    Thread.currentThread().interrupt(); return Optional.empty();
+                }
 
             }
 
         }
 
         return Optional.empty();
+        } finally {
+            if (!succeeded) browser.restoreScroll(initialScroll);
+        }
 
     }
 
@@ -139,7 +157,7 @@ public final class ViewportSweep {
 
             GroundingBrowser browser,
 
-            ViewportMetrics metrics) {
+            ViewportMetrics metrics, StepIntentBinder.IntentLine intent) {
 
         if (analysis == null || !analysis.found() || analysis.candidates() == null) {
 
@@ -186,7 +204,10 @@ public final class ViewportSweep {
 
             GroundedNode node = browser.elementFromPoint(css.x(), css.y());
 
-            if (node != null && node.displayed() && node.enabled() && isInteractive(node)) {
+            if (node != null && node.displayed() && node.enabled() && isInteractive(node)
+                    && StepIntentBinder.actionCompatible(intent, new delivery.authoring.DomCandidate(
+                    "observed", "id", node.id(), safe(node.role()).isBlank() ? node.tag() : node.role(),
+                    safe(node.ariaLabel()).isBlank() ? node.visibleText() : node.ariaLabel()))) {
 
                 return Optional.of(visual);
 

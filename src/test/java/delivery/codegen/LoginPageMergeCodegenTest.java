@@ -43,6 +43,7 @@ public class LoginPageMergeCodegenTest {
         String loc = Files.readString(temp.resolve(
                 "src/main/java/project/pages/FormAuthentication_Locators.java"));
         Assert.assertTrue(loc.contains("button[type='submit']"), loc);
-        Assert.assertFalse(loc.contains("By.id(\"login\")"), loc);
+        Assert.assertTrue(loc.contains("By.id(\"login\")"), loc);
+        Assert.assertTrue(loc.contains("By.id(\"username\")"), loc);
     }
 }

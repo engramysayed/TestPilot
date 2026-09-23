@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Evidence')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell shell-wide" id="evidence-root"
+      th:attr="data-job-id=${jobId},data-tc-id=${tcId},data-project-id=${projectId}">
+    <div class="page-title">
+        <div>
+            <h1>Evidence triage</h1>
+            <p class="lede">Inspect failure, capture, and compare proof for run
+                <code class="mono" th:text="${jobId}">exec_</code>.</p>
+        </div>
+        <div class="actions">
+            <a class="button ghost" th:href="@{/status(jobId=${jobId})}">Live status</a>
+            <a class="button" th:href="@{/execute(jobId=${jobId}, tcId=${tcId})}">Open on Execute</a>
+        </div>
+    </div>
+
+    <section class="panel">
+        <label>Test case
+            <select id="tc-select">
+                <option value="">— Loading cases —</option>
+            </select>
+        </label>
+        <p id="tc-meta" class="muted"></p>
+    </section>
+
+    <section class="panel" id="ir-block" hidden>
+        <h2>Explicit assertion (IR)</h2>
+        <p class="panel-intro">Capture, compare, and signed-out metadata recorded during prove.</p>
+        <dl class="status" id="ir-details"></dl>
+    </section>
+
+    <section class="panel">
+        <div class="evidence-tabs" role="tablist">
+            <button type="button" class="button ghost evidence-tab active" data-tab="failure">Failure</button>
+            <button type="button" class="button ghost evidence-tab" data-tab="capture">Capture / compare</button>
+            <button type="button" class="button ghost evidence-tab" data-tab="signed-out">Signed-out</button>
+            <button type="button" class="button ghost evidence-tab" data-tab="timeline">Full timeline</button>
+        </div>
+        <div id="tab-failure" class="evidence-tab-panel"></div>
+        <div id="tab-capture" class="evidence-tab-panel" hidden></div>
+        <div id="tab-signed-out" class="evidence-tab-panel" hidden></div>
+        <div id="tab-timeline" class="evidence-tab-panel" hidden></div>
+        <p id="evidence-err" class="error" hidden></p>
+    </section>
+
+    <section class="panel" id="run-compare-panel">
+        <h2>Attempts and compare</h2>
+        <p class="panel-intro">Reruns keep the original evidence and pin the same library, environment, and providers.</p>
+        <p id="attempts-list" class="muted">—</p>
+        <p>
+            <label>Compare with
+                <select id="compare-other"></select>
+            </label>
+            <button type="button" class="button ghost" id="compare-btn">Compare</button>
+        </p>
+        <pre id="compare-result" class="mono" hidden></pre>
+        <p id="intermittency-verdict" class="muted">—</p>
+        <p>
+            <label>Failure class
+                <select id="failure-class">
+                    <option value="ASSERTION">ASSERTION</option>
+                    <option value="LOCATOR">LOCATOR</option>
+                    <option value="PROVIDER">PROVIDER</option>
+                    <option value="INFRASTRUCTURE">INFRASTRUCTURE</option>
+                </select>
+            </label>
+            <button type="button" class="button ghost" id="classify-btn">Save classification</button>
+        </p>
+        <p>
+            <button type="button" class="button" id="rerun-btn">Rerun as new attempt</button>
+        </p>
+        <p id="triage-msg" class="muted" hidden></p>
+        <p id="triage-err" class="error" hidden></p>
+    </section>
+
+    <section class="panel">
+        <h2>Exports</h2>
+        <p>
+            <a class="button ghost" th:href="@{/api/execute-runs/{id}/bug-report.csv(id=${jobId})}">Bug report (CSV)</a>
+            <a class="button ghost" th:href="@{/api/execute-runs/{id}/results.xlsx(id=${jobId})}">Results (Excel)</a>
+        </p>
+    </section>
+</main>
+</div>
+<script>
+(function () {
+    const root = document.getElementById('evidence-root');
+    const jobId = root.getAttribute('data-job-id') || '';
+    const initialTcId = root.getAttribute('data-tc-id') || '';
+    const projectId = root.getAttribute('data-project-id') || '';
+    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel', 'Accept': 'application/json' };
+    const tcSelect = document.getElementById('tc-select');
+    const errEl = document.getElementById('evidence-err');
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function qaBadgeClass(status) {
+        if (status === 'PASS') return 'badge ok';
+        return 'badge err';
+    }
+
+    function renderDesignBadge(status) {
+        if (!status) return '<span class="badge muted">—</span>';
+        const cls = status === 'MATCH' ? 'badge ok' : (status === 'MISMATCH' ? 'badge err' : 'badge warn');
+        return '<span class="' + cls + '">' + escapeHtml(status) + '</span>';
+    }
+
+    function renderTimeline(timeline) {
+        let html = '<ol class="step-timeline execute-timeline">';
+        (timeline || []).forEach(step => {
+            html += '<li class="' + escapeHtml(step.state || '') + '">';
+            html += '<div class="step-main"><span class="step-state">' + escapeHtml(step.state) + '</span> ';
+            html += '<span>' + escapeHtml(step.label || '') + '</span>';
+            if (step.reason) {
+                html += '<div class="error">' + escapeHtml(step.reason) + '</div>';
+            }
+            if (step.screenshotUrl) {
+                html += '<div class="step-shot"><img src="' + escapeHtml(step.screenshotUrl)
+                    + '" alt="Step screenshot" loading="lazy"/></div>';
+            }
+            html += '</div></li>';
+        });
+        html += '</ol>';
+        return html;
+    }
+
+    function renderDesignCompare(jobId, tcId, status) {
+        if (!status || !projectId) return '';
+        const refUrl = '/api/projects/' + encodeURIComponent(projectId)
+            + '/design-references/' + encodeURIComponent(tcId);
+        const actualUrl = '/api/execute-runs/' + encodeURIComponent(jobId)
+            + '/tcs/' + encodeURIComponent(tcId) + '/screenshots/design-actual.png?v=design-actual.png';
+        return '<div class="design-compare-panel"><p class="hint"><strong>Design compare:</strong> '
+            + renderDesignBadge(status) + '</p><div class="design-compare-shots">'
+            + '<figure><figcaption>Reference</figcaption><img src="' + escapeHtml(refUrl)
+            + '" alt="Reference" loading="lazy"/></figure>'
+            + '<figure><figcaption>Actual</figcaption><img src="' + escapeHtml(actualUrl)
+            + '" alt="Actual" loading="lazy"/></figure></div></div>';
+    }
+
+    function renderIrBlock(data) {
+        const block = document.getElementById('ir-block');
+        const dl = document.getElementById('ir-details');
+        const rows = [];
+        if (data.visualAssertStatus) {
+            rows.push(['Visual assert', data.visualAssertStatus]);
+        }
+        if (data.designCompareStatus) {
+            rows.push(['Design compare', data.designCompareStatus]);
+        }
+        if (data.expectedResult) {
+            rows.push(['Expected result', data.expectedResult]);
+        }
+        if (data.provenCount != null) {
+            rows.push(['Proven steps', String(data.provenCount)]);
+        }
+        if (!rows.length) {
+            block.hidden = true;
+            return;
+        }
+        block.hidden = false;
+        dl.innerHTML = rows.map(r => '<dt>' + escapeHtml(r[0]) + '</dt><dd>' + escapeHtml(r[1]) + '</dd>').join('');
+    }
+
+    function isSignedOutStep(step) {
+        const label = String(step.label || '').toLowerCase();
+        const reason = String(step.reason || step.reasonTechnical || '').toLowerCase();
+        return label.includes('signedout') || label.includes('signed-out')
+            || reason.includes('signed-out') || reason.includes('signedout');
+    }
+
+    function renderTabs(data, jobId, tcId) {
+        const failure = document.getElementById('tab-failure');
+        const capture = document.getElementById('tab-capture');
+        const signedOut = document.getElementById('tab-signed-out');
+        const timeline = document.getElementById('tab-timeline');
+        let failureHtml = '';
+        if (data.failureReasonUser || data.failureReason) {
+            failureHtml += '<p class="hint"><strong>What went wrong:</strong> '
+                + escapeHtml(data.failureReasonUser || data.failureReason) + '</p>';
+        } else {
+            failureHtml += '<p class="muted">No failure reason recorded for this case.</p>';
+        }
+        const failedSteps = (data.timeline || []).filter(s => s.state === 'failed');
+        if (failedSteps.length) {
+            failureHtml += renderTimeline(failedSteps);
+        }
+        failure.innerHTML = failureHtml;
+
+        let captureHtml = renderDesignCompare(jobId, tcId, data.designCompareStatus);
+        const shots = (data.timeline || []).filter(s => s.screenshotUrl);
+        if (shots.length) {
+            captureHtml += '<div class="design-compare-shots">';
+            shots.forEach(s => {
+                captureHtml += '<figure><figcaption>' + escapeHtml(s.label || s.state)
+                    + '</figcaption><img src="' + escapeHtml(s.screenshotUrl)
+                    + '" alt="Capture" loading="lazy"/></figure>';
+            });
+            captureHtml += '</div>';
+        }
+        if (!captureHtml) {
+            captureHtml = '<p class="muted">No capture or compare artifacts for this case.</p>';
+        }
+        capture.innerHTML = captureHtml;
+
+        const signedSteps = (data.timeline || []).filter(isSignedOutStep);
+        if (signedSteps.length) {
+            signedOut.innerHTML = renderTimeline(signedSteps);
+        } else {
+            signedOut.innerHTML = '<p class="muted">No signed-out assertion steps recorded for this case.</p>';
+        }
+
+        timeline.innerHTML = renderTimeline(data.timeline || []);
+    }
+
+    async function loadTcDetail(tcId) {
+        errEl.hidden = true;
+        const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId)
+            + '/tcs/' + encodeURIComponent(tcId), {
+            credentials: 'same-origin', headers: API_HEADERS
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            errEl.hidden = false;
+            errEl.textContent = data.message || 'Could not load case evidence';
+            return;
+        }
+        document.getElementById('tc-meta').textContent = (data.title || tcId)
+            + ' · ' + (data.qaStatus || '—') + ' · run at ' + (data.runAtLabel || '—');
+        renderIrBlock(data);
+        renderTabs(data, jobId, tcId);
+        const url = new URL(window.location.href);
+        url.searchParams.set('tcId', tcId);
+        history.replaceState(null, '', url.pathname + url.search);
+    }
+
+    async function loadTcList() {
+        const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId) + '/tcs', {
+            credentials: 'same-origin', headers: API_HEADERS
+        });
+        const tcs = res.ok ? await res.json() : [];
+        tcSelect.innerHTML = '';
+        tcs.forEach(tc => {
+            const opt = document.createElement('option');
+            opt.value = tc.tcId;
+            opt.textContent = tc.tcId + ' · ' + (tc.title || '') + ' · ' + (tc.qaStatus || '');
+            tcSelect.appendChild(opt);
+        });
+        const pick = initialTcId && tcs.some(t => t.tcId === initialTcId)
+            ? initialTcId
+            : (tcs.find(t => t.qaStatus === 'FAIL') || tcs[0] || {}).tcId;
+        if (pick) {
+            tcSelect.value = pick;
+            await loadTcDetail(pick);
+        }
+    }
+
+    tcSelect.addEventListener('change', () => {
+        if (tcSelect.value) loadTcDetail(tcSelect.value);
+    });
+
+    document.querySelectorAll('.evidence-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.evidence-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const tab = btn.getAttribute('data-tab');
+            document.querySelectorAll('.evidence-tab-panel').forEach(p => p.hidden = true);
+            document.getElementById('tab-' + tab).hidden = false;
+        });
+    });
+
+    let triageLoaded = false;
+    async function loadTriage() {
+        if (triageLoaded || !jobId) return;
+        triageLoaded = true;
+        try {
+            const jobRes = await fetch('/api/jobs/' + encodeURIComponent(jobId), {
+                credentials: 'same-origin', headers: API_HEADERS
+            });
+            const job = jobRes.ok ? await jobRes.json() : {};
+            const classSel = document.getElementById('failure-class');
+            if (classSel && job.failureClass) classSel.value = job.failureClass;
+            const [attemptsRes, interRes] = await Promise.all([
+                fetch('/api/jobs/' + encodeURIComponent(jobId) + '/attempts', {
+                    credentials: 'same-origin', headers: API_HEADERS
+                }),
+                fetch('/api/jobs/' + encodeURIComponent(jobId) + '/intermittency', {
+                    credentials: 'same-origin', headers: API_HEADERS
+                })
+            ]);
+            const attempts = attemptsRes.ok ? await attemptsRes.json() : { attempts: [] };
+            const inter = interRes.ok ? await interRes.json() : {};
+            const list = document.getElementById('attempts-list');
+            const rows = attempts.attempts || [];
+            list.textContent = rows.length
+                ? rows.map(r => r.jobId + ' · ' + r.status
+                    + (r.parentJobId ? ' (rerun of ' + r.parentJobId + ')' : ' (original)')).join(' · ')
+                : 'This is the only attempt.';
+            const sel = document.getElementById('compare-other');
+            sel.innerHTML = '';
+            rows.filter(r => r.jobId !== jobId).forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.jobId;
+                opt.textContent = r.jobId + ' · ' + r.status;
+                sel.appendChild(opt);
+            });
+            document.getElementById('intermittency-verdict').textContent =
+                'Intermittency: ' + (inter.verdict || '—')
+                + ' (sample ' + (inter.sampleSize || 0) + ', min ' + (inter.minSample || 3) + ')';
+        } catch (e) {
+            triageLoaded = false;
+        }
+    }
+
+    document.getElementById('compare-btn')?.addEventListener('click', async () => {
+        const sel = document.getElementById('compare-other');
+        const out = document.getElementById('compare-result');
+        if (!sel.value) {
+            out.hidden = false;
+            out.textContent = 'Select another attempt to compare.';
+            return;
+        }
+        const res = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/compare?other='
+            + encodeURIComponent(sel.value), { credentials: 'same-origin', headers: API_HEADERS });
+        const data = await res.json().catch(() => ({}));
+        out.hidden = false;
+        if (!res.ok) {
+            out.textContent = data.message || 'Compare failed';
+            return;
+        }
+        const d = data.divergence;
+        out.textContent = (data.pinsMatch ? 'Pinned inputs match. ' : 'Pinned inputs differ. ')
+            + (d ? ('First divergence at step ' + d.index + ' (' + d.field + '): '
+                + ((d.left && d.left.observed) || '—') + ' vs '
+                + ((d.right && d.right.observed) || '—'))
+                : 'No meaningful divergence in recorded steps.');
+    });
+
+    document.getElementById('rerun-btn')?.addEventListener('click', async () => {
+        const err = document.getElementById('triage-err');
+        const msg = document.getElementById('triage-msg');
+        err.hidden = true;
+        msg.hidden = true;
+        const res = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/rerun', {
+            method: 'POST', credentials: 'same-origin', headers: API_HEADERS
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = data.message || 'Rerun failed';
+            return;
+        }
+        window.location.href = '/status?jobId=' + encodeURIComponent(data.jobId);
+    });
+
+    document.getElementById('classify-btn')?.addEventListener('click', async () => {
+        const sel = document.getElementById('failure-class');
+        const err = document.getElementById('triage-err');
+        const msg = document.getElementById('triage-msg');
+        err.hidden = true;
+        msg.hidden = true;
+        const res = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/classification', {
+            method: 'POST', credentials: 'same-origin',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+            body: JSON.stringify({ kind: sel ? sel.value : 'ASSERTION' })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = data.message || 'Classification failed';
+            return;
+        }
+        msg.hidden = false;
+        msg.textContent = 'Saved ' + data.failureClass
+            + (data.failureClassUserCorrected ? ' (corrected from ' + data.failureClassSuggested + ')' : '');
+    });
+
+    loadTcList();
+    loadTriage();
+})();
+</script>
+</body>
+</html>

@@ -40,6 +40,7 @@ public final class VisionGroundingEngine {
         }
 
         VisualCandidate visual = sweep.get().candidate();
+        if (!sweep.get().observationVersion().equals(browser.observationVersion())) return List.of();
         ViewportMetrics metrics = sweep.get().metrics();
         int imageW = metrics.screenshotWidth();
         int imageH = metrics.screenshotHeight();
@@ -49,7 +50,7 @@ public final class VisionGroundingEngine {
 
         Optional<GroundingHit> hit = ElementGrounder.groundToHit(
                 mutableTable, visual, browser, imageW, imageH, viewW, viewH);
-        if (hit.isEmpty()) {
+        if (hit.isEmpty() || !sweep.get().observationVersion().equals(browser.observationVersion())) {
             VisionAttemptLog.record(VisionAttempt.of(
                     visual.boundingBox(), visual.confidence(), "none", false, "miss"));
             LogsManager.info("FINAL: MISS");

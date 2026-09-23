@@ -101,12 +101,12 @@ public final class DomCandidateExtractor {
             if (isHidden(el)) {
                 continue;
             }
-            String tag = el.tagName().toLowerCase(Locale.ROOT);
+            String tag = controlKind(el);
             List<String> preferredOnEl = preferredAttrsOn(el);
             if (!preferredOnEl.isEmpty()) {
                 for (String attr : preferredOnEl) {
                     String v = el.attr(attr);
-                    seq = put(byKey, seq, "css", cssAttrSelector(attr, v), tag, labelOf(el, v));
+                    seq = put(byKey, seq, "css", el.tagName() + cssAttrSelector(attr, v), tag, labelOf(el, v));
                 }
                 continue;
             }
@@ -120,11 +120,12 @@ public final class DomCandidateExtractor {
                     if (!usableIdentifier(v)) {
                         continue;
                     }
+                    if (!uniqueAttribute(el, attr.getKey(), v)) continue;
                     String key = attr.getKey().toLowerCase(Locale.ROOT);
                     if ("data-test".equals(key) || "data-testid".equals(key) || "data-qa".equals(key)) {
                         seq = put(byKey, seq, key, v, tag, labelOf(el, v));
                     } else {
-                        seq = put(byKey, seq, "css", cssAttrSelector(attr.getKey(), v), tag, labelOf(el, v));
+                        seq = put(byKey, seq, "css", el.tagName() + cssAttrSelector(attr.getKey(), v), tag, labelOf(el, v));
                     }
                 }
                 continue;
@@ -134,7 +135,7 @@ public final class DomCandidateExtractor {
                 seq = put(byKey, seq, "id", id, tag, labelOf(el, id));
             }
             String name = el.attr("name");
-            if (usableIdentifier(name)) {
+            if (usableIdentifier(name) && uniqueAttribute(el, "name", name)) {
                 seq = put(byKey, seq, "name", name, tag, labelOf(el, name));
             }
         }
@@ -180,7 +181,8 @@ public final class DomCandidateExtractor {
                 continue;
             }
             String text = visibleLabel(el);
-            if (text == null || text.length() < 2 || text.length() > 60) {
+            if (text == null || text.length() < 2 || text.length() > 512
+                    || "true".equals(el.attr("data-keel-source-text-ambiguous"))) {
                 continue;
             }
             String tag = el.tagName().toLowerCase(Locale.ROOT);
@@ -188,13 +190,18 @@ public final class DomCandidateExtractor {
             seq = put(byKey, seq, "xpath", innermostTextXpath(tag, text), kind, text);
         }
 
-        return capped(byKey.values(), max);
+        // A selector matching several nodes is not one candidate, even if identical rows deduplicate.
+        List<DomCandidate> unique = byKey.values().stream()
+                .filter(c -> "iframe".equals(c.strategy())
+                        || HtmlLocatorPresence.matchingElements(c.strategy(), c.value(), doc).size() == 1)
+                .toList();
+        return capped(unique, max);
     }
 
     /**
-     * Tagged buttons/links already exclude a wrapper {@code div}. The extra
-     * {@code not(.//*)} predicate is only for generic ancestors; on a {@code button} it
-     * drops the control when the label lives in a child {@code span}.
+     * Tagged buttons/links already exclude a wrapper {@code div}. Generic ancestors
+     * exclude matching descendants of the same tag, while retaining decorative
+     * spans that carry the control's own label.
      */
     static String innermostTextXpath(String tag, String text) {
         String lit = XpathLiterals.quote(text);
@@ -202,7 +209,8 @@ public final class DomCandidateExtractor {
         if (isInteractiveTextTag(tag)) {
             return tagged;
         }
-        return tagged + "[not(.//*[contains(normalize-space(.)," + lit + ")])]";
+        // Ignore same-tag wrappers, not decorative spans carrying the control's own label.
+        return tagged + "[not(.//" + tag + "[contains(normalize-space(.)," + lit + ")])]";
     }
 
     private static boolean isInteractiveTextTag(String tag) {
@@ -228,6 +236,7 @@ public final class DomCandidateExtractor {
             }
         }
         int reserved = Math.min(fallback.size(), max / 3);
+        stable.sort(java.util.Comparator.comparingInt(c -> actionableKind(c.tag()) ? 0 : 1));
         List<DomCandidate> out = new ArrayList<>();
         for (DomCandidate c : stable) {
             if (out.size() >= max - reserved) {
@@ -310,7 +319,7 @@ public final class DomCandidateExtractor {
         }
         for (String attr : attrs) {
             AttrSelector single = selectorOf(tag, List.of(attr), el);
-            if (matchCount(doc, single.css()) == 1) {
+            if (uniqueAttribute(el, attr, el.attr(attr)) && matchCount(doc, single.css()) == 1) {
                 return single;
             }
         }
@@ -320,7 +329,7 @@ public final class DomCandidateExtractor {
                     continue;
                 }
                 AttrSelector pair = selectorOf(tag, List.of(first, second), el);
-                if (matchCount(doc, pair.css()) == 1) {
+                if ((!el.hasAttr("data-keel-ambiguous-attrs") || uniqueAttribute(el, first, el.attr(first)) || uniqueAttribute(el, second, el.attr(second))) && matchCount(doc, pair.css()) == 1) {
                     return pair;
                 }
             }
@@ -331,7 +340,8 @@ public final class DomCandidateExtractor {
         if (index < 1) {
             return null;
         }
-        return new AttrSelector(base.css(), "(" + base.xpath() + ")[" + index + "]",
+        String original = el.attr("data-keel-source-xpath");
+        return new AttrSelector(base.css(), original.isBlank() ? "(" + base.xpath() + ")[" + index + "]" : original,
                 base.label(), false);
     }
 
@@ -374,9 +384,10 @@ public final class DomCandidateExtractor {
     }
 
     /** A div with {@code role="combobox"} is a dropdown; reporting it as a div hides that. */
-    private static String controlKind(Element el) {
+    public static String controlKind(Element el) {
         String tag = el.tagName().toLowerCase(Locale.ROOT);
         String role = el.attr("role").trim().toLowerCase(Locale.ROOT);
+        if ("input".equals(tag) && List.of("submit", "button", "reset", "image").contains(el.attr("type").toLowerCase(Locale.ROOT))) return "button";
         if (GENERIC_TAGS.contains(tag) && WIDGET_ROLES.contains(role)) {
             return role;
         }
@@ -439,7 +450,7 @@ public final class DomCandidateExtractor {
         if (sib == el && tag.equalsIgnoreCase(sib.tagName())) {
             return true;
         }
-        return sib.select(tag).size() == 1 && sib.selectFirst(tag) == el;
+        return false;
     }
 
     /**
@@ -471,26 +482,26 @@ public final class DomCandidateExtractor {
      * label so the binder can still match the intent; the ordinal is what addresses the element.
      */
     private static LabelSelector indexedSelector(Document doc, Element el) {
+        String tag = el.tagName().toLowerCase(Locale.ROOT);
+        // Buttons/links are named by contents; slimmer source xpaths and positional
+        // (//button)[n] are not bind targets. Indexed xpaths stay for form controls.
+        if (!FORM_CONTROL_TAGS.contains(tag) || NON_INDEXABLE_TAGS.contains(tag)) {
+            return null;
+        }
         String name = AccessibleName.of(el);
         if (name.isBlank()) {
             return null;
         }
-        String tag = el.tagName().toLowerCase(Locale.ROOT);
-        if (NON_INDEXABLE_TAGS.contains(tag)) {
-            return null;
+        if (!el.attr("data-keel-source-xpath").isBlank()) {
+            return new LabelSelector(el.attr("data-keel-source-xpath"), name);
         }
         String scopeQuery;
         String xpathBase;
-        if (FORM_CONTROL_TAGS.contains(tag)) {
-            if ("input".equals(tag) && el.hasAttr("type")) {
-                String inputType = el.attr("type").trim();
-                if (!inputType.isBlank()) {
-                    scopeQuery = "input[type=" + inputType + "]";
-                    xpathBase = "//input[@type='" + inputType + "']";
-                } else {
-                    scopeQuery = tag;
-                    xpathBase = "//" + tag;
-                }
+        if ("input".equals(tag) && el.hasAttr("type")) {
+            String inputType = el.attr("type").trim();
+            if (!inputType.isBlank()) {
+                scopeQuery = "input[type=" + inputType + "]";
+                xpathBase = "//input[@type='" + inputType + "']";
             } else {
                 scopeQuery = tag;
                 xpathBase = "//" + tag;
@@ -523,10 +534,12 @@ public final class DomCandidateExtractor {
             Set<String> repeatedIds) {
         int index = 1;
         for (Element el : doc.select("input[type=" + inputType + "]")) {
+            if (isHidden(el)) { index++; continue; }
             String adj = adjacentText(el);
             String label = inputType + " " + index
                     + (adj == null || adj.isBlank() ? "" : " " + adj);
             String xpath = "(//input[@type='" + inputType + "'])[" + index + "]";
+            if (!el.attr("data-keel-source-xpath").isBlank()) xpath = el.attr("data-keel-source-xpath");
             seq = put(byKey, seq, "xpath", xpath, "input", label);
             index++;
         }
@@ -564,7 +577,7 @@ public final class DomCandidateExtractor {
         }
         String t = el.text();
         if (t != null && !t.isBlank()) {
-            return trim40(t.trim());
+            return t.trim().replaceAll("\\s+", " ");
         }
         return labelOf(el, null);
     }
@@ -674,7 +687,7 @@ public final class DomCandidateExtractor {
         return (usableIdentifier(el.id()) && !repeatedIds.contains(el.id()))
                 || hasTestHookAttr(el)
                 || !preferredAttrsOn(el).isEmpty()
-                || usableIdentifier(el.attr("name"));
+                || (usableIdentifier(el.attr("name")) && uniqueAttribute(el, "name", el.attr("name")));
     }
 
     private static List<String> preferredAttrsOn(Element el) {
@@ -688,7 +701,7 @@ public final class DomCandidateExtractor {
                 continue;
             }
             String v = el.attr(hook);
-            if (usableIdentifier(v)) {
+            if (usableIdentifier(v) && uniqueAttribute(el, hook, v)) {
                 hit.add(hook);
             }
         }
@@ -705,11 +718,23 @@ public final class DomCandidateExtractor {
 
     private static boolean hasTestHookAttr(Element el) {
         for (org.jsoup.nodes.Attribute attr : el.attributes()) {
-            if (isTestHookAttr(attr.getKey()) && usableIdentifier(attr.getValue())) {
+            if (isTestHookAttr(attr.getKey()) && usableIdentifier(attr.getValue())
+                    && uniqueAttribute(el, attr.getKey(), attr.getValue())) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static boolean uniqueAttribute(Element el, String attr, String value) {
+        if (List.of(el.attr("data-keel-ambiguous-attrs").split(" ")).contains(attr)) return false;
+        Document doc = el.ownerDocument();
+        if (doc == null) return false;
+        return doc.getAllElements().stream().filter(n -> n.hasAttr(attr) && value.equals(n.attr(attr))).limit(2).count() == 1;
+    }
+
+    private static boolean actionableKind(String kind) {
+        return List.of("a", "button", "input", "select", "textarea").contains(kind) || WIDGET_ROLES.contains(kind);
     }
 
     /** An id shared by several elements identifies none of them. */
@@ -722,6 +747,9 @@ public final class DomCandidateExtractor {
             }
         }
         Set<String> repeated = new LinkedHashSet<>();
+        for (Element el : doc.getAllElements()) {
+            if (List.of(el.attr("data-keel-ambiguous-attrs").split(" ")).contains("id")) repeated.add(el.id());
+        }
         counts.forEach((id, count) -> {
             if (count > 1) {
                 repeated.add(id);
@@ -773,22 +801,7 @@ public final class DomCandidateExtractor {
     }
 
     private static String labelOf(Element el, String fallback) {
-        String text = el.ownText();
-        if (text != null && !text.isBlank()) {
-            return text.trim().length() > 40 ? text.trim().substring(0, 40) : text.trim();
-        }
-        String aria = el.attr("aria-label");
-        if (usable(aria)) {
-            return aria;
-        }
-        String placeholder = el.attr("placeholder");
-        if (usable(placeholder)) {
-            return placeholder;
-        }
         String accessible = AccessibleName.of(el);
-        if (usable(accessible)) {
-            return accessible;
-        }
-        return fallback;
+        return usable(accessible) ? accessible : fallback;
     }
 }

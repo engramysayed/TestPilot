@@ -81,6 +81,11 @@ public class StatusPageMvcTest extends AbstractTestNGSpringContextTests {
         int downloadWrapEnd = body.indexOf('>', downloadWrap);
         String downloadWrapTag = body.substring(downloadWrap, downloadWrapEnd);
         Assert.assertTrue(downloadWrapTag.contains("hidden"), "ZIP download should be hidden for execute jobs");
+        int evidenceLink = body.indexOf("id=\"evidence-link\"");
+        Assert.assertTrue(evidenceLink >= 0, "evidence-link missing");
+        String evidenceTag = body.substring(evidenceLink, body.indexOf('>', evidenceLink));
+        Assert.assertTrue(evidenceTag.contains("hidden"), "evidence link starts hidden until terminal status");
+        Assert.assertTrue(body.contains("/evidence?jobId="), "evidence link must target evidence page");
     }
 
     @Test

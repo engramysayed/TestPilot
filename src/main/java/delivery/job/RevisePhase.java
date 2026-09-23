@@ -5,6 +5,7 @@ import delivery.authoring.StepIntentBinder;
 import delivery.codegen.CodegenNaming;
 import delivery.codegen.CodeWriter;
 import delivery.codegen.ProvenStep;
+import delivery.codegen.TestMethodNaming;
 import delivery.excel.ManualTestCase;
 import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStatus;
@@ -162,17 +163,44 @@ public class RevisePhase {
         if (idx >= 0) {
             src = src.substring(0, idx) + inject + src.substring(idx);
         } else {
-            int run = src.indexOf("public void runCase()");
-            if (run < 0) {
-                return;
-            }
-            int brace = src.indexOf('{', run);
+            int brace = testMethodOpeningBrace(src, d);
             if (brace < 0) {
                 return;
             }
             src = src.substring(0, brace + 1) + "\n" + inject + src.substring(brace + 1);
         }
         Files.writeString(file, src, StandardCharsets.UTF_8);
+    }
+
+    /** Package-visible for tests: locate the title-derived {@code @Test} method body. */
+    static int testMethodOpeningBrace(String src, TcDraft d) {
+        if (src == null || src.isBlank()) {
+            return -1;
+        }
+        int testAnn = src.indexOf("@Test");
+        if (testAnn >= 0) {
+            int method = src.indexOf("public void ", testAnn);
+            if (method >= 0) {
+                int brace = src.indexOf('{', method);
+                if (brace >= 0) {
+                    return brace;
+                }
+            }
+        }
+        String named = TestMethodNaming.resolve(
+                d == null ? "" : d.title(), d == null ? "" : d.tcId(), null, false);
+        int namedAt = src.indexOf("public void " + named + "(");
+        if (namedAt >= 0) {
+            int brace = src.indexOf('{', namedAt);
+            if (brace >= 0) {
+                return brace;
+            }
+        }
+        int run = src.indexOf("public void runCase()");
+        if (run < 0) {
+            return -1;
+        }
+        return src.indexOf('{', run);
     }
 
     private static String trim(String s, int max) {

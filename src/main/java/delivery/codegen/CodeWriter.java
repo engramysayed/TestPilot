@@ -83,6 +83,8 @@ public class CodeWriter {
         java.util.Set<String> keepPages = new java.util.HashSet<>();
         java.util.Set<String> keepGenerated = new java.util.HashSet<>();
         java.util.Set<String> keepTodo = new java.util.HashSet<>();
+        java.util.Set<String> usedPageFiles = new java.util.HashSet<>();
+        java.util.Set<String> usedTestFiles = new java.util.HashSet<>();
 
         Template locatorsTpl = cfg.getTemplate("PageLocators.java.ftl");
         Template actionsTpl = cfg.getTemplate("PageActions.java.ftl");
@@ -97,29 +99,41 @@ public class CodeWriter {
             model.put("methods", page.methods());
             model.put("assertions", page.assertions());
 
-            Path locatorsOut = pagesDir.resolve(page.locatorsClassName() + ".java");
+            String locatorsFile = page.locatorsClassName() + ".java";
+            String actionsFile = page.actionsClassName() + ".java";
+            registerFile(usedPageFiles, locatorsFile, "page locators", e.getKey());
+            registerFile(usedPageFiles, actionsFile, "page actions", e.getKey());
+            Path locatorsOut = pagesDir.resolve(locatorsFile);
             try (Writer w = Files.newBufferedWriter(locatorsOut, StandardCharsets.UTF_8)) {
                 locatorsTpl.process(model, w);
             }
-            keepPages.add(page.locatorsClassName() + ".java");
-            Path actionsOut = pagesDir.resolve(page.actionsClassName() + ".java");
+            keepPages.add(locatorsFile);
+            Path actionsOut = pagesDir.resolve(actionsFile);
             try (Writer w = Files.newBufferedWriter(actionsOut, StandardCharsets.UTF_8)) {
                 actionsTpl.process(model, w);
             }
-            keepPages.add(page.actionsClassName() + ".java");
+            keepPages.add(actionsFile);
         }
 
         Template genTpl = cfg.getTemplate("GeneratedTest.java.ftl");
         Template todoTpl = cfg.getTemplate("TodoTest.java.ftl");
         List<TcOutcome> safeOutcomes = outcomes == null ? List.of() : outcomes;
+        CodegenDataKeys keys = CodegenDataKeys.assign(safeOutcomes, pages);
         for (TcOutcome outcome : safeOutcomes) {
             boolean passed = outcome.status() == TcStatus.PASSED;
             String className = CodegenNaming.testClassName(outcome.tcId(), passed);
             String methodName = TestMethodNaming.resolve(
                     outcome.title(), outcome.tcId(), namingClient, namingOptions.ollamaNaming());
-            List<Map<String, Object>> chronCalls = buildChronologicalCalls(outcome.tcId(), outcome.provenSteps());
-            List<Map<String, Object>> loginChron = buildChronologicalCalls(outcome.tcId(), outcome.loginSteps());
-            List<Map<String, Object>> setupChron = buildChronologicalCalls(outcome.tcId(), outcome.setupSteps());
+            List<Map<String, Object>> loginChron = outcome.needsLoginBeforeMethod()
+                    ? buildChronologicalCalls(outcome.tcId(), outcome.loginSteps(), pages, keys,
+                    CodegenDataKeys.PHASE_LOGIN)
+                    : List.of();
+            List<Map<String, Object>> setupChron =
+                    buildChronologicalCalls(outcome.tcId(), outcome.setupSteps(), pages, keys,
+                            CodegenDataKeys.PHASE_SETUP);
+            List<Map<String, Object>> chronCalls =
+                    buildChronologicalCalls(outcome.tcId(), outcome.provenSteps(), pages, keys,
+                            CodegenDataKeys.PHASE_BODY);
             List<Map<String, Object>> beforeCalls = new ArrayList<>();
             beforeCalls.addAll(loginChron);
             beforeCalls.addAll(setupChron);
@@ -140,19 +154,26 @@ public class CodeWriter {
             model.put("pageImports", pageImportsFor(chronCalls, beforeCalls));
             model.put("needsLoginBeforeMethod", outcome.needsLoginBeforeMethod());
             model.put("reviewComments", List.of());
-            Path out = (passed ? generatedDir : todoDir).resolve(className + ".java");
+            String testFile = className + ".java";
+            registerFile(usedTestFiles, testFile, "test class", outcome.tcId());
+            Path out = (passed ? generatedDir : todoDir).resolve(testFile);
             Template tpl = passed ? genTpl : todoTpl;
             try (Writer w = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
                 tpl.process(model, w);
             }
             if (passed) {
-                keepGenerated.add(className + ".java");
+                keepGenerated.add(testFile);
             } else {
-                keepTodo.add(className + ".java");
+                keepTodo.add(testFile);
             }
         }
+        if (keepGenerated.size() + keepTodo.size() != safeOutcomes.size()) {
+            throw new IllegalStateException(
+                    "emitted " + (keepGenerated.size() + keepTodo.size())
+                            + " test classes for " + safeOutcomes.size() + " cases");
+        }
 
-        TestDataPropertiesWriter.write(projectRoot, safeOutcomes);
+        TestDataPropertiesWriter.write(projectRoot, safeOutcomes, pages, keys);
         deleteObsoleteJava(pagesDir, keepPages);
         deleteObsoleteJava(generatedDir, keepGenerated);
         deleteObsoleteJava(todoDir, keepTodo);
@@ -170,7 +191,8 @@ public class CodeWriter {
         return id + " — " + t;
     }
 
-    List<Map<String, Object>> buildChronologicalCalls(String tcId, List<ProvenStep> steps) {
+    List<Map<String, Object>> buildChronologicalCalls(
+            String tcId, List<ProvenStep> steps, PageAccumulator pages, CodegenDataKeys keys, String phase) {
         List<Map<String, Object>> calls = new ArrayList<>();
         if (steps == null) {
             return calls;
@@ -185,45 +207,45 @@ public class CodeWriter {
             if (!isAssert && (step.locatorValue() == null || step.locatorValue().isBlank())) {
                 continue;
             }
-            if (isAssert && !"urlContains".equalsIgnoreCase(step.assertionType())
-                    && !"textContains".equalsIgnoreCase(step.assertionType())
+            if (isAssert && !isLocatorFreeAssert(step.assertionType())
                     && (step.locatorValue() == null || step.locatorValue().isBlank())) {
                 continue;
             }
-            String pageClass = PageAccumulator.pageClassName(step.pageName());
+            String pageClass = pages.actionsClassName(step);
             Map<String, Object> call = new LinkedHashMap<>();
             call.put("pageClass", pageClass);
             call.put("pageVar", pageVarName(pageClass));
             if (isAssert && (!isAction || "assert".equals(action))) {
-                call.put("kind", "assert");
-                call.put("method", PageAccumulator.assertMethodName(step));
-                call.put("needsValue", false);
-                call.put("value", "");
-                call.put("propKey", "");
+                putAssertCall(call, pages, step);
             } else {
-                String method = PageAccumulator.actionMethodName(step);
+                String method = pages.actionSymbol(step);
                 call.put("kind", "action");
                 call.put("method", method);
                 call.put("needsValue", "type".equals(action) || "select".equals(action));
                 String value = step.value() == null ? "" : step.value();
-                String ownerId = step.tcId() == null || step.tcId().isBlank() ? tcId : step.tcId();
                 call.put("value", value);
-                call.put("propKey", propKeyFor(ownerId, method, value));
+                call.put("propKey", keys.keyFor(tcId, phase, step));
             }
             calls.add(call);
             if (isAction && isAssert && !"assert".equals(action)) {
                 Map<String, Object> assertCall = new LinkedHashMap<>();
                 assertCall.put("pageClass", pageClass);
                 assertCall.put("pageVar", pageVarName(pageClass));
-                assertCall.put("kind", "assert");
-                assertCall.put("method", PageAccumulator.assertMethodName(step));
-                assertCall.put("needsValue", false);
-                assertCall.put("value", "");
-                assertCall.put("propKey", "");
+                putAssertCall(assertCall, pages, step);
                 calls.add(assertCall);
             }
         }
         return calls;
+    }
+
+    private static void putAssertCall(
+            Map<String, Object> call, PageAccumulator pages, ProvenStep step) {
+        boolean parameterized = PageAccumulator.isParameterizedAssertion(step.assertionType());
+        call.put("kind", "assert");
+        call.put("method", pages.assertSymbol(step));
+        call.put("needsValue", parameterized);
+        call.put("value", parameterized && step.assertionExpected() != null ? step.assertionExpected() : "");
+        call.put("propKey", "");
     }
 
     static List<Map<String, Object>> pageVarsFor(List<Map<String, Object>> calls) {
@@ -255,11 +277,20 @@ public class CodeWriter {
         return CodegenNaming.safeLocalVarName(pageClass);
     }
 
+    static boolean isLocatorFreeAssert(String assertionType) {
+        if (assertionType == null || assertionType.isBlank()) {
+            return false;
+        }
+        String type = assertionType.trim();
+        return "urlContains".equalsIgnoreCase(type)
+                || "textContains".equalsIgnoreCase(type);
+    }
+
     /**
      * Map typed values to property keys. Login placeholders stay TARGET_*;
      * invented / Excel form values go to delivery-testdata.properties.
      */
-    static String propKeyFor(String tcId, String methodName, String value) {
+    static String specialPropKey(String value) {
         if (value == null || value.isBlank()) {
             return "";
         }
@@ -272,9 +303,19 @@ public class CodeWriter {
         if (value.startsWith("${") && value.endsWith("}")) {
             return value.substring(2, value.length() - 1);
         }
-        String id = tcId == null || tcId.isBlank() ? "TC" : tcId.trim().replaceAll("[^A-Za-z0-9._-]", "_");
-        String method = methodName == null || methodName.isBlank() ? "value" : methodName.trim();
-        return id + "." + method;
+        return null;
+    }
+
+    static String propKeyFor(String tcId, String methodName, String value) {
+        return CodegenDataKeys.assign(List.of(), new PageAccumulator()).next(tcId, methodName, value);
+    }
+
+    private static void registerFile(java.util.Set<String> usedLower, String fileName, String kind, String source) {
+        String lower = fileName.toLowerCase(Locale.ROOT);
+        if (!usedLower.add(lower)) {
+            throw new IllegalStateException(
+                    "Generated " + kind + " file collision for " + source + " -> " + fileName);
+        }
     }
 
     private Configuration freemarkerConfig() throws IOException {

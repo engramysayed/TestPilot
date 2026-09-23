@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Automation packages')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<main class="shell shell-wide">
+    <div class="page-title">
+        <div>
+            <h1>Automation</h1>
+            <p class="lede">Framework packages across all projects — inspect, download, delete, or clear leftover prove IR.</p>
+        </div>
+        <a class="button" href="/automate">New Automate run</a>
+    </div>
+
+    <p id="packages-msg" class="muted" hidden role="status"></p>
+    <p id="packages-err" class="error" hidden></p>
+
+    <section class="panel" th:if="${#lists.isEmpty(packages)}">
+        <p class="muted">No packages yet. Run <a href="/automate">Automate</a> on a project to produce a framework ZIP.</p>
+    </section>
+
+    <section class="panel" th:if="${!#lists.isEmpty(packages)}">
+        <h2>Packages</h2>
+        <div class="table-scroll">
+            <table class="table" id="packages-table">
+                <thead>
+                <tr>
+                    <th>Project</th>
+                    <th>Version</th>
+                    <th>Path</th>
+                    <th>Size</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="p : ${packages}"
+                    th:attr="data-project-id=${p.projectId},data-path=${p.path},data-can-operate=${p.canOperate},data-job-running=${p.jobRunning}">
+                    <td>
+                        <span th:text="${p.projectName}">Project</span>
+                        <br/><code class="mono muted" th:text="${p.projectId}">prj_</code>
+                    </td>
+                    <td th:text="${p.label}">v1</td>
+                    <td class="mono" th:text="${p.path}">versions/v1.zip</td>
+                    <td class="mono pkg-size" th:attr="data-bytes=${p.sizeBytes}">0</td>
+                    <td class="actions pkg-actions">
+                        <a th:href="@{/projects/{id}(id=${p.projectId}, tab='automation')}">Inspect</a>
+                        <a th:href="@{/api/projects/{id}/artifacts/download(id=${p.projectId}, path=${p.path})}">Download</a>
+                        <button type="button" class="danger pkg-delete-btn" hidden>Delete</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Prove cleanup</h2>
+        <p class="panel-intro">Clear leftover proven cases (<code>ir/</code>) after reviewing packages.</p>
+        <ul class="artifact-list" id="ir-project-list">
+            <li th:each="proj : ${projectRows}" class="artifact-item ir-project-row"
+                th:attr="data-project-id=${proj.projectId},data-can-operate=${proj.canOperate},data-job-running=${proj.jobRunning}">
+                <span th:text="${proj.name}">Project</span>
+                <span class="mono muted" th:text="${proj.projectId}">prj_</span>
+                <span class="artifact-actions">
+                    <a th:href="@{/projects/{id}(id=${proj.projectId}, tab='automation')}">Inspect packages</a>
+                    <button type="button" class="button ghost ir-clear-btn" hidden>Clear leftover proven cases</button>
+                </span>
+            </li>
+        </ul>
+    </section>
+</main>
+</div>
+
+<div id="pkgDeleteModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+        <h3>Delete package?</h3>
+        <p class="muted" id="pkg-delete-body">This cannot be undone.</p>
+        <p id="pkg-delete-err" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="pkgDeleteCancel">Cancel</button>
+            <button type="button" class="button danger" id="pkgDeleteConfirm">Delete</button>
+        </div>
+    </div>
+</div>
+
+<div id="irClearModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+        <h3>Clear leftover proven cases?</h3>
+        <p class="muted">Removes proven-case IR drafts for this project. This cannot be undone.</p>
+        <p id="ir-clear-err" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="irClearCancel">Cancel</button>
+            <button type="button" class="button danger" id="irClearConfirm">Clear proven cases</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel', 'Accept': 'application/json' };
+    let pendingDelete = null;
+    let pendingIrProject = null;
+
+    function formatBytes(n) {
+        const v = Number(n);
+        if (!v || Number.isNaN(v)) return '—';
+        if (v < 1024) return v + ' B';
+        if (v < 1024 * 1024) return (v / 1024).toFixed(1) + ' KB';
+        return (v / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    document.querySelectorAll('.pkg-size').forEach(el => {
+        el.textContent = formatBytes(el.getAttribute('data-bytes'));
+    });
+
+    document.querySelectorAll('#packages-table tbody tr').forEach(row => {
+        const canOperate = row.getAttribute('data-can-operate') === 'true';
+        const running = row.getAttribute('data-job-running') === 'true';
+        const btn = row.querySelector('.pkg-delete-btn');
+        if (btn && canOperate) {
+            btn.hidden = false;
+            btn.disabled = running;
+            btn.title = running ? 'Wait for the running job to finish' : '';
+            btn.addEventListener('click', () => {
+                pendingDelete = {
+                    projectId: row.getAttribute('data-project-id'),
+                    path: row.getAttribute('data-path')
+                };
+                document.getElementById('pkg-delete-body').textContent =
+                    'Delete ' + pendingDelete.path + ' from ' + pendingDelete.projectId + '?';
+                document.getElementById('pkg-delete-err').classList.add('hidden');
+                document.getElementById('pkgDeleteModal').classList.remove('hidden');
+            });
+        }
+    });
+
+    document.querySelectorAll('.ir-project-row').forEach(row => {
+        const canOperate = row.getAttribute('data-can-operate') === 'true';
+        const running = row.getAttribute('data-job-running') === 'true';
+        const btn = row.querySelector('.ir-clear-btn');
+        if (btn && canOperate) {
+            btn.hidden = false;
+            btn.disabled = running;
+            btn.addEventListener('click', () => {
+                pendingIrProject = row.getAttribute('data-project-id');
+                document.getElementById('ir-clear-err').classList.add('hidden');
+                document.getElementById('irClearModal').classList.remove('hidden');
+            });
+        }
+    });
+
+    document.getElementById('pkgDeleteCancel').addEventListener('click', () => {
+        document.getElementById('pkgDeleteModal').classList.add('hidden');
+        pendingDelete = null;
+    });
+    document.getElementById('irClearCancel').addEventListener('click', () => {
+        document.getElementById('irClearModal').classList.add('hidden');
+        pendingIrProject = null;
+    });
+
+    document.getElementById('pkgDeleteConfirm').addEventListener('click', async () => {
+        if (!pendingDelete) return;
+        const errEl = document.getElementById('pkg-delete-err');
+        errEl.classList.add('hidden');
+        const res = await fetch('/api/projects/' + encodeURIComponent(pendingDelete.projectId)
+            + '/artifacts?path=' + encodeURIComponent(pendingDelete.path), {
+            method: 'DELETE', credentials: 'same-origin', headers: API_HEADERS
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            errEl.textContent = data.message || 'Delete failed';
+            errEl.classList.remove('hidden');
+            return;
+        }
+        document.getElementById('pkgDeleteModal').classList.add('hidden');
+        window.location.reload();
+    });
+
+    document.getElementById('irClearConfirm').addEventListener('click', async () => {
+        if (!pendingIrProject) return;
+        const errEl = document.getElementById('ir-clear-err');
+        errEl.classList.add('hidden');
+        const res = await fetch('/api/projects/' + encodeURIComponent(pendingIrProject) + '/automate-ir', {
+            method: 'DELETE', credentials: 'same-origin', headers: API_HEADERS
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            errEl.textContent = data.message || 'Could not clear proven cases';
+            errEl.classList.remove('hidden');
+            return;
+        }
+        document.getElementById('irClearModal').classList.add('hidden');
+        const msg = document.getElementById('packages-msg');
+        msg.hidden = false;
+        msg.textContent = 'Cleared ' + (data.deleted || 0) + ' proven case draft(s) for ' + pendingIrProject + '.';
+        pendingIrProject = null;
+    });
+})();
+</script>
+</body>
+</html>

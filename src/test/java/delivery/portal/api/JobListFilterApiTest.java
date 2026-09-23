@@ -79,7 +79,9 @@ public class JobListFilterApiTest extends AbstractTestNGSpringContextTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].jobKind").value("EXECUTE"))
-                .andExpect(jsonPath("$[0].downloadable").value(false));
+                .andExpect(jsonPath("$[0].downloadable").value(false))
+                .andExpect(jsonPath("$[0].statusUrl").value(org.hamcrest.Matchers.containsString("/status?jobId=")))
+                .andExpect(jsonPath("$[0].resultsUrl").value(org.hamcrest.Matchers.containsString("/execute?jobId=")));
     }
 
     @Test

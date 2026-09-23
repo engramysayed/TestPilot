@@ -14,13 +14,34 @@
         </div>
     </div>
 
-    <section class="panel">
+    <section class="panel workspace-launcher" id="workspace-launcher">
+        <p class="guide-kicker">Workspace</p>
+        <h2>Choose a project</h2>
+        <p class="panel-intro">Generated cases save to the project library for Automate and Execute.</p>
         <label>Project
-            <select id="project-select">
+            <select id="launcher-project-select">
                 <option value="">— Loading projects —</option>
             </select>
         </label>
-        <p class="muted generate-project-hint">Keel uses the project <strong>name</strong> and <strong>base URL</strong> in the Ollama prompt so generated steps match your app. Downloaded CSV is tied to this project for Automate.</p>
+        <p id="launcher-err" class="error" hidden></p>
+        <p id="launcher-no-projects" class="muted" hidden>
+            No projects yet — <a href="/projects">create one</a> first.
+        </p>
+        <p style="margin-top:0.75rem">
+            <button type="button" class="button" id="launcher-continue">Continue</button>
+        </p>
+    </section>
+
+    <div id="workspace-config" hidden>
+    <section class="panel workspace-pinned">
+        <p class="muted" style="margin:0">
+            Project: <strong id="pinned-project-name">—</strong>
+            <button type="button" class="button ghost" id="change-project" style="margin-left:0.5rem">Change</button>
+        </p>
+        <select id="project-select" hidden aria-hidden="true">
+            <option value="">— Loading projects —</option>
+        </select>
+        <p class="muted generate-project-hint">Keel uses the project <strong>name</strong> and <strong>base URL</strong> in the Ollama prompt so generated steps match your app.</p>
         <p id="project-err" class="error" hidden></p>
         <p id="no-projects" class="muted" hidden>
             No projects yet —
@@ -31,6 +52,17 @@
     <section class="panel hint" id="authoring-review-banner" hidden role="alert">
         <strong>Issues found — Review with AI?</strong>
         <button type="button" class="button ghost" id="authoring-review-banner-open">Review with AI</button>
+    </section>
+
+    <section class="panel guide-promo" id="gen-just-saved-banner" hidden role="status">
+        <div class="guide-promo-copy">
+            <h2>Workbook saved</h2>
+            <p class="panel-intro">Your generated cases are in the project library. Continue with Automate to produce a framework ZIP.</p>
+            <div class="guide-promo-actions">
+                <a class="button" id="gen-open-automate" href="/automate">Open Automate</a>
+                <button type="button" class="button ghost" id="gen-dismiss-saved">Dismiss</button>
+            </div>
+        </div>
     </section>
 
     <section class="panel" id="generate-workflow" hidden>
@@ -339,6 +371,7 @@
             </div>
         </details>
     </section>
+    </div>
 </main>
 </div>
 
@@ -419,14 +452,24 @@
     </div>
 </div>
 
-<script>
+<script th:inline="javascript">
 (function () {
     const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
     const STORAGE_KEY = 'keel.generateProjectId';
+    const initialProjectId = /*[[${projectId}]]*/ '';
     const MODEL_STORAGE_KEY = 'keel.generateModel';
     const AUTHORING_REVIEW_PROVIDER_KEY = 'keel.authoringReview.provider';
     const AUTHORING_REVIEW_MODEL_KEY = 'keel.authoringReview.model';
     const PROMPT_URL = '/prompts/keel-tc-generate-from-stories-to-json.txt';
+
+    const workspaceLauncher = document.getElementById('workspace-launcher');
+    const workspaceConfig = document.getElementById('workspace-config');
+    const launcherSel = document.getElementById('launcher-project-select');
+    const launcherContinue = document.getElementById('launcher-continue');
+    const launcherErr = document.getElementById('launcher-err');
+    const launcherNoProjects = document.getElementById('launcher-no-projects');
+    const pinnedName = document.getElementById('pinned-project-name');
+    const changeProjectBtn = document.getElementById('change-project');
 
     const projectSel = document.getElementById('project-select');
     const projectErr = document.getElementById('project-err');
@@ -1398,6 +1441,7 @@
             saveCompareABtn.disabled = true;
             saveCompareBBtn.disabled = true;
             showResult(body);
+            showGenJustSavedBanner();
             setGenerateStatus(
                 'Saved ' + (side.model || ('model ' + sideKey))
                     + ' as generated workbook. Compare closed — your choice is locked.',
@@ -1415,6 +1459,23 @@
             }
         }
     }
+
+    const genJustSavedBanner = document.getElementById('gen-just-saved-banner');
+    const genOpenAutomate = document.getElementById('gen-open-automate');
+
+    function showGenJustSavedBanner() {
+        const projectId = projectSel.value;
+        if (!genJustSavedBanner || !projectId) return;
+        if (genOpenAutomate) {
+            genOpenAutomate.href = '/automate?projectId=' + encodeURIComponent(projectId);
+        }
+        genJustSavedBanner.hidden = false;
+        genJustSavedBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    document.getElementById('gen-dismiss-saved')?.addEventListener('click', () => {
+        if (genJustSavedBanner) genJustSavedBanner.hidden = true;
+    });
 
     function showResult(payload) {
         lastResult = payload;
@@ -1500,27 +1561,88 @@
         }
         projects = await res.json();
         projectSel.innerHTML = '';
+        if (launcherSel) launcherSel.innerHTML = '';
         if (projects.length === 0) {
             noProjects.hidden = false;
+            if (launcherNoProjects) launcherNoProjects.hidden = false;
             workflow.hidden = true;
             return;
         }
         noProjects.hidden = true;
+        if (launcherNoProjects) launcherNoProjects.hidden = true;
         workflow.hidden = false;
 
         projects.forEach(function (p) {
+            const label = (p.name || p.projectId) + ' (' + p.projectId + ')';
             const opt = document.createElement('option');
             opt.value = p.projectId;
-            opt.textContent = (p.name || p.projectId) + ' (' + p.projectId + ')';
+            opt.textContent = label;
             projectSel.appendChild(opt);
+            if (launcherSel) {
+                const lopt = document.createElement('option');
+                lopt.value = p.projectId;
+                lopt.textContent = label;
+                launcherSel.appendChild(lopt);
+            }
         });
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlProjectId = urlParams.get('projectId');
+        const urlProject = (urlProjectId && projects.some(function (p) { return p.projectId === urlProjectId; }))
+            ? urlProjectId
+            : ((initialProjectId && projects.some(function (p) { return p.projectId === initialProjectId; }))
+                ? initialProjectId : null);
         const saved = sessionStorage.getItem(STORAGE_KEY);
         const match = saved && projects.some(function (p) { return p.projectId === saved; });
-        projectSel.value = match ? saved : projects[0].projectId;
-        onProjectChange();
+        const pinned = urlProject || (match ? saved : null);
+        if (pinned) {
+            pinWorkspaceProject(pinned, projects);
+        } else {
+            showWorkspaceLauncher();
+        }
         loadBatchJobs();
     }
+
+    function showWorkspaceLauncher() {
+        if (workspaceLauncher) workspaceLauncher.hidden = false;
+        if (workspaceConfig) workspaceConfig.hidden = true;
+    }
+
+    function pinWorkspaceProject(projectId, projectList) {
+        projectSel.value = projectId;
+        if (launcherSel) launcherSel.value = projectId;
+        const proj = (projectList || []).find(function (p) { return p.projectId === projectId; });
+        if (pinnedName) {
+            if (proj) {
+                pinnedName.textContent = (proj.name || proj.projectId) + ' (' + proj.projectId + ')';
+            } else if (launcherSel && launcherSel.selectedIndex >= 0) {
+                pinnedName.textContent = launcherSel.options[launcherSel.selectedIndex].textContent;
+            } else {
+                pinnedName.textContent = projectId;
+            }
+        }
+        if (workspaceLauncher) workspaceLauncher.hidden = true;
+        if (workspaceConfig) workspaceConfig.hidden = false;
+        onProjectChange();
+    }
+
+    launcherContinue?.addEventListener('click', function () {
+        if (launcherErr) launcherErr.hidden = true;
+        const projectId = launcherSel ? launcherSel.value : '';
+        if (!projectId) {
+            if (launcherErr) {
+                launcherErr.hidden = false;
+                launcherErr.textContent = 'Select a project to continue.';
+            }
+            return;
+        }
+        sessionStorage.setItem(STORAGE_KEY, projectId);
+        pinWorkspaceProject(projectId, projects);
+    });
+
+    changeProjectBtn?.addEventListener('click', function () {
+        showWorkspaceLauncher();
+    });
 
     async function loadBatchJobs() {
         const projectId = projectSel.value;
@@ -1747,6 +1869,7 @@
                 return;
             }
             showResult(body);
+            showGenJustSavedBanner();
             setGenerateStatus('Workbook saved — use Automate/Execute with generated workbook', false);
             setImportStatus('', false);
             if (resultsSection) {
@@ -2061,6 +2184,7 @@
                 return;
             }
             showResult(body);
+            showGenJustSavedBanner();
             if (proposal.coverageNotes) {
                 coverageNotes.value = mergeAuthoringReviewCoverageNotes(
                     existingCoverageNotes, proposal.coverageNotes);

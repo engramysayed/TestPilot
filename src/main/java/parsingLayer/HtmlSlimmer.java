@@ -19,6 +19,46 @@ public class HtmlSlimmer {
         }
 
         Document doc = Jsoup.parse(html);
+        java.util.Map<String, Integer> attributeCounts = new java.util.HashMap<>();
+        for (Element el : doc.getAllElements()) {
+            el.removeAttr("data-keel-ambiguous-attrs");
+            for (var attr : el.attributes()) {
+                attributeCounts.merge(attr.getKey() + "\u0000" + attr.getValue(), 1, Integer::sum);
+            }
+        }
+        // Positions belong to the source DOM, never the filtered/reconstructed snapshot.
+        java.util.Map<String, Integer> ordinals = new java.util.HashMap<>();
+        java.util.Map<String, Long> textMatches = new java.util.HashMap<>();
+        for (Element el : doc.getAllElements()) {
+            el.removeAttr("data-keel-source-xpath");
+            el.removeAttr("data-keel-source-text-ambiguous");
+            String tag = el.tagName();
+            int ordinal = ordinals.merge(tag, 1, Integer::sum);
+            if (el.is(delivery.authoring.DomCandidateExtractor.INTERACTIVE_QUERY)) {
+                String label = el.text().trim().replaceAll("\\s+", " ");
+                if (!label.isBlank() && textMatches.computeIfAbsent(tag + "\u0000" + label,
+                        ignored -> doc.getElementsByTag(tag).stream()
+                                .filter(n -> n.text().trim().replaceAll("\\s+", " ").contains(label)).count()) > 1) {
+                    el.attr("data-keel-source-text-ambiguous", "true");
+                }
+                el.attr("data-keel-source-xpath", "(//" + tag + ")[" + ordinal + "]");
+                String role = el.attr("role");
+                if (java.util.Set.of("combobox", "textbox", "listbox", "checkbox", "radio", "switch").contains(role)) {
+                    int roleOrdinal = ordinals.merge(tag + "@" + role, 1, Integer::sum);
+                    el.attr("data-keel-source-xpath", "(//" + tag + "[@role='" + role + "'])[" + roleOrdinal + "]");
+                }
+                if (!el.parents().select("[data-testpilot-context]").isEmpty()) {
+                    // A flattened embedded context has no valid top-document ordinal.
+                    el.attr("data-keel-source-xpath", "unsupported-context-ordinal");
+                }
+            }
+            java.util.List<String> ambiguous = new java.util.ArrayList<>();
+            for (var attr : el.attributes()) {
+                if (attributeCounts.getOrDefault(attr.getKey() + "\u0000" + attr.getValue(), 0) > 1)
+                    ambiguous.add(attr.getKey());
+            }
+            if (!ambiguous.isEmpty()) el.attr("data-keel-ambiguous-attrs", String.join(" ", ambiguous));
+        }
         delivery.privacy.SecretSanitizer.maskPasswordFields(doc);
 
         removeComments(doc);
@@ -61,12 +101,18 @@ public class HtmlSlimmer {
             for (Element el : doc.body().select(
                     delivery.authoring.DomCandidateExtractor.INTERACTIVE_QUERY
                             + ", [data-test], [data-testid], [id]")) {
-                String snip = el.outerHtml().replaceAll("\\s+", " ").trim();
+                // A node is represented once; parent fragments must not duplicate descendants.
+                if (!el.select(delivery.authoring.DomCandidateExtractor.INTERACTIVE_QUERY).isEmpty()
+                        && !el.is(delivery.authoring.DomCandidateExtractor.INTERACTIVE_QUERY)) continue;
+                Element copy = el.clone();
+                copy.select(delivery.authoring.DomCandidateExtractor.INTERACTIVE_QUERY).stream()
+                        .filter(child -> child != copy).toList().forEach(Element::remove);
+                String snip = copy.outerHtml().replaceAll("\\s+", " ").trim();
                 if (snip.isBlank()) {
                     continue;
                 }
                 if (controls.length() + snip.length() + 8 > maxChars) {
-                    break;
+                    continue;
                 }
                 controls.append(snip);
             }

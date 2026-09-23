@@ -5,6 +5,8 @@ Workstation `Ramy-Sayed`. Public launch: **HOLD** ([LAUNCH-DECISION.md](LAUNCH-D
 **Nominated candidate:** `23f9351` (explicitly replaced `75e6996`).  
 **Current candidate after a test-only fix:** `2721e6d` (`test(phase5): assert preferred hooks write to the tenant site folder`). Product code in `2721e6d` is `23f9351` plus that test. Do not attribute `2721e6d` suite numbers to `23f9351`.
 
+**2026-09-20:** first-release scope is **shared hosting only**. Candidate `2721e6d` is unchanged. Dedicated/private-runner launch validation is deferred. Live UI-TARS grounding is not a supported first-release configuration.
+
 ## Environment inspection (this workstation)
 
 | Item | Found |
@@ -63,7 +65,7 @@ Tests run: 1301, Failures: 3, Errors: 0, Skipped: 2
 2. `UiTarsLiveSmokeTest.uitarsFindsLoginControlAndHonestAssertDoesNotPlaceholderPass` — live `ui-tars` on `https://the-internet.herokuapp.com/login` grounded `input#username` instead of the Login control. Ollama was up. Not a product code change.
 3. `VisionRoleSplitLiveSmokeTest.uitarsGroundsLoginAndQwenAssertsHonestly` — same live miss. Not a product code change.
 
-CI `.github/workflows/release.yml` uses `-Pdeterministic`, which excludes `*LiveSmoke*`. Those two live failures are **not** in the release.yml suite.
+CI `.github/workflows/release.yml` uses `-Pdeterministic`, which excludes `*LiveSmoke*`. Those two live failures are **not** in the release.yml suite. RCA: [vision-live-smoke-rca.md](vision-live-smoke-rca.md). **First-release restriction:** live UI-TARS click-grounding is not a supported configuration. Candidate `2721e6d` is unchanged.
 
 ## Deterministic suite on `2721e6d`
 
@@ -77,7 +79,7 @@ The two skips are the same Facebook IR fixtures as on `23f9351`. Install drills 
 
 ## Named approvals
 
-[APPROVALS.md](APPROVALS.md) / [APPROVAL-PACKET.md](APPROVAL-PACKET.md) — all rows unsigned.
+[APPROVALS.md](APPROVALS.md) / [APPROVAL-PACKET.md](APPROVAL-PACKET.md) — first-release rows unsigned; dedicated CIDR row deferred.
 
 ## Live P5-01 Generate → Execute → Automate
 
@@ -85,12 +87,11 @@ The two skips are the same Facebook IR fixtures as on `23f9351`. Install drills 
 
 ## Information still needed
 
-1. Shared production/staging host: hostname, operator access, confirmation `delivery.install.mode=shared`.
-2. Dedicated production/staging host: hostname, operator access, `delivery.install.private-cidrs`.
-3. Those hosts' FileStore type and operator backup destination (if not this NTFS volume).
-4. Written authorization for each representative app: name, origin URL, login ownership, credentials, permission to run live Generate → Execute → Automate NEW → downloaded replay → UPDATE → replay.
-5. Named human approvers (legal names) for Product, Security, and Privacy, and how they will sign [APPROVALS.md](APPROVALS.md).
+1. Shared staging host: hostname/DNS, operator access (RDP/SSH), confirmation `delivery.install.mode=shared`.
+2. Written authorization for the representative app: name, origin URL, login ownership, credentials, permission to run live Generate → Execute → Automate NEW → downloaded replay → UPDATE → replay.
+
+Dedicated hosts, private-runner targets, and named approver identities are **not** asked here: dedicated is out of first-launch gates; approvers sign when they are ready.
 
 ## Next
 
-Keep HOLD. Do not publish. Remaining Phase 5 work needs deployed shared/dedicated environments, restore on those FileStores, authorized live G→E→A, and named P0-01 signatures.
+Keep HOLD. Do not publish. Remaining first-launch work: shared-staging isolation, restore on that store, authorized live G→E→A, named shared-scope signatures. Procedure: [shared-staging.md](../../ops/shared-staging.md).

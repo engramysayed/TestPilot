@@ -103,14 +103,34 @@ public class PageClustererTest {
     }
 
     @Test
+    public void reclusterDraftPreservesPrecisionEngineCallCountFallbackAndReason() {
+        ProvenStep body = new ProvenStep("TC_ACC_02", "Page", "elementAction", "click",
+                "id", "sign-in", "", "", "", true, "intent:CLICK");
+        TcDraft draft = new TcDraft(
+                "TC_ACC_02", "Login", "steps", "exp", TcDraftStatus.PASSED,
+                List.of(body), List.of(), false,
+                -1, "", "", "", 0,
+                "http://127.0.0.1:9/login.html",
+                "retry", "",
+                "http://127.0.0.1:9/login.html")
+                .withPrecisionJob("precision", 7, true, "PROVIDER_UNAVAILABLE");
+        TcDraft out = PageClusterer.reclusterDraft(draft);
+        Assert.assertEquals(out.jobAuthoringEngine(), "precision");
+        Assert.assertEquals(out.precisionCallsUsed(), 7);
+        Assert.assertTrue(out.precisionFallback());
+        Assert.assertEquals(out.precisionFallbackReason(), "PROVIDER_UNAVAILABLE");
+        Assert.assertEquals(out.healTier(), "retry");
+        Assert.assertEquals(out.status(), TcDraftStatus.PASSED);
+    }
+
+    @Test
     public void codegenNamingAvoidsXpathInMethod() {
         ProvenStep step = new ProvenStep("TC1", "LoggedInSuccessfully", "elementAction", "assert",
                 "xpath",
                 "//body//*[not(self::script)][contains(normalize-space(.),'Logged In Successfully')]",
                 "", "textContains", "Logged In Successfully", true, "intent");
         String method = CodegenNaming.assertMethodName(step);
-        Assert.assertEquals(method, "assert_Logged_In_Successfully_Is_Visible");
-        Assert.assertFalse(method.contains("body"));
+        Assert.assertEquals(method, "assert_Body_Text_Contains");
         Assert.assertFalse(method.contains("script"));
         String field = CodegenNaming.locatorFieldName(step);
         Assert.assertTrue(field.endsWith("_Locator"), field);

@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Writes invented / Excel form values into {@code src/test/resources/test-data/delivery-testdata.properties}
@@ -20,16 +21,29 @@ public final class TestDataPropertiesWriter {
     }
 
     public static void write(Path projectRoot, List<TcOutcome> outcomes) throws IOException {
+        PageAccumulator pages = CodeWriter.accumulate(outcomes);
+        write(projectRoot, outcomes, pages, CodegenDataKeys.assign(outcomes, pages));
+    }
+
+    public static void write(Path projectRoot, List<TcOutcome> outcomes, PageAccumulator pages) throws IOException {
+        write(projectRoot, outcomes, pages, CodegenDataKeys.assign(outcomes, pages));
+    }
+
+    static void write(
+            Path projectRoot, List<TcOutcome> outcomes, PageAccumulator pages, CodegenDataKeys keys)
+            throws IOException {
         if (projectRoot == null || outcomes == null) {
             return;
         }
+        PageAccumulator acc = pages == null ? CodeWriter.accumulate(outcomes) : pages;
+        CodegenDataKeys catalog = keys == null ? CodegenDataKeys.assign(outcomes, acc) : keys;
         Map<String, String> props = new LinkedHashMap<>();
         for (TcOutcome outcome : outcomes) {
-            collect(props, outcome.tcId(), outcome.provenSteps());
             if (outcome.needsLoginBeforeMethod()) {
-                collect(props, outcome.tcId(), outcome.loginSteps());
+                collect(props, catalog, outcome.tcId(), CodegenDataKeys.PHASE_LOGIN, outcome.loginSteps());
             }
-            collect(props, outcome.tcId(), outcome.setupSteps());
+            collect(props, catalog, outcome.tcId(), CodegenDataKeys.PHASE_SETUP, outcome.setupSteps());
+            collect(props, catalog, outcome.tcId(), CodegenDataKeys.PHASE_BODY, outcome.provenSteps());
         }
         Path dir = projectRoot.resolve("src/test/resources/test-data");
         Files.createDirectories(dir);
@@ -41,7 +55,12 @@ public final class TestDataPropertiesWriter {
         Files.writeString(dir.resolve("delivery-testdata.properties"), sb.toString(), StandardCharsets.UTF_8);
     }
 
-    private static void collect(Map<String, String> props, String tcId, List<ProvenStep> steps) {
+    private static void collect(
+            Map<String, String> props,
+            CodegenDataKeys keys,
+            String tcId,
+            String phase,
+            List<ProvenStep> steps) {
         if (steps == null) {
             return;
         }
@@ -51,15 +70,19 @@ public final class TestDataPropertiesWriter {
                 continue;
             }
             String value = step.value() == null ? "" : step.value();
-            String ownerId = step.tcId() == null || step.tcId().isBlank() ? tcId : step.tcId();
-            String key = CodeWriter.propKeyFor(ownerId, PageAccumulator.actionMethodName(step), value);
+            String key = keys.keyFor(tcId, phase, step);
             if (key.isBlank() || "TARGET_USERNAME".equals(key) || "TARGET_PASSWORD".equals(key)) {
                 continue;
             }
             if (value.startsWith("${")) {
                 continue;
             }
-            props.putIfAbsent(key, value);
+            String previous = props.get(key);
+            if (previous != null && !Objects.equals(previous, value)) {
+                throw new IllegalStateException(
+                        "Conflicting test data for key '" + key + "': already '" + previous + "', new '" + value + "'");
+            }
+            props.put(key, value);
         }
     }
 
@@ -67,6 +90,24 @@ public final class TestDataPropertiesWriter {
         if (value == null) {
             return "";
         }
-        return value.replace("\\", "\\\\").replace("\n", "\\n");
+        StringBuilder sb = new StringBuilder(value.length() + 8);
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '\\' -> sb.append("\\\\");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                case '\t' -> sb.append("\\t");
+                case '\f' -> sb.append("\\f");
+                default -> {
+                    if (i == 0 && c == ' ') {
+                        sb.append('\\').append(c);
+                    } else {
+                        sb.append(c);
+                    }
+                }
+            }
+        }
+        return sb.toString();
     }
 }

@@ -10,7 +10,7 @@ import utils.PropertyReader;
 import java.util.Locale;
 
 /**
- * Cheap DOM proof after a click: URL/title/body/login-form changed?
+ * Diagnostic change detection after a click (not an assertion of the requested outcome): URL/title/body/login-form changed?
  * Prefer this over VLM assert as the primary "did the click work?" signal.
  */
 public final class DomPostClickValidator {
@@ -128,14 +128,11 @@ public final class DomPostClickValidator {
         return new Result(Status.FAIL, "no-url-title-body-login-change after click");
     }
 
-    private static String fingerprint(String text) {
+    static String fingerprint(String text) {
         if (text == null) {
             return "";
         }
         String t = text.replaceAll("\\s+", " ").trim();
-        if (t.length() > 400) {
-            t = t.substring(0, 400);
-        }
         return Integer.toHexString(t.hashCode()) + ":" + t.length();
     }
 

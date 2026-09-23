@@ -157,6 +157,9 @@ public class PrivateRunnerApiController {
         meta.put("environmentRevisionId", job.getEnvironmentRevisionId());
         meta.put("inputSnapshotHash", job.getInputSnapshotHash());
         meta.put("providerAllowlistSnapshot", job.getProviderAllowlistSnapshot());
+        meta.put("authoringEngine", job.getAuthoringEngine().wireValue());
+        meta.put("precisionEnabled", store.precisionConfigForJob(job).enabled());
+        meta.put("precisionMaxCalls", store.precisionConfigForJob(job).maxCallsPerJob());
         meta.put("mode", job.getMode());
         meta.put("jobKind", job.getJobKind().name());
         meta.put("tenantId", job.getTenantId());

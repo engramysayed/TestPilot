@@ -16,7 +16,7 @@ public class LocatorValidator {
     /** //tag[contains(normalize-space(.),'Text')] plus the optional innermost-node predicate */
     private static final Pattern XPATH_TEXT = Pattern.compile(
             "^//[a-zA-Z][\\w-]*\\[contains\\(normalize-space\\(\\.\\),\\s*'[^']+'\\)\\]"
-                    + "(\\[not\\(\\.//\\*\\[contains\\(normalize-space\\(\\.\\),\\s*'[^']+'\\)\\]\\)\\])?$");
+                    + "(\\[not\\(\\.//(?:\\*|[a-zA-Z][\\w-]*)\\[contains\\(normalize-space\\(\\.\\),\\s*'[^']+'\\)\\]\\)\\])?$");
     /**
      * A control anchored on the label a user reads:
      * {@code //label[normalize-space(.)='First name']//input} for a wrapping label,
@@ -69,18 +69,23 @@ public class LocatorValidator {
             return ValidationResult.ok();
         }
         if ("css".equals(strategy) || "cssselector".equals(strategy)) {
-            if (value.contains(":")) {
+            if (value.matches("#[a-zA-Z_][a-zA-Z0-9_-]*")) {
+                return validate(new LocatorCandidate("id", value.substring(1), "", ""));
+            }
+            String shape = literalShape(value);
+            if (shape.contains(":")) {
                 return ValidationResult.reject("CSS pseudo-classes are not allowed");
             }
             if (UUID_LIKE.matcher(value).find() || LONG_DIGITS.matcher(value).matches()) {
                 return ValidationResult.reject("dynamic css pattern rejected");
             }
-            if (!CSS_ATTR.matcher(value).matches()) {
+            if (!CSS_ATTR.matcher(shape).matches()) {
                 return ValidationResult.reject("CSS must be tag[attribute='value'] form");
             }
             return ValidationResult.ok();
         }
         if ("xpath".equals(strategy)) {
+            String shape = literalShape(value);
             if (value.startsWith("/html") || value.startsWith("//html")) {
                 return ValidationResult.reject("absolute html xpath rejected");
             }
@@ -89,19 +94,22 @@ public class LocatorValidator {
                 return ValidationResult.ok();
             }
             // A button whose only identity is its label needs a tag-scoped text match
-            if (XPATH_TEXT.matcher(value).matches()) {
+            if (XPATH_TEXT.matcher(shape).matches()) {
                 return ValidationResult.ok();
             }
-            if (XPATH_LABEL_ANCHORED.matcher(value).matches()) {
+            if (XPATH_LABEL_ANCHORED.matcher(shape).matches()) {
                 return ValidationResult.ok();
             }
-            if (XPATH_LABEL_FOR.matcher(value).matches()) {
+            if (XPATH_LABEL_FOR.matcher(shape).matches()) {
                 return ValidationResult.ok();
             }
-            if (XPATH_INDEXED.matcher(value).matches()) {
+            if (XPATH_INDEXED.matcher(shape).matches()) {
                 return ValidationResult.ok();
             }
-            if (!XPATH_ATTR.matcher(value).matches()) {
+            if (value.matches("^\\(//[a-zA-Z][\\w-]*\\[@role=['\"](?:combobox|textbox|listbox|checkbox|radio|switch)['\"]\\]\\)\\[[1-9]\\d*\\]$")) {
+                return ValidationResult.ok();
+            }
+            if (!XPATH_ATTR.matcher(shape).matches()) {
                 return ValidationResult.reject("XPath must be //tag[@attribute='value'] form");
             }
             return ValidationResult.ok();
@@ -128,6 +136,12 @@ public class LocatorValidator {
                 || "data-test".equals(strategy)
                 || "data-qa".equals(strategy)
                 || "testid".equals(strategy);
+    }
+
+    /** Compare syntax without confusing quoted punctuation with selector operators. */
+    private static String literalShape(String value) {
+        String shape = value.replaceAll("concat\\((?:'[^']*'|\"[^\"]*\"|\\s|,)+\\)", "'literal'");
+        return shape.replaceAll("'[^']*'|\"[^\"]*\"", "'literal'");
     }
 
     private static String safe(String value) {

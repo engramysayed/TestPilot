@@ -8,6 +8,7 @@ import org.jsoup.nodes.TextNode;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The words a person reads next to a control, resolved the way a browser resolves them.
@@ -18,9 +19,10 @@ import java.util.Map;
  * healing recovers it — the control is simply not in the candidate table.
  *
  * <p>Resolution order follows the HTML accessible-name computation, most authoritative first.
+ * Buttons, links, and role-equivalent widgets include descendant text as the name.
  */
 public final class AccessibleName {
-    private static final int MAX_LENGTH = 60;
+
 
     /**
      * The HTML autocomplete vocabulary is a fixed spec list, so mapping its tokens to the words a
@@ -56,6 +58,12 @@ public final class AccessibleName {
             Map.entry("bday-year", "year"),
             Map.entry("sex", "gender"));
 
+    /** Widgets whose accessible name is the rendered subtree, per HTML-AAM. */
+    private static final Set<String> CONTENTS_NAME_TAGS = Set.of(
+            "button", "a", "summary", "option", "legend");
+    private static final Set<String> CONTENTS_NAME_ROLES = Set.of(
+            "button", "link", "menuitem", "option", "tab");
+
     private AccessibleName() {
     }
 
@@ -63,13 +71,13 @@ public final class AccessibleName {
         if (el == null) {
             return "";
         }
-        String aria = clean(el.attr("aria-label"));
-        if (!aria.isBlank()) {
-            return aria;
-        }
         String labelledBy = fromLabelledBy(el);
         if (!labelledBy.isBlank()) {
             return labelledBy;
+        }
+        String aria = clean(el.attr("aria-label"));
+        if (!aria.isBlank()) {
+            return aria;
         }
         String explicit = fromLabelFor(el);
         if (!explicit.isBlank()) {
@@ -79,6 +87,10 @@ public final class AccessibleName {
         if (!wrapping.isBlank()) {
             return wrapping;
         }
+        String contents = fromContents(el);
+        if (!contents.isBlank()) {
+            return contents;
+        }
         String placeholder = clean(el.attr("placeholder"));
         if (!placeholder.isBlank()) {
             return placeholder;
@@ -87,9 +99,11 @@ public final class AccessibleName {
         if (!title.isBlank()) {
             return title;
         }
-        String adjacent = fromAdjacentText(el);
-        if (!adjacent.isBlank()) {
-            return adjacent;
+        if (!usesSubtreeName(el)) {
+            String adjacent = fromAdjacentText(el);
+            if (!adjacent.isBlank()) {
+                return adjacent;
+            }
         }
         return fromAutocomplete(el);
     }
@@ -171,6 +185,26 @@ public final class AccessibleName {
     private static String fromWrappingLabel(Element el) {
         Element label = el.closest("label");
         return label == null ? "" : clean(label.text());
+    }
+
+    /**
+     * Visible text inside a button, link, or role-equivalent control, including nested markup.
+     * Ids and nearby captions are not substitutes for that name.
+     */
+    private static String fromContents(Element el) {
+        if (!usesSubtreeName(el)) {
+            return "";
+        }
+        return clean(el.text());
+    }
+
+    private static boolean usesSubtreeName(Element el) {
+        String tag = el.tagName() == null ? "" : el.tagName().toLowerCase(Locale.ROOT);
+        if (CONTENTS_NAME_TAGS.contains(tag)) {
+            return true;
+        }
+        String role = el.attr("role") == null ? "" : el.attr("role").trim().toLowerCase(Locale.ROOT);
+        return CONTENTS_NAME_ROLES.contains(role);
     }
 
     /**
@@ -265,9 +299,6 @@ public final class AccessibleName {
             return "";
         }
         String out = value.replace('\u00a0', ' ').trim().replaceAll("\\s+", " ");
-        if (out.length() > MAX_LENGTH) {
-            out = out.substring(0, MAX_LENGTH).trim();
-        }
         return out;
     }
 

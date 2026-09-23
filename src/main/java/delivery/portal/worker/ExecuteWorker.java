@@ -55,11 +55,7 @@ public class ExecuteWorker {
         portalStore.syncJobPersistence(job);
         try {
             delivery.net.InstallNetworkBridge.apply(env);
-            PrecisionJobConfig precisionConfig = portalStore.precisionConfigForProject(job.getProjectId());
-            if (job.getPrecisionMaxSnapshot() > 0) {
-                precisionConfig = new PrecisionJobConfig(
-                        precisionConfig.enabled(), job.getPrecisionMaxSnapshot());
-            }
+            PrecisionJobConfig precisionConfig = portalStore.precisionConfigForJob(job);
             ConversionJobRequest request = new ConversionJobRequest(
                     job.getProjectId(),
                     job.getExcelPath(),

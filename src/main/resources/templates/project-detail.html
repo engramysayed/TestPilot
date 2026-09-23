@@ -24,10 +24,14 @@
     <nav class="project-tabs" aria-label="Project sections">
         <a th:href="@{/projects/{id}(id=${projectId}, tab='summary')}"
            th:classappend="${activeTab == 'summary'} ? ' active' : ''">Summary</a>
-        <a th:href="@{/projects/{id}(id=${projectId}, tab='automation')}"
-           th:classappend="${activeTab == 'automation'} ? ' active' : ''">Automation</a>
         <a th:href="@{/projects/{id}(id=${projectId}, tab='tcs')}"
            th:classappend="${activeTab == 'tcs'} ? ' active' : ''">Test cases</a>
+        <a th:href="@{/generate(projectId=${projectId})}">Generate</a>
+        <a th:href="@{/execute(projectId=${projectId})}">Execute</a>
+        <a th:href="@{/automate(projectId=${projectId})}">Automate</a>
+        <a th:href="@{/bug-hunter}">Bug Hunter</a>
+        <a th:href="@{/projects/{id}(id=${projectId}, tab='automation')}"
+           th:classappend="${activeTab == 'automation'} ? ' active' : ''">Packages</a>
         <a th:href="@{/projects/{id}(id=${projectId}, tab='settings')}"
            th:classappend="${activeTab == 'settings'} ? ' active' : ''">Settings</a>
     </nav>
@@ -108,7 +112,7 @@
                     </label>
                     <label class="check">
                         <input type="radio" name="authoringEngine" value="precision"/>
-                        Precision — higher accuracy on complex UIs, Higher Cost
+                        Precision — Cursor-assisted binding (uses model calls)
                     </label>
                     <label id="settings-precision-max-wrap">Max Cursor calls per job
                         <input type="number" name="precisionMaxCallsPerJob" id="settings-precision-max-calls"
@@ -117,6 +121,8 @@
                     </label>
                     <p class="muted">Leave blank to use the server default
                         (<span th:text="${defaultPrecisionMaxCalls}">50</span>).</p>
+                    <p class="muted">Cursor selects targets first. If unavailable, unsuccessful, or at the call limit,
+                        Keel takes over and the run reports the fallback reason. DOM validation and browser execution still apply.</p>
                     <p class="error" id="settingsPrecisionDisabledWarn" hidden>
                         Precision is disabled on this server — jobs will use Keel.
                     </p>
@@ -755,6 +761,11 @@
         if (archiveBtn) archiveBtn.hidden = !!p.archived;
         loadWorkspaceCollaboration(p.workspaceRole || '');
         settingsRole = p.workspaceRole || '';
+        document.querySelectorAll('.artifact-delete-btn').forEach(btn => {
+            btn.hidden = !canOperateRole(settingsRole);
+        });
+        const irClearBtn = document.getElementById('ir-clear-btn');
+        if (irClearBtn && !canOperateRole(settingsRole)) irClearBtn.hidden = true;
         loadEnvironments(settingsRole);
         loadUsage(settingsRole);
         loadWebhook(settingsRole);
@@ -1653,7 +1664,7 @@
             dl.href = apiUrl('/artifacts/download?path=' + encodeURIComponent(item.path));
             actions.appendChild(dl);
         }
-        if (!viewingPackage || isZip) {
+        if ((!viewingPackage || isZip) && canOperateRole(settingsRole)) {
             const delBtn = document.createElement('button');
             delBtn.type = 'button';
             delBtn.className = 'danger artifact-delete-btn';
@@ -1845,7 +1856,7 @@
         }
         emptyEl.hidden = tcs.length > 0;
         const irClear = document.getElementById('ir-clear-btn');
-        if (irClear) irClear.hidden = tcs.length === 0;
+        if (irClear) irClear.hidden = tcs.length === 0 || !canOperateRole(settingsRole);
         listEl.innerHTML = '';
         tcs.forEach(tc => {
             const item = document.createElement('details');

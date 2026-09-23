@@ -16,7 +16,8 @@ import java.util.Set;
  */
 public final class SemanticPassGate {
     private static final Set<String> KNOWN_ASSERT_TYPES = Set.of(
-            "visible", "textContains", "urlContains", "checked", "unchecked", "selected", "notVisible");
+            "visible", "textContains", "urlContains", "checked", "unchecked", "selected", "notVisible",
+            "captureText", "capturedEquals", "signedOut");
 
     private SemanticPassGate() {
     }

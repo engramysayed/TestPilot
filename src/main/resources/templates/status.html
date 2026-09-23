@@ -75,7 +75,7 @@
         <p id="precision-fallback-banner" class="muted" hidden>
             Precision engine fell back to Keel for some steps — results used deterministic grounding.
         </p>
-        <section class="panel" id="run-compare-panel">
+        <section class="panel" id="run-compare-panel" th:if="${!isExecuteJob}">
             <h2>Attempts and compare</h2>
             <p class="panel-intro">Reruns keep the original evidence and pin the same library, environment, and providers.</p>
             <p id="attempts-list" class="muted">—</p>
@@ -113,7 +113,8 @@
         <div id="execute-wrap" th:hidden="${!isExecuteJob}">
             <p class="hint">Execute runs do not produce a ZIP. Open results on the Execute page or export a bug report when the run completes.</p>
             <p>
-                <a id="execute-results-link" class="button" href="/execute">View results on Execute</a>
+                <a id="evidence-link" class="button" th:href="@{/evidence(jobId=${jobId})}" hidden>View evidence</a>
+                <a id="execute-results-link" class="button ghost" style="margin-left:0.75rem" href="/execute">View results on Execute</a>
                 <a id="bug-report-link" class="button ghost" style="margin-left:0.75rem"
                    th:href="@{/api/execute-runs/{id}/bug-report.csv(id=${jobId})}"
                    th:hidden="${jobStatus != 'COMPLETED' and jobStatus != 'COMPLETED_WITH_BLOCK' and jobStatus != 'FAILED'}">
@@ -227,8 +228,14 @@
     const cancelBtn = document.getElementById('cancel-btn');
     let cancelRequested = false;
 
-    if (isExecute && executeResultsLink && jobId) {
-        executeResultsLink.href = '/execute';
+    const evidenceLink = document.getElementById('evidence-link');
+    if (isExecute && jobId) {
+        if (executeResultsLink) {
+            executeResultsLink.href = '/execute?jobId=' + encodeURIComponent(jobId);
+        }
+        if (evidenceLink) {
+            evidenceLink.href = '/evidence?jobId=' + encodeURIComponent(jobId);
+        }
         try {
             sessionStorage.setItem('keel.lastExecuteJobId', jobId);
         } catch (e) { /* ignore */ }
@@ -411,10 +418,12 @@
         if (executeJob) {
             if (downloadWrap) downloadWrap.hidden = true;
             if (executeWrap) executeWrap.hidden = false;
+            const terminal = data.status === 'COMPLETED'
+                || data.status === 'COMPLETED_WITH_BLOCK'
+                || data.status === 'FAILED'
+                || data.status === 'CANCELLED';
+            if (evidenceLink) evidenceLink.hidden = !terminal;
             if (bugReportLink) {
-                const terminal = data.status === 'COMPLETED'
-                    || data.status === 'COMPLETED_WITH_BLOCK'
-                    || data.status === 'FAILED';
                 bugReportLink.hidden = !terminal;
             }
             if (data.status === 'FAILED') {
@@ -634,8 +643,12 @@
             }
             failEl.hidden = true;
             const done = render(data);
-            if (done) {
+            if (done && !isExecute) {
                 loadTriage(data);
+            }
+            if (done && isExecute && evidenceLink && data.primaryTcId) {
+                evidenceLink.href = '/evidence?jobId=' + encodeURIComponent(jobId)
+                    + '&tcId=' + encodeURIComponent(data.primaryTcId);
             }
             if (!done) {
                 setTimeout(poll, 600);

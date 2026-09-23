@@ -222,7 +222,7 @@ public class ProvePhase {
                 ? List.of()
                 : PreferredHooksStore.load(request.storeRoot(), request.tenantId(), request.baseUrl());
 
-        try (PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks)) {
+        try (delivery.vision.VisionMissJournal.Scope journal = delivery.vision.VisionMissJournal.activate(evidence, request.password()); PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks)) {
             int index = 0;
             Set<String> failedCallBeforeIds = new LinkedHashSet<>();
             List<Boolean> freshSession = CallBeforeExpander.freshSessionAt(allCases);
@@ -649,7 +649,7 @@ public class ProvePhase {
             try {
                 String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
                 List<ProvenStep> autoFillSteps = List.of();
-                if (intent.kind() == StepIntentBinder.IntentKind.CLICK) {
+                if (precisionBindService == null && intent.kind() == StepIntentBinder.IntentKind.CLICK) {
                     List<StepIntentBinder.IntentLine> typeIntents = StepIntentBinder.parseIntents(tc).stream()
                             .filter(i -> i.kind() == StepIntentBinder.IntentKind.TYPE_FIELD
                                     || i.kind() == StepIntentBinder.IntentKind.TYPE_USER
@@ -678,10 +678,10 @@ public class ProvePhase {
                 }
                 // Key by live page path — Excel open-path (/login) poisoned cart clicks with login-button.
                 String pagePath = pathOf(currentUrl(driverFactory));
-                Optional<ProvenStep> remembered = locatorMemory.recall(
-                        memoryHost, pagePath, intent, tc.tcId());
+                Optional<ProvenStep> remembered = precisionBindService == null
+                        ? locatorMemory.recall(memoryHost, pagePath, intent, tc.tcId()) : Optional.empty();
                 if (remembered.isPresent()
-                        && StepIntentBinder.spendsMustAvoidPriorFills(intent.kind())
+                        && StepIntentBinder.spendsMustAvoidPriorFills(intent)
                         && StepIntentBinder.isSpentLocator(remembered.get(), provenSoFar)) {
                     locatorMemory.forget(memoryHost, pagePath, intent);
                     LogsManager.info("LOCATOR_MEMORY: dropped spent locator for " + intent.text());
@@ -731,6 +731,7 @@ public class ProvePhase {
                     stepBatch = precision.steps();
                     if (precision.fellBack()) {
                         precisionTracker.noteTcFallback(precision.fallbackReason());
+                        precisionPath = false;
                     }
                     if (precision.tier() != null && !precision.tier().isBlank()) {
                         healTier = mergeHealTier(healTier, precision.tier());

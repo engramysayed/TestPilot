@@ -2,10 +2,16 @@ package project.validations;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import project.utils.Actions.ElementsHandler;
+import project.utils.CaptureCompare;
+import project.utils.CapturedValues;
 import project.utils.Logs.LogsManager;
 import project.utils.WaitHandler;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class  Assertion {
     protected final WebDriver driver;
@@ -60,26 +66,31 @@ public abstract class  Assertion {
     }
 
     public void textContains(By locator, String expected) {
-        String actual = element.getText(locator);
-        boolean ok = actual != null && actual.contains(expected);
+        boolean ok = false;
+        try {
+            ok = wait.waitUntilTextContains(locator, expected);
+        } catch (WebDriverException e) {
+            LogsManager.error("textContains query failed: " + e.getMessage());
+            softTrue(false, "textContains query failed: " + e.getClass().getSimpleName());
+            return;
+        }
         if (!ok) {
-            LogsManager.error("soft assert textContains failed. expected contains='" + expected
-                    + "' actual='" + actual + "'");
+            LogsManager.error("soft assert textContains failed. expected contains='" + expected + "'");
         }
         softTrue(ok, "textContains '" + expected + "'");
     }
 
     public void bodyTextContains(String expected) {
-        String bodyText = "";
+        boolean ok = false;
         try {
-            bodyText = driver.findElement(By.tagName("body")).getText();
-        } catch (Exception e) {
-            LogsManager.error("bodyTextContains: failed to read body text: " + e.getMessage());
+            ok = wait.waitUntilBodyTextContains(expected);
+        } catch (WebDriverException e) {
+            LogsManager.error("bodyTextContains query failed: " + e.getMessage());
+            softTrue(false, "bodyTextContains query failed: " + e.getClass().getSimpleName());
+            return;
         }
-        boolean ok = bodyText != null && bodyText.contains(expected);
         if (!ok) {
-            LogsManager.error("soft assert bodyTextContains failed. expected contains='" + expected
-                    + "' body='" + bodyText + "'");
+            LogsManager.error("soft assert bodyTextContains failed. expected contains='" + expected + "'");
         }
         softTrue(ok, "textContains '" + expected + "'");
     }
@@ -145,14 +156,83 @@ public abstract class  Assertion {
     public void elementNotVisible(By locator) {
         boolean ok = false;
         try {
-            java.util.List<WebElement> els = driver.findElements(locator);
-            ok = els == null || els.isEmpty() || !els.get(0).isDisplayed();
-        } catch (Exception e) {
-            ok = true;
+            ok = wait.waitUntilElementNotVisible(locator);
+        } catch (WebDriverException e) {
+            LogsManager.error("notVisible query failed: " + e.getMessage());
+            softTrue(false, "notVisible query failed: " + e.getClass().getSimpleName());
+            return;
         }
         if (!ok) {
             LogsManager.error("soft assert notVisible failed for " + locator);
         }
         softTrue(ok, "notVisible");
+    }
+
+    /**
+     * Capture exact text from the supplied locator using the IR extraction rule.
+     * Multiple matches or an empty locator result fail clearly.
+     */
+    public void captureFrom(By locator, String slot, String rule) {
+        try {
+            CaptureCompare.ExtractResult extracted = CaptureCompare.extract(elementTexts(locator), rule);
+            if (extracted.ok()) {
+                CapturedValues.put(slot, extracted.value());
+                LogsManager.info("captured phrase slot=" + slot + " value=" + extracted.value());
+            } else {
+                LogsManager.error(extracted.error());
+            }
+            softTrue(extracted.ok(), extracted.error());
+        } catch (WebDriverException e) {
+            LogsManager.error("captureFrom query failed: " + e.getMessage());
+            softTrue(false, "unavailable browser state: " + e.getClass().getSimpleName());
+        }
+    }
+
+    public void compareCapturedExact(By locator, String slot) {
+        String captured = CapturedValues.get(slot);
+        try {
+            CaptureCompare.CompareResult compared = CaptureCompare.compareExact(elementTexts(locator), captured);
+            if (compared.ok()) {
+                LogsManager.info("compared captured slot=" + slot + " value=" + captured);
+            } else {
+                LogsManager.error(compared.error());
+            }
+            softTrue(compared.ok(), compared.error());
+        } catch (WebDriverException e) {
+            LogsManager.error("compareCapturedExact query failed: " + e.getMessage());
+            softTrue(false, "unavailable browser state: " + e.getClass().getSimpleName());
+        }
+    }
+
+    public void signedOut(By locator, String expected) {
+        try {
+            List<WebElement> els = driver.findElements(locator);
+            boolean anyDisplayed = false;
+            List<String> displayed = new ArrayList<>();
+            for (WebElement el : els) {
+                if (el.isDisplayed()) {
+                    anyDisplayed = true;
+                    displayed.add(el.getText());
+                }
+            }
+            CaptureCompare.CompareResult result = CaptureCompare.signedOut(displayed, anyDisplayed, expected);
+            if (result.ok()) {
+                LogsManager.info("signed-out locator=" + locator + " expected=" + expected);
+            } else {
+                LogsManager.error(result.error());
+            }
+            softTrue(result.ok(), result.error());
+        } catch (WebDriverException e) {
+            LogsManager.error("signedOut query failed: " + e.getMessage());
+            softTrue(false, "unavailable browser state: " + e.getClass().getSimpleName());
+        }
+    }
+
+    private List<String> elementTexts(By locator) {
+        List<String> texts = new ArrayList<>();
+        for (WebElement el : driver.findElements(locator)) {
+            texts.add(el.getText());
+        }
+        return texts;
     }
 }

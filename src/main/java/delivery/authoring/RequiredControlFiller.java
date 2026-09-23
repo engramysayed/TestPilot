@@ -167,6 +167,11 @@ public final class RequiredControlFiller {
                 || s.contains("verification code")) {
             return false;
         }
+        // Named "submit blank/empty …" clicks must hit that control, not invent field values.
+        if (s.contains("blank") || s.contains("empty")
+                || StepIntentBinder.isLeaveOrKeepEmptyStep(text)) {
+            return false;
+        }
         return s.contains("continue") || s.contains("submit") || s.contains("finish")
                 || s.contains("next") || s.contains("save") || s.contains("place order")
                 || s.contains("complete") || s.contains("confirm") || s.contains("checkout")

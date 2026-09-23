@@ -34,7 +34,17 @@
             </div>
         </section>
 
+        <section class="panel attention-panel dash-reveal" id="attention-panel" style="--dash-reveal-delay: 20ms">
+            <h2>Needs your attention</h2>
+            <p class="panel-intro">Failed runs, soft blocks, and in-progress jobs — newest first.</p>
+            <div id="attention-list"></div>
+            <p id="attention-empty" class="muted" hidden>Nothing needs attention right now.</p>
+        </section>
+
         <section class="stats stats--overview">
+            <div class="stat-card stat-card--err dash-reveal" style="--dash-reveal-delay: 60ms" th:if="${stats.attentionCount > 0}">
+                <span th:text="${stats.attentionCount}">0</span><label>Needs attention</label>
+            </div>
             <div class="stat-card stat-card--accent dash-reveal" style="--dash-reveal-delay: 0ms">
                 <span th:text="${stats.activeProjectCount}">0</span><label>Active projects</label>
             </div>
@@ -136,25 +146,25 @@
         </section>
 
         <section class="panel dash-span">
-            <h2>Recent Automate jobs</h2>
-            <p class="panel-intro">Latest conversion jobs for your projects.</p>
+            <h2>Recent runs</h2>
+            <p class="panel-intro">Latest Automate, Execute, and Generate jobs across your workspace.</p>
             <table class="table" id="jobsTable">
                 <thead>
                 <tr>
                     <th>Date</th>
+                    <th>Kind</th>
                     <th>Project</th>
-                    <th>Mode</th>
                     <th>Status</th>
-                    <th>Passed</th>
-                    <th>Blocked</th>
+                    <th>Progress</th>
+                    <th></th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="j : ${stats.recentJobs}"
+                <tr th:each="j : ${stats.recentRuns}"
                     th:attr="data-project=${j.projectId},data-day=${j.day},data-status=${j.status}">
                     <td class="mono" th:text="${j.createdAt}">—</td>
+                    <td th:text="${j.jobKind == 'EXECUTE'} ? 'Execute' : (${j.jobKind == 'GENERATE_BATCH'} ? 'Generate' : 'Automate')">Automate</td>
                     <td th:text="${j.projectName}">Project</td>
-                    <td th:text="${j.mode}">NEW</td>
                     <td>
                         <span class="badge"
                               th:classappend="${j.status == 'COMPLETED'} ? ' ok' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? ' warn' : (${j.status == 'FAILED'} ? ' err' : (${j.status == 'RUNNING' or j.status == 'QUEUED'} ? ' warn badge--busy' : ' muted')))">
@@ -162,11 +172,14 @@
                             <span th:text="${j.status}">COMPLETED</span>
                         </span>
                     </td>
-                    <td th:text="${j.passedCount}">0</td>
-                    <td th:text="${j.todoCount}">0</td>
+                    <td class="mono" th:text="${j.progressCurrent} + '/' + ${j.progressTotal}">0/0</td>
+                    <td class="actions">
+                        <a th:href="${j['statusUrl']}">Status</a>
+                        <a th:if="${j['resultsUrl'] != null}" th:href="${j['resultsUrl']}">Results</a>
+                    </td>
                 </tr>
-                <tr th:if="${!stats.hasJobs}">
-                    <td colspan="6" class="muted">No conversion jobs recorded yet.</td>
+                <tr th:if="${#lists.isEmpty(stats.recentRuns)}">
+                    <td colspan="6" class="muted">No runs recorded yet.</td>
                 </tr>
                 </tbody>
             </table>
@@ -176,6 +189,8 @@
 </div>
 <script th:inline="javascript">
     const allJobs = /*[[${stats.recentJobs}]]*/ [];
+    const recentRuns = /*[[${stats.recentRuns}]]*/ [];
+    const attentionItems = /*[[${stats.attention}]]*/ [];
     const chartLabels = /*[[${stats.chartLabels}]]*/ [];
     const chartPassed = /*[[${stats.chartPassed}]]*/ [];
     const chartTodo = /*[[${stats.chartTodo}]]*/ [];
@@ -367,6 +382,27 @@
     }
 
     document.getElementById('applyFilters').addEventListener('click', applyFilters);
+
+    (function renderAttention() {
+        const list = document.getElementById('attention-list');
+        const empty = document.getElementById('attention-empty');
+        if (!list) return;
+        if (!attentionItems || !attentionItems.length) {
+            if (empty) empty.hidden = false;
+            return;
+        }
+        if (empty) empty.hidden = true;
+        attentionItems.forEach(function (item) {
+            const row = document.createElement('div');
+            row.className = 'attention-item attention-item--' + (item.severity || 'info');
+            const mark = item.severity === 'ok' ? '✓' : '!';
+            row.innerHTML = '<div class="attention-mark">' + mark + '</div><div>'
+                + '<a class="attention-title" href="' + String(item.href || '#').replace(/"/g, '&quot;') + '">'
+                + String(item.title || '').replace(/</g, '&lt;') + '</a>'
+                + '<p class="muted">' + String(item.subtitle || '').replace(/</g, '&lt;') + '</p></div>';
+            list.appendChild(row);
+        });
+    })();
 </script>
 </body>
 </html>

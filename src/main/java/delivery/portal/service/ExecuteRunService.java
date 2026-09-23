@@ -108,6 +108,38 @@ public class ExecuteRunService {
         return readDrafts(jobId);
     }
 
+    public Optional<String> findPrimaryFailedTcId(String jobId) {
+        try {
+            for (TcDraft draft : readDrafts(jobId)) {
+                if ("FAIL".equals(qaStatus(draft.status()))) {
+                    return Optional.of(draft.tcId());
+                }
+            }
+        } catch (Exception ignored) {
+            // No IR store or unreadable drafts.
+        }
+        return Optional.empty();
+    }
+
+    public boolean hasDesignCompareAttention(String jobId) {
+        try {
+            JobRecord job = store.getJob(jobId).orElse(null);
+            if (job == null) {
+                return false;
+            }
+            for (TcDraft draft : readDrafts(jobId)) {
+                if (BugReportService.readEvidenceStatus(tcEvidenceDir(job, draft.tcId()), "design-compare.json")
+                        .filter("MISMATCH"::equals)
+                        .isPresent()) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {
+            // Ignore unreadable evidence.
+        }
+        return false;
+    }
+
     Map<String, Object> failReportRow(JobRecord job, TcDraft d) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("tcId", d.tcId());

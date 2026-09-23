@@ -4,7 +4,9 @@
 
 **Source:** [public-launch review](README.md), including its reproduction evidence, limitations, and findings F00–F13. The audit describes revision `0aca9c6` and its reviewed working tree; validate current behavior before implementing each item. This plan does not claim a new code audit or fresh test run.
 
-**Objective:** release a dependable public multi-user product in both shared-hosted and dedicated-installation forms, then expand collaboration, diagnosis, and integration capabilities.
+**Objective:** release a dependable public multi-user product on **shared hosting**, then expand collaboration, diagnosis, and integration capabilities.
+
+**2026-09-20 first-release scope:** shared hosting only. Dedicated installations and private runners remain **implemented** and documented; they are **deferred from launch support** and are not first-launch gates. Validation candidate stays **`2721e6d`**. Public rollout stays HOLD.
 
 ## 1. Delivery strategy
 
@@ -17,8 +19,8 @@ Recommended order:
 3. **Phase 2: customer isolation and data controls.** Establish safe storage, workers, provider access, and minimal team permissions.
 4. **Phase 3: durable operations and reproducible inputs.** Recover jobs, preserve artifacts, protect concurrent edits, and finish safe deletion.
 5. **Phase 4: release engineering and product clarity.** Verify deployments, documentation, security configuration, and result explanations.
-6. **Phase 5: pilot and launch gates.** Exercise both deployment models under realistic failure and customer workflows.
-7. **Phase 6: prioritized enhancements.** Build deeper triage, private runners, reviewed discovery, and integrations on the stable contracts.
+6. **Phase 5: pilot and launch gates.** Exercise **shared** staging under realistic failure and customer workflows. Dedicated and private-runner deployment validation is deferred.
+7. **Phase 6: prioritized enhancements.** Build deeper triage, reviewed discovery, and integrations on the stable contracts. Private runners stay implemented and out of first-launch support.
 
 Phase 2 architecture decisions can progress alongside Phase 1. Phase 3 implementation depends on the immutable identities and storage boundaries from Phase 2. Do not introduce a second competing job scheduler, artifact store, or revision mechanism while implementing individual fixes.
 
@@ -36,7 +38,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 - [ ] Decide whether dependent tests require replayable setup in the first release. Recommended: support explicit setup chains; if deferred, block unsupported dependent cases from being advertised as replay-ready.
 - [ ] Create decision records for hosted target access, AI data policy, tenant/team model, retention, expected concurrency, and support ownership.
 
-**Acceptance:** product contract has an owner and approval date; each unresolved decision has an owner, deadline relative to its dependent phase, and affected work packages. Shared and dedicated support commitments are explicit.
+**Acceptance:** product contract has an owner and approval date; each unresolved decision has an owner, deadline relative to its dependent phase, and affected work packages. First-release support is **shared hosting only**; dedicated and private-runner support commitments are explicit deferrals, not launch promises.
 
 ### P0-02 — repair the deterministic test baseline
 
@@ -169,7 +171,11 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** controlled integration tests show prohibited destinations remain unreachable through navigation, redirects and subresources. Approved targets work. Dedicated private-target access is explicitly configured and cannot broaden another tenant's access.
 
+**2026-09-20 first-launch acceptance:** shared-host prohibited destinations stay unreachable on **shared staging**. Dedicated private-target access remains implemented and is **not** required to close first launch.
+
 **2026-09-17 (`f44c76a`):** application-layer policy and per-thread PAC are in place for Hunt and ProvePhase Chrome/Edge. Dedicated CIDRs do not appear in the shared PAC. Loopback page loads still use `WorkerNetworkGuard`. This is not a kernel firewall. **No deployed shared or dedicated installation was available.** P2-03 remains open until those drills and P0-01 hosted-target sign-off.
+
+**2026-09-20:** first-launch P2-03 is **shared-host** worker-network isolation on staging. Dedicated private-CIDR validation is deferred; the dedicated policy implementation is preserved.
 
 ### P2-04 — sanitize sensitive data and enforce provider policy · F09
 
@@ -186,7 +192,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **2026-09-17 (`f44c76a`):** `SecretSanitizer` plus `ScreenshotRedactor` at capture; Cursor sidecar stdin canary intercepted (`SidecarCanaryTest`). Fail-closed `ProviderPolicy` unchanged. P2-04 remains open until named privacy sign-off ([APPROVALS.md](APPROVALS.md)).
 
-**Phase 2 exit:** shared-host isolation tests and deployed worker network tests pass. Tenant/data policy is approved and documented; an undecided privacy policy cannot be advertised as a guarantee.
+**Phase 2 exit (first release):** shared-host isolation tests and **shared staging** worker-network tests pass. Dedicated deployed isolation is deferred. Tenant/data policy is approved and documented; an undecided privacy policy cannot be advertised as a guarantee.
 
 ## 5. Phase 3 — recoverable jobs, stable artifacts and revisions
 
@@ -276,6 +282,8 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 ### P4-02 — validate shared and dedicated deployment profiles
 
+**2026-09-20:** first-launch close is **shared staging** install + restore. Dedicated profile validation is deferred; keep the dedicated docs and drills in tree.
+
 **Owner:** platform/security. **Dependencies:** Phases 2 and 3.
 
 - [ ] Provide supported installation/upgrade configuration, database/storage prerequisites, worker policy and health/readiness checks for each model.
@@ -284,7 +292,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 - [ ] Add migration preflight, backup and rollback instructions; test an upgrade from the supported previous data layout.
 - [ ] Document which features/providers/private targets are supported in each profile.
 
-**Acceptance:** both profiles install from documented instructions, reject insecure required configuration, complete acceptance workflows, and pass an upgrade/restore drill without losing artifact identity or tenant boundaries.
+**Acceptance (first launch, 2026-09-20):** the **shared** profile installs from documented instructions, rejects insecure required configuration, completes acceptance workflows, and passes an upgrade/restore drill on **shared staging** without losing artifact identity or tenant boundaries. Dedicated profile acceptance is deferred.
 
 ### P4-03 — show result integrity and actionable job diagnostics
 
@@ -310,11 +318,13 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 **Acceptance:** a new user/operator can follow the supported path without relying on contradictory historical plans. Every advertised privacy and replay guarantee has a matching enforcement test.
 
-**Phase 4 engineering (2026-09-17, local):** CI workflow `.github/workflows/release.yml` (deterministic profile excludes `*LiveSmoke*`, template compile, sha256 provenance, secret grep). Production startup guard, login throttle, `/api/health`+`/api/ready`, `StoreBackup` unit restore of tenant path+checksum, job diagnostics (`FRESH`/`REUSED`/`BLOCKED`/`UNCHECKED`/`SIMULATED`/`INTERRUPTED`), library field-level diff, constitution 1.2.0 supersession, SUPPORT/deployment/runbook docs. **P4-02 deployed shared/dedicated restore drill remains a release blocker.** Phase 2 isolation/privacy gates stay open.
+**Phase 4 engineering (2026-09-17, local):** CI workflow `.github/workflows/release.yml` (deterministic profile excludes `*LiveSmoke*`, template compile, sha256 provenance, secret grep). Production startup guard, login throttle, `/api/health`+`/api/ready`, `StoreBackup` unit restore of tenant path+checksum, job diagnostics (`FRESH`/`REUSED`/`BLOCKED`/`UNCHECKED`/`SIMULATED`/`INTERRUPTED`), library field-level diff, constitution 1.2.0 supersession, SUPPORT/deployment/runbook docs. **P4-02 shared-staging restore drill remains a first-launch blocker.** Dedicated restore is deferred. Phase 2 isolation/privacy gates stay open.
 
 **Phase 5 validation (2026-09-17, candidate `75e6996`, superseded):** screenshot redaction and sidecar canary tests pass locally; concurrent same-host ProveEmit recorded PASS on `f44c76a`; backup/tenant/lock checks pass on this NTFS volume. Isolated shared/dedicated Spring Boot drills bind install-wide (JVM-wide) mode into worker policy and snapshot those store-roots; dry-run Generate-import→Execute→Automate→ZIP test-compile ran on the shared drill. **Launch decision: HOLD.**
 
-**Phase 5 re-nomination (2026-09-17, candidate `23f9351` then `2721e6d`):** `75e6996` is explicitly replaced. Clean worktree drills + workstation restore ran on `23f9351`. Default `mvn test` on that SHA was **1301 run, 3 failed, 2 skipped** (stale preferred-hooks path + two live ui-tars misses). Test-only follow-up **`2721e6d`**; `mvn -Pdeterministic test` **1297 run, 0 failed, 2 skipped**. **Launch decision: HOLD.** Remaining work still needs deployed shared/dedicated hosts, restore on those FileStores, live representative Generate → Execute → Automate, and named approvers. Evidence: [phase5-validation.md](phase5-validation.md), [phase5-install-drills.md](phase5-install-drills.md), [phase5-restore-drill.md](phase5-restore-drill.md), [LAUNCH-DECISION.md](LAUNCH-DECISION.md), [APPROVAL-PACKET.md](APPROVAL-PACKET.md).
+**Phase 5 re-nomination (2026-09-17, candidate `23f9351` then `2721e6d`):** `75e6996` is explicitly replaced. Clean worktree drills + workstation restore ran on `23f9351`. Default `mvn test` on that SHA was **1301 run, 3 failed, 2 skipped** (stale preferred-hooks path + two live ui-tars misses). Test-only follow-up **`2721e6d`**; `mvn -Pdeterministic test` **1297 run, 0 failed, 2 skipped**. **Launch decision: HOLD.**
+
+**2026-09-20 first-release scope:** candidate **`2721e6d` unchanged**. Remaining first-launch validation is **shared staging** worker-network isolation, cross-tenant rejection, restore on that store, and live Generate → Execute → Automate NEW → downloaded replay → UPDATE → replay on an authorized representative app. Dedicated deployment validation and private-runner launch support are deferred. Live UI-TARS click-grounding is **not** a supported first-release configuration ([vision-live-smoke-rca.md](vision-live-smoke-rca.md)). Staging procedure: [shared-staging.md](../../ops/shared-staging.md). Evidence: [phase5-validation.md](phase5-validation.md), [LAUNCH-DECISION.md](LAUNCH-DECISION.md), [APPROVAL-PACKET.md](APPROVAL-PACKET.md).
 
 ## 7. Phase 5 — controlled pilot and launch decision
 
@@ -324,7 +334,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 - [ ] Run fresh Generate → library edit/review → Execute → Automate NEW → download/replay → UPDATE → download/replay on controlled representative applications.
 - [ ] Include Bug Hunter evidence, triage and pack export; verify sensitive data handling throughout.
-- [ ] Execute two-tenant identical-host tests and dedicated private-target scenarios.
+- [ ] Execute two-tenant identical-host tests on **shared** staging. Dedicated private-target scenarios are deferred.
 - [ ] Run capacity tests at the agreed launch concurrency and queue limits; record latency/resource thresholds before execution.
 - [ ] Exercise worker/server restart, queue rejection, provider outage, disk pressure, timeout, cancellation, retention, deletion and restore.
 - [ ] Complete a browser UI walkthrough including error states, keyboard access, long-running feedback and expired downloads.
@@ -334,6 +344,8 @@ No launch date is estimated here: staffing, supported application scope, operati
 
 ### P5-02 — pilot, then release both supported models
 
+**2026-09-20:** first public rollout is the **shared** distribution only. Dedicated remains implemented and out of launch support.
+
 **Owner:** product/release/operations. **Dependencies:** P5-01.
 
 - [ ] Onboard a bounded pilot cohort with documented limits and a named support contact.
@@ -342,7 +354,7 @@ No launch date is estimated here: staffing, supported application scope, operati
 - [ ] Publish release notes, known limitations, rollback triggers and escalation ownership.
 - [ ] Roll out within tested capacity and verify installation health, job processing and artifact downloads after release.
 
-**Acceptance:** both shared and dedicated distributions meet their declared support contract. Pilot evidence supports launch, and an operator can execute rollback and recovery instructions.
+**Acceptance:** the **shared** distribution meets its declared support contract. Pilot evidence supports launch, and an operator can execute rollback and recovery instructions. Dedicated/private-runner launch evidence is not required.
 
 ## 8. Enhancements and features worth building
 
@@ -403,7 +415,7 @@ These are proposed product priorities, not validated market demand. Foundational
 
 **2026-09-17 live local validation (`0c49603`, development after `435799f`):** `PrivateRunnerLiveBrowserProcessTest` starts a separate `PrivateRunnerAgent` with `--dry-run false` and headless Chrome against controlled loopback pages. Recorded path: claim → frozen input zip → `BROWSER` stage → live click (`DOM_POST_CLICK` url-changed to `confirmed.html`) → HMAC artifact upload → `COMPLETED` with `passedCount >= 1`. Cancel during a hung BROWSER navigation finishes `CANCELLED`. Destroying the agent on `BROWSER` plus an expired lease yields `INTERRUPTED_UNCERTAIN`. In-process portal workers skip `runner=private`. Agent logs (`Starting Driver` / `CHROME` / `DOM_POST_CLICK`) plus the uploaded zip (IR `lastPageUrl`) are the execution evidence; the portal work-dir does not contain the job.
 
-This local validation does **not** close P2-03 deployed isolation, production restore, representative customer-app acceptance, live Generate → Execute → Automate on a customer target, or named P0-01 approvals. Auto-update and attested runner builds are not included. Public rollout remains HOLD. The Phase 5 validation candidate is now `23f9351` (explicitly nominated 2026-09-17).
+This local validation does **not** close P2-03 deployed isolation, production restore, representative customer-app acceptance, live Generate → Execute → Automate on a customer target, or named P0-01 approvals. Auto-update and attested runner builds are not included. Public rollout remains HOLD. **2026-09-20:** private-runner **launch support is deferred**; implementation is preserved. Validation candidate remains `2721e6d`.
 
 ### E05 — provider policy, budgets and spend visibility
 
@@ -491,18 +503,20 @@ This local validation does **not** close P2-03 deployed isolation, production re
 - Another generated language: first confirm customer demand and the cost of maintaining runtime assertions, setup semantics and replay parity.
 - Hunt two-pass DOM processing: retain its intentional deferred status until recorded live failures show that it improves coverage/accuracy enough to justify complexity.
 - Broad connector expansion: wait for a stable API and recurring requests from pilot customers.
-- Private-runner auto-update channel and attested builds.
+- Dedicated installation launch support (implementation preserved).
+- Private-runner launch support (implementation preserved), including auto-update and attested builds.
+- Live UI-TARS click-grounding as a first-release guarantee.
 - E01 named approvals beyond MEMBER vs OWNER/ADMIN.
 - E08 outbound issue-tracker / TMS / Git destinations.
 
 **Still HOLD / not closed by this local work**
 
 - Public rollout; validation candidate is `2721e6d`.
-- P0-01 named first-release approvals.
-- P2-03 deployed shared/dedicated isolation.
-- Production restore on deployment storage (P4-02).
-- Representative customer-app Generate → Execute → Automate acceptance.
-- P5-01/P5-02 pilot and release.
+- P0-01 named first-release approvals (shared scope).
+- P2-03 **shared-host** worker-network isolation on staging.
+- Shared-staging restore on that host’s storage (P4-02, shared only).
+- Authorized representative-app Generate → Execute → Automate NEW → downloaded replay → UPDATE → replay.
+- P5-01/P5-02 shared pilot and release.
 
 ## 9. Decisions and dependency checkpoints
 

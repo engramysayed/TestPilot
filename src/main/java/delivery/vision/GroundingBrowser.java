@@ -18,6 +18,11 @@ public interface GroundingBrowser {
 
     void scrollViewport();
 
+    default boolean matchesObservedNode(String strategy, String value) { return true; }
+    default String observationVersion() { return ""; }
+    default Object saveScroll() { return null; }
+    default void restoreScroll(Object position) {}
+
 }
 
 

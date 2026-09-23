@@ -72,6 +72,58 @@ public class WaitHandler {
         }
     }
 
+    public boolean waitUntilTextContains(By locator, String expected) {
+        try {
+            new WebDriverWait(driver, durationSeconds("TEXT_CONTAINS_WAIT_SECONDS", 15))
+                    .until(d -> {
+                        String actual = d.findElement(locator).getText();
+                        return actual != null && actual.contains(expected);
+                    });
+            return true;
+        } catch (TimeoutException e) {
+            LogsManager.error("Text did not contain '" + expected + "' within time: " + locator);
+            return false;
+        }
+    }
+
+    public boolean waitUntilBodyTextContains(String expected) {
+        try {
+            new WebDriverWait(driver, durationSeconds("TEXT_CONTAINS_WAIT_SECONDS", 15))
+                    .ignoring(StaleElementReferenceException.class)
+                    .until(d -> {
+                        String body = d.findElement(By.tagName("body")).getText();
+                        return body != null && body.contains(expected);
+                    });
+            return true;
+        } catch (TimeoutException e) {
+            LogsManager.error("Body text did not contain '" + expected + "' within time");
+            return false;
+        }
+    }
+
+    public boolean waitUntilElementNotVisible(By locator) {
+        try {
+            new WebDriverWait(driver, durationSeconds("NOT_VISIBLE_WAIT_SECONDS", 10))
+                    .until(d -> {
+                        java.util.List<WebElement> els = d.findElements(locator);
+                        if (els == null || els.isEmpty()) {
+                            return true;
+                        }
+                        return els.stream().noneMatch(el -> {
+                            try {
+                                return el.isDisplayed();
+                            } catch (StaleElementReferenceException stale) {
+                                return false;
+                            }
+                        });
+                    });
+            return true;
+        } catch (TimeoutException e) {
+            LogsManager.error("Element still visible within time: " + locator);
+            return false;
+        }
+    }
+
     public void waitForPageReady() {
         try {
             getWait().until(driver -> "complete".equals(String.valueOf(
@@ -80,5 +132,16 @@ public class WaitHandler {
         } catch (Exception e) {
             LogsManager.error("waitForPageReady: " + e.getMessage());
         }
+    }
+
+    private static Duration durationSeconds(String key, long defaultSeconds) {
+        String raw = System.getProperty(key);
+        if (raw == null || raw.isBlank()) {
+            raw = PropertyReader.getProperty(key);
+        }
+        if (raw == null || raw.isBlank()) {
+            return Duration.ofSeconds(defaultSeconds);
+        }
+        return Duration.ofSeconds(Long.parseLong(raw.trim()));
     }
 }

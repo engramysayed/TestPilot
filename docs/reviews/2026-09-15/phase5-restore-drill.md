@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-17T20:21+03:00  
 **Code revision:** `23f9351`  
-**Scope:** this workstation's `D:\priv\testpilot\TestPilot\delivery-store` (H2 file DB + tenant artifacts + `delivery.secret`). **Not** a production shared/dedicated host FileStore (P4-02 remains open).
+**Scope:** this workstation's `D:\priv\testpilot\TestPilot\delivery-store` (H2 file DB + tenant artifacts + `delivery.secret`). **Not** shared-staging storage (P4-02 first-launch drill still open). Dedicated-host restore is deferred.
 
 A leftover Phase 6 dry-run portal (PID 5136, port 8081, dedicated `127.0.0.0/8`) held `portal-db.lock.db`. A hot copy failed (`The process cannot access the file because another process has locked a portion of the file`). That portal was stopped, then a consistent copy was taken. It was **not** restarted. Public rollout stays HOLD.
 
@@ -31,4 +31,4 @@ Isolated shared/dedicated **test** store-roots were separately snapshot/restored
 
 ## Still open
 
-Restore onto the FileStore of a deployed shared host and a deployed dedicated host, with operator-owned backup destinations, remains a release blocker.
+Restore onto the FileStore of **shared staging**, with the operator backup destination, remains a first-launch blocker. Dedicated-host restore is deferred.

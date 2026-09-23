@@ -337,6 +337,15 @@ public class FreeInventHealer {
                         + strategy + "=" + locatorValue);
                 continue;
             }
+            if (intent.kind() != StepIntentBinder.IntentKind.ASSERT_VISIBLE) {
+                var nodes = HtmlLocatorPresence.matchingElements(strategy, locatorValue, slimHtml);
+                if (nodes.size() != 1) continue;
+                var node = nodes.getFirst();
+                var target = new delivery.authoring.DomCandidate("written", strategy, locatorValue,
+                        delivery.authoring.DomCandidateExtractor.controlKind(node),
+                        delivery.authoring.AccessibleName.of(node));
+                if (!StepIntentBinder.actionCompatible(intent, target)) continue;
+            }
             result.add(new ProvenStep(
                     tcId, "Page", "elementAction", action, strategy, locatorValue,
                     item.optString("value", ""),

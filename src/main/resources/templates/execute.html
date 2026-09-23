@@ -14,12 +14,33 @@
         </div>
     </div>
 
-    <section class="panel">
+    <section class="panel workspace-launcher" id="workspace-launcher">
+        <p class="guide-kicker">Workspace</p>
+        <h2>Choose a project</h2>
+        <p class="panel-intro">Execute runs prove cases against one project's base URL and credential profile.</p>
         <label>Project
-            <select id="project-select">
+            <select id="launcher-project-select">
                 <option value="">— Loading projects —</option>
             </select>
         </label>
+        <p id="launcher-err" class="error" hidden></p>
+        <p id="launcher-no-projects" class="muted" hidden>
+            No projects yet — <a href="/projects">create one</a> first.
+        </p>
+        <p style="margin-top:0.75rem">
+            <button type="button" class="button" id="launcher-continue">Continue</button>
+        </p>
+    </section>
+
+    <div id="workspace-config" hidden>
+    <section class="panel workspace-pinned">
+        <p class="muted" style="margin:0">
+            Project: <strong id="pinned-project-name">—</strong>
+            <button type="button" class="button ghost" id="change-project" style="margin-left:0.5rem">Change</button>
+        </p>
+        <select id="project-select" hidden aria-hidden="true">
+            <option value="">— Loading projects —</option>
+        </select>
         <p id="project-err" class="error" hidden></p>
         <p id="no-projects" class="muted" hidden>
             No projects yet —
@@ -202,6 +223,7 @@
         <p id="results-empty" class="muted" hidden>No test cases yet.</p>
         <p id="results-err" class="error" hidden></p>
     </section>
+    </div>
 </main>
 </div>
 
@@ -218,12 +240,26 @@
     </div>
 </div>
 
-<script>
+<script th:inline="javascript">
 (function () {
     const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
     const STORAGE_KEY = 'keel.executeProjectId';
     const LAST_JOB_KEY = 'keel.lastExecuteJobId';
     const TERMINAL = new Set(['COMPLETED', 'COMPLETED_WITH_BLOCK', 'FAILED', 'CANCELLED']);
+    const initialProjectId = /*[[${projectId}]]*/ '';
+    const urlParams = new URLSearchParams(window.location.search);
+    const deepLinkJobId = urlParams.get('jobId');
+    const deepLinkProjectId = urlParams.get('projectId') || initialProjectId || '';
+    let pendingDeepLinkTcId = urlParams.get('tcId');
+
+    const workspaceLauncher = document.getElementById('workspace-launcher');
+    const workspaceConfig = document.getElementById('workspace-config');
+    const launcherSel = document.getElementById('launcher-project-select');
+    const launcherContinue = document.getElementById('launcher-continue');
+    const launcherErr = document.getElementById('launcher-err');
+    const launcherNoProjects = document.getElementById('launcher-no-projects');
+    const pinnedName = document.getElementById('pinned-project-name');
+    const changeProjectBtn = document.getElementById('change-project');
 
     const projectSel = document.getElementById('project-select');
     const projectErr = document.getElementById('project-err');
@@ -756,26 +792,110 @@
         }
         const projects = await res.json();
         projectSel.innerHTML = '';
+        if (launcherSel) launcherSel.innerHTML = '';
         if (projects.length === 0) {
             noProjects.hidden = false;
+            if (launcherNoProjects) launcherNoProjects.hidden = false;
             formPanel.hidden = true;
             return;
         }
         noProjects.hidden = true;
+        if (launcherNoProjects) launcherNoProjects.hidden = true;
         projects.forEach(p => {
+            const label = (p.name || p.projectId) + ' (' + p.projectId + ')';
             const opt = document.createElement('option');
             opt.value = p.projectId;
-            opt.textContent = (p.name || p.projectId) + ' (' + p.projectId + ')';
+            opt.textContent = label;
             projectSel.appendChild(opt);
+            if (launcherSel) {
+                const lopt = document.createElement('option');
+                lopt.value = p.projectId;
+                lopt.textContent = label;
+                launcherSel.appendChild(lopt);
+            }
         });
         const saved = sessionStorage.getItem(STORAGE_KEY);
+        const urlProject = deepLinkProjectId && projects.some(p => p.projectId === deepLinkProjectId)
+            ? deepLinkProjectId : null;
         const match = saved && projects.some(p => p.projectId === saved);
-        projectSel.value = match ? saved : projects[0].projectId;
-        onProjectChange();
-        const lastJob = sessionStorage.getItem(LAST_JOB_KEY);
-        if (lastJob && lastJob.startsWith('exec_')) {
-            openExecuteRun(lastJob);
+        const pinned = urlProject || (match ? saved : null);
+        if (pinned) {
+            pinWorkspaceProject(pinned, projects);
+        } else {
+            showWorkspaceLauncher();
         }
+        if (deepLinkJobId && pinned) {
+            await bootstrapDeepLinkJob(deepLinkJobId);
+            return;
+        }
+        if (pinned) {
+            const lastJob = sessionStorage.getItem(LAST_JOB_KEY);
+            if (lastJob && lastJob.startsWith('exec_')) {
+                openExecuteRun(lastJob);
+            }
+        }
+    }
+
+    function showWorkspaceLauncher() {
+        if (workspaceLauncher) workspaceLauncher.hidden = false;
+        if (workspaceConfig) workspaceConfig.hidden = true;
+    }
+
+    function pinWorkspaceProject(projectId, projects) {
+        projectSel.value = projectId;
+        if (launcherSel) launcherSel.value = projectId;
+        const proj = (projects || []).find(p => p.projectId === projectId);
+        if (pinnedName) {
+            if (proj) {
+                pinnedName.textContent = (proj.name || proj.projectId) + ' (' + proj.projectId + ')';
+            } else if (launcherSel && launcherSel.selectedIndex >= 0) {
+                pinnedName.textContent = launcherSel.options[launcherSel.selectedIndex].textContent;
+            } else {
+                pinnedName.textContent = projectId;
+            }
+        }
+        if (workspaceLauncher) workspaceLauncher.hidden = true;
+        if (workspaceConfig) workspaceConfig.hidden = false;
+        onProjectChange();
+    }
+
+    launcherContinue?.addEventListener('click', () => {
+        if (launcherErr) launcherErr.hidden = true;
+        const projectId = launcherSel ? launcherSel.value : '';
+        if (!projectId) {
+            if (launcherErr) {
+                launcherErr.hidden = false;
+                launcherErr.textContent = 'Select a project to continue.';
+            }
+            return;
+        }
+        sessionStorage.setItem(STORAGE_KEY, projectId);
+        pinWorkspaceProject(projectId, []);
+    });
+
+    changeProjectBtn?.addEventListener('click', () => {
+        showWorkspaceLauncher();
+    });
+
+    async function bootstrapDeepLinkJob(jobId) {
+        try {
+            const res = await fetch('/api/jobs/' + encodeURIComponent(jobId), {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.projectId && Array.from(projectSel.options).some(o => o.value === data.projectId)) {
+                    projectSel.value = data.projectId;
+                    onProjectChange();
+                }
+                if (!pendingDeepLinkTcId && data.primaryTcId) {
+                    pendingDeepLinkTcId = data.primaryTcId;
+                }
+            }
+        } catch (e) { /* ignore */ }
+        expandedTcId = pendingDeepLinkTcId || null;
+        await openExecuteRun(jobId);
     }
 
     function onProjectChange() {
@@ -1239,10 +1359,12 @@
                 tr.addEventListener('click', () => toggleTcDetail(jobId, tc.tcId, tr));
                 resultsBody.appendChild(tr);
             });
-            if (keepExpanded && tcs.some(tc => tc.tcId === keepExpanded)) {
-                const row = findResultRow(keepExpanded);
+            const tcToExpand = pendingDeepLinkTcId || keepExpanded;
+            if (tcToExpand && tcs.some(tc => tc.tcId === tcToExpand)) {
+                pendingDeepLinkTcId = null;
+                const row = findResultRow(tcToExpand);
                 if (row) {
-                    await toggleTcDetail(jobId, keepExpanded, row);
+                    await toggleTcDetail(jobId, tcToExpand, row);
                 }
             } else if (keepExpanded) {
                 expandedTcId = null;

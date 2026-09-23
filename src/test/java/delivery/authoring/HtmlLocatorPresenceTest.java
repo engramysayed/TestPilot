@@ -4,6 +4,13 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class HtmlLocatorPresenceTest {
+    @Test public void checksTagCaseAndEmptyEvidence() {
+        String html = "<input id='Login' aria-label='User'>";
+        Assert.assertFalse(HtmlLocatorPresence.present("id", "login", html));
+        Assert.assertFalse(HtmlLocatorPresence.present("xpath", "//button[@id='Login']", html));
+        Assert.assertFalse(HtmlLocatorPresence.present("id", "Login", ""));
+        Assert.assertTrue(HtmlLocatorPresence.present("css", "input[id='Login'][aria-label='User']", html));
+    }
     @Test
     public void findsDataTestInHtml() {
         String html = "<body><a data-test=\"shopping-cart-link\" href=\"cart.html\"></a></body>";

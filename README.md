@@ -250,7 +250,7 @@ Engineering depth (flows, quality gates, historical workstream notes): [`docs/EN
 
 ## Deployment and support
 
-- Shared vs dedicated: [docs/ops/deployment.md](docs/ops/deployment.md) and [dedicated-install.md](docs/reviews/2026-09-15/dedicated-install.md)
+- Shared **first release**: [docs/ops/shared-staging.md](docs/ops/shared-staging.md). Dedicated remains implemented and out of launch support: [docs/ops/deployment.md](docs/ops/deployment.md), [dedicated-install.md](docs/reviews/2026-09-15/dedicated-install.md).
 - Backup/restore drill: [docs/ops/backup-restore.md](docs/ops/backup-restore.md)
 - Operator runbooks: [docs/ops/runbooks.md](docs/ops/runbooks.md)
 - Document ownership: [docs/reviews/2026-09-15/document-ownership.md](docs/reviews/2026-09-15/document-ownership.md)

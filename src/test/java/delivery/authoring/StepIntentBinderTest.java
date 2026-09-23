@@ -323,9 +323,9 @@ public class StepIntentBinderTest {
         Assert.assertTrue(StepIntentBinder.hayContainsToken("hub-input", "hub"));
         Assert.assertFalse(StepIntentBinder.hayContainsToken("hubble", "hub"));
         List<DomCandidate> form = List.of(
-                new DomCandidate("c1", "css", "[data-axis-test-id='role-input']", "input", "Role"),
+                new DomCandidate("c1", "css", "input[data-axis-test-id='role-input']", "input", "Role"),
                 new DomCandidate("c2", "id", "hubId", "combobox", "Hub"),
-                new DomCandidate("c3", "css", "[data-axis-test-id='login-input']", "input", "Login")
+                new DomCandidate("c3", "css", "input[data-axis-test-id='login-input']", "input", "Login")
         );
         StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(
                 new StepIntentBinder.IntentLine(
@@ -340,9 +340,9 @@ public class StepIntentBinderTest {
     @Test
     public void chooseGenderBindsAsSelectNotType() {
         List<DomCandidate> form = List.of(
-                new DomCandidate("c1", "css", "[data-axis-test-id='first-name-input']", "input", "First name"),
-                new DomCandidate("c2", "css", "[data-axis-test-id='gender-input']", "input", "Gender"),
-                new DomCandidate("c3", "css", "[data-axis-test-id='last-name-input']", "input", "Last name")
+                new DomCandidate("c1", "css", "input[data-axis-test-id='first-name-input']", "input", "First name"),
+                new DomCandidate("c2", "css", "input[data-axis-test-id='gender-input']", "input", "Gender"),
+                new DomCandidate("c3", "css", "input[data-axis-test-id='last-name-input']", "input", "Last name")
         );
         StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(
                 new StepIntentBinder.IntentLine(
@@ -357,11 +357,11 @@ public class StepIntentBinderTest {
     @Test
     public void retainDistinctiveMatches_sidebarExpandAsideDoesNotStarveMenu() {
         List<DomCandidate> inventory = List.of(
-                new DomCandidate("c1", "xpath", "//div[contains(.,'Dashboard')]", "div", "Dashboard"),
-                new DomCandidate("c2", "xpath", "//div[contains(.,'Wallets')]", "div", "Wallets"),
-                new DomCandidate("c3", "xpath", "//div[contains(.,'Cards')]", "div", "Cards"),
-                new DomCandidate("c4", "xpath", "//div[contains(.,'User Management')]", "div", "User Management"),
-                new DomCandidate("c5", "xpath", "//div[contains(.,'Reports')]", "div", "Reports")
+                new DomCandidate("c1", "xpath", "//div[contains(normalize-space(.),'Dashboard')]", "div", "Dashboard"),
+                new DomCandidate("c2", "xpath", "//div[contains(normalize-space(.),'Wallets')]", "div", "Wallets"),
+                new DomCandidate("c3", "xpath", "//div[contains(normalize-space(.),'Cards')]", "div", "Cards"),
+                new DomCandidate("c4", "xpath", "//div[contains(normalize-space(.),'User Management')]", "div", "User Management"),
+                new DomCandidate("c5", "xpath", "//div[contains(normalize-space(.),'Reports')]", "div", "Reports")
         );
         StepIntentBinder.IntentLine intent = new StepIntentBinder.IntentLine(
                 StepIntentBinder.IntentKind.CLICK,
@@ -600,7 +600,7 @@ public class StepIntentBinderTest {
         List<DomCandidate> form = List.of(
                 new DomCandidate("c1", "css", "input[name='email']", "input", "Email or phone"),
                 new DomCandidate("c2", "css", "input[name='pass']", "input", "Password"),
-                new DomCandidate("c3", "css", "login-button", "button", "Login"));
+                new DomCandidate("c3", "id", "login-button", "button", "Login"));
         ManualTestCase tc = new ManualTestCase(
                 "TC_login", "Login", "Login required.",
                 "1. Enter in the Email or phone field\n2. Enter in the Password field\n3. Click the Login button",

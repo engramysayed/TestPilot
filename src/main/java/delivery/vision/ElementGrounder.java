@@ -47,6 +47,10 @@ public final class ElementGrounder {
         }
         Optional<GroundingHit> hit = addOrMatch(table, node, visual);
         if (hit.isPresent()) {
+            var chosen = hit.get().table().stream().filter(c -> c.id().equals(hit.get().candidateId())).findFirst();
+            if (chosen.isEmpty() || !browser.matchesObservedNode(chosen.get().strategy(), chosen.get().value())) return Optional.empty();
+        }
+        if (hit.isPresent()) {
             String candidateId = hit.get().candidateId();
             LogsManager.info("GROUNDING: hit id=" + candidateId);
             hit.get().table().stream()
@@ -78,37 +82,22 @@ public final class ElementGrounder {
         }
         String candidateId = nextVisionId(mutable);
         String label = labelFor(node, visual);
-        mutable.add(new DomCandidate(candidateId, lc.strategy(), lc.value(), node.tag(), label));
+        mutable.add(new DomCandidate(candidateId, lc.strategy(), lc.value(), safe(node.role()).isBlank() ? node.tag() : node.role(), label));
         return Optional.of(new GroundingHit(candidateId, mutable, true));
     }
 
     private static boolean matches(DomCandidate candidate, GroundedNode node) {
         String strategy = safe(candidate.strategy()).toLowerCase(Locale.ROOT);
         String value = safe(candidate.value());
-        if ("id".equals(strategy) && !safe(node.id()).isBlank() && value.equals(node.id())) {
-            return true;
+        if ("id".equals(strategy) && !safe(node.id()).isBlank()) {
+            return value.equals(node.id());
         }
-        if (isDataTestStrategy(strategy) && !safe(node.dataTest()).isBlank() && value.equals(node.dataTest())) {
-            return true;
+        if (isDataTestStrategy(strategy) && !safe(node.dataTest()).isBlank()) {
+            return strategy.equals(node.dataTestAttribute()) && value.equals(node.dataTest());
         }
-        if (("css".equals(strategy) || "cssselector".equals(strategy) || "xpath".equals(strategy))
-                && !safe(node.dataTest()).isBlank()
-                && value.contains(node.dataTest())) {
-            return true;
-        }
-        boolean ariaMatch = !safe(node.ariaLabel()).isBlank()
-                && safe(candidate.tag()).equalsIgnoreCase(safe(node.tag()))
-                && safe(candidate.label()).equals(node.ariaLabel());
-        return ariaMatch || sharesVisibleText(candidate, node);
-    }
-
-    private static boolean sharesVisibleText(DomCandidate candidate, GroundedNode node) {
-        String text = safe(node.visibleText());
-        if (text.isBlank()) {
-            return false;
-        }
-        String label = safe(candidate.label());
-        return !label.isBlank() && label.equalsIgnoreCase(text);
+        if (!safe(node.id()).isBlank() || !safe(node.dataTest()).isBlank()) return false;
+        // Labels describe controls but are not identities; build and verify a new locator instead.
+        return false;
     }
 
     private static Optional<LocatorCandidate> buildLocator(GroundedNode node) {
@@ -116,7 +105,7 @@ public final class ElementGrounder {
             return Optional.of(new LocatorCandidate("id", node.id(), safe(node.tag()), ""));
         }
         if (!safe(node.dataTest()).isBlank()) {
-            return Optional.of(new LocatorCandidate("data-test", node.dataTest(), safe(node.tag()), ""));
+            return Optional.of(new LocatorCandidate(node.dataTestAttribute(), node.dataTest(), safe(node.tag()), ""));
         }
         if (!safe(node.name()).isBlank()) {
             return Optional.of(new LocatorCandidate("name", node.name(), safe(node.tag()), ""));
@@ -129,7 +118,7 @@ public final class ElementGrounder {
             return Optional.of(new LocatorCandidate("css", cssAriaLabel(tag, node.ariaLabel()), tag, ""));
         }
         String text = safe(node.visibleText());
-        if (!text.isBlank() && !text.contains("'") && text.length() <= 80) {
+        if (!text.isBlank() && text.length() <= 80) {
             String tag = safe(node.tag());
             if (tag.isBlank()) {
                 tag = "button";

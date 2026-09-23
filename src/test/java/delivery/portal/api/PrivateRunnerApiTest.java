@@ -77,6 +77,12 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
     @Test
     public void enrollHeartbeatClaimRejectsCrossTenantAndRevokes() throws Exception {
         String projectId = createProject();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/projects/" + projectId)
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"authoringEngine\":\"precision\",\"precisionMaxCallsPerJob\":7}"))
+                .andExpect(status().isOk());
         workbooks.saveFromCases(projectId, List.of(
                 new ManualTestCase("TC_01", "Login", "", "1. Open login", "Home", "P1", "smoke")
         ), "test", "private-runner");
@@ -117,6 +123,20 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
                 .andExpect(jsonPath("$.jobId").value(jobId))
                 .andReturn();
         JSONObject claim = new JSONObject(claimed.getResponse().getContentAsString());
+        // Hydrate from SQL, as after a portal restart; CI jobs have no legacy request.json.
+        ((java.util.Map<?, ?>) org.springframework.test.util.ReflectionTestUtils.getField(store, "jobs")).remove(jobId);
+        Assert.assertEquals(store.getJob(jobId).orElseThrow().getAuthoringEngine().wireValue(), "precision");
+        byte[] frozenInput = mockMvc.perform(get("/api/v1/runners/jobs/" + jobId + "/input")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        try (var zip = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(frozenInput))) {
+            Assert.assertEquals(zip.getNextEntry().getName(), "job.json");
+            var metadata = new JSONObject(new String(zip.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            Assert.assertEquals(metadata.getString("authoringEngine"), "precision");
+            Assert.assertEquals(metadata.getInt("precisionMaxCalls"), 7);
+            Assert.assertEquals(metadata.getBoolean("precisionEnabled"),
+                    store.precisionConfigForJob(store.getJob(jobId).orElseThrow()).enabled());
+        }
         Assert.assertEquals(store.getJob(jobId).orElseThrow().getStatus(), JobRecord.Status.RUNNING);
 
         byte[] empty = new byte[] {1, 2, 3};

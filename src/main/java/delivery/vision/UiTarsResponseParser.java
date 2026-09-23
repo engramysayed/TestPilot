@@ -77,9 +77,7 @@ public final class UiTarsResponseParser {
                 double x2 = Double.parseDouble(box.group(3));
                 double y2 = Double.parseDouble(box.group(4));
                 BoundingBox b = xyxyToBox(x1, y1, x2, y2, imageW, imageH, true);
-                if (b != null) {
-                    return new VisualCandidate(descriptionFromAction(t), b, 0.85);
-                }
+                return b == null ? null : new VisualCandidate(descriptionFromAction(t), b, 0.85);
             }
             return pointCandidateThousand(x1, y1, descriptionFromAction(t), 0.85, imageW, imageH);
         }
@@ -112,6 +110,7 @@ public final class UiTarsResponseParser {
 
     private static VisualCandidate pointCandidateThousand(
             double x, double y, String description, double conf, int imageW, int imageH) {
+        if (!Double.isFinite(x) || !Double.isFinite(y) || x < 0 || y < 0 || x > 1000 || y > 1000) return null;
         double sx = x;
         double sy = y;
         if (imageW > 0 && imageH > 0) {
@@ -222,19 +221,20 @@ public final class UiTarsResponseParser {
 
     private static VisualCandidate pointCandidate(
             double x, double y, String description, double conf, int imageW, int imageH) {
-        int cx = (int) Math.round(scaleIfNormalized(x, imageW));
-        int cy = (int) Math.round(scaleIfNormalized(y, imageH));
+        boolean unit = imageW > 0 && imageH > 0 && Math.max(Math.abs(x), Math.abs(y)) <= 1.0;
+        boolean thousand = !unit && imageW > 0 && imageH > 0
+                && (x > imageW || y > imageH) && Math.max(Math.abs(x), Math.abs(y)) <= 1000;
+        int cx = (int) Math.round(unit ? x * imageW : thousand ? x / 1000.0 * imageW : x);
+        int cy = (int) Math.round(unit ? y * imageH : thousand ? y / 1000.0 * imageH : y);
         int pad = POINT_PAD;
-        int left = Math.max(0, cx - pad);
-        int top = Math.max(0, cy - pad);
+        if (!Double.isFinite(x) || !Double.isFinite(y) || cx < 0 || cy < 0
+                || (imageW > 0 && cx >= imageW) || (imageH > 0 && cy >= imageH)) return null;
+        // This is a display pad around a point, not a box inferred by the model.
+        // Keep its center exact even when the pad extends beyond a screenshot edge.
+        int left = cx - pad;
+        int top = cy - pad;
         int width = pad * 2;
         int height = pad * 2;
-        if (imageW > 0) {
-            width = Math.min(width, Math.max(1, imageW - left));
-        }
-        if (imageH > 0) {
-            height = Math.min(height, Math.max(1, imageH - top));
-        }
         return new VisualCandidate(description, new BoundingBox(left, top, width, height), conf);
     }
 
@@ -250,9 +250,11 @@ public final class UiTarsResponseParser {
 
     private static BoundingBox xyxyToBox(
             double x1, double y1, double x2, double y2, int imageW, int imageH, boolean forceThousand) {
-        boolean normalizedUnit = maxAbs(x1, y1, x2, y2) <= 1.0 && imageW > 0 && imageH > 0;
-        boolean normalized1000 = forceThousand && imageW > 0 && imageH > 0
-                && maxAbs(x1, y1, x2, y2) > 1.0;
+        if (!Double.isFinite(x1) || !Double.isFinite(y1) || !Double.isFinite(x2) || !Double.isFinite(y2)
+                || Math.min(x1, x2) < 0 || Math.min(y1, y2) < 0) return null;
+        if (forceThousand && maxAbs(x1, y1, x2, y2) > 1000) return null;
+        boolean normalizedUnit = !forceThousand && maxAbs(x1, y1, x2, y2) <= 1.0 && imageW > 0 && imageH > 0;
+        boolean normalized1000 = forceThousand && imageW > 0 && imageH > 0;
         if (!normalized1000 && !normalizedUnit && imageW > 0 && imageH > 0) {
             // Prefer absolute pixels when they fit; else treat as 0–1000 grid.
             double maxX = Math.max(x1, x2);
@@ -298,17 +300,6 @@ public final class UiTarsResponseParser {
         double y2 = end.optDouble(1);
         // UI-TARS start_box/end_box is conventionally 0–1000 normalized.
         return xyxyToBox(x1, y1, x2, y2, imageW, imageH, true);
-    }
-
-    private static double scaleIfNormalized(double v, int span) {
-        if (span > 0 && v >= 0 && v <= 1.0) {
-            return v * span;
-        }
-        // Only remap 0–1000 grid when the value clearly exceeds the pixel span.
-        if (span > 0 && v > span && v <= 1000.0) {
-            return v / 1000.0 * span;
-        }
-        return v;
     }
 
     private static double maxAbs(double a, double b, double c, double d) {

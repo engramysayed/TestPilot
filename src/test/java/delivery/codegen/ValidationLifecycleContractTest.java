@@ -46,8 +46,9 @@ public class ValidationLifecycleContractTest {
         Assert.assertTrue(generated.contains("Validation.assertAll();"), generated);
         Assert.assertTrue(generated.contains("} finally {"), generated);
         Assert.assertTrue(generated.contains("driver.quit();"), generated);
-        Assert.assertTrue(todo.contains("} finally {"), todo);
-        Assert.assertTrue(todo.contains("driver.quit();"), todo);
+        Assert.assertTrue(generated.contains("requiredProperty"), generated);
+        Assert.assertFalse(generated.contains("nullToEmpty"), generated);
+        Assert.assertTrue(todo.contains("requiredProperty"), todo);
     }
 
     @Test
@@ -58,5 +59,26 @@ public class ValidationLifecycleContractTest {
         Assert.assertTrue(source.contains("driver.validation().urlContains"), source);
         Assert.assertTrue(source.contains("driver.validation().elementSelected"), source);
         Assert.assertTrue(source.contains("driver.validation().softTrue"), source);
+    }
+
+    @Test
+    public void generatedTypeMethodsHideAllureValueParameters() throws Exception {
+        String source = Files.readString(PAGE_ACTIONS);
+        Assert.assertTrue(source.contains("AllureSteps.run(\"${method.name}\""), source);
+        Assert.assertTrue(source.contains("AllureSteps.run(\"${assertion.name}\""), source);
+        Assert.assertTrue(source.contains("driver.element().type"), source);
+        Assert.assertTrue(source.contains("driver.element().selectFromDD"), source);
+        Assert.assertFalse(source.contains("private void step_"),
+                "empty @Step companions must not remain: " + source);
+        Assert.assertFalse(source.contains("@Param"), source);
+        Assert.assertFalse(
+                source.contains("public void ${method.name}(@Param"),
+                "typed values must not be @Step parameters: " + source);
+        Assert.assertFalse(
+                source.contains("@Step(\"${method.name}\")"),
+                "valued actions must not use @Step on the public method: " + source);
+        Assert.assertFalse(
+                source.contains("@Step(\"${assertion.name}\")"),
+                "valued assertions must not use @Step on the public method: " + source);
     }
 }

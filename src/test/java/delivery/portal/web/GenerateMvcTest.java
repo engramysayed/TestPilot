@@ -51,7 +51,9 @@ public class GenerateMvcTest extends AbstractTestNGSpringContextTests {
 
     @Test
     public void generate_rendersForAuthenticatedUser() throws Exception {
-        fetchGenerateBody();
+        String body = fetchGenerateBody();
+        Assert.assertTrue(body.contains("workspace-launcher"), "generate must offer workspace launcher");
+        Assert.assertTrue(body.contains("initialProjectId"), "generate must read server projectId param");
     }
 
     @Test

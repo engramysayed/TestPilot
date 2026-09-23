@@ -5,28 +5,30 @@ import org.testng.annotations.Test;
 
 public class PageAccumulatorMergeTest {
     @Test
-    public void accumulatorKeepsSubmitOverFormIdForSameClickField() {
+    public void accumulatorKeepsDistinctLoginIdAndSubmitFields() {
         PageAccumulator acc = new PageAccumulator();
         acc.add(new ProvenStep("TC", "FormAuthentication", "elementAction", "click",
                 "id", "login", "", "", "", true, "click_login"));
         acc.add(new ProvenStep("TC", "FormAuthentication", "elementAction", "click",
                 "cssSelector", "button[type='submit']", "", "", "", true, "click_login"));
         PageAccumulator.PageModel page = acc.pages().get("FormAuthentication");
-        Assert.assertEquals(page.fields().size(), 1);
-        Assert.assertEquals(page.fields().get(0).value(), "button[type='submit']");
+        Assert.assertEquals(page.fields().size(), 2, String.valueOf(page.fields()));
+        Assert.assertEquals(page.methods().size(), 2, String.valueOf(page.methods()));
+        Assert.assertTrue(page.fields().stream().anyMatch(f -> "login".equals(f.value())), String.valueOf(page.fields()));
+        Assert.assertTrue(page.fields().stream().anyMatch(f -> f.value().contains("submit")), String.valueOf(page.fields()));
     }
 
     @Test
-    public void accumulatorMergesDistinctBtnFieldNamesWhenSubmitBeatsFormId() {
+    public void accumulatorDoesNotTreatBareIdAsSameControlAsSubmit() {
         PageAccumulator acc = new PageAccumulator();
         acc.add(new ProvenStep("TC", "FormAuthentication", "elementAction", "click",
                 "id", "login", "", "", "", true, ""));
         acc.add(new ProvenStep("TC", "FormAuthentication", "elementAction", "click",
                 "cssSelector", "button[type='submit']", "", "", "", true, ""));
         PageAccumulator.PageModel page = acc.pages().get("FormAuthentication");
-        Assert.assertEquals(page.fields().size(), 1);
-        Assert.assertEquals(page.fields().get(0).value(), "button[type='submit']");
-        Assert.assertEquals(page.fields().get(0).name(), "login_Btn_Locator");
+        Assert.assertEquals(page.fields().size(), 2, String.valueOf(page.fields()));
+        Assert.assertTrue(page.methods().stream().anyMatch(m -> m.name().contains("Login")),
+                String.valueOf(page.methods()));
     }
 
     @Test

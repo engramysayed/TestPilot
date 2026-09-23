@@ -190,6 +190,7 @@ public class PublicJobApiController {
                 false,
                 JobRecord.JobKind.EXECUTE);
         job.setTenantId(project.getTenantId());
+        job.setAuthoringEngine(project.getAuthoringEngine());
         if (body != null && body.environmentRevisionId() != null) {
             job.setEnvironmentRevisionId(body.environmentRevisionId());
         }

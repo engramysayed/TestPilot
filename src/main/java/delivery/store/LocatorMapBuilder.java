@@ -61,7 +61,6 @@ public final class LocatorMapBuilder {
         o.put("action", s.action());
         o.put("strategy", s.locatorStrategy());
         o.put("value", s.locatorValue());
-        o.put("typed", s.value());
         o.put("rationale", s.rationale());
         return o;
     }
@@ -82,7 +81,6 @@ public final class LocatorMapBuilder {
             loc.put("action", s.action());
             loc.put("strategy", s.locatorStrategy());
             loc.put("locator", s.locatorValue());
-            loc.put("sampleValue", s.value());
             pageObj.put(key, loc);
         }
     }

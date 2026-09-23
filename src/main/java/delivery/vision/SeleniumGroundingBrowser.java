@@ -57,15 +57,18 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
               dataTest: el.getAttribute('data-testid') || el.getAttribute('data-test')
                   || el.getAttribute('data-qa') || '',
               ariaLabel: el.getAttribute('aria-label') || '',
-              role: (el.getAttribute('role') || '').toLowerCase(),
+              role: (el.getAttribute('role') || (el.tagName.toLowerCase() === 'input' && ['submit','button','reset','image'].includes(el.type) ? 'button' : '')).toLowerCase(),
               displayed: isDisplayed(el),
               enabled: isEnabled(el),
               outerFingerprint: fingerprint(el),
               visibleText: ((el.innerText || el.textContent || '') + '').trim().slice(0, 80)
+              , element: el,
+              dataTestAttribute: el.hasAttribute('data-testid') ? 'data-testid' : el.hasAttribute('data-test') ? 'data-test' : 'data-qa'
             };
             """;
 
     private final WebDriver driver;
+    private org.openqa.selenium.WebElement observed;
 
     public SeleniumGroundingBrowser(WebDriver driver) {
         this.driver = driver;
@@ -81,6 +84,7 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
             if (!(raw instanceof Map<?, ?> map)) {
                 return null;
             }
+            observed = map.get("element") instanceof org.openqa.selenium.WebElement el ? el : null;
             return new GroundedNode(
                     stringVal(map.get("tag")),
                     stringVal(map.get("id")),
@@ -91,7 +95,7 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
                     boolVal(map.get("displayed")),
                     boolVal(map.get("enabled")),
                     stringVal(map.get("outerFingerprint")),
-                    stringVal(map.get("visibleText")));
+                    stringVal(map.get("visibleText")), stringVal(map.get("dataTestAttribute")));
         } catch (WebDriverException e) {
             return null;
         }
@@ -111,6 +115,46 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
         } catch (WebDriverException e) {
             return new byte[0];
         }
+    }
+
+    @Override
+    public boolean matchesObservedNode(String strategy, String value) {
+        try {
+            org.openqa.selenium.By by = switch (strategy.toLowerCase()) {
+                case "id" -> org.openqa.selenium.By.id(value);
+                case "name" -> org.openqa.selenium.By.name(value);
+                case "xpath" -> org.openqa.selenium.By.xpath(value);
+                case "css", "cssselector" -> org.openqa.selenium.By.cssSelector(value);
+                case "data-test", "data-testid", "data-qa" -> org.openqa.selenium.By.xpath("//*[@" + strategy + "=" + delivery.authoring.XpathLiterals.quote(value) + "]");
+                default -> null;
+            };
+            if (by == null || observed == null) return false;
+            var matches = driver.findElements(by);
+            return matches.size() == 1 && matches.get(0).equals(observed) && observed.isDisplayed() && observed.isEnabled();
+        } catch (RuntimeException unavailable) { return false; }
+    }
+
+    @Override
+    public String observationVersion() {
+        if (!(driver instanceof JavascriptExecutor js)) return "";
+        try {
+            return String.valueOf(js.executeScript("""
+                if (!window.__keelGroundObserver) {
+                  window.__keelGroundVersion = 0;
+                  window.__keelGroundObserver = new MutationObserver(() => window.__keelGroundVersion++);
+                  window.__keelGroundObserver.observe(document.documentElement, {subtree:true,childList:true,attributes:true,characterData:true});
+                }
+                return location.href+'|'+innerWidth+'|'+innerHeight+'|'+scrollX+'|'+scrollY+'|'+window.__keelGroundVersion;
+                """));
+        } catch (RuntimeException unavailable) { return "unavailable"; }
+    }
+
+    @Override public Object saveScroll() {
+        return driver instanceof JavascriptExecutor js ? js.executeScript("return [scrollX,scrollY]") : null;
+    }
+    @Override public void restoreScroll(Object position) {
+        if (driver instanceof JavascriptExecutor js && position instanceof java.util.List<?> p && p.size() == 2)
+            js.executeScript("window.scrollTo(arguments[0],arguments[1])", p.get(0), p.get(1));
     }
 
     @Override

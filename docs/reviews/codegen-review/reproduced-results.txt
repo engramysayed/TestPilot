@@ -1,0 +1,12 @@
+CG01: REPRODUCED — second field edit reuses first value
+CG02: REPRODUCED — two valid distinct IDs emit 1 test class
+CG03: REPRODUCED — two different selected-option expectations collapse into first assertion
+CG04: REPRODUCED — different fields retained but second action method discarded
+CG05: REPRODUCED — unrelated promo button ID merges with submit selector; referenced method can disappear
+CG06: REPRODUCED — UTF-8 data read through Properties.load(InputStream) changes Arabic/accented values
+CG07: REPRODUCED — locator-free text assertion call emitted without its page/method
+CG08: REPRODUCED — different page keys sanitize to same output file; last page overwrites first
+CG09: REPRODUCED — real template click/type returned normally after dead-session errors; assertAll also passed
+CG10: REPRODUCED — real template notVisible passed for dead WebDriver session
+CG11: REPRODUCED — prior template execution log copied into customer ZIP
+CG12: REPRODUCED — leading spaces and carriage return do not round-trip through generated properties

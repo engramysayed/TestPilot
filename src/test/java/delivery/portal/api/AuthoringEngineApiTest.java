@@ -67,6 +67,13 @@ public class AuthoringEngineApiTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(Files.isRegularFile(requestPath), "request.json should exist");
         JSONObject body = new JSONObject(Files.readString(requestPath));
         Assert.assertEquals("precision", body.getString("authoringEngine"));
+        JobRecord admitted = store.getJob(jobId).orElseThrow();
+        var frozen = store.precisionConfigForJob(admitted);
+        Assert.assertNotNull(admitted.getPrecisionEnabledSnapshot());
+        patchProjectEngine(projectId, "keel");
+        Assert.assertEquals(store.precisionConfigForJob(admitted), frozen,
+                "editing project settings must not change an admitted job");
+        Assert.assertEquals(admitted.getAuthoringEngine().wireValue(), "precision");
     }
 
     @Test

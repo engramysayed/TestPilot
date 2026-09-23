@@ -26,9 +26,7 @@ public class FrameworkPackager {
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
                 Path relative = templateRoot.relativize(dir);
                 String rel = relative.toString().replace('\\', '/');
-                if (rel.equals(".git") || rel.startsWith(".git/")
-                        || rel.equals("templates") || rel.startsWith("templates/")
-                        || rel.equals("target") || rel.startsWith("target/")) {
+                if (shouldSkipDirectory(rel)) {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
                 Files.createDirectories(dest.resolve(relative));
@@ -39,16 +37,7 @@ public class FrameworkPackager {
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 Path relative = templateRoot.relativize(file);
                 String name = relative.toString().replace('\\', '/');
-                if (name.endsWith("webapp.properties") && !name.endsWith("webapp.properties.example")) {
-                    return FileVisitResult.CONTINUE;
-                }
-                // Sample LoginTest / demo pages confuse customers with generated target tests
-                if (name.endsWith("project/tests/LoginTest.java") || name.endsWith("LoginTest.java")) {
-                    return FileVisitResult.CONTINUE;
-                }
-                if (name.endsWith("project/pages/LoginPage.java") || name.endsWith("pages/LoginPage.java")
-                        || name.endsWith("project/pages/DashboardPage.java")
-                        || name.endsWith("pages/DashboardPage.java")) {
+                if (!shouldInclude(name)) {
                     return FileVisitResult.CONTINUE;
                 }
                 Files.copy(file, dest.resolve(relative), StandardCopyOption.REPLACE_EXISTING);
@@ -58,6 +47,8 @@ public class FrameworkPackager {
         Files.deleteIfExists(dest.resolve("src/test/java/project/tests/LoginTest.java"));
         Files.deleteIfExists(dest.resolve("src/main/java/project/pages/LoginPage.java"));
         Files.deleteIfExists(dest.resolve("src/main/java/project/pages/DashboardPage.java"));
+        Files.deleteIfExists(dest.resolve("src/test/java/project/validations/ValidationAssertAllTest.java"));
+        deleteQuietly(dest.resolve("src/test/java/project/validations/support"));
     }
 
     /**
@@ -172,21 +163,20 @@ public class FrameworkPackager {
              ZipOutputStream zos = new ZipOutputStream(fos)) {
             Files.walkFileTree(projectDir, new SimpleFileVisitor<>() {
                 @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                    String rel = projectDir.relativize(dir).toString().replace('\\', '/');
+                    if (shouldSkipDirectory(rel)) {
+                        return FileVisitResult.SKIP_SUBTREE;
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    String name = file.getFileName().toString();
-                    if ("webapp.properties".equals(name) && !file.toString().endsWith(".example")) {
-                        Path example = file.resolveSibling("webapp.properties.example");
-                        if (Files.exists(example)) {
-                            return FileVisitResult.CONTINUE;
-                        }
-                    }
-                    if ("delivery-target.local.properties".equals(name)) {
-                        return FileVisitResult.CONTINUE;
-                    }
-                    if ("LoginTest.java".equals(name)) {
-                        return FileVisitResult.CONTINUE;
-                    }
                     String entry = projectDir.relativize(file).toString().replace('\\', '/');
+                    if (!shouldInclude(entry)) {
+                        return FileVisitResult.CONTINUE;
+                    }
                     zos.putNextEntry(new ZipEntry(entry));
                     Files.copy(file, zos);
                     zos.closeEntry();
@@ -194,6 +184,103 @@ public class FrameworkPackager {
                 }
             });
         }
+    }
+
+    static boolean shouldInclude(String relativePath) {
+        String rel = normalizeRel(relativePath);
+        if (rel.isEmpty() || isExcludedPath(rel) || isExcludedFile(rel)) {
+            return false;
+        }
+        if (rel.equals("pom.xml") || rel.equals("README.md") || rel.equals(".gitignore")) {
+            return true;
+        }
+        return rel.startsWith("src/") || rel.startsWith("docs/") || rel.startsWith(".github/");
+    }
+
+    static boolean shouldSkipDirectory(String relativePath) {
+        String rel = normalizeRel(relativePath);
+        if (rel.isEmpty() || ".".equals(rel)) {
+            return false;
+        }
+        if (isExcludedPath(rel)) {
+            return true;
+        }
+        if (rel.equals("src/test/java/project/validations")
+                || rel.startsWith("src/test/java/project/validations/")) {
+            return true;
+        }
+        return !isAllowlistedPrefix(rel);
+    }
+
+    private static boolean isAllowlistedPrefix(String rel) {
+        return rel.equals("src") || rel.startsWith("src/")
+                || rel.equals("docs") || rel.startsWith("docs/")
+                || rel.equals(".github") || rel.startsWith(".github/");
+    }
+
+    private static boolean isExcludedPath(String rel) {
+        for (String part : rel.split("/")) {
+            if (part.equals(".git") || part.equals("templates") || part.equals("target")
+                    || part.equals("test-output") || part.equals("allure-results")
+                    || part.equals("allure-report") || part.equals(".idea")
+                    || part.equals("node_modules")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isExcludedFile(String rel) {
+        String name = rel.substring(rel.lastIndexOf('/') + 1);
+        if (name.endsWith(".class") || name.endsWith(".log")) {
+            return true;
+        }
+        if ("delivery-target.local.properties".equals(name)) {
+            return true;
+        }
+        if ("webapp.properties".equals(name) && !rel.endsWith(".example")) {
+            return true;
+        }
+        return "LoginTest.java".equals(name)
+                || "LoginPage.java".equals(name)
+                || "DashboardPage.java".equals(name)
+                || "ValidationAssertAllTest.java".equals(name)
+                || "FalseCustomerAssertionSample.java".equals(name)
+                || "PassingCustomerAssertionSample.java".equals(name)
+                || "QuitProbeDriverFactory.java".equals(name);
+    }
+
+    private static void deleteQuietly(Path path) throws IOException {
+        if (path == null || !Files.exists(path)) {
+            return;
+        }
+        Files.walkFileTree(path, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.deleteIfExists(file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                Files.deleteIfExists(dir);
+                return FileVisitResult.CONTINUE;
+            }
+        });
+    }
+
+    private static String normalizeRel(String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) {
+            return "";
+        }
+        String rel = relativePath.replace('\\', '/');
+        if (rel.startsWith("./")) {
+            rel = rel.substring(2);
+        }
+        if (rel.endsWith("/")) {
+            rel = rel.substring(0, rel.length() - 1);
+        }
+        return rel;
     }
 
     public boolean zipContainsPasswordFile(Path zipFile) throws IOException {

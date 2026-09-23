@@ -1,23 +1,29 @@
 # Support scope (first release engineering)
 
-This is the support contract **as implemented locally**. Product/privacy sign-off (P0-01) and deployed isolation/backup drills remain release blockers. Do not advertise those as guarantees.
+This is the support contract **as implemented locally**, scoped to **shared hosting**. Product/privacy sign-off (P0-01) and **shared staging** isolation/backup drills remain release blockers. Do not advertise those as guarantees.
 
-## Supported paths
+Dedicated installations and private runners are **implemented** and **out of first-release support**. Do not sell or staff them as launch features.
 
-- Invite-only portal accounts; MEMBER read-only; OWNER/ADMIN operate; OWNER-only project delete
+**Validation candidate:** `2721e6d` (unchanged). Public rollout: HOLD.
+
+## Supported paths (first release, once gates close)
+
+- Invite-only portal accounts on a **shared** install (`delivery.install.mode=shared`); MEMBER read-only; OWNER/ADMIN operate; OWNER-only project delete
 - Generate (stories / CSV / JSON) → project library with immutable revisions
-- Execute and Automate against a project base URL, with Keel or Precision authoring
+- Execute and Automate against a project **public** base URL, with Keel or Precision authoring (DOM/locator proof)
 - Bug Hunter packs (no auto-merge into the library)
 - Downloaded Selenium/TestNG ZIP replay of **fixture-proven** cases (P0-03)
-- Shared and dedicated **configuration** (same identity model)
+- Shared-mode configuration only (`private-cidrs` must stay empty)
 
-## Not yet a support guarantee
+## Not a first-release support guarantee
 
-- Customer isolation on a shared host (P2-01 / P2-02)
-- Kernel/worker network isolation on a **production** shared or dedicated host (P2-03). Isolated local Spring Boot drills bind install mode into worker policy; they are not that host.
+- Dedicated install / private CIDRs (code preserved; [dedicated-install.md](reviews/2026-09-15/dedicated-install.md))
+- Private runners (code preserved; [private-runner.md](ops/private-runner.md))
+- Live UI-TARS click-grounding or live vision role-split as product proof ([vision-live-smoke-rca.md](reviews/2026-09-15/vision-live-smoke-rca.md))
+- Kernel/worker network isolation on a **deployed shared staging** host (P2-03). Isolated local Spring Boot drills are not that host.
 - Named privacy policy covering screenshots and providers (P2-04 engineering exists locally; sign-off is unsigned)
-- Restored backups on a production host (P4-02)
-- Live LLM proof coverage (P0-03 certified fixture replay only)
+- Restored backups on **shared staging** storage (P4-02)
+- Live LLM proof coverage beyond the authorized representative-app acceptance once that app is named (P0-03 certified fixture replay only until then)
 
 ## Data flow (high level)
 
@@ -38,4 +44,4 @@ Retention: `delivery.retention.days` (default 14). Deletion tombstones then purg
 
 ## Recovery
 
-See [deployment](ops/deployment.md), [backup/restore](ops/backup-restore.md), and [runbooks](ops/runbooks.md).
+See [shared staging](ops/shared-staging.md), [deployment](ops/deployment.md), [backup/restore](ops/backup-restore.md), and [runbooks](ops/runbooks.md).

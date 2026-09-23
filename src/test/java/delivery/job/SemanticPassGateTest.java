@@ -38,6 +38,24 @@ public class SemanticPassGateTest {
     }
 
     @Test
+    public void acceptsExplicitCaptureCompareAndSignedOut() {
+        ProvenStep capture = new ProvenStep(
+                "TC1", "Order", "elementAction", "assert",
+                "id", "order-id", "orderId", "captureText", "exactText", true, "intent:CAPTURE");
+        ProvenStep compare = new ProvenStep(
+                "TC1", "Account", "elementAction", "assert",
+                "css", "#order-list li", "orderId", "capturedEquals", "exactText", true,
+                "intent:COMPARE_CAPTURED");
+        ProvenStep signedOut = new ProvenStep(
+                "TC1", "Account", "elementAction", "assert",
+                "id", "session-email", "", "signedOut", "empty", true, "intent:SIGNED_OUT");
+        Assert.assertNull(SemanticPassGate.rejectReason(
+                new ManualTestCase("TC1", "t", "", "1. Capture from id=order-id as orderId using exact text",
+                        "ok", "", ""),
+                List.of(capture, compare, signedOut), "https://shop.example"));
+    }
+
+    @Test
     public void rejectsSubmitThatClickedASelfPathHref() {
         ProvenStep selfNav = new ProvenStep(
                 "TC1", "Page", "elementAction", "click",

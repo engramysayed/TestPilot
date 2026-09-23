@@ -49,11 +49,15 @@
         </a>
         <a href="/runs" th:classappend="${navActive == 'runs'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
-            Runs
+            Runs &amp; evidence
+        </a>
+        <a href="/packages" th:classappend="${navActive == 'packages'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            Automation
         </a>
         <a href="/tc-guide" th:classappend="${navActive == 'tc-guide'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9l3 3v13H6V4z"/><path d="M14 4v4h4"/><path d="M8 12h8"/><path d="M8 16h6"/></svg>
-            Guide
+            TC guide
         </a>
 
         <p class="sidebar-label">Account</p>

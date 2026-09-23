@@ -216,9 +216,16 @@ public class PrivateRunnerLiveBrowserProcessTest extends AbstractTestNGSpringCon
         }
         JobRecord running = store.getJob(jobId).orElseThrow();
         Assert.assertEquals(running.getClaimStage(), "BROWSER", agentLog(log));
-        running.setLeaseUntil(java.time.Instant.now().minusSeconds(5));
-        store.syncJobPersistence(running);
-        Assert.assertTrue(store.reconcileExpiredLeases() >= 1);
+        // Serialize the artificial clock jump with any already-in-flight heartbeat request.
+        // Otherwise a late heartbeat can renew the test's expired lease before reconciliation.
+        synchronized (store) {
+            Assert.assertEquals(running.getStatus(), JobRecord.Status.RUNNING, agentLog(log));
+            running.setLeaseUntil(java.time.Instant.now().minusSeconds(5));
+            store.syncJobPersistence(running);
+            Assert.assertTrue(store.reconcileExpiredLeases() >= 1,
+                    "status=" + running.getStatus() + ", lease=" + running.getLeaseUntil()
+                            + ", error=" + running.getError() + "\n" + agentLog(log));
+        }
         JobRecord dead = store.getJob(jobId).orElseThrow();
         Assert.assertEquals(dead.getStatus(), JobRecord.Status.FAILED);
         Assert.assertEquals(dead.getError(), DurableJobClaim.INTERRUPTED_UNCERTAIN);

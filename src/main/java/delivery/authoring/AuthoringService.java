@@ -80,7 +80,7 @@ public class AuthoringService {
             List<FailedLocator> failedLocators
     ) throws Exception {
         List<DomCandidate> candidates = DomCandidateExtractor.extract(slimHtml);
-        if (intent != null && StepIntentBinder.spendsMustAvoidPriorFills(intent.kind())) {
+        if (intent != null && StepIntentBinder.spendsMustAvoidPriorFills(intent)) {
             candidates = StepIntentBinder.withoutSpentControls(candidates, spent, slimHtml);
         }
         candidates = StepIntentBinder.withoutFailedLocators(candidates, failedLocators);
@@ -279,9 +279,17 @@ public class AuthoringService {
             String candidateId,
             boolean relaxDistinctive
     ) {
+        if (intent != null && ExplicitAssertionOps.isExplicit(intent.text())) {
+            return List.of(ExplicitAssertionOps.bind(intent.text(), tcId));
+        }
         if (candidateId == null || candidateId.isBlank() || intent == null) {
             return List.of();
         }
+        DomCandidate selected = DomCandidateExtractor.findById(candidates, candidateId);
+        if (!StepIntentBinder.actionCompatible(intent, selected))
+            return List.of(rejectStep(tcId, "candidate does not support requested action"));
+        var locatorCheck = validator.validate(new LocatorCandidate(selected.strategy(), selected.value(), selected.tag(), selected.label()));
+        if (!locatorCheck.valid()) return List.of(rejectStep(tcId, locatorCheck.reason()));
         if (StepIntentBinder.wantsFormSubmit(intent.text())) {
             DomCandidate chosenEarly = DomCandidateExtractor.findById(candidates, candidateId);
             if (chosenEarly != null && StepIntentBinder.looksLikeNonSubmitNavigation(chosenEarly)) {
@@ -305,7 +313,7 @@ public class AuthoringService {
             }
         }
         StepIntentBinder.BindResult preferred =
-                StepIntentBinder.bindSingle(intent, tcId, candidates, List.of(candidateId));
+                StepIntentBinder.bindSingle(intent, tcId, List.of(selected), List.of(candidateId));
         if (preferred.ok() && !rejectsNamedActionMismatch(intent, preferred.steps(), candidates)) {
             return preferred.steps();
         }

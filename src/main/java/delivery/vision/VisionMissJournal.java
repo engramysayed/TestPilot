@@ -15,6 +15,27 @@ import java.time.Instant;
  */
 public final class VisionMissJournal {
 
+    private static final ThreadLocal<Path> DIRECTORY = new ThreadLocal<>();
+    private static final ThreadLocal<java.util.List<String>> SECRETS = new ThreadLocal<>();
+
+    public static Scope activate(Path evidence, String... secrets) {
+        Path previous = DIRECTORY.get();
+        java.util.List<String> previousSecrets = SECRETS.get();
+        if (evidence == null) DIRECTORY.remove();
+        else DIRECTORY.set(evidence.resolve("vision-diagnostics"));
+        SECRETS.set(java.util.Arrays.stream(secrets).filter(java.util.Objects::nonNull).toList());
+        return () -> {
+            if (previous == null) DIRECTORY.remove(); else DIRECTORY.set(previous);
+            if (previousSecrets == null) SECRETS.remove(); else SECRETS.set(previousSecrets);
+        };
+    }
+
+    public interface Scope extends AutoCloseable { @Override void close(); }
+
+    private static String scrub(String text) {
+        return delivery.privacy.SecretSanitizer.scrubPrompt(text, SECRETS.get());
+    }
+
     private VisionMissJournal() {
     }
 
@@ -26,13 +47,7 @@ public final class VisionMissJournal {
         return "true".equalsIgnoreCase(p.trim());
     }
 
-    public static Path logDir() {
-        String p = firstProp("delivery.vision.miss-log.dir");
-        if (p == null || p.isBlank()) {
-            p = "delivery-store/vision-misses";
-        }
-        return Path.of(p.trim());
-    }
+    public static Path logDir() { return DIRECTORY.get(); }
 
     public static void recordGrounding(
             String intentText,
@@ -42,11 +57,11 @@ public final class VisionMissJournal {
             String description,
             String elementFromPointSummary,
             String rawClip) {
-        if (!enabled()) {
+        if (!enabled() || logDir() == null) {
             return;
         }
         // Dataset is for failures only; heal already gets successes via VisionAttemptLog.
-        String o = outcome == null ? "" : outcome.trim().toLowerCase();
+        String o = scrub(outcome).trim().toLowerCase();
         if (o.equals("grounded") || o.equals("ground") || o.equals("hit")) {
             return;
         }
@@ -58,11 +73,11 @@ public final class VisionMissJournal {
             row.put("kind", "grounding");
             row.put("provider", VisionGroundingConfig.groundingProviderId());
             row.put("model", VisionGroundingConfig.groundingModel());
-            row.put("intent", intentText == null ? "" : intentText);
-            row.put("outcome", outcome == null ? "" : outcome);
+            row.put("intent", scrub(intentText));
+            row.put("outcome", scrub(outcome));
             row.put("confidence", confidence);
-            row.put("description", description == null ? "" : description);
-            row.put("elementFromPoint", elementFromPointSummary == null ? "" : elementFromPointSummary);
+            row.put("description", scrub(description));
+            row.put("elementFromPoint", scrub(elementFromPointSummary));
             if (bbox != null) {
                 row.put("bbox", new JSONObject()
                         .put("x", bbox.x())
@@ -70,10 +85,7 @@ public final class VisionMissJournal {
                         .put("width", bbox.width())
                         .put("height", bbox.height()));
             }
-            if (rawClip != null && !rawClip.isBlank()) {
-                String clip = rawClip.length() > 500 ? rawClip.substring(0, 500) : rawClip;
-                row.put("rawClip", clip);
-            }
+            // Raw provider responses are deliberately excluded from diagnostics.
             Path file = dir.resolve("grounding-" + dayStamp() + ".jsonl");
             Files.writeString(
                     file,
@@ -87,7 +99,7 @@ public final class VisionMissJournal {
     }
 
     public static void recordDomPostClick(String action, String targetHint, DomPostClickValidator.Result result) {
-        if (!enabled() || result == null) {
+        if (!enabled() || logDir() == null || result == null) {
             return;
         }
         // Only interesting outcomes — skip OK/SKIP noise.
@@ -101,10 +113,10 @@ public final class VisionMissJournal {
             JSONObject row = new JSONObject();
             row.put("ts", Instant.now().toString());
             row.put("kind", "dom-post-click");
-            row.put("action", action == null ? "" : action);
-            row.put("targetHint", targetHint == null ? "" : targetHint);
+            row.put("action", scrub(action));
+            row.put("targetHint", scrub(targetHint));
             row.put("status", result.status().name());
-            row.put("reason", result.reason() == null ? "" : result.reason());
+            row.put("reason", scrub(result.reason()));
             Path file = dir.resolve("dom-post-click-" + dayStamp() + ".jsonl");
             Files.writeString(
                     file,

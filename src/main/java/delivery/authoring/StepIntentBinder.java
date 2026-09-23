@@ -218,8 +218,26 @@ public final class StepIntentBinder {
 
     public static BindResult bindSingle(IntentLine intent, String tcId, List<DomCandidate> candidates,
                                         List<String> preferOnTie) {
+        BindResult result = bindSingleInternal(intent, tcId, candidates, preferOnTie);
+        if (!result.ok()) return result;
+        if (intent != null && ExplicitAssertionOps.isExplicit(intent.text())) {
+            return result;
+        }
+        for (ProvenStep step : result.steps()) {
+            var validation = new LocatorValidator().validate(new LocatorCandidate(
+                    step.locatorStrategy(), step.locatorValue(), "", ""));
+            if (!validation.valid()) return new BindResult(List.of(), validation.reason());
+        }
+        return result;
+    }
+
+    private static BindResult bindSingleInternal(IntentLine intent, String tcId, List<DomCandidate> candidates,
+                                        List<String> preferOnTie) {
         if (intent == null) {
             return new BindResult(List.of(), "Null intent");
+        }
+        if (ExplicitAssertionOps.isExplicit(intent.text())) {
+            return new BindResult(List.of(ExplicitAssertionOps.bind(intent.text(), tcId)), "");
         }
         if (intent.kind() == IntentKind.TYPE_USER
                 || intent.kind() == IntentKind.TYPE_PASS
@@ -279,7 +297,8 @@ public final class StepIntentBinder {
                     .orElse(null);
             if (submitBest != null) {
                 best = submitBest;
-            } else if (intent.kind() == IntentKind.CLICK) {
+            } else if (intent.kind() == IntentKind.CLICK
+                    && !namedSubmitTargetPresent(intent, candidates)) {
                 return new BindResult(List.of(),
                         "No form-submit control for intent " + intent.kind() + ": " + intent.text());
             }
@@ -313,6 +332,14 @@ public final class StepIntentBinder {
                 return new BindResult(List.of(),
                         "No action control matching distinctive tokens for intent "
                                 + intent.kind() + ": " + intent.text());
+            }
+            final DomCandidate matched = match;
+            List<DomCandidate> matches = candidates.stream()
+                    .filter(c -> candidateMatchesNamedAction(intent.text(), c, candidates)).toList();
+            if (matches.stream().anyMatch(c -> !locatorTwins(c, matched, candidates))) {
+                DomCandidate preferredMatch = matches.stream().filter(c -> tieBreak.contains(c.id())).findFirst().orElse(null);
+                if (preferredMatch == null) return new BindResult(List.of(), "AMBIGUOUS:" + intent.kind() + ":multiple named controls");
+                match = preferredMatch;
             }
             best = new Scored(match, Math.max(best.score, 50));
             namedActionResolved = true;
@@ -432,6 +459,9 @@ public final class StepIntentBinder {
     }
 
     static IntentKind classify(String lower) {
+        if (ExplicitAssertionOps.isExplicit(lower)) {
+            return IntentKind.ASSERT_VISIBLE;
+        }
         if ((lower.contains("username") || lower.contains("user name") || lower.contains("email"))
                 && (lower.contains("enter") || lower.contains("type") || lower.contains("fill"))
                 && (lower.contains("login") || lower.contains("sign in") || lower.contains("password")
@@ -702,6 +732,7 @@ public final class StepIntentBinder {
                 if (preferred == null || !DomCandidateExtractor.isBindableStrategy(preferred.strategy())) {
                     continue;
                 }
+                if (!actionCompatible(intent, preferred)) continue;
                 if (wantsFormSubmit(intent.text()) && looksLikeNonSubmitNavigation(preferred)) {
                     continue;
                 }
@@ -737,7 +768,7 @@ public final class StepIntentBinder {
                     : new String[]{"login-button", "submit", "sign-in", "signin", "sign_in", "login"};
             default -> new String[]{};
         };
-        DomCandidate best = findFieldByNeedles(candidates, needles, intent.text(),
+        DomCandidate best = findFieldByNeedles(candidates.stream().filter(c -> actionCompatible(intent, c)).toList(), needles, intent.text(),
                 intent.kind() == IntentKind.CLICK_LOGIN);
         if (best == null || (wantsFormSubmit(intent.text()) && looksLikeNonSubmitNavigation(best))) {
             return new BindResult(List.of(),
@@ -808,6 +839,20 @@ public final class StepIntentBinder {
         }
         return !(t.contains("log in") || t.contains("login") || t.contains("sign in")
                 || t.contains("signin"));
+    }
+
+    /**
+     * Excel named a specific submit control (not a generic "Click Submit"). Bind that
+     * control even when AccessibleName fell back to an id that does not contain "submit".
+     */
+    private static boolean namedSubmitTargetPresent(IntentLine intent, List<DomCandidate> candidates) {
+        if (intent == null || candidates == null || candidates.isEmpty()) {
+            return false;
+        }
+        if (!intentRequiresNamedActionControl(intent.text())) {
+            return false;
+        }
+        return candidates.stream().anyMatch(c -> candidateMatchesNamedAction(intent.text(), c, candidates));
     }
 
     /**
@@ -1080,8 +1125,9 @@ public final class StepIntentBinder {
      * control as ambiguous and send a perfectly bindable step into heal.
      */
     private static Scored firstDifferentControl(List<Scored> scored, Scored best) {
+        List<DomCandidate> corpus = scored.stream().map(s -> s.candidate).toList();
         for (Scored s : scored) {
-            if (s != best && !describesSameControl(s.candidate, best.candidate)) {
+            if (s != best && !locatorTwins(s.candidate, best.candidate, corpus)) {
                 return s;
             }
         }
@@ -1095,6 +1141,106 @@ public final class StepIntentBinder {
         return selectorFingerprint(a).equals(selectorFingerprint(b));
     }
 
+    /**
+     * True when two candidates name one control: same id fingerprint, or locator variants
+     * (css + xpath text) of a uniquely labeled widget. Distinct ids with the same visible
+     * name stay different so duplicate-label steps remain AMBIGUOUS.
+     */
+    static boolean locatorTwins(DomCandidate a, DomCandidate b, List<DomCandidate> corpus) {
+        if (describesSameControl(a, b)) {
+            return true;
+        }
+        if (a == null || b == null || corpus == null) {
+            return false;
+        }
+        String tag = normalizeTag(a);
+        if (tag.isEmpty() || !tag.equals(normalizeTag(b))) {
+            return false;
+        }
+        String label = normalizeLabel(a);
+        if (label.isEmpty() || !label.equals(normalizeLabel(b))) {
+            return false;
+        }
+        String idA = extractedId(a);
+        String idB = extractedId(b);
+        if (!idA.isEmpty() && !idB.isEmpty() && !idA.equalsIgnoreCase(idB)) {
+            return false;
+        }
+        return distinctControlsWithAccessibleName(corpus, tag, label) <= 1;
+    }
+
+    private static String normalizeTag(DomCandidate c) {
+        return c.tag() == null ? "" : c.tag().trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String normalizeLabel(DomCandidate c) {
+        if (c.label() == null) {
+            return "";
+        }
+        return c.label().trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    private static String extractedId(DomCandidate c) {
+        String strategy = c.strategy() == null ? "" : c.strategy().toLowerCase(Locale.ROOT);
+        String value = c.value() == null ? "" : c.value();
+        if ("id".equals(strategy) && !value.isBlank()) {
+            return value;
+        }
+        if (("css".equals(strategy) || "cssselector".equals(strategy))
+                && value.matches("#[a-zA-Z_][a-zA-Z0-9_-]*")) {
+            return value.substring(1);
+        }
+        Matcher idMatch = ATTR_ID.matcher(value);
+        if (idMatch.find()) {
+            String id = firstNonBlank(idMatch.group(1), idMatch.group(2), idMatch.group(3));
+            return id == null ? "" : id;
+        }
+        return "";
+    }
+
+    private static int distinctControlsWithAccessibleName(
+            List<DomCandidate> corpus, String tag, String label) {
+        Set<String> keys = new LinkedHashSet<>();
+        for (DomCandidate c : corpus) {
+            if (!tag.equals(normalizeTag(c)) || !label.equals(normalizeLabel(c))) {
+                continue;
+            }
+            String id = extractedId(c);
+            if (!id.isEmpty()) {
+                keys.add("id:" + id.toLowerCase(Locale.ROOT));
+                continue;
+            }
+            String strategy = c.strategy() == null ? "" : c.strategy().toLowerCase(Locale.ROOT);
+            if ("css".equals(strategy) || "cssselector".equals(strategy)) {
+                keys.add("css:" + selectorFingerprint(c));
+                continue;
+            }
+            if (isOrdinalXpath(c)) {
+                keys.add("ord:" + selectorFingerprint(c));
+            }
+        }
+        if (!keys.isEmpty()) {
+            return keys.size();
+        }
+        for (DomCandidate c : corpus) {
+            if (tag.equals(normalizeTag(c)) && label.equals(normalizeLabel(c))) {
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    private static boolean isOrdinalXpath(DomCandidate c) {
+        if (c == null || c.strategy() == null || c.value() == null) {
+            return false;
+        }
+        if (!"xpath".equalsIgnoreCase(c.strategy().trim())) {
+            return false;
+        }
+        String value = c.value().trim();
+        return value.startsWith("(") && value.matches("(?s)\\(.+\\)\\[\\d+\\]");
+    }
+
     private static final Pattern ATTR_ID = Pattern.compile(
             "(?:\\[#?id\\s*=\\s*['\"]([^'\"]+)['\"]\\]|\\[@id\\s*=\\s*['\"]([^'\"]+)['\"]\\]"
                     + "|\\[id=['\"]([^'\"]+)['\"]\\])",
@@ -1105,16 +1251,20 @@ public final class StepIntentBinder {
         String strategy = c.strategy() == null ? "" : c.strategy().toLowerCase(Locale.ROOT);
         String value = c.value() == null ? "" : c.value();
         if ("id".equals(strategy) && !value.isBlank()) {
-            return tag + "|id:" + value.toLowerCase(Locale.ROOT);
+            return tag + "|id:" + value;
+        }
+        if (("css".equals(strategy) || "cssselector".equals(strategy))
+                && value.matches("#[a-zA-Z_][a-zA-Z0-9_-]*")) {
+            return tag + "|id:" + value.substring(1);
         }
         Matcher idMatch = ATTR_ID.matcher(value);
         if (idMatch.find()) {
             String id = firstNonBlank(idMatch.group(1), idMatch.group(2), idMatch.group(3));
             if (id != null && !id.isBlank()) {
-                return tag + "|id:" + id.toLowerCase(Locale.ROOT);
+                return tag + "|id:" + id;
             }
         }
-        String normalized = value.toLowerCase(Locale.ROOT)
+        String normalized = value
                 .replace("//", "")
                 .replace("@", "")
                 .replace(" and ", " ")
@@ -1149,6 +1299,20 @@ public final class StepIntentBinder {
         String hay = (c.value() + " " + c.label()).toLowerCase(Locale.ROOT);
         return hay.contains("input") || hay.contains("select") || hay.contains("textarea")
                 || hay.contains("checkbox") || hay.contains("radio") || hay.contains("dropdown");
+    }
+
+    public static boolean actionCompatible(IntentLine intent, DomCandidate c) {
+        if (intent == null || c == null) return false;
+        String tag = c.tag() == null ? "" : c.tag().toLowerCase(Locale.ROOT);
+        if (intent.kind() == IntentKind.CLICK_LOGIN || (intent.kind() == IntentKind.CLICK
+                && (wantsButtonControl(intent.text()) || wantsFormSubmit(intent.text())))) {
+            return ("button".equals(tag) || "a".equals(tag) || "link".equals(tag))
+                    && !looksLikeNonSubmitNavigation(c);
+        }
+        if (intent.kind() == IntentKind.TYPE_USER || intent.kind() == IntentKind.TYPE_PASS)
+            return "input".equals(tag) || "textbox".equals(tag);
+        if (intent.kind() == IntentKind.TYPE_FIELD) return isFormControl(c);
+        return true;
     }
 
     static boolean isLeaveOrKeepEmptyStep(String stepText) {
@@ -1403,6 +1567,13 @@ public final class StepIntentBinder {
         }
         String slug = field.trim().replaceAll("\\s+", "_");
         return base + ":field=" + slug;
+    }
+
+    public static boolean spendsMustAvoidPriorFills(IntentLine intent) {
+        if (intent == null) return false;
+        String text = intent.text() == null ? "" : intent.text().toLowerCase(Locale.ROOT);
+        if (text.matches(".*\\b(change|replace|correct|retype|reenter|clear|again)\\b.*")) return false;
+        return spendsMustAvoidPriorFills(intent.kind());
     }
 
     public static boolean spendsMustAvoidPriorFills(IntentKind kind) {
@@ -1847,7 +2018,17 @@ public final class StepIntentBinder {
                 return true;
             }
         }
-        return false;
+        // AccessibleName often falls back to the id for <button>Submit …</button>, so the
+        // verb lives in the contents, not the candidate hay. The tag still names the control.
+        return buttonImpliesSubmitVerb(candidate, verbs);
+    }
+
+    private static boolean buttonImpliesSubmitVerb(DomCandidate candidate, List<String> verbs) {
+        if (candidate == null || verbs == null || verbs.stream().noneMatch("submit"::equals)) {
+            return false;
+        }
+        String tag = candidate.tag() == null ? "" : candidate.tag().toLowerCase(Locale.ROOT);
+        return "button".equals(tag);
     }
 
     /**

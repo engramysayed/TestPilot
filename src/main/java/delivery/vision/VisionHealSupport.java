@@ -27,6 +27,7 @@ public final class VisionHealSupport {
             return Optional.empty();
         }
         ViewportMetrics metrics = sweep.get().metrics();
+        if (!sweep.get().observationVersion().equals(browser.observationVersion())) return Optional.empty();
         List<DomCandidate> mutable = new ArrayList<>(candidates);
         VisualCandidate visual = sweep.get().candidate();
         Optional<GroundingHit> hit = ElementGrounder.groundToHit(
@@ -37,6 +38,7 @@ public final class VisionHealSupport {
                 metrics.screenshotHeight(),
                 metrics.innerWidth(),
                 metrics.innerHeight());
+        if (!sweep.get().observationVersion().equals(browser.observationVersion())) return Optional.empty();
         Optional<GroundingHit> accepted = VisionFailedLocatorFilter.acceptHit(hit.orElse(null), failed);
         if (accepted.isPresent()) {
             VisionAttemptLog.record(VisionAttempt.of(

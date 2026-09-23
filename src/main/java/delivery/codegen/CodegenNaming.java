@@ -57,7 +57,14 @@ public final class CodegenNaming {
     }
 
     public static String tcIdToClassName(String tcId) {
-        String cleaned = tcId == null ? "" : tcId.replaceAll("[^A-Za-z0-9]", "_");
+        if (tcId == null || tcId.isBlank()) {
+            return "Tc";
+        }
+        String trimmed = tcId.trim();
+        if (isValidJavaIdentifier(trimmed) && Character.isJavaIdentifierStart(trimmed.charAt(0))) {
+            return trimmed;
+        }
+        String cleaned = trimmed.replaceAll("[^A-Za-z0-9]", "_");
         if (cleaned.isEmpty()) {
             return "Tc";
         }
@@ -174,12 +181,20 @@ public final class CodegenNaming {
         String type = step.assertionType() == null ? "visible" : step.assertionType().trim();
         String name;
         if ("urlContains".equalsIgnoreCase(type)) {
-            String exp = step.assertionExpected() == null ? "Url" : step.assertionExpected();
-            name = "assert_Url_Contains_" + toPascalSnake(exp);
+            name = "assert_Url_Contains";
+        } else if ("captureText".equalsIgnoreCase(type)) {
+            name = "assert_" + toPascalSnake(semanticToken(step)) + "_Capture";
+        } else if ("capturedEquals".equalsIgnoreCase(type)) {
+            name = "assert_" + toPascalSnake(semanticToken(step)) + "_Equals_Captured";
+        } else if ("signedOut".equalsIgnoreCase(type)) {
+            name = "assert_" + toPascalSnake(semanticToken(step)) + "_Signed_Out";
+        } else if ("textContains".equalsIgnoreCase(type) && isBodyTextToken(step)) {
+            name = "assert_Body_Text_Contains";
         } else {
             String token = toPascalSnake(semanticToken(step));
-            if ("textContains".equalsIgnoreCase(type) || "visible".equalsIgnoreCase(type)
-                    || "notVisible".equalsIgnoreCase(type)) {
+            if ("textContains".equalsIgnoreCase(type)) {
+                name = "assert_" + token + "_Text_Contains";
+            } else if ("visible".equalsIgnoreCase(type) || "notVisible".equalsIgnoreCase(type)) {
                 String verb = "notVisible".equalsIgnoreCase(type) ? "Is_Not_Visible" : "Is_Visible";
                 name = "assert_" + token + "_" + verb;
             } else if ("checked".equalsIgnoreCase(type) || "selected".equalsIgnoreCase(type)) {
@@ -194,12 +209,32 @@ public final class CodegenNaming {
         return sanitizeJavaIdentifier(name, "assert_Element_Is_Visible");
     }
 
+    private static boolean isBodyTextToken(ProvenStep step) {
+        String loc = step.locatorValue() == null ? "" : step.locatorValue().trim();
+        if (loc.isBlank()) {
+            return true;
+        }
+        String strat = step.locatorStrategy() == null ? "" : step.locatorStrategy().toLowerCase(Locale.ROOT);
+        String lower = loc.toLowerCase(Locale.ROOT);
+        return lower.contains("//body") || lower.contains("normalize-space(.)")
+                || ("xpath".equals(strat) && loc.length() > 120);
+    }
+
     static String semanticToken(ProvenStep step) {
         if (step == null) {
             return "Element";
         }
         String assertType = step.assertionType() == null ? "" : step.assertionType();
         String expected = step.assertionExpected() == null ? "" : step.assertionExpected().trim();
+        if ("captureText".equalsIgnoreCase(assertType) || "capturedEquals".equalsIgnoreCase(assertType)) {
+            String slot = step.value() == null ? "" : step.value().trim();
+            if (!slot.isBlank()) {
+                String fromSlot = acceptToken(slot);
+                if (fromSlot != null) {
+                    return fromSlot;
+                }
+            }
+        }
         if (("textContains".equalsIgnoreCase(assertType) || "visible".equalsIgnoreCase(assertType)
                 || "notVisible".equalsIgnoreCase(assertType))
                 && !expected.isBlank()
@@ -466,5 +501,19 @@ public final class CodegenNaming {
             return fallback;
         }
         return cleaned;
+    }
+
+    /** First unused {@code base}, then {@code base_2}, {@code base_3}, ... */
+    public static String allocateUnique(java.util.Set<String> used, String base) {
+        String candidate = base == null || base.isBlank() ? "Item" : base;
+        if (used.add(candidate)) {
+            return candidate;
+        }
+        int n = 2;
+        String next;
+        do {
+            next = candidate + "_" + n++;
+        } while (!used.add(next));
+        return next;
     }
 }

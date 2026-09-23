@@ -50,7 +50,8 @@
                     <td class="mono" th:text="${j.progressCurrent} + '/' + ${j.progressTotal}">0/0</td>
                     <td class="clip" th:text="${j.message}" th:title="${j.message}">—</td>
                     <td class="actions">
-                        <a th:href="@{/status(jobId=${j.jobId})}">Status</a>
+                        <a th:href="${j['statusUrl']}">Status</a>
+                        <a th:if="${j['resultsUrl'] != null}" th:href="${j['resultsUrl']}">Results</a>
                         <a th:if="${j.status == 'COMPLETED' or j.status == 'COMPLETED_WITH_BLOCK' or (j.jobKind == 'HUNT' and j.status == 'FAILED')}" class="button"
                            th:href="@{/api/jobs/{id}/download(id=${j.jobId})}">Download</a>
                     </td>

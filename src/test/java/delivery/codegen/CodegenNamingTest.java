@@ -89,9 +89,11 @@ public class CodegenNamingTest {
     }
 
     @Test
-    public void testClassNameIdOnly() {
+    public void validTcIdsArePreservedExactly() {
         Assert.assertEquals(CodegenNaming.testClassName("TC_01", true), "TC_01");
         Assert.assertEquals(CodegenNaming.testClassName("TC_06", false), "TC_06Todo");
+        Assert.assertEquals(CodegenNaming.tcIdToClassName("TC_A_B"), "TC_A_B");
+        Assert.assertEquals(CodegenNaming.tcIdToClassName("TC_A__B"), "TC_A__B");
     }
 
     @Test

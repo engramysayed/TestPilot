@@ -18,6 +18,7 @@ public class ${className} extends BaseTest {
 
     @BeforeMethod
     public void setUp() {
+        Validation.clearCapturedPhrases();
         PropertyReader.loadProperties();
         driver = new WebDriverFactory();
         String base = PropertyReader.getProperty("BASE_WEB");
@@ -30,7 +31,7 @@ public class ${className} extends BaseTest {
 <#if needsLoginBeforeMethod!false>
 <#list loginChronCalls as call>
 <#if call.propKey?has_content>
-        ${call.pageVar}.${call.method}(nullToEmpty(PropertyReader.getProperty("${call.propKey?j_string}")));
+        ${call.pageVar}.${call.method}(requiredProperty("${call.propKey?j_string}"));
 <#elseif call.needsValue>
         ${call.pageVar}.${call.method}("${call.value?j_string}");
 <#else>
@@ -40,7 +41,7 @@ public class ${className} extends BaseTest {
 </#if>
 <#list setupChronCalls as call>
 <#if call.propKey?has_content>
-        ${call.pageVar}.${call.method}(nullToEmpty(PropertyReader.getProperty("${call.propKey?j_string}")));
+        ${call.pageVar}.${call.method}(requiredProperty("${call.propKey?j_string}"));
 <#elseif call.needsValue>
         ${call.pageVar}.${call.method}("${call.value?j_string}");
 <#else>
@@ -55,6 +56,7 @@ public class ${className} extends BaseTest {
         try {
             Validation.assertAll();
         } finally {
+            Validation.clearCapturedPhrases();
             if (driver != null) {
                 driver.quit();
             }
@@ -68,7 +70,7 @@ public class ${className} extends BaseTest {
 </#list>
 <#list chronCalls as call>
 <#if call.propKey?has_content>
-        ${call.pageVar}.${call.method}(nullToEmpty(PropertyReader.getProperty("${call.propKey?j_string}")));
+        ${call.pageVar}.${call.method}(requiredProperty("${call.propKey?j_string}"));
 <#elseif call.needsValue>
         ${call.pageVar}.${call.method}("${call.value?j_string}");
 <#else>
@@ -84,7 +86,11 @@ public class ${className} extends BaseTest {
         org.testng.Assert.fail("TODO ${tcId?j_string}: ${reason?j_string}");
     }
 
-    private static String nullToEmpty(String v) {
-        return v == null ? "" : v;
+    private static String requiredProperty(String key) {
+        String v = PropertyReader.getProperty(key);
+        if (v == null) {
+            throw new IllegalStateException("Missing required test data key: " + key);
+        }
+        return v;
     }
 }

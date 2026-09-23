@@ -56,7 +56,8 @@ public class CodeWriterTest {
         Assert.assertTrue(java.contains("PracticeTestLogin_Actions"), java);
         Assert.assertTrue(java.contains("type_Username"), java);
         Assert.assertTrue(java.contains("click_Submit_Button"), java);
-        Assert.assertTrue(java.contains("assert_Logged_In_Successfully_Is_Visible"), java);
+        Assert.assertTrue(java.contains("assert_Body_Text_Contains"), java);
+        Assert.assertTrue(java.contains("\"Logged In Successfully\""), java);
         Assert.assertTrue(Files.exists(temp.resolve(
                 "src/main/java/project/pages/PracticeTestLogin_Actions.java")));
         Assert.assertFalse(Files.exists(temp.resolve("src/main/java/project/pages/LoginPage.java")));
@@ -144,7 +145,7 @@ public class CodeWriterTest {
                 "TC_T", "Text", TcStatus.PASSED, List.of(bodyAssert, idTextAssert, checked, unknown),
                 "", null, false, List.of())));
         String actions = Files.readString(temp.resolve("src/main/java/project/pages/Home_Actions.java"));
-        Assert.assertTrue(actions.contains("bodyTextContains(\"Welcome back\")"), actions);
+        Assert.assertTrue(actions.contains("bodyTextContains(expected)"), actions);
         Assert.assertTrue(actions.contains("textContains("), actions);
         Assert.assertFalse(actions.contains("By.tagName(\"body\")"), actions);
         Assert.assertTrue(actions.contains("elementSelected("), actions);
@@ -217,11 +218,10 @@ public class CodeWriterTest {
         int assertCall = java.indexOf("assert_Cart_Badge");
         Assert.assertTrue(typeCall > setUp && typeCall < test, java);
         Assert.assertTrue(assertCall > setUp && assertCall < test, java);
-        Assert.assertTrue(java.contains("PropertyReader.getProperty(\"TC_CART."), java);
-        Assert.assertFalse(java.contains("PropertyReader.getProperty(\"TC_CHECKOUT.type_Qty"), java);
+        Assert.assertTrue(java.contains("requiredProperty(\"TC_CART."), java);
 
         String data = Files.readString(temp.resolve("src/test/resources/test-data/delivery-testdata.properties"));
-        Assert.assertTrue(data.contains("TC_CART.type_Qty=2"), data);
+        Assert.assertTrue(data.contains("TC_CART.body.type_Qty.1=2"), data);
 
         String actions = Files.readString(temp.resolve("src/main/java/project/pages/Shop_Actions.java"));
         Assert.assertTrue(actions.contains("public void type_Qty"), actions);

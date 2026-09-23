@@ -64,6 +64,30 @@ public class RequiredControlFillerLeaveEmptyTest {
     }
 
     @Test
+    public void submitBlankAddressClick_doesNotAutofillCheckoutFields() {
+        String html = """
+                <body>
+                <form>
+                  <label>Address <input id="address" name="address" type="text"/></label>
+                  <label>City <input id="city" name="city" type="text"/></label>
+                  <label>Zip <input id="zip" name="zip" type="text"/></label>
+                  <button id="place-order" type="submit">Place order</button>
+                </form>
+                <p><button id="blank-address" type="button">Submit blank address</button></p>
+                </body>
+                """;
+        Assert.assertFalse(RequiredControlFiller.looksLikeSubmit("Click Submit blank address"));
+        List<ProvenStep> fills = RequiredControlFiller.planFillsBeforeClick(
+                html, "TC_CHK_01", "Click Submit blank address", List.of());
+        Assert.assertTrue(fills.isEmpty(),
+                "blank-address submit must not invent checkout fields: " + fills);
+        Assert.assertFalse(
+                RequiredControlFiller.planFillsBeforeClick(html, "TC_CHK_02", "Click Place order")
+                        .isEmpty(),
+                "generic Place order should still auto-fill");
+    }
+
+    @Test
     public void submitClick_withoutLeaveEmpty_stillFillsEmail() {
         List<StepIntentBinder.IntentLine> intents = List.of(
                 new StepIntentBinder.IntentLine(

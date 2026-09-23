@@ -16,6 +16,7 @@ import delivery.portal.model.ProjectRecord;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.CompareJobFiles;
 import delivery.portal.service.GeneratedWorkbookService;
+import delivery.portal.service.JobLinkEnricher;
 import delivery.portal.service.PortalStore;
 import delivery.portal.service.ProjectCredentialService;
 import delivery.portal.worker.ConversionWorker;
@@ -51,16 +52,18 @@ public class JobController {
     private final ProjectCredentialService credentials;
     private final GeneratedWorkbookService workbooks;
     private final DeliveryPortalProperties portalProperties;
+    private final JobLinkEnricher jobLinks;
 
     public JobController(PortalStore store, ConversionWorker worker, CurrentUserService currentUser,
                          ProjectCredentialService credentials, GeneratedWorkbookService workbooks,
-                         DeliveryPortalProperties portalProperties) {
+                         DeliveryPortalProperties portalProperties, JobLinkEnricher jobLinks) {
         this.store = store;
         this.worker = worker;
         this.currentUser = currentUser;
         this.credentials = credentials;
         this.workbooks = workbooks;
         this.portalProperties = portalProperties;
+        this.jobLinks = jobLinks;
     }
 
     @PostMapping("/projects/{projectId}/jobs")
@@ -227,6 +230,10 @@ public class JobController {
                             .orElse(e.getParentJobId() == null ? "" : e.getParentJobId()));
                     m.put("libraryRevisionId", live.map(JobRecord::getLibraryRevisionId)
                             .orElse(e.getLibraryRevisionId() == null ? "" : e.getLibraryRevisionId()));
+                    jobLinks.enrich(m, e.getJobId(),
+                            JobRecord.parseJobKind(e.getJobKind() == null
+                                    ? JobRecord.JobKind.CONVERT.name() : e.getJobKind()),
+                            status);
                     return m;
                 })
                 .collect(Collectors.toList());
@@ -273,6 +280,7 @@ public class JobController {
                     } catch (Exception ignored) {
                         body.putIfAbsent("failureClassUserCorrected", Boolean.FALSE);
                     }
+                    jobLinks.enrich(body, job.getJobId(), job.getJobKind(), job.getStatus().name());
                     return ResponseEntity.ok(body);
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)

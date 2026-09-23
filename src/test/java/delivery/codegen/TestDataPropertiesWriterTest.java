@@ -51,10 +51,10 @@ public class TestDataPropertiesWriterTest {
         TestDataPropertiesWriter.write(dir, List.of(outcome));
         Path props = dir.resolve("src/test/resources/test-data/delivery-testdata.properties");
         String propText = Files.readString(props);
-        Assert.assertTrue(propText.contains("TC_FB_REG_02.type_First_Name=A"), propText);
-        Assert.assertTrue(propText.contains("TC_FB_REG_02.type_Surname=B"), propText);
-        Assert.assertTrue(propText.contains("TC_FB_REG_02.select_Select_Day=15"), propText);
-        Assert.assertTrue(propText.contains("TC_FB_REG_02.select_Select_Month=Jan"), propText);
+        Assert.assertTrue(propText.contains("TC_FB_REG_02.body.type_First_Name.1=A"), propText);
+        Assert.assertTrue(propText.contains("TC_FB_REG_02.body.type_Surname.1=B"), propText);
+        Assert.assertTrue(propText.contains("TC_FB_REG_02.body.select_Select_Day.1=15"), propText);
+        Assert.assertTrue(propText.contains("TC_FB_REG_02.body.select_Select_Month.1=Jan"), propText);
         long keyCount = propText.lines().filter(l -> l.startsWith("TC_FB_REG_02.")).count();
         Assert.assertEquals(keyCount, 4L, propText);
     }

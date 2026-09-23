@@ -25,7 +25,7 @@ public class CodegenSmellCheckTest {
         acc.add(type("First name", "A"));
         PageAccumulator.PageModel page = acc.pages().get("Reg");
         page.assertions().add(new PageAccumulator.AssertionModel(
-                "assert_Assert_Is_Visible", "field_Lbl_Locator", "visible", ""));
+                "assert_Assert_Is_Visible", "field_Lbl_Locator", "visible", "", false));
 
         IllegalStateException ex = Assert.expectThrows(IllegalStateException.class, () -> CodegenSmellCheck.verify(acc.pages()));
         Assert.assertTrue(ex.getMessage().contains("assert_Assert_Is_Visible"), ex.getMessage());

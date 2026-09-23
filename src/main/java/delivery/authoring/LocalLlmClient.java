@@ -110,7 +110,7 @@ public class LocalLlmClient {
         String bodyJson = buildChatRequestBody(model, system, user, forceJson, numPredict, pngs);
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/chat"))
-                .timeout(requestTimeout)
+                .timeout(LlmCallDeadline.limit(requestTimeout))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(bodyJson, StandardCharsets.UTF_8))
                 .build();

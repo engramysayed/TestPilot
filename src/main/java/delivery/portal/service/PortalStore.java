@@ -104,6 +104,15 @@ public class PortalStore {
         return new PrecisionJobConfig(enabled, max);
     }
 
+    public PrecisionJobConfig precisionConfigForJob(JobRecord job) {
+        boolean enabled = job.getPrecisionEnabledSnapshot() != null
+                ? job.getPrecisionEnabledSnapshot()
+                : portalProperties.isPrecisionAuthoringEnabled()
+                  && job.getAuthoringEngine() == AuthoringEngine.PRECISION;
+        return new PrecisionJobConfig(enabled, job.getPrecisionMaxSnapshot() > 0
+                ? job.getPrecisionMaxSnapshot() : portalProperties.getPrecisionMaxCallsPerJob());
+    }
+
     public ProjectStore filesystemStore() {
         return projectStore;
     }
@@ -526,6 +535,8 @@ public class PortalStore {
         entity.setEnvironmentRevisionId(job.getEnvironmentRevisionId());
         entity.setParentJobId(job.getParentJobId());
         entity.setPrecisionMaxSnapshot(job.getPrecisionMaxSnapshot());
+        entity.setPrecisionEnabledSnapshot(job.getPrecisionEnabledSnapshot());
+        entity.setAuthoringEngineSnapshot(job.getAuthoringEngine().wireValue());
         entity.setRequirePrivateRunner(job.isRequirePrivateRunner());
         if (JobRecord.isTerminal(job.getStatus())
                 && (job.getProvidersUsed() == null || job.getProvidersUsed().isBlank())) {
@@ -887,6 +898,7 @@ public class PortalStore {
         job.setEnvironmentRevisionId(e.getEnvironmentRevisionId());
         job.setParentJobId(e.getParentJobId());
         job.setPrecisionMaxSnapshot(e.getPrecisionMaxSnapshot());
+        job.setPrecisionEnabledSnapshot(e.getPrecisionEnabledSnapshot());
         job.setRequirePrivateRunner(e.isRequirePrivateRunner());
         job.setProvidersUsed(e.getProvidersUsed());
         job.setFallbackUsed(e.isFallbackUsed());
@@ -899,7 +911,9 @@ public class PortalStore {
         }
         job.setCreatedAt(e.getCreatedAt());
         job.setCompletedAt(e.getCompletedAt());
-        job.setAuthoringEngine(delivery.job.AuthoringJobRequestFiles.read(
+        job.setAuthoringEngine(e.getAuthoringEngineSnapshot() != null
+                ? AuthoringEngine.parse(e.getAuthoringEngineSnapshot())
+                : delivery.job.AuthoringJobRequestFiles.read(
                 delivery.job.AuthoringJobRequestFiles.requestPath(
                         projectDiskRoot(e.getProjectId()), parseJobKind(e.getJobKind()), e.getJobId())));
         jobs.put(job.getJobId(), job);
@@ -942,6 +956,10 @@ public class PortalStore {
     }
 
     private void freezeQueuedInputs(JobRecord job) {
+        if (job.getPrecisionEnabledSnapshot() == null) {
+            job.setPrecisionEnabledSnapshot(portalProperties.isPrecisionAuthoringEnabled()
+                    && job.getAuthoringEngine() == AuthoringEngine.PRECISION);
+        }
         if (job.getPrecisionMaxSnapshot() <= 0) {
             job.setPrecisionMaxSnapshot(precisionConfigForProject(job.getProjectId()).maxCallsPerJob());
         }

@@ -59,9 +59,11 @@ public class ElementsHandler {
             findElement(locator).click();
             LogsManager.info("Clicked element: " + locator);
             waitHandler.waitForPageReady();
-
+        } catch (ReplayActionException e) {
+            throw e;
         } catch (Exception e) {
             LogsManager.error("Failed to click  element: " + locator);
+            throw new ReplayActionException("Failed to click element: " + locator, e);
         }
     }
 
@@ -71,9 +73,12 @@ public class ElementsHandler {
             waitHandler.waitForElementToBeVisible(locator);
             findElement(locator).clear();
             findElement(locator).sendKeys(text);
-            LogsManager.info("Text typed successfully into element: " + locator + " with text: " + text);
+            LogsManager.info("Text typed successfully into element: " + locator);
+        } catch (ReplayActionException e) {
+            throw e;
         } catch (Exception e) {
             LogsManager.error("Failed to type into element: " + locator);
+            throw new ReplayActionException("Failed to type into element: " + locator, e);
         }
     }
 

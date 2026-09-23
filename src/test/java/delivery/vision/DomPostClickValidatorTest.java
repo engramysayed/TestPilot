@@ -4,6 +4,11 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class DomPostClickValidatorTest {
+    @Test
+    public void bodyChangesAfterFirstFourHundredCharactersRemainVisible() {
+        Assert.assertNotEquals(DomPostClickValidator.fingerprint("Header ".repeat(100) + "Before"),
+                DomPostClickValidator.fingerprint("Header ".repeat(100) + "After"));
+    }
 
     @Test
     public void urlChangeIsOk() {

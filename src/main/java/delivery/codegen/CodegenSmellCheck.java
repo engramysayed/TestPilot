@@ -33,53 +33,49 @@ public final class CodegenSmellCheck {
 
     private static void checkPage(String pageName, PageAccumulator.PageModel page, List<String> smells) {
         if (!CodegenNaming.isValidJavaIdentifier(page.stem())) {
-            smells.add(formatSmell(pageName, "illegal page stem", page.stem()));
+            smells.add(formatSmell(pageName, page, "illegal page stem", page.stem()));
         }
         if (!CodegenNaming.isValidJavaIdentifier(page.actionsClassName())) {
-            smells.add(formatSmell(pageName, "illegal actions class", page.actionsClassName()));
+            smells.add(formatSmell(pageName, page, "illegal actions class", page.actionsClassName()));
         }
         if (!CodegenNaming.isValidJavaIdentifier(page.locatorsClassName())) {
-            smells.add(formatSmell(pageName, "illegal locators class", page.locatorsClassName()));
+            smells.add(formatSmell(pageName, page, "illegal locators class", page.locatorsClassName()));
         }
         String varName = CodegenNaming.safeLocalVarName(page.actionsClassName());
         if (!CodegenNaming.isValidJavaIdentifier(varName)) {
-            smells.add(formatSmell(pageName, "illegal page var", varName));
+            smells.add(formatSmell(pageName, page, "illegal page var", varName));
         }
         for (PageAccumulator.FieldModel field : page.fields()) {
             if (!CodegenNaming.isValidJavaIdentifier(field.name())) {
-                smells.add(formatSmell(pageName, "illegal field name", field.name()));
+                smells.add(formatSmell(pageName, page, "illegal field name", field.name()));
             }
         }
         Set<String> seen = new HashSet<>();
         for (PageAccumulator.MethodModel method : page.methods()) {
-            checkMethodName(pageName, method.name(), smells, seen);
+            checkMethodName(pageName, page, method.name(), smells, seen);
         }
         for (PageAccumulator.AssertionModel assertion : page.assertions()) {
-            checkMethodName(pageName, assertion.name(), smells, seen);
+            checkMethodName(pageName, page, assertion.name(), smells, seen);
             if (COLLAPSED_ASSERT.matcher(assertion.name()).find()) {
-                smells.add(formatSmell(pageName, "collapsed assert method", assertion.name()));
+                smells.add(formatSmell(pageName, page, "collapsed assert method", assertion.name()));
             }
         }
     }
 
     private static void checkMethodName(
-            String pageName, String name, List<String> smells, Set<String> seen) {
+            String pageName, PageAccumulator.PageModel page, String name, List<String> smells, Set<String> seen) {
         if (COLLAPSED_ACTION.matcher(name).matches()) {
-            smells.add(formatSmell(pageName, "collapsed action method", name));
+            smells.add(formatSmell(pageName, page, "collapsed action method", name));
         }
         if (!CodegenNaming.isValidJavaIdentifier(name)) {
-            smells.add(formatSmell(pageName, "illegal Java method name", name));
+            smells.add(formatSmell(pageName, page, "illegal Java method name", name));
         }
         if (!seen.add(name)) {
-            smells.add(formatSmell(pageName, "duplicate method", name));
+            smells.add(formatSmell(pageName, page, "duplicate method", name));
         }
     }
 
-    private static String formatSmell(String pageName, String kind, String name) {
-        return pageName + " (" + pageDisplayName(pageName) + "): " + kind + " '" + name + "'";
-    }
-
-    private static String pageDisplayName(String pageName) {
-        return CodegenNaming.actionsClassName(pageName);
+    private static String formatSmell(String pageName, PageAccumulator.PageModel page, String kind, String name) {
+        return pageName + " (" + page.actionsClassName() + "): " + kind + " '" + name + "'";
     }
 }

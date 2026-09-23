@@ -244,7 +244,9 @@ public final class PageClusterer {
                 draft.status(), proven, login, draft.needsLoginBeforeMethod(),
                 draft.blockerStepIndex(), draft.blockerIntent(), draft.failureReason(),
                 draft.evidenceDir(), draft.retryCountOnBlocker(), draft.lastPageUrl(),
-                draft.healTier(), draft.healSkipReason(), draft.loginFormUrl());
+                draft.healTier(), draft.healSkipReason(), draft.loginFormUrl(),
+                draft.jobAuthoringEngine(), draft.precisionCallsUsed(),
+                draft.precisionFallback(), draft.precisionFallbackReason());
     }
 
     private static String inferFromRationale(String rationale, String defaultPage) {

@@ -229,7 +229,7 @@ public class HealCascade {
             reason = reason + bannedBlock(failedLocators);
         }
         List<DomCandidate> candidates = DomCandidateExtractor.extract(slimHtml);
-        if (StepIntentBinder.spendsMustAvoidPriorFills(intent.kind())) {
+        if (StepIntentBinder.spendsMustAvoidPriorFills(intent)) {
             candidates = StepIntentBinder.withoutSpentControls(candidates, spentSteps);
         }
         candidates = StepIntentBinder.withoutFailedLocators(candidates, failedLocators);
@@ -485,7 +485,7 @@ public class HealCascade {
         if (intent == null) {
             return true;
         }
-        if (StepIntentBinder.spendsMustAvoidPriorFills(intent.kind())
+        if (StepIntentBinder.spendsMustAvoidPriorFills(intent)
                 && steps.stream().anyMatch(s -> StepIntentBinder.isSpentLocator(s, spent))) {
             LogsManager.info("HEAL_REJECT: spent locator reused for " + trim(intent.text(), 40));
             return false;

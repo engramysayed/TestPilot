@@ -6,9 +6,12 @@ import delivery.portal.persistence.JobEntity;
 import delivery.portal.persistence.PortalUser;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.security.JobSecretCrypto;
+import delivery.portal.persistence.JobEntity;
 import delivery.portal.service.DashboardService;
 import delivery.portal.service.InviteService;
+import delivery.portal.service.JobLinkEnricher;
 import delivery.portal.service.PortalStore;
+import delivery.portal.service.WorkspacePackageService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +20,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 public class PortalUiController {
@@ -25,15 +32,20 @@ public class PortalUiController {
     private final PortalStore store;
     private final InviteService invites;
     private final DeliveryPortalProperties portalProperties;
+    private final JobLinkEnricher jobLinks;
+    private final WorkspacePackageService workspacePackages;
 
     public PortalUiController(DashboardService dashboard, CurrentUserService currentUser,
                               PortalStore store, InviteService invites,
-                              DeliveryPortalProperties portalProperties) {
+                              DeliveryPortalProperties portalProperties,
+                              JobLinkEnricher jobLinks, WorkspacePackageService workspacePackages) {
         this.dashboard = dashboard;
         this.currentUser = currentUser;
         this.store = store;
         this.invites = invites;
         this.portalProperties = portalProperties;
+        this.jobLinks = jobLinks;
+        this.workspacePackages = workspacePackages;
     }
 
     private void addNav(Model model) {
@@ -121,17 +133,54 @@ public class PortalUiController {
     }
 
     @GetMapping("/generate")
-    public String generate(Model model) {
+    public String generate(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
         addNav(model);
         model.addAttribute("navActive", "generate");
+        model.addAttribute("projectId", projectId == null ? "" : projectId);
         return "generate";
     }
 
     @GetMapping("/execute")
-    public String execute(Model model) {
+    public String execute(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
         addNav(model);
         model.addAttribute("navActive", "execute");
+        model.addAttribute("projectId", projectId == null ? "" : projectId);
         return "execute";
+    }
+
+    @GetMapping("/packages")
+    public String packages(Model model) {
+        Long ownerUserId = currentUser.requireUserId();
+        addNav(model);
+        model.addAttribute("navActive", "packages");
+        model.addAttribute("packages", workspacePackages.listPackagesForOwner(ownerUserId));
+        List<Map<String, Object>> projectRows = new ArrayList<>();
+        for (var project : store.listProjects(ownerUserId)) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("projectId", project.getProjectId());
+            row.put("name", project.getName());
+            row.put("canOperate", store.canOperate(project.getProjectId(), ownerUserId));
+            row.put("jobRunning", store.hasRunningJob(project.getProjectId()));
+            projectRows.add(row);
+        }
+        model.addAttribute("projectRows", projectRows);
+        return "packages";
+    }
+
+    @GetMapping("/evidence")
+    public String evidence(@RequestParam("jobId") String jobId,
+                           @RequestParam(value = "tcId", required = false) String tcId,
+                           Model model) {
+        addNav(model);
+        model.addAttribute("navActive", "runs");
+        model.addAttribute("jobId", jobId);
+        model.addAttribute("tcId", tcId == null ? "" : tcId);
+        var owned = store.getOwnedJob(jobId, currentUser.requireUserId());
+        if (owned.isEmpty() || owned.get().getJobKind() != JobRecord.JobKind.EXECUTE) {
+            return "redirect:/runs";
+        }
+        model.addAttribute("projectId", owned.get().getProjectId());
+        return "evidence";
     }
 
     @GetMapping("/bug-hunter")
@@ -160,8 +209,28 @@ public class PortalUiController {
     public String runs(Model model) {
         addNav(model);
         model.addAttribute("navActive", "runs");
-        model.addAttribute("jobs", store.listJobEntities(currentUser.requireUserId()));
+        model.addAttribute("jobs", enrichedJobsForOwner(currentUser.requireUserId()));
         return "jobs";
+    }
+
+    private List<Map<String, Object>> enrichedJobsForOwner(Long ownerUserId) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (JobEntity entity : store.listJobEntities(ownerUserId)) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            String jobKind = entity.getJobKind() == null ? JobRecord.JobKind.CONVERT.name() : entity.getJobKind();
+            row.put("jobId", entity.getJobId());
+            row.put("projectId", entity.getProjectId());
+            row.put("jobKind", jobKind);
+            row.put("mode", entity.getMode());
+            row.put("status", entity.getStatus());
+            row.put("progressCurrent", entity.getProgressCurrent());
+            row.put("progressTotal", entity.getProgressTotal());
+            row.put("message", entity.getMessage() == null ? "" : entity.getMessage());
+            row.put("downloadable", JobRecord.isDownloadable(JobRecord.parseJobKind(jobKind), entity.getStatus()));
+            jobLinks.enrich(row, entity.getJobId(), JobRecord.parseJobKind(jobKind), entity.getStatus());
+            rows.add(row);
+        }
+        return rows;
     }
 
     @GetMapping("/status")

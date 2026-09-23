@@ -16,6 +16,8 @@ public class RerunSupportTest {
         source.setLibraryRevisionId("rev_abc");
         source.setEnvironmentRevisionId("envrev_1");
         source.setProviderAllowlistSnapshot("ollama");
+        source.setPrecisionEnabledSnapshot(true);
+        source.setPrecisionMaxSnapshot(7);
         source.setZipPath(Path.of("out.zip"));
         source.setStatus(JobRecord.Status.FAILED);
         source.setMessage("assert failed");
@@ -26,6 +28,8 @@ public class RerunSupportTest {
         Assert.assertEquals(rerun.getLibraryRevisionId(), "rev_abc");
         Assert.assertEquals(rerun.getEnvironmentRevisionId(), "envrev_1");
         Assert.assertEquals(rerun.getProviderAllowlistSnapshot(), "ollama");
+        Assert.assertEquals(rerun.getPrecisionEnabledSnapshot(), Boolean.TRUE);
+        Assert.assertEquals(rerun.getPrecisionMaxSnapshot(), 7);
         Assert.assertEquals(rerun.getBaseUrl(), "https://staging.example");
         Assert.assertEquals(rerun.getStatus(), JobRecord.Status.QUEUED);
         Assert.assertNull(rerun.getZipPath());

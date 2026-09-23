@@ -6,7 +6,6 @@ import delivery.heal.CandidateLivenessProbe;
 import delivery.heal.CursorHealClient;
 import delivery.heal.FailedLocator;
 import delivery.heal.FreeInventHealer;
-import delivery.heal.HealResult;
 import utils.LogsManager;
 
 import java.nio.file.Path;
@@ -55,15 +54,21 @@ public class PrecisionBindService {
         List<DomCandidate> candidates = buildCandidates(intent, slimHtml, spent, failed, probe);
         List<DomCandidate> shortlist = buildShortlist(intent, candidates);
         if (shortlist.isEmpty()) {
-            return new PrecisionBindOutcome.FallbackKeel("PROVIDER_ERROR");
+            return new PrecisionBindOutcome.NeedsSolve(candidates, shortlist, "",
+                    slimHtml.substring(0, Math.min(8000, slimHtml.length())));
         }
         if (!budget.tryConsume()) {
             return new PrecisionBindOutcome.FallbackKeel("CAP_EXCEEDED");
         }
         String table = DomCandidateExtractor.formatTable(shortlist);
         String htmlExcerpt = slimHtml.length() > 8000 ? slimHtml.substring(0, 8000) : slimHtml;
-        GroundRankResult ranked = cursor.groundRankResult(
-                intent.text(), table, htmlExcerpt, screenshotPathOrNull, priorSteps);
+        GroundRankResult ranked;
+        try {
+            ranked = cursor.groundRankResult(intent.text(), table, htmlExcerpt, screenshotPathOrNull, priorSteps);
+        } catch (RuntimeException unavailable) {
+            return new PrecisionBindOutcome.FallbackKeel("PROVIDER_ERROR");
+        }
+        if (ranked == null) return new PrecisionBindOutcome.FallbackKeel("PROVIDER_ERROR");
         if (ranked.isAcceptable()
                 && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(ranked.candidateId()))) {
             List<ProvenStep> steps = authoring.stepsPreferringCandidate(
@@ -104,8 +109,13 @@ public class PrecisionBindService {
         if (!budget.tryConsume()) {
             return new PrecisionBindOutcome.FallbackKeel("CAP_EXCEEDED");
         }
-        String raw = cursor.solve(intent.text(), "Precision groundRank low confidence",
-                table, htmlExcerpt, screenshotPathOrNull, priorSteps);
+        String raw;
+        try {
+            raw = cursor.solve(intent.text(), "Precision groundRank low confidence",
+                    table, htmlExcerpt, screenshotPathOrNull, priorSteps);
+        } catch (RuntimeException unavailable) {
+            return new PrecisionBindOutcome.FallbackKeel("PROVIDER_ERROR");
+        }
         String chosen = CursorHealClient.parseCandidateId(raw);
         if (!chosen.isBlank() && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(chosen))) {
             List<ProvenStep> steps = authoring.stepsPreferringCandidate(
@@ -115,11 +125,10 @@ public class PrecisionBindService {
                 return new PrecisionBindOutcome.Bound(steps, "solve");
             }
         }
-        Optional<HealResult> written = solveParser.parseInventResponse(
-                tcId, intent, raw, htmlExcerpt, null, "");
-        if (written.isPresent() && written.get().ok() && validSteps(written.get().steps())) {
+        List<ProvenStep> written = solveParser.validateWrittenSteps(tcId, intent, raw, htmlExcerpt);
+        if (validSteps(written)) {
             LogsManager.info("PRECISION_SOLVE: " + tcId + " written locator");
-            return new PrecisionBindOutcome.Bound(written.get().steps(), "solve");
+            return new PrecisionBindOutcome.Bound(written, "solve");
         }
         return new PrecisionBindOutcome.FallbackKeel("PROVIDER_ERROR");
     }
@@ -142,7 +151,7 @@ public class PrecisionBindService {
             CandidateLivenessProbe probe
     ) {
         List<DomCandidate> candidates = DomCandidateExtractor.extract(slimHtml);
-        if (StepIntentBinder.spendsMustAvoidPriorFills(intent.kind())) {
+        if (StepIntentBinder.spendsMustAvoidPriorFills(intent)) {
             candidates = StepIntentBinder.withoutSpentControls(candidates, spent);
         }
         candidates = StepIntentBinder.withoutFailedLocators(candidates, failed);

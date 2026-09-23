@@ -41,12 +41,13 @@ Store: `./target/p5-dedicated-install/store`.
 - `forJob("http://10.0.0.8:8080/app")` allows that origin; `192.168.0.4` stays blocked.
 - Same tenant-boundary + snapshot/restore on **this** store-root. Bob cannot list Alice artifacts (404).
 
-## Still open
+## Still open (first launch)
 
-These require deployment environments, representative applications, and named approvers — not another local drill on this workstation.
+These require **shared staging** and an authorized representative application — not another local dedicated drill.
 
-- Production shared/dedicated hosts
-- Kernel / worker-network isolation on those hosts
-- Restore on those hosts' FileStores
-- Live LLM Generate and live browser Automate/Execute against **authorized** representative apps
-- Named product/security/privacy approvals
+- Shared staging host (worker-network isolation + cross-tenant 404)
+- Restore on that host’s FileStore
+- Live Generate → Execute → Automate NEW → downloaded replay → UPDATE → replay (DOM path; not live UI-TARS)
+- Named product/security/privacy approvals for shared scope
+
+Dedicated host drills are **deferred**. Local dedicated JVM results above remain historical implementation evidence.

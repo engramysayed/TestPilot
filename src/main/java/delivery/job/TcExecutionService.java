@@ -50,6 +50,7 @@ public class TcExecutionService {
     public void beginTc(String evidenceFolder) {
         shotSeq.set(0);
         this.evidenceFolder = evidenceFolder;
+        delivery.assertions.CaptureStore.clear();
     }
 
     private String evidenceKey(String tcId) {
@@ -64,7 +65,7 @@ public class TcExecutionService {
         steps = LoginSecretResolver.resolveForLive(steps, request);
         List<ProvenStep> proven = new ArrayList<>();
         Path evidenceDir = evidenceRoot == null ? null : evidenceRoot.resolve(evidenceKey(tcId));
-        try {
+        try (VisionMissJournal.Scope journal = VisionMissJournal.activate(evidenceDir, request == null ? null : request.password())) {
             if (evidenceDir != null) {
                 Files.createDirectories(evidenceDir);
             }
@@ -394,6 +395,9 @@ public class TcExecutionService {
                         yield "false -> element still visible: " + step.locatorValue();
                     }
                 }
+                case "captureText" -> captureText(step);
+                case "capturedEquals" -> compareCaptured(step);
+                case "signedOut" -> signedOut(step);
                 default -> "false -> unsupported assertionType: " + step.assertionType();
             };
         } catch (Exception e) {
@@ -440,6 +444,86 @@ public class TcExecutionService {
         } catch (TimeoutException e) {
             return "false -> element not found for selected-state assert";
         }
+    }
+
+    private String captureText(ProvenStep step) {
+        if (step.locatorValue() == null || step.locatorValue().isBlank()) {
+            return "false -> locator required for captureText";
+        }
+        if (step.value() == null || step.value().isBlank()) {
+            return "false -> capture variable name required";
+        }
+        try {
+            By by = SelectorParser.toBy(normalizeStrategy(step.locatorStrategy()) + ":" + step.locatorValue());
+            List<String> texts = elementTexts(by);
+            var extracted = delivery.assertions.CaptureCompare.extract(texts, step.assertionExpected());
+            if (!extracted.ok()) {
+                return "false -> " + extracted.error();
+            }
+            delivery.assertions.CaptureStore.put(step.value(), extracted.value());
+            LogsManager.info("captured phrase slot=" + step.value() + " value=" + extracted.value());
+            return null;
+        } catch (Exception e) {
+            return "false -> unavailable browser state: " + e.getClass().getSimpleName();
+        }
+    }
+
+    private String compareCaptured(ProvenStep step) {
+        if (step.locatorValue() == null || step.locatorValue().isBlank()) {
+            return "false -> locator required for capturedEquals";
+        }
+        try {
+            By by = SelectorParser.toBy(normalizeStrategy(step.locatorStrategy()) + ":" + step.locatorValue());
+            List<String> texts = elementTexts(by);
+            var compared = delivery.assertions.CaptureCompare.compareExact(
+                    texts, delivery.assertions.CaptureStore.get(step.value()));
+            if (!compared.ok()) {
+                return "false -> " + compared.error();
+            }
+            LogsManager.info("compared captured slot=" + step.value()
+                    + " value=" + delivery.assertions.CaptureStore.get(step.value()));
+            return null;
+        } catch (Exception e) {
+            return "false -> unavailable browser state: " + e.getClass().getSimpleName();
+        }
+    }
+
+    private String signedOut(ProvenStep step) {
+        if (step.locatorValue() == null || step.locatorValue().isBlank()) {
+            return "false -> locator required for signedOut";
+        }
+        try {
+            By by = SelectorParser.toBy(normalizeStrategy(step.locatorStrategy()) + ":" + step.locatorValue());
+            List<WebElement> els = driverFactory.get().findElements(by);
+            boolean anyDisplayed = false;
+            List<String> displayed = new ArrayList<>();
+            for (WebElement el : els) {
+                try {
+                    if (el.isDisplayed()) {
+                        anyDisplayed = true;
+                        displayed.add(el.getText());
+                    }
+                } catch (Exception stale) {
+                    return "false -> unavailable browser state: " + stale.getClass().getSimpleName();
+                }
+            }
+            var result = delivery.assertions.CaptureCompare.signedOut(displayed, anyDisplayed, step.assertionExpected());
+            if (!result.ok()) {
+                return "false -> " + result.error();
+            }
+            LogsManager.info("signed-out locator=" + step.locatorValue() + " expected=" + step.assertionExpected());
+            return null;
+        } catch (Exception e) {
+            return "false -> unavailable browser state: " + e.getClass().getSimpleName();
+        }
+    }
+
+    private List<String> elementTexts(By by) {
+        List<String> texts = new ArrayList<>();
+        for (WebElement el : driverFactory.get().findElements(by)) {
+            texts.add(el.getText());
+        }
+        return texts;
     }
 
     private String resolvePageName(String existing) {

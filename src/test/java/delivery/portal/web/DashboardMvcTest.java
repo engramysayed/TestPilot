@@ -111,6 +111,13 @@ public class DashboardMvcTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    public void dashboard_hasAttentionPanel() throws Exception {
+        String body = fetchDashboard();
+        Assert.assertTrue(body.contains("Needs your attention"));
+        Assert.assertTrue(body.contains("attention-panel"));
+    }
+
+    @Test
     public void dashboard_noStaleUploadCta() throws Exception {
         String body = fetchDashboard();
 

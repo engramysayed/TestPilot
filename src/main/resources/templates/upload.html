@@ -14,20 +14,42 @@
         </div>
     </div>
 
+    <section class="panel workspace-launcher" id="workspace-launcher"
+             th:hidden="${projectId != null and !projectId.isEmpty()}">
+        <p class="guide-kicker">Workspace</p>
+        <h2>Choose a project</h2>
+        <p class="panel-intro">Automate converts library cases into a downloadable framework ZIP.</p>
+        <label>Project
+            <select id="launcher-project-select">
+                <option value="">— Select project —</option>
+                <option th:each="p : ${projects}"
+                        th:value="${p.projectId}"
+                        th:text="${p.name + ' (' + p.projectId + ')'}"></option>
+            </select>
+        </label>
+        <p id="launcher-err" class="error" hidden></p>
+        <p style="margin-top:0.75rem">
+            <button type="button" class="button" id="launcher-continue">Continue</button>
+        </p>
+    </section>
+
+    <div id="workspace-config" th:hidden="${projectId == null or projectId.isEmpty()}">
     <section class="panel">
+        <p class="muted workspace-pinned" style="margin:0 0 0.75rem">
+            Project: <strong id="pinned-project-name" th:text="${projectId}">—</strong>
+            <button type="button" class="button ghost" id="change-project" style="margin-left:0.5rem">Change</button>
+        </p>
         <h2>Start a conversion</h2>
         <p class="panel-intro">Pick a project with a configured base URL and credential profile, attach the workbook, and start.
             Vision default is <code>ui-tars</code> (Ollama). To fall back: <code>delivery.vision.provider=qwen</code>.</p>
-        <form id="job-form" th:attr="data-final-revise-enabled=${finalReviseEnabled}" class="execute-start-form">
-            <label>Project
-                <select name="projectId" id="projectId" required>
-                    <option value="">— Select project —</option>
-                    <option th:each="p : ${projects}"
-                            th:value="${p.projectId}"
-                            th:text="${p.name + ' (' + p.projectId + ')'}"
-                            th:selected="${p.projectId == projectId}"></option>
-                </select>
-            </label>
+        <form id="job-form" th:attr="data-final-revise-enabled=${finalReviseEnabled},data-initial-project-id=${projectId}" class="execute-start-form">
+            <select name="projectId" id="projectId" required hidden aria-hidden="true">
+                <option value="">— Select project —</option>
+                <option th:each="p : ${projects}"
+                        th:value="${p.projectId}"
+                        th:text="${p.name + ' (' + p.projectId + ')'}"
+                        th:selected="${p.projectId == projectId}"></option>
+            </select>
             <div id="project-config" class="execute-start-meta" hidden>
                 <p class="muted" id="base-url-row" hidden>
                     Base URL <span id="base-url-display" class="mono"></span>
@@ -126,6 +148,7 @@
         </form>
         <p id="job-error" class="error" hidden></p>
     </section>
+    </div>
 </main>
 </div>
 <script>
@@ -133,6 +156,16 @@
     const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
     let projectHasBaseUrl = false;
     let credentialsRequired = false;
+
+    const formElInit = document.getElementById('job-form');
+    const initialProjectId = (formElInit && formElInit.dataset.initialProjectId) || '';
+    const workspaceLauncher = document.getElementById('workspace-launcher');
+    const workspaceConfig = document.getElementById('workspace-config');
+    const launcherSel = document.getElementById('launcher-project-select');
+    const launcherContinue = document.getElementById('launcher-continue');
+    const launcherErr = document.getElementById('launcher-err');
+    const pinnedName = document.getElementById('pinned-project-name');
+    const changeProjectBtn = document.getElementById('change-project');
 
     const projectSel = document.getElementById('projectId');
     const configBlock = document.getElementById('project-config');
@@ -596,8 +629,44 @@
         loadProjectConfig(projectSel.value);
     });
 
-    if (projectSel.value) {
-        loadProjectConfig(projectSel.value);
+    function showWorkspaceLauncher() {
+        if (workspaceLauncher) workspaceLauncher.hidden = false;
+        if (workspaceConfig) workspaceConfig.hidden = true;
+    }
+
+    function pinWorkspaceProject(projectId) {
+        projectSel.value = projectId;
+        if (launcherSel) launcherSel.value = projectId;
+        const opt = projectSel.options[projectSel.selectedIndex];
+        if (pinnedName && opt) pinnedName.textContent = opt.textContent;
+        if (workspaceLauncher) workspaceLauncher.hidden = true;
+        if (workspaceConfig) workspaceConfig.hidden = false;
+        loadProjectConfig(projectId);
+    }
+
+    launcherContinue?.addEventListener('click', () => {
+        if (launcherErr) launcherErr.hidden = true;
+        const projectId = launcherSel ? launcherSel.value : '';
+        if (!projectId) {
+            if (launcherErr) {
+                launcherErr.hidden = false;
+                launcherErr.textContent = 'Select a project to continue.';
+            }
+            return;
+        }
+        pinWorkspaceProject(projectId);
+    });
+
+    changeProjectBtn?.addEventListener('click', () => showWorkspaceLauncher());
+
+    const urlProjectId = new URLSearchParams(window.location.search).get('projectId');
+    const pinned = urlProjectId || initialProjectId || projectSel.value;
+    if (pinned && Array.from(projectSel.options).some(o => o.value === pinned)) {
+        pinWorkspaceProject(pinned);
+    } else if (projectSel.value) {
+        pinWorkspaceProject(projectSel.value);
+    } else {
+        showWorkspaceLauncher();
     }
 
     document.getElementById('job-form').addEventListener('submit', async (e) => {

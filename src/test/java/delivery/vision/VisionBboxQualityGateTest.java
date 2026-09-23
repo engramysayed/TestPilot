@@ -6,6 +6,10 @@ import org.testng.annotations.Test;
 import java.util.List;
 
 public class VisionBboxQualityGateTest {
+    @Test public void acceptsWideShallowSubmitButton() {
+        var button = new VisualCandidate("Submit", new BoundingBox(10, 100, 600, 40), .9);
+        Assert.assertEquals(VisionBboxQualityGate.filter(List.of(button), 800, 600).size(), 1);
+    }
 
     @Test
     public void rejectsTinyOneByOne() {

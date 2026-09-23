@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Zip replay fixture</title>
+</head>
+<body>
+  <h1>Zip replay fixture</h1>
+  <p id="status">Ready</p>
+  <p id="canary-assert">CANARY_ASSERT_zipreplay_7f2c9a</p>
+  <form id="login-form">
+    <label>Email <input id="email" name="email" type="email" autocomplete="username"></label>
+    <label>Password <input id="password" name="password" type="password" autocomplete="current-password"></label>
+    <button id="sign-in" type="button">Sign in</button>
+  </form>
+  <label>First name hyphen <input id="first-name" name="first-name"></label>
+  <label>First name underscore <input id="first_name" name="first_name"></label>
+  <label>Display name <input id="name" name="name"></label>
+  <label>Note <input id="note" name="note"></label>
+  <label>Secret <input id="secret" name="secret" type="password" autocomplete="new-password"></label>
+  <label>Size
+    <select id="size">
+      <option value="S">S</option>
+      <option value="M" selected>M</option>
+      <option value="L">L</option>
+    </select>
+  </label>
+  <button id="first" type="button">First</button>
+  <button id="second" type="button">Second</button>
+  <button id="save" type="button">Save</button>
+  <button id="body-probe" type="button">Body probe</button>
+  <div class="error" style="display:none">hidden error</div>
+  <div class="error">visible error</div>
+  <div class="flash" style="display:none">hidden flash</div>
+  <script>
+    document.getElementById("sign-in").addEventListener("click", function () {
+      document.getElementById("status").textContent = "Logged in";
+    });
+    document.getElementById("save").addEventListener("click", function () {
+      document.getElementById("status").textContent = "Saved";
+    });
+    document.getElementById("body-probe").addEventListener("click", function () {
+      fetch("/hit/body").catch(function () {});
+    });
+  </script>
+</body>
+</html>

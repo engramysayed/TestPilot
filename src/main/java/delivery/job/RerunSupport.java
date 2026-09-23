@@ -37,6 +37,7 @@ public final class RerunSupport {
         copy.setProviderAllowlistSnapshot(source.getProviderAllowlistSnapshot());
         copy.setEnvironmentRevisionId(source.getEnvironmentRevisionId());
         copy.setPrecisionMaxSnapshot(source.getPrecisionMaxSnapshot());
+        copy.setPrecisionEnabledSnapshot(source.getPrecisionEnabledSnapshot());
         copy.setParentJobId(source.getJobId());
         copy.setInputSnapshotHash(hashPinnedInputs(source));
         copy.setStatus(JobRecord.Status.QUEUED);

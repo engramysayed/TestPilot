@@ -56,4 +56,36 @@ public class RevisePhaseTest {
         String todo = Files.readString(temp.resolve("src/test/java/project/tests/todo/TC1Todo.java"));
         Assert.assertTrue(todo.contains("// REVIEW:"));
     }
+
+    @Test
+    public void annotatesTitleDerivedPassedMethodNotRunCase() throws Exception {
+        Path temp = Files.createTempDirectory("revise-title");
+        Path templates = Path.of("customer-framework-template/templates");
+        ProvenStep one = new ProvenStep(
+                "TC_REV", "Home", "elementAction", "click",
+                "id", "save", "", "", "", true, "intent:CLICK");
+        new CodeWriter(templates).write(temp, List.of(new TcOutcome(
+                "TC_REV", TcStatus.PASSED, List.of(one), "", null)
+                .withTitle("Visible heading after save")));
+        String generated = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_REV.java"));
+        String method = delivery.codegen.TestMethodNaming.deterministic("Visible heading after save", "TC_REV");
+        Assert.assertTrue(generated.contains("public void " + method + "("), generated);
+        Assert.assertFalse(generated.contains("public void runCase()"), generated);
+
+        ManualTestCase tc = new ManualTestCase(
+                "TC_REV", "Visible heading after save", "",
+                "1. Click save\n2. Confirm thank you",
+                "ok", "", "");
+        TcDraft draft = new TcDraft(
+                "TC_REV", "Visible heading after save", tc.steps(), tc.expectedResult(),
+                TcDraftStatus.PASSED, List.of(one), List.of(), false,
+                -1, "", "", "", 0, "https://x/");
+        new RevisePhase().revise(temp, List.of(draft), List.of(tc));
+        String annotated = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_REV.java"));
+        Assert.assertTrue(annotated.contains("// REVIEW:"), annotated);
+        int methodAt = annotated.indexOf("public void " + method + "(");
+        int reviewAt = annotated.indexOf("// REVIEW:");
+        Assert.assertTrue(methodAt >= 0 && reviewAt > methodAt,
+                "REVIEW notes must land in the title-derived test method, not runCase():\n" + annotated);
+    }
 }

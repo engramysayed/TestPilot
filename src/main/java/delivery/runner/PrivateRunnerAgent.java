@@ -140,8 +140,8 @@ public final class PrivateRunnerAgent {
                 "",
                 false,
                 false,
-                AuthoringEngine.KEEL,
-                new PrecisionJobConfig(false, 50),
+                AuthoringEngine.parse(meta.optString("authoringEngine", "keel")),
+                new PrecisionJobConfig(meta.optBoolean("precisionEnabled", false), meta.optInt("precisionMaxCalls", 50)),
                 tenant,
                 jobId,
                 TenantScope.HOSTED
