@@ -6,22 +6,23 @@
 <body class="app-body">
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
-<main class="shell shell-wide">
-    <div class="page-title guide-hero guide-reveal">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell shell-wide keel-page">
+    <header class="heading guide-hero guide-reveal">
         <div>
-            <p class="guide-kicker">Authoring standard</p>
+            <p class="eyebrow">Authoring standard</p>
             <h1>Valid test case guide</h1>
             <p class="lede">
                 Format and writing rules for client Excel sheets. Follow this so Keel can design
                 automation from the workbook alone. AI may rewrite wording — keep the column headers.
             </p>
         </div>
-        <div class="guide-hero-actions">
+        <div class="actions guide-hero-actions">
             <a class="button" href="/automate">Go to Automate</a>
             <a class="button ghost" href="/prompts/keel-manual-tcs-template.csv" download>Download template</a>
             <a class="button ghost" href="#format">Jump to format</a>
         </div>
-    </div>
+    </header>
 
     <div class="guide-layout">
         <nav class="guide-toc panel" aria-label="Guide sections">

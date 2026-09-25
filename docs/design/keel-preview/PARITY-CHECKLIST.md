@@ -23,6 +23,8 @@ Last reviewed: **2026-09-22** — after Phases A, B, C, and D.
 
 **Production parity (2026-09-22):** Phases 0–8 shipped on the Thymeleaf portal (incremental plan). Prototype remains mock reference; prod column below marks what is live.
 
+**Visual reskin (2026-09-23):** Phases 1–8 applied via `keel-reskin.css` + template chrome. Prod UI now matches mock tokens, sidebar, topbar, overview, project cards, workflow panels, runs cluster, and secondary pages. See [`VISUAL-RESKIN-CHECKLIST.md`](VISUAL-RESKIN-CHECKLIST.md).
+
 | Item | Production route / API | Shipped |
 |------|------------------------|---------|
 | Deep links | `/execute?jobId=&tcId=`, `GET /api/jobs` link hints | ✅ |

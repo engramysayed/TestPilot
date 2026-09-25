@@ -129,6 +129,7 @@ public class ProjectController {
         } catch (RuntimeException ignored) {
             map.put("workspaceRole", "");
         }
+        map.putAll(summary.cardMetrics(p.getProjectId()));
         return map;
     }
 

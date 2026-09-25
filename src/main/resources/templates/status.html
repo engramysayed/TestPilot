@@ -6,7 +6,8 @@
 <body class="app-body">
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
-<main class="shell" id="status-root"
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page" id="status-root"
       th:attr="data-job-id=${jobId},data-initial-status=${jobStatus},data-job-kind=${jobKind},data-created-at=${jobCreatedAt}">
     <div class="page-title">
         <div>

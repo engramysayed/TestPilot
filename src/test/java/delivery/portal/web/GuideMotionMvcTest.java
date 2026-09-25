@@ -56,7 +56,7 @@ public class GuideMotionMvcTest extends AbstractTestNGSpringContextTests {
     public void guide_automateLinksNotUploadHero() throws Exception {
         String body = fetchGuideBody();
 
-        int heroStart = body.indexOf("class=\"page-title guide-hero");
+        int heroStart = body.indexOf("class=\"heading guide-hero");
         Assert.assertTrue(heroStart >= 0, "guide hero missing");
         int heroEnd = body.indexOf("class=\"guide-layout\"", heroStart);
         Assert.assertTrue(heroEnd > heroStart, "guide layout missing");

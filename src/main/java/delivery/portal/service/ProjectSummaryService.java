@@ -40,6 +40,33 @@ public class ProjectSummaryService {
         return out;
     }
 
+    /** Lightweight facts for project list cards (library size + proven pass rate). */
+    public Map<String, Object> cardMetrics(String projectId) {
+        Map<String, Object> card = new LinkedHashMap<>();
+        int libraryCases = libraryCaseCount(projectId);
+        card.put("libraryCaseCount", libraryCases);
+        card.put("platform", "web");
+        try {
+            Map<String, Object> prove = proveSnapshot(projectId);
+            int passed = ((Number) prove.getOrDefault("passed", 0)).intValue();
+            int reused = ((Number) prove.getOrDefault("reused", 0)).intValue();
+            int total = ((Number) prove.getOrDefault("total", 0)).intValue();
+            int proven = passed + reused;
+            card.put("provenCaseCount", proven);
+            card.put("judgedCaseCount", total);
+            if (total > 0) {
+                card.put("provenPassRatePercent", (int) Math.round(100.0 * proven / total));
+            } else {
+                card.put("provenPassRatePercent", null);
+            }
+        } catch (Exception e) {
+            card.put("provenCaseCount", 0);
+            card.put("judgedCaseCount", 0);
+            card.put("provenPassRatePercent", null);
+        }
+        return card;
+    }
+
     private Map<String, Object> buildStrip(String projectId) throws Exception {
         Map<String, Object> strip = new LinkedHashMap<>();
         strip.put("libraryCaseCount", libraryCaseCount(projectId));

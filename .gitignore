@@ -34,6 +34,7 @@ models/
 test-output/
 *.log
 canvases/
+docs/design/keel-preview/signoff-screenshots/
 
 ### IntelliJ IDEA ###
 .idea/modules.xml

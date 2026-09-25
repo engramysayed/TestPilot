@@ -1,24 +1,35 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Accept invite — Keel</title>
-    <link rel="stylesheet" th:href="@{/css/portal.css}"/>
+    <th:block th:replace="~{fragments :: authPageHead(title='Accept invite')}"></th:block>
 </head>
-<body>
-<main class="shell">
-    <h1>Accept invite</h1>
-    <p class="error" th:if="${error}" th:text="${error}"></p>
-    <form th:if="${error == null}" th:action="@{/invite/{token}(token=${token})}" method="post">
-        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-        <p>Email: <strong th:text="${email}">user@example.com</strong></p>
-        <label>Choose a password (min 8 characters)
-            <input type="password" name="password" minlength="8" required autocomplete="new-password"/>
-        </label>
-        <button type="submit">Create account</button>
-    </form>
-    <p><a href="/login">Back to login</a></p>
+<body class="login-body">
+<main class="loginpage" aria-label="Accept invite">
+    <section class="loginbrand" aria-label="Keel">
+        <div class="loginbrand-logo">keel</div>
+        <h1>From test intent<br/>to trusted evidence.</h1>
+        <p>Your test library, execution, and automation in one workspace.</p>
+        <p class="loginbrand-foot">WEB AUTOMATION / ANDROID NEXT</p>
+    </section>
+    <section class="loginform">
+        <p class="eyebrow">Invite</p>
+        <h1>Accept invite</h1>
+        <p class="loginform-intro">Set a password to join the workspace.</p>
+        <p class="error" th:if="${error}" th:text="${error}"></p>
+        <form th:if="${error == null}" th:action="@{/invite/{token}(token=${token})}" method="post" class="login-form">
+            <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <label class="field">
+                <span>Email</span>
+                <input type="email" th:value="${email}" readonly autocomplete="username"/>
+            </label>
+            <label class="field">
+                <span>Password (min 8 characters)</span>
+                <input type="password" name="password" minlength="8" required autocomplete="new-password" placeholder="Choose a password"/>
+            </label>
+            <button type="submit" class="button primary login-submit">Create account</button>
+        </form>
+        <p class="login-alt"><a href="/login">Back to sign in</a></p>
+    </section>
 </main>
 </body>
 </html>

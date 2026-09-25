@@ -6,7 +6,8 @@
 <body class="app-body">
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
-<main class="shell shell-wide shell-runs">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell shell-wide shell-runs keel-page">
     <div class="page-title">
         <div>
             <h1>Runs</h1>
@@ -42,7 +43,7 @@
                     <td class="clip" th:text="${j.mode}" th:title="${j.mode}">NEW</td>
                     <td>
                         <span class="badge"
-                              th:classappend="${j.status == 'COMPLETED'} ? ' ok' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? ' warn' : (${j.status == 'FAILED'} ? ' err' : (${j.status == 'RUNNING' or j.status == 'QUEUED'} ? ' warn badge--busy' : ' muted')))">
+                              th:classappend="${j.status == 'COMPLETED'} ? ' badge--pass' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? ' badge--block' : (${j.status == 'FAILED'} ? ' badge--fail' : (${j.status == 'RUNNING' or j.status == 'QUEUED'} ? ' badge--run' : '')))">
                             <span class="spinner spinner--badge" th:if="${j.status == 'RUNNING' or j.status == 'QUEUED'}" aria-hidden="true"></span>
                             <span th:text="${j.status}">QUEUED</span>
                         </span>

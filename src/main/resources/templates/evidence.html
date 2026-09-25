@@ -6,7 +6,8 @@
 <body class="app-body">
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
-<main class="shell shell-wide" id="evidence-root"
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell shell-wide keel-page" id="evidence-root"
       th:attr="data-job-id=${jobId},data-tc-id=${tcId},data-project-id=${projectId}">
     <div class="page-title">
         <div>

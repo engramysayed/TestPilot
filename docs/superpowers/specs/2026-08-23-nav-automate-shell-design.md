@@ -84,7 +84,7 @@ Parent **Automate** styling applies when any `automate*` value is active.
 
 | Path | Template | Controller |
 |------|----------|------------|
-| `/automate` | `automate.html` | `PortalUiController.automate()` |
+| `/automate` | `upload.html` (workbook upload + conversion UI; legacy `automate.html` hub removed) | `PortalUiController.automate()` |
 | `/generate` | `generate.html` | `PortalUiController.generate()` |
 | `/execute` | `execute.html` | `PortalUiController.execute()` |
 | `/upload` | `upload.html` (existing) | `navActive` → `automate-upload` |
@@ -184,7 +184,7 @@ Response shape unchanged.
 | Area | Paths |
 |------|-------|
 | Nav | `templates/fragments.html`, `static/css/portal.css` |
-| Pages | `automate.html`, `generate.html`, `execute.html` |
+| Pages | `upload.html` (served at `/automate`), `generate.html`, `execute.html` |
 | Controller | `PortalUiController.java` |
 | API | `JobController.java` |
 | Tests | `src/test/java/delivery/portal/web/AutomateShellMvcTest.java` |

@@ -1,87 +1,129 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
+    <th:block th:fragment="portalStyles">
+        <link rel="stylesheet" th:href="@{/css/portal.css}"/>
+        <link rel="stylesheet" th:href="@{/css/keel-reskin.css}"/>
+    </th:block>
+    <th:block th:fragment="authFonts">
+        <link rel="preconnect" href="https://fonts.googleapis.com"/>
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet"/>
+    </th:block>
+    <th:block th:fragment="appFonts">
+        <link rel="preconnect" href="https://fonts.googleapis.com"/>
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@500;600;700&display=swap" rel="stylesheet"/>
+    </th:block>
+    <th:block th:fragment="authPageHead(title)">
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title th:text="${title} + ' — Keel'">Keel</title>
+        <link rel="icon" type="image/svg+xml" th:href="@{/img/favicon.svg}"/>
+        <th:block th:replace="~{fragments :: portalStyles}"></th:block>
+        <th:block th:replace="~{fragments :: authFonts}"></th:block>
+    </th:block>
     <th:block th:fragment="pageHead(title)">
         <meta charset="UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <title th:text="${title} + ' — Keel'">Keel</title>
         <link rel="icon" type="image/svg+xml" th:href="@{/img/favicon.svg}"/>
-        <link rel="stylesheet" th:href="@{/css/portal.css}"/>
-        <link rel="preconnect" href="https://fonts.googleapis.com"/>
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@500;600;700&display=swap" rel="stylesheet"/>
+        <th:block th:replace="~{fragments :: portalStyles}"></th:block>
+        <th:block th:replace="~{fragments :: appFonts}"></th:block>
+        <script defer th:src="@{/js/portal-nav.js}"></script>
     </th:block>
 </head>
 <body>
+<header class="topbar" th:fragment="topbar">
+    <div class="crumb">
+        <span th:text="${pageCrumb}">Workspace</span> / <b th:text="${pageTitle}">Overview</b>
+    </div>
+    <div class="topbar-search">
+        <label class="global-search-label" for="globalSearch">Search</label>
+        <input id="globalSearch" type="search" name="q" autocomplete="off"
+               placeholder="Search pages or projects…" aria-label="Search workspace pages and projects"/>
+    </div>
+    <span class="avatar avatar--top" th:text="${userInitials}" th:title="${email}">RS</span>
+</header>
+
 <aside class="sidebar" th:fragment="sidebar">
     <div class="sidebar-brand">
-        <a href="/dashboard" class="brand-link">
-            <img class="brand-logo" th:src="@{/img/keel-logo.svg}" alt="" width="32" height="32"/>
-            <span class="brand-mark">Keel</span>
+        <a href="/dashboard" class="brand-link" aria-label="Keel home">
+            <svg class="brand-logo-svg" width="27" height="31" viewBox="0 0 30 34" fill="none" aria-hidden="true">
+                <path d="M4 4v23l11 5 11-5V4L15 9 4 4Z" stroke="currentColor" stroke-width="2"/>
+                <path d="m8 11 7 4 7-4M15 15v11" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span class="brand-mark">keel</span>
         </a>
     </div>
 
-    <nav class="sidebar-nav" aria-label="Main">
-        <p class="sidebar-label">Workspace</p>
-        <a href="/dashboard" th:classappend="${navActive == 'dashboard'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1v-9.5z"/></svg>
-            Dashboard
-        </a>
-        <a href="/projects" th:classappend="${navActive == 'projects'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h6l2 2h10v11H3V7z"/></svg>
-            Projects
-        </a>
-        <a href="/generate" th:classappend="${navActive == 'generate'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4"/><path d="M12 17v4"/><path d="M3 12h4"/><path d="M17 12h4"/><path d="m8 8 2 2"/><path d="m14 14 2 2"/><path d="m14 8 2-2"/><path d="m8 14 2 2"/></svg>
-            Generate
-        </a>
-        <a href="/execute" th:classappend="${navActive == 'execute'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4V8z"/></svg>
-            Execute
-        </a>
-        <a href="/automate" th:classappend="${navActive == 'automate'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>
-            Automate
-        </a>
-        <a href="/bug-hunter" th:classappend="${navActive == 'bug-hunter'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8 11h6"/><path d="M11 8v6"/></svg>
-            Bug Hunter
-        </a>
-        <a href="/runs" th:classappend="${navActive == 'runs'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
-            Runs &amp; evidence
-        </a>
-        <a href="/packages" th:classappend="${navActive == 'packages'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
-            Automation
-        </a>
-        <a href="/tc-guide" th:classappend="${navActive == 'tc-guide'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9l3 3v13H6V4z"/><path d="M14 4v4h4"/><path d="M8 12h8"/><path d="M8 16h6"/></svg>
-            TC guide
-        </a>
+    <div class="workspace-pill">
+        <span th:text="${workspaceTitle}">My workspace</span>
+        <span th:text="${workspaceSubtitle}">Personal workspace · Owner</span>
+    </div>
 
-        <p class="sidebar-label">Account</p>
-        <a href="/account" th:classappend="${navActive == 'account'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 19.5c1.2-3 3.5-4.5 7-4.5s5.8 1.5 7 4.5"/></svg>
-            Account
-        </a>
-        <th:block th:if="${isAdmin}">
-            <p class="sidebar-label">Admin</p>
-            <a href="/admin/users" th:classappend="${navActive == 'users'} ? 'active'">
-                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="2.5"/><circle cx="16" cy="8" r="2.5"/><path d="M3.5 18.5c.8-2.2 2.6-3.5 4.5-3.5s3.7 1.3 4.5 3.5"/><path d="M12.5 18.5c.4-1.4 1.5-2.5 3.5-3.2"/></svg>
-                Users
-            </a>
-            <a href="/admin/domains" th:classappend="${navActive == 'domains'} ? 'active'">
-                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M4 12h16"/><path d="M12 4a14 14 0 0 1 0 16"/><path d="M12 4a14 14 0 0 0 0 16"/></svg>
-                Domains
-            </a>
-        </th:block>
-    </nav>
+    <p class="sidebar-navtitle">Workspace</p>
 
     <a id="sidebar-job-chip" class="sidebar-job-chip" hidden href="/status" aria-label="Open run status">
         <span class="spinner spinner--badge" aria-hidden="true"></span>
         <span id="sidebar-job-chip-label">Working…</span>
     </a>
+
+    <nav class="sidebar-nav" aria-label="Main">
+        <a href="/dashboard" th:classappend="${navActive == 'dashboard'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"/></svg>
+            <span>Overview</span>
+        </a>
+        <a href="/projects" th:classappend="${navActive == 'projects'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 3h9v12H3z"/></svg>
+            <span>Projects</span>
+        </a>
+        <a href="/generate" th:classappend="${navActive == 'generate'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18 M5 5l14 14 M5 19 19 5"/></svg>
+            <span>Generate</span>
+        </a>
+        <a href="/execute" th:classappend="${navActive == 'execute'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l12 8-12 8z"/></svg>
+            <span>Execute</span>
+        </a>
+        <a href="/automate" th:classappend="${navActive == 'automate'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>
+            <span>Automate</span>
+        </a>
+        <a href="/bug-hunter" th:classappend="${navActive == 'bug-hunter'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8 11h6"/><path d="M11 8v6"/></svg>
+            <span>Bug Hunter</span>
+        </a>
+        <a href="/runs" th:classappend="${navActive == 'runs'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l12 8-12 8z"/></svg>
+            <span>Runs &amp; evidence</span>
+        </a>
+        <a href="/packages" th:classappend="${navActive == 'packages'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4z M3 7l9 5 9-5 M12 12v9"/></svg>
+            <span>Automation</span>
+        </a>
+        <a href="/tc-guide" th:classappend="${navActive == 'tc-guide'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5z M9 7h6 M9 11h6 M9 15h4 M12 3v18"/></svg>
+            <span>TC guide</span>
+        </a>
+
+        <p class="sidebar-label">Account</p>
+        <a href="/account" th:classappend="${navActive == 'account'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 19.5c1.2-3 3.5-4.5 7-4.5s5.8 1.5 7 4.5"/></svg>
+            <span>Account</span>
+        </a>
+        <th:block th:if="${isAdmin}">
+            <p class="sidebar-label">Admin</p>
+            <a href="/admin/users" th:classappend="${navActive == 'users'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z M9 12l2 2 4-4"/></svg>
+                <span>Administration</span>
+            </a>
+            <a href="/admin/domains" th:classappend="${navActive == 'domains'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M4 12h16"/><path d="M12 4a14 14 0 0 1 0 16"/><path d="M12 4a14 14 0 0 0 0 16"/></svg>
+                <span>Domains</span>
+            </a>
+        </th:block>
+    </nav>
 
     <script>
         (function () {
@@ -158,9 +200,16 @@
     </script>
 
     <div class="sidebar-foot">
-        <div class="sidebar-user" th:if="${email}">
-            <span class="user-dot" aria-hidden="true"></span>
-            <span class="user-email" th:text="${email}">user@example.com</span>
+        <div class="sidehelp">
+            Designed for clear evidence.<br/>
+            <span class="sidehelp-accent">Web today. Mobile next.</span>
+        </div>
+        <div class="sidebar-account" th:if="${email}">
+            <span class="avatar" th:text="${userInitials}">RS</span>
+            <div>
+                <span class="sidebar-account-name" th:text="${workspaceTitle}">My workspace</span>
+                <small th:text="${workspaceSubtitle}">Owner</small>
+            </div>
         </div>
         <form th:action="@{/logout}" method="post" class="sidebar-logout">
             <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>

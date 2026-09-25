@@ -6,7 +6,6 @@ import delivery.portal.persistence.JobEntity;
 import delivery.portal.persistence.PortalUser;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.security.JobSecretCrypto;
-import delivery.portal.persistence.JobEntity;
 import delivery.portal.service.DashboardService;
 import delivery.portal.service.InviteService;
 import delivery.portal.service.JobLinkEnricher;
@@ -48,11 +47,77 @@ public class PortalUiController {
         this.workspacePackages = workspacePackages;
     }
 
-    private void addNav(Model model) {
+    private void addNav(Model model, String navActive) {
         PortalUser user = currentUser.requireUser();
-        model.addAttribute("email", user.getEmail());
+        String email = user.getEmail();
+        model.addAttribute("email", email);
         model.addAttribute("isAdmin", user.getRole() == PortalUser.Role.ADMIN);
-        model.addAttribute("navActive", "");
+        model.addAttribute("navActive", navActive);
+        model.addAttribute("userInitials", initialsFromEmail(email));
+        model.addAttribute("workspaceTitle", workspaceTitleFromEmail(email));
+        model.addAttribute("workspaceSubtitle", user.getRole() == PortalUser.Role.ADMIN
+                ? "Platform admin"
+                : "Personal workspace · Owner");
+        model.addAttribute("pageCrumb", "Workspace");
+        model.addAttribute("pageTitle", pageTitleForNav(navActive));
+    }
+
+    private static String initialsFromEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return "??";
+        }
+        String local = email.split("@")[0].trim();
+        if (local.contains(".")) {
+            String[] parts = local.split("\\.");
+            StringBuilder sb = new StringBuilder(2);
+            for (String part : parts) {
+                if (!part.isEmpty()) {
+                    sb.append(Character.toUpperCase(part.charAt(0)));
+                }
+                if (sb.length() >= 2) {
+                    break;
+                }
+            }
+            return sb.length() >= 2 ? sb.substring(0, 2) : local.substring(0, Math.min(2, local.length())).toUpperCase();
+        }
+        return local.length() >= 2
+                ? local.substring(0, 2).toUpperCase()
+                : local.toUpperCase();
+    }
+
+    private static String workspaceTitleFromEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return "My workspace";
+        }
+        String local = email.split("@")[0].trim();
+        if (local.contains(".")) {
+            local = local.split("\\.")[0];
+        }
+        if (local.isEmpty()) {
+            return "My workspace";
+        }
+        return Character.toUpperCase(local.charAt(0)) + local.substring(1) + "'s workspace";
+    }
+
+    private static String pageTitleForNav(String navActive) {
+        if (navActive == null || navActive.isBlank()) {
+            return "Keel";
+        }
+        return switch (navActive) {
+            case "dashboard" -> "Overview";
+            case "projects" -> "Projects";
+            case "generate" -> "Generate";
+            case "execute" -> "Execute";
+            case "automate" -> "Automate";
+            case "bug-hunter" -> "Bug Hunter";
+            case "runs" -> "Runs & evidence";
+            case "packages" -> "Automation";
+            case "tc-guide" -> "TC guide";
+            case "account" -> "Account";
+            case "users" -> "Administration";
+            case "domains" -> "Domains";
+            default -> "Keel";
+        };
     }
 
     @GetMapping("/")
@@ -67,16 +132,14 @@ public class PortalUiController {
 
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "dashboard");
+        addNav(model, "dashboard");
         model.addAttribute("stats", dashboard.statsFor(currentUser.requireUserId()));
         return "dashboard";
     }
 
     @GetMapping("/projects")
     public String projects(Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "projects");
+        addNav(model, "projects");
         model.addAttribute("projects", store.listProjects(currentUser.requireUserId()));
         return "projects";
     }
@@ -85,8 +148,7 @@ public class PortalUiController {
     public String projectDetail(@PathVariable("projectId") String projectId,
                                 @RequestParam(value = "tab", defaultValue = "summary") String tab,
                                 Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "projects");
+        addNav(model, "projects");
         Long ownerUserId = currentUser.requireUserId();
         var owned = store.getOwnedProject(projectId, ownerUserId);
         if (owned.isEmpty()) {
@@ -98,6 +160,8 @@ public class PortalUiController {
         };
         model.addAttribute("project", owned.get());
         model.addAttribute("projectId", projectId);
+        model.addAttribute("pageTitle", owned.get().getName());
+        model.addAttribute("pageCrumb", "Projects");
         model.addAttribute("activeTab", activeTab);
         model.addAttribute("lastJobUsername", lastJobUsernameForProject(projectId, ownerUserId));
         model.addAttribute("precisionAuthoringEnabled", portalProperties.isPrecisionAuthoringEnabled());
@@ -122,10 +186,10 @@ public class PortalUiController {
         }
     }
 
+    /** Automate UI lives in {@code upload.html} (workbook upload + conversion). {@code automate.html} is not used. */
     @GetMapping("/automate")
     public String automate(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "automate");
+        addNav(model, "automate");
         model.addAttribute("projects", store.listProjects(currentUser.requireUserId()));
         model.addAttribute("projectId", projectId == null ? "" : projectId);
         model.addAttribute("finalReviseEnabled", portalProperties.isFinalReviseEnabled());
@@ -134,16 +198,14 @@ public class PortalUiController {
 
     @GetMapping("/generate")
     public String generate(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "generate");
+        addNav(model, "generate");
         model.addAttribute("projectId", projectId == null ? "" : projectId);
         return "generate";
     }
 
     @GetMapping("/execute")
     public String execute(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "execute");
+        addNav(model, "execute");
         model.addAttribute("projectId", projectId == null ? "" : projectId);
         return "execute";
     }
@@ -151,8 +213,7 @@ public class PortalUiController {
     @GetMapping("/packages")
     public String packages(Model model) {
         Long ownerUserId = currentUser.requireUserId();
-        addNav(model);
-        model.addAttribute("navActive", "packages");
+        addNav(model, "packages");
         model.addAttribute("packages", workspacePackages.listPackagesForOwner(ownerUserId));
         List<Map<String, Object>> projectRows = new ArrayList<>();
         for (var project : store.listProjects(ownerUserId)) {
@@ -171,8 +232,9 @@ public class PortalUiController {
     public String evidence(@RequestParam("jobId") String jobId,
                            @RequestParam(value = "tcId", required = false) String tcId,
                            Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "runs");
+        addNav(model, "runs");
+        model.addAttribute("pageTitle", "Evidence");
+        model.addAttribute("pageCrumb", "Runs & evidence");
         model.addAttribute("jobId", jobId);
         model.addAttribute("tcId", tcId == null ? "" : tcId);
         var owned = store.getOwnedJob(jobId, currentUser.requireUserId());
@@ -185,8 +247,7 @@ public class PortalUiController {
 
     @GetMapping("/bug-hunter")
     public String bugHunter(Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "bug-hunter");
+        addNav(model, "bug-hunter");
         return "bug-hunter";
     }
 
@@ -200,15 +261,13 @@ public class PortalUiController {
 
     @GetMapping("/tc-guide")
     public String tcGuide(Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "tc-guide");
+        addNav(model, "tc-guide");
         return "tc-guide";
     }
 
     @GetMapping({"/runs", "/jobs"})
     public String runs(Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "runs");
+        addNav(model, "runs");
         model.addAttribute("jobs", enrichedJobsForOwner(currentUser.requireUserId()));
         return "jobs";
     }
@@ -235,8 +294,9 @@ public class PortalUiController {
 
     @GetMapping("/status")
     public String status(@RequestParam("jobId") String jobId, Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "runs");
+        addNav(model, "runs");
+        model.addAttribute("pageTitle", "Status");
+        model.addAttribute("pageCrumb", "Runs & evidence");
         model.addAttribute("jobId", jobId);
         String status = "QUEUED";
         String message = "Waiting for worker…";
@@ -329,22 +389,19 @@ public class PortalUiController {
 
     @GetMapping("/admin/users")
     public String adminUsers(Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "users");
+        addNav(model, "users");
         return "admin-users";
     }
 
     @GetMapping("/admin/domains")
     public String adminDomains(Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "domains");
+        addNav(model, "domains");
         return "admin-domains";
     }
 
     @GetMapping("/account")
     public String account(Model model) {
-        addNav(model);
-        model.addAttribute("navActive", "account");
+        addNav(model, "account");
         return "account";
     }
 }

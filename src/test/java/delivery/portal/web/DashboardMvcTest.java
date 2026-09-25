@@ -84,37 +84,35 @@ public class DashboardMvcTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
-    public void dashboard_rendersStatsOnly() throws Exception {
+    public void dashboard_rendersOverviewLayout() throws Exception {
         String body = fetchDashboard();
 
-        Assert.assertTrue(body.contains("Results by day"));
-        Assert.assertTrue(body.contains("Job status"));
-        Assert.assertTrue(body.contains("Automate results"));
+        Assert.assertTrue(body.contains("overview-page"));
+        Assert.assertTrue(body.contains("A clearer view of every run"));
+        Assert.assertTrue(body.contains("stats--bar"));
+        Assert.assertTrue(body.contains("Execution outcomes"));
         Assert.assertTrue(body.contains("Proven pass rate"));
         Assert.assertTrue(body.contains("No proven cases yet") || body.contains("Pass rate is"),
                 "dashboard must explain the proven-rate denominator");
-        Assert.assertTrue(body.contains("Execute runs"));
+        Assert.assertTrue(body.contains("Recent runs"));
+        Assert.assertTrue(body.contains("+ New run"));
         Assert.assertFalse(body.contains("class=\"verb-cards"),
                 "dashboard should not show verb navigation cards");
-        Assert.assertFalse(body.contains("Open Generate"));
-        Assert.assertFalse(body.contains("Open Execute"));
-        Assert.assertFalse(body.contains("Open Automate"));
     }
 
     @Test
-    public void dashboard_hasChartCanvases() throws Exception {
+    public void dashboard_hasExecutionOutcomesChart() throws Exception {
         String body = fetchDashboard();
-
         Assert.assertTrue(body.contains("id=\"scoreChart\""));
-        Assert.assertTrue(body.contains("id=\"statusChart\""));
-        Assert.assertTrue(body.contains("id=\"passChart\""));
+        Assert.assertFalse(body.contains("id=\"statusChart\""));
+        Assert.assertFalse(body.contains("id=\"passChart\""));
     }
 
     @Test
     public void dashboard_hasAttentionPanel() throws Exception {
         String body = fetchDashboard();
         Assert.assertTrue(body.contains("Needs your attention"));
-        Assert.assertTrue(body.contains("attention-panel"));
+        Assert.assertTrue(body.contains("id=\"attention-list\""));
     }
 
     @Test

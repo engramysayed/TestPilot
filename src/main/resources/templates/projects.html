@@ -6,13 +6,20 @@
 <body class="app-body">
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
-<main class="shell">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
     <div class="page-title">
         <div>
             <h1>Projects</h1>
             <p class="lede">Configure base URL, credentials, and automation artifacts per workspace.</p>
         </div>
     </div>
+
+    <nav class="projects-filter tabs" aria-label="Project filters">
+        <button type="button" class="active" id="projects-filter-all" disabled>All projects</button>
+        <button type="button" class="tab-planned" disabled title="Web-only filter — not available yet">Web</button>
+        <button type="button" class="tab-planned" disabled title="Mobile projects — planned (N5/N6)">Android</button>
+    </nav>
 
     <section class="panel create-panel">
         <h2>Create project</h2>
@@ -44,19 +51,7 @@
                         th:if="${!#lists.isEmpty(projects)}">Delete all</button>
             </div>
         </div>
-        <table class="table" id="projects-table">
-            <thead>
-            <tr>
-                <th>Name</th>
-                <th>Project ID</th>
-                <th>Base URL</th>
-                <th>Version</th>
-                <th>Last modified</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody id="projects-body"></tbody>
-        </table>
+        <div class="projectcards" id="projects-cards" aria-live="polite"></div>
         <p id="projects-empty" class="muted" hidden>No projects yet — create one above.</p>
         <p id="projects-err" class="error" hidden></p>
     </section>
@@ -138,75 +133,109 @@
     }
 
     function renderProjects(projects) {
-        const tbody = document.getElementById('projects-body');
+        const cards = document.getElementById('projects-cards');
         const empty = document.getElementById('projects-empty');
         const deleteAllBtn = document.getElementById('delete-all-btn');
-        tbody.innerHTML = '';
+        cards.innerHTML = '';
         empty.hidden = projects.length > 0;
         if (deleteAllBtn) deleteAllBtn.hidden = projects.length === 0;
+        const filterAll = document.getElementById('projects-filter-all');
+        if (filterAll) {
+            filterAll.textContent = 'All projects' + (projects.length ? ' (' + projects.length + ')' : '');
+        }
 
         projects.forEach(p => {
             if (p.lastModifiedLabel) {
                 lastModifiedCache[p.projectId] = p.lastModifiedLabel;
             }
-            const tr = document.createElement('tr');
-            if (p.archived) tr.classList.add('project-row-archived');
 
-            const nameCell = document.createElement('td');
-            const nameLink = document.createElement('a');
-            nameLink.href = '/projects/' + encodeURIComponent(p.projectId);
-            nameLink.textContent = p.name || p.projectId;
-            nameLink.className = 'project-name-link';
-            nameCell.appendChild(nameLink);
+            const card = document.createElement('section');
+            card.className = 'panel projectcard';
+            if (p.archived) card.classList.add('project-row-archived');
+
+            const top = document.createElement('div');
+            top.className = 'cardtop';
+            const mark = document.createElement('div');
+            mark.className = 'projectmark';
+            mark.textContent = (p.name || p.projectId || '?').slice(0, 1).toUpperCase();
+            top.appendChild(mark);
             if (p.archived) {
                 const badge = document.createElement('span');
                 badge.className = 'badge muted project-archived-badge';
                 badge.textContent = 'Archived';
-                nameCell.appendChild(document.createTextNode(' '));
-                nameCell.appendChild(badge);
+                top.appendChild(badge);
+            } else if (p.platform === 'web') {
+                const badge = document.createElement('span');
+                badge.className = 'badge badge--pass';
+                badge.textContent = 'Web';
+                top.appendChild(badge);
             }
 
-            const idCell = document.createElement('td');
-            idCell.className = 'mono';
-            idCell.textContent = p.projectId;
+            const title = document.createElement('h2');
+            const nameLink = document.createElement('a');
+            nameLink.href = '/projects/' + encodeURIComponent(p.projectId);
+            nameLink.textContent = p.name || p.projectId;
+            nameLink.className = 'project-name-link';
+            title.appendChild(nameLink);
 
-            const urlCell = document.createElement('td');
-            urlCell.className = 'clip muted';
-            urlCell.title = p.baseUrl || '';
-            urlCell.textContent = truncateUrl(p.baseUrl, 40);
+            const tagline = document.createElement('p');
+            tagline.className = 'projectcard-tagline';
+            tagline.textContent = p.baseUrl
+                ? truncateUrl(p.baseUrl, 52)
+                : 'Configure base URL in project settings when ready.';
 
-            const verCell = document.createElement('td');
-            verCell.textContent = 'v' + (p.latestVersion ?? 0);
+            const caseCount = p.libraryCaseCount ?? 0;
+            const rate = p.provenPassRatePercent;
+            const kpiWrap = document.createElement('div');
+            if (rate != null && rate >= 0) {
+                const bar = document.createElement('div');
+                bar.className = 'projectcard-progress';
+                bar.innerHTML = '<span style="width:' + Math.min(100, rate) + '%"></span>';
+                kpiWrap.appendChild(bar);
+                const kpi = document.createElement('div');
+                kpi.className = 'cardmeta projectcard-kpi';
+                kpi.innerHTML = '<span>' + rate + '% proven pass rate</span><span>'
+                    + caseCount + ' case' + (caseCount === 1 ? '' : 's') + '</span>';
+                kpiWrap.appendChild(kpi);
+            } else {
+                const kpi = document.createElement('div');
+                kpi.className = 'cardmeta projectcard-kpi';
+                kpi.innerHTML = '<span>No proven cases yet</span><span>'
+                    + caseCount + ' case' + (caseCount === 1 ? '' : 's') + '</span>';
+                kpiWrap.appendChild(kpi);
+            }
 
-            const modCell = document.createElement('td');
-            modCell.textContent = lastModifiedLabel(p);
+            const meta = document.createElement('p');
+            meta.className = 'projectcard-meta';
+            meta.textContent = 'v' + (p.latestVersion ?? 0) + ' · ' + lastModifiedLabel(p);
 
-            const actionsCell = document.createElement('td');
-            actionsCell.className = 'actions';
+            const footer = document.createElement('div');
+            footer.className = 'cardfooter';
+
             const openBtn = document.createElement('a');
-            openBtn.className = 'button';
+            openBtn.className = 'button primary small';
             openBtn.href = '/projects/' + encodeURIComponent(p.projectId);
-            openBtn.textContent = 'Open';
-            actionsCell.appendChild(openBtn);
+            openBtn.textContent = 'Open project';
+            footer.appendChild(openBtn);
 
             if (!p.archived) {
                 const archiveBtn = document.createElement('button');
                 archiveBtn.type = 'button';
-                archiveBtn.className = 'button ghost';
+                archiveBtn.className = 'button ghost small';
                 archiveBtn.textContent = 'Archive';
                 archiveBtn.addEventListener('click', () => openArchiveModal(p));
-                actionsCell.appendChild(archiveBtn);
+                footer.appendChild(archiveBtn);
             }
 
             const deleteBtn = document.createElement('button');
             deleteBtn.type = 'button';
-            deleteBtn.className = 'danger';
-            deleteBtn.textContent = 'Delete permanently';
+            deleteBtn.className = 'button ghost small danger';
+            deleteBtn.textContent = 'Delete';
             deleteBtn.addEventListener('click', () => openDeleteModal(p));
-            actionsCell.appendChild(deleteBtn);
+            footer.appendChild(deleteBtn);
 
-            tr.append(nameCell, idCell, urlCell, verCell, modCell, actionsCell);
-            tbody.appendChild(tr);
+            card.append(top, title, tagline, kpiWrap, meta, footer);
+            cards.appendChild(card);
         });
     }
 

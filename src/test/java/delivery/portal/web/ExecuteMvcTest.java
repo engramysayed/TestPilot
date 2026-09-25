@@ -41,7 +41,7 @@ public class ExecuteMvcTest extends AbstractTestNGSpringContextTests {
     }
 
     private static String mainShell(String body) {
-        int mainStart = body.indexOf("<main class=\"shell\">");
+        int mainStart = body.indexOf("<main class=\"shell");
         Assert.assertTrue(mainStart >= 0, "main shell missing");
         int mainEnd = body.indexOf("</main>", mainStart);
         Assert.assertTrue(mainEnd > mainStart, "main shell unclosed");

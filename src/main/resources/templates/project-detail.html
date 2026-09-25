@@ -6,7 +6,8 @@
 <body class="app-body">
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
-<main class="shell" id="project-root"
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page" id="project-root"
       th:attr="data-project-id=${projectId},data-last-job-username=${lastJobUsername}">
     <div class="page-title">
         <div>
@@ -21,7 +22,7 @@
         </div>
     </div>
 
-    <nav class="project-tabs" aria-label="Project sections">
+    <nav class="project-tabs tabs" aria-label="Project sections">
         <a th:href="@{/projects/{id}(id=${projectId}, tab='summary')}"
            th:classappend="${activeTab == 'summary'} ? ' active' : ''">Summary</a>
         <a th:href="@{/projects/{id}(id=${projectId}, tab='tcs')}"
