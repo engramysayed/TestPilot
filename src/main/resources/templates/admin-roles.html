@@ -86,7 +86,12 @@
     if (!r.ok) { err.hidden = false; err.textContent = r.data.message || 'Admin only'; return; }
     var list = document.getElementById('role-list');
     list.innerHTML = '';
-    (r.data.roles || []).forEach(function (role) {
+    var roles = r.data.roles || [];
+    if (roles.length === 0) {
+      list.innerHTML = '<p class="empty-state muted" id="role-list-empty">No roles yet. Create a role to choose what each person can do.</p>';
+      return;
+    }
+    roles.forEach(function (role) {
       var row = document.createElement('div');
       row.className = 'keel-role-row';
       var left = document.createElement('div');
@@ -145,6 +150,18 @@
     editingId = null;
     loadRoles();
   });
+
+  var root = document.querySelector('main.keel-page');
+  var rolesUi = root && root.getAttribute('data-roles-ui');
+  if (rolesUi === 'false') {
+    var list = document.getElementById('role-list');
+    if (list) {
+      list.innerHTML = '<p class="empty-state muted" id="role-list-disabled">Roles admin is turned off for this workspace.</p>';
+    }
+    var btn = document.getElementById('btn-new-role');
+    if (btn) btn.hidden = true;
+    return;
+  }
 
   loadCatalog().then(loadRoles).catch(function (e) {
     var err = document.getElementById('role-list-err');

@@ -11,7 +11,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Accumulates one {@link ScreenModel} per screenKey from AE {@link MobileCaseIr} steps. */
+/**
+ * Accumulates one {@link ScreenModel} per screenKey from AE {@link MobileCaseIr} steps.
+ * <p>M4-08: actions/asserts indexed by stable identity (op + target/locator) like web
+ * {@code PageAccumulator.actionByIdentity} — chron resolve never uses prefix-first / get(0).
+ */
 public final class ScreenAccumulator {
 
     private final Map<String, ScreenModel> screens = new LinkedHashMap<>();
@@ -51,6 +55,41 @@ public final class ScreenAccumulator {
         return screens;
     }
 
+    /** Resolve screen action method by step identity — null if missing (fail closed). */
+    public String actionSymbol(MobileStep step) {
+        if (step == null || step.screenKey() == null) {
+            return null;
+        }
+        ScreenModel sm = screens.get(step.screenKey());
+        if (sm == null) {
+            return null;
+        }
+        return sm.actionByIdentity().get(actionIdentity(step.screenKey(), step));
+    }
+
+    /** Resolve screen assert method by step identity — null if missing (fail closed). */
+    public String assertSymbol(MobileStep step) {
+        if (step == null || step.screenKey() == null) {
+            return null;
+        }
+        ScreenModel sm = screens.get(step.screenKey());
+        if (sm == null) {
+            return null;
+        }
+        return sm.assertByIdentity().get(assertIdentity(step.screenKey(), step));
+    }
+
+    static String actionIdentity(String screenKey, MobileStep step) {
+        MobileOperation op = step.operation();
+        String opName = op == null ? "" : op.name();
+        return "action|" + MobileCodegenNaming.identityKey(screenKey, step) + "|" + opName;
+    }
+
+    static String assertIdentity(String screenKey, MobileStep step) {
+        String at = step.assertType() == null ? "" : step.assertType();
+        return "assert|" + MobileCodegenNaming.identityKey(screenKey, step) + "|" + at;
+    }
+
     public static final class ScreenModel {
         private final String screenKey;
         private final String stem;
@@ -59,6 +98,8 @@ public final class ScreenAccumulator {
         private final List<ActionModel> actions = new ArrayList<>();
         private final List<AssertModel> asserts = new ArrayList<>();
         private final List<CaptureModel> captures = new ArrayList<>();
+        private final Map<String, String> actionByIdentity = new LinkedHashMap<>();
+        private final Map<String, String> assertByIdentity = new LinkedHashMap<>();
         private final Set<String> methodNames = new LinkedHashSet<>();
 
         ScreenModel(String screenKey) {
@@ -75,8 +116,11 @@ public final class ScreenAccumulator {
             }
             MobileOperation op = step.operation();
             if (op == MobileOperation.ASSERT) {
-                String id = "assert|" + MobileCodegenNaming.identityKey(screenKey, step) + "|" + step.assertType();
-                String method = names.pin(id, MobileCodegenNaming.assertMethodName(step, null));
+                String identity = assertIdentity(screenKey, step);
+                if (assertByIdentity.containsKey(identity)) {
+                    return;
+                }
+                String method = names.pin(identity, MobileCodegenNaming.assertMethodName(step, null));
                 method = dedupe(method);
                 String locatorField = resolveLocatorField(step, names);
                 boolean hasArg = step.assertType() != null
@@ -84,6 +128,7 @@ public final class ScreenAccumulator {
                         || "exactText".equalsIgnoreCase(step.assertType()));
                 String util = hasArg ? "assertExactText" : "assertVisible";
                 asserts.add(new AssertModel(method, util, locatorField, hasArg, "String", "expected"));
+                assertByIdentity.put(identity, method);
                 return;
             }
             if (op == MobileOperation.CAPTURE_TEXT) {
@@ -108,16 +153,24 @@ public final class ScreenAccumulator {
             }
             if (op == MobileOperation.TAP || op == MobileOperation.TYPE || op == MobileOperation.CLEAR
                     || op == MobileOperation.LONG_PRESS || op == MobileOperation.SCROLL_UNTIL
-                    || op == MobileOperation.SWIPE || op == MobileOperation.PRESS_BACK
-                    || op == MobileOperation.HIDE_KEYBOARD) {
-                String id = "action|" + MobileCodegenNaming.identityKey(screenKey, step) + "|" + op.name();
-                String method = names.pin(id, MobileCodegenNaming.actionMethodName(step, null));
+                    || op == MobileOperation.SWIPE) {
+                // SCROLL_UNTIL without target: do not synthesize tap — demote happens in emit gate
+                if (op == MobileOperation.SCROLL_UNTIL && step.target() == null) {
+                    return;
+                }
+                String identity = actionIdentity(screenKey, step);
+                if (actionByIdentity.containsKey(identity)) {
+                    return;
+                }
+                String method = names.pin(identity, MobileCodegenNaming.actionMethodName(step, null));
                 method = dedupe(method);
                 String locatorField = resolveLocatorField(step, names);
                 boolean secret = op == MobileOperation.TYPE
                         && step.input() != null
                         && MobileCodeSecrets.isSecretKind(step.input().kind());
-                boolean hasArg = op == MobileOperation.TYPE;
+                boolean hasArg = op == MobileOperation.TYPE
+                        || op == MobileOperation.SCROLL_UNTIL
+                        || op == MobileOperation.SWIPE;
                 String util;
                 String settle;
                 boolean passSettleKind;
@@ -131,7 +184,11 @@ public final class ScreenAccumulator {
                         case TYPE -> "type";
                         case CLEAR -> "clear";
                         case LONG_PRESS -> "longPress";
-                        default -> "tap";
+                        case SCROLL_UNTIL -> "scrollUntil";
+                        case SWIPE -> "swipe";
+                        default -> throw new IllegalStateException(
+                                "Unsupported mobile action op for screen emit: " + op
+                                        + " (never map SCROLL/SWIPE to tap)");
                     };
                     settle = op.name();
                     passSettleKind = op == MobileOperation.TAP || op == MobileOperation.TYPE;
@@ -139,6 +196,7 @@ public final class ScreenAccumulator {
                 actions.add(new ActionModel(
                         method, util, locatorField, hasArg, "String",
                         secret ? "secretRefKey" : "value", settle, passSettleKind, secret));
+                actionByIdentity.put(identity, method);
             }
         }
 
@@ -170,6 +228,8 @@ public final class ScreenAccumulator {
         public List<ActionModel> actions() { return List.copyOf(actions); }
         public List<AssertModel> asserts() { return List.copyOf(asserts); }
         public List<CaptureModel> captures() { return List.copyOf(captures); }
+        Map<String, String> actionByIdentity() { return actionByIdentity; }
+        Map<String, String> assertByIdentity() { return assertByIdentity; }
     }
 
     public record LocatorModel(String fieldName, String byExpression) {}

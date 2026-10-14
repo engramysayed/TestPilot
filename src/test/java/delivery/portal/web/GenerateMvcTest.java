@@ -276,6 +276,11 @@ public class GenerateMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(body.contains("intakeRes.status === 404") || body.contains("status === 404"),
                 "404-only graceful fallback to generate-async missing");
         Assert.assertTrue(body.contains("generate-async"), "generate-async fallback path missing");
+        Assert.assertFalse(body.contains("catch (intakeErr) { /* network"),
+                "must not silent-fallthrough network catch to generate-async");
+        Assert.assertTrue(body.contains("Story intake failed")
+                        || body.contains("intakeErr && intakeErr.message"),
+                "network/parse catch must surface error to user");
         Assert.assertTrue(body.contains("function isQualityGatePayload("),
                 "full QUALITY_GATE detector missing");
         Assert.assertTrue(body.contains("qualityGate.passed") || body.contains("qualityGate &&"),

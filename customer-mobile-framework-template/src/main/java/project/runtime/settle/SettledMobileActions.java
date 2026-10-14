@@ -9,6 +9,7 @@ import project.utils.reports.Secrets;
 
 /**
  * All screen methods call here (one-liners). Owns Allure wrap + settle + outcome classify.
+ * <p>M4-08: {@link #scrollUntil} / {@link #swipe} wrap {@code MobileGestures} (never tap).
  * <p><b>No blocking sleep</b> — settle uses {@link SettleExecutor} + {@link SettleProbe}.
  * Unit tests inject {@link #setSettleProbeFactory} / {@link #setSettleShortCircuit(boolean)}.
  */
@@ -100,7 +101,31 @@ public final class SettledMobileActions {
         });
     }
 
-    private static ActionOutcome settle(AndroidDriver driver, String settleKind, String pre) {
+    public static ActionOutcome scrollUntil(AndroidDriver driver, By target, String direction, int maxSwipes) {
+        require(driver, target);
+        String dir = direction == null || direction.isBlank() ? "DOWN" : direction.trim();
+        int max = maxSwipes <= 0 ? 5 : maxSwipes;
+        return AllureSteps.step("scrollUntil " + target + " " + dir, () -> {
+            String pre = safeSource(driver);
+            // container arg unused by MobileGestures today; pass target for API stability
+            project.runtime.gestures.MobileGestures.scrollUntil(driver, target, dir, target, max, 2, 50);
+            return settle(driver, "SCROLL_UNTIL", pre);
+        });
+    }
+
+    public static ActionOutcome swipe(AndroidDriver driver, String direction) {
+        if (driver == null) {
+            throw new IllegalArgumentException("driver required");
+        }
+        String dir = direction == null || direction.isBlank() ? "UP" : direction.trim();
+        return AllureSteps.step("swipe " + dir, () -> {
+            String pre = safeSource(driver);
+            project.runtime.gestures.MobileGestures.swipe(driver, dir, 400);
+            return settle(driver, "SWIPE", pre);
+        });
+    }
+
+        private static ActionOutcome settle(AndroidDriver driver, String settleKind, String pre) {
         SettleActionKind kind = SettleActionKind.parse(settleKind);
         SettleProbe probe;
         if (shortCircuitSettle) {

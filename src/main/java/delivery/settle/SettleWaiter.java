@@ -92,6 +92,39 @@ public final class SettleWaiter {
         return o instanceof Number n ? n.doubleValue() : 0;
     }
 
+    /**
+     * DOM quiet window only (no network idle) — hunt toast observation / offline- and company-machine-safe.
+     * Does not require network/firewall changes; uses the shared settle probe's {@code domQuietMs}.
+     */
+    public static Report awaitDomQuiet(WebDriver driver, long quietMs, long timeoutMs) {
+        SettlePolicy policy = SettlePolicy.builtin();
+        long quiet = Math.max(0, quietMs);
+        long timeout = Math.max(quiet, timeoutMs);
+        long t0 = System.currentTimeMillis();
+        try {
+            prime(driver, policy);
+        } catch (RuntimeException ignored) {
+            /* best effort */
+        }
+        while (true) {
+            Map<String, Object> p;
+            try {
+                p = probe(driver, policy);
+            } catch (RuntimeException navigating) {
+                p = null;
+            }
+            long elapsed = System.currentTimeMillis() - t0;
+            if (p != null && Math.min(num(p.get("domQuietMs")), elapsed) >= quiet) {
+                return new Report(true, elapsed, List.of(), String.valueOf(p.get("url")));
+            }
+            if (elapsed >= timeout) {
+                String url = p == null ? "" : String.valueOf(p.get("url"));
+                return new Report(false, elapsed, List.of("dom"), url);
+            }
+            sleep(policy.pollMs());
+        }
+    }
+
     private static void sleep(long ms) {
         try {
             Thread.sleep(ms);

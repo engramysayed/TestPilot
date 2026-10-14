@@ -233,24 +233,18 @@ public class HealCascade {
         if (intent == null) {
             return HealResult.fail("HEAL_EXHAUSTED: missing intent or HTML");
         }
-        if (slimHtml == null || slimHtml.isBlank()) {
-            HealResult invented = tryInvent(tcId, intent, slimHtml == null ? "" : slimHtml, pngOrNull,
-                    failureReason, priorStepSummaries == null ? List.of() : priorStepSummaries,
-                    "empty_html", screenshotPathOrNull, allowInvent);
-            return invented != null
-                    ? invented
-                    : HealResult.fail("HEAL_EXHAUSTED: missing intent or HTML");
-        }
         List<String> priorSteps = priorStepSummaries == null ? List.of() : priorStepSummaries;
         List<ProvenStep> spentSteps = spent == null ? List.of() : spent;
         List<FailedLocator> failedLocators = failed == null ? List.of() : failed;
+        // AE-L3: init LoopGuard + guardBefore before empty-HTML invent (no silent A10 bypass).
         if (intentGuard == null && loopGuardsEnabled()) {
             intentGuard = LoopGuard.of(LoopGuard.Loop.HEAL);
         }
         boolean secret = HealPromptSafety.isSecretIntent(intent);
         SettlePolicy.SideEffects se = HealPromptSafety.sideEffectsOf(intent);
         List<String> banned = HealPromptSafety.formatBanned(failedLocators);
-        boolean crash = HealPromptSafety.looksLikeCrash(failureReason, slimHtml);
+        String htmlForSafety = slimHtml == null ? "" : slimHtml;
+        boolean crash = HealPromptSafety.looksLikeCrash(failureReason, htmlForSafety);
         String safetyText = HealPromptSafety.safetyBlock(secret, se, banned, crash);
         lastSafety = new CursorHealClient.HealSafety(secret, se.wire, banned, crash, safetyText);
         if (crash) {
@@ -260,6 +254,13 @@ public class HealCascade {
         LoopGuard.Verdict pre = guardBefore("heal:" + (intent.text() == null ? "" : intent.text()));
         if (pre != null && pre.stop()) {
             return HealResult.fail("HEAL_STOPPED: " + pre.reason());
+        }
+        if (slimHtml == null || slimHtml.isBlank()) {
+            HealResult invented = tryInvent(tcId, intent, "", pngOrNull,
+                    failureReason, priorSteps, "empty_html", screenshotPathOrNull, allowInvent, se);
+            return invented != null
+                    ? invented
+                    : HealResult.fail("HEAL_EXHAUSTED: missing intent or HTML");
         }
         String reason = failureReason == null ? "" : failureReason;
         if (!failedLocators.isEmpty()) {
@@ -335,7 +336,8 @@ public class HealCascade {
                     tcId, intent, hit.table(), hit.candidateId(), true);
             if (validHealSteps(intent, hit.table(), bboxSteps, true, spentSteps)) {
                 LogsManager.info("HEAL_VISION_BBOX: resolved " + tcId + " candidateId=" + hit.candidateId());
-                return HealResult.success(bboxSteps, "vision");
+                LoopGuard.Verdict gv = guardRecord("vision:bbox:" + hit.candidateId(), true, 1, se);
+                return stoppedOr(gv, HealResult.success(bboxSteps, "vision"));
             }
             shortlist = prependCandidate(shortlist, hit.table(), hit.candidateId());
         }
@@ -629,7 +631,9 @@ public class HealCascade {
         if ("recovery".equals(result.tierUsed())) {
             consumeInventBudget(tcId);
             LogsManager.info("HEAL_RECOVERY: Cursor/solve returned recovery plan for " + tcId);
-            return result;
+            SettlePolicy.SideEffects se = HealPromptSafety.sideEffectsOf(intent);
+            LoopGuard.Verdict gv = guardRecord("invent:recovery", true, 1, se);
+            return stoppedOr(gv, result);
         }
         List<ProvenStep> steps = result.steps();
         if (!inventedStepsCarryIntentTokens(intent, steps, extractOrEmpty(slimHtml))
@@ -638,7 +642,9 @@ public class HealCascade {
         }
         consumeInventBudget(tcId);
         LogsManager.info("HEAL_CURSOR_SOLVE: resolved " + tcId + " with a written locator");
-        return HealResult.success(steps, "invent");
+        SettlePolicy.SideEffects se = HealPromptSafety.sideEffectsOf(intent);
+        LoopGuard.Verdict gv = guardRecord("invent:written", true, 1, se);
+        return stoppedOr(gv, HealResult.success(steps, "invent"));
     }
 
     /**
@@ -733,6 +739,22 @@ public class HealCascade {
             Path screenshotPathOrNull,
             boolean allowInvent
     ) {
+        return tryInvent(tcId, intent, slimHtml, pngOrNull, failureReason, priorSteps,
+                whyInvoked, screenshotPathOrNull, allowInvent, HealPromptSafety.sideEffectsOf(intent));
+    }
+
+    private HealResult tryInvent(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String slimHtml,
+            byte[] pngOrNull,
+            String failureReason,
+            List<String> priorSteps,
+            String whyInvoked,
+            Path screenshotPathOrNull,
+            boolean allowInvent,
+            SettlePolicy.SideEffects se
+    ) {
         if (!allowInvent || !hasInventBudget(tcId)) {
             if (allowInvent) {
                 logInventBudgetExhausted(tcId);
@@ -753,13 +775,16 @@ public class HealCascade {
         if ("recovery".equals(result.tierUsed())) {
             consumeInventBudget(tcId);
             LogsManager.info("HEAL_RECOVERY: invent returned recovery plan for " + tcId);
-            return result;
+            LoopGuard.Verdict gv = guardRecord("invent:" + whyInvoked + ":recovery", true, 1, se);
+            return stoppedOr(gv, result);
         }
         if (!inventedStepsCarryIntentTokens(intent, result.steps(), extractOrEmpty(slimHtml))) {
             return null;
         }
         consumeInventBudget(tcId);
-        return HealResult.success(result.steps(), "invent");
+        // AE-L3: invent success must record LoopGuard (model call + attempt).
+        LoopGuard.Verdict gv = guardRecord("invent:" + whyInvoked, true, 1, se);
+        return stoppedOr(gv, HealResult.success(result.steps(), "invent"));
     }
 
     /** Invent runs at most {@code maxInventPerTc} successful usable parses per test case. */

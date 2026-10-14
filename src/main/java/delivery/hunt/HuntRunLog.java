@@ -5,7 +5,9 @@ import utils.LogsManager;
 import java.util.Locale;
 import java.util.Map;
 
-/** Console + file logging for live Bug Hunter (via LogsManager → CMD + logs.log). */
+/** Console + file logging for live Bug Hunter (via LogsManager → CMD + logs.log).
+ * Type/secret field values are always redacted (same policy as {@link HuntStepsJournal}).
+ */
 public final class HuntRunLog {
     private HuntRunLog() {
     }
@@ -57,12 +59,13 @@ public final class HuntRunLog {
                 + " bugs=" + bugs + " scenarios=" + scenarios);
     }
 
-    private static String detailOf(Map<String, Object> row) {
+    /** Package-visible for unit tests (redaction assertions). */
+    static String detailOf(Map<String, Object> row) {
         String type = str(row.get("type")).toLowerCase(Locale.ROOT);
         return switch (type) {
             case "navigate" -> "url=" + str(row.get("url"));
             case "restart_browser" -> "login=" + str(row.get("login")) + " url=" + str(row.get("url"));
-            case "type" -> "locator=" + locatorOf(row) + " value=" + abbreviate(str(row.get("value")), 40);
+            case "type" -> "locator=" + locatorOf(row) + " value=(redacted)";
             case "click", "clear", "assert_visible" -> "locator=" + locatorOf(row);
             case "assert_text" -> "text=" + abbreviate(
                     str(row.get("text")).isBlank() ? str(row.get("expected")) : str(row.get("text")), 60);

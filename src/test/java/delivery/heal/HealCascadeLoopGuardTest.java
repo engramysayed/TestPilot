@@ -68,4 +68,74 @@ public class HealCascadeLoopGuardTest {
         assertTrue(seen[0].contains("## Safety"), seen[0]);
         assertTrue(seen[0].contains("sideEffects="), seen[0]);
     }
+
+    @Test
+    public void emptyHtmlPathInitializesGuardBeforeInvent() {
+        System.setProperty("delivery.guard.loop", "on");
+        AtomicInteger inventCalls = new AtomicInteger();
+        CursorHealClient cursor = new CursorHealClient(true, "true", 5) {
+            @Override
+            public String inventSteps(String intentText, String failureReason, List<String> priorSteps,
+                                      String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull) {
+                inventCalls.incrementAndGet();
+                return "{\"steps\":[]}";
+            }
+        };
+        HealCascade cascade = new HealCascade(
+                new AuthoringService(new LocalLlmClient("", ""), new LocatorValidator()), cursor);
+        cascade.beginIntent();
+        var intent = new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, "Click Submit");
+        // FreeInventHealer skips blank HTML without open-path; still must not bypass guard init.
+        HealResult r = cascade.heal("TC_EMPTY", intent, "", null, "no html", null,
+                false, List.of(), true, List.of(), List.of(), null);
+        assertFalse(r.ok());
+        assertTrue(r.reason().contains("HEAL_EXHAUSTED") || r.reason().startsWith("HEAL_STOPPED"), r.reason());
+        assertEquals(inventCalls.get(), 0, "blank HTML invent skipped without open-path");
+    }
+
+    @Test
+    public void inventSuccessRecordsLoopGuardAndStopsRepeats() {
+        System.setProperty("delivery.guard.loop", "on");
+        System.setProperty("delivery.cursor-heal.enabled", "true");
+        AtomicInteger inventCalls = new AtomicInteger();
+        CursorHealClient cursor = new CursorHealClient(true, "true", 5) {
+            @Override
+            public String solve(String a, String b, String c, String d, java.nio.file.Path e, List<String> f) {
+                return "";
+            }
+
+            @Override
+            public String inventSteps(String intentText, String failureReason, List<String> priorSteps,
+                                      String slimHtmlExcerpt, java.nio.file.Path screenshotPathOrNull) {
+                inventCalls.incrementAndGet();
+                return "{\"steps\":[{\"action\":\"click\",\"locatorStrategy\":\"id\","
+                        + "\"locatorValue\":\"submit\",\"value\":\"\",\"assertionType\":\"\",\"assertionExpected\":\"\"}]}";
+            }
+        };
+        HealCascade cascade = new HealCascade(
+                new AuthoringService(new LocalLlmClient("", ""), new LocatorValidator()),
+                cursor,
+                new FreeInventHealer(cursor, null, new LocatorValidator(), "cursor", true),
+                true);
+        cascade.beginIntent();
+        var intent = new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, "Click Submit");
+        String html = "<body><button id=\"submit\">Submit</button></body>";
+        HealResult first = cascade.heal("TC_INV_1", intent, html, null, "pick failed", null,
+                false, List.of(), true, List.of(), List.of(), null);
+        assertTrue(first.ok(), first.reason());
+        assertEquals(first.tierUsed(), "invent");
+        assertEquals(inventCalls.get(), 1);
+
+        HealResult last = first;
+        for (int i = 2; i <= 5; i++) {
+            last = cascade.heal("TC_INV_" + i, intent, html, null, "pick failed", null,
+                    false, List.of(), true, List.of(), List.of(), null);
+        }
+        assertTrue(last.reason().startsWith("HEAL_STOPPED") || inventCalls.get() <= 3,
+                "expected guard stop or invent capped, got reason=" + last.reason()
+                        + " inventCalls=" + inventCalls.get());
+        assertTrue(inventCalls.get() >= 1);
+        assertTrue(inventCalls.get() <= 3,
+                "LoopGuard must record invent and stop repeats; calls=" + inventCalls.get());
+    }
 }

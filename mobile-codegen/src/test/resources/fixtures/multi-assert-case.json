@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "mobile-ir/1",
+  "platform": "ANDROID",
+  "tcId": "TC_ASSERTS",
+  "libraryRevisionId": "lib-1",
+  "appRevisionId": "app-1",
+  "caseSettingsRevisionId": "cs-1",
+  "namingRevisionId": "nm-1",
+  "proof": { "status": "PROVEN", "source": "EXECUTE", "attemptId": "a1" },
+  "setupRefs": [],
+  "steps": [
+    {
+      "stepId": "a1",
+      "screenKey": "home",
+      "operation": "ASSERT",
+      "context": { "kind": "NATIVE", "package": "com.example" },
+      "target": { "strategy": "accessibilityId", "value": "title_Text", "origin": "HIERARCHY" },
+      "assertType": "visible",
+      "retryIfNoChange": false
+    },
+    {
+      "stepId": "a2",
+      "screenKey": "home",
+      "operation": "ASSERT",
+      "context": { "kind": "NATIVE", "package": "com.example" },
+      "target": { "strategy": "accessibilityId", "value": "subtitle_Text", "origin": "HIERARCHY" },
+      "assertType": "visible",
+      "retryIfNoChange": false
+    }
+  ]
+}

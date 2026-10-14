@@ -25,6 +25,7 @@ import java.util.Set;
  * Deterministic mobile framework writer. Consumes AE {@link MobileCaseIr} only —
  * never ProvenStepCodec / web IR.
  * <p>M4-03: owner+phase testdata, secret-ref path, auth/setup hooks, capture/compare emit.
+ * <p>M4-08: chron binds by step identity (never prefix-first/get(0)); SCROLL_UNTIL/SWIPE emit real gestures.
  */
 public final class MobileCodeWriter {
 
@@ -103,9 +104,19 @@ public final class MobileCodeWriter {
         }
 
         for (MobileCodegenEmitGate.CaseEmitPlan plan : plans) {
-            if (plan.todo()) {
-                Map<String, Object> model = todoModel(plan);
-                String className = MobileCodegenNaming.testClassName(plan.tcId(), false);
+            MobileCodegenEmitGate.CaseEmitPlan effective = plan;
+            if (!plan.todo()) {
+                String demoteReason = MobileCodegenEmitGate.scrollUntilMissingTargetReason(plan.original());
+                if (demoteReason == null) {
+                    demoteReason = unresolvedIdentityReason(plan, screens, byId);
+                }
+                if (demoteReason != null) {
+                    effective = MobileCodegenEmitGate.CaseEmitPlan.todo(plan.original(), demoteReason);
+                }
+            }
+            if (effective.todo()) {
+                Map<String, Object> model = todoModel(effective);
+                String className = MobileCodegenNaming.testClassName(effective.tcId(), false);
                 String file = className + ".java";
                 Path out = todoDir.resolve(file);
                 String rendered = render(todoTpl, model);
@@ -113,14 +124,14 @@ public final class MobileCodeWriter {
                 Files.writeString(out, rendered, StandardCharsets.UTF_8);
                 keepTodo.add(file);
             } else {
-                Map<String, Object> model = generatedModel(plan, screens, byId, dataKeys);
-                String className = MobileCodegenNaming.testClassName(plan.tcId(), true);
+                Map<String, Object> model = generatedModel(effective, screens, byId, dataKeys);
+                String className = MobileCodegenNaming.testClassName(effective.tcId(), true);
                 String file = className + ".java";
                 Path out = generatedDir.resolve(file);
                 String rendered = render(genTpl, model);
                 MobileCodegenSmellCheck.verifyEmittedSource(file, rendered);
                 // Guard: no raw secret literals from SECRET_REF values
-                assertNoSecretLeaks(file, rendered, plan);
+                assertNoSecretLeaks(file, rendered, effective);
                 Files.writeString(out, rendered, StandardCharsets.UTF_8);
                 keepGenerated.add(file);
             }
@@ -320,7 +331,7 @@ public final class MobileCodeWriter {
             v.put("name", var);
             screenVars.add(v);
         }
-        String call = chronCall(var, sm, step, ownerTcId, phase, dataKeys);
+        String call = chronCall(var, screens, sm, step, ownerTcId, phase, dataKeys);
         if (call != null) {
             calls.add(call);
         }
@@ -336,6 +347,7 @@ public final class MobileCodeWriter {
 
     private static String chronCall(
             String var,
+            ScreenAccumulator screens,
             ScreenAccumulator.ScreenModel sm,
             MobileStep step,
             String ownerTcId,
@@ -343,11 +355,11 @@ public final class MobileCodeWriter {
             MobileTestdataKeys dataKeys) {
         return switch (step.operation()) {
             case TAP -> {
-                String m = findAction(sm, "tap_", step);
+                String m = screens.actionSymbol(step);
                 yield m == null ? null : var + "." + m + "()";
             }
             case TYPE -> {
-                String m = findAction(sm, "type_", step);
+                String m = screens.actionSymbol(step);
                 if (m == null) {
                     yield null;
                 }
@@ -365,24 +377,40 @@ public final class MobileCodeWriter {
                         + MobileCodegenNaming.javaStringLiteral(propKey) + "))";
             }
             case CLEAR -> {
-                String m = findAction(sm, "clear_", step);
+                String m = screens.actionSymbol(step);
                 yield m == null ? null : var + "." + m + "()";
             }
             case LONG_PRESS -> {
-                String m = findAction(sm, "longPress_", step);
-                if (m == null) {
-                    m = findAction(sm, "long_press_", step);
-                }
+                String m = screens.actionSymbol(step);
                 yield m == null ? null : var + "." + m + "()";
             }
-            case ASSERT -> {
-                String m = findAssert(sm, step);
+            case SCROLL_UNTIL -> {
+                String m = screens.actionSymbol(step);
+                if (m == null || step.target() == null) {
+                    yield null;
+                }
+                String dir = step.scrollDirection() == null || step.scrollDirection().isBlank()
+                        ? "DOWN" : step.scrollDirection().trim();
+                int max = step.maxSwipes() == null || step.maxSwipes() <= 0 ? 5 : step.maxSwipes();
+                yield var + "." + m + "(" + MobileCodegenNaming.javaStringLiteral(dir) + ", " + max + ")";
+            }
+            case SWIPE -> {
+                String m = screens.actionSymbol(step);
                 if (m == null) {
                     yield null;
                 }
-                boolean text = step.assertType() != null
+                String dir = step.scrollDirection() == null || step.scrollDirection().isBlank()
+                        ? "UP" : step.scrollDirection().trim();
+                yield var + "." + m + "(" + MobileCodegenNaming.javaStringLiteral(dir) + ")";
+            }
+            case ASSERT -> {
+                String m = screens.assertSymbol(step);
+                if (m == null) {
+                    yield null;
+                }
+                boolean textAssert = step.assertType() != null
                         && step.assertType().toLowerCase().contains("text");
-                if (text) {
+                if (textAssert) {
                     String propKey = dataKeys.keyFor(ownerTcId, phase, step);
                     if (propKey != null && !propKey.isBlank()) {
                         yield var + "." + m + "(requiredProperty("
@@ -415,18 +443,60 @@ public final class MobileCodeWriter {
         };
     }
 
-    private static String findAction(ScreenAccumulator.ScreenModel sm, String prefix, MobileStep step) {
-        // Prefer identity-aligned method when possible
-        for (ScreenAccumulator.ActionModel a : sm.actions()) {
-            if (a.methodName().startsWith(prefix)) {
-                return a.methodName();
+    /**
+     * Fail closed: if a screen-bound step has no identity-mapped method, demote rather than
+     * silently binding the first prefix match (M4-08 / live P0).
+     */
+    private static String unresolvedIdentityReason(
+            MobileCodegenEmitGate.CaseEmitPlan plan,
+            ScreenAccumulator screens,
+            Map<String, MobileCaseIr> byId) {
+        List<MobileStep> toCheck = new ArrayList<>();
+        for (String ref : plan.original().setupRefs()) {
+            MobileCaseIr setup = byId.get(ref);
+            if (setup != null && setup.steps() != null) {
+                toCheck.addAll(setup.steps());
             }
         }
-        return sm.actions().isEmpty() ? null : sm.actions().get(0).methodName();
-    }
-
-    private static String findAssert(ScreenAccumulator.ScreenModel sm, MobileStep step) {
-        return sm.asserts().isEmpty() ? null : sm.asserts().get(0).methodName();
+        if (plan.emitSteps() != null) {
+            toCheck.addAll(plan.emitSteps());
+        }
+        for (MobileStep step : toCheck) {
+            if (step == null || step.operation() == null) {
+                continue;
+            }
+            switch (step.operation()) {
+                case PRESS_BACK, HIDE_KEYBOARD, WAIT, SWITCH_CONTEXT -> {
+                    continue;
+                }
+                default -> {
+                }
+            }
+            if (step.screenKey() == null || step.screenKey().isBlank()) {
+                continue;
+            }
+            ScreenAccumulator.ScreenModel sm = screens.screens().get(step.screenKey());
+            if (sm == null) {
+                return MobileCodegenEmitGate.IDENTITY_DEMOTE_REASON + " (missing screen " + step.screenKey() + ")";
+            }
+            switch (step.operation()) {
+                case TAP, TYPE, CLEAR, LONG_PRESS, SCROLL_UNTIL, SWIPE -> {
+                    if (screens.actionSymbol(step) == null) {
+                        return MobileCodegenEmitGate.IDENTITY_DEMOTE_REASON
+                                + " (action stepId=" + step.stepId() + ")";
+                    }
+                }
+                case ASSERT -> {
+                    if (screens.assertSymbol(step) == null) {
+                        return MobileCodegenEmitGate.IDENTITY_DEMOTE_REASON
+                                + " (assert stepId=" + step.stepId() + ")";
+                    }
+                }
+                default -> {
+                }
+            }
+        }
+        return null;
     }
 
     private static String findCapture(ScreenAccumulator.ScreenModel sm, MobileStep step, boolean compare) {

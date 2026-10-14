@@ -1,6 +1,7 @@
 package delivery.portal.api;
 
 import delivery.portal.model.ProjectRecord;
+import delivery.portal.persistence.PortalUser;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.PortalStore;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,12 +49,17 @@ public class PortalNavSearchController {
             return List.of();
         }
         List<Map<String, Object>> hits = new ArrayList<>();
+        PortalUser user = currentUser.requireUser();
+        boolean admin = user.getRole() == PortalUser.Role.ADMIN;
         for (NavEntry entry : WORKSPACE_PAGES) {
+            if (isAdminOnlyPage(entry.url()) && !admin) {
+                continue;
+            }
             if (entry.matches(query)) {
                 hits.add(hit(entry.url(), entry.label(), "page"));
             }
         }
-        Long uid = currentUser.requireUserId();
+        Long uid = user.getId();
         for (ProjectRecord project : store.listProjects(uid, true)) {
             String name = project.getName() == null ? "" : project.getName();
             String id = project.getProjectId();
@@ -63,6 +69,10 @@ public class PortalNavSearchController {
             }
         }
         return hits.size() > 12 ? hits.subList(0, 12) : hits;
+    }
+
+    private static boolean isAdminOnlyPage(String url) {
+        return "/admin/users".equals(url) || "/admin/domains".equals(url);
     }
 
     private static Map<String, Object> hit(String url, String label, String kind) {

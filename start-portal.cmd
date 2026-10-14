@@ -7,6 +7,10 @@ setlocal
 cd /d "%~dp0"
 
 if exist "%~dp0api-keys.local.bat" call "%~dp0api-keys.local.bat"
+REM LD-01: product profile keeps delivery.mobile.enabled=true for live devices.
+REM CI reads base application.properties (false) and never sets this profile.
+REM Override: set SPRING_PROFILES_ACTIVE= before calling this script (e.g. empty/ci).
+if "%SPRING_PROFILES_ACTIVE%"=="" set "SPRING_PROFILES_ACTIVE=product"
 if "%KEEL_DB_PASSWORD%"=="" echo NOTE: KEEL_DB_PASSWORD is not set; the dev profile runs with a warning (see docs\ops\backup-restore.md).
 
 set "KEEL_PORT=8080"

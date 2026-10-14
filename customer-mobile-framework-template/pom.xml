@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Customer POM — dependency versions are PLACEHOLDERS until M0-02 lock status=qualified.
-  Draft pins (java-client 10.1.1 / Selenium 4.43.0) exist in mobile-toolchain.lock.json
-  (pinned-m0-draft) and pom-helper-tests.xml for box unit tests only — do NOT copy draft
-  pins here as if qualified.
+  Customer POM — draft dependency pins from mobile-toolchain.lock.json (status=pinned-m0-draft).
+  Versions: appium.java-client 10.1.1, selenium.mobile 4.43.0, testng 7.11.0, allure 2.31.0.
+  Refresh when lock status → qualified (device qualify). Do not treat draft as fully qualified.
   Do not use LATEST or version ranges in delivered builds.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -17,11 +16,11 @@
   <properties>
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <!-- M0-02: replace from mobile-toolchain.lock.json when status=qualified -->
-    <appium.java-client.version>PLACEHOLDER-M0-02</appium.java-client.version>
-    <selenium.mobile.version>PLACEHOLDER-M0-02</selenium.mobile.version>
-    <testng.version>PLACEHOLDER-M0-02</testng.version>
-    <allure.version>PLACEHOLDER-M0-02</allure.version>
+    <!-- Draft pins from mobile-toolchain.lock.json (pinned-m0-draft); refresh when status→qualified -->
+    <appium.java-client.version>10.1.1</appium.java-client.version>
+    <selenium.mobile.version>4.43.0</selenium.mobile.version>
+    <testng.version>7.11.0</testng.version>
+    <allure.version>2.31.0</allure.version>
   </properties>
   <dependencies>
     <dependency>

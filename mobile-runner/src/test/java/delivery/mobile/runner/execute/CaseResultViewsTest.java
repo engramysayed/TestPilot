@@ -53,4 +53,17 @@ public class CaseResultViewsTest {
         Assert.assertEquals(view.outcome(), CaseOutcomeView.BLOCKED);
         Assert.assertEquals(view.failureCode(), "MISSING_RESULT");
     }
+
+    @Test
+    public void failFastRemainderIsNotSetupFailed() {
+        MobileCaseResultView failFast = CaseResultViews.toView(CaseResult.blocked("TC-F", "FAIL_FAST"));
+        Assert.assertEquals(failFast.outcome(), CaseOutcomeView.BLOCKED);
+        Assert.assertEquals(failFast.setupOutcome(), delivery.mobile.result.SetupOutcome.BLOCKED);
+
+        MobileCaseResultView lost = CaseResultViews.toView(CaseResult.blocked("TC-G", "DEVICE_LOST"));
+        Assert.assertEquals(lost.setupOutcome(), delivery.mobile.result.SetupOutcome.BLOCKED);
+
+        MobileCaseResultView setup = CaseResultViews.toView(CaseResult.blocked("TC-H", "SETUP"));
+        Assert.assertEquals(setup.setupOutcome(), delivery.mobile.result.SetupOutcome.FAILED);
+    }
 }

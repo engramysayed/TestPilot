@@ -15,6 +15,19 @@
         </div>
     </div>
 
+    <section class="panel" id="account-credits-panel" th:if="${creditsEnabled}">
+        <h2>Credits</h2>
+        <p class="panel-intro">Your Keel credits balance. Jobs use credits when they start.</p>
+        <p class="keel-credits-balance-line">
+            <span class="muted">Balance</span>
+            <strong id="account-credits-balance" th:text="${creditsBalance} + ' credits'">0 credits</strong>
+        </p>
+        <p class="empty-state muted" id="account-credits-ledger-empty">
+            No ledger entries on this page yet. Admins grant or set credits from Administration → Users.
+            The header chip shows the same balance while you work.
+        </p>
+    </section>
+
     <div class="dash-grid">
         <section class="panel">
             <h2>Change password</h2>

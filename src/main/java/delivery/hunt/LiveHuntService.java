@@ -388,8 +388,8 @@ public final class LiveHuntService {
                         }
                     }
                 }
-                // P1 toast observation window: second sample after a short settle
-                try { Thread.sleep(400); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                // AE-D7: toast observation window via shared DOM quiet (no network idle / sleep-only).
+                HuntToastObservation.awaitQuietWindow(driver);
                 List<String> alertsAfterSettle = new ArrayList<>();
                 try {
                     String settleSlim = ObservationBudget.clipFor(ModelRouter.Intent.HUNT_PLANNING,

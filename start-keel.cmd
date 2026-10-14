@@ -3,6 +3,7 @@ REM Phase 0a (company machine): one-cmd start for secrets, Ollama, Appium, porta
 REM Close a window (or press Ctrl+C in it) to stop that part. Nothing is installed as a service.
 REM No network/firewall/VPN/service/cert changes. Does not install Ollama/Appium/SQL.
 setlocal
+REM LD-01: portal inherits SPRING_PROFILES_ACTIVE=product from start-portal.cmd (mobile on). CI uses base props (mobile off).
 cd /d "%~dp0"
 
 set "SECRETS_STATUS=missing"

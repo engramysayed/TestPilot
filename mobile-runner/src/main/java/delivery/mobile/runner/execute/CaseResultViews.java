@@ -30,7 +30,9 @@ public final class CaseResultViews {
         }
         CaseOutcomeView outcome = CaseOutcomeView.parse(result.outcome().name());
         SetupOutcome setup = switch (result.outcome()) {
-            case BLOCKED -> SetupOutcome.FAILED;
+            case BLOCKED -> failFastOrDeviceLost(result.failureCode())
+                    ? SetupOutcome.BLOCKED
+                    : SetupOutcome.FAILED;
             case INTERRUPTED_UNCERTAIN -> SetupOutcome.UNKNOWN;
             default -> SetupOutcome.NOT_REQUIRED;
         };
@@ -56,5 +58,14 @@ public final class CaseResultViews {
                 List.of(),
                 List.of(),
                 false);
+    }
+
+    /** FAIL_FAST / DEVICE_LOST remainder is not a setup failure (AE-L5). */
+    private static boolean failFastOrDeviceLost(String failureCode) {
+        if (failureCode == null || failureCode.isBlank()) {
+            return false;
+        }
+        String c = failureCode.trim();
+        return "FAIL_FAST".equalsIgnoreCase(c) || "DEVICE_LOST".equalsIgnoreCase(c);
     }
 }

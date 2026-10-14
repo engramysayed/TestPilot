@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "mobile-ir/1",
+  "platform": "ANDROID",
+  "tcId": "TC_SCROLL",
+  "libraryRevisionId": "lib-1",
+  "appRevisionId": "app-1",
+  "caseSettingsRevisionId": "cs-1",
+  "namingRevisionId": "nm-1",
+  "proof": { "status": "PROVEN", "source": "EXECUTE", "attemptId": "a1" },
+  "setupRefs": [],
+  "steps": [
+    {
+      "stepId": "sc1",
+      "screenKey": "catalog",
+      "operation": "SCROLL_UNTIL",
+      "context": { "kind": "NATIVE", "package": "com.example" },
+      "target": { "strategy": "accessibilityId", "value": "product_Card", "origin": "USER" },
+      "scrollDirection": "DOWN",
+      "maxSwipes": 7,
+      "retryIfNoChange": false
+    },
+    {
+      "stepId": "sw1",
+      "screenKey": "catalog",
+      "operation": "SWIPE",
+      "context": { "kind": "NATIVE", "package": "com.example" },
+      "target": { "strategy": "accessibilityId", "value": "carousel_Pane", "origin": "USER" },
+      "scrollDirection": "LEFT",
+      "retryIfNoChange": false
+    },
+    {
+      "stepId": "t1",
+      "screenKey": "catalog",
+      "operation": "TAP",
+      "context": { "kind": "NATIVE", "package": "com.example" },
+      "target": { "strategy": "accessibilityId", "value": "product_Card", "origin": "USER" },
+      "retryIfNoChange": false
+    }
+  ]
+}

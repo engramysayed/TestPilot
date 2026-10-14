@@ -440,7 +440,7 @@ public class ProvePhase {
                             "Login required but no login form found (Excel path or on-page login/sign-in control)",
                             ev, 0, currentUrl(driverFactory));
                 }
-                String loginHtml = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 50000);
+                String loginHtml = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), proveHtmlBudget());
                 loginSteps = authoring.authorLoginPrelude(tc, loginHtml);
                 if (loginSteps.stream().anyMatch(s -> !s.validated()) || loginSteps.isEmpty()) {
                     String reason = loginSteps.isEmpty()
@@ -608,7 +608,7 @@ public class ProvePhase {
         String healTier = "none";
         String healSkip = "";
         try {
-            String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 50000);
+            String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), proveHtmlBudget());
             List<ProvenStep> steps = authoring.author(bodyTc, html, null);
             if (steps.isEmpty() || steps.stream().anyMatch(s -> !s.validated())) {
                 String reason = steps.isEmpty()

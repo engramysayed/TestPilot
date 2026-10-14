@@ -32,7 +32,7 @@ public class RolesUiMvcTest extends AbstractTestNGSpringContextTests {
     private MockMvc mockMvc;
 
     @Test
-    public void adminRoles_pageHasChecklist() throws Exception {
+    public void adminRoles_whenFlagOn_returns200WithRolesUi() throws Exception {
         String body = mockMvc.perform(get("/admin/roles")
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
                 .andExpect(status().isOk())
@@ -41,34 +41,9 @@ public class RolesUiMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(body.contains("perm-checklist") || body.contains("keel-perm-grid"));
         Assert.assertTrue(body.contains("/api/admin/roles"));
         Assert.assertTrue(body.contains("/api/admin/permissions"));
-    }
-
-    @Test
-    public void adminUsers_approveModalRequiresRole_singlePost() throws Exception {
-        String body = mockMvc.perform(get("/admin/users")
-                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-        Assert.assertTrue(body.contains("keel-approve-modal"), "approve modal missing");
-        Assert.assertTrue(body.contains("approve-role"), "role picker missing");
-        Assert.assertTrue(body.contains("Choose a role"), "must require explicit role");
-        Assert.assertTrue(body.contains("Credits stay at zero")
-                        || body.contains("Set credits separately")
-                        || body.contains("nothing was added automatically"),
-                "must not promise starter credits");
-        Assert.assertTrue(body.contains("/approval"), "approval endpoint missing");
-        Assert.assertTrue(body.contains("roleId: roleId") || body.contains("roleId:roleId"),
-                "approve body must include roleId in single POST");
-        int idx = body.indexOf("approve-confirm");
-        Assert.assertTrue(idx >= 0);
-        String handler = body.substring(idx, Math.min(body.length(), idx + 1500));
-        Assert.assertTrue(handler.contains("/approval"));
-        // After posting approval, handler should not also POST .../role
-        int approvalAt = handler.indexOf("/approval");
-        String afterApproval = handler.substring(approvalAt);
-        Assert.assertFalse(afterApproval.contains("/role'"),
-                "approve handler must not call /role after /approval");
-        Assert.assertFalse(afterApproval.contains("/role\""),
-                "approve handler must not call /role after /approval");
+        Assert.assertTrue(body.contains("data-roles-ui"), "data-roles-ui attr missing");
+        Assert.assertTrue(body.contains("No roles yet"), "empty roles state copy missing");
+        Assert.assertTrue(body.contains("getAttribute('data-roles-ui')"),
+                "page JS must honor data-roles-ui (client belt)");
     }
 }

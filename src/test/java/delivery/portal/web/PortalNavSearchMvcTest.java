@@ -1,15 +1,19 @@
 package delivery.portal.web;
 
 import delivery.portal.PortalApplication;
+import delivery.portal.persistence.PortalUser;
+import delivery.portal.persistence.PortalUserRepository;
 import org.json.JSONArray;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.testng.AbstractTestNGSpringContextTests;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
@@ -32,6 +36,22 @@ public class PortalNavSearchMvcTest extends AbstractTestNGSpringContextTests {
 
     @Autowired
     private MockMvc mockMvc;
+    @Autowired
+    private PortalUserRepository users;
+    @Autowired
+    private PasswordEncoder encoder;
+
+    @BeforeMethod
+    public void ensureNonAdmin() {
+        if (!users.existsByEmailIgnoreCase("member@testpilot.local")) {
+            PortalUser u = new PortalUser();
+            u.setEmail("member@testpilot.local");
+            u.setPasswordHash(encoder.encode("MemberPass1!"));
+            u.setRole(PortalUser.Role.USER);
+            u.setEnabled(true);
+            users.save(u);
+        }
+    }
 
     @Test
     public void search_findsWorkspacePages() throws Exception {
@@ -75,5 +95,64 @@ public class PortalNavSearchMvcTest extends AbstractTestNGSpringContextTests {
                 .getContentAsString();
         Assert.assertTrue(body.contains("id=\"globalSearch\""));
         Assert.assertTrue(body.contains("portal-nav.js"));
+    }
+
+    @Test
+    public void search_adminSeesAdministrationAndDomains() throws Exception {
+        MvcResult res = mockMvc.perform(get("/api/portal/search")
+                        .param("q", "admin")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String json = res.getResponse().getContentAsString();
+        Assert.assertTrue(json.contains("/admin/users") || json.contains("Administration"),
+                "admin must see Administration");
+        MvcResult domains = mockMvc.perform(get("/api/portal/search")
+                        .param("q", "domains")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String djson = domains.getResponse().getContentAsString();
+        Assert.assertTrue(djson.contains("/admin/domains") || djson.contains("Domains"),
+                "admin must see Domains");
+    }
+
+    @Test
+    public void search_nonAdminDoesNotSeeAdministrationOrDomains() throws Exception {
+        MvcResult res = mockMvc.perform(get("/api/portal/search")
+                        .param("q", "admin")
+                        .with(httpBasic("member@testpilot.local", "MemberPass1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String json = res.getResponse().getContentAsString();
+        Assert.assertFalse(json.contains("/admin/users"), "non-admin must not see /admin/users");
+        Assert.assertFalse(json.contains("Administration"), "non-admin must not see Administration label");
+
+        MvcResult domains = mockMvc.perform(get("/api/portal/search")
+                        .param("q", "domains")
+                        .with(httpBasic("member@testpilot.local", "MemberPass1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String djson = domains.getResponse().getContentAsString();
+        Assert.assertFalse(djson.contains("/admin/domains"), "non-admin must not see /admin/domains");
+    }
+
+    @Test
+    public void sidebar_jobChipLabelsHunt() throws Exception {
+        String body = mockMvc.perform(get("/dashboard")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        Assert.assertTrue(body.contains("kind === 'HUNT'") || body.contains("kind === \"HUNT\""),
+                "HUNT kindLabel branch missing");
+        Assert.assertTrue(body.contains("Hunting…") || body.contains("Hunting"),
+                "Hunting… label missing");
+        Assert.assertTrue(body.contains("GENERATE_BATCH") && body.contains("EXECUTE")
+                        && body.contains("GENERATE_COMPARE"),
+                "existing kind labels must remain");
     }
 }

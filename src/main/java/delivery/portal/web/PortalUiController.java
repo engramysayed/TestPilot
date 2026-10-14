@@ -438,6 +438,9 @@ public class PortalUiController {
     public String adminRoles(Model model) {
         addNav(model, "roles");
         model.addAttribute("rolesUiEnabled", portalProperties.isRolesUiEnabled());
+        if (!portalProperties.isRolesUiEnabled()) {
+            return "redirect:/dashboard";
+        }
         return "admin-roles";
     }
 

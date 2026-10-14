@@ -2296,7 +2296,14 @@
                             renderQualityGate(qualityGatePanel, qualityGateFailures, qualityGateSuggestions, intakeBody);
                         }
                     }
-                } catch (intakeErr) { /* network — fall through to generate-async */ }
+                } catch (intakeErr) {
+                    // Soft fallback is HTTP 404 only (handled above). Network/parse/other errors surface — do not silent fallthrough.
+                    setGenerateStatus(
+                        (intakeErr && intakeErr.message) ? ('Story intake failed: ' + intakeErr.message) : 'Story intake failed (network or parse error).',
+                        true);
+                    showGenerateLoading(false);
+                    return;
+                }
             }
             if (skipAsync) {
                 return;
