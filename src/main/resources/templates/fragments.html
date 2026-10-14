@@ -27,8 +27,9 @@
         <script>
             (function () {
                 try {
-                    var t = localStorage.getItem('keel-theme') || 'dark';
-                    document.documentElement.setAttribute('data-theme', t);
+                    /* Auth pages always light — do not inherit stored dark (muddy field tokens). */
+                    document.documentElement.setAttribute('data-theme', 'light');
+                    document.documentElement.classList.add('auth-shell');
                 } catch (e) { /* private mode */ }
             })();
         </script>
@@ -45,6 +46,7 @@
             (function () {
                 try {
                     var t = localStorage.getItem('keel-theme') || 'dark';
+                    if (t !== 'dark' && t !== 'light') t = 'dark';
                     document.documentElement.setAttribute('data-theme', t);
                 } catch (e) { /* private mode */ }
             })();

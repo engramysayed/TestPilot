@@ -1,7 +1,7 @@
 /*
  * Keel calm theme — loaded after keel-reskin.css.
- * Look source: /workspace/testpilot/ui-prototype/
- * Does not remove reskin selectors; softens them (blue accent, roomier type, light+dark).
+ * Quiet teal reskin (docs/design/keel-preview + keel-reskin): accent #087f78 / mint #e3f3ef.
+ * Softens chrome without inventing a new brand. Light + coherent dark surfaces.
  */
 :root {
     --calm-bg: #f6f7f9;
@@ -9,8 +9,9 @@
     --calm-ink: #1d2433;
     --calm-muted: #5d6678;
     --calm-line: #e3e6ec;
-    --calm-accent: #3d63dd;
-    --calm-accent-soft: #e9eefc;
+    /* Quiet teal — do NOT remap to periwinkle */
+    --calm-accent: #087f78;
+    --calm-accent-soft: #e3f3ef;
     --calm-ok: #2f7d4f;
     --calm-ok-bg: #e6f4ea;
     --calm-fix: #2c6e8f;
@@ -26,7 +27,7 @@
     --paper: var(--calm-bg);
     --teal: var(--calm-accent);
     --mint: var(--calm-accent-soft);
-    --nav: #152038;
+    --nav: #112a35;
     --red: var(--calm-bad);
     --amber: var(--calm-flaky);
     --panel: var(--calm-card);
@@ -35,18 +36,23 @@
     --text: var(--calm-ink);
     --muted: var(--calm-muted);
     --accent: var(--calm-accent);
+    --accent-2: #066860;
     --line: var(--calm-line);
     --radius: 12px;
+    --bg0: var(--calm-bg);
+    --bg1: var(--calm-bg);
     color-scheme: light;
 }
+
+/* Dark: quiet teal-on-dark highlights — never periwinkle blue accents */
 html[data-theme="dark"] {
     --calm-bg: #14171d;
     --calm-card: #1d222b;
     --calm-ink: #e7eaf0;
     --calm-muted: #a1a9b8;
     --calm-line: #2d3440;
-    --calm-accent: #8aa4f5;
-    --calm-accent-soft: #26304a;
+    --calm-accent: #7ecfc5;
+    --calm-accent-soft: #1a3330;
     --calm-ok: #7fd19c;
     --calm-ok-bg: #1f3428;
     --calm-fix: #86c6e4;
@@ -69,9 +75,45 @@ html[data-theme="dark"] {
     --text: var(--calm-ink);
     --muted: var(--calm-muted);
     --accent: var(--calm-accent);
+    --accent-2: #5eb8ae;
     --line: var(--calm-line);
+    --bg0: var(--calm-bg);
+    --bg1: var(--calm-bg);
     color-scheme: dark;
 }
+
+/*
+ * Auth shell: force light tokens regardless of stored theme / accidental dark attr.
+ * Prevents muddy dark-form fills on white login panels.
+ */
+html.auth-shell,
+html.auth-shell[data-theme="dark"],
+html.auth-shell[data-theme="light"] {
+    --calm-bg: #f6f7f9;
+    --calm-card: #ffffff;
+    --calm-ink: #1d2433;
+    --calm-muted: #5d6678;
+    --calm-line: #e3e6ec;
+    --calm-accent: #087f78;
+    --calm-accent-soft: #e3f3ef;
+    --calm-shadow: 0 1px 2px rgba(20, 30, 50, 0.05), 0 4px 14px rgba(20, 30, 50, 0.05);
+    --ink: var(--calm-ink);
+    --paper: var(--calm-bg);
+    --teal: #087f78;
+    --mint: #e3f3ef;
+    --nav: #112a35;
+    --panel: #ffffff;
+    --panel-solid: #ffffff;
+    --text: var(--calm-ink);
+    --muted: var(--calm-muted);
+    --accent: #087f78;
+    --accent-2: #066860;
+    --line: var(--calm-line);
+    --bg0: var(--calm-bg);
+    --bg1: var(--calm-bg);
+    color-scheme: light;
+}
+
 html { font-size: 17px; }
 body {
     background: var(--calm-bg) !important;
@@ -81,8 +123,9 @@ body {
 }
 .app-shell, .app-main, .shell, .keel-page { background: transparent; }
 .topbar {
-    background: var(--calm-card);
+    background: var(--calm-card) !important;
     border-bottom: 1px solid var(--calm-line);
+    color: var(--calm-ink);
 }
 .sidebar {
     background: var(--sidebar);
@@ -94,61 +137,124 @@ body {
     font-size: 1.02rem;
 }
 .sidebar-nav a.active {
-    background: rgba(61, 99, 221, 0.22);
+    background: rgba(8, 127, 120, 0.28);
     color: #fff;
 }
 html[data-theme="dark"] .sidebar-nav a.active {
     background: var(--calm-accent-soft);
     color: var(--calm-accent);
 }
-.panel, .panel--keel, .card, .projectcard {
-    background: var(--calm-card);
-    border: 1px solid var(--calm-line);
-    border-radius: var(--calm-radius);
+
+/* Surfaces — beat reskin .keel-page .* { background:#fff } hardcodes */
+.panel,
+.panel--keel,
+.card,
+.projectcard,
+.keel-page .panel,
+.keel-page .panel--keel,
+.keel-page .create-panel,
+.keel-page .guide-toc,
+.keel-page .guide-section,
+.stats--bar,
+.stat,
+.kpi,
+.keel-retry-tile {
+    background: var(--calm-card) !important;
+    border-color: var(--calm-line);
+    color: var(--calm-ink);
     box-shadow: var(--calm-shadow);
 }
+.panel, .panel--keel, .card, .projectcard {
+    border: 1px solid var(--calm-line);
+    border-radius: var(--calm-radius);
+}
 .panel--keel, .panel { padding: 1.4rem 1.55rem; }
-.heading h1, .keel-page h1, .shell h1 {
-    font-size: 1.85rem;
-    letter-spacing: -0.01em;
+
+.heading h1, .keel-page h1, .shell h1, .crumb b, .projectcard h2 a {
     color: var(--calm-ink);
 }
-.sub, .lede, .muted, .panel-intro { color: var(--calm-muted); }
+.sub, .lede, .muted, .panel-intro, .crumb, .projectcard-meta,
+.keel-page .page-title .sub, label.field > span {
+    color: var(--calm-muted);
+}
+
 .button, button.button, a.button {
     border-radius: 12px;
     padding: 0.65rem 1.1rem;
     font-weight: 600;
     font-size: 0.98rem;
 }
-.button.primary, button.primary, a.button.primary {
-    background: var(--calm-accent);
-    border-color: var(--calm-accent);
-    color: #fff;
+.button.primary, button.primary, a.button.primary,
+html.auth-shell .button.primary,
+html.auth-shell button.primary,
+html.auth-shell a.button.primary,
+body.login-body .button.primary,
+body.login-body button.primary,
+.login-submit,
+.loginform .button.primary {
+    background: var(--calm-accent) !important;
+    border-color: var(--calm-accent) !important;
+    color: #fff !important;
+    background-image: none !important;
 }
+/* Dark primary: keep white label on quiet teal (not dark ink on periwinkle) */
 html[data-theme="dark"] .button.primary,
-html[data-theme="dark"] a.button.primary {
-    color: #10162a;
+html[data-theme="dark"] a.button.primary,
+html[data-theme="dark"] button.primary {
+    color: #0b1214 !important;
+    background: var(--calm-accent) !important;
+    border-color: var(--calm-accent) !important;
 }
-.button.ghost { background: transparent; border-color: var(--calm-line); color: var(--calm-ink); }
-.stats--bar, .stat, .kpi {
-    border-radius: var(--calm-radius);
-    background: var(--calm-card);
-    border: 1px solid var(--calm-line);
-}
-input, select, textarea {
-    border-radius: 12px !important;
+.button.ghost, button.ghost, a.button.ghost {
+    background: var(--calm-card) !important;
     border-color: var(--calm-line) !important;
-    font-size: 1rem;
-    background: var(--calm-card);
-    color: var(--calm-ink);
+    color: var(--calm-ink) !important;
+    background-image: none !important;
 }
+html[data-theme="dark"] .button.ghost:hover,
+html[data-theme="dark"] button.ghost:hover {
+    background: var(--calm-accent-soft) !important;
+    border-color: var(--calm-accent) !important;
+}
+
+/* Fields — match panel theme; auth always white paper */
+input, select, textarea,
+.keel-page input, .keel-page select, .keel-page textarea,
+#globalSearch {
+    border-radius: 12px !important;
+    border: 1px solid var(--calm-line) !important;
+    font-size: 1rem;
+    background: var(--calm-card) !important;
+    color: var(--calm-ink) !important;
+    background-image: none !important;
+}
+html[data-theme="dark"] #globalSearch:focus {
+    background: var(--calm-card) !important;
+    border-color: var(--calm-accent) !important;
+}
+html.auth-shell input,
+html.auth-shell select,
+html.auth-shell textarea,
+body.login-body input,
+body.login-body select,
+body.login-body textarea,
+.loginform input,
+.loginform select,
+.loginform textarea,
+.login-form input {
+    background: #ffffff !important;
+    border: 1px solid #d5dde3 !important;
+    color: #1d2433 !important;
+    box-shadow: none !important;
+}
+
 table.table th { color: var(--calm-muted); font-weight: 600; }
 table.table td, table.table th {
     padding: 0.85rem 0.75rem;
     border-color: var(--calm-line);
 }
 
-/* Friendly status chips (prototype wording) */
+/* Friendly status chips */
 .chip, .badge, .keel-chip,
 .badge--pass, .badge--fail, .badge--warn, .badge--info,
 [data-friendly="status"] {
@@ -170,12 +276,10 @@ table.table td, table.table th {
 .chip--flaky, .badge--warn, .c-flaky { background: var(--calm-flaky-bg); color: var(--calm-flaky); }
 .chip--bad, .badge--fail, .c-bad { background: var(--calm-bad-bg); color: var(--calm-bad); }
 
-/* Keep retry-metrics classes intact; only soft-align with calm tokens */
 .keel-verdict { border-radius: 999px; }
 .keel-retry-tile {
     border-radius: 14px;
     border-color: var(--calm-line);
-    background: var(--calm-card);
 }
 .keel-retry-tile__value { color: var(--calm-ink); }
 .keel-retry-tile__label { color: var(--calm-muted); }
@@ -199,6 +303,37 @@ html[data-theme="dark"] .theme-toggle {
     border-color: var(--calm-line);
     background: var(--calm-card);
     color: var(--calm-ink);
+}
+
+/* Dark: kill remaining paper-white / washed light islands from reskin/portal */
+html[data-theme="dark"] .keel-page .summary-strip-item,
+html[data-theme="dark"] .summary-strip-item {
+    background: var(--calm-card) !important;
+    border-color: var(--calm-line) !important;
+    color: var(--calm-ink);
+}
+html[data-theme="dark"] .keel-page .note,
+html[data-theme="dark"] .keel-page .ia-banner,
+html[data-theme="dark"] .keel-page .auto-source-banner {
+    background: var(--calm-accent-soft) !important;
+    border-color: rgba(126, 207, 197, 0.35) !important;
+    color: var(--calm-accent) !important;
+}
+html[data-theme="dark"] .projectcard .cardfooter,
+html[data-theme="dark"] .overview-page .attention-item {
+    border-color: var(--calm-line) !important;
+}
+html[data-theme="dark"] .projectcard-progress {
+    background: var(--calm-line) !important;
+}
+html[data-theme="dark"] .projectmark {
+    background: var(--calm-accent-soft);
+    color: var(--calm-accent);
+}
+html[data-theme="dark"] .loginform,
+html[data-theme="dark"]:not(.auth-shell) .loginform {
+    /* in-app should not use login form; auth-shell forces light above */
+    background: var(--calm-card);
 }
 
 /* Guided record wizard */
@@ -231,7 +366,7 @@ html[data-theme="dark"] .theme-toggle {
 }
 .record-wizard .wnav { display: flex; justify-content: space-between; margin-top: 1.4rem; }
 
-/* Settings segment + channels (account / project) */
+/* Settings segment + channels */
 .calm-seg {
     display: inline-flex; border: 1px solid var(--calm-line); border-radius: 14px;
     padding: 4px; background: var(--calm-bg);
@@ -266,3 +401,11 @@ html[data-theme="dark"] .theme-toggle {
     display: inline-block; font-size: 0.8rem; font-weight: 600; color: var(--calm-muted);
     border: 1px dashed var(--calm-muted); border-radius: 999px; padding: 2px 10px; margin-left: 0.4rem;
 }
+
+/* Quiet login foot (mint family, not neon clash) */
+.loginbrand-foot {
+    color: #9eb8b3 !important;
+}
+.sidehelp-accent { color: #9eb8b3; }
+
+a { color: var(--calm-accent); }
