@@ -20,7 +20,8 @@ import java.time.Instant;
 import java.util.Locale;
 
 /**
- * Live ui-tars smoke after bbox-quality work. Skips when Ollama / ui-tars missing.
+ * Live ui-tars smoke after bbox-quality work.
+ * Opt-in ({@code KEEL_LIVESMOKE=1} / {@code -Dkeel.vision.liveSmoke=true}); skips when Ollama / ui-tars missing.
  */
 public class UiTarsLiveSmokeTest {
 
@@ -174,6 +175,7 @@ public class UiTarsLiveSmokeTest {
     }
 
     private static void assumeUiTarsUp() throws Exception {
+        VisionLiveSmokeGate.assumeOptIn();
         HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create("http://127.0.0.1:11434/api/tags"))

@@ -12,10 +12,11 @@ import java.util.Objects;
  * Package-wide data keys keyed by the original owner step (login vs body), not by the
  * leaf's emitted walk. Setup inlining looks up the prerequisite's canonical slot.
  * <p>
- * Fingerprints are <strong>control identity</strong> (method + locator), not the typed value —
- * so two occurrences of the same control with different values fail closed on conflict, while
- * distinct occurrences of the same method name on different locators get {@code .1}, {@code .2}, …
- * occurrence suffixes (F03/F04).
+ * Fingerprints are step-occurrence identity: method + locator + typed value (F04). Chronological
+ * re-edits of the same control with different values therefore allocate distinct {@code .1},
+ * {@code .2}, … keys rather than overwriting. Distinct locators that share a method name also
+ * get occurrence suffixes (F03). The same property key bound to two different values still
+ * fails closed with {@code Conflicting test data for key '...'} (forced-key / writer paths).
  */
 final class CodegenDataKeys {
     static final String PHASE_LOGIN = "login";
@@ -81,6 +82,8 @@ final class CodegenDataKeys {
             return "";
         }
         if (forcedKey != null && !forcedKey.isBlank()) {
+            assertValueCompatible(forcedKey, value);
+            valuesByKey.putIfAbsent(forcedKey, value);
             return forcedKey;
         }
         String owner = ownerId(fallbackTcId, step);
@@ -166,12 +169,15 @@ final class CodegenDataKeys {
     }
 
     private static String fingerprint(ProvenStep step, String method) {
-        // Control identity only (F03/F04): value conflicts are caught in allocate().
+        // Occurrence identity (F03/F04): include value so chronological re-edits keep .N keys;
+        // same-key value conflicts are caught in assertValueCompatible / allocate / writer.
         return Objects.toString(method, "")
                 + '\0'
                 + Objects.toString(step.locatorStrategy(), "")
                 + '\0'
-                + Objects.toString(step.locatorValue(), "");
+                + Objects.toString(step.locatorValue(), "")
+                + '\0'
+                + Objects.toString(step.value(), "");
     }
 
     private static String ownerId(String fallbackTcId, ProvenStep step) {

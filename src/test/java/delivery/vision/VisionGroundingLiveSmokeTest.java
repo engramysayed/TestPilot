@@ -17,6 +17,7 @@ import java.time.Duration;
 
 /**
  * Live smoke: real browser screenshot + local Ollama vision provider.
+ * Opt-in ({@code KEEL_LIVESMOKE=1} / {@code -Dkeel.vision.liveSmoke=true}).
  * Skips when Ollama or the configured vision model is unavailable.
  *
  * Run:
@@ -94,6 +95,7 @@ public class VisionGroundingLiveSmokeTest {
     }
 
     private static void assumeOllamaUp() throws Exception {
+        VisionLiveSmokeGate.assumeOptIn();
         HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create("http://127.0.0.1:11434/api/tags"))

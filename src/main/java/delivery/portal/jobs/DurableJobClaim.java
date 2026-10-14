@@ -21,7 +21,21 @@ public final class DurableJobClaim {
     public static final String INTERRUPTED_UNCERTAIN = "INTERRUPTED_UNCERTAIN";
 
     public enum Stage {
-        ADMITTED, BROWSER, EMIT, PUBLISH
+        ADMITTED,
+        BROWSER,
+        /** M1-05: device session active (uncertain-outcome semantics like BROWSER). */
+        DEVICE_ACTIVE,
+        /** M1-05: mobile case execution in progress (uncertain-outcome semantics like BROWSER). */
+        MOBILE_EXECUTING,
+        EMIT,
+        PUBLISH
+    }
+
+    /** Stages where lease expiry must stay INTERRUPTED_UNCERTAIN (not silent requeue). */
+    public static boolean isUncertainStage(Stage stage) {
+        return stage == Stage.BROWSER
+                || stage == Stage.DEVICE_ACTIVE
+                || stage == Stage.MOBILE_EXECUTING;
     }
 
     public record Lease(String jobId, String attemptId, String workerId, Instant leaseUntil, int cancelGeneration,
@@ -56,7 +70,7 @@ public final class DurableJobClaim {
             if (!leaseExpired(job, now)) {
                 return Optional.empty();
             }
-            if (stageOf(job) == Stage.BROWSER) {
+            if (isUncertainStage(stageOf(job))) {
                 markUncertain(job, now);
                 return Optional.empty();
             }
@@ -192,7 +206,7 @@ public final class DurableJobClaim {
         if (!leaseExpired(job, now)) {
             return false;
         }
-        if (stageOf(job) == Stage.BROWSER) {
+        if (isUncertainStage(stageOf(job))) {
             markUncertain(job, now);
             return true;
         }

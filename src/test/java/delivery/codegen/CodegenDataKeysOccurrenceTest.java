@@ -9,7 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-/** 0061: occurrence-scoped keys + fail-closed value conflict on same control (F03/F04). */
+/** 0061/0080: occurrence-scoped keys (F03/F04); same-key value conflict remains fail-closed. */
 public class CodegenDataKeysOccurrenceTest {
 
     @Test
@@ -30,7 +30,7 @@ public class CodegenDataKeysOccurrenceTest {
     }
 
     @Test
-    public void sameControlDifferentValuesFailClosed() {
+    public void sameControlDifferentValuesGetDistinctOccurrenceKeys() {
         PageAccumulator pages = new PageAccumulator();
         ProvenStep a = new ProvenStep("TC_C", "Form", "elementAction", "type",
                 "id", "user", "alice", "", "", true, "ok");
@@ -39,9 +39,27 @@ public class CodegenDataKeysOccurrenceTest {
         pages.add(a);
         pages.add(b);
         CodegenDataKeys keys = CodegenDataKeys.assign(List.of(), pages);
+        String k1 = keys.keyFor("TC_C", CodegenDataKeys.PHASE_BODY, a);
+        String k2 = keys.keyFor("TC_C", CodegenDataKeys.PHASE_BODY, b);
+        Assert.assertNotEquals(k1, k2, "F04 chronological re-edit must not share one key");
+        Assert.assertTrue(k1.endsWith(".1") || k2.endsWith(".1"), k1 + " / " + k2);
+        Assert.assertTrue(k1.endsWith(".2") || k2.endsWith(".2"), k1 + " / " + k2);
+    }
+
+    @Test
+    public void forcedSameKeyDifferentValuesFailClosed() {
+        PageAccumulator pages = new PageAccumulator();
+        ProvenStep a = new ProvenStep("TC_C", "Form", "elementAction", "type",
+                "id", "user", "alice", "", "", true, "ok");
+        ProvenStep b = new ProvenStep("TC_C", "Form", "elementAction", "type",
+                "id", "user", "bob", "", "", true, "ok");
+        pages.add(a);
+        pages.add(b);
+        CodegenDataKeys keys = CodegenDataKeys.forcingKey(pages, "TC_C.body.type_User.1");
         keys.keyFor("TC_C", CodegenDataKeys.PHASE_BODY, a);
         IllegalStateException ex = Assert.expectThrows(IllegalStateException.class,
                 () -> keys.keyFor("TC_C", CodegenDataKeys.PHASE_BODY, b));
         Assert.assertTrue(ex.getMessage().contains("Conflicting test data"), ex.getMessage());
+        Assert.assertTrue(ex.getMessage().contains("TC_C.body.type_User.1"), ex.getMessage());
     }
 }

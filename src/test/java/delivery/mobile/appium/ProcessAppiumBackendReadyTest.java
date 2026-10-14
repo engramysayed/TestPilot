@@ -77,6 +77,16 @@ public class ProcessAppiumBackendReadyTest {
     }
 
     private static Path fakeAppiumScript() throws Exception {
+        boolean windows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        if (windows) {
+            // CreateProcess cannot exec .sh on Windows (error 193); use a .cmd that stays alive.
+            Path script = Files.createTempFile("fake-appium-", ".cmd");
+            Files.writeString(script,
+                    "@echo off\r\n"
+                    + "REM ignore Appium CLI args; stay alive for readiness poll\r\n"
+                    + "ping -n 31 127.0.0.1 >nul\r\n");
+            return script;
+        }
         Path script = Files.createTempFile("fake-appium-", ".sh");
         Files.writeString(script, "#!/bin/sh\n# ignore Appium CLI args; stay alive for readiness poll\nexec sleep 30\n");
         script.toFile().setExecutable(true);

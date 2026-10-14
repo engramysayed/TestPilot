@@ -264,17 +264,19 @@ public class RolesService {
     public PortalUser setApproval(Long userId, String statusRaw, String roleId, String note,
                                   Long actorUserId) {
         ensureSystemRolesSeeded();
-        PortalUser user = users.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown user"));
         ApprovalStatus status = ApprovalStatus.parse(statusRaw);
         if (status == ApprovalStatus.PENDING_APPROVAL) {
             throw new IllegalArgumentException("status must be APPROVED, LOCKED, or REJECTED");
         }
+        // Validate APPROVED + roleId before user lookup so clients always get ROLE_REQUIRED
+        // (ApiError.code) rather than Unknown user when roleId is omitted.
+        if (status == ApprovalStatus.APPROVED && (roleId == null || roleId.isBlank())) {
+            throw new RoleRequiredException("ROLE_REQUIRED",
+                    "roleId is required when approving (no default MEMBER)");
+        }
+        PortalUser user = users.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown user"));
         if (status == ApprovalStatus.APPROVED) {
-            if (roleId == null || roleId.isBlank()) {
-                throw new RoleRequiredException("ROLE_REQUIRED",
-                        "roleId is required when approving (no default MEMBER)");
-            }
             RoleEntity role = roles.findByRoleId(roleId.trim())
                     .orElseThrow(() -> new IllegalArgumentException("Unknown role"));
             applyRoleToUser(user, role);

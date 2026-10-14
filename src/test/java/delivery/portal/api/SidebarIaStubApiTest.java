@@ -1,6 +1,7 @@
 package delivery.portal.api;
 
 import delivery.portal.PortalApplication;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -53,16 +54,46 @@ public class SidebarIaStubApiTest extends AbstractTestNGSpringContextTests {
 
     @Test
     public void accountJobs_acceptsPinnedProject() throws Exception {
+        MvcResult created = mockMvc.perform(post("/api/projects")
+                        .with(httpBasic(USER, PASS))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Pinned Demo\",\"platform\":\"WEB\",\"baseUrl\":\"https://ex.test/\"}"))
+                .andExpect(status().isCreated()).andReturn();
+        String projectId = new JSONObject(created.getResponse().getContentAsString()).getString("projectId");
+
+        // Credits gate is on (tip): grant admin balance so this stub path asserts pin/201, not LD-02 402.
+        MvcResult users = mockMvc.perform(get("/api/admin/users")
+                        .with(httpBasic(USER, PASS))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk()).andReturn();
+        JSONArray arr = new JSONObject(users.getResponse().getContentAsString()).getJSONArray("users");
+        long adminId = -1;
+        for (int i = 0; i < arr.length(); i++) {
+            if (USER.equalsIgnoreCase(arr.getJSONObject(i).getString("email"))) {
+                adminId = arr.getJSONObject(i).getLong("id");
+                break;
+            }
+        }
+        Assert.assertTrue(adminId > 0, "admin user id");
+        mockMvc.perform(post("/api/admin/credits/" + adminId)
+                        .with(httpBasic(USER, PASS))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mode\":\"GRANT_DELTA\",\"amount\":100,\"note\":\"sidebar stub pin\",\"idempotencyKey\":\"sidebar-pin-" + projectId + "\"}"))
+                .andExpect(status().isOk());
+
         MvcResult res = mockMvc.perform(post("/api/account/jobs")
                         .with(httpBasic(USER, PASS))
                         .header("X-Keel-Requested-With", "Keel")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"kind\":\"GENERATE\",\"projectId\":\"proj_demo\",\"payload\":{}}"))
+                        .content("{\"kind\":\"GENERATE\",\"projectId\":\"" + projectId + "\",\"payload\":{}}"))
                 .andExpect(status().isCreated()).andReturn();
         JSONObject body = new JSONObject(res.getResponse().getContentAsString());
         Assert.assertEquals(body.getString("kind"), "GENERATE");
         Assert.assertTrue(body.getBoolean("accountScoped"));
-        Assert.assertTrue(body.getString("jobId").startsWith("job_"));
+        Assert.assertTrue(body.getString("jobId").startsWith("job_"), body.getString("jobId"));
+        Assert.assertEquals(body.getString("projectId"), projectId);
     }
 
     @Test

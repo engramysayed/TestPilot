@@ -117,6 +117,9 @@ public class AdminRolesController {
             out.put("roleId", user.getRoleId());
             out.put("approvedAt", user.getApprovedAt() == null ? null : user.getApprovedAt().toString());
             out.put("approvedByUserId", user.getApprovedByUserId());
+            out.put("message", "APPROVED".equals(user.getApprovalStatus().name())
+                    ? "Account approved. Set credits separately — nothing is added automatically."
+                    : ("Account marked " + user.getApprovalStatus().name() + "."));
             return ResponseEntity.ok(out);
         } catch (RoleRequiredException e) {
             return ResponseEntity.badRequest()

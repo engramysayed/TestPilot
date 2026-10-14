@@ -20,7 +20,8 @@ import java.time.Instant;
 import java.util.Locale;
 
 /**
- * Both ground + assert via Qwen (new prompt / quality gate). Skips if model missing.
+ * Both ground + assert via Qwen (new prompt / quality gate).
+ * Opt-in ({@code KEEL_LIVESMOKE=1} / {@code -Dkeel.vision.liveSmoke=true}); skips if model missing.
  */
 public class QwenBothLiveSmokeTest {
 
@@ -156,6 +157,7 @@ public class QwenBothLiveSmokeTest {
     }
 
     private static void assumeQwenUp() throws Exception {
+        VisionLiveSmokeGate.assumeOptIn();
         HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create("http://127.0.0.1:11434/api/tags"))

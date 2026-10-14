@@ -59,7 +59,7 @@ public class AccountJobsController {
         }
 
         JobRecord.JobKind jobKind = mapKind(kind);
-        String jobId = "acct_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        String jobId = "job_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         JobRecord job = new JobRecord(
                 jobId,
                 projectId,

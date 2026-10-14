@@ -28,7 +28,7 @@ public class PortalNavSearchController {
             new NavEntry("/runs", "Run history", "run history runs jobs evidence results"),
             new NavEntry("/packages", "Code packages", "code packages automation frameworks download"),
             new NavEntry("/bug-hunter", "Bug Hunter", "hunt bug hunter"),
-            new NavEntry("/guide", "Guide", "guide help authoring test case tc-guide how to"),
+            new NavEntry("/guide", "Guide", "guide help authoring test case tc-guide how to how to write how to write test cases"),
             new NavEntry("/account", "Account", "account settings profile password"),
             new NavEntry("/admin/users", "Administration", "admin users invites"),
             new NavEntry("/admin/domains", "Domains", "admin domains allowlist")

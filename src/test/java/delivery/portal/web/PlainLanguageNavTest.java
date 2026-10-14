@@ -11,9 +11,13 @@ import org.testng.annotations.Test;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** B20: server-side nav search labels and topbar crumbs use the UX_AUDIT plain-language names. */
+/**
+ * B20 / pack 07: nav search + page titles use plain-language names.
+ * Guide replaced TC guide: /tc-guide redirects; search label is Guide.
+ */
 @SpringBootTest(classes = PortalApplication.class, properties = {
         "spring.datasource.url=jdbc:h2:mem:plain-nav;DB_CLOSE_DELAY=-1;MODE=PostgreSQL",
         "spring.jpa.hibernate.ddl-auto=create-drop",
@@ -50,20 +54,30 @@ public class PlainLanguageNavTest extends AbstractTestNGSpringContextTests {
         search("write test cases", "Write test cases");
         search("history", "Run history");
         search("code packages", "Code packages");
-        search("how to write", "How to write test cases");
+        search("how to write", "Guide");
         java.util.List<String> all = labels("e");
         org.testng.Assert.assertFalse(all.contains("Runs & evidence"), all.toString());
         org.testng.Assert.assertFalse(all.contains("TC guide"), all.toString());
+        org.testng.Assert.assertFalse(all.contains("How to write test cases"), all.toString());
     }
 
     @Test
     public void pageTitlesUsePlainNames() throws Exception {
-        String[][] pages = {{"/execute", "Run tests"}, {"/generate", "Write test cases"}, {"/automate", "Build code"},
-                {"/runs", "Run history"}, {"/packages", "Code packages"}, {"/tc-guide", "How to write test cases"}};
+        String[][] pages = {
+                {"/execute", "Run tests"},
+                {"/generate", "Write test cases"},
+                {"/automate", "Build code"},
+                {"/runs", "Run history"},
+                {"/packages", "Code packages"},
+                {"/guide", "Guide"}
+        };
         for (String[] p : pages) {
             mockMvc.perform(get(p[0]).with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
                     .andExpect(status().isOk())
                     .andExpect(model().attribute("pageTitle", p[1]));
         }
+        mockMvc.perform(get("/tc-guide").with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("/guide#tc-authoring"));
     }
 }

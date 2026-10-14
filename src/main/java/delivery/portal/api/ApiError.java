@@ -5,13 +5,18 @@ import java.util.Map;
 
 public record ApiError(String error, String message) {
     public Map<String, String> asMap() {
-        return Map.of("error", error, "message", message == null ? "" : message);
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("error", error);
+        m.put("code", error); // FE / stub-era alias (RolesUiStub + clients)
+        m.put("message", message == null ? "" : message);
+        return m;
     }
 
     /** Prefer for QUALITY_GATE and other structured envelopes (Frontend COORDINATE_WITH_AE). */
     public Map<String, Object> asObjectMap() {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("error", error);
+        m.put("code", error);
         m.put("message", message == null ? "" : message);
         return m;
     }
