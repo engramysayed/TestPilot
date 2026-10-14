@@ -1,0 +1,12 @@
+{
+  "code": "LIBRARY_CONFLICT",
+  "stage": "infra",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/LIBRARY_CONFLICT.json",
+    "plannedTest": "MobileErrorCode_LIBRARY_CONFLICT_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

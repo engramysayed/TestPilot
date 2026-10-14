@@ -9,10 +9,13 @@ import java.util.Map;
 
 /**
  * Growing steps journal for Bug Hunter memory (no DOM / screenshots — actions + results only).
+ * Type/secret field values are always redacted (same policy as {@link HuntReproScript}).
  */
 public final class HuntStepsJournal {
     public static final String FILE_NAME = "steps-journal.md";
     public static final int PROMPT_MAX_CHARS = 24_000;
+    /** P1: when truncating, keep this many leading chars plus the tail. */
+    public static final int PROMPT_HEAD_CHARS = 4_000;
 
     private final Path file;
     private final StringBuilder memory = new StringBuilder();
@@ -57,12 +60,23 @@ public final class HuntStepsJournal {
     }
 
     public String forPrompt() {
+        return forPrompt(PROMPT_MAX_CHARS);
+    }
+
+    /** P1: head+tail truncation so early context is not lost to thrash. */
+    public String forPrompt(int maxChars) {
         String all = memory.toString();
-        if (all.length() <= PROMPT_MAX_CHARS) {
+        int max = Math.max(PROMPT_HEAD_CHARS + 1024, maxChars);
+        if (all.length() <= max) {
             return all;
         }
-        return "…(earlier steps truncated)…\n" + all.substring(all.length() - PROMPT_MAX_CHARS);
+        int head = Math.min(PROMPT_HEAD_CHARS, max / 4);
+        int tail = max - head - 80;
+        return all.substring(0, head)
+                + "\n\n…(middle steps truncated; blocked locators also in coverage map)…\n\n"
+                + all.substring(all.length() - Math.max(1024, tail));
     }
+
 
     /** Tail of the journal for bug repro slices (last ~2k chars). */
     public String reproSlice() {
@@ -102,7 +116,7 @@ public final class HuntStepsJournal {
                 yield "script=" + abbreviate(script, 80)
                         + (result.isBlank() ? "" : " result=" + abbreviate(result, 60));
             }
-            case "type" -> "locator=" + locatorOf(row) + " value=" + str(row.get("value"));
+            case "type" -> "locator=" + locatorOf(row) + " value=(redacted)";
             case "click", "clear", "assert_visible" -> "locator=" + locatorOf(row);
             case "assert_text" -> "text=" + (str(row.get("text")).isBlank() ? str(row.get("expected")) : str(row.get("text")));
             case "wait" -> "ms=" + str(row.get("ms"));

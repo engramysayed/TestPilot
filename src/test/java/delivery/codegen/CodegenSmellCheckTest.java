@@ -70,8 +70,8 @@ public class CodegenSmellCheckTest {
                 writer.writeVerified(root, List.of(), acc);
             });
 
-            Path actions = root.resolve("src/main/java/project/pages/Reg_Actions.java");
-            Assert.assertFalse(Files.exists(actions), "must not write Actions after smell fail");
+            Path actions = root.resolve("src/main/java/project/pages/Reg.java");
+            Assert.assertFalse(Files.exists(actions), "must not write page file after smell fail");
         } finally {
             deleteTree(root);
         }
@@ -84,10 +84,31 @@ public class CodegenSmellCheckTest {
             CodeWriter writer = new CodeWriter(Path.of("customer-framework-template/templates"));
             writer.write(root, List.of());
             Assert.assertFalse(Files.exists(
-                    root.resolve("src/main/java/project/pages/Reg_Actions.java")));
+                    root.resolve("src/main/java/project/pages/Reg.java")));
         } finally {
             deleteTree(root);
         }
+    }
+
+
+    @Test
+    public void dumpPageStemRejected() {
+        PageAccumulator acc = new PageAccumulator();
+        acc.add(new ProvenStep("TC_DUMP", "Page", "elementAction", "click",
+                "id", "x", "", "", "", true, "intent:CLICK"));
+        IllegalStateException ex = Assert.expectThrows(IllegalStateException.class,
+                () -> CodegenSmellCheck.verify(acc.pages()));
+        Assert.assertTrue(ex.getMessage().contains("dump/blank page stem rejected"), ex.getMessage());
+    }
+
+    @Test
+    public void blankPageNameRejected() {
+        PageAccumulator acc = new PageAccumulator();
+        acc.add(new ProvenStep("TC_DUMP", "", "elementAction", "click",
+                "id", "x", "", "", "", true, "intent:CLICK"));
+        IllegalStateException ex = Assert.expectThrows(IllegalStateException.class,
+                () -> CodegenSmellCheck.verify(acc.pages()));
+        Assert.assertTrue(ex.getMessage().contains("dump/blank page stem rejected"), ex.getMessage());
     }
 
     private static void deleteTree(Path root) throws Exception {

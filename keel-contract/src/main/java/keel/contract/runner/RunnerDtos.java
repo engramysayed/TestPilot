@@ -11,7 +11,31 @@ public final class RunnerDtos {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record ClaimRequest(List<RunnerCapability> capabilities, List<WireJobKind> kinds) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record ClaimRequest(
+            List<RunnerCapability> capabilities,
+            List<WireJobKind> kinds,
+            Integer protocolVersion,
+            String workerToolchainVersion,
+            List<String> authorizedDeviceIds
+    ) {
+        public ClaimRequest(List<RunnerCapability> capabilities, List<WireJobKind> kinds) {
+            this(capabilities, kinds, null, null, null);
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record MobileClaimExtras(
+            String platform,
+            String inputManifestHash,
+            List<RunnerCapability> requiredCapabilities,
+            String deviceId,
+            Long leaseFence,
+            String appRevisionId,
+            String profileRevisionId,
+            String secretEnvelopeRef
+    ) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -19,7 +43,16 @@ public final class RunnerDtos {
     public record ClaimResponse(String jobId, String attemptId, long cancelGeneration, long fencingToken,
                                 String projectId, WireJobKind jobKind, String libraryRevisionId,
                                 String environmentRevisionId, String inputSnapshotHash,
-                                String providerAllowlistSnapshot, String leaseUntil) {
+                                String providerAllowlistSnapshot, String leaseUntil,
+                                MobileClaimExtras mobile) {
+        /** Web / pre-mobile callers. */
+        public ClaimResponse(String jobId, String attemptId, long cancelGeneration, long fencingToken,
+                             String projectId, WireJobKind jobKind, String libraryRevisionId,
+                             String environmentRevisionId, String inputSnapshotHash,
+                             String providerAllowlistSnapshot, String leaseUntil) {
+            this(jobId, attemptId, cancelGeneration, fencingToken, projectId, jobKind, libraryRevisionId,
+                    environmentRevisionId, inputSnapshotHash, providerAllowlistSnapshot, leaseUntil, null);
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

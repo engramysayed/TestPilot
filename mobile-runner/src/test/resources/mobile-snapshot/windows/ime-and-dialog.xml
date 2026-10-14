@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" package="com.example.test" windowId="app" bounds="[0,0][1080,1920]">
+    <node class="android.widget.EditText" resource-id="com.example.test:id/search" text="q" clickable="true" focusable="true" bounds="[80,200][1000,320]" package="com.example.test"/>
+  </node>
+  <node class="android.widget.FrameLayout" package="com.android.systemui" windowId="status" bounds="[0,0][1080,80]">
+    <node class="android.widget.TextView" text="12:34" content-desc="12:34" bounds="[20,10][200,70]" package="com.android.systemui"/>
+    <node class="android.widget.ImageView" content-desc="signal" bounds="[900,10][980,70]" package="com.android.systemui"/>
+  </node>
+  <node class="android.inputmethodservice.InputMethodService" package="com.google.android.inputmethod.latin" windowId="ime" bounds="[0,1100][1080,1920]">
+    <node class="android.view.View" content-desc="Keyboard" bounds="[0,1100][1080,1920]" package="com.google.android.inputmethod.latin"/>
+  </node>
+  <node class="android.widget.FrameLayout" package="com.example.test" windowId="dialog" bounds="[140,600][940,1200]">
+    <node class="android.widget.Button" text="Allow" resource-id="com.example.test:id/perm_allow" clickable="true" bounds="[200,1000][500,1120]" package="com.example.test"/>
+  </node>
+</hierarchy>

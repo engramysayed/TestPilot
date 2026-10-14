@@ -1,6 +1,7 @@
 package delivery.portal.api;
 
 import delivery.excel.GenerateQualityGate;
+import delivery.excel.StructuredStoryIntake;
 import delivery.portal.model.JobRecord;
 import delivery.portal.model.ProjectRecord;
 import delivery.portal.security.CurrentUserService;
@@ -21,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -95,9 +98,7 @@ public class GenerateTcController {
             }
             if (GenerateQualityGate.isQualityGateFailure(e)) {
                 return ResponseEntity.badRequest()
-                        .body(new ApiError(
-                                "QUALITY_GATE",
-                                GenerateQualityGate.qualityGateDetail(e)).asMap());
+                        .body(qualityGateBody(e));
             }
             return ResponseEntity.badRequest()
                     .body(new ApiError("BAD_REQUEST", e.getMessage()).asMap());
@@ -292,6 +293,84 @@ public class GenerateTcController {
         }
     }
 
+
+    @PostMapping(value = "/{projectId}/generate/story-intake", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> storyIntake(
+            @PathVariable("projectId") String projectId,
+            @RequestBody Map<String, Object> body
+    ) {
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
+        }
+        if (body == null || body.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_REQUEST", "story intake body is required").asMap());
+        }
+        boolean structuredMode = true;
+        Object mode = body.get("structuredMode");
+        if (mode instanceof Boolean b) {
+            structuredMode = b;
+        }
+        boolean reviewPass = false;
+        String model = null;
+        boolean async = false;
+        Object optionsObj = body.get("options");
+        if (optionsObj instanceof Map<?, ?> options) {
+            Object rp = options.get("reviewPass");
+            if (rp instanceof Boolean b) {
+                reviewPass = b;
+            }
+            Object m = options.get("model");
+            if (m instanceof String s && !s.isBlank()) {
+                model = s.trim();
+            }
+            Object a = options.get("async");
+            if (a instanceof Boolean b) {
+                async = b;
+            }
+        }
+        if (body.get("reviewPass") instanceof Boolean b) {
+            reviewPass = b;
+        }
+        if (body.get("model") instanceof String s && !s.isBlank()) {
+            model = s.trim();
+        }
+        if (body.get("async") instanceof Boolean b) {
+            async = b;
+        }
+        try {
+            StructuredStoryIntake.Intake intake = StructuredStoryIntake.fromMap(body);
+            StructuredStoryIntake.validate(intake, structuredMode);
+            String stories = StructuredStoryIntake.toPromptBlock(intake);
+            if (async) {
+                // Reuse bulk/async path via single-story CSV queued by GenerateBatchController callers.
+                // Sync generate remains the default for structured intake until job envelope lands.
+            }
+            Map<String, Object> result = generate.generate(
+                    projectId,
+                    currentUser.requireUserId(),
+                    stories,
+                    reviewPass,
+                    model
+            );
+            result.put("intake", StructuredStoryIntake.describe(intake));
+            result.put("storiesPrompt", stories);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage() != null && e.getMessage().startsWith("SHALLOW_STORY")) {
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                        .body(new ApiError("SHALLOW_STORY", e.getMessage()).asMap());
+            }
+            return mapGenerateArgumentException(e);
+        } catch (IllegalStateException e) {
+            return mapGenerateStateException(e);
+        } catch (Exception e) {
+            return mapGenerateException(e);
+        }
+    }
+
     @PostMapping(value = "/{projectId}/generate-tcs", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> generate(
             @PathVariable("projectId") String projectId,
@@ -345,7 +424,7 @@ public class GenerateTcController {
         }
         if (GenerateQualityGate.isQualityGateFailure(e)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiError("QUALITY_GATE", GenerateQualityGate.qualityGateDetail(e)).asMap());
+                    .body(qualityGateBody(e));
         }
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new ApiError("INVALID_STORIES", e.getMessage()).asMap());
@@ -382,4 +461,30 @@ public class GenerateTcController {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new ApiError("GENERATE_FAILED", msg).asMap());
     }
+
+    private static Map<String, Object> qualityGateBody(IllegalArgumentException e) {
+        String detail = GenerateQualityGate.qualityGateDetail(e);
+        java.util.ArrayList<String> parts = new java.util.ArrayList<>();
+        if (detail != null && !detail.isBlank()) {
+            for (String part : detail.split(";")) {
+                String t = part.trim();
+                if (!t.isBlank()) {
+                    parts.add(t);
+                }
+            }
+        }
+        Map<String, Object> body = GenerateQualityGate.toApiMap(parts, List.of());
+        Map<String, Object> suggestion = new LinkedHashMap<>();
+        suggestion.put("keelPath", "EXECUTE");
+        suggestion.put("technique", "Fix authoring issues, then re-check KeelPath (prefer EXECUTE when unsure)");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> suggestions = (List<Map<String, Object>>) body.get("suggestions");
+        if (suggestions != null) {
+            suggestions = new java.util.ArrayList<>(suggestions);
+            suggestions.add(suggestion);
+            body.put("suggestions", suggestions);
+        }
+        return ApiError.qualityGate(body);
+    }
+
 }

@@ -101,16 +101,29 @@ public final class CodegenNaming {
         return stem;
     }
 
-    public static String locatorsClassName(String pageName) {
-        return pageStem(pageName) + "_Locators";
+    /**
+     * Single page class name (one class per stem). E.g. {@code InventoryPage}, {@code Cart}, {@code NewPage}.
+     * Replaces the former {@code Stem_Locators} / {@code Stem_Actions} pair.
+     */
+    public static String pageClassName(String pageName) {
+        return pageStem(pageName);
     }
 
+    /** @deprecated use {@link #pageClassName(String)} — dual Locators/Actions emit is removed. */
+    @Deprecated
+    public static String locatorsClassName(String pageName) {
+        return pageClassName(pageName);
+    }
+
+    /** @deprecated use {@link #pageClassName(String)} — dual Locators/Actions emit is removed. */
+    @Deprecated
     public static String actionsClassName(String pageName) {
-        return pageStem(pageName) + "_Actions";
+        return pageClassName(pageName);
     }
 
     /**
-     * Local variable for a page Actions type, e.g. {@code NewPage_Actions} → {@code newPage}.
+     * Local variable for a page type, e.g. {@code InventoryPage} → {@code inventoryPage},
+     * legacy {@code NewPage_Actions} → {@code newPage}.
      */
     public static String safeLocalVarName(String pageClass) {
         if (pageClass == null || pageClass.isBlank()) {
@@ -119,6 +132,8 @@ public final class CodegenNaming {
         String base = pageClass.trim();
         if (base.endsWith("_Actions")) {
             base = base.substring(0, base.length() - "_Actions".length());
+        } else if (base.endsWith("_Locators")) {
+            base = base.substring(0, base.length() - "_Locators".length());
         } else if (base.endsWith("Page") && base.length() > 4
                 && Character.isUpperCase(base.charAt(0))) {
             // keep stems that already end with Page (NewPage → newPage)

@@ -7,6 +7,9 @@ import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.AccessRequestService;
 import delivery.portal.service.AdminUserService;
 import delivery.portal.service.InviteService;
+import delivery.portal.roles.RolesService;
+import delivery.portal.service.credits.AccountApprovalService;
+import delivery.portal.service.credits.CreditService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,11 +35,15 @@ public class AdminUsersController {
     private final InviteService inviteService;
     private final AccessRequestService accessRequests;
     private final CurrentUserService currentUser;
+    private final CreditService creditService;
+    private final AccountApprovalService approvals;
+    private final RolesService rolesService;
 
     public AdminUsersController(PortalUserRepository users, InviteRepository invites,
                                 ProjectRepository projects, AdminUserService adminUsers,
                                 InviteService inviteService, AccessRequestService accessRequests,
-                                CurrentUserService currentUser) {
+                                CurrentUserService currentUser, CreditService creditService,
+                                AccountApprovalService approvals, RolesService rolesService) {
         this.users = users;
         this.invites = invites;
         this.projects = projects;
@@ -44,6 +51,9 @@ public class AdminUsersController {
         this.inviteService = inviteService;
         this.accessRequests = accessRequests;
         this.currentUser = currentUser;
+        this.creditService = creditService;
+        this.approvals = approvals;
+        this.rolesService = rolesService;
     }
 
     @GetMapping("/users")
@@ -55,9 +65,15 @@ public class AdminUsersController {
                     row.put("id", u.getId());
                     row.put("email", u.getEmail());
                     row.put("role", u.getRole().name());
+                    row.put("roleId", rolesService.resolveRoleId(u));
+                    row.put("approvalStatus", u.getApprovalStatus().name());
+                    row.put("approvedAt", u.getApprovedAt() == null ? null : u.getApprovedAt().toString());
+                    row.put("approvedByUserId", u.getApprovedByUserId());
                     row.put("enabled", u.isEnabled());
                     row.put("projectCount", projects.findByOwnerUserIdOrderByIdDesc(u.getId()).size());
                     row.put("self", u.getId().equals(me));
+                    creditService.enrichAdminUserRow(row, u.getId());
+                    AccountApprovalService.putApprovalFields(row, u);
                     return row;
                 })
                 .collect(Collectors.toList());

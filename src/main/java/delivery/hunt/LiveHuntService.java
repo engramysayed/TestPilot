@@ -1,6 +1,8 @@
 package delivery.hunt;
 
 import delivery.guard.LoopGuard;
+import delivery.routing.ModelRouter;
+import delivery.routing.ObservationBudget;
 
 import delivery.excel.ManualTestCase;
 import delivery.job.ConversionJobRequest;
@@ -138,6 +140,7 @@ public final class LiveHuntService {
             LoopGuard huntGuard = huntLoopGuardsEnabled()
                     ? LoopGuard.of(LoopGuard.Loop.BUG_HUNTER) : null;
             String guardWarn = "";
+            HuntUrlStrategyBudget urlBudget = new HuntUrlStrategyBudget();
             iterationLoop:
             for (int iteration = 1; iteration <= request.getIterationCeiling() && !stopEntireHunt; iteration++) {
                 iterationsUsed = iteration;
@@ -175,7 +178,9 @@ public final class LiveHuntService {
                 driver = session.driver();
                 network = session.network();
 
-                String slim = HtmlSlimmer.slim(PageSnapshot.html(driver), 80000);
+                int huntObs = ObservationBudget.forIntent(ModelRouter.Intent.HUNT_PLANNING);
+                String slimRaw = HtmlSlimmer.slim(PageSnapshot.html(driver), Math.max(huntObs * 3, 24000));
+                String slim = ObservationBudget.clip(slimRaw, huntObs);
                 Files.writeString(cycleDir.resolve("dom-slim.txt"), slim, StandardCharsets.UTF_8);
 
                 byte[] png = actions.screenshotPng();
@@ -231,6 +236,10 @@ public final class LiveHuntService {
                 HuntRunLog.cycleStart(cycle, request.getCycleCeiling(), map.url(), strategyHint);
 
                 iterJournal.flushPlan();
+                HuntProgressStop.Snapshot progressBefore = HuntProgressStop.of(
+                        coverage, allBugs, allScenarios);
+                int urlsBeforeBudget = coverage.visitedUrlCount();
+                urlBudget.noteCycle(map.url(), urlsBeforeBudget);
                 HuntPlanner.Context ctx = new HuntPlanner.Context(
                         brief,
                         cycle,
@@ -328,20 +337,27 @@ public final class LiveHuntService {
                     break iterationLoop;
                 }
 
-                List<Map<String, Object>> plannerBugs = decision.bugs();
+                List<Map<String, Object>> plannerBugs = HuntBugAdmission.filter(
+                        decision.bugs(), netFails, actionLog, slim);
+                String reproScript = HuntReproScript.format(HuntReproScript.fromActionLog(actionLog));
+                List<String> plannerReproSteps = HuntReproScript.fromActionLog(actionLog);
                 for (Map<String, Object> bug : plannerBugs) {
                     attachEvidence(bug, cycle, shot);
-                    bugsAttempted++;
-                    if (HuntBugDedupe.addUnique(allBugs, bug)) {
-                        // kept
+                    if (!reproScript.isBlank()) {
+                        bug.put("reproScript", reproScript);
+                        bug.put("reproduceSteps", plannerReproSteps);
                     }
+                    bugsAttempted++;
+                    HuntBugDedupe.addUnique(allBugs, bug);
                 }
 
                 driver = session.driver();
                 String postSlim;
                 HuntPageMap postMap;
                 try {
-                    postSlim = HtmlSlimmer.slim(PageSnapshot.html(driver), 80000);
+                    postSlim = ObservationBudget.clipFor(ModelRouter.Intent.HUNT_PLANNING,
+                            HtmlSlimmer.slim(PageSnapshot.html(driver),
+                                    ObservationBudget.forIntent(ModelRouter.Intent.HUNT_PLANNING) * 3));
                     postMap = HuntPageMapBuilder.build(
                             driver.getCurrentUrl(), driver.getTitle(), postSlim);
                 } catch (Exception postEx) {
@@ -356,20 +372,36 @@ public final class LiveHuntService {
                         break iterationLoop;
                     }
                     driver = session.driver();
-                    postSlim = HtmlSlimmer.slim(PageSnapshot.html(driver), 80000);
+                    postSlim = ObservationBudget.clipFor(ModelRouter.Intent.HUNT_PLANNING,
+                            HtmlSlimmer.slim(PageSnapshot.html(driver),
+                                    ObservationBudget.forIntent(ModelRouter.Intent.HUNT_PLANNING) * 3));
                     postMap = HuntPageMapBuilder.build(
                             driver.getCurrentUrl(), driver.getTitle(), postSlim);
                 }
 
-                List<String> alertTexts = new ArrayList<>(postMap.alerts());
+                List<String> alertsBeforeSettle = new ArrayList<>(postMap.alerts());
                 if (HuntAlertPoller.networkSuggestsAuthFailure(netFails)) {
                     HuntRunLog.info("cycle " + cycle + " polling alerts after auth failure status");
                     for (String a : HuntAlertPoller.poll(driver, HuntAlertPoller.DEFAULT_TIMEOUT_MS)) {
-                        if (!alertTexts.contains(a)) {
-                            alertTexts.add(a);
+                        if (!alertsBeforeSettle.contains(a)) {
+                            alertsBeforeSettle.add(a);
                         }
                     }
                 }
+                // P1 toast observation window: second sample after a short settle
+                try { Thread.sleep(400); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                List<String> alertsAfterSettle = new ArrayList<>();
+                try {
+                    String settleSlim = ObservationBudget.clipFor(ModelRouter.Intent.HUNT_PLANNING,
+                            HtmlSlimmer.slim(PageSnapshot.html(driver),
+                                    ObservationBudget.forIntent(ModelRouter.Intent.HUNT_PLANNING) * 2));
+                    HuntPageMap settleMap = HuntPageMapBuilder.build(
+                            driver.getCurrentUrl(), driver.getTitle(), settleSlim);
+                    alertsAfterSettle.addAll(settleMap.alerts());
+                } catch (Exception ignored) {
+                    alertsAfterSettle.addAll(alertsBeforeSettle);
+                }
+                List<String> alertTexts = HuntToastObservation.stillPresent(alertsBeforeSettle, alertsAfterSettle);
 
                 if (!HuntFeatureHints.looksLikeLoginUrl(postMap.url())) {
                     leftLoginOnce = true;
@@ -394,8 +426,22 @@ public final class LiveHuntService {
                         new JSONObject(HuntOracle.signalSnapshot(
                                 netFails, alertTexts, pageSignals, oracleBugs)).toString(2),
                         StandardCharsets.UTF_8);
+                String oracleReproScript = HuntReproScript.format(HuntReproScript.fromActionLog(actionLog));
+                List<String> reproSteps = HuntReproScript.fromActionLog(actionLog);
                 for (Map<String, Object> bug : oracleBugs) {
                     attachEvidence(bug, cycle, shot);
+                    if (!oracleReproScript.isBlank()) {
+                        bug.put("reproScript", oracleReproScript);
+                        bug.put("reproduceSteps", reproSteps);
+                    }
+                    // AE-D5: only alert-derived oracle bugs get toastObservedAfterSettle
+                    String title = String.valueOf(bug.getOrDefault("title", ""));
+                    if (!alertTexts.isEmpty() && title.toLowerCase(java.util.Locale.ROOT).contains("alert")) {
+                        bug.put("toastObservedAfterSettle", true);
+                    }
+                    if (!bug.containsKey("admission")) {
+                        bug.put("admission", "ORACLE");
+                    }
                     bugsAttempted++;
                     if (HuntBugDedupe.addUnique(allBugs, bug)) {
                         oracleBugCount++;
@@ -439,6 +485,34 @@ public final class LiveHuntService {
                     coverage.markStrategyDone("invent");
                 }
 
+                String stratMode = request.isStrategiesEnabled() ? sequencer.current().mode() : "explore";
+                if ("invent".equals(stratMode)
+                        && urlBudget.plateauAfterCycle(map.url(), urlsBeforeBudget, coverage.visitedUrlCount())) {
+                    coverage.markStrategyDone("invent");
+                    if (!sequencer.isLast()) {
+                        sequencer.advance();
+                    } else {
+                        stopReason = "INVENT_PLATEAU";
+                        HuntRunLog.info("invent plateau on url=" + map.url());
+                        iterJournal.appendExecutionNote("INVENT_PLATEAU: per-URL strategy budget exhausted without new coverage");
+                        iterJournal.flushResults(stopReason);
+                        stopEntireHunt = true;
+                        break iterationLoop;
+                    }
+                }
+                HuntProgressStop.Snapshot progressAfter = HuntProgressStop.of(
+                        coverage, allBugs, allScenarios);
+                if (HuntProgressStop.noProgress(progressBefore, progressAfter,
+                        actionLog != null && !actionLog.isEmpty())
+                        && decision.decision() != HuntPlannerDecision.Decision.FINISH
+                        && cyclesUsed >= 2) {
+                    stopReason = "NO_PROGRESS";
+                    HuntRunLog.info("cycle " + cycle + " no new URL/bug/scenario — finishing");
+                    iterJournal.appendExecutionNote("NO_PROGRESS: no new coverage or bug fingerprint");
+                    iterJournal.flushResults(stopReason);
+                    stopEntireHunt = true;
+                    break iterationLoop;
+                }
                 HuntStopRules.Recovery recovery = HuntStopRules.recoverFromStuck(
                         coverage,
                         request.isStrategiesEnabled(),

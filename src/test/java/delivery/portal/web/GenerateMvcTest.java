@@ -233,5 +233,74 @@ public class GenerateMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(body.contains("stopPropagation"), "KeelPath select must stop row click");
         Assert.assertTrue(main.contains("Coverage notes"), "coverage notes panel heading missing");
     }
+
+    @Test
+    public void generate_hasStructuredStoryIntakeFields() throws Exception {
+        String body = fetchGenerateBody();
+        String main = mainShell(body);
+        Assert.assertTrue(main.contains("id=\"structured-intake\"") || main.contains("id=\"intake-title\""),
+                "structured intake missing");
+        Assert.assertTrue(main.contains("id=\"intake-title\""), "story title field missing");
+        Assert.assertTrue(main.contains("id=\"intake-ac\""), "acceptance criteria field missing");
+        Assert.assertTrue(main.contains("id=\"intake-role\""), "role field missing");
+        Assert.assertTrue(main.contains("id=\"intake-surface\""), "surface field missing");
+        Assert.assertTrue(main.contains("id=\"intake-freetext\"") || main.contains("paste free-text"),
+                "free-text fallback under More missing");
+        Assert.assertTrue(body.contains("/generate/story-intake"), "story-intake API wiring missing");
+        Assert.assertTrue(body.contains("function composeStoriesFromIntake("),
+                "must compose stories for generate-async fallback");
+        Assert.assertTrue(body.contains("persona"), "must map role into persona for AE shape");
+    }
+
+    @Test
+    public void generate_showsQualityGateFailuresBeforeImport() throws Exception {
+        String body = fetchGenerateBody();
+        Assert.assertTrue(body.contains("id=\"quality-gate-panel\"")
+                        || body.contains("id=\"import-quality-gate-panel\""),
+                "quality-gate panel missing");
+        Assert.assertTrue(body.contains("function renderQualityGate(")
+                        || body.contains("function humanizeGateFailure("),
+                "plain-language quality-gate renderer missing");
+        Assert.assertTrue(body.contains("howToFix") || body.contains("How to fix"),
+                "how-to-fix copy missing");
+        Assert.assertTrue(body.contains("lastImportGateFailed"),
+                "warn+confirm import when gates failed missing");
+        Assert.assertTrue(body.contains("qualityGate") || body.contains("QUALITY_GATE"),
+                "must read structured QUALITY_GATE / qualityGate");
+    }
+
+    @Test
+    public void generate_fullQualityGateBind_finalStoryIntakeAndImportConfirm() throws Exception {
+        String body = fetchGenerateBody();
+        Assert.assertTrue(body.contains("/generate/story-intake"), "Final story-intake path missing");
+        Assert.assertTrue(body.contains("intakeRes.status === 404") || body.contains("status === 404"),
+                "404-only graceful fallback to generate-async missing");
+        Assert.assertTrue(body.contains("generate-async"), "generate-async fallback path missing");
+        Assert.assertTrue(body.contains("function isQualityGatePayload("),
+                "full QUALITY_GATE detector missing");
+        Assert.assertTrue(body.contains("qualityGate.passed") || body.contains("qualityGate &&"),
+                "must honor qualityGate.passed");
+        Assert.assertTrue(body.contains("errors") && body.contains("suggestions"),
+                "must read errors[] / suggestions[]");
+        Assert.assertTrue(body.contains("coverageWarnings"), "coverageWarnings (warn-only) missing");
+        Assert.assertTrue(body.contains("suggestedKeelPath"), "suggestedKeelPath missing");
+        Assert.assertTrue(body.contains("alternatives") || body.contains("quality-gate-alternatives"),
+                "alternatives[] / alternatives panel missing");
+        Assert.assertTrue(body.contains("Import refuses") || body.contains("Import refused")
+                        || body.contains("Continue anyway"),
+                "import refuse/confirm copy missing");
+        Assert.assertTrue(body.contains("lastQualityGatePayload")
+                        || body.contains("qualityGate.passed === false"),
+                "import must gate on qualityGate.passed===false");
+        Assert.assertFalse(body.contains("GenerateStoryIntakeStub"),
+                "stub controller must not be referenced");
+        Assert.assertFalse(body.contains("stub: true") || body.contains("\"stub\": true"),
+                "must not advertise intake stub envelope");
+        Assert.assertTrue(body.contains("delivery.generate.structured-intake")
+                        || body.contains("structuredIntakeOn")
+                        || body.contains("data-structured-intake"),
+                "structured-intake flag behavior must remain");
+    }
+
 }
 

@@ -60,14 +60,14 @@ public class CheckoutChainAssertionCodegenTest {
                 "TC_ORD_01", "Order on account", TcStatus.PASSED,
                 List.of(capture, click, compare), "", null, false, List.of())));
         String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_ORD_01.java"));
-        String order = Files.readString(dir.resolve("src/main/java/project/pages/Order_Actions.java"));
-        String account = Files.readString(dir.resolve("src/main/java/project/pages/Account_Actions.java"));
-        String locators = Files.readString(dir.resolve("src/main/java/project/pages/Order_Locators.java"));
+        String order = Files.readString(dir.resolve("src/main/java/project/pages/Order.java"));
+        String account = Files.readString(dir.resolve("src/main/java/project/pages/Account.java"));
+        String locators = Files.readString(dir.resolve("src/main/java/project/pages/Order.java"));
         Assert.assertFalse((test + order + account).contains("KLA-1001"), test);
         Assert.assertTrue(locators.contains("order-id") || locators.contains("order_id"), locators);
         Assert.assertTrue(order.contains("captureFrom("), order);
         Assert.assertTrue(account.contains("compareCapturedExact("), account);
-        String accountLocators = Files.readString(dir.resolve("src/main/java/project/pages/Account_Locators.java"));
+        String accountLocators = Files.readString(dir.resolve("src/main/java/project/pages/Account.java"));
         Assert.assertTrue(accountLocators.contains("#order-list li"), accountLocators);
         Assert.assertTrue(test.contains("Capture()"), test);
         Assert.assertTrue(test.contains("Equals_Captured()"), test);
@@ -84,18 +84,18 @@ public class CheckoutChainAssertionCodegenTest {
         new CodeWriter(TEMPLATES).write(dir, List.of(new TcOutcome(
                 "TC_SES_01", "Session expiry overlay", TcStatus.PASSED,
                 List.of(overlay, header, accountEmail), "", null, false, List.of())));
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Account_Actions.java"));
+        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Account.java"));
         Assert.assertTrue(actions.contains("signedOut("), actions);
         Assert.assertTrue(actions.contains("empty") || actions.contains("Not signed in"), actions);
         Assert.assertFalse(actions.contains("authenticatedIdentityGone()"), actions);
-        String locators = Files.readString(dir.resolve("src/main/java/project/pages/Account_Locators.java"));
+        String locators = Files.readString(dir.resolve("src/main/java/project/pages/Account.java"));
         Assert.assertTrue(locators.contains("session-email"), locators);
         Assert.assertTrue(locators.contains("account-email"), locators);
     }
 
     @Test
     public void pageActionsTemplateWiresLocatorCaptureCompareAndSignedOut() throws Exception {
-        String source = Files.readString(TEMPLATES.resolve("PageActions.java.ftl"));
+        String source = Files.readString(TEMPLATES.resolve("Page.java.ftl"));
         Assert.assertTrue(source.contains("captureFrom("), source);
         Assert.assertTrue(source.contains("compareCapturedExact("), source);
         Assert.assertTrue(source.contains("signedOut("), source);

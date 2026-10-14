@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.LinearLayout" package="com.example.test" bounds="[0,0][1080,1920]">
+    <node class="android.widget.Button" text="Delete" clickable="true" enabled="true" bounds="[80,200][500,300]" package="com.example.test"/>
+    <node class="android.widget.Button" text="Delete" clickable="true" enabled="true" bounds="[580,200][1000,300]" package="com.example.test"/>
+  </node>
+</hierarchy>

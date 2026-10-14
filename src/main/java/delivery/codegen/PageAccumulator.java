@@ -45,8 +45,12 @@ public class PageAccumulator {
     }
 
     public String actionsClassName(ProvenStep step) {
+        return pageClassNameFor(step);
+    }
+
+    public String pageClassNameFor(ProvenStep step) {
         PageModel page = pages.get(pageKey(step));
-        return page != null ? page.actionsClassName() : CodegenNaming.actionsClassName(pageKey(step));
+        return page != null ? page.pageClassName() : CodegenNaming.pageClassName(pageKey(step));
     }
 
     public String actionSymbol(ProvenStep step) {
@@ -68,11 +72,13 @@ public class PageAccumulator {
     }
 
     static String pageClassName(String pageName) {
-        return CodegenNaming.actionsClassName(pageName);
+        return CodegenNaming.pageClassName(pageName);
     }
 
+    /** @deprecated use {@link #pageClassName(String)} */
+    @Deprecated
     static String locatorsClassName(String pageName) {
-        return CodegenNaming.locatorsClassName(pageName);
+        return CodegenNaming.pageClassName(pageName);
     }
 
     static String actionMethodName(ProvenStep step) {
@@ -511,8 +517,7 @@ public class PageAccumulator {
 
     public static final class PageModel {
         private final String stem;
-        private final String locatorsClassName;
-        private final String actionsClassName;
+        private final String pageClassName;
         private final List<FieldModel> fields = new ArrayList<>();
         private final List<MethodModel> methods = new ArrayList<>();
         private final List<AssertionModel> assertions = new ArrayList<>();
@@ -524,8 +529,7 @@ public class PageAccumulator {
 
         private PageModel(String stem) {
             this.stem = stem;
-            this.locatorsClassName = stem + "_Locators";
-            this.actionsClassName = stem + "_Actions";
+            this.pageClassName = stem;
         }
 
         public static PageModel fromPageName(String pageName) {
@@ -536,22 +540,29 @@ public class PageAccumulator {
             return new PageModel(stem);
         }
 
-        /** @deprecated use {@link #actionsClassName()} */
-        @Deprecated
+        /** Single page class name (same as {@link #pageClassName()}). */
         public String className() {
-            return actionsClassName;
+            return pageClassName;
         }
 
         public String stem() {
             return stem;
         }
 
-        public String locatorsClassName() {
-            return locatorsClassName;
+        public String pageClassName() {
+            return pageClassName;
         }
 
+        /** @deprecated use {@link #pageClassName()} */
+        @Deprecated
+        public String locatorsClassName() {
+            return pageClassName;
+        }
+
+        /** @deprecated use {@link #pageClassName()} */
+        @Deprecated
         public String actionsClassName() {
-            return actionsClassName;
+            return pageClassName;
         }
 
         public List<FieldModel> fields() {

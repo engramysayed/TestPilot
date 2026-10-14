@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" package="com.example.test" bounds="[0,0][1080,1920]">
+    <node class="android.widget.Button" resource-id="com.example.test:id/login_btn" text="تسجيل الدخول" content-desc="تسجيل الدخول" clickable="true" enabled="true" bounds="[80,800][1000,920]" package="com.example.test"/>
+    <node class="android.widget.TextView" text="مرحبًا" content-desc="" bounds="[80,200][1000,280]" package="com.example.test"/>
+  </node>
+</hierarchy>

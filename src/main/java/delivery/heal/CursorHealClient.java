@@ -159,6 +159,10 @@ public class CursorHealClient {
         HealSafety safety = pendingSafety;
         pendingSafety = null;
         putHealSafety(req, safety);
+        try {
+            req.put("observationBudgetChars", delivery.routing.ObservationBudget.forIntent(
+                    delivery.routing.ModelRouter.Intent.HEAL));
+        } catch (RuntimeException ignored) { }
         if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
             req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
         }
@@ -196,6 +200,10 @@ public class CursorHealClient {
         HealSafety safety = pendingSafety;
         pendingSafety = null;
         putHealSafety(req, safety);
+        try {
+            req.put("observationBudgetChars", delivery.routing.ObservationBudget.forIntent(
+                    delivery.routing.ModelRouter.Intent.HEAL));
+        } catch (RuntimeException ignored) { }
         if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
             req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
         }
@@ -316,6 +324,10 @@ public class CursorHealClient {
     public String huntPlan(String userPrompt, String slimHtmlExcerpt, Path screenshotPathOrNull) {
         JSONObject req = new JSONObject();
         req.put("mode", "hunt");
+        try {
+            req.put("observationBudgetChars", delivery.routing.ObservationBudget.forIntent(
+                    delivery.routing.ModelRouter.Intent.HUNT_PLANNING));
+        } catch (RuntimeException ignored) { }
         req.put("prompt", userPrompt == null ? "" : userPrompt);
         req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
         if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {

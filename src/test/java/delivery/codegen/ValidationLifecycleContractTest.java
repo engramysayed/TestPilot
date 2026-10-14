@@ -13,12 +13,14 @@ public class ValidationLifecycleContractTest {
             "customer-framework-template/src/main/java/project/validations/Validation.java");
     private static final Path LISTENER = Path.of(
             "customer-framework-template/src/main/java/project/listeners/TestNGListeners.java");
+    private static final Path BASE_TEST = Path.of(
+            "customer-framework-template/src/test/java/project/tests/BaseTest.java");
     private static final Path GENERATED_TEST = Path.of(
             "customer-framework-template/templates/GeneratedTest.java.ftl");
     private static final Path TODO_TEST = Path.of(
             "customer-framework-template/templates/TodoTest.java.ftl");
-    private static final Path PAGE_ACTIONS = Path.of(
-            "customer-framework-template/templates/PageActions.java.ftl");
+    private static final Path PAGE_FTL = Path.of(
+            "customer-framework-template/templates/Page.java.ftl");
 
     @Test
     public void validationUsesPerThreadStateAndRethrows() throws Exception {
@@ -39,21 +41,50 @@ public class ValidationLifecycleContractTest {
     }
 
     @Test
-    public void generatedTeardownQuitsInFinally() throws Exception {
+    public void baseTestOwnsLifecycleAndRequiredProperty() throws Exception {
+        String base = Files.readString(BASE_TEST);
+        Assert.assertTrue(base.contains("@BeforeMethod"), base);
+        Assert.assertTrue(base.contains("@AfterMethod"), base);
+        Assert.assertTrue(base.contains("try {"), base);
+        Assert.assertTrue(base.contains("Validation.assertAll();"), base);
+        Assert.assertTrue(base.contains("} finally {"), base);
+        Assert.assertTrue(base.contains("driver.quit();"), base);
+        Assert.assertTrue(base.contains("requiredProperty"), base);
+        Assert.assertTrue(base.contains("new WebDriverFactory()"), base);
+        // login-data.json must be gated, not hard-required
+        Assert.assertTrue(base.contains("login-data.json"), base);
+        Assert.assertTrue(base.contains("Files.isRegularFile"), base);
+    }
+
+    @Test
+    public void generatedTestsStayThinNoDuplicatedLifecycle() throws Exception {
         String generated = Files.readString(GENERATED_TEST);
         String todo = Files.readString(TODO_TEST);
-        Assert.assertTrue(generated.contains("try {"), generated);
-        Assert.assertTrue(generated.contains("Validation.assertAll();"), generated);
-        Assert.assertTrue(generated.contains("} finally {"), generated);
-        Assert.assertTrue(generated.contains("driver.quit();"), generated);
-        Assert.assertTrue(generated.contains("requiredProperty"), generated);
+        String callSite = Files.readString(Path.of(
+                "customer-framework-template/templates/test-call-site.ftl"));
+        // Call sites use requiredProperty via shared include (inherited from BaseTest)
+        Assert.assertTrue(callSite.contains("requiredProperty"), callSite);
+        Assert.assertTrue(generated.contains("test-call-site.ftl"), generated);
+        Assert.assertTrue(todo.contains("test-call-site.ftl"), todo);
         Assert.assertFalse(generated.contains("nullToEmpty"), generated);
-        Assert.assertTrue(todo.contains("requiredProperty"), todo);
+        // No private requiredProperty / duplicated quit in FTLs
+        Assert.assertFalse(generated.contains("private static String requiredProperty"), generated);
+        Assert.assertFalse(todo.contains("private static String requiredProperty"), todo);
+        Assert.assertFalse(generated.contains("driver.quit();"), generated);
+        Assert.assertFalse(todo.contains("driver.quit();"), todo);
+        Assert.assertFalse(generated.contains("@AfterMethod"), generated);
+        Assert.assertFalse(todo.contains("@AfterMethod"), todo);
+        // Override setUp only when login/setup chron calls exist (shared before-method include)
+        String before = Files.readString(Path.of(
+                "customer-framework-template/templates/test-before-method.ftl"));
+        Assert.assertTrue(before.contains("super.setUp()"), before);
+        Assert.assertTrue(generated.contains("test-before-method.ftl"), generated);
+        Assert.assertTrue(todo.contains("test-before-method.ftl"), todo);
     }
 
     @Test
     public void pageAssertionsGoThroughValidationHelpers() throws Exception {
-        String source = Files.readString(PAGE_ACTIONS);
+        String source = Files.readString(PAGE_FTL);
         Assert.assertTrue(source.contains("driver.validation().textContains"), source);
         Assert.assertTrue(source.contains("driver.validation().bodyTextContains"), source);
         Assert.assertTrue(source.contains("driver.validation().urlContains"), source);
@@ -63,11 +94,15 @@ public class ValidationLifecycleContractTest {
 
     @Test
     public void generatedTypeMethodsHideAllureValueParameters() throws Exception {
-        String source = Files.readString(PAGE_ACTIONS);
-        Assert.assertTrue(source.contains("AllureSteps.run(\"${method.name}\""), source);
+        String source = Files.readString(PAGE_FTL);
+        // Plain valued actions wrap Allure in FTL; smart valued actions use SettledActions (Allure inside).
         Assert.assertTrue(source.contains("AllureSteps.run(\"${assertion.name}\""), source);
-        Assert.assertTrue(source.contains("driver.element().type"), source);
-        Assert.assertTrue(source.contains("driver.element().selectFromDD"), source);
+        Assert.assertTrue(
+                source.contains("driver.element().type") || source.contains("SettledActions.type"),
+                source);
+        Assert.assertTrue(
+                source.contains("driver.element().selectFromDD") || source.contains("SettledActions.select"),
+                source);
         Assert.assertFalse(source.contains("private void step_"),
                 "empty @Step companions must not remain: " + source);
         Assert.assertFalse(source.contains("@Param"), source);

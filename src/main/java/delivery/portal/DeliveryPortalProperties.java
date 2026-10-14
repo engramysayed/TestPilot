@@ -39,7 +39,11 @@ public class DeliveryPortalProperties {
     private CodegenProperties codegen = new CodegenProperties();
     private RetentionProperties retention = new RetentionProperties();
     private HuntProperties hunt = new HuntProperties();
+    private GenerateProperties generate = new GenerateProperties();
     private AuthoringProperties authoring = new AuthoringProperties();
+    private CreditsProperties credits = new CreditsProperties();
+    private SidebarProperties sidebar = new SidebarProperties();
+    private RolesProperties roles = new RolesProperties();
     /** Base delay unit for webhook retries. 0 skips sleeps (tests). Default 1000ms. */
     private int webhookRetryUnitMs = 1000;
 
@@ -62,11 +66,58 @@ public class DeliveryPortalProperties {
     public static class HuntProperties {
         /** DOM prompt mode for Bug Hunter: auto | map | slim */
         private String domMode = "auto";
+        private TriageProperties triage = new TriageProperties();
 
         public String getDomMode() { return domMode == null ? "auto" : domMode; }
         public void setDomMode(String domMode) { this.domMode = domMode; }
+        public TriageProperties getTriage() { return triage; }
+        public void setTriage(TriageProperties triage) {
+            this.triage = triage == null ? new TriageProperties() : triage;
+        }
     }
 
+    /** Optional human triage queue for Bug Hunter findings (default off). */
+    public static class TriageProperties {
+        private boolean enabled = false;
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    }
+
+    /**
+     * Nested under delivery.generate.* — coexists with flat generate-model / generate-enabled.
+     * Flag: delivery.generate.structured-intake
+     */
+    public static class GenerateProperties {
+        /** Structured story intake UI (title / AC / role / surface). */
+        private boolean structuredIntake = true;
+
+        public boolean isStructuredIntake() { return structuredIntake; }
+        public void setStructuredIntake(boolean structuredIntake) { this.structuredIntake = structuredIntake; }
+    }
+
+    
+    /** Keel Credits metering UI flag: delivery.credits.enabled */
+    
+    /** Account-scoped top-level feature IA. Flag: delivery.sidebar.ia-enabled */
+    public static class SidebarProperties {
+        private boolean iaEnabled = true;
+        public boolean isIaEnabled() { return iaEnabled; }
+        public void setIaEnabled(boolean iaEnabled) { this.iaEnabled = iaEnabled; }
+    }
+
+    /** Custom roles admin UI. Flag: delivery.roles.ui-enabled */
+    public static class RolesProperties {
+        private boolean uiEnabled = true;
+        public boolean isUiEnabled() { return uiEnabled; }
+        public void setUiEnabled(boolean uiEnabled) { this.uiEnabled = uiEnabled; }
+    }
+    public static class CreditsProperties {
+        private boolean enabled = false;
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    }
     public static class AuthoringProperties {
         private PrecisionProperties precision = new PrecisionProperties();
 
@@ -143,6 +194,16 @@ public class DeliveryPortalProperties {
     public void setRetention(RetentionProperties retention) { this.retention = retention; }
     public HuntProperties getHunt() { return hunt; }
     public void setHunt(HuntProperties hunt) { this.hunt = hunt == null ? new HuntProperties() : hunt; }
+    public GenerateProperties getGenerate() { return generate; }
+    public void setGenerate(GenerateProperties generate) {
+        this.generate = generate == null ? new GenerateProperties() : generate;
+    }
+    public boolean isHuntTriageEnabled() {
+        return hunt.getTriage().isEnabled();
+    }
+    public boolean isGenerateStructuredIntake() {
+        return generate.isStructuredIntake();
+    }
     public AuthoringProperties getAuthoring() { return authoring; }
     public void setAuthoring(AuthoringProperties authoring) {
         this.authoring = authoring == null ? new AuthoringProperties() : authoring;
@@ -153,8 +214,27 @@ public class DeliveryPortalProperties {
     public int getPrecisionMaxCallsPerJob() {
         return authoring.getPrecision().getMaxCallsPerJob();
     }
+    public CreditsProperties getCredits() { return credits; }
+    public void setCredits(CreditsProperties credits) {
+        this.credits = credits == null ? new CreditsProperties() : credits;
+    }
+    public boolean isCreditsEnabled() {
+        return credits.isEnabled();
+    }
     public int getWebhookRetryUnitMs() { return webhookRetryUnitMs; }
     public void setWebhookRetryUnitMs(int webhookRetryUnitMs) {
         this.webhookRetryUnitMs = Math.max(0, webhookRetryUnitMs);
     }
+
+    public SidebarProperties getSidebar() { return sidebar; }
+    public void setSidebar(SidebarProperties sidebar) {
+        this.sidebar = sidebar == null ? new SidebarProperties() : sidebar;
+    }
+    public boolean isSidebarIaEnabled() { return sidebar.isIaEnabled(); }
+
+    public RolesProperties getRoles() { return roles; }
+    public void setRoles(RolesProperties roles) {
+        this.roles = roles == null ? new RolesProperties() : roles;
+    }
+    public boolean isRolesUiEnabled() { return roles.isUiEnabled(); }
 }

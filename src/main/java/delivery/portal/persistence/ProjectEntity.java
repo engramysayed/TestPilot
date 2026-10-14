@@ -50,6 +50,10 @@ public class ProjectEntity {
     @Column(name = "tenant_id", length = 40)
     private String tenantId;
 
+    /** WEB | ANDROID — immutable after create; null/blank reads as WEB. */
+    @Column(name = "platform", length = 16)
+    private String platform = "WEB";
+
     public Long getId() { return id; }
     public String getProjectId() { return projectId; }
     public void setProjectId(String projectId) { this.projectId = projectId; }
@@ -77,4 +81,7 @@ public class ProjectEntity {
     }
     public String getTenantId() { return tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId; }
+
+    public String getPlatform() { return platform; }
+    public void setPlatform(String platform) { this.platform = platform; }
 }

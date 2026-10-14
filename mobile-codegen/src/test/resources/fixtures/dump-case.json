@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "mobile-ir/1",
+  "platform": "ANDROID",
+  "tcId": "TC_DUMP",
+  "libraryRevisionId": "lib-1",
+  "appRevisionId": "app-1",
+  "caseSettingsRevisionId": "cs-1",
+  "namingRevisionId": "nm-1",
+  "proof": { "status": "PROVEN", "source": "EXECUTE", "attemptId": "a1" },
+  "setupRefs": [],
+  "steps": [
+    {
+      "stepId": "s1",
+      "screenKey": "",
+      "operation": "TAP",
+      "context": { "kind": "NATIVE", "package": "com.example" },
+      "target": { "strategy": "accessibilityId", "value": "x", "origin": "USER" },
+      "retryIfNoChange": false
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "schema": "keel.settle-after/v1",
+  "status": "embedded-from-ae-defaults",
+  "source": "delivery.mobile.runner.settle.SettleAfterTable.defaults()",
+  "actions": {
+    "TAP": { "mode": "HELD_STILL", "capMs": 2000 },
+    "LONG_PRESS": { "mode": "HELD_STILL", "capMs": 2000 },
+    "BACK": { "mode": "HELD_STILL", "capMs": 2000 },
+    "TYPE": { "mode": "AFTER_CHANGE_THEN_HELD", "capMs": 2000 },
+    "TYPE_SECRET": { "mode": "NONE", "capMs": 0 },
+    "CLEAR": { "mode": "AFTER_CHANGE_THEN_HELD", "capMs": 2000 },
+    "SCROLL_UNTIL": { "mode": "HELD_STILL", "capMs": 500 },
+    "SWIPE": { "mode": "HELD_STILL", "capMs": 500 },
+    "OTHER": { "mode": "HELD_STILL", "capMs": 2000 }
+  }
+}

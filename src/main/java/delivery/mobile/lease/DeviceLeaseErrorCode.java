@@ -1,0 +1,15 @@
+package delivery.mobile.lease;
+
+public enum DeviceLeaseErrorCode {
+    DEVICE_BUSY,
+    DEVICE_NOT_FOUND,
+    TENANT_MISMATCH,
+    FENCE_MISMATCH,
+    CAS_CONFLICT,
+    LEASE_NOT_FOUND,
+    EXPIRED_COMMANDS,
+    CLEANUP_REQUIRED,
+    HOST_LOCK_BUSY,
+    INVALID_STATE,
+    QUARANTINE_PROOF_REQUIRED
+}

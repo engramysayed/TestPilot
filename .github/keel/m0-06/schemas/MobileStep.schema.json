@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "keel.mobile.MobileStep/1",
+  "type": "object",
+  "required": [
+    "stepId",
+    "operation"
+  ],
+  "properties": {
+    "stepId": {
+      "type": "string"
+    },
+    "screenKey": {
+      "type": "string"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "retryIfNoChange": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}

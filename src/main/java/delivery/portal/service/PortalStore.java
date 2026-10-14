@@ -1,6 +1,7 @@
 package delivery.portal.service;
 
 import delivery.authoring.AuthoringEngine;
+import delivery.mobile.model.ProjectPlatform;
 import delivery.authoring.PrecisionJobConfig;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.JobRecord;
@@ -86,11 +87,24 @@ public class PortalStore {
     }
 
     private delivery.portal.jobs.JobDispatchPolicy dispatchPolicy;
+    private delivery.portal.service.credits.CreditService creditService;
+    private delivery.portal.service.credits.AccountApprovalService accountApprovals;
 
     /** B08: per-kind dispatch (inprocess | remote). Optional so plain unit-test stores keep today's behaviour. */
     @Autowired(required = false)
     public void setDispatchPolicy(delivery.portal.jobs.JobDispatchPolicy dispatchPolicy) {
         this.dispatchPolicy = dispatchPolicy;
+    }
+
+    /** Keel Credits Phase 1–2: optional so unit-test stores without credit beans keep working. */
+    @Autowired(required = false)
+    public void setCreditService(delivery.portal.service.credits.CreditService creditService) {
+        this.creditService = creditService;
+    }
+
+    @Autowired(required = false)
+    public void setAccountApprovals(delivery.portal.service.credits.AccountApprovalService accountApprovals) {
+        this.accountApprovals = accountApprovals;
     }
 
     /** B08: issues the next fencing token for a claimed job and persists it before it is returned to the engine. */
@@ -218,11 +232,15 @@ public class PortalStore {
 
     @Transactional
     public ProjectRecord createProject(String name, Long ownerUserId) {
-        return createProject(name, null, ownerUserId);
+        return createProject(name, null, ownerUserId, ProjectPlatform.WEB);
+    }
+
+    public ProjectRecord createProject(String name, String baseUrlHint, Long ownerUserId) {
+        return createProject(name, baseUrlHint, ownerUserId, ProjectPlatform.WEB);
     }
 
     @Transactional
-    public ProjectRecord createProject(String name, String baseUrlHint, Long ownerUserId) {
+    public ProjectRecord createProject(String name, String baseUrlHint, Long ownerUserId, ProjectPlatform platform) {
         String id = "prj_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         ProjectEntity entity = new ProjectEntity();
         entity.setProjectId(id);
@@ -237,6 +255,7 @@ public class PortalStore {
         entity.setName(display);
         entity.setOwnerUserId(ownerUserId);
         entity.setLatestVersion(0);
+        entity.setPlatform((platform == null ? ProjectPlatform.WEB : platform).name());
         if (baseUrlHint != null && !baseUrlHint.isBlank()) {
             entity.setBaseUrl(baseUrlHint.trim());
         }
@@ -252,6 +271,23 @@ public class PortalStore {
         }
         projectRepository.save(entity);
         return toRecord(entity);
+    }
+
+    /**
+     * Platform is immutable after create; conversion requires a new project.
+     * @throws IllegalArgumentException when a change is requested
+     */
+    public void rejectPlatformMutation(String projectId, String requestedPlatform) {
+        if (requestedPlatform == null || requestedPlatform.isBlank()) {
+            return;
+        }
+        ProjectPlatform want = ProjectPlatform.parse(requestedPlatform);
+        ProjectPlatform have = projectRepository.findByProjectId(projectId)
+                .map(e -> ProjectPlatform.parse(e.getPlatform()))
+                .orElse(ProjectPlatform.WEB);
+        if (want != have) {
+            throw new IllegalArgumentException("platform is immutable after create");
+        }
     }
 
     public Optional<ProjectRecord> getProject(String projectId) {
@@ -497,29 +533,48 @@ public class PortalStore {
                 .map(JobEntity::getStatus)
                 .orElse("");
         if (creating) {
-            projectRepository.findByProjectId(job.getProjectId()).ifPresent(p -> {
-                if (p.isArchived()) {
-                    throw new IllegalStateException("PROJECT_ARCHIVED");
-                }
-            });
-            freezeQueuedInputs(job);
-            if (dispatchPolicy != null && dispatchPolicy.remote(job.getJobKind())) {
-                job.setRequirePrivateRunner(true); // B08: the engine claims it over Runner API v2
+            if (job.getProjectId() != null && !job.getProjectId().isBlank()) {
+                projectRepository.findByProjectId(job.getProjectId()).ifPresent(p -> {
+                    if (p.isArchived()) {
+                        throw new IllegalStateException("PROJECT_ARCHIVED");
+                    }
+                });
             }
-            delivery.job.JobAdmission.require(
-                    countActiveJobsForTenant(job.getTenantId()),
-                    countRunningJobs(),
-                    delivery.job.JobAdmission.Limits.fromEnvironment());
-            requireEnvironmentAdmission(job);
-            reserveBudget(job);
+            if (job.isAccountScoped() || job.getProjectId() == null || job.getProjectId().isBlank()) {
+                // Account-scoped: permission/approval already enforced at API; skip project env admit.
+                if (job.getProviderAllowlistSnapshot() == null || job.getProviderAllowlistSnapshot().isBlank()) {
+                    job.setProviderAllowlistSnapshot(
+                            delivery.privacy.ProviderPolicy.fromEnvironment().snapshot());
+                }
+            } else {
+                freezeQueuedInputs(job);
+                if (dispatchPolicy != null && dispatchPolicy.remote(job.getJobKind())) {
+                    job.setRequirePrivateRunner(true); // B08: the engine claims it over Runner API v2
+                }
+                delivery.job.JobAdmission.require(
+                        countActiveJobsForTenant(job.getTenantId()),
+                        countRunningJobs(),
+                        delivery.job.JobAdmission.Limits.fromEnvironment());
+                requireEnvironmentAdmission(job);
+                reserveBudget(job);
+            }
+            // Approval gate then Keel Credits debit (idempotent debit:job:{jobId}). No BudgetLedger change.
+            if (accountApprovals != null && job.getOwnerUserId() != null
+                    && delivery.portal.service.credits.CreditsBillingKind.fromJobKind(job.getJobKind()) != null) {
+                accountApprovals.requireApprovedForJobs(job.getOwnerUserId());
+            }
+            if (creditService != null) {
+                creditService.tryDebitForJob(job);
+            }
         }
         JobEntity entity = jobRepository.findByJobId(job.getJobId()).orElseGet(JobEntity::new);
         entity.setJobId(job.getJobId());
         entity.setProjectId(job.getProjectId());
+        entity.setAccountScoped(job.isAccountScoped());
         entity.setOwnerUserId(job.getOwnerUserId());
         if (job.getTenantId() != null && !job.getTenantId().isBlank()) {
             entity.setTenantId(job.getTenantId());
-        } else {
+        } else if (job.getProjectId() != null && !job.getProjectId().isBlank()) {
             projectRepository.findByProjectId(job.getProjectId())
                     .map(ProjectEntity::getTenantId)
                     .filter(t -> t != null && !t.isBlank())
@@ -932,6 +987,7 @@ public class PortalStore {
                 false,
                 parseJobKind(e.getJobKind())
         );
+        job.setAccountScoped(e.isAccountScoped());
         try {
             job.setStatus(JobRecord.Status.valueOf(e.getStatus()));
         } catch (IllegalArgumentException ex) {
@@ -968,9 +1024,11 @@ public class PortalStore {
         job.setFallbackReason(e.getFallbackReason());
         job.setTenantId(e.getTenantId());
         if (job.getTenantId() == null || job.getTenantId().isBlank()) {
-            projectRepository.findByProjectId(e.getProjectId())
-                    .map(ProjectEntity::getTenantId)
-                    .ifPresent(job::setTenantId);
+            if (e.getProjectId() != null && !e.getProjectId().isBlank()) {
+                projectRepository.findByProjectId(e.getProjectId())
+                        .map(ProjectEntity::getTenantId)
+                        .ifPresent(job::setTenantId);
+            }
         }
         job.setCreatedAt(e.getCreatedAt());
         job.setCompletedAt(e.getCompletedAt());
@@ -1004,6 +1062,7 @@ public class PortalStore {
                 : e.getPrecisionMaxCallsPerJob());
         rec.setPrecisionReuseLocatorMemory(Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()));
         rec.setTenantId(e.getTenantId() == null ? "" : e.getTenantId());
+        rec.setPlatform(ProjectPlatform.parse(e.getPlatform()).name());
         rec.setArchived(e.isArchived());
         if (e.getArchivedAt() != null) {
             rec.setArchivedAt(e.getArchivedAt().toString());

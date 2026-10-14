@@ -1,6 +1,8 @@
 package delivery.portal.security;
 
+import delivery.portal.roles.CreditsAdminPermissionFilter;
 import org.springframework.context.annotation.Bean;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -48,12 +50,29 @@ public class SecurityConfig {
     }
 
     @Bean
+    public CreditsAdminPermissionFilter creditsAdminPermissionFilter(
+            CurrentUserService currentUser,
+            delivery.portal.roles.PermissionEnforcer enforcer) {
+        return new CreditsAdminPermissionFilter(currentUser, enforcer);
+    }
+
+    /** Prevent Boot from registering the filter twice outside the security chain (would 401 before auth). */
+    @Bean
+    public FilterRegistrationBean<CreditsAdminPermissionFilter> creditsAdminPermissionFilterRegistration(
+            CreditsAdminPermissionFilter filter) {
+        FilterRegistrationBean<CreditsAdminPermissionFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, ApiRequestHeaderFilter apiHeaderFilter,
                                            LoginThrottle loginThrottle,
                                            delivery.portal.DeliveryPortalProperties props,
-                                           RunnerRequestVerifier runnerRequestVerifier)
+                                           RunnerRequestVerifier runnerRequestVerifier,
+                                           CreditsAdminPermissionFilter creditsAdminPermissionFilter)
             throws Exception {
-        // Browser → form login redirect (no HTTP Basic popup). API → 401 JSON/status.
+        // Browser â†’ form login redirect (no HTTP Basic popup). API â†’ 401 JSON/status.
         LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
         entryPoints.put(new AntPathRequestMatcher("/api/**"),
                 new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
@@ -98,7 +117,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
                 .addFilterAfter(apiHeaderFilter, CsrfFilter.class)
                 .addFilterAfter(new ServiceIdentityFilter(props), CsrfFilter.class)
-                .addFilterAfter(new PrivateRunnerFilter(props, runnerRequestVerifier), CsrfFilter.class);
+                .addFilterAfter(new PrivateRunnerFilter(props, runnerRequestVerifier), CsrfFilter.class)
+                .addFilterAfter(creditsAdminPermissionFilter, CsrfFilter.class);
         return http.build();
     }
 }

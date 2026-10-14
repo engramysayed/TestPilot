@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Roles')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page" th:attr="data-roles-ui=${rolesUiEnabled} ?: true">
+    <div class="page-title">
+        <div>
+            <h1>Roles &amp; permissions</h1>
+            <p class="lede">Create custom roles and choose what each role can do. Approving a user still happens on Users — pick a role there every time.</p>
+        </div>
+        <button type="button" class="button primary" id="btn-new-role">New role</button>
+    </div>
+
+    <section class="panel" id="role-editor" hidden>
+        <h2 id="role-editor-title">New role</h2>
+        <p class="panel-intro">Tick only what this role needs. Feature pages use these codes for the sidebar.</p>
+        <label class="f">Name
+            <input type="text" id="role-name" placeholder="e.g. QA lead" autocomplete="off"/>
+        </label>
+        <label class="f">Description <span class="muted">(optional)</span>
+            <input type="text" id="role-desc" placeholder="Short plain summary"/>
+        </label>
+        <div id="perm-checklist" class="keel-perm-grid" aria-label="Permissions"></div>
+        <p id="role-editor-err" class="error" hidden></p>
+        <p>
+            <button type="button" class="button primary" id="role-save">Save role</button>
+            <button type="button" class="button ghost" id="role-cancel">Cancel</button>
+        </p>
+    </section>
+
+    <section class="panel">
+        <h2>Roles</h2>
+        <div id="role-list" class="keel-role-list" aria-live="polite"></div>
+        <p id="role-list-err" class="error" hidden></p>
+    </section>
+</main>
+</div>
+<script>
+(function () {
+  var editingId = null;
+  var catalog = [];
+
+  async function api(url, opts) {
+    opts = opts || {};
+    opts.credentials = 'same-origin';
+    opts.headers = Object.assign({ 'Accept': 'application/json', 'X-Keel-Requested-With': 'Keel' }, opts.headers || {});
+    var res = await fetch(url, opts);
+    var data = await res.json().catch(function () { return {}; });
+    return { ok: res.ok, status: res.status, data: data };
+  }
+
+  function renderChecklist(selected) {
+    selected = selected || [];
+    var box = document.getElementById('perm-checklist');
+    box.innerHTML = '';
+    catalog.forEach(function (p) {
+      var id = 'perm-' + p.code.replace(/\./g, '-');
+      var lab = document.createElement('label');
+      lab.innerHTML = '<input type="checkbox" id="' + id + '" data-code="' + p.code + '"/> <span><b>' + p.label + '</b><br/><span class="muted">' + p.code + ' · ' + p.group + '</span></span>';
+      box.appendChild(lab);
+      if (selected.indexOf(p.code) >= 0) lab.querySelector('input').checked = true;
+    });
+  }
+
+  function selectedPerms() {
+    return Array.prototype.map.call(document.querySelectorAll('#perm-checklist input:checked'), function (el) {
+      return el.getAttribute('data-code');
+    });
+  }
+
+  async function loadCatalog() {
+    var r = await api('/api/admin/permissions');
+    if (!r.ok) throw new Error(r.data.message || 'Cannot load permissions');
+    catalog = r.data.permissions || [];
+  }
+
+  async function loadRoles() {
+    var err = document.getElementById('role-list-err');
+    err.hidden = true;
+    var r = await api('/api/admin/roles');
+    if (!r.ok) { err.hidden = false; err.textContent = r.data.message || 'Admin only'; return; }
+    var list = document.getElementById('role-list');
+    list.innerHTML = '';
+    (r.data.roles || []).forEach(function (role) {
+      var row = document.createElement('div');
+      row.className = 'keel-role-row';
+      var left = document.createElement('div');
+      left.innerHTML = '<strong>' + role.name + '</strong>' +
+        (role.system ? ' <span class="keel-badge keel-badge--approved">Built-in</span>' : '') +
+        '<div class="muted">' + (role.description || '') + '</div>' +
+        '<div class="muted">' + (role.permissions || []).join(', ') + ' · ' + (role.userCount || 0) + ' users</div>';
+      var actions = document.createElement('div');
+      var edit = document.createElement('button');
+      edit.type = 'button'; edit.className = 'button ghost'; edit.textContent = 'Edit';
+      edit.addEventListener('click', function () { openEditor(role); });
+      actions.appendChild(edit);
+      if (!role.system) {
+        var del = document.createElement('button');
+        del.type = 'button'; del.className = 'danger'; del.textContent = 'Delete';
+        del.addEventListener('click', async function () {
+          if (!confirm('Delete role ' + role.name + '?')) return;
+          var d = await api('/api/admin/roles/' + encodeURIComponent(role.roleId), { method: 'DELETE' });
+          if (!d.ok) { alert(d.data.message || 'Delete failed'); return; }
+          loadRoles();
+        });
+        actions.appendChild(del);
+      }
+      row.appendChild(left); row.appendChild(actions);
+      list.appendChild(row);
+    });
+  }
+
+  function openEditor(role) {
+    editingId = role ? role.roleId : null;
+    document.getElementById('role-editor').hidden = false;
+    document.getElementById('role-editor-title').textContent = role ? ('Edit ' + role.name) : 'New role';
+    document.getElementById('role-name').value = role ? role.name : '';
+    document.getElementById('role-name').disabled = !!(role && role.system);
+    document.getElementById('role-desc').value = role ? (role.description || '') : '';
+    document.getElementById('role-editor-err').hidden = true;
+    renderChecklist(role ? role.permissions : []);
+  }
+
+  document.getElementById('btn-new-role').addEventListener('click', function () { openEditor(null); });
+  document.getElementById('role-cancel').addEventListener('click', function () {
+    document.getElementById('role-editor').hidden = true; editingId = null;
+  });
+  document.getElementById('role-save').addEventListener('click', async function () {
+    var err = document.getElementById('role-editor-err');
+    err.hidden = true;
+    var body = { name: document.getElementById('role-name').value, description: document.getElementById('role-desc').value, permissions: selectedPerms() };
+    var r;
+    if (editingId) {
+      r = await api('/api/admin/roles/' + encodeURIComponent(editingId), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    } else {
+      r = await api('/api/admin/roles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    }
+    if (!r.ok) { err.hidden = false; err.textContent = r.data.message || 'Save failed'; return; }
+    document.getElementById('role-editor').hidden = true;
+    editingId = null;
+    loadRoles();
+  });
+
+  loadCatalog().then(loadRoles).catch(function (e) {
+    var err = document.getElementById('role-list-err');
+    err.hidden = false; err.textContent = e.message || 'Failed to load';
+  });
+})();
+</script>
+</body>
+</html>

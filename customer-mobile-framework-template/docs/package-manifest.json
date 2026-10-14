@@ -1,0 +1,20 @@
+{
+  "schema": "keel.mobile-package-manifest/v0",
+  "status": "m4-01-scaffold",
+  "settleAfter": {
+    "resource": "keel/settle-after.json",
+    "source": "AE SettleAfterTable.defaults()",
+    "fingerprintNote": "SHA-256 filled by M4-04 packager; helper tests assert table parity in Java"
+  },
+  "toolchain": {
+    "lockStatus": "pinned-m0-draft",
+    "pomPins": "PLACEHOLDER-M0-02 — do not invent fake qualified versions",
+    "draftPinsForHelperTestsOnly": {
+      "appium.java-client": "10.1.1",
+      "selenium.mobile": "4.43.0",
+      "testng": "7.11.0",
+      "allure": "2.31.0"
+    }
+  },
+  "packagerDenyListNote": "M4-04 ZIP must strip helper unit tests under src/test/java/project/{config,runtime,naming,utils/retry}/*Test.java and helper-tests/"
+}

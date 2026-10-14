@@ -3,6 +3,7 @@ package delivery.portal.service;
 import delivery.authoring.LocalLlmClient;
 import delivery.excel.GenerateAuthoringRepair;
 import delivery.excel.GenerateQualityGate;
+import delivery.excel.KeelPathSuggester;
 import delivery.excel.GeneratedTcCsvParser;
 import delivery.excel.GeneratedTcJsonParser;
 import delivery.excel.KeelPathCounts;
@@ -152,6 +153,7 @@ public class TcGenerateService {
         result.put("csv", rawCombined);
         result.put("counts", GeneratedTcCsvParser.countByKeelPath(generated.cases()));
         result.put("keelPathCounts", KeelPathCounts.from(generated.cases()).toMap());
+        GeneratePayloadEnricher.enrich(result, generated.cases(), generated.coverageNotes());
         return result;
     }
 
@@ -163,6 +165,7 @@ public class TcGenerateService {
         side.put("csv", GeneratedTcCsvParser.toCsv(generated.cases()));
         side.put("counts", GeneratedTcCsvParser.countByKeelPath(generated.cases()));
         side.put("keelPathCounts", KeelPathCounts.from(generated.cases()).toMap());
+        GeneratePayloadEnricher.enrich(side, generated.cases(), generated.coverageNotes());
         return side;
     }
 
@@ -266,6 +269,7 @@ public class TcGenerateService {
                 throw GenerateQualityGate.failureException(gateErrors);
             }
         }
+        cases = KeelPathSuggester.applyToBlank(cases);
         return new StoryGenerateResult(cases, parsed.coverageNotes(), resolvedModel);
     }
 

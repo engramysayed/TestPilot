@@ -75,7 +75,7 @@ public class CodegenReviewFixesTest {
         String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_ASSERT.java"));
         Assert.assertTrue(test.contains("\"France\""), test);
         Assert.assertTrue(test.contains("\"Germany\""), test);
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart_Actions.java"));
+        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart.java"));
         Assert.assertTrue(actions.contains("assert_Country_Is_Selected(String expected)"), actions);
         Assert.assertTrue(actions.contains("elementSelected("), actions);
     }
@@ -106,8 +106,8 @@ public class CodegenReviewFixesTest {
         Assert.assertEquals(acc.pages().get("Cart").methods().size(), 2, String.valueOf(acc.pages().get("Cart").methods()));
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_SUBMIT", promo, submit)));
         String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_SUBMIT.java"));
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart_Actions.java"));
-        String locators = Files.readString(dir.resolve("src/main/java/project/pages/Cart_Locators.java"));
+        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart.java"));
+        String locators = Files.readString(dir.resolve("src/main/java/project/pages/Cart.java"));
         Assert.assertTrue(test.contains("click_Promo_Button"), test);
         Assert.assertTrue(actions.contains("public void click_Promo_Button"), actions);
         Assert.assertTrue(locators.contains("button[type='submit']"), locators);
@@ -145,11 +145,15 @@ public class CodegenReviewFixesTest {
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_PAGES", first, second)));
         Path pages = dir.resolve("src/main/java/project/pages");
         try (var list = Files.list(pages)) {
-            long actionFiles = list.filter(p -> p.getFileName().toString().endsWith("_Actions.java")).count();
-            Assert.assertEquals(actionFiles, 2L, "distinct page identities must not overwrite one Actions file");
+            long pageFiles = list.filter(p -> p.getFileName().toString().endsWith(".java")).count();
+            Assert.assertEquals(pageFiles, 2L, "distinct page identities must not overwrite one page file");
         }
-        String combined = Files.readString(pages.resolve("OrderDetails_Actions.java"))
-                + Files.readString(findOtherActions(pages, "OrderDetails_Actions.java"));
+        String combined = "";
+        try (var list = Files.list(pages)) {
+            for (Path f : list.filter(p -> p.getFileName().toString().endsWith(".java")).toList()) {
+                combined += Files.readString(f);
+            }
+        }
         Assert.assertTrue(combined.contains("click_First_Button"), combined);
         Assert.assertTrue(combined.contains("click_Second_Button"), combined);
         String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_PAGES.java"));
@@ -162,7 +166,7 @@ public class CodegenReviewFixesTest {
         Path dir = Files.createTempDirectory("cg-allure-hide");
         ProvenStep secret = step("TC_CANARY", "Profile", "type", "id", "secret", "CANARY_PW_zipreplay_7f2c9a");
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_CANARY", secret)));
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Profile_Actions.java"));
+        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Profile.java"));
         Assert.assertTrue(actions.contains("public void type_Secret(String value)"), actions);
         Assert.assertTrue(actions.contains("AllureSteps.run(\"type_Secret\""), actions);
         Assert.assertTrue(actions.contains("driver.element().type"), actions);
@@ -177,7 +181,7 @@ public class CodegenReviewFixesTest {
         ProvenStep heading = new ProvenStep("TC_READY", "Home", "elementAction", "assert",
                 "id", "status", "", "textContains", "CANARY_ASSERT_zipreplay_7f2c9a", true, "");
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_READY", heading)));
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Home_Actions.java"));
+        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Home.java"));
         Assert.assertTrue(actions.contains("public void assert_Status_Text_Contains(String expected)")
                         || actions.contains("(String expected)"),
                 actions);
@@ -270,10 +274,10 @@ public class CodegenReviewFixesTest {
         ProvenStep body = new ProvenStep("TC_BODY", "Cart", "elementAction", "assert",
                 "", "", "", "textContains", "Saved", true, "");
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_BODY", body)));
-        Assert.assertTrue(Files.exists(dir.resolve("src/main/java/project/pages/Cart_Actions.java")));
+        Assert.assertTrue(Files.exists(dir.resolve("src/main/java/project/pages/Cart.java")));
         String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_BODY.java"));
         Assert.assertTrue(test.contains("assert_"), test);
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart_Actions.java"));
+        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart.java"));
         Assert.assertTrue(actions.contains("bodyTextContains"), actions);
         Assert.assertTrue(test.contains("\"Saved\"") || actions.contains("Saved"), test + "\n" + actions);
     }
@@ -288,14 +292,6 @@ public class CodegenReviewFixesTest {
         return data;
     }
 
-    private static Path findOtherActions(Path pages, String skip) throws Exception {
-        try (var list = Files.list(pages)) {
-            return list.filter(p -> p.getFileName().toString().endsWith("_Actions.java"))
-                    .filter(p -> !p.getFileName().toString().equals(skip))
-                    .findFirst()
-                    .orElseThrow();
-        }
-    }
 
     private static String findKey(Properties props, String valueNeedle) {
         for (String name : props.stringPropertyNames()) {

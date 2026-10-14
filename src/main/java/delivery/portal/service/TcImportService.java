@@ -5,6 +5,7 @@ import delivery.excel.GeneratedTcCsvParser;
 import delivery.excel.GeneratedTcJsonParser;
 import delivery.excel.KeelPathCounts;
 import delivery.excel.ManualTestCase;
+import delivery.excel.KeelPathSuggester;
 import delivery.excel.TcImportRepair;
 import delivery.portal.model.ProjectRecord;
 import org.springframework.stereotype.Service;
@@ -62,6 +63,7 @@ public class TcImportService {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown project"));
 
         List<ManualTestCase> repaired = TcImportRepair.repairCases(cases);
+        repaired = KeelPathSuggester.applyToBlank(repaired);
         List<String> gateErrors = GenerateQualityGate.validate(repaired, project.getBaseUrl());
         if (!gateErrors.isEmpty()) {
             throw GenerateQualityGate.failureException(gateErrors);
@@ -117,6 +119,7 @@ public class TcImportService {
         result.put("csv", GeneratedTcCsvParser.toCsv(cases));
         result.put("counts", GeneratedTcCsvParser.countByKeelPath(cases));
         result.put("keelPathCounts", KeelPathCounts.from(cases).toMap());
+        GeneratePayloadEnricher.enrich(result, cases, coverageNotes);
         return result;
     }
 

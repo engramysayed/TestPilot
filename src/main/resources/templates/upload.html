@@ -15,6 +15,11 @@
         </div>
     </div>
 
+    <section class="panel" id="account-scoped-picker-hint" th:if="${sidebarIaEnabled}">
+        <h2>Choose a project</h2>
+        <p class="panel-intro">This page is account-wide. Pick which project to use before you start. Jobs can pin that project via the account job API.</p>
+    </section>
+
     <section class="panel workspace-launcher" id="workspace-launcher"
              th:hidden="${projectId != null and !projectId.isEmpty()}">
         <p class="guide-kicker">Workspace</p>
@@ -736,7 +741,8 @@
         const data = await res.json();
         if (!res.ok) {
             err.hidden = false;
-            err.textContent = (data.error || 'ERROR') + ': ' + (data.message || 'failed');
+            var gate = window.KeelCredits && KeelCredits.gateMessage(data);
+            err.textContent = gate || ((data.error || 'ERROR') + ': ' + (data.message || 'failed'));
             return;
         }
         window.location.href = '/status?jobId=' + encodeURIComponent(data.jobId);

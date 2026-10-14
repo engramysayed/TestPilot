@@ -30,7 +30,7 @@ public class GeneratedLayerSyncTest {
         writer.write(root, List.of(a));
         writer.write(root, List.of(a, b));
 
-        String page = Files.readString(root.resolve("src/main/java/project/pages/Checkout_Actions.java"));
+        String page = Files.readString(root.resolve("src/main/java/project/pages/Checkout.java"));
         Assert.assertTrue(page.contains("type_First_Name"), page);
         Assert.assertTrue(page.contains("type_Last_Name"), page);
         Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/TC_A.java")));
@@ -53,7 +53,7 @@ public class GeneratedLayerSyncTest {
 
         Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/TC_A.java")));
         Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/TC_B.java")));
-        String page = Files.readString(root.resolve("src/main/java/project/pages/Checkout_Actions.java"));
+        String page = Files.readString(root.resolve("src/main/java/project/pages/Checkout.java"));
         Assert.assertFalse(page.contains("type_First_Name"), page);
         Assert.assertTrue(page.contains("type_Last_Name"), page);
         String data = Files.readString(root.resolve("src/test/resources/test-data/delivery-testdata.properties"));

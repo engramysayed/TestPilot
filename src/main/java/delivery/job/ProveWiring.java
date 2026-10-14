@@ -7,6 +7,7 @@ import delivery.effect.EffectOutcome;
 import delivery.evidence.BindFailureEvidence;
 import delivery.ir.SecretStep;
 import delivery.settle.SettlePolicy;
+import delivery.settle.SettleWaiter;
 import delivery.settle.SideEffectClassifier;
 import delivery.snapshot.KeelTarget;
 import delivery.snapshot.KeelTargetResolver;
@@ -36,6 +37,11 @@ import java.util.Optional;
  * delivery.locator.ranker           = off | on       (re-rank each proven locator; adopt a better plain-css one)
  * delivery.effect.check             = off | log | strict (A7 + A8 table; strict fails a required NO_EFFECT)
  * delivery.evidence.bind-failure    = off | on       (A9 bundle when an intent finally fails to bind)
+ * delivery.settle.engine            = off | on | strict | auto
+ *   auto (default): run SettleWaiter when effect.check is log/strict/on (dogfood-friendly).
+ *   on: always settle after actions (log unmet; do not fail the step).
+ *   strict: unmet settle conditions fail the step (SETTLE_TIMEOUT / url-same).
+ *   off: never call SettleWaiter (legacy; customer default when effect.check=off).
  * </pre>
  * Flags are read per call (System property, then application.properties), so tests can flip them.
  */
@@ -44,9 +50,13 @@ public final class ProveWiring {
     public static final String RANKER = "delivery.locator.ranker";
     public static final String EFFECT = "delivery.effect.check";
     public static final String BIND_EVIDENCE = "delivery.evidence.bind-failure";
+    /** AE-D8: engine-path A8 SettleWaiter (not only codegen/customer Settle). */
+    public static final String SETTLE_ENGINE = "delivery.settle.engine";
 
     public enum EffectMode { OFF, LOG, STRICT }
 
+    /** SettleWaiter engagement on the Automate/Execute engine path. */
+    public enum SettleEngineMode { OFF, ON, STRICT, AUTO }
     private ProveWiring() {}
 
     public static boolean serializerV2() { return "v2".equalsIgnoreCase(prop(SERIALIZER, "v1")); }
@@ -55,6 +65,29 @@ public final class ProveWiring {
     public static EffectMode effectMode() {
         String v = prop(EFFECT, "off").toLowerCase(Locale.ROOT);
         return switch (v) { case "log" -> EffectMode.LOG; case "strict" -> EffectMode.STRICT; case "on", "true" -> EffectMode.LOG; default -> EffectMode.OFF; };
+    }
+
+    public static SettleEngineMode settleEngineMode() {
+        String v = prop(SETTLE_ENGINE, "auto").toLowerCase(Locale.ROOT).trim();
+        return switch (v) {
+            case "off", "false", "0" -> SettleEngineMode.OFF;
+            case "on", "true", "log" -> SettleEngineMode.ON;
+            case "strict" -> SettleEngineMode.STRICT;
+            default -> SettleEngineMode.AUTO; // auto / blank / unknown
+        };
+    }
+
+    /** True when SettleWaiter should run after engine actions. */
+    public static boolean settleEngineActive() {
+        SettleEngineMode m = settleEngineMode();
+        if (m == SettleEngineMode.OFF) return false;
+        if (m == SettleEngineMode.ON || m == SettleEngineMode.STRICT) return true;
+        // AUTO: follow effect.check (dogfood turns effect=log ? settle on)
+        return effectMode() != EffectMode.OFF;
+    }
+
+    public static boolean settleEngineStrict() {
+        return settleEngineMode() == SettleEngineMode.STRICT;
     }
 
     // ---------------------------------------------------------------- A2: driver hook + authoring html
@@ -153,23 +186,102 @@ public final class ProveWiring {
      */
     public static Effect runWithEffect(WebDriver driver, ProvenStep step, By locator, java.util.function.Supplier<String> action) {
         EffectMode mode = effectMode();
-        if (mode == EffectMode.OFF) return new Effect(action.get(), null, null);
         SettlePolicy.Action kind = kindOf(step);
-        SettlePolicy.Rule rule = kind == null ? null : SettlePolicy.builtin().rule(SecretStep.settleKind(kind, step.secret()));
-        if (rule == null || rule.effect() == SettlePolicy.Effect.NONE) return new Effect(action.get(), null, null);
-        KeelTarget target = plainTarget(step);
-        // r3: the step's sideEffects (filled by SideEffectWiring from the bound element) when known
-        SettlePolicy.SideEffects se = SideEffectWiring.unknown(step.sideEffects())
-                ? SideEffectClassifier.classify(SettlePolicy.builtin(), kind, null) : SettlePolicy.SideEffects.of(step.sideEffects());
-        String[] holder = new String[1];
-        ActionEffectChecker.Config cfg = ActionEffectChecker.Config.defaults().withSettle(rule.effectWaitMs());
-        ActionEffectChecker.Result r = ActionEffectChecker.run(driver, target, () -> holder[0] = action.get(), cfg, se, null);
-        String result = holder[0];
-        LogsManager.info("KEEL_EFFECT action=" + step.action() + " outcome=" + r.outcome() + " expect=" + rule.effect()
-                + " " + r.detail());
-        if (result != null && result.startsWith("false")) return new Effect(result, null, r.outcome());
-        boolean fail = mode == EffectMode.STRICT && rule.effect() == SettlePolicy.Effect.REQUIRED && r.outcome() == EffectOutcome.NO_EFFECT;
-        return new Effect(result, fail ? "EFFECT_NONE: no observable effect after " + step.action() + " (" + r.detail() + ")" : null, r.outcome());
+        SettlePolicy policy = SettlePolicy.builtin();
+        SettlePolicy.Rule rule = kind == null ? null : policy.rule(SecretStep.settleKind(kind, step.secret()));
+        boolean settle = settleEngineActive() && driver != null && kind != null && rule != null;
+        String urlBefore = null;
+        if (settle) {
+            try {
+                urlBefore = SettleWaiter.prime(driver, policy);
+            } catch (RuntimeException e) {
+                LogsManager.warn("KEEL_SETTLE prime failed: " + e.getClass().getSimpleName());
+                settle = false;
+            }
+        }
+        String result;
+        EffectOutcome outcome = null;
+        if (mode == EffectMode.OFF) {
+            result = action.get();
+        } else {
+            if (rule == null || rule.effect() == SettlePolicy.Effect.NONE) {
+                result = action.get();
+            } else {
+                KeelTarget target = plainTarget(step);
+                SettlePolicy.SideEffects se = SideEffectWiring.unknown(step.sideEffects())
+                        ? SideEffectClassifier.classify(policy, kind, null) : SettlePolicy.SideEffects.of(step.sideEffects());
+                String[] holder = new String[1];
+                ActionEffectChecker.Config cfg = ActionEffectChecker.Config.defaults().withSettle(rule.effectWaitMs());
+                ActionEffectChecker.Result r = ActionEffectChecker.run(driver, target, () -> holder[0] = action.get(), cfg, se, null);
+                result = holder[0];
+                outcome = r.outcome();
+                LogsManager.info("KEEL_EFFECT action=" + step.action() + " outcome=" + r.outcome() + " expect=" + rule.effect()
+                        + " " + r.detail());
+                if (result != null && result.startsWith("false")) {
+                    return new Effect(result, null, r.outcome());
+                }
+                boolean fail = mode == EffectMode.STRICT && rule.effect() == SettlePolicy.Effect.REQUIRED
+                        && r.outcome() == EffectOutcome.NO_EFFECT;
+                if (fail) {
+                    return new Effect(result,
+                            "EFFECT_NONE: no observable effect after " + step.action() + " (" + r.detail() + ")",
+                            r.outcome());
+                }
+            }
+        }
+        if (settle && (result == null || !result.startsWith("false"))) {
+            String settleFail = awaitSettle(driver, policy, kind, urlBefore, step.action());
+            if (settleFail != null) {
+                return new Effect(result, settleFail, outcome);
+            }
+        }
+        return new Effect(result, null, outcome);
+    }
+
+    /**
+     * AE-D8: post-action A8 settle for paths that do not go through {@link #runWithEffect}
+     * (e.g. navigate). No-op when settle.engine is inactive.
+     */
+    public static String settleAfter(WebDriver driver, ProvenStep step, String urlBeforeOrNull) {
+        if (!settleEngineActive() || driver == null || step == null) return null;
+        SettlePolicy.Action kind = kindOf(step);
+        if (kind == null) {
+            // navigate / custom: map navigate explicitly
+            String a = step.action() == null ? "" : step.action().trim().toLowerCase(Locale.ROOT);
+            if ("navigate".equals(a)) kind = SettlePolicy.Action.NAVIGATE;
+            else return null;
+        }
+        SettlePolicy policy = SettlePolicy.builtin();
+        String before = urlBeforeOrNull;
+        try {
+            if (before == null) before = SettleWaiter.prime(driver, policy);
+        } catch (RuntimeException e) {
+            LogsManager.warn("KEEL_SETTLE prime failed: " + e.getClass().getSimpleName());
+            return null;
+        }
+        return awaitSettle(driver, policy, kind, before, step.action());
+    }
+
+    /** @return failure message when strict and unsettled; otherwise null (logs on on/auto). */
+    static String awaitSettle(WebDriver driver, SettlePolicy policy, SettlePolicy.Action kind,
+                              String urlBefore, String actionLabel) {
+        try {
+            SettleWaiter.Report report = SettleWaiter.await(driver, policy, kind, urlBefore);
+            if (report.settled()) {
+                LogsManager.info("KEEL_SETTLE action=" + actionLabel + " settled elapsedMs=" + report.elapsedMs());
+                return null;
+            }
+            String unmet = report.unmet() == null ? "?" : String.join(",", report.unmet());
+            LogsManager.warn("KEEL_SETTLE action=" + actionLabel + " unsettled unmet=[" + unmet
+                    + "] elapsedMs=" + report.elapsedMs());
+            if (settleEngineStrict()) {
+                return "SETTLE_TIMEOUT: " + actionLabel + " unmet=[" + unmet + "]";
+            }
+            return null;
+        } catch (RuntimeException e) {
+            LogsManager.warn("KEEL_SETTLE await failed: " + e.getClass().getSimpleName() + " " + e.getMessage());
+            return settleEngineStrict() ? "SETTLE_ERROR: " + e.getMessage() : null;
+        }
     }
 
     static SettlePolicy.Action kindOf(ProvenStep s) {

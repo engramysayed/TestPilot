@@ -1,0 +1,12 @@
+{
+  "code": "WEBVIEW_UNAVAILABLE",
+  "stage": "setup",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/WEBVIEW_UNAVAILABLE.json",
+    "plannedTest": "MobileErrorCode_WEBVIEW_UNAVAILABLE_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

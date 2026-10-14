@@ -16,6 +16,8 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+      - name: Mobile flag off (no device in default CI)
+        run: bash scripts/ci/check-mobile-flag-off.sh
       - name: Deterministic tests
         # LiveSmoke tests are excluded by -Pdeterministic (**/*LiveSmoke*).
         # Shared/Dedicated install drills are excluded here and run as their own JVMs below.

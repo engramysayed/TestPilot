@@ -11,6 +11,11 @@ import java.util.Objects;
 /**
  * Package-wide data keys keyed by the original owner step (login vs body), not by the
  * leaf's emitted walk. Setup inlining looks up the prerequisite's canonical slot.
+ * <p>
+ * Fingerprints are <strong>control identity</strong> (method + locator), not the typed value —
+ * so two occurrences of the same control with different values fail closed on conflict, while
+ * distinct occurrences of the same method name on different locators get {@code .1}, {@code .2}, …
+ * occurrence suffixes (F03/F04).
  */
 final class CodegenDataKeys {
     static final String PHASE_LOGIN = "login";
@@ -87,6 +92,7 @@ final class CodegenDataKeys {
                 found = lookup(owner, PHASE_LOGIN, fingerprint);
             }
             if (found != null) {
+                assertValueCompatible(found, value);
                 return found;
             }
             return allocate(owner, PHASE_BODY, method, fingerprint, value);
@@ -94,9 +100,24 @@ final class CodegenDataKeys {
         String phase = PHASE_LOGIN.equals(emitPhase) ? PHASE_LOGIN : PHASE_BODY;
         String found = lookup(owner, phase, fingerprint);
         if (found != null) {
+            assertValueCompatible(found, value);
             return found;
         }
         return allocate(owner, phase, method, fingerprint, value);
+    }
+
+    private void assertValueCompatible(String key, String value) {
+        String previous = valuesByKey.get(key);
+        if (previous != null && !previous.equals(value)) {
+            boolean redact = secretKeys.contains(key) || allocatingSecret;
+            throw new IllegalStateException(
+                    "Conflicting test data for key '" + key + "': already '"
+                            + (redact ? CodegenSecrets.MASK : previous)
+                            + "', new '" + (redact ? CodegenSecrets.MASK : value) + "'");
+        }
+        if (allocatingSecret) {
+            secretKeys.add(key);
+        }
     }
 
     Map<String, String> valuesByKey() {
@@ -145,13 +166,12 @@ final class CodegenDataKeys {
     }
 
     private static String fingerprint(ProvenStep step, String method) {
+        // Control identity only (F03/F04): value conflicts are caught in allocate().
         return Objects.toString(method, "")
                 + '\0'
                 + Objects.toString(step.locatorStrategy(), "")
                 + '\0'
-                + Objects.toString(step.locatorValue(), "")
-                + '\0'
-                + Objects.toString(step.value(), "");
+                + Objects.toString(step.locatorValue(), "");
     }
 
     private static String ownerId(String fallbackTcId, ProvenStep step) {

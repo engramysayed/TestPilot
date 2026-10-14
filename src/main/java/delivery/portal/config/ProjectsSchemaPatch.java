@@ -27,6 +27,12 @@ public class ProjectsSchemaPatch implements ApplicationRunner {
         addColumnQuietly("archived_at", "TIMESTAMP");
         addColumnQuietly("tenant_id", "VARCHAR(40)");
         addColumnQuietly("precision_reuse_locator_memory", "BOOLEAN DEFAULT FALSE");
+        addColumnQuietly("platform", "VARCHAR(16) DEFAULT 'WEB'");
+        try {
+            jdbc.update("UPDATE projects SET platform = 'WEB' WHERE platform IS NULL OR TRIM(platform) = ''");
+        } catch (Exception e) {
+            log.debug("projects.platform backfill skipped: {}", e.getMessage());
+        }
         try {
             jdbc.update("UPDATE projects SET archived = FALSE WHERE archived IS NULL");
         } catch (Exception e) {

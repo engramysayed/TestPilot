@@ -60,8 +60,8 @@ public class CodegenNamingTest {
     public void pageStemEscapesJavaKeywords() {
         Assert.assertEquals(CodegenNaming.pageStem("New"), "NewPage");
         Assert.assertEquals(CodegenNaming.pageStem("class"), "ClassPage");
-        Assert.assertEquals(CodegenNaming.actionsClassName("New"), "NewPage_Actions");
-        Assert.assertEquals(CodegenNaming.locatorsClassName("New"), "NewPage_Locators");
+        Assert.assertEquals(CodegenNaming.pageClassName("New"), "NewPage");
+        Assert.assertEquals(CodegenNaming.pageClassName("New"), "NewPage");
     }
 
     @Test
@@ -74,10 +74,11 @@ public class CodegenNamingTest {
 
     @Test
     public void safeLocalVarNameEscapesKeywords() {
+        Assert.assertEquals(CodegenNaming.safeLocalVarName("New"), "newPage");
         Assert.assertEquals(CodegenNaming.safeLocalVarName("New_Actions"), "newPage");
-        Assert.assertEquals(CodegenNaming.safeLocalVarName("NewPage_Actions"), "newPage");
-        Assert.assertEquals(CodegenNaming.safeLocalVarName("Login_Actions"), "login");
-        Assert.assertEquals(CodegenNaming.safeLocalVarName("Class_Actions"), "classPage");
+        Assert.assertEquals(CodegenNaming.safeLocalVarName("NewPage"), "newPage");
+        Assert.assertEquals(CodegenNaming.safeLocalVarName("Login"), "login");
+        Assert.assertEquals(CodegenNaming.safeLocalVarName("Class"), "classPage");
     }
 
     @Test
@@ -99,7 +100,7 @@ public class CodegenNamingTest {
     @Test
     public void pageStemKeepsLoginPage() {
         Assert.assertEquals(CodegenNaming.pageStem("LoginPage"), "LoginPage");
-        Assert.assertEquals(CodegenNaming.actionsClassName("LoginPage"), "LoginPage_Actions");
+        Assert.assertEquals(CodegenNaming.pageClassName("LoginPage"), "LoginPage");
     }
 
     @Test

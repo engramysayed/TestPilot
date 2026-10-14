@@ -1,0 +1,12 @@
+{
+  "code": "KEYBOARD_NOT_DISMISSED",
+  "stage": "execution",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/KEYBOARD_NOT_DISMISSED.json",
+    "plannedTest": "MobileErrorCode_KEYBOARD_NOT_DISMISSED_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

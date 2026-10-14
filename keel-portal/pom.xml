@@ -35,6 +35,13 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <!-- M2-07: Execute result view DTOs (delivery.mobile.result.*) -->
+            <dependency>
+                <groupId>org.example</groupId>
+                <artifactId>mobile-contracts</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <dependency>
                 <groupId>org.testng</groupId>
                 <artifactId>testng</artifactId>

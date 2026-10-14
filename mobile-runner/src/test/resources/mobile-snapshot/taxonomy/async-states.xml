@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" package="com.example.test" bounds="[0,0][1080,1920]">
+    <node class="android.widget.ProgressBar" resource-id="com.example.test:id/loading" bounds="[500,900][580,980]" package="com.example.test"/>
+  </node>
+</hierarchy>

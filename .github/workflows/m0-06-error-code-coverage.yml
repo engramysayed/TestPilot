@@ -1,0 +1,24 @@
+name: M0-06 mobile error-code coverage
+on:
+  pull_request:
+    paths:
+      - 'mobile-m0/m0-06/**'
+      - '.github/keel/m0-06/**'
+      - '.github/workflows/m0-06-error-code-coverage.yml'
+  workflow_dispatch:
+jobs:
+  m0-06-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run M0-06 coverage check
+        run: |
+          set -euo pipefail
+          if [[ -f mobile-m0/m0-06/check-m0-06-coverage.py ]]; then
+            python3 mobile-m0/m0-06/check-m0-06-coverage.py
+          elif [[ -f .github/keel/m0-06/check-m0-06-coverage.py ]]; then
+            python3 .github/keel/m0-06/check-m0-06-coverage.py
+          else
+            echo "M0-06 check script missing" >&2
+            exit 1
+          fi

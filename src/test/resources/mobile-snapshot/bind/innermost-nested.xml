@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.view.View" content-desc="Sign in" clickable="false" bounds="[60,700][1020,900]" package="com.example.test">
+    <node class="android.widget.Button" content-desc="Sign in" text="Sign in" clickable="true" enabled="true" bounds="[80,720][1000,840]" package="com.example.test"/>
+  </node>
+</hierarchy>

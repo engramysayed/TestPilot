@@ -241,9 +241,10 @@ public class FrameworkPackager {
         if ("webapp.properties".equals(name) && !rel.endsWith(".example")) {
             return true;
         }
+        // LoginPage.java / DashboardPage.java are emitted as one-class pages (0058+)
+        // and MUST ship in the Automate ZIP. copyTemplate still deletes static samples
+        // before codegen so we never re-introduce template stubs.
         return "LoginTest.java".equals(name)
-                || "LoginPage.java".equals(name)
-                || "DashboardPage.java".equals(name)
                 || "ValidationAssertAllTest.java".equals(name)
                 || "FalseCustomerAssertionSample.java".equals(name)
                 || "PassingCustomerAssertionSample.java".equals(name)

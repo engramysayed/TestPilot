@@ -24,11 +24,12 @@ public class CodeWriterTest {
         writer.write(temp, outcomes);
         Assert.assertTrue(Files.exists(temp.resolve("src/test/java/project/tests/generated/TC_001.java")));
         Assert.assertTrue(Files.exists(temp.resolve("src/test/java/project/tests/todo/TC_002Todo.java")));
-        Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Login_Locators.java")));
-        Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Login_Actions.java")));
+        Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Login.java")));
+        Assert.assertFalse(Files.exists(temp.resolve("src/main/java/project/pages/Login_Actions.java")));
+        Assert.assertFalse(Files.exists(temp.resolve("src/main/java/project/pages/Login_Locators.java")));
         String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_001.java"));
-        Assert.assertTrue(java.contains("import project.pages.Login_Actions;"), java);
-        Assert.assertTrue(java.contains("Login_Actions login = new Login_Actions(driver)"), java);
+        Assert.assertTrue(java.contains("import project.pages.Login;"), java);
+        Assert.assertTrue(java.contains("Login login = new Login(driver)"), java);
         Assert.assertTrue(java.contains("@Test(description = \"TC_001 — Valid login\")"), java);
         Assert.assertTrue(java.contains("public void Valid_login()"), java);
         Assert.assertFalse(java.contains("new project.pages.Login"));
@@ -53,13 +54,13 @@ public class CodeWriterTest {
         writer.write(temp, List.of(outcome));
         String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_L.java"));
         Assert.assertTrue(java.contains("TARGET_USERNAME"), java);
-        Assert.assertTrue(java.contains("PracticeTestLogin_Actions"), java);
+        Assert.assertTrue(java.contains("PracticeTestLogin"), java);
         Assert.assertTrue(java.contains("type_Username"), java);
         Assert.assertTrue(java.contains("click_Submit_Button"), java);
         Assert.assertTrue(java.contains("assert_Body_Text_Contains"), java);
         Assert.assertTrue(java.contains("\"Logged In Successfully\""), java);
         Assert.assertTrue(Files.exists(temp.resolve(
-                "src/main/java/project/pages/PracticeTestLogin_Actions.java")));
+                "src/main/java/project/pages/PracticeTestLogin.java")));
         Assert.assertFalse(Files.exists(temp.resolve("src/main/java/project/pages/LoginPage.java")));
         Assert.assertFalse(java.contains("assertTextContainsAssert___body"));
     }
@@ -80,18 +81,18 @@ public class CodeWriterTest {
         Assert.assertTrue(java.contains("STOPPED HERE"), java);
         Assert.assertTrue(java.contains("Click Finish"), java);
         Assert.assertFalse(java.contains("HEAL_EXHAUSTED"), java);
-        Assert.assertTrue(java.contains("Cart_Actions cart"), java);
-        Assert.assertTrue(java.contains("CheckoutStepOne_Actions checkoutStepOne"), java);
+        Assert.assertTrue(java.contains("Cart cart"), java);
+        Assert.assertTrue(java.contains("CheckoutStepOne checkoutStepOne"), java);
         Assert.assertTrue(java.contains("TC_P — Checkout flow"), java);
-        Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Cart_Actions.java")));
+        Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Cart.java")));
     }
 
     @Test
     public void pageVarNameEscapesJavaKeywords() {
-        Assert.assertEquals(CodeWriter.pageVarName("New_Actions"), "newPage");
-        Assert.assertEquals(CodeWriter.pageVarName("NewPage_Actions"), "newPage");
-        Assert.assertEquals(CodeWriter.pageVarName("Class_Actions"), "classPage");
-        Assert.assertEquals(CodeWriter.pageVarName("Login_Actions"), "login");
+        Assert.assertEquals(CodeWriter.pageVarName("New"), "newPage");
+        Assert.assertEquals(CodeWriter.pageVarName("NewPage"), "newPage");
+        Assert.assertEquals(CodeWriter.pageVarName("Class"), "classPage");
+        Assert.assertEquals(CodeWriter.pageVarName("Login"), "login");
     }
 
     @Test
@@ -103,10 +104,10 @@ public class CodeWriterTest {
         writer.write(temp, List.of(new TcOutcome(
                 "TC_K", "Create user", TcStatus.PASSED, List.of(step), "", null, false, List.of())));
         String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_K.java"));
-        Assert.assertTrue(java.contains("NewPage_Actions newPage = new NewPage_Actions(driver)"), java);
-        Assert.assertFalse(java.contains("New_Actions new ="), java);
+        Assert.assertTrue(java.contains("NewPage newPage = new NewPage(driver)"), java);
+        Assert.assertFalse(java.contains("New new ="), java);
         Assert.assertTrue(java.contains("newPage.type_"), java);
-        Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/NewPage_Actions.java")));
+        Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/NewPage.java")));
     }
 
     @Test
@@ -144,7 +145,7 @@ public class CodeWriterTest {
         writer.write(temp, List.of(new TcOutcome(
                 "TC_T", "Text", TcStatus.PASSED, List.of(bodyAssert, idTextAssert, checked, unknown),
                 "", null, false, List.of())));
-        String actions = Files.readString(temp.resolve("src/main/java/project/pages/Home_Actions.java"));
+        String actions = Files.readString(temp.resolve("src/main/java/project/pages/Home.java"));
         Assert.assertTrue(actions.contains("bodyTextContains(expected)"), actions);
         Assert.assertTrue(actions.contains("textContains("), actions);
         Assert.assertFalse(actions.contains("By.tagName(\"body\")"), actions);
@@ -164,7 +165,7 @@ public class CodeWriterTest {
         writer.write(temp, List.of(new TcOutcome(
                 "TC_V", "Click checkout", TcStatus.PASSED, List.of(click),
                 "", null, false, List.of())));
-        String actions = Files.readString(temp.resolve("src/main/java/project/pages/Cart_Actions.java"));
+        String actions = Files.readString(temp.resolve("src/main/java/project/pages/Cart.java"));
         Assert.assertTrue(actions.contains("public void click_"), actions);
         Assert.assertFalse(actions.contains("return this;"), actions);
     }
@@ -191,8 +192,8 @@ public class CodeWriterTest {
         Assert.assertTrue(setupCall > setUp && setupCall < test,
                 "cart setup must run in @BeforeMethod, not depend on TestNG class order:\n" + java);
         Assert.assertTrue(bodyCall > test, java);
-        Assert.assertTrue(java.contains("Shop_Actions"), java);
-        Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Shop_Actions.java")));
+        Assert.assertTrue(java.contains("Shop"), java);
+        Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Shop.java")));
     }
 
     @Test
@@ -223,7 +224,7 @@ public class CodeWriterTest {
         String data = Files.readString(temp.resolve("src/test/resources/test-data/delivery-testdata.properties"));
         Assert.assertTrue(data.contains("TC_CART.body.type_Qty.1=2"), data);
 
-        String actions = Files.readString(temp.resolve("src/main/java/project/pages/Shop_Actions.java"));
+        String actions = Files.readString(temp.resolve("src/main/java/project/pages/Shop.java"));
         Assert.assertTrue(actions.contains("public void type_Qty"), actions);
         Assert.assertTrue(actions.contains("public void assert_Cart_Badge"), actions);
     }

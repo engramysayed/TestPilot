@@ -16,6 +16,7 @@
         <h1>Sign in to Keel</h1>
         <p class="loginform-intro">Continue to your testing workspace.</p>
         <p th:if="${param.registered}" class="ok">Account created. Please sign in.</p>
+        <p th:if="${param.pending}" class="ok">Your account is pending approval. An admin will review it soon — you cannot start jobs until then.</p>
         <p th:if="${param.logout}" class="muted">Signed out.</p>
         <p th:if="${param.error}" class="error">Wrong email or password.</p>
         <form th:action="@{/login}" method="post" class="login-form">

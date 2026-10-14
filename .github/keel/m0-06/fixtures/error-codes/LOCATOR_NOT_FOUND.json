@@ -1,0 +1,12 @@
+{
+  "code": "LOCATOR_NOT_FOUND",
+  "stage": "setup",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/LOCATOR_NOT_FOUND.json",
+    "plannedTest": "MobileErrorCode_LOCATOR_NOT_FOUND_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

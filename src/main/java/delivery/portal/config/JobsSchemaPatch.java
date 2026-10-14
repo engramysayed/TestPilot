@@ -44,6 +44,7 @@ public class JobsSchemaPatch implements ApplicationRunner {
         addColumnQuietly("providers_used", "VARCHAR(128)");
         addColumnQuietly("fallback_used", "BOOLEAN DEFAULT FALSE");
         addColumnQuietly("fallback_reason", "VARCHAR(256)");
+        addColumnQuietly("account_scoped", "BOOLEAN DEFAULT FALSE");
         try {
             jdbc.update("UPDATE jobs SET progress_current = 0 WHERE progress_current IS NULL");
             jdbc.update("UPDATE jobs SET progress_total = 0 WHERE progress_total IS NULL");

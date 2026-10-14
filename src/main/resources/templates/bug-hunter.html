@@ -3,7 +3,8 @@
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Bug Hunter')}"></th:block>
 </head>
-<body class="app-body">
+<body class="app-body" th:attr="data-hunt-triage-enabled=${huntTriageEnabled} ?: false">
+<link rel="stylesheet" th:href="@{/css/keel-portal-enhancements.css}"/>
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
 <header th:replace="~{fragments :: topbar}"></header>
@@ -15,6 +16,11 @@
             <p class="hint">An AI planner decides what to try next on each round (Ollama or Cursor).</p>
         </div>
     </div>
+
+    <section class="panel" id="account-scoped-picker-hint" th:if="${sidebarIaEnabled}">
+        <h2>Choose a project</h2>
+        <p class="panel-intro">This page is account-wide. Pick which project to use before you start. Jobs can pin that project via the account job API.</p>
+    </section>
 
     <section class="panel">
         <label>Project
@@ -192,6 +198,26 @@
                 <tbody id="recent-body"></tbody>
             </table>
         </div>
+    </section>
+
+
+    <section class="panel hunt-triage-panel" id="hunt-triage-panel" hidden
+             th:attr="data-enabled=${huntTriageEnabled} ?: false">
+        <h2>Review findings</h2>
+        <p class="panel-intro">
+            Decide what to do with Bug Hunter findings before anything enters your test library.
+            Marking <strong>Confirmed</strong> does not add a test case — use <strong>Promote</strong> for that.
+        </p>
+        <label>Hunt run
+            <select id="triage-job-select">
+                <option value="">— Pick a completed hunt —</option>
+            </select>
+        </label>
+        <div id="triage-summary" class="hunt-triage-summary muted" hidden></div>
+        <p id="triage-err" class="error" hidden></p>
+        <p id="triage-msg" class="muted" hidden></p>
+        <div id="triage-empty" class="muted" hidden>No findings waiting for a decision.</div>
+        <div id="triage-list" class="hunt-triage-list"></div>
     </section>
 
     <section class="panel" id="hunt-promote-panel" hidden>
@@ -502,6 +528,10 @@
     }
 
     startBtn.addEventListener('click', async () => {
+        if (window.KeelCredits && KeelCredits.blockIfNotApproved(huntErr)) {
+            huntErr.hidden = false;
+            return;
+        }
         huntErr.hidden = true;
         setStarting(true);
         const projectId = projectSel.value;
@@ -535,7 +565,8 @@
             try { data = await res.json(); } catch (e) { /* ignore */ }
             if (!res.ok) {
                 huntErr.hidden = false;
-                huntErr.textContent = (data && data.message) || 'Could not start Bug Hunter';
+                var gate = window.KeelCredits && KeelCredits.gateMessage(data);
+                huntErr.textContent = gate || ((data && data.message) || 'Could not start Bug Hunter');
                 setStarting(false);
                 updateStartEnabled();
                 return;
@@ -669,6 +700,246 @@
     syncStrategyUi();
 
     projectSel.addEventListener('change', onProjectChange);
+
+    /* --- Hunt triage queue (flag-gated; AE shapes) --- */
+    const triagePanel = document.getElementById('hunt-triage-panel');
+    const triageEnabled = document.body.getAttribute('data-hunt-triage-enabled') === 'true'
+        || (triagePanel && triagePanel.getAttribute('data-enabled') === 'true');
+    const triageJobSel = document.getElementById('triage-job-select');
+    const triageList = document.getElementById('triage-list');
+    const triageSummary = document.getElementById('triage-summary');
+    const triageErr = document.getElementById('triage-err');
+    const triageMsg = document.getElementById('triage-msg');
+    const triageEmpty = document.getElementById('triage-empty');
+
+    function triageStatusLabel(status) {
+        const s = String(status || '').toUpperCase();
+        if (s === 'CONFIRMED') return 'Confirmed';
+        if (s === 'DISMISSED') return 'Dismissed';
+        if (s === 'FLAKY') return 'Flaky';
+        return 'Needs review';
+    }
+
+    function setTriageErr(msg) {
+        if (!triageErr) return;
+        triageErr.hidden = !msg;
+        triageErr.textContent = msg || '';
+    }
+    function setTriageMsg(msg) {
+        if (!triageMsg) return;
+        triageMsg.hidden = !msg;
+        triageMsg.textContent = msg || '';
+    }
+
+    async function loadTriageJobs(projectId) {
+        if (!triageEnabled || !triagePanel) return;
+        triagePanel.hidden = !projectId;
+        if (!projectId || !triageJobSel) return;
+        triageJobSel.innerHTML = '<option value="">— Pick a completed hunt —</option>';
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/jobs?kind=HUNT', {
+                credentials: 'same-origin', headers: API_HEADERS
+            });
+            let jobs = [];
+            if (res.ok) {
+                const data = await res.json();
+                jobs = Array.isArray(data) ? data : (data.jobs || data.items || []);
+            }
+            // Fallback: reuse recent table rows if jobs API shape differs
+            if (!jobs.length) {
+                document.querySelectorAll('#recent-body tr[data-job-id]').forEach(function (tr) {
+                    jobs.push({ jobId: tr.getAttribute('data-job-id'), status: tr.getAttribute('data-status') || '' });
+                });
+            }
+            jobs.filter(function (j) {
+                const st = String(j.status || j.jobStatus || '').toUpperCase();
+                return !st || st === 'COMPLETED' || st === 'COMPLETED_WITH_BLOCK' || st === 'FAILED';
+            }).forEach(function (j) {
+                const id = j.jobId || j.id;
+                if (!id) return;
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = id + (j.status ? (' · ' + j.status) : '');
+                triageJobSel.appendChild(opt);
+            });
+        } catch (e) {
+            setTriageErr('Could not load hunt runs for triage.');
+        }
+    }
+
+    async function loadTriageBugs() {
+        if (!triageEnabled) return;
+        const projectId = projectSel.value;
+        const jobId = triageJobSel && triageJobSel.value;
+        setTriageErr('');
+        setTriageMsg('');
+        triageList.innerHTML = '';
+        triageEmpty.hidden = true;
+        triageSummary.hidden = true;
+        if (!projectId || !jobId) return;
+        const base = '/api/projects/' + encodeURIComponent(projectId) + '/hunt/' + encodeURIComponent(jobId);
+        try {
+            const [bugsRes, sumRes] = await Promise.all([
+                fetch(base + '/bugs', { credentials: 'same-origin', headers: API_HEADERS }),
+                fetch(base + '/summary', { credentials: 'same-origin', headers: API_HEADERS })
+            ]);
+            if (bugsRes.status === 404) {
+                setTriageErr('No triage data for this hunt yet (run not found, or triage still off on the server).');
+                return;
+            }
+            if (!bugsRes.ok) {
+                const b = await bugsRes.json().catch(function () { return {}; });
+                setTriageErr(b.message || b.error || ('Could not load findings (' + bugsRes.status + ')'));
+                return;
+            }
+            const payload = await bugsRes.json();
+            const bugs = Array.isArray(payload) ? payload : (payload.bugs || []);
+            if (sumRes.ok) {
+                const s = await sumRes.json();
+                triageSummary.hidden = false;
+                triageSummary.textContent = 'Needs review: ' + (s.firstPass || 0)
+                    + ' · Flaky: ' + (s.flaky || 0)
+                    + ' · Confirmed: ' + (s.confirmed || 0)
+                    + ' · Dismissed: ' + (s.dismissed || 0)
+                    + (s.plateau ? ' · Coverage plateau' : '');
+            }
+            if (!bugs.length) {
+                triageEmpty.hidden = false;
+                return;
+            }
+            bugs.forEach(function (bug) { triageList.appendChild(renderTriageCard(projectId, jobId, bug)); });
+        } catch (e) {
+            setTriageErr(e && e.message ? e.message : 'Network error loading findings');
+        }
+    }
+
+    function renderTriageCard(projectId, jobId, bug) {
+        const card = document.createElement('article');
+        card.className = 'hunt-triage-card';
+        card.dataset.bugId = bug.bugId || '';
+        const status = String(bug.status || 'FIRST_PASS').toUpperCase();
+        const steps = Array.isArray(bug.reproduceSteps) ? bug.reproduceSteps : [];
+        const stepsHtml = steps.slice(0, 5).map(function (st) {
+            if (typeof st === 'string') return '<li>' + escapeHtml(st) + '</li>';
+            return '<li>' + escapeHtml((st.action || '') + ' ' + (st.target || '') + (st.value ? (' → ' + st.value) : '')) + '</li>';
+        }).join('');
+        const canPromote = status === 'CONFIRMED' && !bug.promoted;
+        const promotedLabel = bug.promoted
+            ? (' · Draft ' + (bug.tcDraftId || 'promoted'))
+            : '';
+        card.innerHTML =
+            '<header class="hunt-triage-card-head">'
+            + '<h3>' + escapeHtml(bug.title || bug.bugId || 'Finding') + '</h3>'
+            + '<span class="chip chip--' + (status === 'CONFIRMED' ? 'ok' : status === 'DISMISSED' ? 'muted' : 'warn') + '">'
+            + escapeHtml(triageStatusLabel(status)) + '</span>'
+            + '</header>'
+            + '<p class="muted">Severity: ' + escapeHtml(bug.severity || '—')
+            + ' · How found: ' + escapeHtml(bug.admission || '—')
+            + (bug.toastObservedAfterSettle ? ' · Toast after settle' : '')
+            + escapeHtml(promotedLabel)
+            + '</p>'
+            + (bug.url ? ('<p class="mono muted">' + escapeHtml(bug.url) + '</p>') : '')
+            + (stepsHtml ? ('<ol class="hunt-triage-steps">' + stepsHtml + '</ol>') : '')
+            + '<label class="hunt-triage-note">Note'
+            + '<input type="text" class="triage-note" placeholder="Optional note for Needs more info…" value="'
+            + escapeHtml(bug.note || '') + '"/></label>'
+            + '<div class="actions hunt-triage-actions">'
+            + '<button type="button" class="button" data-act="confirm">Mark confirmed</button>'
+            + '<button type="button" class="button ghost" data-act="dismiss">Dismiss</button>'
+            + '<button type="button" class="button ghost" data-act="needs">Needs more info</button>'
+            + '<button type="button" class="button" data-act="promote" '
+            + (canPromote ? '' : 'disabled ')
+            + 'title="Adds a test case draft — separate from confirming">Promote to library</button>'
+            + '</div>';
+        card.querySelectorAll('[data-act]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                onTriageAction(projectId, jobId, bug, btn.getAttribute('data-act'), card);
+            });
+        });
+        return card;
+    }
+
+    async function onTriageAction(projectId, jobId, bug, act, card) {
+        const noteEl = card.querySelector('.triage-note');
+        const note = noteEl ? noteEl.value.trim() : '';
+        const base = '/api/projects/' + encodeURIComponent(projectId)
+            + '/hunt/' + encodeURIComponent(jobId) + '/bugs/' + encodeURIComponent(bug.bugId);
+        setTriageErr('');
+        setTriageMsg('');
+        try {
+            if (act === 'promote') {
+                const res = await fetch(base + '/promote', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                    body: '{}'
+                });
+                const body = await res.json().catch(function () { return {}; });
+                if (!res.ok) {
+                    setTriageErr(body.message || body.error || ('Promote failed (' + res.status + ')'));
+                    return;
+                }
+                setTriageMsg(body.message || ('TC draft created/linked' + (body.tcDraftId ? (': ' + body.tcDraftId) : '')));
+                await loadTriageBugs();
+                return;
+            }
+            let status = bug.status || 'FIRST_PASS';
+            if (act === 'confirm') status = 'CONFIRMED';
+            else if (act === 'dismiss') status = 'DISMISSED';
+            else if (act === 'needs') {
+                if (!note) {
+                    setTriageErr('Add a short note explaining what more info you need.');
+                    return;
+                }
+                status = (String(bug.status).toUpperCase() === 'FLAKY') ? 'FLAKY' : 'FIRST_PASS';
+            }
+            const res = await fetch(base, {
+                method: 'PATCH', credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify({ status: status, note: note || undefined })
+            });
+            const body = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setTriageErr(body.message || body.error || ('Update failed (' + res.status + ')'));
+                return;
+            }
+            setTriageMsg(act === 'confirm'
+                ? 'Marked confirmed — use Promote when you want a test case draft. Nothing was added to the library yet.'
+                : 'Saved.');
+            await loadTriageBugs();
+        } catch (e) {
+            setTriageErr(e && e.message ? e.message : 'Network error');
+        }
+    }
+
+    if (triageEnabled) {
+        triageJobSel && triageJobSel.addEventListener('change', loadTriageBugs);
+        const _onProjectChange = onProjectChange;
+        onProjectChange = async function () {
+            await _onProjectChange();
+            await loadTriageJobs(projectSel.value);
+            await loadTriageBugs();
+        };
+        // Tag recent rows for fallback job list
+        const _loadRecent = loadRecent;
+        if (typeof loadRecent === 'function') {
+            loadRecent = async function (projectId) {
+                await _loadRecent(projectId);
+                document.querySelectorAll('#recent-body tr').forEach(function (tr) {
+                    const link = tr.querySelector('a[href*="jobId="]');
+                    if (link) {
+                        const m = /jobId=([^&]+)/.exec(link.getAttribute('href') || '');
+                        if (m) tr.setAttribute('data-job-id', decodeURIComponent(m[1]));
+                    }
+                    const st = tr.querySelector('.badge, .chip, [data-status]');
+                    if (st) tr.setAttribute('data-status', (st.textContent || '').trim());
+                });
+                if (triageEnabled) await loadTriageJobs(projectId);
+            };
+        }
+    } else if (triagePanel) {
+        triagePanel.hidden = true;
+    }
+
     loadProjects();
 })();
 </script>

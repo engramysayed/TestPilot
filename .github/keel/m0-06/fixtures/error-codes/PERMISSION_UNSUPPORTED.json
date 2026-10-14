@@ -1,0 +1,12 @@
+{
+  "code": "PERMISSION_UNSUPPORTED",
+  "stage": "setup",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/PERMISSION_UNSUPPORTED.json",
+    "plannedTest": "MobileErrorCode_PERMISSION_UNSUPPORTED_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

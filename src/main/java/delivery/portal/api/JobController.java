@@ -14,6 +14,7 @@ import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.JobRecord;
 import delivery.portal.model.ProjectRecord;
 import delivery.portal.security.CurrentUserService;
+import delivery.portal.roles.PermissionEnforcer;
 import delivery.portal.service.CompareJobFiles;
 import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.JobLinkEnricher;
@@ -49,6 +50,7 @@ public class JobController {
     private final PortalStore store;
     private final ConversionWorker worker;
     private final CurrentUserService currentUser;
+    private final PermissionEnforcer permissionEnforcer;
     private final ProjectCredentialService credentials;
     private final GeneratedWorkbookService workbooks;
     private final DeliveryPortalProperties portalProperties;
@@ -56,7 +58,8 @@ public class JobController {
 
     public JobController(PortalStore store, ConversionWorker worker, CurrentUserService currentUser,
                          ProjectCredentialService credentials, GeneratedWorkbookService workbooks,
-                         DeliveryPortalProperties portalProperties, JobLinkEnricher jobLinks) {
+                         DeliveryPortalProperties portalProperties, JobLinkEnricher jobLinks,
+                         PermissionEnforcer permissionEnforcer) {
         this.store = store;
         this.worker = worker;
         this.currentUser = currentUser;
@@ -64,6 +67,7 @@ public class JobController {
         this.workbooks = workbooks;
         this.portalProperties = portalProperties;
         this.jobLinks = jobLinks;
+        this.permissionEnforcer = permissionEnforcer;
     }
 
     @PostMapping("/projects/{projectId}/jobs")
@@ -77,6 +81,7 @@ public class JobController {
             @RequestParam(value = "finalRevise", required = false, defaultValue = "false") String finalRevise
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
+        permissionEnforcer.requireFeatureJob(currentUser.requireUser(), "AUTOMATE");
         ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
         if (denied != null) {
             return denied;
@@ -145,7 +150,7 @@ public class JobController {
             if (!gateErrors.isEmpty()) {
                 Files.deleteIfExists(excelPath);
                 return ResponseEntity.badRequest()
-                        .body(new ApiError("QUALITY_GATE", String.join("; ", gateErrors)).asMap());
+                        .body(QualityGateResponses.fromErrors(gateErrors));
             }
         } catch (InvalidExcelTemplateException e) {
             Files.deleteIfExists(excelPath);

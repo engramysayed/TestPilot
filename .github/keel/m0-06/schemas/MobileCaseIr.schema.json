@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "keel.mobile.MobileCaseIr/1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "platform",
+    "tcId",
+    "libraryRevisionId",
+    "appRevisionId",
+    "caseSettingsRevisionId",
+    "proof",
+    "setupRefs",
+    "steps",
+    "namingRevisionId"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "mobile-ir/1"
+    },
+    "platform": {
+      "const": "ANDROID"
+    },
+    "tcId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "libraryRevisionId": {
+      "type": "string"
+    },
+    "appRevisionId": {
+      "type": "string"
+    },
+    "caseSettingsRevisionId": {
+      "type": "string"
+    },
+    "namingRevisionId": {
+      "type": "string"
+    },
+    "proof": {
+      "type": "object"
+    },
+    "setupRefs": {
+      "type": "array"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "keel.mobile.MobileStep/1"
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,12 @@
+{
+  "code": "CLEANUP_UNCERTAIN",
+  "stage": "execution",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/CLEANUP_UNCERTAIN.json",
+    "plannedTest": "MobileErrorCode_CLEANUP_UNCERTAIN_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

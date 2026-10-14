@@ -15,6 +15,7 @@ public class JobRecord {
 
     private final String jobId;
     private final String projectId;
+    private volatile boolean accountScoped;
     private final Long ownerUserId;
     private final String mode;
     private final Path excelPath;
@@ -80,6 +81,8 @@ public class JobRecord {
 
     public String getJobId() { return jobId; }
     public String getProjectId() { return projectId; }
+    public boolean isAccountScoped() { return accountScoped; }
+    public void setAccountScoped(boolean accountScoped) { this.accountScoped = accountScoped; }
     public Long getOwnerUserId() { return ownerUserId; }
     public String getMode() { return mode; }
     public Path getExcelPath() { return excelPath; }

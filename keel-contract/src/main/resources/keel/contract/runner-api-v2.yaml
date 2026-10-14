@@ -8,6 +8,7 @@ info:
     X-Keel-Nonce (single use) and X-Keel-Signature: v1=hex(HMAC-SHA256(token, canonical)).
     canonical = METHOD \n path \n query \n timestamp \n nonce \n sha256hex(body).
     Requests about a claimed job also carry X-Keel-Attempt-Id, X-Keel-Cancel-Generation and X-Keel-Fencing-Token.
+    Mobile claim-bound writes also carry X-Keel-Device-Id, X-Keel-Lease-Fence and X-Keel-Input-Hash (M1-05).
     No loopback trust: a request from 127.0.0.1 is authenticated like any other.
 paths:
   /api/v2/runners/claim:
@@ -65,6 +66,20 @@ components:
       properties:
         capabilities: {type: array, items: {$ref: '#/components/schemas/RunnerCapability'}}
         kinds: {type: array, items: {$ref: '#/components/schemas/WireJobKind'}}
+        protocolVersion: {type: integer}
+        workerToolchainVersion: {type: string}
+        authorizedDeviceIds: {type: array, items: {type: string}}
+    MobileClaimExtras:
+      type: object
+      properties:
+        platform: {type: string}
+        inputManifestHash: {type: string}
+        requiredCapabilities: {type: array, items: {$ref: '#/components/schemas/RunnerCapability'}}
+        deviceId: {type: string}
+        leaseFence: {type: integer, format: int64}
+        appRevisionId: {type: string}
+        profileRevisionId: {type: string}
+        secretEnvelopeRef: {type: string}
     ClaimResponse:
       type: object
       properties:
@@ -79,6 +94,7 @@ components:
         inputSnapshotHash: {type: string}
         providerAllowlistSnapshot: {type: string}
         leaseUntil: {type: string}
+        mobile: {$ref: '#/components/schemas/MobileClaimExtras'}
     LeaseResponse:
       type: object
       properties:
@@ -119,5 +135,5 @@ components:
         code: {type: string}
         message: {type: string}
     WireJobKind: {type: string, enum: [CONVERT, EXECUTE, GENERATE_BATCH, GENERATE_COMPARE, HUNT]}
-    WireStage: {type: string, enum: [ADMITTED, BROWSER, EMIT, PUBLISH]}
-    RunnerCapability: {type: string, enum: [BROWSER_CHROME, LLM_LOCAL, LLM_CLOUD, VISION, CODEGEN_JAVA, HUNT]}
+    WireStage: {type: string, enum: [ADMITTED, BROWSER, DEVICE_ACTIVE, MOBILE_EXECUTING, EMIT, PUBLISH]}
+    RunnerCapability: {type: string, enum: [BROWSER_CHROME, LLM_LOCAL, LLM_CLOUD, VISION, CODEGEN_JAVA, HUNT, ANDROID_UIAUTOMATOR2]}

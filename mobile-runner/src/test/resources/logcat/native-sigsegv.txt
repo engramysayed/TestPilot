@@ -1,0 +1,3 @@
+3000|F DEBUG   : Fatal signal 11 (SIGSEGV), code 1, fault addr 0x0 in tid 4321 (example.test)
+3000|F DEBUG   : Cmd line: com.example.test
+3000|F DEBUG   : Abort message: 'segfault'

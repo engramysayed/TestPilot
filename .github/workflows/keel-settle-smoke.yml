@@ -46,7 +46,7 @@ jobs:
             target/surefire-reports/
 
   portal-full-allowlist:
-    # Nightly / manual: full portal tests; exit 0 only if failures ⊆ known-failures-0045.txt
+    # Nightly / manual: full portal tests; exit 0 only if failures ⊆ known-failures-product.txt
     if: >
       github.event_name == 'schedule' ||
       (github.event_name == 'workflow_dispatch' && inputs.run_full_allowlist)
@@ -70,7 +70,7 @@ jobs:
       - name: Fail only on NEW failures (known-9 allowlist)
         run: |
           python3 .github/keel/check-known-failures.py \
-            --allowlist .github/keel/known-failures-0045.txt
+            --allowlist .github/keel/known-failures-product.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" package="com.example.test" bounds="[0,0][1080,1920]">
+    <node class="android.widget.TextView" resource-id="com.example.test:id/otp_timer" text="Resend in 0:59" content-desc="Resend in 0:59" bounds="[80,600][1000,680]" package="com.example.test"/>
+    <node class="android.widget.TextView" resource-id="com.example.test:id/otp_timer" text="Resend in 0:58" content-desc="Resend in 0:58" bounds="[80,600][1000,680]" package="com.example.test"/>
+  </node>
+</hierarchy>

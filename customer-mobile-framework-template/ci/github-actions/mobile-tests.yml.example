@@ -1,0 +1,17 @@
+# EXAMPLE ONLY — disabled by default. Requires a self-hosted runner with an
+# exclusively assigned Android device. Do not claim hosted GitHub runners have a phone.
+# Sticky PR comment only if the customer explicitly enables it (hidden marker).
+name: mobile-tests-example
+on:
+  workflow_dispatch:
+jobs:
+  mobile:
+    if: false
+    runs-on: [self-hosted, android-device]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare properties (operator)
+        run: echo "Document secret injection + appium.properties locally; no secrets in logs"
+      - name: Maven test
+        run: mvn -B test
+      # TODO(M4-07): Allure/JUnit upload + job summary; no device identifiers in artifacts

@@ -1,0 +1,115 @@
+/* Portal enhancements (5, 11–12) — triage queue + structured generate intake.
+   Loaded alongside calm theme; does not edit keel-theme-calm.css. */
+
+.structured-intake {
+    display: grid;
+    gap: 0.85rem;
+    margin-bottom: 0.75rem;
+}
+.structured-intake-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+@media (max-width: 720px) {
+    .structured-intake-row { grid-template-columns: 1fr; }
+}
+.structured-intake .field-hint,
+.quality-gate-panel .panel-intro {
+    color: var(--calm-muted, #5d6678);
+    font-size: 0.92rem;
+}
+
+.quality-gate-panel {
+    margin: 1rem 0;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--calm-bad, #b23b3b);
+    border-radius: var(--calm-radius, 12px);
+    background: var(--calm-bad-bg, #fbe7e7);
+}
+.quality-gate-panel h3 {
+    margin: 0 0 0.35rem;
+    font-size: 1.05rem;
+}
+.quality-gate-failures {
+    margin: 0.5rem 0 0;
+    padding-left: 1.1rem;
+}
+.quality-gate-failures li {
+    margin-bottom: 0.45rem;
+}
+.quality-gate-fix {
+    display: block;
+    margin-top: 0.15rem;
+    color: var(--calm-ink, #1d2433);
+    font-weight: 400;
+}
+
+.hunt-triage-panel .hunt-triage-summary {
+    margin: 0.5rem 0 0.75rem;
+}
+.hunt-triage-list {
+    display: grid;
+    gap: 0.85rem;
+}
+.hunt-triage-card {
+    border: 1px solid var(--calm-line, #e3e6ec);
+    border-radius: var(--calm-radius, 12px);
+    padding: 0.85rem 1rem;
+    background: var(--calm-card, #fff);
+    box-shadow: var(--calm-shadow, none);
+}
+.hunt-triage-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+.hunt-triage-card-head h3 {
+    margin: 0;
+    font-size: 1.05rem;
+}
+.hunt-triage-steps {
+    margin: 0.4rem 0 0.6rem;
+    padding-left: 1.2rem;
+}
+.hunt-triage-note {
+    display: block;
+    margin-bottom: 0.6rem;
+}
+.hunt-triage-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.chip--ok { background: var(--calm-ok-bg, #e6f4ea); color: var(--calm-ok, #2f7d4f); }
+.chip--warn { background: var(--calm-flaky-bg, #fbf0dc); color: var(--calm-flaky, #8a5a12); }
+.chip--muted { background: var(--calm-line, #e3e6ec); color: var(--calm-muted, #5d6678); }
+.chip {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+html[data-theme="dark"] .quality-gate-panel {
+    background: rgba(178, 59, 59, 0.18);
+    border-color: #c96a6a;
+}
+html[data-theme="dark"] .hunt-triage-card {
+    background: var(--calm-card, #1a1f2b);
+}
+
+.quality-gate-meta {
+    display: block;
+    margin-top: 0.1rem;
+    color: var(--calm-muted, #5d6678);
+    font-size: 0.9rem;
+}
+#quality-gate-alternatives,
+#quality-gate-warnings {
+    margin: 0.45rem 0 0;
+}

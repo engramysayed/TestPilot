@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" package="com.android.permissioncontroller" bounds="[100,500][980,1400]">
+    <node class="android.widget.TextView" text="Allow Test to take pictures?" bounds="[140,560][940,680]" package="com.android.permissioncontroller"/>
+    <node class="android.widget.Button" resource-id="com.android.permissioncontroller:id/permission_allow_button" text="While using the app" clickable="true" bounds="[140,1100][940,1220]" package="com.android.permissioncontroller"/>
+    <node class="android.widget.Button" resource-id="com.android.permissioncontroller:id/permission_deny_button" text="Don't allow" clickable="true" bounds="[140,1240][940,1360]" package="com.android.permissioncontroller"/>
+  </node>
+</hierarchy>

@@ -76,7 +76,7 @@ public final class HuntPackWriter {
         List<Map<String, Object>> bugRows = bugs == null ? List.of() : bugs;
         List<Map<String, Object>> scenarioRows = scenarios == null ? List.of() : scenarios;
 
-        String summary = buildSummary(request, stopReason, cyclesUsed, bugRows.size(), scenarioRows.size(),
+        String summary = buildSummary(request, stopReason, cyclesUsed, bugRows, scenarioRows.size(),
                 networkCapture == null ? "best-effort" : networkCapture, groundedRejectCount,
                 strategiesCompleted, oracleBugCount, coverageUrlCount);
         Files.writeString(huntRoot.resolve("SUMMARY.md"),
@@ -131,9 +131,32 @@ public final class HuntPackWriter {
                                List<String> strategiesCompleted,
                                int oracleBugCount,
                                int coverageUrlCount) {
+        return buildSummary(request, stopReason, cyclesUsed, List.of(), scenarioCount, networkCapture,
+                groundedRejectCount, strategiesCompleted, oracleBugCount, coverageUrlCount, bugCount);
+    }
+
+    static String buildSummary(HuntRequest request, String stopReason, int cyclesUsed,
+                               List<Map<String, Object>> bugs, int scenarioCount, String networkCapture,
+                               int groundedRejectCount,
+                               List<String> strategiesCompleted,
+                               int oracleBugCount,
+                               int coverageUrlCount) {
+        int bugCount = bugs == null ? 0 : bugs.size();
+        return buildSummary(request, stopReason, cyclesUsed, bugs, scenarioCount, networkCapture,
+                groundedRejectCount, strategiesCompleted, oracleBugCount, coverageUrlCount, bugCount);
+    }
+
+    private static String buildSummary(HuntRequest request, String stopReason, int cyclesUsed,
+                               List<Map<String, Object>> bugs, int scenarioCount, String networkCapture,
+                               int groundedRejectCount,
+                               List<String> strategiesCompleted,
+                               int oracleBugCount,
+                               int coverageUrlCount,
+                               int bugCount) {
         String strategiesLine = strategiesCompleted == null || strategiesCompleted.isEmpty()
                 ? "none"
                 : String.join(", ", strategiesCompleted);
+        HuntPackQuality.Counts q = HuntPackQuality.of(bugs);
         return """
                 # Bug Hunter summary
 
@@ -145,6 +168,7 @@ public final class HuntPackWriter {
                 - Cycles used: %d / %d
                 - Action cap / cycle: %d
                 - Bugs: %d (oracle: %d)
+                %s
                 - Candidate scenarios: %d (cap %d)
                 - Strategies completed: %s
                 - Coverage URLs visited: %d
@@ -161,6 +185,7 @@ public final class HuntPackWriter {
                 request.getActionCapPerCycle(),
                 bugCount,
                 oracleBugCount,
+                HuntPackQuality.summaryLines(q),
                 scenarioCount,
                 request.getScenarioCap(),
                 strategiesLine,
@@ -182,6 +207,27 @@ public final class HuntPackWriter {
             row.put("failureReason", str(bug.get("actual")));
             row.put("severity", str(bug.get("severity")));
             row.put("repro", str(bug.get("repro")));
+            row.put("reproScript", str(bug.get("reproScript")));
+            Object steps = bug.get("reproduceSteps");
+            if (steps != null) {
+                row.put("reproduceSteps", steps);
+            } else if (bug.get("reproScript") != null && !str(bug.get("reproScript")).isBlank()) {
+                row.put("reproduceSteps", java.util.List.of(str(bug.get("reproScript")).split("\n")));
+            }
+            if (bug.get("admission") != null) {
+                row.put("admission", bug.get("admission"));
+            } else if (bug.get("admissionEvidence") != null) {
+                try {
+                    row.put("admission", HuntBugAdmission.frontendAdmission(
+                            HuntBugAdmission.Evidence.valueOf(str(bug.get("admissionEvidence")))));
+                } catch (Exception ignored) {
+                    row.put("admission", str(bug.get("admissionEvidence")));
+                }
+            }
+            row.put("status", HuntPackQuality.qaStatusFor(bug));
+            if (bug.containsKey("toastObservedAfterSettle")) {
+                row.put("toastObservedAfterSettle", bug.get("toastObservedAfterSettle"));
+            }
             row.put("expected", str(bug.get("expected")));
             row.put("blockerStepIndex", -1);
             row.put("blockerIntent", "");
@@ -195,7 +241,7 @@ public final class HuntPackWriter {
 
     private static String toBugCsv(List<Map<String, Object>> bugs) {
         StringBuilder sb = new StringBuilder();
-        sb.append("tcId,title,qaStatus,failureReasonUser,failureReason,severity,repro,expected\n");
+        sb.append("tcId,title,qaStatus,failureReasonUser,failureReason,severity,repro,reproScript,expected\n");
         int i = 1;
         for (Map<String, Object> bug : bugs) {
             sb.append(csv("HUNT_" + String.format(java.util.Locale.ROOT, "%02d", i++))).append(',')
@@ -205,6 +251,7 @@ public final class HuntPackWriter {
                     .append(csv(str(bug.get("actual")))).append(',')
                     .append(csv(str(bug.get("severity")))).append(',')
                     .append(csv(str(bug.get("repro")))).append(',')
+                    .append(csv(str(bug.get("reproScript")))).append(',')
                     .append(csv(str(bug.get("expected")))).append('\n');
         }
         return sb.toString();

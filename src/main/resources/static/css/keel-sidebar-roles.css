@@ -1,0 +1,23 @@
+/* Sidebar IA + Roles UI — calm companion (does not edit keel-theme-calm.css) */
+.keel-credits-chip{display:inline-flex;align-items:center;gap:.35rem;margin-right:.75rem;padding:.35rem .7rem;border-radius:999px;border:1px solid var(--calm-line,#e3e6ec);background:var(--calm-card,#fff);color:inherit;text-decoration:none;font-size:.85rem}
+.keel-credits-chip strong{font-variant-numeric:tabular-nums}
+.keel-credits-chip[hidden]{display:none!important}
+.keel-pending-banner{margin:.5rem .75rem;padding:.65rem .8rem;border-radius:10px;background:#fff6e5;border:1px solid #f0d9a8;color:#6a4b00;font-size:.85rem}
+.keel-pending-banner[hidden]{display:none!important}
+.sidebar-nav a[data-feature-perm][hidden]{display:none!important}
+.sidebar-label[data-features-label][hidden]{display:none!important}
+.keel-badge{display:inline-block;padding:.15rem .45rem;border-radius:999px;font-size:.72rem;font-weight:600}
+.keel-badge--pending{background:#fff6e5;color:#8a5a00}
+.keel-badge--approved{background:#e7f6ec;color:#1b6b34}
+.keel-badge--locked,.keel-badge--rejected{background:#fde8e8;color:#8a1f1f}
+.keel-approve-modal{position:fixed;inset:0;background:rgba(20,24,32,.45);display:flex;align-items:center;justify-content:center;z-index:80}
+.keel-approve-modal[hidden]{display:none!important}
+.keel-approve-card{background:var(--calm-card,#fff);border-radius:14px;padding:1.25rem;width:min(420px,92vw);box-shadow:0 12px 40px rgba(0,0,0,.18)}
+.keel-approve-card h3{margin:0 0 .5rem}
+.keel-approve-card .f{display:block;margin:.75rem 0}
+.keel-approve-card select,.keel-approve-card textarea{width:100%}
+.keel-approve-actions{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem}
+.keel-perm-grid{display:grid;grid-template-columns:1fr 1fr;gap:.35rem .75rem;margin:.75rem 0}
+.keel-perm-grid label{display:flex;gap:.4rem;align-items:flex-start;font-size:.9rem}
+.keel-role-list{display:flex;flex-direction:column;gap:.5rem}
+.keel-role-row{display:flex;justify-content:space-between;gap:1rem;padding:.75rem;border:1px solid var(--calm-line,#e3e6ec);border-radius:10px}

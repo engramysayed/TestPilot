@@ -126,4 +126,44 @@ public class FrameworkPackagerTest {
         String attrs = Files.readString(Path.of("customer-framework-template/.gitattributes"));
         org.testng.Assert.assertTrue(attrs.contains("**/keel/settle-network.js        -text"), attrs);
     }
+
+    /**
+     * 0063: after one-class emit, generated LoginPage.java / DashboardPage.java must be in the
+     * Automate ZIP. Legacy *_Locators / *_Actions pairs must not ship.
+     */
+    @Test
+    public void zipIncludesGeneratedLoginPageAndDashboardPage() throws Exception {
+        Path temp = Files.createTempDirectory("pack-loginpage");
+        Path dest = temp.resolve("project");
+        FrameworkPackager packager = new FrameworkPackager();
+        packager.copyTemplate(Path.of("customer-framework-template"), dest);
+        Path pages = dest.resolve("src/main/java/project/pages");
+        Files.createDirectories(pages);
+        Files.writeString(pages.resolve("LoginPage.java"), "package project.pages;\npublic class LoginPage {}\n");
+        Files.writeString(pages.resolve("DashboardPage.java"), "package project.pages;\npublic class DashboardPage {}\n");
+        Files.writeString(pages.resolve("InventoryPage.java"), "package project.pages;\npublic class InventoryPage {}\n");
+        // Legacy dual-class names must not be re-introduced as a zip allow; if present on disk they
+        // still zip (filter is basename-sample based), but codegen deletes them — assert generated
+        // one-class names are included and sample LoginTest still excluded.
+        Path zip = temp.resolve("out.zip");
+        packager.zip(dest, zip);
+        try (java.util.zip.ZipFile zf = new java.util.zip.ZipFile(zip.toFile())) {
+            Assert.assertNotNull(zf.getEntry("src/main/java/project/pages/LoginPage.java"),
+                    "generated LoginPage.java must be in Automate ZIP");
+            Assert.assertNotNull(zf.getEntry("src/main/java/project/pages/DashboardPage.java"),
+                    "generated DashboardPage.java must be in Automate ZIP");
+            Assert.assertNotNull(zf.getEntry("src/main/java/project/pages/InventoryPage.java"));
+            Assert.assertNull(zf.getEntry("src/test/java/project/tests/LoginTest.java"),
+                    "sample LoginTest must stay excluded");
+            Assert.assertNull(zf.getEntry("src/main/java/project/pages/LoginPage_Locators.java"));
+            Assert.assertNull(zf.getEntry("src/main/java/project/pages/LoginPage_Actions.java"));
+            Assert.assertNull(zf.getEntry("src/main/java/project/pages/DashboardPage_Locators.java"));
+            Assert.assertNull(zf.getEntry("src/main/java/project/pages/DashboardPage_Actions.java"));
+        }
+        Assert.assertFalse(FrameworkPackager.shouldInclude("src/test/java/project/tests/LoginTest.java"));
+        Assert.assertTrue(FrameworkPackager.shouldInclude("src/main/java/project/pages/LoginPage.java"));
+        Assert.assertTrue(FrameworkPackager.shouldInclude("src/main/java/project/pages/DashboardPage.java"));
+        Assert.assertFalse(FrameworkPackager.shouldInclude(
+                "src/test/resources/test-data/delivery-secrets.local.properties"));
+    }
 }

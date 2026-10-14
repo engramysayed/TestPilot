@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" package="com.example.flutter" bounds="[0,0][1080,1920]">
+    <node class="android.view.View" resource-id="phone_Number_Input" content-desc="Phone" text="" clickable="true" focusable="true" enabled="true" bounds="[80,400][1000,520]" package="com.example.flutter"/>
+  </node>
+</hierarchy>

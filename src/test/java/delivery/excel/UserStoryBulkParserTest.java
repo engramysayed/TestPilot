@@ -26,4 +26,16 @@ public class UserStoryBulkParserTest {
     public void parse_rejectsMissingHeader() {
         UserStoryBulkParser.parse("Title,Story\nx,y");
     }
+
+    @Test
+    public void parse_optionalStructuredColumns() {
+        String csv = """
+                US_ID,Title,Story,AcceptanceCriteria,Role,Priority,Tags
+                US_010,Login,As a user I want to log in,Show dashboard,user,P1,smoke
+                """;
+        var entries = UserStoryBulkParser.parse(csv);
+        Assert.assertEquals(entries.size(), 1);
+        Assert.assertTrue(entries.get(0).toPromptBlock().contains("Acceptance criteria:"));
+        Assert.assertTrue(entries.get(0).toPromptBlock().contains("Role: user"));
+    }
 }

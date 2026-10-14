@@ -291,6 +291,10 @@ public final class HuntOracle {
         return bugs;
     }
 
+    /**
+     * @param alertTexts alerts still present after settle ({@link HuntToastObservation#stillPresent});
+     *                   vanishing toasts must not be passed here.
+     */
     private static List<Map<String, Object>> bugsFromAlertsAfterFail(
             List<String> alertTexts,
             List<Map<String, Object>> actionLog,
@@ -301,7 +305,7 @@ public final class HuntOracle {
         }
         String alertSummary = String.join("; ", alertTexts);
         Map<String, Object> bug = new LinkedHashMap<>();
-        bug.put("title", "Alert after failed interaction: " + abbreviate(alertSummary, 60));
+        bug.put("title", "Alert still present after settle: " + abbreviate(alertSummary, 60));
         bug.put("severity", "major");
         bug.put("expected", "No error alert after a successful interaction");
         bug.put("actual", alertSummary);

@@ -1,5 +1,6 @@
 package delivery.portal.web;
 
+import delivery.mobile.MobileProperties;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.JobRecord;
 import delivery.portal.persistence.JobEntity;
@@ -11,6 +12,8 @@ import delivery.portal.service.InviteService;
 import delivery.portal.service.JobLinkEnricher;
 import delivery.portal.service.PortalStore;
 import delivery.portal.service.WorkspacePackageService;
+import delivery.portal.service.credits.CreditService;
+import delivery.portal.roles.ApprovalStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,11 +36,14 @@ public class PortalUiController {
     private final DeliveryPortalProperties portalProperties;
     private final JobLinkEnricher jobLinks;
     private final WorkspacePackageService workspacePackages;
+    private final MobileProperties mobileProperties;
+    private final CreditService creditService;
 
     public PortalUiController(DashboardService dashboard, CurrentUserService currentUser,
                               PortalStore store, InviteService invites,
                               DeliveryPortalProperties portalProperties,
-                              JobLinkEnricher jobLinks, WorkspacePackageService workspacePackages) {
+                              JobLinkEnricher jobLinks, WorkspacePackageService workspacePackages,
+                              MobileProperties mobileProperties, CreditService creditService) {
         this.dashboard = dashboard;
         this.currentUser = currentUser;
         this.store = store;
@@ -45,6 +51,8 @@ public class PortalUiController {
         this.portalProperties = portalProperties;
         this.jobLinks = jobLinks;
         this.workspacePackages = workspacePackages;
+        this.mobileProperties = mobileProperties;
+        this.creditService = creditService;
     }
 
     private void addNav(Model model, String navActive) {
@@ -60,6 +68,17 @@ public class PortalUiController {
                 : "Personal workspace · Owner");
         model.addAttribute("pageCrumb", "Workspace");
         model.addAttribute("pageTitle", pageTitleForNav(navActive));
+        boolean creditsOn = portalProperties.isCreditsEnabled();
+        model.addAttribute("creditsEnabled", creditsOn);
+        model.addAttribute("sidebarIaEnabled", portalProperties.isSidebarIaEnabled());
+        model.addAttribute("rolesUiEnabled", portalProperties.isRolesUiEnabled());
+        ApprovalStatus st = user.getApprovalStatus() == null ? ApprovalStatus.PENDING_APPROVAL : user.getApprovalStatus();
+        model.addAttribute("approvalStatus", st.name());
+        model.addAttribute("accountApproved", st == ApprovalStatus.APPROVED);
+        if (creditsOn) {
+            Object bal = creditService.userCreditsDto(user.getId()).get("balance");
+            model.addAttribute("creditsBalance", bal == null ? 0L : bal);
+        }
     }
 
     private static String initialsFromEmail(String email) {
@@ -116,6 +135,7 @@ public class PortalUiController {
             case "account" -> "Account";
             case "users" -> "Administration";
             case "domains" -> "Domains";
+            case "roles" -> "Roles";
             default -> "Keel";
         };
     }
@@ -141,6 +161,7 @@ public class PortalUiController {
     public String projects(Model model) {
         addNav(model, "projects");
         model.addAttribute("projects", store.listProjects(currentUser.requireUserId()));
+        model.addAttribute("mobileEnabled", mobileProperties.isEnabled());
         return "projects";
     }
 
@@ -166,6 +187,9 @@ public class PortalUiController {
         model.addAttribute("lastJobUsername", lastJobUsernameForProject(projectId, ownerUserId));
         model.addAttribute("precisionAuthoringEnabled", portalProperties.isPrecisionAuthoringEnabled());
         model.addAttribute("defaultPrecisionMaxCalls", portalProperties.getPrecisionMaxCallsPerJob());
+        model.addAttribute("mobileEnabled", mobileProperties.isEnabled());
+        model.addAttribute("projectPlatform", owned.get().getPlatform() == null ? "WEB" : owned.get().getPlatform());
+        model.addAttribute("mobileCanEdit", store.canOperate(projectId, ownerUserId));
         return "project-detail";
     }
 
@@ -200,6 +224,7 @@ public class PortalUiController {
     public String generate(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
         addNav(model, "generate");
         model.addAttribute("projectId", projectId == null ? "" : projectId);
+        model.addAttribute("generateStructuredIntake", portalProperties.isGenerateStructuredIntake());
         return "generate";
     }
 
@@ -207,6 +232,7 @@ public class PortalUiController {
     public String execute(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
         addNav(model, "execute");
         model.addAttribute("projectId", projectId == null ? "" : projectId);
+        model.addAttribute("mobileEnabled", mobileProperties.isEnabled());
         return "execute";
     }
 
@@ -248,6 +274,7 @@ public class PortalUiController {
     @GetMapping("/bug-hunter")
     public String bugHunter(Model model) {
         addNav(model, "bug-hunter");
+        model.addAttribute("huntTriageEnabled", portalProperties.isHuntTriageEnabled());
         return "bug-hunter";
     }
 
@@ -397,6 +424,13 @@ public class PortalUiController {
     public String adminDomains(Model model) {
         addNav(model, "domains");
         return "admin-domains";
+    }
+
+    @GetMapping("/admin/roles")
+    public String adminRoles(Model model) {
+        addNav(model, "roles");
+        model.addAttribute("rolesUiEnabled", portalProperties.isRolesUiEnabled());
+        return "admin-roles";
     }
 
     @GetMapping("/account")

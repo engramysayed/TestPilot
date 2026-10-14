@@ -73,18 +73,19 @@ public class KeelCodegenV2Test {
         new CodeWriter(Path.of("customer-framework-template/templates")).write(out, List.of(
                 new TcOutcome("TC_V2", "Board", TcStatus.PASSED, List.of(text, bar, drag), "", null, false, List.of())));
         Path pages = out.resolve("src/main/java/project/pages");
-        String loc = Files.readString(pages.resolve("Board_Locators.java"));
-        String act = Files.readString(pages.resolve("Board_Actions.java"));
+        String loc = Files.readString(pages.resolve("Board.java"));
+        String act = Files.readString(pages.resolve("Board.java"));
         Assert.assertTrue(loc.contains("KeelLocate.requireContract(2);"), loc);
         Assert.assertTrue(loc.contains("\"shadow-closed=#c >> text=\\\"Closed action\\\"\""), loc);
         Assert.assertTrue(loc.contains("\"css=canvas#chart >> provider=chartjs:bar/3 >> point=100,50@800x400\""), loc);
         Assert.assertTrue(loc.contains("\"css=#lane-done >> point=50,10@200x400\""), loc);
-        Assert.assertTrue(act.contains("KeelActions.click(driver.get(), "), act);
-        Assert.assertTrue(act.contains("KeelActions.drag(driver.get(), "), act);
+        Assert.assertTrue(act.contains("SettledActions.click"), act);
+        Assert.assertTrue(act.contains("SettledActions.drag"), act);
         Assert.assertTrue(act.contains("driver.element().click("), act);   // plain text target keeps normal click
         Path classes = Files.createTempDirectory("codegen-v2-classes");
-        CustomerTemplateCompiler.compile(classes, pages.resolve("Board_Locators.java"), pages.resolve("Board_Actions.java")).close();
+        CustomerTemplateCompiler.compile(classes, pages.resolve("Board.java")).close();
         Assert.assertTrue(Files.exists(classes.resolve("project/utils/locators/KeelActions.class")));
+        Assert.assertTrue(Files.exists(classes.resolve("project/utils/locators/SettledActions.class")));
     }
 
     @Test
@@ -94,7 +95,7 @@ public class KeelCodegenV2Test {
                 new TcOutcome("TC_V1", "P", TcStatus.PASSED, List.of(keel("click", "frame=#f >> css=#b", List.of())), "", null, false, List.of())));
         Path locFile;
         try (var files = Files.list(out.resolve("src/main/java/project/pages"))) {
-            locFile = files.filter(f -> f.toString().endsWith("_Locators.java")).findFirst().orElseThrow();
+            locFile = files.filter(f -> f.toString().endsWith(".java")).findFirst().orElseThrow();
         }
         String loc = Files.readString(locFile);
         Assert.assertFalse(loc.contains("requireContract"), loc);

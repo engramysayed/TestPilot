@@ -111,9 +111,9 @@ public class KeelSecretFlagTest {
         Path out = generate();
         String java = all(out, ".java");
         Assert.assertFalse(java.contains(SECRET), "secret value must never be a Java literal");
-        Assert.assertTrue(java.contains("Settle.after(driver.get(), \"typeSecret\""), java);
+        Assert.assertTrue(java.contains("\"typeSecret\"") && java.contains("SettledActions.type"), java);
         Assert.assertTrue(java.contains("Secrets.register(value)"), java);
-        Assert.assertTrue(java.contains("Settle.after(driver.get(), \"type\""), "non-secret type keeps the type rule");
+        Assert.assertTrue(java.contains("SettledActions.type") && java.contains("\"type\""), "non-secret type keeps the type rule");
         Assert.assertTrue(java.contains("requiredProperty(\"TC_S.body."), java);
         Assert.assertTrue(java.contains("Secrets.property(\"TC_S.body."), "secret read from the secret store / env");
 

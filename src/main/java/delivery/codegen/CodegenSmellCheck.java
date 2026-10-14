@@ -8,7 +8,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Fail-closed gate at emit time: reject pages with collapsed control names or duplicate methods.
+ * Fail-closed gate at emit time: reject dump {@code Page} stems, collapsed control names, or duplicate methods.
  */
 public final class CodegenSmellCheck {
     private static final Pattern COLLAPSED_ACTION = Pattern.compile(
@@ -32,22 +32,30 @@ public final class CodegenSmellCheck {
     }
 
     private static void checkPage(String pageName, PageAccumulator.PageModel page, List<String> smells) {
+        if (isDumpPageName(pageName) || isDumpStem(page.stem())) {
+            smells.add(formatSmell(pageName, page, "dump/blank page stem rejected",
+                    pageName == null || pageName.isBlank() ? page.stem() : pageName));
+        }
         if (!CodegenNaming.isValidJavaIdentifier(page.stem())) {
             smells.add(formatSmell(pageName, page, "illegal page stem", page.stem()));
         }
-        if (!CodegenNaming.isValidJavaIdentifier(page.actionsClassName())) {
-            smells.add(formatSmell(pageName, page, "illegal actions class", page.actionsClassName()));
+        if (!CodegenNaming.isValidJavaIdentifier(page.pageClassName())) {
+            smells.add(formatSmell(pageName, page, "illegal page class", page.pageClassName()));
         }
-        if (!CodegenNaming.isValidJavaIdentifier(page.locatorsClassName())) {
-            smells.add(formatSmell(pageName, page, "illegal locators class", page.locatorsClassName()));
-        }
-        String varName = CodegenNaming.safeLocalVarName(page.actionsClassName());
+        String varName = CodegenNaming.safeLocalVarName(page.pageClassName());
         if (!CodegenNaming.isValidJavaIdentifier(varName)) {
             smells.add(formatSmell(pageName, page, "illegal page var", varName));
         }
+        Set<String> locatorIds = new HashSet<>();
         for (PageAccumulator.FieldModel field : page.fields()) {
             if (!CodegenNaming.isValidJavaIdentifier(field.name())) {
                 smells.add(formatSmell(pageName, page, "illegal field name", field.name()));
+            }
+            String locId = field.smart()
+                    ? ("smart\0" + field.smartExpr())
+                    : (field.strategy() + "\0" + field.value());
+            if (!locatorIds.add(locId)) {
+                smells.add(formatSmell(pageName, page, "duplicate locator identity", field.name()));
             }
         }
         Set<String> seen = new HashSet<>();
@@ -60,6 +68,15 @@ public final class CodegenSmellCheck {
                 smells.add(formatSmell(pageName, page, "collapsed assert method", assertion.name()));
             }
         }
+    }
+
+    /** Blank / literal {@code Page} is a multi-control dump — never emit. Opaque {@code Page_xxxxxxxx} hashes are OK. */
+    static boolean isDumpPageName(String pageName) {
+        return pageName == null || pageName.isBlank() || "Page".equals(pageName.trim());
+    }
+
+    static boolean isDumpStem(String stem) {
+        return stem == null || stem.isBlank() || "Page".equals(stem);
     }
 
     private static void checkMethodName(
@@ -76,6 +93,6 @@ public final class CodegenSmellCheck {
     }
 
     private static String formatSmell(String pageName, PageAccumulator.PageModel page, String kind, String name) {
-        return pageName + " (" + page.actionsClassName() + "): " + kind + " '" + name + "'";
+        return pageName + " (" + page.pageClassName() + "): " + kind + " '" + name + "'";
     }
 }

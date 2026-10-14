@@ -1,6 +1,7 @@
 package delivery.portal.api;
 
 import delivery.excel.InvalidExcelTemplateException;
+import delivery.portal.roles.RoleRequiredException;
 import delivery.portal.service.ProjectArtifactService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,6 +15,29 @@ import java.util.Map;
 @RestControllerAdvice(basePackages = "delivery.portal.api")
 public class PortalExceptionHandler {
     private static final Logger log = LogManager.getLogger(PortalExceptionHandler.class);
+
+
+    @ExceptionHandler(delivery.portal.service.credits.InsufficientCreditsException.class)
+    public ResponseEntity<Map<String, Object>> insufficientCredits(
+            delivery.portal.service.credits.InsufficientCreditsException e) {
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("code", delivery.portal.service.credits.InsufficientCreditsException.CODE);
+        body.put("message", e.getMessage());
+        body.put("required", e.required());
+        body.put("balance", e.balance());
+        body.put("jobKind", e.jobKind());
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
+    }
+
+    @ExceptionHandler(delivery.portal.service.credits.AccountApprovalException.class)
+    public ResponseEntity<Map<String, Object>> accountNotApproved(
+            delivery.portal.service.credits.AccountApprovalException e) {
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("code", e.code());
+        body.put("message", e.getMessage());
+        body.put("approvalStatus", e.approvalStatus());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
 
     @ExceptionHandler(delivery.job.JobAdmissionException.class)
     public ResponseEntity<Map<String, String>> admissionRejected(delivery.job.JobAdmissionException e) {
@@ -37,6 +61,16 @@ public class PortalExceptionHandler {
     @ExceptionHandler(ProjectArtifactService.BadPathException.class)
     public ResponseEntity<Map<String, String>> badArtifactPath(ProjectArtifactService.BadPathException e) {
         return ResponseEntity.badRequest().body(new ApiError("BAD_PATH", e.getMessage()).asMap());
+    }
+
+
+    @ExceptionHandler(RoleRequiredException.class)
+    public ResponseEntity<Map<String, String>> roleRequired(RoleRequiredException e) {
+        boolean missingRoleIdOnApprove = e.getMessage() != null
+                && e.getMessage().toLowerCase().contains("roleid is required");
+        HttpStatus status = missingRoleIdOnApprove ? HttpStatus.BAD_REQUEST : HttpStatus.FORBIDDEN;
+        return ResponseEntity.status(status)
+                .body(new ApiError(e.errorCode(), e.getMessage() == null ? "Not allowed" : e.getMessage()).asMap());
     }
 
     @ExceptionHandler(SecurityException.class)

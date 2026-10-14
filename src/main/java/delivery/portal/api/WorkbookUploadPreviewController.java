@@ -116,7 +116,7 @@ public class WorkbookUploadPreviewController {
         } catch (IllegalArgumentException e) {
             if (GenerateQualityGate.isQualityGateFailure(e)) {
                 return ResponseEntity.badRequest()
-                        .body(new ApiError("QUALITY_GATE", GenerateQualityGate.qualityGateDetail(e)).asMap());
+                        .body(QualityGateResponses.fromException(e));
             }
             return ResponseEntity.badRequest().body(new ApiError("BAD_REQUEST",
                     e.getMessage() == null ? "Invalid upload" : e.getMessage()).asMap());

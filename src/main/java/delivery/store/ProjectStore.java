@@ -70,6 +70,7 @@ public class ProjectStore {
                 deleteRecursive(framework);
             }
             copyRecursive(frameworkDir, framework);
+            scrubLocalSecretProperties(framework);
             StoredProject current = load(projectId);
             int next = current.version() + 1;
             Path versioned = root.resolve("versions").resolve("v" + next + ".zip");
@@ -163,9 +164,35 @@ public class ProjectStore {
         deleteRecursive(projectRoot(projectId));
     }
 
+    /**
+     * Local-only secret property filenames that must never persist under ProjectStore
+     * {@code framework/} (ZIP already excludes them via FrameworkPackager).
+     */
+    static final java.util.Set<String> LOCAL_SECRET_PROPERTY_FILES = java.util.Set.of(
+            "delivery-secrets.local.properties",
+            "delivery-target.local.properties");
+
+    /** Delete known local secret property files anywhere under a framework tree. */
+    static void scrubLocalSecretProperties(Path frameworkRoot) throws Exception {
+        if (frameworkRoot == null || !Files.exists(frameworkRoot)) {
+            return;
+        }
+        try (var walk = Files.walk(frameworkRoot)) {
+            for (Path path : walk.filter(Files::isRegularFile).toList()) {
+                if (LOCAL_SECRET_PROPERTY_FILES.contains(path.getFileName().toString())) {
+                    Files.deleteIfExists(path);
+                }
+            }
+        }
+    }
+
     private static void copyRecursive(Path src, Path dest) throws Exception {
         Files.walk(src).forEach(path -> {
             try {
+                if (Files.isRegularFile(path)
+                        && LOCAL_SECRET_PROPERTY_FILES.contains(path.getFileName().toString())) {
+                    return; // never copy local secrets into store framework/
+                }
                 Path rel = dest.resolve(src.relativize(path).toString());
                 if (Files.isDirectory(path)) {
                     Files.createDirectories(rel);

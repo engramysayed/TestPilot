@@ -17,6 +17,9 @@
         <module>keel-common</module>
         <module>keel-engine</module>
         <module>keel-portal</module>
+        <module>mobile-contracts</module>
+            <module>mobile-runner</module>
+            <module>mobile-codegen</module>
     </modules>
 
     <properties>

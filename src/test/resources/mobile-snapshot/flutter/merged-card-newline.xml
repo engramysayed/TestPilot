@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" package="com.example.flutter" bounds="[0,0][1080,1920]">
+    <node class="android.view.View" resource-id="" content-desc="Order #1234
+Paid · 120.00 EGP" text="" clickable="true" enabled="true" bounds="[40,300][1040,520]" package="com.example.flutter"/>
+  </node>
+</hierarchy>

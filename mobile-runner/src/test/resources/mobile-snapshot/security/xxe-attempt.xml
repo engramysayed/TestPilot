@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<!DOCTYPE hierarchy [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+]>
+<hierarchy>
+  <node class="android.view.View" content-desc="&xxe;" bounds="[0,0][10,10]"/>
+</hierarchy>

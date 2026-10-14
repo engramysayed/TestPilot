@@ -1,0 +1,12 @@
+{
+  "code": "APPIUM_UNAVAILABLE",
+  "stage": "preflight",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/APPIUM_UNAVAILABLE.json",
+    "plannedTest": "MobileErrorCode_APPIUM_UNAVAILABLE_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

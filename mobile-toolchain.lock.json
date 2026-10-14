@@ -1,0 +1,42 @@
+{
+  "schema": "keel.mobile-toolchain.lock/v0",
+  "status": "proposed-M0-02-backend-shell",
+  "updated": "2026-10-14T14:25:00+03:00",
+  "owner": "Keel Backend (shell) / Keel QA-DevOps (qualify)",
+  "notes": [
+    "Backend M0-02 records proposed Maven pins for mobile-runner only.",
+    "Live Appium/UiAutomator2/Node/ADB/page-source timing qualification is QA-owned — leave qualified.* null/TBD until TestEmp APK qualify.",
+    "web Selenium remains 4.49.0 in keel-portal; mobile-runner uses 4.43.0.",
+    "Company-machine HARD CONSTRAINT: no firewall/VPN/certs/new ports during qualify."
+  ],
+  "proposed": {
+    "appiumJavaClient": "10.1.1",
+    "seleniumInMobileRuntime": "4.43.0",
+    "webSeleniumPin": "4.49.0"
+  },
+  "qualified": {
+    "appiumServer": null,
+    "appiumJavaClient": null,
+    "seleniumInMobileRuntime": null,
+    "uiautomator2Driver": null,
+    "node": null,
+    "npm": null,
+    "adb": null,
+    "androidApiMin": 26,
+    "uia2Settings": {
+      "waitForIdleTimeoutMs": null,
+      "enableMultiWindows": null,
+      "ignoreUnimportantViews": null,
+      "allowInvisibleElements": null,
+      "pageSourcePollMs": null,
+      "pageSourceP95Ms": null,
+      "note": "TBD until live qualify (QA). If p95 > ~1s, settle poll interval >= 300ms with normalized-hash compare."
+    },
+    "unicodeTypePath": null,
+    "pageSourceTiming": "TBD until live qualify"
+  },
+  "hosts": {
+    "firstSupported": "Windows laptop",
+    "linuxRunner": "later portability qualification"
+  }
+}

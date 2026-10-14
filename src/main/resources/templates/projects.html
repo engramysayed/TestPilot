@@ -18,19 +18,31 @@
     <nav class="projects-filter tabs" aria-label="Project filters">
         <button type="button" class="active" id="projects-filter-all" disabled>All projects</button>
         <button type="button" class="tab-planned" disabled title="Web-only filter — not available yet">Web</button>
-        <button type="button" class="tab-planned" disabled title="Mobile projects — planned (N5/N6)">Android</button>
+        <button type="button" th:if="${mobileEnabled}" class="tab-planned" disabled title="Android filter — coming soon">Android</button>
+        <button type="button" th:unless="${mobileEnabled}" class="tab-planned" disabled title="Mobile projects — enable delivery.mobile.enabled">Android</button>
     </nav>
 
     <section class="panel create-panel">
         <h2>Create project</h2>
         <p class="panel-intro">Name a workspace and optionally set its target base URL now.</p>
-        <form id="create-form" class="create-row">
+        <form id="create-form" class="create-row" th:attr="data-mobile-enabled=${mobileEnabled}">
             <label class="grow">Project name
                 <input type="text" name="name" required placeholder="Acme Checkout"/>
             </label>
-            <label class="grow">Base URL <span class="muted">(optional)</span>
-                <input type="url" name="baseUrl" placeholder="https://app.example.com"/>
+            <label class="grow" id="create-base-url-label">Base URL <span class="muted">(optional)</span>
+                <input type="url" name="baseUrl" id="create-base-url" placeholder="https://app.example.com"/>
             </label>
+            <fieldset class="mobile-only" id="create-platform-fieldset" th:if="${mobileEnabled}">
+                <legend>Project type</legend>
+                <label class="check">
+                    <input type="radio" name="platform" value="WEB" checked/>
+                    Website
+                </label>
+                <label class="check">
+                    <input type="radio" name="platform" value="ANDROID"/>
+                    Android app
+                </label>
+            </fieldset>
             <button type="submit">Create project</button>
         </form>
         <p id="msg" class="muted" hidden></p>
@@ -164,10 +176,15 @@
                 badge.className = 'badge muted project-archived-badge';
                 badge.textContent = 'Archived';
                 top.appendChild(badge);
-            } else if (p.platform === 'web') {
+            } else if ((p.platform || 'WEB').toUpperCase() === 'WEB') {
                 const badge = document.createElement('span');
                 badge.className = 'badge badge--pass';
                 badge.textContent = 'Web';
+                top.appendChild(badge);
+            } else if ((p.platform || '').toUpperCase() === 'ANDROID') {
+                const badge = document.createElement('span');
+                badge.className = 'badge mobile-platform-badge';
+                badge.textContent = 'Android';
                 top.appendChild(badge);
             }
 
@@ -273,9 +290,12 @@
     document.getElementById('create-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = e.target.name.value.trim();
-        const baseUrl = e.target.baseUrl.value.trim();
+        const baseUrl = e.target.baseUrl ? e.target.baseUrl.value.trim() : '';
         const body = { name };
         if (baseUrl) body.baseUrl = baseUrl;
+        const platformEl = e.target.querySelector('input[name="platform"]:checked');
+        const mobileOn = e.target.dataset.mobileEnabled === 'true';
+        if (mobileOn && platformEl) body.platform = platformEl.value;
         const res = await fetch('/api/projects', {
             method: 'POST',
             credentials: 'same-origin',

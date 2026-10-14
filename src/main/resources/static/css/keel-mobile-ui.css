@@ -1,0 +1,252 @@
+/* M1-07 mobile project/settings/run UI — gated by delivery.mobile.enabled in templates */
+.mobile-panel[hidden],
+.mobile-only[hidden] { display: none !important; }
+
+.mobile-source-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.mobile-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.35rem 0;
+}
+
+.mobile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  border: 1px solid var(--keel-border, #d0d7de);
+  background: var(--keel-surface-2, #f6f8fa);
+  color: var(--keel-fg, #1f2328);
+}
+
+.mobile-chip[data-tone="ready"] {
+  background: color-mix(in srgb, #1a7f37 12%, transparent);
+  border-color: color-mix(in srgb, #1a7f37 35%, transparent);
+}
+.mobile-chip[data-tone="busy"] {
+  background: color-mix(in srgb, #bf8700 14%, transparent);
+  border-color: color-mix(in srgb, #bf8700 40%, transparent);
+}
+.mobile-chip[data-tone="warn"] {
+  background: color-mix(in srgb, #cf222e 12%, transparent);
+  border-color: color-mix(in srgb, #cf222e 35%, transparent);
+}
+.mobile-chip[data-tone="muted"] {
+  opacity: 0.85;
+}
+
+.mobile-device-card {
+  border: 1px solid var(--keel-border, #d0d7de);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  margin: 0.5rem 0;
+  background: var(--keel-surface, #fff);
+}
+
+.mobile-device-card h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.mobile-readonly-hint {
+  margin-top: 0.5rem;
+}
+
+.mobile-platform-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: var(--keel-surface-2, #eef2f6);
+  border: 1px solid var(--keel-border, #d0d7de);
+}
+
+#mobile-app-form label,
+#mobile-app-form fieldset {
+  display: block;
+  margin-bottom: 0.65rem;
+}
+
+.mobile-apk-upload {
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px dashed var(--keel-border, #d0d7de);
+  border-radius: 10px;
+  background: var(--keel-surface-2, #f6f8fa);
+}
+.mobile-launcher-pick {
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid color-mix(in srgb, #bf8700 40%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, #bf8700 8%, transparent);
+}
+.mobile-launcher-pick h3 { margin: 0 0 0.35rem; font-size: 1rem; }
+
+/* M2-07 execute mobile results */
+.mobile-results-summary {
+  margin: 0.5rem 0 0.75rem;
+}
+.mobile-results-counts {
+  margin-top: 0.35rem;
+  font-size: 0.9rem;
+}
+.mobile-results-runtime {
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--keel-border, #d0d7de);
+  border-radius: 10px;
+  background: var(--keel-surface-2, #f6f8fa);
+}
+.mobile-results-runtime h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+.mobile-runtime-dl {
+  display: grid;
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+.mobile-runtime-dl > div {
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+  gap: 0.35rem;
+}
+.mobile-runtime-dl dt {
+  font-weight: 600;
+  color: var(--keel-fg-muted, #656d76);
+}
+.mobile-runtime-dl dd {
+  margin: 0;
+}
+.mobile-runtime-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+}
+.mobile-outcome-chip[data-tone="pass"] {
+  background: color-mix(in srgb, #1a7f37 12%, transparent);
+  border-color: color-mix(in srgb, #1a7f37 35%, transparent);
+}
+.mobile-outcome-chip[data-tone="fail"] {
+  background: color-mix(in srgb, #cf222e 12%, transparent);
+  border-color: color-mix(in srgb, #cf222e 35%, transparent);
+}
+.mobile-outcome-chip[data-tone="blocked"] {
+  background: color-mix(in srgb, #bf8700 14%, transparent);
+  border-color: color-mix(in srgb, #bf8700 40%, transparent);
+}
+.mobile-outcome-chip[data-tone="todo"],
+.mobile-outcome-chip[data-tone="excluded"] {
+  opacity: 0.9;
+}
+.mobile-outcome-chip[data-tone="interrupted"] {
+  background: color-mix(in srgb, #8250df 12%, transparent);
+  border-color: color-mix(in srgb, #8250df 35%, transparent);
+}
+tr.mobile-result-row {
+  cursor: pointer;
+}
+tr.mobile-result-row:hover {
+  background: color-mix(in srgb, var(--keel-accent, #0969da) 6%, transparent);
+}
+.mobile-case-detail {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--keel-border, #d0d7de);
+  border-radius: 10px;
+  background: var(--keel-surface, #fff);
+}
+.mobile-case-detail h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+.mobile-case-detail h4 { margin: 0.75rem 0 0.35rem; font-size: 0.95rem; }
+.mobile-locator-list,
+.mobile-step-list {
+  margin: 0.25rem 0 0.5rem 1.1rem;
+  padding: 0;
+}
+.mobile-locator-cell { white-space: nowrap; }
+
+/* M3-06 auth profiles + case requirements */
+.mobile-auth-list,
+.mobile-case-req-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.mobile-auth-card,
+.mobile-case-req-card {
+  border: 1px solid var(--keel-border, #d0d7de);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  background: var(--keel-surface, #fff);
+}
+
+.mobile-auth-card h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.mobile-auth-card p,
+.mobile-case-req-card p {
+  margin: 0.2rem 0;
+}
+
+.mobile-case-req-card {
+  cursor: pointer;
+}
+
+.mobile-case-req-card:hover {
+  border-color: color-mix(in srgb, #0969da 40%, var(--keel-border, #d0d7de));
+}
+
+.mobile-auth-editor {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px dashed var(--keel-border, #d0d7de);
+  border-radius: 10px;
+  background: var(--keel-surface-2, #f6f8fa);
+}
+
+.mobile-auth-editor label,
+#mobile-case-req-form label {
+  display: block;
+  margin-bottom: 0.65rem;
+}
+
+.mobile-auth-editor input[type="text"],
+.mobile-auth-editor textarea,
+.mobile-auth-editor select,
+#mobile-case-req-form input[type="text"],
+#mobile-case-req-form input[type="search"],
+#mobile-case-req-form select {
+  width: 100%;
+  max-width: 36rem;
+}
+
+.mobile-check {
+  display: flex !important;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+#mobile-auth-data-clear-note,
+#mobile-case-req-mode-help {
+  margin-top: 0.35rem;
+}
+
+#mobile-case-req-panel .call-before-chips {
+  margin: 0.35rem 0;
+}

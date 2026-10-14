@@ -4,6 +4,7 @@ import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.persistence.Invite;
 import delivery.portal.persistence.InviteRepository;
 import delivery.portal.persistence.PortalUser;
+import delivery.portal.roles.ApprovalStatus;
 import delivery.portal.persistence.PortalUserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -87,6 +88,9 @@ public class InviteService {
         user.setPasswordHash(encoder.encode(password));
         user.setRole(PortalUser.Role.USER);
         user.setEnabled(true);
+        user.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        // roleId assigned only when admin approves with explicit roleId (no default MEMBER)
+        // No trial credits on signup — admin grants via /api/admin/credits/{userId} after APPROVE.
         users.save(user);
         invite.setUsed(true);
         invites.save(invite);

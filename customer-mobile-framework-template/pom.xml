@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Customer POM — dependency versions are PLACEHOLDERS until M0-02 lock status=qualified.
+  Draft pins (java-client 10.1.1 / Selenium 4.43.0) exist in mobile-toolchain.lock.json
+  (pinned-m0-draft) and pom-helper-tests.xml for box unit tests only — do NOT copy draft
+  pins here as if qualified.
+  Do not use LATEST or version ranges in delivered builds.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>io.keel</groupId>
+  <artifactId>customer-mobile-framework</artifactId>
+  <version>0.0.0-M4-01</version>
+  <name>Keel customer mobile framework</name>
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- M0-02: replace from mobile-toolchain.lock.json when status=qualified -->
+    <appium.java-client.version>PLACEHOLDER-M0-02</appium.java-client.version>
+    <selenium.mobile.version>PLACEHOLDER-M0-02</selenium.mobile.version>
+    <testng.version>PLACEHOLDER-M0-02</testng.version>
+    <allure.version>PLACEHOLDER-M0-02</allure.version>
+  </properties>
+  <dependencies>
+    <dependency>
+      <groupId>io.appium</groupId>
+      <artifactId>java-client</artifactId>
+      <version>${appium.java-client.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-api</artifactId>
+      <version>${selenium.mobile.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-support</artifactId>
+      <version>${selenium.mobile.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testng</groupId>
+      <artifactId>testng</artifactId>
+      <version>${testng.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.qameta.allure</groupId>
+      <artifactId>allure-testng</artifactId>
+      <version>${allure.version}</version>
+    </dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>${maven.compiler.release}</release>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <suiteXmlFiles>
+            <suiteXmlFile>testng.xml</suiteXmlFile>
+          </suiteXmlFiles>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

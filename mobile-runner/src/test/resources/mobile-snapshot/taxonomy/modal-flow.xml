@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" package="com.example.test" bounds="[0,0][1080,1920]">
+    <node class="android.widget.FrameLayout" resource-id="com.example.test:id/sheet" bounds="[0,800][1080,1920]" package="com.example.test">
+      <node class="android.widget.Button" text="Confirm" clickable="true" bounds="[80,1700][1000,1820]" package="com.example.test"/>
+    </node>
+  </node>
+</hierarchy>

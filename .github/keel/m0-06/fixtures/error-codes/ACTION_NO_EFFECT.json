@@ -1,0 +1,12 @@
+{
+  "code": "ACTION_NO_EFFECT",
+  "stage": "execution",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/ACTION_NO_EFFECT.json",
+    "plannedTest": "MobileErrorCode_ACTION_NO_EFFECT_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

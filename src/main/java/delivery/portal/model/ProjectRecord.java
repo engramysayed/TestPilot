@@ -18,6 +18,8 @@ public class ProjectRecord {
     private int precisionMaxCallsPerJob = 0;
     private boolean precisionReuseLocatorMemory = false;
     private String tenantId = "";
+    /** WEB | ANDROID; immutable after create. */
+    private String platform = "WEB";
 
     public ProjectRecord(String projectId, String name, Long ownerUserId, int latestVersion) {
         this.projectId = projectId;
@@ -69,4 +71,8 @@ public class ProjectRecord {
     }
     public String getTenantId() { return tenantId == null ? "" : tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId == null ? "" : tenantId; }
+    public String getPlatform() { return platform == null || platform.isBlank() ? "WEB" : platform; }
+    public void setPlatform(String platform) {
+        this.platform = platform == null || platform.isBlank() ? "WEB" : platform.trim().toUpperCase();
+    }
 }

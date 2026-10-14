@@ -1,0 +1,12 @@
+{
+  "code": "SESSION_CHECK_UNCERTAIN",
+  "stage": "setup",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/SESSION_CHECK_UNCERTAIN.json",
+    "plannedTest": "MobileErrorCode_SESSION_CHECK_UNCERTAIN_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

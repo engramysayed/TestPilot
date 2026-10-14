@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- M0-02: versioned mobile DTO/codec contracts. Build: mvn -f mobile-contracts/pom.xml
+         Not listed in keel-parent modules (do not convert root into aggregator for mobile).
+         IR DTO shapes and MobileIrCodec are owned by AE (M0-03); this module is the shell. -->
+    <groupId>org.example</groupId>
+    <artifactId>mobile-contracts</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>mobile-contracts</name>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.parameters>true</maven.compiler.parameters>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <jackson.version>2.17.2</jackson.version>
+        <testng.version>7.11.0</testng.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>21</release>
+                    <parameters>true</parameters>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>mobile-contracts-banned-dependencies</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <searchTransitive>true</searchTransitive>
+                                    <excludes>
+                                        <exclude>org.springframework*:*</exclude>
+                                        <exclude>org.seleniumhq.selenium:*</exclude>
+                                        <exclude>io.appium:*</exclude>
+                                        <exclude>org.hibernate*:*</exclude>
+                                        <exclude>jakarta.persistence:*</exclude>
+                                        <exclude>com.h2database:*</exclude>
+                                    </excludes>
+                                    <message>mobile-contracts: no Spring/Appium/Selenium/JPA (architecture §1).</message>
+                                </bannedDependencies>
+                                <requireJavaVersion><version>[21,)</version></requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

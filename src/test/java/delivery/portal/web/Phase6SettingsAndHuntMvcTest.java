@@ -82,6 +82,8 @@ public class Phase6SettingsAndHuntMvcTest extends AbstractTestNGSpringContextTes
         Assert.assertTrue(body.contains("id=\"hunt-promote-panel\""), "promote panel missing");
         Assert.assertTrue(body.contains("/promote"), "promote API wiring missing");
         Assert.assertTrue(body.contains("accept"), "explicit accept control missing");
+        // Triage queue markup is present but hidden unless delivery.hunt.triage.enabled=true
+        Assert.assertTrue(body.contains("id=\"hunt-triage-panel\""), "triage panel markup missing");
     }
 
     private String createProject() throws Exception {

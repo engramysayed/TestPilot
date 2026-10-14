@@ -1,0 +1,12 @@
+{
+  "code": "AUTH_RESET_UNCONFIGURED",
+  "stage": "setup",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/AUTH_RESET_UNCONFIGURED.json",
+    "plannedTest": "MobileErrorCode_AUTH_RESET_UNCONFIGURED_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "mobile-ir/1",
+  "platform": "ANDROID",
+  "tcId": "TC_CAP",
+  "libraryRevisionId": "lib-1",
+  "appRevisionId": "app-1",
+  "caseSettingsRevisionId": "cs-1",
+  "namingRevisionId": "nm-1",
+  "proof": { "status": "PROVEN", "source": "EXECUTE", "attemptId": "a1" },
+  "setupRefs": [],
+  "steps": [
+    {
+      "stepId": "s1",
+      "screenKey": "order",
+      "operation": "CAPTURE_TEXT",
+      "context": { "kind": "NATIVE", "package": "com.example" },
+      "target": { "strategy": "accessibilityId", "value": "order_Id_Text", "origin": "HIERARCHY" },
+      "captureVar": "orderId",
+      "retryIfNoChange": false
+    },
+    {
+      "stepId": "s2",
+      "screenKey": "confirm",
+      "operation": "COMPARE_CAPTURED",
+      "context": { "kind": "NATIVE", "package": "com.example" },
+      "target": { "strategy": "accessibilityId", "value": "confirm_Order_Text", "origin": "HIERARCHY" },
+      "captureVar": "orderId",
+      "compareMode": "EQUALS",
+      "retryIfNoChange": false
+    }
+  ]
+}

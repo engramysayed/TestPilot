@@ -1,0 +1,12 @@
+{
+  "code": "TOOLCHAIN_UNQUALIFIED",
+  "stage": "preflight",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/TOOLCHAIN_UNQUALIFIED.json",
+    "plannedTest": "MobileErrorCode_TOOLCHAIN_UNQUALIFIED_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

@@ -47,4 +47,19 @@ public class JobDispatchPolicyTest {
         assertEquals(JobDispatchPolicy.REMOTE_CAPABLE.stream().map(Enum::name).collect(Collectors.toSet()),
                 EngineAgent.REMOTE_KINDS.stream().map(WireJobKind::name).collect(Collectors.toSet()));
     }
+
+    @Test
+    public void portalDoesNotClaimHuntOrGenerateAsRemote() {
+        // D-QA-08: 0a EngineAgent REMOTE_KINDS is EXECUTE+CONVERT only
+        assertFalse(EngineAgent.REMOTE_KINDS.contains(WireJobKind.HUNT));
+        assertFalse(EngineAgent.REMOTE_KINDS.contains(WireJobKind.GENERATE_BATCH));
+        assertFalse(EngineAgent.REMOTE_KINDS.contains(WireJobKind.GENERATE_COMPARE));
+        JobDispatchPolicy all = policy(Map.of("keel.jobs.dispatch.default", "remote"));
+        assertFalse(all.remote(JobRecord.JobKind.HUNT));
+        assertFalse(all.remote(JobRecord.JobKind.GENERATE_BATCH));
+        assertFalse(all.remote(JobRecord.JobKind.GENERATE_COMPARE));
+        expectThrows(IllegalStateException.class, () -> policy(Map.of("keel.jobs.dispatch.generate-batch", "remote")));
+        expectThrows(IllegalStateException.class, () -> policy(Map.of("keel.jobs.dispatch.generate-compare", "remote")));
+        expectThrows(IllegalStateException.class, () -> policy(Map.of("keel.jobs.dispatch.hunt", "remote")));
+    }
 }

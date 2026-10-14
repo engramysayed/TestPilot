@@ -57,10 +57,9 @@ async function main() {
   const shortlist = req.shortlist || "";
   const priorSteps = Array.isArray(req.priorSteps) ? req.priorSteps.slice(0, 12) : [];
   const visionAttempts = Array.isArray(req.visionAttempts) ? req.visionAttempts.slice(0, 8) : [];
-  const slimHtmlExcerpt = (req.slimHtmlExcerpt || "").slice(
-    0,
-    mode === "pick" ? 8000 : mode === "groundRank" ? 12000 : mode === "groundRankBatch" ? 16000 : mode === "hunt" ? 24000 : 16000
-  );
+  const defaultCap = mode === "pick" ? 8000 : mode === "groundRank" ? 12000 : mode === "groundRankBatch" ? 16000 : mode === "hunt" ? 24000 : 16000;
+  const budgetCap = Number(req.observationBudgetChars) > 1024 ? Number(req.observationBudgetChars) : defaultCap;
+  const slimHtmlExcerpt = (req.slimHtmlExcerpt || "").slice(0, budgetCap);
   const screenshotPath = req.screenshotPath || "";
 
   let screenshotNote = "";

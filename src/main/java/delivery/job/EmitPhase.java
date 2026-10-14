@@ -1,6 +1,7 @@
 package delivery.job;
 
 import delivery.codegen.CodeWriter;
+import delivery.codegen.CodegenEmitGate;
 import delivery.codegen.CodegenOptions;
 import delivery.codegen.DomainCatalogWriter;
 import delivery.codegen.PageClusterer;
@@ -119,6 +120,9 @@ public class EmitPhase {
         bumpProgress("Phase2 emit: writing pages and tests");
         CodegenOptions codegenOpts = new CodegenOptions(
                 request.codegenOllamaNaming(), request.localLlmBaseUrl(), request.localLlmModel());
+        // Demote dump/blank Page stems to TODO; smell-gate remaining; no dump Page class in ZIP.
+        CodegenEmitGate.Prepared prepared = CodegenEmitGate.prepare(outcomes);
+        outcomes = new ArrayList<>(prepared.outcomes());
         new CodeWriter(request.templateRoot().resolve("templates"), codegenOpts).write(projectDir, outcomes);
         DomainCatalogWriter.write(projectDir, outcomes);
 

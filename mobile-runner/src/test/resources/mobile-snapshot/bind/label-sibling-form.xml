@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.LinearLayout" package="com.example.test" bounds="[0,0][1080,1920]">
+    <node class="android.widget.TextView" text="Phone number" bounds="[80,300][1000,360]" package="com.example.test"/>
+    <node class="android.widget.EditText" text="" hint="Enter phone" clickable="true" enabled="true" focusable="true" bounds="[80,360][1000,480]" package="com.example.test"/>
+    <node class="android.widget.TextView" text="Password" bounds="[80,500][1000,560]" package="com.example.test"/>
+    <node class="android.widget.EditText" text="" password="true" clickable="true" enabled="true" focusable="true" bounds="[80,560][1000,680]" package="com.example.test"/>
+  </node>
+</hierarchy>

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "mobile-ir/1",
+  "platform": "ANDROID",
+  "tcId": "TC_LOGIN",
+  "libraryRevisionId": "rev_example",
+  "appRevisionId": "apprev_example",
+  "caseSettingsRevisionId": "mcase_example",
+  "namingRevisionId": "names_example",
+  "proof": {
+    "status": "TODO",
+    "source": "NONE",
+    "attemptId": null
+  },
+  "setupRefs": [],
+  "steps": [
+    {
+      "stepId": "step_example",
+      "operation": "TYPE",
+      "timeoutMs": 15000,
+      "retryIfNoChange": false
+    }
+  ]
+}

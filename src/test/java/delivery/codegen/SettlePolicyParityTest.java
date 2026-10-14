@@ -111,9 +111,13 @@ public class SettlePolicyParityTest {
             SettlePolicy.Action.of(a);
             Assert.assertNotNull(policy.getMethod("rule", String.class).invoke(parse(Files.readString(TABLE)), a), a);
         }
-        String ftl = Files.readString(Path.of("customer-framework-template/templates/PageActions.java.ftl"));
-        Assert.assertTrue(ftl.contains("Settle.after(driver.get(), \"click\"") && ftl.contains("Settle.after(driver.get(), \"drag\"")
-                && ftl.contains("Settle.after(driver.get(), \"${method.settleAction}\""), "template uses A8 keys");
+        String ftl = Files.readString(Path.of("customer-framework-template/templates/Page.java.ftl"));
+        String settled = Files.readString(Path.of(
+                "customer-framework-template/src/main/java/project/utils/locators/SettledActions.java"));
+        // Smart/drag ceremony lives in SettledActions; FTL passes A8 settle keys through.
+        Assert.assertTrue(settled.contains("Settle.after"), "SettledActions uses Settle.after");
+        Assert.assertTrue(ftl.contains("SettledActions.click") && ftl.contains("SettledActions.drag")
+                && ftl.contains("\"${method.settleAction}\""), "template passes A8 keys to SettledActions");
         // settleAction is the MethodModel action, or typeSecret for IR secret: true type steps (r1/07)
         Assert.assertEquals(new PageAccumulator.MethodModel("m", "type", "f", true, true, false, "", true).getSettleAction(), "typeSecret");
         Assert.assertEquals(new PageAccumulator.MethodModel("m", "select", "f", true, true, false, "", false).getSettleAction(), "select");

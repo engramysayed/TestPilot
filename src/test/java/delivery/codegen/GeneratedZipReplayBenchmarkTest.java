@@ -502,7 +502,7 @@ public class GeneratedZipReplayBenchmarkTest {
     private static void assertCoverageSource(Path project) throws Exception {
         Path pages = project.resolve("src/main/java/project/pages");
         try (var list = Files.list(pages)) {
-            long actions = list.filter(p -> p.getFileName().toString().endsWith("_Actions.java")).count();
+            long actions = list.filter(p -> p.getFileName().toString().endsWith(".java")).count();
             Assert.assertTrue(actions >= 2, "colliding page names must emit more than one Actions class");
         }
         Assert.assertTrue(Files.isRegularFile(

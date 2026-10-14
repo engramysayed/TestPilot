@@ -1,0 +1,9 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!-- One device; do not enable parallel methods/classes. -->
+<suite name="KeelMobileSuite" parallel="false" verbose="1">
+  <test name="MobileCases" parallel="false">
+    <packages>
+      <package name="project.tests.generated"/>
+    </packages>
+  </test>
+</suite>

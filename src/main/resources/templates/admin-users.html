@@ -60,7 +60,7 @@
         <h2>Registered users</h2>
         <table class="table" id="users-table">
             <thead>
-            <tr><th>Email</th><th>Role</th><th>Enabled</th><th>Projects</th><th></th></tr>
+            <tr><th>Email</th><th>Role</th><th>Status</th><th>Credits</th><th>Last active</th><th>Enabled</th><th>Projects</th><th></th></tr>
             </thead>
             <tbody></tbody>
         </table>
@@ -77,6 +77,27 @@
         <p id="err" class="error" hidden></p>
     </section>
 </main>
+
+<div id="keel-approve-modal" class="keel-approve-modal" hidden>
+  <div class="keel-approve-card" role="dialog" aria-modal="true" aria-labelledby="approve-title">
+    <h3 id="approve-title">Approve user</h3>
+    <p class="panel-intro">Pick a role every time — there is no default. Credits stay at zero until you set them separately.</p>
+    <p class="muted" id="approve-email"></p>
+    <label class="f">Role
+      <select id="approve-role" required>
+        <option value="">— Choose a role —</option>
+      </select>
+    </label>
+    <label class="f">Note <span class="muted">(optional)</span>
+      <textarea id="approve-note" rows="2" placeholder="Why this person is approved"></textarea>
+    </label>
+    <p id="approve-err" class="error" hidden></p>
+    <div class="keel-approve-actions">
+      <button type="button" class="button ghost" id="approve-cancel">Cancel</button>
+      <button type="button" class="button primary" id="approve-confirm">Approve</button>
+    </div>
+  </div>
+</div>
 </div>
 <script>
     async function load() {
@@ -88,6 +109,22 @@
             return;
         }
         const data = await res.json();
+        try {
+            const stub = await fetch('/api/admin/users/approvals-stub', { headers: { 'X-Keel-Requested-With': 'Keel' } });
+            if (stub.ok) {
+                const stubData = await stub.json();
+                const byId = {};
+                (stubData.users || []).forEach(function (row) { byId[row.userId] = row; });
+                (data.users || []).forEach(function (u) {
+                    const extra = byId[u.id];
+                    if (extra) {
+                        u.approvalStatus = extra.approvalStatus || u.approvalStatus;
+                        u.roleId = extra.roleId || u.roleId;
+                    }
+                    if (!u.approvalStatus) u.approvalStatus = u.self ? 'APPROVED' : 'PENDING_APPROVAL';
+                });
+            }
+        } catch (e) { /* stub optional */ }
         document.getElementById('userCount').textContent = data.userCount;
         document.getElementById('pendingCount').textContent = data.pendingInviteCount;
         document.getElementById('accessCount').textContent = data.pendingAccessRequestCount || 0;
@@ -196,19 +233,213 @@
         ub.innerHTML = '';
         (data.users || []).forEach(u => {
             const tr = document.createElement('tr');
-            const del = u.self
-                ? '<span class="muted">you</span>'
-                : '<button type="button" class="danger" data-del-user="' + u.id + '">Delete</button>';
-            tr.innerHTML = '<td>' + u.email + '</td><td>' + u.role + '</td><td>'
-                + (u.enabled ? 'yes' : 'no') + '</td><td>' + u.projectCount + '</td><td>' + del + '</td>';
+            const st = u.approvalStatus || 'APPROVED';
+            const stLabel = st === 'APPROVED' ? 'Active' : (st === 'PENDING_APPROVAL' ? 'Pending'
+                : (st === 'LOCKED' ? 'Locked' : (st === 'REJECTED' ? 'Rejected' : st)));
+            const badgeClass = st === 'APPROVED' ? 'keel-badge--approved'
+                : (st === 'PENDING_APPROVAL' ? 'keel-badge--pending' : 'keel-badge--locked');
+            const bal = u.creditsBalance != null ? u.creditsBalance : 0;
+            const last = u.creditsUpdatedAt ? String(u.creditsUpdatedAt).slice(0, 19).replace('T', ' ') : '—';
+            let actions = '';
+            if (!u.self) {
+                if (st === 'PENDING_APPROVAL' || st === 'REJECTED') {
+                    actions += '<button type="button" data-approve-user="' + u.id + '" data-email="' + u.email + '">Approve…</button> ';
+                }
+                if (st === 'APPROVED') {
+                    actions += '<button type="button" data-lock-user="' + u.id + '">Lock</button> ';
+                    actions += '<button type="button" class="danger" data-reject-user="' + u.id + '">Reject</button> ';
+                }
+                if (st === 'LOCKED') {
+                    actions += '<button type="button" data-approve-user="' + u.id + '" data-email="' + u.email + '">Approve…</button> ';
+                }
+                actions += '<button type="button" data-set-credits="' + u.id + '" data-email="' + u.email
+                    + '" data-balance="' + bal + '">Set credits</button> ';
+                actions += '<button type="button" data-usage="' + u.id + '" data-email="' + u.email + '">Usage</button> ';
+                actions += '<button type="button" class="danger" data-del-user="' + u.id + '">Delete</button>';
+            } else {
+                actions = '<span class="muted">you</span> '
+                    + '<button type="button" data-set-credits="' + u.id + '" data-email="' + u.email
+                    + '" data-balance="' + bal + '">Set credits</button> '
+                    + '<button type="button" data-usage="' + u.id + '" data-email="' + u.email + '">Usage</button>';
+            }
+            tr.innerHTML = '<td>' + u.email + '</td><td>' + (u.role || '') + '</td>'
+                + '<td><span class="keel-badge ' + badgeClass + '">' + stLabel + '</span></td>'
+                + '<td>' + bal + '</td><td>' + last + '</td><td>'
+                + (u.enabled ? 'yes' : 'no') + '</td><td>' + u.projectCount + '</td><td class="keel-user-actions">'
+                + actions + '</td>';
             ub.appendChild(tr);
         });
+        wireCreditsAdminActions();
         ub.querySelectorAll('[data-del-user]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 if (!confirm('Delete this user and their projects/jobs from the portal DB?')) return;
                 const r = await fetch('/api/admin/users/' + btn.getAttribute('data-del-user'), { method: 'DELETE', headers: { 'X-Keel-Requested-With': 'Keel' } });
                 const d = await r.json();
                 if (!r.ok) { alert(d.message || 'Delete failed'); return; }
+                load();
+            });
+        });
+        function fillRoleSelect(sel) {
+            sel.innerHTML = '<option value="">— Choose a role —</option>';
+            (window.__keelRoles || []).forEach(function (role) {
+                const opt = document.createElement('option');
+                opt.value = role.roleId;
+                opt.textContent = role.name + (role.system ? ' (built-in)' : '');
+                sel.appendChild(opt);
+            });
+            sel.value = ''; // never default MEMBER
+        }
+        let pendingApproveUserId = null;
+        const modal = document.getElementById('keel-approve-modal');
+        const roleSel = document.getElementById('approve-role');
+        ub.querySelectorAll('[data-approve-user]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                pendingApproveUserId = btn.getAttribute('data-approve-user');
+                document.getElementById('approve-email').textContent = btn.getAttribute('data-email') || '';
+                document.getElementById('approve-note').value = '';
+                document.getElementById('approve-err').hidden = true;
+                fillRoleSelect(roleSel);
+                modal.hidden = false;
+            });
+        });
+        document.getElementById('approve-cancel').onclick = () => { modal.hidden = true; pendingApproveUserId = null; };
+        document.getElementById('approve-confirm').onclick = async () => {
+            const err = document.getElementById('approve-err');
+            err.hidden = true;
+            const roleId = roleSel.value;
+            if (!roleId) {
+                err.hidden = false;
+                err.textContent = 'Choose a role — there is no default.';
+                return;
+            }
+            // Single POST …/approval with required roleId (Backend Final). No second …/role call.
+            const r = await fetch('/api/admin/users/' + pendingApproveUserId + '/approval', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel' },
+                body: JSON.stringify({ status: 'APPROVED', roleId: roleId, note: document.getElementById('approve-note').value || undefined })
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) {
+                err.hidden = false;
+                err.textContent = d.message || (d.code === 'ROLE_REQUIRED' ? 'Choose a role.' : 'Approve failed');
+                return;
+            }
+            modal.hidden = true;
+            pendingApproveUserId = null;
+            flash((d.message || 'Approved.') + ' Set credits separately if needed — nothing was added automatically.');
+            load();
+        };
+        async function setStatus(userId, status) {
+            const r = await fetch('/api/admin/users/' + userId + '/approval', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel' },
+                body: JSON.stringify({ status: status })
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) { alert(d.message || 'Update failed'); return; }
+            load();
+        }
+        ub.querySelectorAll('[data-lock-user]').forEach(btn => {
+            btn.addEventListener('click', () => setStatus(btn.getAttribute('data-lock-user'), 'LOCKED'));
+        });
+        ub.querySelectorAll('[data-reject-user]').forEach(btn => {
+            btn.addEventListener('click', () => setStatus(btn.getAttribute('data-reject-user'), 'REJECTED'));
+        });
+        ub.querySelectorAll('[data-reassign-role]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                fillRoleSelect(roleSel);
+                const roleId = prompt('New roleId (from Roles page). Leave blank to cancel.');
+                if (!roleId) return;
+                // Later role changes use dedicated endpoint — not approve.
+                const r = await fetch('/api/admin/users/' + btn.getAttribute('data-reassign-role') + '/role', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel' },
+                    body: JSON.stringify({ roleId: roleId })
+                });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok) { alert(d.message || 'Role change failed'); return; }
+                load();
+            });
+        });
+        function fillRoleSelect(sel) {
+            sel.innerHTML = '<option value="">— Choose a role —</option>';
+            (window.__keelRoles || []).forEach(function (role) {
+                const opt = document.createElement('option');
+                opt.value = role.roleId;
+                opt.textContent = role.name + (role.system ? ' (built-in)' : '');
+                sel.appendChild(opt);
+            });
+            sel.value = ''; // never default MEMBER
+        }
+        let pendingApproveUserId = null;
+        const modal = document.getElementById('keel-approve-modal');
+        const roleSel = document.getElementById('approve-role');
+        ub.querySelectorAll('[data-approve-user]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                pendingApproveUserId = btn.getAttribute('data-approve-user');
+                document.getElementById('approve-email').textContent = btn.getAttribute('data-email') || '';
+                document.getElementById('approve-note').value = '';
+                document.getElementById('approve-err').hidden = true;
+                fillRoleSelect(roleSel);
+                modal.hidden = false;
+            });
+        });
+        document.getElementById('approve-cancel').onclick = () => { modal.hidden = true; pendingApproveUserId = null; };
+        document.getElementById('approve-confirm').onclick = async () => {
+            const err = document.getElementById('approve-err');
+            err.hidden = true;
+            const roleId = roleSel.value;
+            if (!roleId) {
+                err.hidden = false;
+                err.textContent = 'Choose a role — there is no default.';
+                return;
+            }
+            // Single POST …/approval with required roleId (Backend Final). No second …/role call.
+            const r = await fetch('/api/admin/users/' + pendingApproveUserId + '/approval', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel' },
+                body: JSON.stringify({ status: 'APPROVED', roleId: roleId, note: document.getElementById('approve-note').value || undefined })
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) {
+                err.hidden = false;
+                err.textContent = d.message || (d.code === 'ROLE_REQUIRED' ? 'Choose a role.' : 'Approve failed');
+                return;
+            }
+            modal.hidden = true;
+            pendingApproveUserId = null;
+            flash((d.message || 'Approved.') + ' Set credits separately if needed — nothing was added automatically.');
+            load();
+        };
+        async function setStatus(userId, status) {
+            const r = await fetch('/api/admin/users/' + userId + '/approval', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel' },
+                body: JSON.stringify({ status: status })
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) { alert(d.message || 'Update failed'); return; }
+            load();
+        }
+        ub.querySelectorAll('[data-lock-user]').forEach(btn => {
+            btn.addEventListener('click', () => setStatus(btn.getAttribute('data-lock-user'), 'LOCKED'));
+        });
+        ub.querySelectorAll('[data-reject-user]').forEach(btn => {
+            btn.addEventListener('click', () => setStatus(btn.getAttribute('data-reject-user'), 'REJECTED'));
+        });
+        ub.querySelectorAll('[data-reassign-role]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                fillRoleSelect(roleSel);
+                const roleId = prompt('New roleId (from Roles page). Leave blank to cancel.');
+                if (!roleId) return;
+                // Later role changes use dedicated endpoint — not approve.
+                const r = await fetch('/api/admin/users/' + btn.getAttribute('data-reassign-role') + '/role', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel' },
+                    body: JSON.stringify({ roleId: roleId })
+                });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok) { alert(d.message || 'Role change failed'); return; }
                 load();
             });
         });
@@ -258,5 +489,235 @@
 
     load();
 </script>
+
+<div id="keel-approve-modal" class="keel-modal-backdrop" hidden>
+  <div class="keel-modal" role="dialog" aria-labelledby="keel-approve-title">
+    <h3 id="keel-approve-title">Approve user</h3>
+    <p class="lede">Pick a role for <strong id="keel-approve-email"></strong>. Credits stay at 0 until you set them — nothing is added automatically.</p>
+    <label for="keel-approve-role">Role <span aria-hidden="true">*</span></label>
+    <select id="keel-approve-role" required>
+      <option value="">Select a role…</option>
+    </select>
+    <p class="hint">Required. No role is pre-selected.</p>
+    <label for="keel-approve-note">Note (optional)</label>
+    <textarea id="keel-approve-note" rows="2" maxlength="512" placeholder="Why this person is approved"></textarea>
+    <p id="keel-approve-err" class="error" hidden></p>
+    <div class="keel-modal-actions">
+      <button type="button" id="keel-approve-cancel">Cancel</button>
+      <button type="button" id="keel-approve-submit" disabled>Approve</button>
+    </div>
+  </div>
+</div>
+
+<div id="keel-credits-modal" class="keel-modal-backdrop" hidden>
+  <div class="keel-modal" role="dialog" aria-labelledby="keel-credits-title">
+    <h3 id="keel-credits-title">Set credits</h3>
+    <p class="lede">Update credits for <strong id="keel-credits-email"></strong>. Current balance: <span id="keel-credits-current">0</span>.</p>
+    <label for="keel-credits-mode">How to update</label>
+    <select id="keel-credits-mode">
+      <option value="GRANT_DELTA">Add credits (grant)</option>
+      <option value="SET_ABSOLUTE">Set exact balance</option>
+    </select>
+    <label for="keel-credits-amount">Amount</label>
+    <input id="keel-credits-amount" type="number" min="0" step="1" required/>
+    <label for="keel-credits-note">Reason <span aria-hidden="true">*</span></label>
+    <textarea id="keel-credits-note" rows="2" maxlength="512" required placeholder="Paid wire 2026-10-14 — Starter 500"></textarea>
+    <p class="hint">Required note for the ledger. No payment card fields here.</p>
+    <p id="keel-credits-err" class="error" hidden></p>
+    <p id="keel-credits-ok" class="ok" hidden></p>
+    <div class="keel-modal-actions">
+      <button type="button" id="keel-credits-cancel">Cancel</button>
+      <button type="button" id="keel-credits-submit">Update credits</button>
+    </div>
+  </div>
+</div>
+
+<div id="keel-usage-modal" class="keel-modal-backdrop" hidden>
+  <div class="keel-modal" role="dialog" aria-labelledby="keel-usage-title" style="width:min(720px,94vw)">
+    <h3 id="keel-usage-title">Credit usage</h3>
+    <p class="lede" id="keel-usage-email"></p>
+    <div class="keel-usage-summary">
+      <div class="stat-card"><span id="keel-usage-balance">0</span><label>Balance</label></div>
+      <div class="stat-card"><span id="keel-usage-spent">0</span><label>Spent (range)</label></div>
+      <div class="stat-card"><span id="keel-usage-granted">0</span><label>Granted (range)</label></div>
+      <div class="stat-card"><span id="keel-usage-gen">—</span><label>By feature</label></div>
+    </div>
+    <table class="table" id="keel-usage-table">
+      <thead><tr><th>When</th><th>Reason</th><th>Kind</th><th>Delta</th><th>After</th><th>Note</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="keel-modal-actions">
+      <button type="button" id="keel-usage-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+    const HDR = { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel' };
+    let approveUserId = null;
+    let creditsUserId = null;
+
+    function uuid() {
+        if (crypto && crypto.randomUUID) return crypto.randomUUID();
+        return 'idemp-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    }
+
+    async function loadRolesIntoSelect(sel) {
+        sel.innerHTML = '<option value="">Select a role…</option>';
+        const res = await fetch('/api/admin/roles', { credentials: 'same-origin', headers: HDR });
+        if (!res.ok) return;
+        const data = await res.json();
+        (data.roles || []).forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.roleId;
+            opt.textContent = r.name + (r.system ? '' : ' (custom)');
+            sel.appendChild(opt);
+        });
+        // Explicit empty selection — never preselect MEMBER
+        sel.value = '';
+    }
+
+    function openApprove(userId, email) {
+        approveUserId = userId;
+        document.getElementById('keel-approve-email').textContent = email;
+        document.getElementById('keel-approve-note').value = '';
+        document.getElementById('keel-approve-err').hidden = true;
+        const sel = document.getElementById('keel-approve-role');
+        const btn = document.getElementById('keel-approve-submit');
+        btn.disabled = true;
+        loadRolesIntoSelect(sel).then(() => {
+            document.getElementById('keel-approve-modal').hidden = false;
+        });
+    }
+
+    document.getElementById('keel-approve-role').addEventListener('change', function () {
+        document.getElementById('keel-approve-submit').disabled = !this.value;
+    });
+    document.getElementById('keel-approve-cancel').addEventListener('click', () => {
+        document.getElementById('keel-approve-modal').hidden = true;
+    });
+    document.getElementById('keel-approve-submit').addEventListener('click', async () => {
+        const roleId = document.getElementById('keel-approve-role').value;
+        const err = document.getElementById('keel-approve-err');
+        err.hidden = true;
+        if (!roleId) {
+            err.hidden = false;
+            err.textContent = 'Pick a role before approving.';
+            return;
+        }
+        const note = document.getElementById('keel-approve-note').value.trim();
+        const body = { status: 'APPROVED', roleId: roleId };
+        if (note) body.note = note;
+        const res = await fetch('/api/admin/users/' + approveUserId + '/approval', {
+            method: 'POST', headers: HDR, body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            err.hidden = false;
+            err.textContent = data.message || (data.code === 'ROLE_REQUIRED'
+                ? 'Pick a role before approving.' : 'Approve failed');
+            return;
+        }
+        document.getElementById('keel-approve-modal').hidden = true;
+        alert((data.message || 'User approved.') + ' Next: use Set credits if they should have a balance (manual — no free trial).');
+        load();
+    });
+
+    async function setStatus(userId, status) {
+        const note = status === 'REJECTED' ? (prompt('Optional note for reject:') || '') : '';
+        const res = await fetch('/api/admin/users/' + userId + '/approval', {
+            method: 'POST', headers: HDR,
+            body: JSON.stringify({ status: status, note: note || undefined })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.message || 'Update failed'); return; }
+        load();
+    }
+
+    function openCredits(userId, email, balance) {
+        creditsUserId = userId;
+        document.getElementById('keel-credits-email').textContent = email;
+        document.getElementById('keel-credits-current').textContent = balance;
+        document.getElementById('keel-credits-amount').value = '';
+        document.getElementById('keel-credits-note').value = '';
+        document.getElementById('keel-credits-mode').value = 'GRANT_DELTA';
+        document.getElementById('keel-credits-err').hidden = true;
+        document.getElementById('keel-credits-ok').hidden = true;
+        document.getElementById('keel-credits-modal').hidden = false;
+    }
+    document.getElementById('keel-credits-cancel').addEventListener('click', () => {
+        document.getElementById('keel-credits-modal').hidden = true;
+    });
+    document.getElementById('keel-credits-submit').addEventListener('click', async () => {
+        const err = document.getElementById('keel-credits-err');
+        const ok = document.getElementById('keel-credits-ok');
+        err.hidden = true; ok.hidden = true;
+        const amount = Number(document.getElementById('keel-credits-amount').value);
+        const note = document.getElementById('keel-credits-note').value.trim();
+        const mode = document.getElementById('keel-credits-mode').value;
+        if (!note) { err.hidden = false; err.textContent = 'A reason is required.'; return; }
+        if (!Number.isFinite(amount) || amount < 0) { err.hidden = false; err.textContent = 'Enter a valid amount.'; return; }
+        const res = await fetch('/api/admin/credits/' + creditsUserId, {
+            method: 'POST', headers: HDR,
+            body: JSON.stringify({ mode: mode, amount: amount, note: note, idempotencyKey: uuid() })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { err.hidden = false; err.textContent = data.message || 'Update failed'; return; }
+        ok.hidden = false;
+        ok.textContent = data.message || ('Credits updated. Balance is now ' + data.balance + '.');
+        setTimeout(() => { document.getElementById('keel-credits-modal').hidden = true; load(); }, 700);
+    });
+
+    async function openUsage(userId, email) {
+        document.getElementById('keel-usage-email').textContent = email;
+        const res = await fetch('/api/admin/credits/' + userId + '/ledger', { credentials: 'same-origin', headers: HDR });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.message || 'Could not load usage'); return; }
+        document.getElementById('keel-usage-balance').textContent = data.balance != null ? data.balance : 0;
+        document.getElementById('keel-usage-spent').textContent = data.spentInRange != null ? data.spentInRange : 0;
+        document.getElementById('keel-usage-granted').textContent = data.grantedInRange != null ? data.grantedInRange : 0;
+        const by = { GENERATE: 0, EXECUTE: 0, AUTOMATE: 0, HUNT: 0 };
+        (data.entries || []).forEach(e => {
+            if (e.jobKind && by[e.jobKind] != null && e.delta < 0) by[e.jobKind] += -e.delta;
+        });
+        document.getElementById('keel-usage-gen').textContent =
+            'G' + by.GENERATE + ' E' + by.EXECUTE + ' A' + by.AUTOMATE + ' H' + by.HUNT;
+        const tb = document.querySelector('#keel-usage-table tbody');
+        tb.innerHTML = '';
+        (data.entries || []).forEach(e => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td>' + String(e.createdAt || '').slice(0, 19).replace('T', ' ') + '</td>'
+                + '<td>' + (e.reason || '') + '</td><td>' + (e.jobKind || '—') + '</td>'
+                + '<td>' + e.delta + '</td><td>' + e.balanceAfter + '</td><td>' + (e.note || '') + '</td>';
+            tb.appendChild(tr);
+        });
+        document.getElementById('keel-usage-modal').hidden = false;
+    }
+    document.getElementById('keel-usage-close').addEventListener('click', () => {
+        document.getElementById('keel-usage-modal').hidden = true;
+    });
+
+    window.wireCreditsAdminActions = function () {
+        document.querySelectorAll('[data-approve-user]').forEach(btn => {
+            btn.onclick = () => openApprove(btn.getAttribute('data-approve-user'), btn.getAttribute('data-email'));
+        });
+        document.querySelectorAll('[data-lock-user]').forEach(btn => {
+            btn.onclick = () => { if (confirm('Lock this account?')) setStatus(btn.getAttribute('data-lock-user'), 'LOCKED'); };
+        });
+        document.querySelectorAll('[data-reject-user]').forEach(btn => {
+            btn.onclick = () => { if (confirm('Reject this account?')) setStatus(btn.getAttribute('data-reject-user'), 'REJECTED'); };
+        });
+        document.querySelectorAll('[data-set-credits]').forEach(btn => {
+            btn.onclick = () => openCredits(btn.getAttribute('data-set-credits'), btn.getAttribute('data-email'),
+                btn.getAttribute('data-balance'));
+        });
+        document.querySelectorAll('[data-usage]').forEach(btn => {
+            btn.onclick = () => openUsage(btn.getAttribute('data-usage'), btn.getAttribute('data-email'));
+        });
+    };
+})();
+</script>
 </body>
+
 </html>

@@ -8,12 +8,12 @@
 <div class="app-main">
 <header th:replace="~{fragments :: topbar}"></header>
 <main class="shell keel-page" id="project-root"
-      th:attr="data-project-id=${projectId},data-last-job-username=${lastJobUsername}">
+      th:attr="data-project-id=${projectId},data-last-job-username=${lastJobUsername},data-mobile-enabled=${mobileEnabled},data-project-platform=${projectPlatform},data-mobile-can-edit=${mobileCanEdit}">
     <div class="page-title">
         <div>
             <p class="muted" style="margin:0 0 0.35rem"><a href="/projects">← Projects</a></p>
             <h1 id="project-name-heading" th:text="${project.name}">Project</h1>
-            <p class="lede mono" th:text="${project.projectId}">prj_</p>
+            <p class="lede mono"><span th:text="${project.projectId}">prj_</span><span id="project-platform-badge" class="mobile-platform-badge" th:if="${mobileEnabled}" th:text="${projectPlatform}">WEB</span></p>
             <p class="muted" style="margin:0.35rem 0 0">
                 Last modified:
                 <span th:text="${project.lastModifiedLabel}">—</span>
@@ -298,6 +298,209 @@
                 <button type="button" class="button ghost" id="webhook-clear">Disable</button>
             </form>
         </section>
+
+        <!-- M1-07 mobile app + device settings (hidden unless delivery.mobile.enabled and ANDROID) -->
+        <section class="panel mobile-panel" id="mobile-app-panel" hidden
+                 th:attr="data-mobile-enabled=${mobileEnabled},data-platform=${projectPlatform},data-can-edit=${mobileCanEdit}">
+            <h2>Android app</h2>
+            <p class="panel-intro">Tell Keel which app to open on the phone. Choose an APK file or an app already installed.</p>
+            <p id="mobile-app-err" class="error" hidden></p>
+            <p id="mobile-app-msg" class="muted" hidden></p>
+            <form id="mobile-app-form" class="settings-form">
+                <fieldset class="mobile-source-options">
+                    <legend>App source</legend>
+                    <label class="check">
+                        <input type="radio" name="source" value="APK" checked/>
+                        App file (APK)
+                    </label>
+                    <label class="check">
+                        <input type="radio" name="source" value="INSTALLED"/>
+                        Already installed on the phone
+                    </label>
+                </fieldset>
+                <div id="mobile-apk-upload-wrap" class="mobile-apk-upload">
+                    <label>Upload APK
+                        <input type="file" id="mobile-apk-file" name="apkFile" accept=".apk,application/vnd.android.package-archive"/>
+                    </label>
+                    <p class="muted">Keel checks the package on upload. Max size follows server setting (default 500&nbsp;MiB).</p>
+                    <button type="button" class="button" id="mobile-apk-upload-btn">Upload and inspect</button>
+                    <p id="mobile-apk-upload-status" class="muted" hidden></p>
+                </div>
+                <div id="mobile-launcher-pick" class="mobile-launcher-pick" hidden>
+                    <h3>Choose the launch screen</h3>
+                    <p class="panel-intro">This APK can open more than one screen. Pick which one Keel should start, then confirm.</p>
+                    <input type="hidden" id="mobile-pending-upload-id" value=""/>
+                    <fieldset id="mobile-launcher-candidates" class="mobile-source-options"></fieldset>
+                    <label>Wait for this screen <span class="muted">(optional — defaults to launch screen)</span>
+                        <input type="text" id="mobile-confirm-wait-activity" placeholder="Same as launch screen"/>
+                    </label>
+                    <button type="button" class="button" id="mobile-launcher-confirm-btn">Confirm launch screen</button>
+                </div>
+                <p id="mobile-apk-fingerprints" class="muted" hidden></p>
+                <label>Package name
+                    <input type="text" name="packageName" id="mobile-package-name" placeholder="com.example.app"/>
+                </label>
+                <label>Version name <span class="muted">(optional)</span>
+                    <input type="text" name="versionName" id="mobile-version-name" placeholder="1.2.0"/>
+                </label>
+                <label>Version code <span class="muted">(optional)</span>
+                    <input type="number" name="versionCode" id="mobile-version-code" min="1" step="1"/>
+                </label>
+                <label>Launch screen
+                    <input type="text" name="launchActivity" id="mobile-launch-activity"
+                           placeholder="com.example.app.MainActivity"/>
+                </label>
+                <label>Wait for this screen
+                    <input type="text" name="waitActivity" id="mobile-wait-activity"
+                           placeholder="com.example.app.HomeActivity"/>
+                </label>
+                <p class="muted">Launch screen is where the app starts. Wait for this screen can be different (for example after a splash).</p>
+                <p class="muted" id="mobile-app-meta"></p>
+                <p class="muted mobile-readonly-hint" id="mobile-app-readonly" hidden>
+                    You can view these settings. Only an owner or admin can change them.
+                </p>
+                <button type="submit" id="mobile-app-save">Save app settings</button>
+            </form>
+        </section>
+
+        <section class="panel mobile-panel" id="mobile-devices-panel" hidden>
+            <h2>Phones</h2>
+            <p class="panel-intro">Connected phones for this workspace. Device ID is shortened — full serial is never shown to members.</p>
+            <p id="mobile-devices-err" class="error" hidden></p>
+            <p id="mobile-devices-empty" class="muted" hidden>No phones registered yet.</p>
+            <div id="mobile-devices-list" class="mobile-devices-list" aria-live="polite"></div>
+        </section>
+
+        <section class="panel mobile-panel" id="mobile-auth-profiles-panel" hidden
+                 data-api="/mobile/auth-profiles"
+                 th:attr="data-mobile-enabled=${mobileEnabled},data-platform=${projectPlatform},data-can-edit=${mobileCanEdit}">
+            <div class="panel-head-row">
+                <div>
+                    <h2>Sign-in profiles</h2>
+                    <p class="panel-intro">
+                        How Keel signs into the phone app for a run. Profiles store login steps and credential
+                        <strong>references</strong> only — passwords, OTP codes, and PINs are never saved here.
+                    </p>
+                </div>
+                <button type="button" class="button" id="mobile-auth-create-btn">Add sign-in profile</button>
+            </div>
+            <p id="mobile-auth-err" class="error" hidden></p>
+            <p id="mobile-auth-empty" class="muted" hidden>No sign-in profiles yet.</p>
+            <div id="mobile-auth-list" class="mobile-auth-list" aria-live="polite"></div>
+            <p class="muted mobile-readonly-hint" id="mobile-auth-readonly" hidden>
+                You can view these profiles. Only an owner or admin can change them.
+            </p>
+            <p class="hint" id="mobile-auth-data-clear-note">
+                Clearing app data on the phone is a separate explicit action — it is not the same as “Fresh login”.
+            </p>
+
+            <div id="mobile-auth-editor" class="mobile-auth-editor" hidden>
+                <h3 id="mobile-auth-editor-title">New sign-in profile</h3>
+                <form id="mobile-auth-form">
+                    <input type="hidden" id="mobile-auth-profile-id" value=""/>
+                    <input type="hidden" id="mobile-auth-expected-rev" value=""/>
+                    <label>Login test case ID
+                        <input type="text" id="mobile-auth-login-tc" required placeholder="e.g. TC-LOGIN" autocomplete="off"/>
+                    </label>
+                    <label>Default sign-in mode
+                        <select id="mobile-auth-default-mode">
+                            <option value="ENSURE_LOGGED_IN">Ensure logged in</option>
+                            <option value="FRESH_LOGIN">Fresh login</option>
+                            <option value="LOGGED_OUT">Logged out</option>
+                            <option value="LOGIN_UNDER_TEST">Login under test</option>
+                        </select>
+                    </label>
+                    <label>Account label (not a secret)
+                        <input type="text" id="mobile-auth-account-label" placeholder="e.g. Standard user" autocomplete="off"/>
+                    </label>
+                    <label>Account ID (reference)
+                        <input type="text" id="mobile-auth-account-id" placeholder="acct_…" autocomplete="off"/>
+                    </label>
+                    <label>Session check phrases (one per line)
+                        <textarea id="mobile-auth-session-preds" rows="2" placeholder="Signed in as…"></textarea>
+                    </label>
+                    <label>Signed-out check phrases (one per line)
+                        <textarea id="mobile-auth-signedout-preds" rows="2" placeholder="Sign in"></textarea>
+                    </label>
+                    <label>Logout test case ID (optional)
+                        <input type="text" id="mobile-auth-logout-tc" autocomplete="off"/>
+                    </label>
+                    <label>Setup test case ID (optional)
+                        <input type="text" id="mobile-auth-setup-tc" autocomplete="off"/>
+                    </label>
+                    <label>Protected credential refs (credentialId:logicalKey, one per line)
+                        <textarea id="mobile-auth-cred-refs" rows="2" placeholder="cred_abc:password"></textarea>
+                    </label>
+                    <label>Per-run secret declarations (key:kind, one per line — OTP/PIN supplied at run time, not saved)
+                        <textarea id="mobile-auth-input-decls" rows="2" placeholder="otp:OTP&#10;pin:PIN"></textarea>
+                    </label>
+                    <p id="mobile-auth-form-err" class="error" hidden></p>
+                    <div class="modal-actions">
+                        <button type="button" class="button ghost" id="mobile-auth-cancel">Cancel</button>
+                        <button type="submit" id="mobile-auth-save">Save profile</button>
+                    </div>
+                </form>
+                <p class="hint mono" id="mobile-auth-rev-id" hidden></p>
+            </div>
+        </section>
+
+        <section class="panel mobile-panel" id="mobile-case-req-panel" hidden data-api="/mobile/cases/{tcId}/requirements">
+            <h2>Case sign-in requirements</h2>
+            <p class="panel-intro">
+                For each phone test case, choose how Keel should prepare sign-in, which profile revision to pin,
+                optional Call-before prerequisites, and an optional start-state test case.
+            </p>
+            <p id="mobile-case-req-err" class="error" hidden></p>
+            <label>Test case ID
+                <input type="text" id="mobile-case-req-tc" placeholder="e.g. TC-001" autocomplete="off"/>
+            </label>
+            <button type="button" class="button ghost" id="mobile-case-req-load">Load requirements</button>
+            <form id="mobile-case-req-form" hidden>
+                <label>Sign-in mode
+                    <select id="mobile-case-req-mode">
+                        <option value="">(use profile default)</option>
+                        <option value="ENSURE_LOGGED_IN">Ensure logged in — stay signed in; log in only if needed</option>
+                        <option value="FRESH_LOGIN">Fresh login — end the prior session and sign in again (does not clear app data)</option>
+                        <option value="LOGGED_OUT">Logged out — leave the app signed out</option>
+                        <option value="LOGIN_UNDER_TEST">Login under test — the case’s own steps handle sign-in</option>
+                    </select>
+                </label>
+                <p class="hint" id="mobile-case-req-mode-help">
+                    Fresh login ends the session and signs in again. Clearing app data is a separate explicit action.
+                </p>
+                <label>Pinned auth profile revision ID
+                    <input type="text" id="mobile-case-req-rev" placeholder="arev_…" list="mobile-auth-rev-datalist" autocomplete="off"/>
+                    <datalist id="mobile-auth-rev-datalist"></datalist>
+                </label>
+                <label>Start-state test case ID (optional)
+                    <input type="text" id="mobile-case-req-start" placeholder="TC-…" autocomplete="off"/>
+                </label>
+                <label class="call-before-field">Call before (prerequisites)
+                    <input type="hidden" id="mobile-case-req-call-before" value=""/>
+                    <div class="call-before-chips" id="mobile-case-req-chips"></div>
+                    <input type="search" id="mobile-case-req-search" placeholder="Search cases by ID or title…" autocomplete="off" aria-label="Search prerequisite cases"/>
+                    <ul class="call-before-results" id="mobile-case-req-results" hidden></ul>
+                </label>
+                <label class="mobile-check">
+                    <input type="checkbox" id="mobile-case-req-negative"/> This is a negative-login case
+                </label>
+                <p id="mobile-case-req-negative-msg" class="error" hidden>
+                    A negative-login case cannot be used as setup for other cases.
+                </p>
+                <p id="mobile-case-req-form-err" class="error" hidden></p>
+                <div class="modal-actions">
+                    <button type="submit" id="mobile-case-req-save">Save requirements</button>
+                </div>
+            </form>
+            <div id="mobile-case-req-list-wrap">
+                <h3 class="settings-advanced-heading">Saved requirements</h3>
+                <div id="mobile-case-req-list" class="mobile-case-req-list" aria-live="polite"></div>
+            </div>
+            <p class="muted mobile-readonly-hint" id="mobile-case-req-readonly" hidden>
+                You can view requirements. Only an owner or admin can change them.
+            </p>
+        </section>
+
 
         <section class="panel">
             <div class="panel-head-row">
@@ -2863,6 +3066,375 @@
         }
     });
 })();
+
+    /* ——— M1-07/M1-02 mobile app + device settings + APK upload ——— */
+    (function initMobileSettings() {
+        const root = document.getElementById('project-root');
+        if (!root) return;
+        const mobileEnabled = root.dataset.mobileEnabled === 'true';
+        const platform = (root.dataset.projectPlatform || 'WEB').toUpperCase();
+        const canEdit = root.dataset.mobileCanEdit === 'true';
+        const appPanel = document.getElementById('mobile-app-panel');
+        const devicesPanel = document.getElementById('mobile-devices-panel');
+        const authPanel = document.getElementById('mobile-auth-profiles-panel');
+        const caseReqPanel = document.getElementById('mobile-case-req-panel');
+        if (!mobileEnabled || platform !== 'ANDROID') {
+            if (appPanel) appPanel.hidden = true;
+            if (devicesPanel) devicesPanel.hidden = true;
+            if (authPanel) authPanel.hidden = true;
+            if (caseReqPanel) caseReqPanel.hidden = true;
+            return;
+        }
+        if (appPanel) appPanel.hidden = false;
+        if (devicesPanel) devicesPanel.hidden = false;
+        if (authPanel) authPanel.hidden = false;
+        if (caseReqPanel) caseReqPanel.hidden = false;
+
+        const form = document.getElementById('mobile-app-form');
+        const readonlyHint = document.getElementById('mobile-app-readonly');
+        const saveBtn = document.getElementById('mobile-app-save');
+        const uploadWrap = document.getElementById('mobile-apk-upload-wrap');
+        const uploadBtn = document.getElementById('mobile-apk-upload-btn');
+        const fileInput = document.getElementById('mobile-apk-file');
+        const uploadStatus = document.getElementById('mobile-apk-upload-status');
+        const launcherPick = document.getElementById('mobile-launcher-pick');
+        const fingerprints = document.getElementById('mobile-apk-fingerprints');
+
+        const ERROR_PLAIN = {
+            ACTIVITY_REQUIRED: 'Choose which screen should open when the app starts.',
+            APK_INVALID: 'That file doesn’t look like a valid Android app package.',
+            APP_ID_MISMATCH: 'This APK belongs to a different app than the one already saved for this project.',
+            OVERSIZED: 'This APK is too large to upload.',
+            UNSAFE_NAME: 'That file name isn’t allowed. Rename the APK and try again.',
+            REMOTE_SOURCE_REJECTED: 'Remote download URLs aren’t accepted — upload the APK file from your computer.',
+            API_INCOMPATIBLE: 'This APK needs a newer Android version than your phones support.',
+            ABI_INCOMPATIBLE: 'This APK doesn’t match the CPU type of your phones.',
+            DOWNGRADE_REJECTED: 'This APK is an older version than the one already saved.',
+            SIGNATURE_REPLACEMENT_REJECTED: 'This APK is signed differently from the version already saved.'
+        };
+
+        function plainError(code, fallback) {
+            if (code && ERROR_PLAIN[code]) return ERROR_PLAIN[code];
+            return fallback || 'Could not upload the APK.';
+        }
+
+        function syncSourceUi() {
+            const src = form && form.querySelector('input[name="source"]:checked');
+            const apk = src && src.value === 'APK';
+            if (uploadWrap) uploadWrap.hidden = !apk || !canEdit;
+            if (!apk && launcherPick) launcherPick.hidden = true;
+        }
+
+        if (!canEdit && form) {
+            form.querySelectorAll('input, button, select, textarea').forEach(el => {
+                if (el.tagName === 'BUTTON') el.disabled = true;
+                else el.readOnly = true;
+                if (el.type === 'radio' || el.type === 'checkbox' || el.type === 'file') el.disabled = true;
+            });
+            if (readonlyHint) readonlyHint.hidden = false;
+            if (saveBtn) saveBtn.hidden = true;
+            if (uploadWrap) uploadWrap.hidden = true;
+            if (uploadBtn) uploadBtn.hidden = true;
+        }
+
+        if (form) {
+            form.querySelectorAll('input[name="source"]').forEach(r => r.addEventListener('change', syncSourceUi));
+        }
+        syncSourceUi();
+
+        function readinessLabel(readiness) {
+            const r = (readiness || 'UNKNOWN').toUpperCase();
+            switch (r) {
+                case 'READY': return { text: 'Ready', tone: 'ready' };
+                case 'BUSY': return { text: 'Busy — another run is using this phone', tone: 'busy' };
+                case 'NOT_AUTHORIZED':
+                    return { text: 'Not authorized — unlock USB debugging on the phone', tone: 'warn' };
+                case 'OFFLINE': return { text: 'Offline', tone: 'muted' };
+                case 'MISSING': return { text: 'Missing', tone: 'warn' };
+                case 'QUARANTINED': return { text: 'Quarantined', tone: 'warn' };
+                default: return { text: 'Unknown', tone: 'muted' };
+            }
+        }
+        function authorizedLabel(state) {
+            const s = (state || '').toUpperCase();
+            if (s === 'AUTHORIZED') return { text: 'Authorized', tone: 'ready' };
+            if (s === 'UNAUTHORIZED') return { text: 'Unauthorized', tone: 'warn' };
+            if (s === 'OFFLINE') return { text: 'Offline', tone: 'muted' };
+            if (s === 'MISSING') return { text: 'Missing', tone: 'warn' };
+            return { text: s || '—', tone: 'muted' };
+        }
+        function busyLabel(busy) {
+            const b = (busy || '').toUpperCase();
+            const map = {
+                AVAILABLE: ['Available', 'ready'],
+                RESERVED: ['Reserved', 'busy'],
+                ACTIVE: ['In use', 'busy'],
+                RELEASING: ['Releasing', 'busy'],
+                QUARANTINED: ['Quarantined', 'warn']
+            };
+            const hit = map[b];
+            return hit ? { text: hit[0], tone: hit[1] } : { text: b || '—', tone: 'muted' };
+        }
+        function chip(label) {
+            const span = document.createElement('span');
+            span.className = 'mobile-chip';
+            span.dataset.tone = label.tone;
+            span.textContent = label.text;
+            return span;
+        }
+
+        function showFingerprints(sha256, certificateDigest) {
+            if (!fingerprints) return;
+            const bits = [];
+            if (sha256) bits.push('File fingerprint (SHA-256): ' + sha256);
+            if (certificateDigest) bits.push('Signing certificate fingerprint: ' + certificateDigest);
+            fingerprints.hidden = bits.length === 0;
+            fingerprints.textContent = bits.join(' · ');
+        }
+
+        function applyRevisionToForm(app) {
+            if (!app || !form) return;
+            const src = (app.source || 'APK').toUpperCase();
+            const radio = form.querySelector('input[name="source"][value="' + src + '"]');
+            if (radio) radio.checked = true;
+            form.packageName.value = app.packageName || '';
+            form.versionName.value = app.versionName || '';
+            form.versionCode.value = app.versionCode != null ? app.versionCode : '';
+            form.launchActivity.value = app.launchActivity || '';
+            form.waitActivity.value = app.waitActivity || '';
+            showFingerprints(app.sha256, app.certificateDigest);
+            const meta = document.getElementById('mobile-app-meta');
+            const bits = [];
+            if (app.appRevisionId) bits.push('Revision ' + app.appRevisionId);
+            if (app.verification) bits.push(app.verification);
+            if (app.apkBlobRef) bits.push(app.apkBlobRef);
+            if (meta) meta.textContent = bits.join(' · ');
+            syncSourceUi();
+        }
+
+        function showLauncherPicker(data) {
+            if (!launcherPick) return;
+            launcherPick.hidden = false;
+            document.getElementById('mobile-pending-upload-id').value = data.uploadId || '';
+            const mount = document.getElementById('mobile-launcher-candidates');
+            mount.innerHTML = '';
+            const legend = document.createElement('legend');
+            legend.textContent = 'Launch screen';
+            mount.appendChild(legend);
+            (data.launcherCandidates || []).forEach((c, i) => {
+                const label = document.createElement('label');
+                label.className = 'check';
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'selectedLaunchActivity';
+                input.value = c;
+                if (i === 0) input.checked = true;
+                label.appendChild(input);
+                label.appendChild(document.createTextNode(' ' + c));
+                mount.appendChild(label);
+            });
+            showFingerprints(data.sha256, null);
+            const err = document.getElementById('mobile-app-err');
+            if (err) {
+                err.hidden = false;
+                err.textContent = plainError(data.errorCode, data.message);
+            }
+        }
+
+        async function loadMobileApp() {
+            const err = document.getElementById('mobile-app-err');
+            const meta = document.getElementById('mobile-app-meta');
+            try {
+                const res = await fetch(apiUrl('/mobile/app'), { credentials: 'same-origin', headers: API_HEADERS });
+                if (res.status === 404) {
+                    if (appPanel) appPanel.hidden = true;
+                    return;
+                }
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    if (err) { err.hidden = false; err.textContent = data.message || 'Could not load app settings'; }
+                    return;
+                }
+                if (err) err.hidden = true;
+                if (!data.app) {
+                    if (meta) meta.textContent = 'No app configured yet.';
+                    return;
+                }
+                applyRevisionToForm(data.app);
+            } catch (e) {
+                if (err) { err.hidden = false; err.textContent = 'Could not load app settings'; }
+            }
+        }
+
+        async function loadMobileDevices() {
+            const err = document.getElementById('mobile-devices-err');
+            const empty = document.getElementById('mobile-devices-empty');
+            const list = document.getElementById('mobile-devices-list');
+            if (!list) return;
+            try {
+                const res = await fetch(apiUrl('/mobile/devices'), { credentials: 'same-origin', headers: API_HEADERS });
+                if (res.status === 404) {
+                    if (devicesPanel) devicesPanel.hidden = true;
+                    return;
+                }
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    if (err) { err.hidden = false; err.textContent = data.message || 'Could not load phones'; }
+                    return;
+                }
+                if (err) err.hidden = true;
+                list.innerHTML = '';
+                const devices = data.devices || [];
+                if (empty) empty.hidden = devices.length > 0;
+                devices.forEach(d => {
+                    const card = document.createElement('article');
+                    card.className = 'mobile-device-card';
+                    const h = document.createElement('h3');
+                    h.textContent = d.displayName || 'Phone';
+                    card.appendChild(h);
+                    const meta = document.createElement('p');
+                    meta.className = 'muted';
+                    const parts = [];
+                    if (d.serialShort) parts.push('Device ID ' + d.serialShort);
+                    if (d.model) parts.push(d.model);
+                    if (d.apiLevel != null) parts.push('API ' + d.apiLevel);
+                    if (d.abi) parts.push(d.abi);
+                    meta.textContent = parts.join(' · ');
+                    card.appendChild(meta);
+                    const row = document.createElement('div');
+                    row.className = 'mobile-chip-row';
+                    row.appendChild(chip(readinessLabel(d.readiness)));
+                    row.appendChild(chip(authorizedLabel(d.authorizedState)));
+                    row.appendChild(chip(busyLabel(d.busy)));
+                    card.appendChild(row);
+                    list.appendChild(card);
+                });
+            } catch (e) {
+                if (err) { err.hidden = false; err.textContent = 'Could not load phones'; }
+            }
+        }
+
+        async function postApk(formData) {
+            const res = await fetch(apiUrl('/mobile/apps'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: API_HEADERS,
+                body: formData
+            });
+            const data = await res.json().catch(() => ({}));
+            return { res, data };
+        }
+
+        if (uploadBtn && canEdit) {
+            uploadBtn.addEventListener('click', async () => {
+                const err = document.getElementById('mobile-app-err');
+                const msg = document.getElementById('mobile-app-msg');
+                if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+                    if (err) { err.hidden = false; err.textContent = 'Choose an APK file first.'; }
+                    return;
+                }
+                if (uploadStatus) { uploadStatus.hidden = false; uploadStatus.textContent = 'Uploading and checking…'; }
+                const fd = new FormData();
+                fd.append('file', fileInput.files[0]);
+                const { res, data } = await postApk(fd);
+                if (uploadStatus) uploadStatus.hidden = true;
+                if (res.ok && data.status === 'READY') {
+                    if (launcherPick) launcherPick.hidden = true;
+                    if (err) err.hidden = true;
+                    if (msg) { msg.hidden = false; msg.textContent = 'APK accepted.'; }
+                    applyRevisionToForm(data.revision || {});
+                    showFingerprints(data.sha256 || (data.revision && data.revision.sha256),
+                        data.revision && data.revision.certificateDigest);
+                    return;
+                }
+                if (res.status === 422 && data.status === 'ACTIVITY_SELECTION_REQUIRED') {
+                    if (msg) msg.hidden = true;
+                    showLauncherPicker(data);
+                    return;
+                }
+                if (err) {
+                    err.hidden = false;
+                    err.textContent = plainError(data.errorCode, data.message);
+                }
+                if (msg) msg.hidden = true;
+            });
+        }
+
+        const confirmBtn = document.getElementById('mobile-launcher-confirm-btn');
+        if (confirmBtn && canEdit) {
+            confirmBtn.addEventListener('click', async () => {
+                const err = document.getElementById('mobile-app-err');
+                const msg = document.getElementById('mobile-app-msg');
+                const selected = document.querySelector('#mobile-launcher-candidates input[name="selectedLaunchActivity"]:checked');
+                const uploadId = document.getElementById('mobile-pending-upload-id').value;
+                if (!selected || !uploadId) {
+                    if (err) { err.hidden = false; err.textContent = plainError('ACTIVITY_REQUIRED'); }
+                    return;
+                }
+                const fd = new FormData();
+                fd.append('uploadId', uploadId);
+                fd.append('selectedLaunchActivity', selected.value);
+                const waitEl = document.getElementById('mobile-confirm-wait-activity');
+                if (waitEl && waitEl.value.trim()) fd.append('waitActivity', waitEl.value.trim());
+                // empty file not required on confirm
+                const { res, data } = await postApk(fd);
+                if (res.ok && data.status === 'READY') {
+                    launcherPick.hidden = true;
+                    if (err) err.hidden = true;
+                    if (msg) { msg.hidden = false; msg.textContent = 'Launch screen saved.'; }
+                    applyRevisionToForm(data.revision || {});
+                    showFingerprints(data.sha256 || (data.revision && data.revision.sha256),
+                        data.revision && data.revision.certificateDigest);
+                    return;
+                }
+                if (err) {
+                    err.hidden = false;
+                    err.textContent = plainError(data.errorCode, data.message);
+                }
+            });
+        }
+
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!canEdit) return;
+                const err = document.getElementById('mobile-app-err');
+                const msg = document.getElementById('mobile-app-msg');
+                const sourceEl = form.querySelector('input[name="source"]:checked');
+                const payload = {
+                    source: sourceEl ? sourceEl.value : 'APK',
+                    packageName: form.packageName.value.trim(),
+                    versionName: form.versionName.value.trim() || null,
+                    versionCode: form.versionCode.value ? Number(form.versionCode.value) : null,
+                    launchActivity: form.launchActivity.value.trim(),
+                    waitActivity: form.waitActivity.value.trim()
+                };
+                const res = await fetch(apiUrl('/mobile/app'), {
+                    method: 'PUT',
+                    credentials: 'same-origin',
+                    headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (msg) {
+                    msg.hidden = !res.ok;
+                    msg.textContent = res.ok ? 'App settings saved.' : '';
+                }
+                if (err) {
+                    err.hidden = res.ok;
+                    err.textContent = res.ok ? '' : (data.message || 'Could not save app settings');
+                }
+                if (res.ok) loadMobileApp();
+            });
+        }
+
+        loadMobileApp();
+        loadMobileDevices();
+    })();
+
+
+
 </script>
+<script th:src="@{/js/keel-mobile-auth.js}"></script>
 </body>
 </html>

@@ -7,6 +7,7 @@ import delivery.hunt.HuntRequest;
 import delivery.portal.model.JobRecord;
 import delivery.portal.model.ProjectRecord;
 import delivery.portal.security.CurrentUserService;
+import delivery.portal.roles.PermissionEnforcer;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.PortalStore;
@@ -35,6 +36,7 @@ public class HuntController {
 
     private final PortalStore store;
     private final CurrentUserService currentUser;
+    private final PermissionEnforcer permissionEnforcer;
     private final GeneratedWorkbookService workbooks;
     private final ProjectCredentialService credentials;
     private final HuntWorker worker;
@@ -44,13 +46,15 @@ public class HuntController {
                           GeneratedWorkbookService workbooks,
                           ProjectCredentialService credentials,
                           HuntWorker worker,
-                          DeliveryPortalProperties props) {
+                          DeliveryPortalProperties props,
+                          PermissionEnforcer permissionEnforcer) {
         this.store = store;
         this.currentUser = currentUser;
         this.workbooks = workbooks;
         this.credentials = credentials;
         this.worker = worker;
         this.props = props;
+        this.permissionEnforcer = permissionEnforcer;
     }
 
     public record StartHuntBody(
@@ -74,6 +78,7 @@ public class HuntController {
             @RequestBody(required = false) StartHuntBody body
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
+        permissionEnforcer.requireFeatureJob(currentUser.requireUser(), "HUNT");
         ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
         if (denied != null) {
             return denied;

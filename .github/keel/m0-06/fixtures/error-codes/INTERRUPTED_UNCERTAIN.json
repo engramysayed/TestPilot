@@ -1,0 +1,12 @@
+{
+  "code": "INTERRUPTED_UNCERTAIN",
+  "stage": "execution",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/INTERRUPTED_UNCERTAIN.json",
+    "plannedTest": "MobileErrorCode_INTERRUPTED_UNCERTAIN_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

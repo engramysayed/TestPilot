@@ -2,7 +2,7 @@
 
 Vendored from [TAF-Template-CI-CD](https://github.com/engramysayed/TAF-Template-CI-CD).
 
-This tree is the **static** half of every delivery ZIP. TestPilot Delivery copies it into the customer package, then codegen adds **only** `project.pages.*_Locators` / `*_Actions` (and thin generated tests elsewhere — not described here).
+This tree is the **static** half of every delivery ZIP. TestPilot Delivery copies it into the customer package, then codegen adds **only** one `project.pages.{Stem}` class per screen (locators + actions + assertions in the same file; thin generated tests elsewhere — not described here). Former `*_Locators` / `*_Actions` pairs are obsolete and deleted on emit.
 
 Copy `src/main/resources/webapp.properties.example` → `webapp.properties` locally. Never commit filled secrets; delivery packaging must not ship real passwords.
 
@@ -74,7 +74,7 @@ Copy `src/main/resources/webapp.properties.example` → `webapp.properties` loca
 
 | Class | What it does |
 |-------|----------------|
-| `BaseTest` | `@BeforeSuite` property load; holds `WebDriverFactory` / `JsonReader` for subclasses |
+| `BaseTest` | Suite props + per-method driver lifecycle (`@BeforeMethod`/`@AfterMethod`), `requiredProperty`, optional `login-data.json` |
 
 Generated `project.tests.generated` / `todo` classes are produced by Delivery for your Excel cases.
 After a conversion, open **`docs/DOMAIN_CATALOG.md`** for the list of generated page classes and tests
@@ -88,15 +88,16 @@ After conversion, under `src/main/java/project/pages/`:
 
 | Pattern | Responsibility |
 |---------|----------------|
-| `{UrlStem}_Locators` | `By` fields with `_Txt_Locator` / `_Btn_Locator` / `_Lnk_Locator` / `_Lbl_Locator` / `_El_Locator` |
-| `{UrlStem}_Actions` | Extends Locators; customer-facing steps (`type_Username`, `click_Submit_Button`, soft asserts) |
+| `{UrlStem}` or `{UrlStem}Page` | **One class per page**: `By` fields + void action/assert methods (`type_Username`, `click_Submit_Button`, soft asserts) |
 
-Stems come from the **live URL** at prove time (e.g. `PracticeTestLogin`, `LoggedInSuccessfully`, `Inventory`, `Cart`).
-Maintain locators/actions here as the product UI evolves; keep business flow orchestration in tests.
+Stems come from the **live URL** at prove time (e.g. `PracticeTestLogin`, `LoggedInSuccessfully`, `InventoryPage`, `Cart`).
+Blank / dump `Page` stems are **rejected** at emit (fail closed). Maintain page classes as the product UI evolves; keep business flow orchestration in tests.
+
+**Migration:** pre-0058 ZIPs had `{Stem}_Locators` + `{Stem}_Actions`; re-emit deletes those and writes a single `{Stem}.java` (tests import `project.pages.InventoryPage`, not `InventoryPage_Actions`).
 
 **Per-delivery inventory:** `docs/DOMAIN_CATALOG.md` (written at emit time — not in this static template alone).
 
-Templates used to generate them live in `templates/PageLocators.java.ftl` and `templates/PageActions.java.ftl`.
+Template: `templates/Page.java.ftl`. Settled smart/drag verbs: `project.utils.locators.SettledActions`.
 
 ### How to run generated tests
 

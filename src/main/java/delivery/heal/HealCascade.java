@@ -2,6 +2,8 @@ package delivery.heal;
 
 import delivery.authoring.AuthoringService;
 import delivery.guard.LoopGuard;
+import delivery.routing.ModelRouter;
+import delivery.routing.ObservationBudget;
 import delivery.settle.SettlePolicy;
 import delivery.authoring.PrecisionCallBudget;
 import delivery.authoring.DomCandidate;
@@ -368,7 +370,8 @@ public class HealCascade {
         }
 
         String table = DomCandidateExtractor.formatTable(shortlist);
-        String htmlExcerpt = slimHtml.length() > 8000 ? slimHtml.substring(0, 8000) : slimHtml;
+        int healObs = ObservationBudget.forIntent(ModelRouter.Intent.HEAL);
+        String htmlExcerpt = ObservationBudget.clip(slimHtml, healObs);
         String solveReason = reason;
         if (allowedOpenPath != null && !allowedOpenPath.isBlank()
                 && !solveReason.contains("Excel open-path")) {

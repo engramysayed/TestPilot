@@ -13,6 +13,7 @@ import delivery.excel.TcImportRepair;
 import delivery.portal.model.JobRecord;
 import delivery.portal.model.ProjectRecord;
 import delivery.portal.security.CurrentUserService;
+import delivery.portal.roles.PermissionEnforcer;
 import delivery.portal.service.BugReportService;
 import delivery.portal.service.ExecuteResultsExcelService;
 import delivery.portal.service.ExecuteRunService;
@@ -52,6 +53,7 @@ public class ExecuteRunController {
     private final BugReportService bugReports;
     private final ExecuteResultsExcelService resultsExcel;
     private final CurrentUserService currentUser;
+    private final PermissionEnforcer permissionEnforcer;
     private final ProjectCredentialService credentials;
     private final GeneratedWorkbookService workbooks;
 
@@ -63,7 +65,8 @@ public class ExecuteRunController {
             ExecuteResultsExcelService resultsExcel,
             CurrentUserService currentUser,
             ProjectCredentialService credentials,
-            GeneratedWorkbookService workbooks
+            GeneratedWorkbookService workbooks,
+            PermissionEnforcer permissionEnforcer
     ) {
         this.store = store;
         this.worker = worker;
@@ -73,6 +76,7 @@ public class ExecuteRunController {
         this.currentUser = currentUser;
         this.credentials = credentials;
         this.workbooks = workbooks;
+        this.permissionEnforcer = permissionEnforcer;
     }
 
     @PostMapping("/projects/{projectId}/execute-runs")
@@ -85,6 +89,7 @@ public class ExecuteRunController {
             @RequestParam(value = "runner", required = false) String runner
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
+        permissionEnforcer.requireFeatureJob(currentUser.requireUser(), "EXECUTE");
         ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
         if (denied != null) {
             return denied;
@@ -146,7 +151,7 @@ public class ExecuteRunController {
             if (!gateErrors.isEmpty()) {
                 Files.deleteIfExists(excelPath);
                 return ResponseEntity.badRequest()
-                        .body(new ApiError("QUALITY_GATE", String.join("; ", gateErrors)).asMap());
+                        .body(QualityGateResponses.fromErrors(gateErrors));
             }
         } catch (InvalidExcelTemplateException e) {
             Files.deleteIfExists(excelPath);

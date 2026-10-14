@@ -1,5 +1,8 @@
 package delivery.job;
 
+import delivery.routing.ObservationBudget;
+import delivery.routing.ModelRouter;
+
 import delivery.authoring.CompoundAssert;
 import delivery.authoring.AuthoringEngine;
 import delivery.authoring.AuthoringService;
@@ -253,7 +256,7 @@ public class ProvePhase {
                         progress.recordOutcome(TcDraftStatus.REUSED);
                         progress.update(index, jobTotal,
                                 "Phase1 reused " + tc.tcId()
-                                        + " — passed " + progress.passed()
+                                        + " â€” passed " + progress.passed()
                                         + ", blocked " + progress.todo());
                         continue;
                     }
@@ -261,7 +264,7 @@ public class ProvePhase {
                 if (callBeforeBlocked(tc, failedCallBeforeIds)) {
                     String reason = "Call-before did not pass ("
                             + String.join(", ", CallBefore.parse(tc.callBefore()))
-                            + ") — skipped so this case does not run on a broken session";
+                            + ") â€” skipped so this case does not run on a broken session";
                     TcDraft skipped = todoDraft(tc, List.of(), false, List.of(),
                             reason, "", 0, "");
                     drafts.write(skipped);
@@ -270,11 +273,11 @@ public class ProvePhase {
                     failedCallBeforeIds.add(tc.tcId());
                     progress.recordOutcome(skipped.status());
                     progress.update(index, jobTotal,
-                            "Phase1 skipped " + tc.tcId() + " — call-before failed");
+                            "Phase1 skipped " + tc.tcId() + " â€” call-before failed");
                     continue;
                 }
 
-                // Fresh browser at each leaf-chain start; Call-before → leaf keep the same session.
+                // Fresh browser at each leaf-chain start; Call-before â†’ leaf keep the same session.
                 int occurrence = occurrences.merge(tc.tcId(), 1, Integer::sum);
                 String evidenceFolder = OccurrenceIdentity.folder(tc.tcId(), occurrence);
                 TcDraft draft = proveOne(tc, request, authoring, healCascade, execution, jobLogin,
@@ -294,7 +297,7 @@ public class ProvePhase {
                 progress.recordOutcome(draft.status());
                 progress.update(index, jobTotal,
                         "Phase1 " + draft.status() + " " + tc.tcId()
-                                + " — passed " + progress.passed()
+                                + " â€” passed " + progress.passed()
                                 + ", blocked " + progress.todo());
             }
         } finally {
@@ -376,7 +379,7 @@ public class ProvePhase {
             needsLogin = formVisible && LoginStepDetector.needsAuthenticatedSession(
                     tc, jobHasCredentials, true);
             if (needsLogin) {
-                LogsManager.info("SESSION_CONTINUE: login form visible — re-auth for " + tc.tcId());
+                LogsManager.info("SESSION_CONTINUE: login form visible â€” re-auth for " + tc.tcId());
             }
         } else {
             needsLogin = LoginStepDetector.needsAuthenticatedSession(
@@ -581,7 +584,7 @@ public class ProvePhase {
                 StepIntentBinder.IntentLine healIntent = intents.isEmpty()
                         ? new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, "batch heal")
                         : intents.get(Math.min(outcome.provenSteps().size(), intents.size() - 1));
-                String freshHtml = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
+                String freshHtml = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), proveHtmlBudget());
                 byte[] failPng = execution.capturePngBytes();
                 Path shot = writeHealScreenshot(evidence, tc.tcId(), 0, failPng);
                 CandidateLivenessProbe probe = new SeleniumCandidateLivenessProbe(driverFactory);
@@ -686,7 +689,7 @@ public class ProvePhase {
             }
             try {
                 NamedNavigationDiscovery.reveal(driverFactory.get(), intent);
-                String html = ProveWiring.authoringHtml(driverFactory.get(), intent.text(), 80000);
+                String html = ProveWiring.authoringHtml(driverFactory.get(), intent.text(), proveHtmlBudget());
                 List<ProvenStep> autoFillSteps = List.of();
                 if (precisionBindService == null && intent.kind() == StepIntentBinder.IntentKind.CLICK) {
                     List<StepIntentBinder.IntentLine> typeIntents = StepIntentBinder.parseIntents(tc).stream()
@@ -707,7 +710,7 @@ public class ProvePhase {
                         }
                         autoFillSteps = fillOutcome.provenSteps();
                         PostActionSettle.afterAction();
-                        html = ProveWiring.authoringHtml(driverFactory.get(), intent.text(), 80000);
+                        html = ProveWiring.authoringHtml(driverFactory.get(), intent.text(), proveHtmlBudget());
                     }
                 }
 
@@ -723,7 +726,7 @@ public class ProvePhase {
                 if (memoryHost.isBlank()) {
                     memoryHost = hostOf(baseUrl);
                 }
-                // Key by live page path — Excel open-path (/login) poisoned cart clicks with login-button.
+                // Key by live page path â€” Excel open-path (/login) poisoned cart clicks with login-button.
                 String pagePath = pathOf(currentUrl(driverFactory));
                 Optional<ProvenStep> remembered = mayUseLocatorMemory()
                         ? locatorMemory.recall(memoryHost, pagePath, intent, tc.tcId()) : Optional.empty();
@@ -766,14 +769,14 @@ public class ProvePhase {
                     }
                 } else if (precisionBindService != null && precisionReuseLocatorMemory) {
                     logLocatorMemorySkip(locatorMemorySkipContext(
-                            "single step — no saved locator", memoryHost, pagePath, intent)
+                            "single step â€” no saved locator", memoryHost, pagePath, intent)
                             + " (falling back to Cursor groundRank)");
                 }
 
                 byte[] healPng = execution.capturePngBytes();
                 Path bindShot = writeHealScreenshot(evidence, tc.tcId(), intentIndex, healPng);
                 boolean precisionPath = precisionBindService != null;
-                // Bind only — heal cascade owns Ollama + Cursor after bind/execute failure
+                // Bind only â€” heal cascade owns Ollama + Cursor after bind/execute failure
                 List<ProvenStep> stepBatch;
                 if (precisionPath) {
                     logPrecisionLocatorMemoryDisabledOnce();
@@ -882,7 +885,7 @@ public class ProvePhase {
 
                     // Cap: Ollama once + Cursor once. Escalate to Cursor after Ollama execute-fail (D3).
                     if (!ollamaUsed && !cursorUsed) {
-                        String freshHtml = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
+                        String freshHtml = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), proveHtmlBudget());
                         byte[] failPng = execution.capturePngBytes();
                         Path shot = writeHealScreenshot(evidence, tc.tcId(), intentIndex, failPng);
                         prepareHealPresence(healCascade, driverFactory);
@@ -944,7 +947,7 @@ public class ProvePhase {
                     }
 
                     if (!cursorUsed) {
-                        String html2 = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
+                        String html2 = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), proveHtmlBudget());
                         byte[] png2 = execution.capturePngBytes();
                         Path shot2 = writeHealScreenshot(evidence, tc.tcId(), intentIndex, png2);
                         prepareHealPresence(healCascade, driverFactory);
@@ -1042,7 +1045,7 @@ public class ProvePhase {
     }
 
     /**
-     * Cursor last-layer navigate, or a form-submit that left the Excel path, is recovery —
+     * Cursor last-layer navigate, or a form-submit that left the Excel path, is recovery â€”
      * retry the original intent on the recovered page instead of treating the leave as PASS.
      */
     private boolean retryAfterPageRecovery(
@@ -1059,7 +1062,7 @@ public class ProvePhase {
             return false;
         }
         try {
-            String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
+            String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), proveHtmlBudget());
             return TargetPageRecovery.tryRecover(driverFactory, baseUrl, tc, intent, html);
         } catch (RuntimeException e) {
             return false;
@@ -1477,7 +1480,7 @@ public class ProvePhase {
             logPrecisionLocatorMemoryDisabledOnce();
         }
         try {
-            String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
+            String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), proveHtmlBudget());
             byte[] png = execution.capturePngBytes();
             Path shot = writeHealScreenshot(evidence, tc.tcId(), intentIndex, png);
             List<String> priorSteps = priorStepSummaries(provenSoFar);
@@ -1508,7 +1511,7 @@ public class ProvePhase {
             if (allSteps.isEmpty()) {
                 return null;
             }
-            if (!html.equals(HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000))) return null;
+            if (!html.equals(HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), proveHtmlBudget()))) return null;
             PrecisionPageGuard guard = new PrecisionPageGuard(driverFactory.get(), perIntent);
             return executePrecisionBound(tc.tcId(), perIntent, execution, evidence,
                     bound.tier(), cancelCheck, () -> currentUrl(driverFactory),
@@ -1547,7 +1550,7 @@ public class ProvePhase {
         String evidenceDir = "";
         for (String clause : clauses) {
             JobCancelSupport.checkCancelled(cancelCheck);
-            String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
+            String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), proveHtmlBudget());
             byte[] healPng = execution.capturePngBytes();
             StepIntentBinder.IntentLine sub = new StepIntentBinder.IntentLine(
                     StepIntentBinder.IntentKind.ASSERT_VISIBLE, clause, intent.testData());
@@ -1557,12 +1560,12 @@ public class ProvePhase {
                         tc.tcId(), sub, html, healPng, false, provenSoFar, failedThisIntent);
             } catch (Exception e) {
                 skipped++;
-                LogsManager.info("COMPOUND_ASSERT: skip — bind error: " + trim(clause, 80));
+                LogsManager.info("COMPOUND_ASSERT: skip â€” bind error: " + trim(clause, 80));
                 continue;
             }
             if (steps == null || steps.isEmpty() || steps.stream().anyMatch(s -> !s.validated())) {
                 skipped++;
-                LogsManager.info("COMPOUND_ASSERT: skip — could not bind: " + trim(clause, 100));
+                LogsManager.info("COMPOUND_ASSERT: skip â€” could not bind: " + trim(clause, 100));
                 continue;
             }
             bound++;
@@ -1574,7 +1577,7 @@ public class ProvePhase {
             } else {
                 String msg = trim(clause, 70) + ": " + trim(out.failureReason(), 120);
                 executeFails.add(msg);
-                LogsManager.info("COMPOUND_ASSERT: fail — " + msg);
+                LogsManager.info("COMPOUND_ASSERT: fail â€” " + msg);
                 if (out.evidenceDir() != null) {
                     evidenceDir = out.evidenceDir().toString();
                 }
@@ -1634,7 +1637,7 @@ public class ProvePhase {
             Optional<ProvenStep> remembered = locatorMemory.recall(memoryHost, pagePath, intent, tc.tcId());
             if (remembered.isEmpty()) {
                 logLocatorMemorySkip(locatorMemorySkipContext(
-                        "precision batch — no saved locator for step " + (i + 1) + "/"
+                        "precision batch â€” no saved locator for step " + (i + 1) + "/"
                                 + batchSlice.size(),
                         memoryHost, pagePath, intent)
                         + " (falling back to Cursor batch)");
@@ -1643,7 +1646,7 @@ public class ProvePhase {
             }
             if (StepIntentBinder.spendsMustAvoidPriorFills(intent)
                     && StepIntentBinder.isSpentLocator(remembered.get(), java.util.stream.Stream.concat(provenSoFar.stream(), allSteps.stream()).toList())) {
-                logLocatorMemorySkip("precision batch — spent locator for "
+                logLocatorMemorySkip("precision batch â€” spent locator for "
                         + trim(intent.text(), 80) + " (" + locatorMemorySkipContext(
                         "", memoryHost, pagePath, intent) + ") (falling back to Cursor batch)");
                 if (!perIntent.isEmpty()) break;
@@ -1651,7 +1654,7 @@ public class ProvePhase {
             }
             ProvenStep ready = withInventedValue(remembered.get(), intent);
             if (refusesSubmitNavigation(intent, List.of(ready))) {
-                logLocatorMemorySkip("precision batch — remembered click is not a submit control for "
+                logLocatorMemorySkip("precision batch â€” remembered click is not a submit control for "
                         + trim(intent.text(), 80) + " (falling back to Cursor batch)");
                 if (!perIntent.isEmpty()) break;
                 return null;
@@ -1660,7 +1663,7 @@ public class ProvePhase {
             allSteps.add(ready);
         }
         if (allSteps.isEmpty()) {
-            logLocatorMemorySkip("precision batch — no steps resolved from memory "
+            logLocatorMemorySkip("precision batch â€” no steps resolved from memory "
                     + "(falling back to Cursor batch)");
             return null;
         }
@@ -1740,7 +1743,7 @@ public class ProvePhase {
     }
 
     private static void logLocatorMemorySkip(String detail) {
-        LogsManager.info("LOCATOR_MEMORY: skip — " + detail);
+        LogsManager.info("LOCATOR_MEMORY: skip â€” " + detail);
     }
 
     private static String locatorMemorySkipContext(
@@ -2024,7 +2027,7 @@ public class ProvePhase {
         return false;
     }
 
-    /** Wipe/restart browser at each leaf-chain start (Call-before → leaf keep the session). */
+    /** Wipe/restart browser at each leaf-chain start (Call-before â†’ leaf keep the session). */
     static boolean wipeSessionBeforeTc(int tcIndex, List<ManualTestCase> allCases) {
         List<Boolean> flags = CallBeforeExpander.freshSessionAt(allCases);
         if (flags == null || flags.isEmpty()) {
@@ -2069,7 +2072,7 @@ public class ProvePhase {
             if (DeadBrowserSession.isDead(e)) {
                 throw e;
             }
-            // Some drivers throw before first navigation — continue with existing session.
+            // Some drivers throw before first navigation â€” continue with existing session.
         }
     }
 
@@ -2083,7 +2086,7 @@ public class ProvePhase {
             if (DeadBrowserSession.isDead(e)) {
                 throw e;
             }
-            // Some drivers throw on handles before first navigation — continue.
+            // Some drivers throw on handles before first navigation â€” continue.
         }
         driver.manage().deleteAllCookies();
         try {
@@ -2091,7 +2094,7 @@ public class ProvePhase {
                     (org.openqa.selenium.JavascriptExecutor) driver;
             js.executeScript("window.localStorage.clear(); window.sessionStorage.clear();");
         } catch (Exception ignored) {
-            // Some drivers reject storage access on blank pages — navigate then clear again
+            // Some drivers reject storage access on blank pages â€” navigate then clear again
         }
         WorkerNetworkGuard guard = new WorkerNetworkGuard(TargetNetworkPolicy.forJob(baseUrl));
         guard.requireNavigate(baseUrl);
@@ -2165,7 +2168,7 @@ public class ProvePhase {
         if (s == null) {
             return "";
         }
-        return s.length() <= max ? s : s.substring(0, max) + "…";
+        return s.length() <= max ? s : s.substring(0, max) + "â€¦";
     }
 
     /** Sleep + document-ready settle so the next intent re-snapshots a settled page. */
@@ -2205,5 +2208,10 @@ public class ProvePhase {
                     healTier == null ? "none" : healTier,
                     skip == null ? "" : skip);
         }
+    }
+
+    /** AE-D9: A11 observation budget for ProvePhase HTML excerpts (bind intent). */
+    public static int proveHtmlBudget() {
+        return ObservationBudget.forProve();
     }
 }

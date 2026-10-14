@@ -19,7 +19,7 @@ public class DomainCatalogWriterTest {
                 List.of(click), "", null, false, List.of());
         DomainCatalogWriter.write(dir, List.of(outcome));
         String md = Files.readString(dir.resolve("docs/DOMAIN_CATALOG.md"));
-        Assert.assertTrue(md.contains("Inventory_Actions"), md);
+        Assert.assertTrue(md.contains("Inventory"), md);
         Assert.assertTrue(md.contains("| `TC_1` | `TC_1` |"), md);
         Assert.assertFalse(md.contains("TC_1Test"), md);
         Assert.assertTrue(md.contains("mvn clean test"), md);

@@ -1,0 +1,12 @@
+{
+  "code": "STALE_DEVICE_LEASE",
+  "stage": "infra",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/STALE_DEVICE_LEASE.json",
+    "plannedTest": "MobileErrorCode_STALE_DEVICE_LEASE_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

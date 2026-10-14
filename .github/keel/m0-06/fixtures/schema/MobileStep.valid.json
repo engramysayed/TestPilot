@@ -1,0 +1,6 @@
+{
+  "stepId": "s1",
+  "operation": "TAP",
+  "timeoutMs": 5000,
+  "retryIfNoChange": false
+}

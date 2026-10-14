@@ -1,0 +1,66 @@
+/* Keel Credits Phase 1–2 + signup approval — do not edit keel-theme-calm.css */
+.keel-credits-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border, #d0d7de);
+  background: var(--surface-2, #f6f8fa);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text, #1f2328);
+  white-space: nowrap;
+}
+.keel-credits-chip[hidden] { display: none !important; }
+.keel-credits-chip--low { border-color: #d4a72c; color: #9a6700; }
+.keel-approval-banner {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #d4a72c;
+  background: #fff8c5;
+  color: #7d4e00;
+}
+.keel-approval-banner[hidden] { display: none !important; }
+.keel-credits-insufficient {
+  margin: 0.75rem 0;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #ff8182;
+  background: #ffebe9;
+  color: #a40e26;
+}
+.keel-credits-insufficient[hidden] { display: none !important; }
+.keel-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.keel-badge--approved { background: #dafbe1; color: #1a7f37; }
+.keel-badge--pending { background: #fff8c5; color: #9a6700; }
+.keel-badge--locked, .keel-badge--rejected { background: #ffebe9; color: #a40e26; }
+.keel-modal-backdrop {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+  display: flex; align-items: center; justify-content: center; z-index: 80;
+}
+.keel-modal-backdrop[hidden] { display: none !important; }
+.keel-modal {
+  width: min(440px, 92vw); background: var(--surface, #fff);
+  border-radius: 12px; border: 1px solid var(--border, #d0d7de);
+  padding: 1.1rem 1.25rem; box-shadow: 0 12px 40px rgba(0,0,0,.18);
+}
+.keel-modal h3 { margin: 0 0 0.35rem; font-size: 1.05rem; }
+.keel-modal .lede { margin: 0 0 0.9rem; color: var(--muted, #656d76); font-size: 0.9rem; }
+.keel-modal label { display: block; margin: 0.55rem 0 0.25rem; font-weight: 600; font-size: 0.85rem; }
+.keel-modal select, .keel-modal input, .keel-modal textarea {
+  width: 100%; box-sizing: border-box; padding: 0.45rem 0.55rem;
+  border-radius: 8px; border: 1px solid var(--border, #d0d7de);
+  font: inherit;
+}
+.keel-modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+.keel-modal .hint { font-size: 0.8rem; color: var(--muted, #656d76); margin: 0.35rem 0 0; }
+.keel-usage-summary { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 0.6rem; margin: 0.75rem 0; }
+@media (max-width: 800px) { .keel-usage-summary { grid-template-columns: repeat(2, minmax(0,1fr)); } }

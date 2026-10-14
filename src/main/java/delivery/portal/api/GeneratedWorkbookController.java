@@ -317,7 +317,7 @@ public class GeneratedWorkbookController {
         } catch (IllegalArgumentException e) {
             if (GenerateQualityGate.isQualityGateFailure(e)) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(new ApiError("QUALITY_GATE", GenerateQualityGate.qualityGateDetail(e)).asMap());
+                        .body(QualityGateResponses.fromException(e));
             }
             return ResponseEntity.badRequest()
                     .body(new ApiError("BAD_REQUEST",
@@ -372,7 +372,7 @@ public class GeneratedWorkbookController {
             }
             if (GenerateQualityGate.isQualityGateFailure(e)) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(new ApiError("QUALITY_GATE", GenerateQualityGate.qualityGateDetail(e)).asMap());
+                        .body(QualityGateResponses.fromException(e));
             }
             String msg = e.getMessage() == null ? "Invalid case update" : e.getMessage();
             if (msg.contains("Unknown KeelPath") || msg.startsWith("Unknown tcId")) {

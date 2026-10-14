@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" package="com.android.systemui" windowId="status" bounds="[0,0][1080,80]">
+    <node class="android.widget.TextView" text="09:01" content-desc="09:01" bounds="[20,10][200,70]" package="com.android.systemui"/>
+    <node class="android.widget.ImageView" content-desc="signal-full" bounds="[900,10][980,70]" package="com.android.systemui"/>
+  </node>
+  <node class="android.widget.Button" resource-id="com.example.test:id/sign_In_Button" text="Sign in" clickable="true" enabled="true" bounds="[80,720][1000,840]" package="com.example.test"/>
+</hierarchy>

@@ -6,6 +6,9 @@ import delivery.job.RateLimitPolicy;
 import delivery.portal.model.JobRecord;
 import delivery.portal.security.PrivateRunnerFilter;
 import delivery.portal.service.PortalStore;
+import delivery.portal.service.MobileExecuteResultService;
+import delivery.mobile.result.MobileJobResultView;
+import delivery.mobile.MobileProperties;
 import keel.contract.runner.RunnerDtos;
 import keel.contract.runner.RunnerHeaders;
 import keel.contract.runner.WireJobKind;
@@ -36,8 +39,8 @@ import java.util.stream.Stream;
 
 /**
  * B06: Runner API v2 on the existing 8080 connector (contract: keel-contract runner-api-v2.yaml).
- * Authentication (runner token + HMAC signature, ±5 min, nonce replay) happens in {@link PrivateRunnerFilter}.
- * Every job-scoped call is fenced by attempt id + cancel generation + fencing token. Cross-tenant job ids → 404.
+ * Authentication (runner token + HMAC signature, Â±5 min, nonce replay) happens in {@link PrivateRunnerFilter}.
+ * Every job-scoped call is fenced by attempt id + cancel generation + fencing token. Cross-tenant job ids â†’ 404.
  */
 @RestController
 @RequestMapping(RunnerHeaders.V2_PREFIX)
@@ -47,15 +50,21 @@ public class RunnerApiV2Controller {
 
     private final PortalStore store;
     private final RunnerFencing fencing;
+    private final MobileExecuteResultService mobileResults;
+    private final MobileProperties mobileProperties;
     private final RateLimitPolicy rateLimits = new RateLimitPolicy();
     private final long chunkMaxBytes;
     private final Path chunkRoot;
 
     public RunnerApiV2Controller(PortalStore store, RunnerFencing fencing,
+                                 MobileExecuteResultService mobileResults,
+                                 MobileProperties mobileProperties,
                                  @Value("${keel.runner.v2.chunk-max-bytes:8388608}") long chunkMaxBytes,
                                  @Value("${keel.runner.v2.chunk-dir:}") String chunkDir) {
         this.store = store;
         this.fencing = fencing;
+        this.mobileResults = mobileResults;
+        this.mobileProperties = mobileProperties;
         this.chunkMaxBytes = chunkMaxBytes;
         this.chunkRoot = chunkDir == null || chunkDir.isBlank()
                 ? Path.of(System.getProperty("java.io.tmpdir"), "keel-v2-chunks") : Path.of(chunkDir);
@@ -257,6 +266,50 @@ public class RunnerApiV2Controller {
         fencing.release(jobId);
         return ResponseEntity.ok(java.util.Map.of("jobId", jobId,
                 "status", store.getJob(jobId).orElseThrow().getStatus().name()));
+    }
+
+
+    /**
+     * M2-07: ingest published {@link MobileJobResultView} as a job artifact side file.
+     * Does not mutate frozen admission inputs / inputSnapshotHash.
+     */
+    @PutMapping("/jobs/{jobId}/mobile-result")
+    public ResponseEntity<?> publishMobileResult(@PathVariable("jobId") String jobId,
+                                    @RequestHeader(value = RunnerHeaders.ATTEMPT, required = false) String attemptId,
+                                    @RequestHeader(value = RunnerHeaders.CANCEL_GENERATION, required = false) Long generation,
+                                    @RequestHeader(value = RunnerHeaders.FENCING_TOKEN, required = false) Long token,
+                                    @RequestBody(required = false) MobileJobResultView body) {
+        if (mobileProperties == null || !mobileProperties.isEnabled()) {
+            return error(HttpStatus.NOT_FOUND, "NOT_FOUND", "Mobile is disabled");
+        }
+        Fenced f = fence(jobId, attemptId, generation, token, false);
+        if (f.error != null) {
+            return f.error;
+        }
+        if (body == null) {
+            return error(HttpStatus.BAD_REQUEST, "BAD_REQUEST", "body required");
+        }
+        // Bind path jobId into view; keep attempt from headers when body omits it.
+        String att = body.attemptId() == null || body.attemptId().isBlank() ? attemptId : body.attemptId();
+        MobileJobResultView normalized = MobileJobResultView.of(
+                jobId,
+                att,
+                f.job.getProjectId(),
+                body.runtime(),
+                body.cases(),
+                body.timingMs());
+        try {
+            MobileJobResultView stored = mobileResults.publish(
+                    f.runner.tenant().value(), f.job.getProjectId(), normalized);
+            return ResponseEntity.ok(stored);
+        } catch (org.springframework.web.server.ResponseStatusException e) {
+            HttpStatus st = HttpStatus.resolve(e.getStatusCode().value());
+            if (st == null) {
+                st = HttpStatus.BAD_REQUEST;
+            }
+            return error(st, st == HttpStatus.NOT_FOUND ? "NOT_FOUND" : "BAD_REQUEST",
+                    e.getReason() == null ? "error" : e.getReason());
+        }
     }
 
     private record Fenced(WorkspaceDirectory.RunnerEnrollment runner, JobRecord job, ResponseEntity<?> error) {

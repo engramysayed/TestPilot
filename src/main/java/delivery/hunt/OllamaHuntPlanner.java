@@ -73,6 +73,9 @@ public final class OllamaHuntPlanner implements HuntPlanner {
             Do not file speculative bugs or duplicate oracle themes (Expired Token, assert_text miss).
             Prefer ## Untested coverage gaps over repeating probed paths.
             Respect scenarioCap remaining. Prefer finish when findings are enough.
+            HARD STOP: if coverage shows no new URL this cycle AND bugs[] would not add a new fingerprint
+            AND scenarios[] is empty, return decision=finish (server may also stop with NO_PROGRESS).
+            Always respect "## Do not retry (blocked)" — never emit those locators again.
             Do not narrate outside JSON.
             """ + "\n" + delivery.authoring.LocatorPolicy.huntPlannerRules();
 

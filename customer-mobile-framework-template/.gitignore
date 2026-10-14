@@ -1,0 +1,13 @@
+target/
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+test-output/
+allure-results/
+allure-report/
+*.log
+src/test/resources/config/secrets.properties
+**/app.apk
+.DS_Store

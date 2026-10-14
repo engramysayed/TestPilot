@@ -51,8 +51,8 @@ public class FacebookIrCodegenIdentityTest {
             Files.copy(TEMPLATE_README, FRAMEWORK.resolve("README.md"), StandardCopyOption.REPLACE_EXISTING);
         }
 
-        String actions = Files.readString(FRAMEWORK.resolve("src/main/java/project/pages/Reg_Actions.java"));
-        Assert.assertFalse(actions.contains("type_Type"), "Reg_Actions must not collapse type fields");
+        String actions = Files.readString(FRAMEWORK.resolve("src/main/java/project/pages/Reg.java"));
+        Assert.assertFalse(actions.contains("type_Type"), "Reg must not collapse type fields");
         Assert.assertTrue(actions.contains("type_First_Name"), actions);
         Assert.assertTrue(actions.contains("type_Surname"), actions);
         Assert.assertTrue(actions.contains("select_Gender"),

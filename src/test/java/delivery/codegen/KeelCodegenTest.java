@@ -76,8 +76,8 @@ public class KeelCodegenTest {
         new CodeWriter(Path.of("customer-framework-template/templates")).write(out, List.of(
                 new TcOutcome("TC_K", "Pay", TcStatus.PASSED, List.of(cssOnly, legacy, keelClick(), closed), "", null, false, List.of())));
         Path pages = out.resolve("src/main/java/project/pages");
-        String loc = Files.readString(pages.resolve("Checkout_Locators.java"));
-        String act = Files.readString(pages.resolve("Checkout_Actions.java"));
+        String loc = Files.readString(pages.resolve("Checkout.java"));
+        String act = Files.readString(pages.resolve("Checkout.java"));
         Assert.assertTrue(loc.contains("By.cssSelector(\"button#continue\")"), loc);
         Assert.assertTrue(loc.contains("By.id(\"email\")"), loc);
         Assert.assertTrue(loc.contains("import project.utils.locators.KeelBy;"), loc);
@@ -85,11 +85,14 @@ public class KeelCodegenTest {
                 "\"frame=#outer >> frame=iframe[name=\\\"inner\\\"] >> css=button\""), loc);
         Assert.assertTrue(loc.contains("\"shadow-closed=#c >> css=#cb\""), loc);
         Assert.assertFalse(loc.contains("//button"), loc);
-        Assert.assertTrue(act.contains("SmartWait.untilActionable(driver.get(), "), act);
-        Assert.assertTrue(act.contains("KeelLocate.reset(driver.get());"), act);
+        Assert.assertTrue(act.contains("SettledActions.click") || act.contains("SettledActions.type"), act);
         Assert.assertFalse(act.contains("Thread.sleep"), act);
+        String settled = Files.readString(Path.of(
+                "customer-framework-template/src/main/java/project/utils/locators/SettledActions.java"));
+        Assert.assertTrue(settled.contains("SmartWait.untilActionable"), settled);
+        Assert.assertTrue(settled.contains("KeelLocate.reset"), settled);
         Path classes = Files.createTempDirectory("codegen-keel-classes");
-        CustomerTemplateCompiler.compile(classes, pages.resolve("Checkout_Locators.java"), pages.resolve("Checkout_Actions.java")).close();
+        CustomerTemplateCompiler.compile(classes, pages.resolve("Checkout.java")).close();
         Assert.assertTrue(Files.exists(classes.resolve("project/utils/locators/KeelLocate.class")));
     }
 }

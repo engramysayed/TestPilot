@@ -45,13 +45,12 @@ public class CodeWriter {
     }
 
     public void write(Path projectRoot, List<TcOutcome> outcomes) throws Exception {
-        PageAccumulator pages = accumulate(outcomes);
-        // Fail closed before any FreeMarker write — avoid half-written Actions/Locators.
-        CodegenSmellCheck.verify(pages.pages());
-        writeVerified(projectRoot, outcomes, pages);
+        // Demote dump/blank Page stems to TODO, then fail closed on remaining smells.
+        CodegenEmitGate.Prepared prepared = CodegenEmitGate.prepare(outcomes);
+        writeVerified(projectRoot, prepared.outcomes(), prepared.pages());
     }
 
-    static PageAccumulator accumulate(List<TcOutcome> outcomes) {
+    public static PageAccumulator accumulate(List<TcOutcome> outcomes) {
         PageAccumulator pages = new PageAccumulator();
         if (outcomes == null) {
             return pages;
@@ -86,33 +85,31 @@ public class CodeWriter {
         java.util.Set<String> usedPageFiles = new java.util.HashSet<>();
         java.util.Set<String> usedTestFiles = new java.util.HashSet<>();
 
-        Template locatorsTpl = cfg.getTemplate("PageLocators.java.ftl");
-        Template actionsTpl = cfg.getTemplate("PageActions.java.ftl");
+        Template pageTpl = cfg.getTemplate("Page.java.ftl");
         for (Map.Entry<String, PageAccumulator.PageModel> e : pages.pages().entrySet()) {
             PageAccumulator.PageModel page = e.getValue();
             Map<String, Object> model = new HashMapModel();
             model.put("stem", page.stem());
-            model.put("locatorsClassName", page.locatorsClassName());
-            model.put("actionsClassName", page.actionsClassName());
-            model.put("className", page.actionsClassName());
+            model.put("pageClassName", page.pageClassName());
+            model.put("className", page.pageClassName());
+            // Compat aliases for any leftover template references
+            model.put("locatorsClassName", page.pageClassName());
+            model.put("actionsClassName", page.pageClassName());
             model.put("fields", page.fields());
             model.put("methods", page.methods());
             model.put("assertions", page.assertions());
+            var loginHelper = LoginPageHelper.detect(page);
+            if (loginHelper != null) {
+                model.put("loginHelper", loginHelper);
+            }
 
-            String locatorsFile = page.locatorsClassName() + ".java";
-            String actionsFile = page.actionsClassName() + ".java";
-            registerFile(usedPageFiles, locatorsFile, "page locators", e.getKey());
-            registerFile(usedPageFiles, actionsFile, "page actions", e.getKey());
-            Path locatorsOut = pagesDir.resolve(locatorsFile);
-            try (Writer w = Files.newBufferedWriter(locatorsOut, StandardCharsets.UTF_8)) {
-                locatorsTpl.process(model, w);
+            String pageFile = page.pageClassName() + ".java";
+            registerFile(usedPageFiles, pageFile, "page", e.getKey());
+            Path pageOut = pagesDir.resolve(pageFile);
+            try (Writer w = Files.newBufferedWriter(pageOut, StandardCharsets.UTF_8)) {
+                pageTpl.process(model, w);
             }
-            keepPages.add(locatorsFile);
-            Path actionsOut = pagesDir.resolve(actionsFile);
-            try (Writer w = Files.newBufferedWriter(actionsOut, StandardCharsets.UTF_8)) {
-                actionsTpl.process(model, w);
-            }
-            keepPages.add(actionsFile);
+            keepPages.add(pageFile);
         }
 
         Template genTpl = cfg.getTemplate("GeneratedTest.java.ftl");
@@ -128,6 +125,10 @@ public class CodeWriter {
                     ? buildChronologicalCalls(outcome.tcId(), outcome.loginSteps(), pages, keys,
                     CodegenDataKeys.PHASE_LOGIN)
                     : List.of();
+            List<Map<String, Object>> collapsedLogin = LoginPageHelper.collapseLoginCalls(loginChron, pages);
+            if (collapsedLogin != null) {
+                loginChron = collapsedLogin;
+            }
             List<Map<String, Object>> setupChron =
                     buildChronologicalCalls(outcome.tcId(), outcome.setupSteps(), pages, keys,
                             CodegenDataKeys.PHASE_SETUP);
@@ -229,7 +230,7 @@ public class CodeWriter {
                     && (step.locatorValue() == null || step.locatorValue().isBlank())) {
                 continue;
             }
-            String pageClass = pages.actionsClassName(step);
+            String pageClass = pages.pageClassNameFor(step);
             Map<String, Object> call = new LinkedHashMap<>();
             call.put("pageClass", pageClass);
             call.put("pageVar", pageVarName(pageClass));

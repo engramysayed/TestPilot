@@ -8,16 +8,40 @@ import java.util.Map;
 
 /** Parses bulk user-story uploads for generate-batch jobs. */
 public final class UserStoryBulkParser {
-    private static final String EXPECTED_HEADER = "US_ID,Title,Story";
+    private static final String EXPECTED_HEADER = "US_ID,Title,Story,AcceptanceCriteria,Role,Priority,Tags";
 
     private UserStoryBulkParser() {
     }
 
-    public record UserStoryEntry(String usId, String title, String story) {
+    public record UserStoryEntry(
+            String usId,
+            String title,
+            String story,
+            String acceptanceCriteria,
+            String role,
+            String priority,
+            String tags
+    ) {
+        public UserStoryEntry(String usId, String title, String story) {
+            this(usId, title, story, "", "", "", "");
+        }
+
         public String toPromptBlock() {
             StringBuilder sb = new StringBuilder();
             if (title != null && !title.isBlank()) {
                 sb.append("Title: ").append(title.trim()).append('\n');
+            }
+            if (role != null && !role.isBlank()) {
+                sb.append("Role: ").append(role.trim()).append('\n');
+            }
+            if (priority != null && !priority.isBlank()) {
+                sb.append("Priority: ").append(priority.trim()).append('\n');
+            }
+            if (tags != null && !tags.isBlank()) {
+                sb.append("Tags: ").append(tags.trim()).append('\n');
+            }
+            if (acceptanceCriteria != null && !acceptanceCriteria.isBlank()) {
+                sb.append("Acceptance criteria:\n").append(acceptanceCriteria.trim()).append('\n');
             }
             sb.append(story == null ? "" : story.trim());
             return sb.toString().trim();
@@ -58,7 +82,7 @@ public final class UserStoryBulkParser {
         Map<String, Integer> cols = mapHeader(rows.get(0));
         if (!cols.containsKey("USID") || !cols.containsKey("STORY")) {
             throw new IllegalArgumentException(
-                    "Bulk stories CSV must have header: " + EXPECTED_HEADER);
+                    "Bulk stories CSV must have US_ID and Story columns (optional Title,AcceptanceCriteria,Role,Priority,Tags)");
         }
         List<UserStoryEntry> out = new ArrayList<>();
         for (int i = 1; i < rows.size(); i++) {
@@ -72,7 +96,15 @@ public final class UserStoryBulkParser {
                 continue;
             }
             String title = cell(row, cols.getOrDefault("TITLE", -1));
-            out.add(new UserStoryEntry(usId.trim(), title.trim(), story.trim()));
+            String ac = cell(row, cols.getOrDefault("ACCEPTANCECRITERIA", -1));
+            if (ac.isBlank()) {
+                ac = cell(row, cols.getOrDefault("AC", -1));
+            }
+            String role = cell(row, cols.getOrDefault("ROLE", -1));
+            String priority = cell(row, cols.getOrDefault("PRIORITY", -1));
+            String tags = cell(row, cols.getOrDefault("TAGS", -1));
+            out.add(new UserStoryEntry(
+                    usId.trim(), title.trim(), story.trim(), ac.trim(), role.trim(), priority.trim(), tags.trim()));
         }
         if (out.isEmpty()) {
             throw new IllegalArgumentException("Bulk stories CSV has no data rows");

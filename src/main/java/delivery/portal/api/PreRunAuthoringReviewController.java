@@ -88,9 +88,7 @@ public class PreRunAuthoringReviewController {
         } catch (IllegalArgumentException e) {
             if (GenerateQualityGate.isQualityGateFailure(e)) {
                 return ResponseEntity.badRequest()
-                        .body(new ApiError(
-                                "QUALITY_GATE",
-                                GenerateQualityGate.qualityGateDetail(e)).asMap());
+                        .body(QualityGateResponses.fromException(e));
             }
             return ResponseEntity.badRequest()
                     .body(new ApiError("BAD_REQUEST", safeMessage(e, "Invalid review input")).asMap());

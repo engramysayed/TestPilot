@@ -19,8 +19,12 @@ public class JobEntity {
     @Column(nullable = false, unique = true)
     private String jobId;
 
-    @Column(nullable = false)
+    /** Nullable when accountScoped (global feature pages). */
+    @Column
     private String projectId;
+
+    @Column(name = "account_scoped", nullable = false, columnDefinition = "boolean default false")
+    private boolean accountScoped;
 
     @Column(nullable = false)
     private Long ownerUserId;
@@ -130,6 +134,8 @@ public class JobEntity {
     public void setJobId(String jobId) { this.jobId = jobId; }
     public String getProjectId() { return projectId; }
     public void setProjectId(String projectId) { this.projectId = projectId; }
+    public boolean isAccountScoped() { return accountScoped; }
+    public void setAccountScoped(boolean accountScoped) { this.accountScoped = accountScoped; }
     public Long getOwnerUserId() { return ownerUserId; }
     public void setOwnerUserId(Long ownerUserId) { this.ownerUserId = ownerUserId; }
     public String getMode() { return mode; }

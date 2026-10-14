@@ -9,6 +9,7 @@ import delivery.portal.model.JobRecord;
 import delivery.portal.model.ProjectRecord;
 
 import delivery.portal.security.CurrentUserService;
+import delivery.portal.roles.PermissionEnforcer;
 
 import delivery.portal.service.PortalStore;
 
@@ -61,6 +62,7 @@ public class GenerateBatchController {
     private final GenerateBatchWorker worker;
 
     private final CurrentUserService currentUser;
+    private final PermissionEnforcer permissionEnforcer;
 
     private final GenerateModelService models;
 
@@ -74,7 +76,9 @@ public class GenerateBatchController {
 
             CurrentUserService currentUser,
 
-            GenerateModelService models
+            GenerateModelService models,
+
+            PermissionEnforcer permissionEnforcer
 
     ) {
 
@@ -85,6 +89,8 @@ public class GenerateBatchController {
         this.currentUser = currentUser;
 
         this.models = models;
+
+        this.permissionEnforcer = permissionEnforcer;
 
     }
 
@@ -103,6 +109,8 @@ public class GenerateBatchController {
             @RequestParam(value = "model", required = false) String model
 
     ) throws Exception {
+
+        permissionEnforcer.requireFeatureJob(currentUser.requireUser(), "GENERATE");
 
         ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
 

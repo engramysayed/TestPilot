@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" package="com.example.test" bounds="[0,0][1080,1920]">
+    <node class="android.widget.FrameLayout" resource-id="com.example.test:id/nav_home" content-desc="Home" clickable="true" bounds="[0,1800][270,1920]" package="com.example.test"/>
+    <node class="android.widget.FrameLayout" resource-id="com.example.test:id/nav_search" content-desc="Search" clickable="true" bounds="[270,1800][540,1920]" package="com.example.test"/>
+    <node class="android.widget.FrameLayout" resource-id="com.example.test:id/nav_wallet" content-desc="Wallet" clickable="true" bounds="[540,1800][810,1920]" package="com.example.test"/>
+    <node class="android.widget.FrameLayout" resource-id="com.example.test:id/nav_profile" content-desc="Profile" clickable="true" bounds="[810,1800][1080,1920]" package="com.example.test"/>
+  </node>
+</hierarchy>

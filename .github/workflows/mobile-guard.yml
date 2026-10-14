@@ -1,0 +1,53 @@
+# M0 / integration 0056: keep mobile off in default CI (no device required).
+# A dedicated mobile job runs only on workflow_dispatch with dual opt-in env vars.
+name: mobile-guard
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_mobile_live:
+        description: "Run mobile live profile (requires lab device + dual opt-in)"
+        type: boolean
+        default: false
+
+jobs:
+  mobile-flag-off:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert delivery.mobile.enabled=false in default properties
+        run: bash scripts/ci/check-mobile-flag-off.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: MobileFeatureFlagDefaultsTest (no device)
+        run: >
+          mvn -B -pl keel-portal -am
+          "-Dtest=MobileFeatureFlagDefaultsTest"
+          "-Dsurefire.failIfNoSpecifiedTests=false"
+          test
+        env:
+          MAVEN_OPTS: "-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+
+  # Never part of default push/PR: requires explicit dispatch + secrets/device on a lab runner.
+  mobile-live-opt-in:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_mobile_live
+    runs-on: ubuntu-latest
+    needs: mobile-flag-off
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse without dual opt-in
+        run: |
+          if [[ "${{ vars.KEEL_MOBILE_CI_OPT_IN }}" != "true" ]]; then
+            echo "Set repository variable KEEL_MOBILE_CI_OPT_IN=true on a lab-capable repo to run mobile live CI" >&2
+            exit 1
+          fi
+      - name: Placeholder — no device on ubuntu-latest default runners
+        run: |
+          echo "Mobile live execution is lab-host only (Android SDK + Appium). This job documents the opt-in gate."
+          echo "Invoke on a self-hosted lab runner with -Ddelivery.mobile.enabled=true -Dkeel.mobile.ci-opt-in=true"

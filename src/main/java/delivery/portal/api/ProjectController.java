@@ -1,5 +1,7 @@
 package delivery.portal.api;
 
+import delivery.mobile.MobileProperties;
+import delivery.mobile.model.ProjectPlatform;
 import delivery.portal.model.CreateCredentialRequest;
 import delivery.portal.model.PatchCredentialRequest;
 import delivery.portal.model.PatchProjectRequest;
@@ -42,19 +44,25 @@ public class ProjectController {
     private final ProjectCredentialService credentials;
     private final ProjectArtifactService artifacts;
     private final ProjectSummaryService summary;
+    private final MobileProperties mobileProperties;
 
     public ProjectController(PortalStore store, CurrentUserService currentUser,
                              ProjectTcService projectTcs, ProjectCredentialService credentials,
-                             ProjectArtifactService artifacts, ProjectSummaryService summary) {
+                             ProjectArtifactService artifacts, ProjectSummaryService summary,
+                             MobileProperties mobileProperties) {
         this.store = store;
         this.currentUser = currentUser;
         this.projectTcs = projectTcs;
         this.credentials = credentials;
         this.artifacts = artifacts;
         this.summary = summary;
+        this.mobileProperties = mobileProperties;
     }
 
-    public record CreateProjectRequest(String name, String baseUrl) {
+    public record CreateProjectRequest(String name, String baseUrl, String platform) {
+        public CreateProjectRequest(String name, String baseUrl) {
+            this(name, baseUrl, null);
+        }
     }
 
     @GetMapping
@@ -67,14 +75,24 @@ public class ProjectController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> create(@RequestBody(required = false) CreateProjectRequest body) {
+    public ResponseEntity<?> create(@RequestBody(required = false) CreateProjectRequest body) {
         String name = body == null ? null : body.name();
         String baseUrl = body == null ? null : body.baseUrl();
-        ProjectRecord project = store.createProject(name, baseUrl, currentUser.requireUserId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                "projectId", project.getProjectId(),
-                "name", project.getName()
-        ));
+        String platformRaw = body == null ? null : body.platform();
+        ProjectPlatform platform = ProjectPlatform.WEB;
+        if (mobileProperties.isEnabled() && platformRaw != null && !platformRaw.isBlank()) {
+            platform = ProjectPlatform.parse(platformRaw);
+        } else if (!mobileProperties.isEnabled() && platformRaw != null && !platformRaw.isBlank()
+                && ProjectPlatform.parse(platformRaw) == ProjectPlatform.ANDROID) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiError("MOBILE_DISABLED", "Mobile projects require delivery.mobile.enabled").asMap());
+        }
+        ProjectRecord project = store.createProject(name, baseUrl, currentUser.requireUserId(), platform);
+        Map<String, Object> out = new HashMap<>();
+        out.put("projectId", project.getProjectId());
+        out.put("name", project.getName());
+        out.put("platform", project.getPlatform());
+        return ResponseEntity.status(HttpStatus.CREATED).body(out);
     }
 
     @GetMapping("/{projectId}")
@@ -115,6 +133,8 @@ public class ProjectController {
         Map<String, Object> map = new HashMap<>();
         map.put("projectId", p.getProjectId());
         map.put("name", p.getName());
+        map.put("platform", p.getPlatform() == null || p.getPlatform().isBlank() ? "WEB" : p.getPlatform());
+        map.put("mobileEnabled", mobileProperties.isEnabled());
         map.put("hasStoredFramework", store.hasStoredFramework(p.getProjectId()));
         map.put("latestVersion", p.getLatestVersion());
         map.put("baseUrl", p.getBaseUrl());

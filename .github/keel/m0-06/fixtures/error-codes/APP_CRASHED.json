@@ -1,0 +1,12 @@
+{
+  "code": "APP_CRASHED",
+  "stage": "execution",
+  "coverage": {
+    "status": "stub",
+    "fixture": "fixtures/error-codes/APP_CRASHED.json",
+    "plannedTest": "MobileErrorCode_APP_CRASHED_Test",
+    "raisedByTest": null,
+    "notes": "M0-06 stub \u2014 replace raisedByTest when Java MobileErrorCode enum + unit/IT exists"
+  },
+  "source": "contracts.md Failure codes and status mapping"
+}

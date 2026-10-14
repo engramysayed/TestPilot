@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" package="com.example.test" bounds="[0,0][1080,1920]">
+    <node class="android.widget.EditText" resource-id="com.example.test:id/search_input" text="ax" hint="Search" clickable="true" focusable="true" bounds="[80,160][1000,280]" package="com.example.test"/>
+    <node class="android.widget.TextView" text="Searching…" bounds="[80,300][1000,360]" package="com.example.test"/>
+  </node>
+</hierarchy>

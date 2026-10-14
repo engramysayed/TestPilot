@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  M4-01 helper-tests POM — DRAFT pins from mobile-toolchain.lock.json (pinned-m0-draft).
+  NOT for customer ZIP. Customer pom.xml keeps PLACEHOLDER-M0-02 until lock status=qualified.
+  Strip this file + *Test.java helper classes from ZIP (M4-04 packager deny-list).
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>io.keel</groupId>
+  <artifactId>customer-mobile-framework-helper-tests</artifactId>
+  <version>0.0.0-M4-01-HELPER</version>
+  <name>Keel customer mobile framework helper tests (draft pins)</name>
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- DRAFT-NOT-QUALIFIED — from lock pinned-m0-draft; do not ship as qualified -->
+    <appium.java-client.version>10.1.1</appium.java-client.version>
+    <selenium.mobile.version>4.43.0</selenium.mobile.version>
+    <testng.version>7.11.0</testng.version>
+    <allure.version>2.31.0</allure.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.seleniumhq.selenium</groupId>
+        <artifactId>selenium-bom</artifactId>
+        <version>${selenium.mobile.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.appium</groupId>
+      <artifactId>java-client</artifactId>
+      <version>${appium.java-client.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-api</artifactId>
+      <version>${selenium.mobile.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-support</artifactId>
+      <version>${selenium.mobile.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-remote-driver</artifactId>
+      <version>${selenium.mobile.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testng</groupId>
+      <artifactId>testng</artifactId>
+      <version>${testng.version}</version>
+      
+    </dependency>
+    <dependency>
+      <groupId>io.qameta.allure</groupId>
+      <artifactId>allure-testng</artifactId>
+      <version>${allure.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.qameta.allure</groupId>
+      <artifactId>allure-java-commons</artifactId>
+      <version>${allure.version}</version>
+    </dependency>
+  </dependencies>
+  <build>
+    <sourceDirectory>src/main/java</sourceDirectory>
+    <testSourceDirectory>src/test/java</testSourceDirectory>
+    <resources>
+      <resource><directory>src/main/resources</directory></resource>
+    </resources>
+    <testResources>
+      <testResource><directory>src/test/resources</directory></testResource>
+    </testResources>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>${maven.compiler.release}</release>
+          <parameters>true</parameters>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <!-- helper unit tests only — no Live device suite -->
+          <includes>
+            <include>**/SettleAfterTableParityTest.java</include>
+            <include>**/MobilePropertiesValidationTest.java</include>
+            <include>**/NoThreadSleepGuardTest.java</include>
+            <include>**/MobileReadOnlyRetryAnalyzerTest.java</include>
+            <include>**/AuthCoordinatorTest.java</include>
+            <include>**/CapturedValuesTest.java</include>
+            <include>**/AllureStepsSecretParamTest.java</include>
+          </includes>
+          <excludes>
+            <exclude>**/tests/generated/**</exclude>
+            <exclude>**/tests/todo/**</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

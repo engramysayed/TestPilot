@@ -122,7 +122,23 @@ public class TcExecutionService {
                         if (url == null || url.isBlank()) {
                             result = "false -> empty Excel open-path navigate target";
                         } else {
+                            String urlBefore = null;
+                            if (ProveWiring.settleEngineActive()) {
+                                try {
+                                    urlBefore = delivery.settle.SettleWaiter.prime(
+                                            driverFactory.get(), delivery.settle.SettlePolicy.builtin());
+                                } catch (RuntimeException ignored) {
+                                    urlBefore = current;
+                                }
+                            }
                             result = executor.checkAction("browserAction", "navigate", url, "", null, url);
+                            if (result == null || !result.startsWith("false")) {
+                                String settleFail = ProveWiring.settleAfter(driverFactory.get(), step, urlBefore);
+                                if (settleFail != null) {
+                                    captureFailure(evidenceDir);
+                                    return new TcOutcome(tcId, TcStatus.TODO, proven, settleFail, evidenceDir);
+                                }
+                            }
                         }
                     } else {
                         DomPostClickValidator.Snapshot beforeClick = null;

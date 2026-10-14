@@ -3,7 +3,8 @@
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Generate')}"></th:block>
 </head>
-<body class="app-body">
+<body class="app-body" th:attr="data-structured-intake=${generateStructuredIntake} ?: true">
+<link rel="stylesheet" th:href="@{/css/keel-portal-enhancements.css}"/>
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
 <header th:replace="~{fragments :: topbar}"></header>
@@ -15,7 +16,7 @@
         </div>
     </div>
 
-    
+
     <section class="panel record-wizard" id="record-wizard" aria-labelledby="record-wizard-title">
         <div class="page-title" style="margin-bottom:0.5rem">
             <div>
@@ -45,8 +46,8 @@
                 <h3>Where should Keel start?</h3>
                 <p class="panel-intro">Uses the project you pick above. Change project first if needed.</p>
                 <div class="choice" id="rw-site-choice">
-                    <label><input type="radio" name="rw-site" value="project" checked> <b>This project website</b><div class="muted">Uses the address from project settings</div></label>
-                    <label><input type="radio" name="rw-site" value="manual"> <b>Another address...</b><div class="muted">Type a full https:// link</div></label>
+                    <label><input type="radio" name="rw-site" value="project" checked> <b>This project’s website</b><div class="muted">Uses the address from project settings</div></label>
+                    <label><input type="radio" name="rw-site" value="manual"> <b>Another address…</b><div class="muted">Type a full https:// link</div></label>
                 </div>
                 <label class="f" id="rw-url-wrap" hidden>Website address
                     <input type="url" id="rw-url" placeholder="https://shop.example.com"/>
@@ -62,10 +63,10 @@
                 <h3>Show Keel what to do</h3>
                 <div class="recbox">
                     <p><strong>Recording opens in a real browser window.</strong> Click through your site as a visitor would; Keel writes down each step.</p>
-                    <p class="muted">In this portal build, use "Write from stories" below if live recording isn't available yet.</p>
+                    <p class="muted">In this portal build, use “Write from stories” below if live recording isn’t available yet.</p>
                     <p>
                         <button type="button" class="button primary" id="rw-start-rec">Start recording</button>
-                        <button type="button" class="button ghost" id="rw-stop-rec" hidden>Stop</button>
+                        <button type="button" class="button ghost" id="rw-stop-rec" hidden>■ Stop</button>
                     </p>
                     <p id="rw-rec-status" class="muted" hidden></p>
                 </div>
@@ -76,23 +77,24 @@
                     <li style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--calm-line, #e3e6ec)"><span class="muted">Name</span><b id="rw-sum-name">—</b></li>
                     <li style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--calm-line, #e3e6ec)"><span class="muted">Website</span><b id="rw-sum-site">This project</b></li>
                     <li style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--calm-line, #e3e6ec)"><span class="muted">Sign-in</span><b id="rw-sum-login">—</b></li>
-                    <li style="display:flex;justify-content:space-between;padding:0.6rem 0"><span class="muted">Next step</span><b>Save into the project test cases</b></li>
+                    <li style="display:flex;justify-content:space-between;padding:0.6rem 0"><span class="muted">Next step</span><b>Save into the project’s test cases</b></li>
                 </ul>
                 <label style="display:block;margin-top:0.8rem"><input type="checkbox" id="rw-run-once" checked> Run it once now to check it works</label>
                 <p id="rw-save-msg" class="ok" hidden></p>
                 <p id="rw-save-err" class="error" hidden></p>
             </div>
             <div class="wnav">
-                <button type="button" class="button ghost" id="rw-back" hidden>Back</button>
+                <button type="button" class="button ghost" id="rw-back" hidden>← Back</button>
                 <span></span>
-                <button type="button" class="button primary" id="rw-next">Next</button>
+                <button type="button" class="button primary" id="rw-next">Next →</button>
             </div>
         </div>
     </section>
-<section class="panel workspace-launcher" id="workspace-launcher">
+
+    <section class="panel workspace-launcher" id="workspace-launcher">
         <p class="guide-kicker">Workspace</p>
         <h2>Choose a project</h2>
-        <p class="panel-intro">Generated batches add new case IDs to the project library for Automate and Execute. Existing cases stay unchanged. If an ID already exists, the batch is not applied; review its CSV and use unique IDs before importing.</p>
+        <p class="panel-intro">Generated cases save to the project library for Automate and Execute.</p>
         <label>Project
             <select id="launcher-project-select">
                 <option value="">— Loading projects —</option>
@@ -116,7 +118,7 @@
         <select id="project-select" hidden aria-hidden="true">
             <option value="">— Loading projects —</option>
         </select>
-        <p class="muted generate-project-hint">Keel uses the project <strong>name</strong> and <strong>base URL</strong> in the Ollama prompt so generated steps match your app.</p>
+        <p class="muted generate-project-hint">Keel uses the project <strong>name</strong> and <strong>base URL</strong> so the steps match your app.</p>
         <p id="project-err" class="error" hidden></p>
         <p id="no-projects" class="muted" hidden>
             No projects yet —
@@ -125,14 +127,14 @@
     </section>
 
     <section class="panel hint" id="authoring-review-banner" hidden role="alert">
-        <strong>Issues found — Review with AI?</strong>
+        <strong>Some cases may need fixing. Let AI suggest fixes?</strong>
         <button type="button" class="button ghost" id="authoring-review-banner-open">Review with AI</button>
     </section>
 
     <section class="panel guide-promo" id="gen-just-saved-banner" hidden role="status">
         <div class="guide-promo-copy">
             <h2>Workbook saved</h2>
-            <p class="panel-intro">Your generated cases are in the project library. Continue with Automate to produce a framework ZIP.</p>
+            <p class="panel-intro">Your generated cases are in the project library. Next: run them, or build automation code.</p>
             <div class="guide-promo-actions">
                 <a class="button" id="gen-open-automate" href="/automate">Open Automate</a>
                 <button type="button" class="button ghost" id="gen-dismiss-saved">Dismiss</button>
@@ -144,56 +146,101 @@
         <div class="generate-primary">
             <div class="generate-primary-head">
                 <div>
-                    <h2>Generate with Ollama</h2>
-                    <p class="panel-intro">Paste user stories or acceptance criteria. Keel assigns each case a <strong>KeelPath</strong> (AUTOMATE, EXECUTE, VISION_ONLY, or MANUAL). Saved to the project for Automate and Execute.</p>
+                    <h2>Write test cases from stories</h2>
+                    <p class="panel-intro">Paste user stories or acceptance criteria. Keel writes the test cases and saves them to this project, ready to run.</p>
                 </div>
             </div>
 
+            <div id="structured-intake" class="structured-intake" data-testid="structured-intake">
+                <label for="intake-title">Story title
+                    <input type="text" id="intake-title" placeholder="e.g. Apply a coupon at checkout"/>
+                </label>
+                <label for="intake-ac">Acceptance criteria
+                    <textarea id="intake-ac" rows="5" placeholder="One criterion per line&#10;e.g. Coupon reduces the order total&#10;Invalid coupons show a clear error"></textarea>
+                    <span class="field-hint">One bullet per line. These become the goal for the AI.</span>
+                </label>
+                <div class="structured-intake-row">
+                    <label for="intake-role">Role
+                        <input type="text" id="intake-role" placeholder="e.g. Shopper, Admin"/>
+                    </label>
+                    <label for="intake-surface">Surface
+                        <input type="text" id="intake-surface" placeholder="e.g. Web checkout, Mobile settings"/>
+                    </label>
+                </div>
+            </div>
+
+            <label for="stories-input" id="stories-input-label" class="structured-intake-fallback-label" hidden>Stories / acceptance criteria</label>
+            <textarea id="stories-input" rows="10" hidden
+                      placeholder="As a shopper I want to add items to my cart so that I can check out…"></textarea>
+
+            <details class="more-options" id="generate-free-text-more">
+                <summary>More — paste free-text story instead</summary>
+                <p class="field-hint">Use this if you already have a full story blob. It is merged with the fields above when you Generate.</p>
+                <label for="intake-freetext">Free-text story
+                    <textarea id="intake-freetext" rows="6" placeholder="Optional free-text fallback…"></textarea>
+                </label>
+            </details>
+
+            <div id="quality-gate-panel" class="quality-gate-panel" hidden role="region" aria-label="Quality checks">
+                <h3>Quality checks before import</h3>
+                <p class="panel-intro" id="quality-gate-lede">Fix these before importing into your library. Import asks you to confirm when checks have not passed.</p>
+                <ul id="quality-gate-failures" class="quality-gate-failures"></ul>
+                <p id="quality-gate-suggestions" class="muted" hidden></p>
+                <p id="quality-gate-alternatives" class="muted" hidden></p>
+                <p id="quality-gate-warnings" class="muted" hidden></p>
+            </div>
+
+            <details class="more-options" id="generate-more-options">
+                <summary>More options</summary>
             <div class="generate-model-row">
-                <label for="generate-model-select">Ollama model
+                <label for="generate-model-select">AI model
                     <select id="generate-model-select" aria-describedby="generate-model-hint">
                         <option value="">Loading models…</option>
                     </select>
                 </label>
-                <p class="muted generate-option-hint" id="generate-model-hint">Used for Generate and bulk jobs. Default: Gemma 4.</p>
+                <p class="muted generate-option-hint" id="generate-model-hint">The default works for most projects.</p>
             </div>
 
             <div class="generate-model-row">
-                <label for="compare-model-b-select">Compare with (model B)
+                <label for="compare-model-b-select">Second AI model to compare (optional)
                     <select id="compare-model-b-select" aria-describedby="compare-model-hint">
                         <option value="">Loading models…</option>
                     </select>
                 </label>
-                <p class="muted generate-option-hint" id="compare-model-hint">Optional second model for side-by-side counts — nothing is saved until you pick one.</p>
+                <p class="muted generate-option-hint" id="compare-model-hint">Used by “Compare two AI models”. Nothing is saved until you pick the better result.</p>
             </div>
-
-            <label for="stories-input">Stories / acceptance criteria</label>
-            <textarea id="stories-input" rows="10" placeholder="As a shopper I want to add items to my cart so that I can check out…"></textarea>
 
             <div class="generate-options">
                 <label class="generate-check">
                     <input type="checkbox" id="review-pass"/>
-                    <span>Second pass — fix mistakes and add missing coverage (slower)</span>
+                    <span>Double-check the results (about twice as long)</span>
                 </label>
-                <p class="muted generate-option-hint">Runs Ollama twice: first generates TCs, then asks the model to fix authoring mistakes and add only gaps vs your stories. Roughly doubles wait time. Keel also auto-repairs known empty-field TestData mistakes even when this is off.</p>
+                <p class="muted generate-option-hint">The AI reviews its own test cases, fixes mistakes and fills gaps against your stories. Takes about twice as long.</p>
             </div>
+            </details>
 
             <div class="generate-actions">
                 <button type="button" class="button" id="generate-btn" disabled
-                        title="Queue a background generate job and open the status page. Respects Second pass checkbox. Safe for long Ollama runs.">Generate</button>
-                <button type="button" class="button btn-compare" id="compare-btn" disabled
-                        title="Run two models side by side, then pick which workbook to keep.">Compare two models</button>
-                <button type="button" class="button btn-all-in-one" id="run-pipeline-btn" disabled
-                        title="All in one: Generate with a second coverage pass (revise), then Automate, then Execute. Slower but more complete — confirm before starting.">All in one</button>
+                        title="Write test cases from your stories. Progress opens on the next page.">Generate</button>
                 <span id="generate-status" class="generate-status" role="status" aria-live="polite"></span>
             </div>
-            <p class="muted generate-option-hint" id="generate-actions-hint">
-                <strong>Generate</strong> always runs in the background and opens the status page (avoids browser timeouts on long Ollama runs).
-                <strong>All in one</strong> always Generate (with second coverage pass) → Automate → Execute — confirm carefully; watch stage links below.
+            <p class="muted generate-option-hint">Writing test cases can take a few minutes; we show progress on the next page.</p>
+            <details class="more-options" id="generate-other-ways">
+                <summary>Other ways to write test cases</summary>
+                <div class="generate-actions">
+                <button type="button" class="button btn-compare" id="compare-btn" disabled
+                        title="Run two models side by side, then pick which workbook to keep.">Compare two AI models</button>
+                <button type="button" class="button btn-all-in-one" id="run-pipeline-btn" disabled
+                        title="All in one: Generate with a second coverage pass (revise), then Automate, then Execute. Slower but more complete — confirm before starting.">All in one</button>
+                </div>
+                <p class="muted generate-option-hint" id="generate-actions-hint">
+                <strong>Compare two AI models</strong> writes the cases twice so you can keep the better set.
+                <strong>All in one</strong> writes the cases (double-checked), builds the code, then runs the tests — this takes a while.
             </p>
+            </details>
             <section class="pipeline-status panel" id="pipeline-status" hidden aria-live="polite">
-                <h3>Pipeline progress</h3>
-                <p class="muted" id="pipeline-status-summary">No pipeline running.</p>
+                <h3>Progress</h3>
+                <p class="muted" id="pipeline-status-summary">Nothing running.</p>
                 <ul class="pipeline-stage-list" id="pipeline-stage-list"></ul>
                 <p class="muted" id="pipeline-status-hint">Results: generated workbook stays on Generate; Automate jobs open under Automate / Status; Execute runs open under Execute.</p>
             </section>
@@ -203,7 +250,7 @@
                     <span class="spinner" aria-hidden="true"></span>
                     <div>
                         <h3 id="generate-loading-title">Generating test cases…</h3>
-                        <p class="muted" id="generate-loading-detail">Calling Ollama — this usually takes 30 seconds to 2 minutes.</p>
+                        <p class="muted" id="generate-loading-detail">Writing test cases… this usually takes 30 seconds to 2 minutes.</p>
                     </div>
                 </div>
                 <div class="progress-track progress-track--indeterminate" id="generate-progress-track" aria-hidden="true">
@@ -220,22 +267,18 @@
             </div>
 
             <div class="generate-filters">
-                <label>KeelPath
+                <label>How to test
                     <select id="keel-filter">
-                        <option value="">All paths</option>
-                        <option value="AUTOMATE">AUTOMATE</option>
-                        <option value="EXECUTE">EXECUTE</option>
-                        <option value="VISION_ONLY">VISION_ONLY</option>
-                        <option value="MANUAL">MANUAL</option>
+                        <option value="">All</option>
+                        <option value="AUTOMATE">Automate &amp; run</option>
+                        <option value="EXECUTE">Run only</option>
+                        <option value="VISION_ONLY">Screenshot check only</option>
+                        <option value="MANUAL">Manual (skipped)</option>
                     </select>
                 </label>
             </div>
             <p class="muted generate-option-hint" id="keelpath-help">
-                <strong>KeelPath</strong> is a label for later steps (saving the workbook only — it does not start a run).
-                <strong>Execute</strong> can run AUTOMATE / EXECUTE / VISION_ONLY (skips MANUAL only).
-                <strong>Automate</strong> builds framework code from AUTOMATE rows (skips EXECUTE / VISION_ONLY / MANUAL).
-                Click a row to edit all fields before Automate or Execute. KeelPath dropdown saves immediately; other fields save from the editor.
-                After changing a dropdown, still open Automate or Execute (or All in one) when you want a real run.
+                <strong>How to test</strong> decides what Keel does with each case: <em>Automate &amp; run</em> cases are run and turned into code; <em>Run only</em> and <em>Screenshot check only</em> cases are run but not turned into code; <em>Manual</em> cases are skipped. Changing it saves right away and does not start a run. Click a row to edit the case.
             </p>
 
             <div class="generate-table-wrap">
@@ -295,7 +338,7 @@
                 </div>
             </div>
             <p class="muted generate-option-hint" id="authoring-review-provider-hint">
-                Cursor uses the heal sidecar. Ollama uses the model you select below.
+                Cloud AI (Cursor) or local AI (Ollama).
             </p>
             <label for="review-requirements-notes">Requirements notes</label>
             <textarea id="review-requirements-notes" rows="5"
@@ -309,7 +352,7 @@
                 <p id="authoring-review-tc-count" class="muted"></p>
                 <ul id="authoring-review-findings"></ul>
                 <div id="authoring-review-gate-block" hidden>
-                    <h3>Quality gate errors</h3>
+                    <h3>Problems found</h3>
                     <ul id="authoring-review-gate-errors" class="error"></ul>
                 </div>
                 <h4 class="review-cases-heading">Proposed test cases</h4>
@@ -352,10 +395,12 @@
             </div>
         </section>
 
+        <details class="more-options" id="generate-more-ways">
+            <summary>More ways to add test cases: many stories at once, or paste from another AI tool</summary>
         <section class="generate-bulk" id="generate-bulk">
             <div class="generate-primary-head">
                 <div>
-                    <h2>Bulk upload (queued)</h2>
+                    <h2>Many stories at once</h2>
                     <p class="panel-intro">Upload a CSV of user stories. Keel processes them <strong>one-by-one</strong> in a background job queue — like Automate jobs.</p>
                 </div>
             </div>
@@ -363,7 +408,6 @@
             <div class="hint generate-format-hint">
                 <strong>Format:</strong> CSV with header <code>US_ID,Title,Story</code> — one row per user story.
                 <a href="/prompts/keel-user-stories-bulk-template.csv" download>Download template</a>
-                · <a href="/prompts/keel-axis-ops-login-us.csv" download>Axis Ops login + static OTP example</a>
             </div>
 
             <label for="bulk-file">Bulk stories file (.csv)
@@ -423,16 +467,25 @@
             <label for="import-raw">AI output (CSV or JSON)</label>
             <textarea id="import-raw" rows="10" placeholder="Paste CSV or JSON test cases here…"></textarea>
 
+            <div id="import-quality-gate-panel" class="quality-gate-panel" hidden role="region" aria-label="Import quality checks">
+                <h3>Quality checks</h3>
+                <p class="panel-intro">These need attention before Import saves to your library.</p>
+                <ul id="import-quality-gate-failures" class="quality-gate-failures"></ul>
+                <p id="import-quality-gate-meta" class="muted" hidden></p>
+            </div>
             <div class="generate-actions">
                 <button type="button" class="button" id="import-btn" disabled>Import into project</button>
                 <span id="import-status" class="generate-status" role="status" aria-live="polite"></span>
             </div>
+            <p class="field-hint" id="import-gate-hint" hidden>
+                Quality checks have not passed. Import will refuse until you confirm you want to continue anyway.
+            </p>
         </section>
 
         <details class="panel-details generate-fallback">
-            <summary>Copy-prompt workflow (external AI)</summary>
+            <summary>Use another AI chat (copy our prompt)</summary>
             <ol class="guide-howto">
-                <li>Click <strong>Copy prompt</strong> (includes your project's name and base URL).</li>
+                <li>Click <strong>Copy prompt</strong> (it includes your project's name and website).</li>
                 <li>Paste into any AI chat (ChatGPT, Claude, Cursor, etc.).</li>
                 <li>Paste <strong>one batch</strong> of user stories (about <strong>5–15</strong> cases worth).</li>
                 <li>Copy the AI's <strong>CSV or JSON</strong> output and paste it into <strong>Import into project</strong> above.</li>
@@ -445,6 +498,7 @@
                 <pre id="generate-prompt-preview" class="ai-prompt-preview" aria-live="polite">Loading prompt…</pre>
                 <p id="generate-prompt-status" class="ai-prompt-status" role="status"></p>
             </div>
+        </details>
         </details>
     </section>
     </div>
@@ -512,12 +566,12 @@
             <label>Visual assertion
                 <input type="text" id="tc-edit-visual"/>
             </label>
-            <label>KeelPath
+            <label>How to test
                 <select id="tc-edit-keelpath">
-                    <option value="AUTOMATE">AUTOMATE</option>
-                    <option value="EXECUTE">EXECUTE</option>
-                    <option value="VISION_ONLY">VISION_ONLY</option>
-                    <option value="MANUAL">MANUAL</option>
+                    <option value="AUTOMATE">Automate &amp; run</option>
+                    <option value="EXECUTE">Run only</option>
+                    <option value="VISION_ONLY">Screenshot check only</option>
+                    <option value="MANUAL">Manual (skipped)</option>
                 </select>
             </label>
         </form>
@@ -556,6 +610,190 @@
     const promptStatusEl = document.getElementById('generate-prompt-status');
     const openAutomate = document.getElementById('open-automate');
     const storiesInput = document.getElementById('stories-input');
+    const structuredIntakeOn = document.body.getAttribute('data-structured-intake') !== 'false';
+    const intakeTitle = document.getElementById('intake-title');
+    const intakeAc = document.getElementById('intake-ac');
+    const intakeRole = document.getElementById('intake-role');
+    const intakeSurface = document.getElementById('intake-surface');
+    const intakeFree = document.getElementById('intake-freetext');
+    const qualityGatePanel = document.getElementById('quality-gate-panel');
+    const qualityGateFailures = document.getElementById('quality-gate-failures');
+    const qualityGateSuggestions = document.getElementById('quality-gate-suggestions');
+    const qualityGateAlternatives = document.getElementById('quality-gate-alternatives');
+    const qualityGateWarnings = document.getElementById('quality-gate-warnings');
+    const importQgPanel = document.getElementById('import-quality-gate-panel');
+    const importQgFailures = document.getElementById('import-quality-gate-failures');
+    const importQgMeta = document.getElementById('import-quality-gate-meta');
+    const importGateHint = document.getElementById('import-gate-hint');
+    let lastImportGateFailed = false;
+    let lastQualityGatePayload = null;
+
+    /** Full QUALITY_GATE shape from Backend Final (COORDINATE_WITH_AE). */
+    function isQualityGatePayload(body) {
+        if (!body) return false;
+        if (body.error === 'QUALITY_GATE' || body.code === 'QUALITY_GATE') return true;
+        if (body.qualityGate && body.qualityGate.passed === false) return true;
+        return false;
+    }
+
+    function acLines() {
+        if (!intakeAc) return [];
+        return intakeAc.value.split(/\r?\n/).map(function (l) { return l.replace(/^[\s•\-\*]+/, '').trim(); })
+            .filter(Boolean);
+    }
+
+    function composeStoriesFromIntake() {
+        const parts = [];
+        const role = intakeRole && intakeRole.value.trim();
+        const title = intakeTitle && intakeTitle.value.trim();
+        const surface = intakeSurface && intakeSurface.value.trim();
+        const ac = acLines();
+        const free = intakeFree && intakeFree.value.trim();
+        if (role) parts.push('Role / persona: ' + role);
+        if (title) parts.push('Goal:\n' + title);
+        if (ac.length) {
+            parts.push(ac.map(function (l) { return '- ' + l; }).join('\n'));
+        }
+        if (surface) parts.push('Surface / constraints: ' + surface);
+        if (free) parts.push(free);
+        // Also sync hidden stories-input for any legacy readers
+        const blob = parts.join('\n\n').trim();
+        if (storiesInput) storiesInput.value = blob;
+        return blob;
+    }
+
+    function intakeRequestBody() {
+        return {
+            title: intakeTitle ? intakeTitle.value.trim() : '',
+            acceptanceCriteria: acLines(),
+            role: intakeRole ? intakeRole.value.trim() : '',
+            surface: intakeSurface ? intakeSurface.value.trim() : '',
+            freeText: intakeFree ? intakeFree.value.trim() : '',
+            persona: intakeRole ? intakeRole.value.trim() : '',
+            goal: (function () {
+                const t = intakeTitle ? intakeTitle.value.trim() : '';
+                const ac = acLines();
+                const lines = [];
+                if (t) lines.push(t);
+                ac.forEach(function (l) { lines.push('- ' + l); });
+                return lines.join('\n');
+            })(),
+            constraints: intakeSurface ? intakeSurface.value.trim() : ''
+        };
+    }
+
+    function humanizeGateFailure(f) {
+        if (!f) return { title: 'Unknown check failed', fix: 'Review the generated cases and try again.', meta: '' };
+        if (typeof f === 'string') {
+            return { title: f, fix: howToFixFromMessage(f), meta: '' };
+        }
+        const bits = [];
+        if (f.rule) bits.push('Rule: ' + f.rule);
+        if (f.tcId) bits.push('Case: ' + f.tcId);
+        if (f.field) bits.push('Field: ' + f.field);
+        if (f.severity) bits.push(String(f.severity));
+        return {
+            title: f.message || f.code || f.rule || 'Quality check failed',
+            fix: f.howToFix || howToFixFromMessage(f.message || f.rule || ''),
+            meta: bits.join(' · ')
+        };
+    }
+
+    function howToFixFromMessage(msg) {
+        const m = String(msg || '').toLowerCase();
+        if (m.indexOf('steps are blank') >= 0) return 'Add clear step-by-step actions for that test case.';
+        if (m.indexOf('literal \\n') >= 0 || m.indexOf('literal \\\\n') >= 0) return 'Use real line breaks in Steps instead of the characters \\n.';
+        if (m.indexOf('tcid') >= 0 && m.indexOf('prose') >= 0) return 'Use a short id like TC_01, not a full sentence.';
+        if (m.indexOf('keelpath') >= 0 || m.indexOf('keel path') >= 0) return 'Pick a How to test value such as Automate & run or Manual.';
+        if (m.indexOf('no test cases') >= 0) return 'Ask the AI for at least one complete test case, then paste again.';
+        if (m.indexOf('callbefore') >= 0 || m.indexOf('call before') >= 0) return 'Fix Call before test so it points at a real case id and does not loop.';
+        return 'Edit the case (or the paste) to satisfy this check, then try Import again.';
+    }
+
+    function renderQualityGate(panel, listEl, metaEl, payload) {
+        if (!panel || !listEl) return false;
+        lastQualityGatePayload = payload || null;
+        const qg = payload && payload.qualityGate;
+        const errors = (payload && payload.errors) || [];
+        const failures = (qg && Array.isArray(qg.failures) ? qg.failures.slice() : [])
+            .concat(errors.map(function (e) {
+                return typeof e === 'string' ? { message: e } : e;
+            }));
+        // Flattened message fallback (older API)
+        if (!failures.length && payload && (payload.error === 'QUALITY_GATE' || payload.code === 'QUALITY_GATE')) {
+            const detail = payload.message || payload.detail || '';
+            detail.split(/;\s*/).filter(Boolean).forEach(function (part) {
+                failures.push({ message: part });
+            });
+        }
+        const passed = qg ? (qg.passed === true && failures.length === 0)
+            : (failures.length === 0 && !isQualityGatePayload(payload));
+        const warnOnly = Array.isArray(payload && payload.coverageWarnings) && payload.coverageWarnings.length
+            && passed;
+        if (passed && !failures.length && !warnOnly
+                && !(payload && payload.suggestedKeelPath)
+                && !(payload && Array.isArray(payload.suggestions) && payload.suggestions.length)
+                && !(payload && Array.isArray(payload.alternatives) && payload.alternatives.length)) {
+            panel.hidden = true;
+            listEl.innerHTML = '';
+            if (metaEl) metaEl.hidden = true;
+            if (qualityGateWarnings) qualityGateWarnings.hidden = true;
+            if (qualityGateAlternatives) qualityGateAlternatives.hidden = true;
+            lastImportGateFailed = false;
+            return false;
+        }
+        panel.hidden = false;
+        listEl.innerHTML = '';
+        failures.forEach(function (f) {
+            const h = humanizeGateFailure(f);
+            const li = document.createElement('li');
+            li.innerHTML = '<strong>' + escapeHtml(h.title) + '</strong>'
+                + (h.meta ? ('<span class="quality-gate-meta">' + escapeHtml(h.meta) + '</span>') : '')
+                + '<span class="quality-gate-fix">How to fix: ' + escapeHtml(h.fix) + '</span>';
+            listEl.appendChild(li);
+        });
+        if (metaEl) {
+            const bits = [];
+            if (payload && payload.suggestedKeelPath) bits.push('Suggested how to test: ' + payload.suggestedKeelPath);
+            const sugg = payload && payload.suggestions;
+            if (Array.isArray(sugg) && sugg.length) {
+                bits.push('Suggestions: ' + sugg.map(function (s) {
+                    return [s.keelPath, s.technique].filter(Boolean).join(' — ') || JSON.stringify(s);
+                }).join('; '));
+            }
+            metaEl.hidden = bits.length === 0;
+            metaEl.textContent = bits.join(' · ');
+        }
+        if (qualityGateAlternatives) {
+            const alts = payload && payload.alternatives;
+            if (Array.isArray(alts) && alts.length) {
+                qualityGateAlternatives.hidden = false;
+                qualityGateAlternatives.textContent = 'Other how-to-test options: ' + alts.join(', ');
+            } else {
+                qualityGateAlternatives.hidden = true;
+                qualityGateAlternatives.textContent = '';
+            }
+        }
+        if (qualityGateWarnings) {
+            const warns = payload && payload.coverageWarnings;
+            if (Array.isArray(warns) && warns.length) {
+                qualityGateWarnings.hidden = false;
+                qualityGateWarnings.textContent = 'Coverage warnings (informational only): '
+                    + warns.map(function (w) {
+                        return (w.technique || 'technique') + (w.missingInTcs && w.missingInTcs.length
+                            ? (' (missing ' + w.missingInTcs.join(', ') + ')') : '');
+                    }).join('; ');
+            } else {
+                qualityGateWarnings.hidden = true;
+                qualityGateWarnings.textContent = '';
+            }
+        }
+        const failed = !passed || failures.length > 0 || (qg && qg.passed === false);
+        lastImportGateFailed = !!failed;
+        return failed;
+    }
+
+
     const reviewPass = document.getElementById('review-pass');
     const generateBtn = document.getElementById('generate-btn');
     const runPipelineBtn = document.getElementById('run-pipeline-btn');
@@ -836,7 +1074,21 @@
     }
 
     function showQualityGateBanner(body) {
-        if (body && body.error === 'QUALITY_GATE') showAuthoringReviewBanner();
+        if (!body) return;
+        if (!isQualityGatePayload(body) && !(Array.isArray(body.coverageWarnings) && body.coverageWarnings.length)
+                && !body.suggestedKeelPath && !(Array.isArray(body.suggestions) && body.suggestions.length)) {
+            return;
+        }
+        if (isQualityGatePayload(body)) showAuthoringReviewBanner();
+        const failed = renderQualityGate(importQgPanel || qualityGatePanel,
+            importQgFailures || qualityGateFailures,
+            importQgMeta || qualityGateSuggestions,
+            body);
+        if (qualityGatePanel && importQgPanel !== qualityGatePanel) {
+            renderQualityGate(qualityGatePanel, qualityGateFailures, qualityGateSuggestions, body);
+        }
+        lastImportGateFailed = !!failed || (body.qualityGate && body.qualityGate.passed === false);
+        if (importGateHint) importGateHint.hidden = !lastImportGateFailed;
     }
 
     function updateBulkControls() {
@@ -860,8 +1112,10 @@
         const full = fullPromptText();
         preview.textContent = full || 'Loading prompt…';
         copyBtn.disabled = !full;
-        generateBtn.disabled = !projectSel.value || !storiesInput.value.trim();
-        compareBtn.disabled = !projectSel.value || !storiesInput.value.trim()
+        if (structuredIntakeOn) composeStoriesFromIntake();
+        const hasStories = !!(storiesInput && storiesInput.value.trim());
+        generateBtn.disabled = !projectSel.value || !hasStories;
+        compareBtn.disabled = !projectSel.value || !hasStories
             || !selectedGenerateModel() || !selectedCompareModelB();
         runPipelineBtn.disabled = !projectSel.value;
         updateBulkControls();
@@ -898,7 +1152,7 @@
             if (!counts[key]) return;
             const chip = document.createElement('span');
             chip.className = keelBadgeClass(key) + ' generate-count-chip';
-            chip.textContent = key + ' · ' + counts[key];
+            chip.textContent = (window.KeelLabels ? KeelLabels.path(key) : key) + ' · ' + counts[key];
             countsEl.appendChild(chip);
         });
     }
@@ -908,7 +1162,7 @@
         const cur = (current || '').toUpperCase();
         return paths.map(function (p) {
             const selected = cur === p ? ' selected' : '';
-            return '<option value="' + p + '"' + selected + '>' + p + '</option>';
+            return '<option value="' + p + '"' + selected + '>' + (window.KeelLabels ? KeelLabels.path(p) : p) + '</option>';
         }).join('');
     }
 
@@ -1929,6 +2183,18 @@
             setImportStatus('Select a project and paste AI output first.', true);
             return;
         }
+        const gateFailed = lastImportGateFailed
+            || (lastQualityGatePayload && lastQualityGatePayload.qualityGate
+                && lastQualityGatePayload.qualityGate.passed === false);
+        if (gateFailed) {
+            const ok = window.confirm(
+                'Quality checks have not passed. Import refuses until you confirm. Continue anyway?'
+            );
+            if (!ok) {
+                setImportStatus('Import refused — fix the quality checks first, then try again.', true);
+                return;
+            }
+        }
         importBtn.disabled = true;
         setImportStatus('Importing…', false);
         try {
@@ -1948,6 +2214,12 @@
             showGenJustSavedBanner();
             setGenerateStatus('Workbook saved — use Automate/Execute with generated workbook', false);
             setImportStatus('', false);
+            lastImportGateFailed = false;
+            if (importQgPanel) importQgPanel.hidden = true;
+            if (importGateHint) importGateHint.hidden = true;
+            if (body && (body.qualityGate || body.coverageWarnings || body.suggestedKeelPath)) {
+                renderQualityGate(qualityGatePanel, qualityGateFailures, qualityGateSuggestions, body);
+            }
             if (resultsSection) {
                 resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
@@ -1960,15 +2232,75 @@
 
     async function runGenerate() {
         const projectId = projectSel.value;
-        const stories = storiesInput.value.trim();
+        if (structuredIntakeOn) composeStoriesFromIntake();
+        let stories = storiesInput.value.trim();
         if (!projectId || !stories) {
-            setGenerateStatus('Select a project and paste stories first.', true);
+            setGenerateStatus('Select a project and fill in the story title or acceptance criteria first.', true);
             return;
         }
         generateBtn.disabled = true;
         setGenerateStatus('Queuing background job…', false);
         showGenerateLoading(true, 'Queuing job…', 'Starting a background generate job — opening status page when ready.');
         try {
+            // Full QUALITY_GATE bind: prefer Final POST …/generate/story-intake (GenerateTcController).
+            // Graceful fallback ONLY when story-intake returns 404 (compose stories → generate-async).
+            let skipAsync = false;
+            if (structuredIntakeOn) {
+                try {
+                    const intakeRes = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generate/story-intake', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                        body: JSON.stringify(intakeRequestBody())
+                    });
+                    if (intakeRes.status === 404) {
+                        // Backend story-intake not on this tip — compose stories blob → generate-async below.
+                        composeStoriesFromIntake();
+                        stories = storiesInput.value.trim();
+                    } else {
+                        const intakeBody = await intakeRes.json().catch(function () { return {}; });
+                        if (!intakeRes.ok) {
+                            showQualityGateBanner(intakeBody);
+                            if (isQualityGatePayload(intakeBody)) {
+                                setGenerateStatus('Fix the quality checks above before importing or generating again.', true);
+                            } else {
+                                setGenerateStatus(intakeBody.message || intakeBody.error
+                                    || ('Story intake failed (' + intakeRes.status + ')'), true);
+                            }
+                            showGenerateLoading(false);
+                            return;
+                        }
+                        if (intakeBody.qualityGate && intakeBody.qualityGate.passed === false) {
+                            showQualityGateBanner(intakeBody);
+                            setGenerateStatus('Fix the quality checks above before importing.', true);
+                            showGenerateLoading(false);
+                            return;
+                        }
+                        // Final tip success: story-intake runs generate and returns workbook payload.
+                        if (intakeBody.rows || intakeBody.csv || intakeBody.revisionId
+                                || intakeBody.workbookId || intakeBody.generatedWorkbookId) {
+                            renderQualityGate(qualityGatePanel, qualityGateFailures, qualityGateSuggestions, intakeBody);
+                            showResult(intakeBody);
+                            showGenJustSavedBanner();
+                            setGenerateStatus('Generated from structured story intake — review quality checks, then Import if needed.', false);
+                            showGenerateLoading(false);
+                            skipAsync = true;
+                        } else {
+                            if (intakeBody.storiesPrompt) {
+                                stories = String(intakeBody.storiesPrompt).trim();
+                                storiesInput.value = stories;
+                            } else if (intakeBody.stories) {
+                                stories = String(intakeBody.stories).trim();
+                                storiesInput.value = stories;
+                            }
+                            renderQualityGate(qualityGatePanel, qualityGateFailures, qualityGateSuggestions, intakeBody);
+                        }
+                    }
+                } catch (intakeErr) { /* network — fall through to generate-async */ }
+            }
+            if (skipAsync) {
+                return;
+            }
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generate-async', {
                 method: 'POST',
                 credentials: 'same-origin',
@@ -2093,7 +2425,7 @@
         if (hint) {
             hint.textContent = ollama
                 ? 'Ollama will review with the model selected here.'
-                : 'Cursor uses the heal sidecar. Choose Ollama to pick a local model.';
+                : 'Cloud AI (Cursor). Choose Ollama to pick a local model.';
         }
     }
 
@@ -2319,6 +2651,19 @@
     storiesInput.addEventListener('input', updatePreview);
     importRaw.addEventListener('input', updatePreview);
     importBtn.addEventListener('click', runImport);
+    ['intake-title','intake-ac','intake-role','intake-surface','intake-freetext'].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updatePreview);
+    });
+    if (!structuredIntakeOn) {
+        const si = document.getElementById('structured-intake');
+        if (si) si.hidden = true;
+        if (storiesInput) { storiesInput.hidden = false; storiesInput.removeAttribute('hidden'); }
+        const lab = document.getElementById('stories-input-label');
+        if (lab) lab.hidden = false;
+        const ft = document.getElementById('generate-free-text-more');
+        if (ft) ft.hidden = true;
+    }
     authoringReviewProvider.addEventListener('change', function () {
         rememberAuthoringReviewProvider();
         syncAuthoringReviewProviderUi();
@@ -2470,16 +2815,16 @@
             li.classList.toggle('on', s === step);
             li.classList.toggle('done', s < step);
             var b = li.querySelector('b');
-            if (b) b.textContent = s < step ? '\u2713' : String(s);
+            if (b) b.textContent = s < step ? '✓' : String(s);
         });
         document.getElementById('rw-back').hidden = step === 1;
-        document.getElementById('rw-next').textContent = step === 4 ? 'Save test' : 'Next';
+        document.getElementById('rw-next').textContent = step === 4 ? 'Save test' : 'Next →';
         if (step === 4) {
-            document.getElementById('rw-sum-name').textContent = document.getElementById('rw-name').value.trim() || '\u2014';
+            document.getElementById('rw-sum-name').textContent = document.getElementById('rw-name').value.trim() || '—';
             document.getElementById('rw-sum-site').textContent =
                 (document.querySelector('input[name="rw-site"]:checked') || {}).value === 'manual'
-                    ? (document.getElementById('rw-url').value || '\u2014')
-                    : 'This project website';
+                    ? (document.getElementById('rw-url').value || '—')
+                    : 'This project’s website';
             document.getElementById('rw-sum-login').textContent =
                 document.getElementById('rw-login').value === 'yes' ? 'Yes' : 'No sign-in';
         }
@@ -2499,7 +2844,7 @@
         err.hidden = true; msg.hidden = true;
         if (!name) { err.hidden = false; err.textContent = 'Give the test a short name first.'; showStep(1); return; }
         msg.hidden = false;
-        msg.textContent = 'Saved the plan for "' + name + '". Open the project Test cases tab to add steps, or keep writing from stories below.';
+        msg.textContent = 'Saved the plan for “' + name + '”. Open the project’s Test cases tab to add steps, or keep writing from stories below.';
         try {
             sessionStorage.setItem('keel.recordDraft', JSON.stringify({
                 name: name,
@@ -2513,6 +2858,9 @@
     });
     document.querySelectorAll('input[name="rw-site"]').forEach(function (r) {
         r.addEventListener('change', function () {
+            document.getElementById('rw-url-wrap').hidden = r.value !== 'manual' || !r.checked
+                ? (document.querySelector('input[name="rw-site"][value="manual"]').checked ? false : true)
+                : false;
             document.getElementById('rw-url-wrap').hidden =
                 !document.querySelector('input[name="rw-site"][value="manual"]').checked;
         });
@@ -2522,7 +2870,7 @@
         document.getElementById('rw-stop-rec').hidden = false;
         var st = document.getElementById('rw-rec-status');
         st.hidden = false;
-        st.textContent = 'Recording is not wired to a live browser in this build yet — stop and continue, or use Write from stories below.';
+        st.textContent = 'Recording isn’t wired to a live browser in this build yet — stop and continue, or use “Write from stories” below.';
     });
     document.getElementById('rw-stop-rec').addEventListener('click', function () {
         document.getElementById('rw-start-rec').hidden = false;
@@ -2538,4 +2886,3 @@
 </script>
 </body>
 </html>
-
