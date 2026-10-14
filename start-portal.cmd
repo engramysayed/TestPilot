@@ -34,9 +34,23 @@ for /f "tokens=5" %%p in ('netstat -ano ^| findstr /R /C:":%KEEL_PORT% .*LISTENI
 title Keel portal :%KEEL_PORT%
 echo Starting Keel portal on http://localhost:%KEEL_PORT% ...
 set "JAR=%~dp0keel-portal\target\keel-portal-1.0-SNAPSHOT.jar"
+set "USE_JAR="
 if exist "%JAR%" (
+  REM Only java -jar when MANIFEST has Main-Class or Start-Class (Spring Boot executable).
+  set "MF_DIR=%TEMP%\keel-portal-mf-check"
+  if exist "%MF_DIR%" rmdir /s /q "%MF_DIR%" >nul 2>&1
+  mkdir "%MF_DIR%" >nul 2>&1
+  pushd "%MF_DIR%" >nul
+  jar xf "%JAR%" META-INF/MANIFEST.MF >nul 2>&1
+  findstr /R /I /C:"^Main-Class:" /C:"^Start-Class:" META-INF\MANIFEST.MF >nul 2>&1
+  if not errorlevel 1 set "USE_JAR=1"
+  popd >nul
+  if exist "%MF_DIR%" rmdir /s /q "%MF_DIR%" >nul 2>&1
+)
+if defined USE_JAR (
   java -jar "%JAR%" %KEEL_ARGS%
 ) else (
+  if exist "%JAR%" echo Jar exists but is not a Spring Boot executable ^(no Main-Class/Start-Class^); falling back to mvn spring-boot:run.
   call mvn -q -Dmaven.compiler.release=21 -pl keel-portal -am -DskipTests spring-boot:run "-Dspring-boot.run.arguments=%KEEL_ARGS%"
 )
 endlocal
