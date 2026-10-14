@@ -3726,3 +3726,85 @@ body:not(.app-body) .shell {
 }
 .exec-run-detail-mount .panel:last-child { margin-bottom: 0; }
 #run-detail-host[hidden] { display: none !important; }
+
+/* ——— Product Guide (pack 07) — additive; keeps .guide-* / sheet-mock intact ——— */
+.product-guide .product-guide-toc {
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+}
+.product-guide-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.75rem;
+    margin: 0 0 1rem;
+}
+.product-guide-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(0, 0, 0, 0.18);
+    text-decoration: none;
+    color: var(--text);
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.product-guide-card:hover {
+    border-color: rgba(58, 160, 232, 0.45);
+    background: rgba(58, 160, 232, 0.08);
+}
+.product-guide-card strong { font-size: 0.95rem; }
+.product-guide-card span { color: var(--muted); font-size: 0.82rem; line-height: 1.35; }
+.product-guide-figure {
+    margin: 0 0 1rem;
+    padding: 0;
+}
+.product-guide-figure img {
+    display: block;
+    width: 100%;
+    max-width: 720px;
+    height: auto;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: #121820;
+}
+.product-guide-figure figcaption {
+    margin-top: 0.45rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+}
+.product-guide-mock-body {
+    padding: 0.85rem 1rem 1rem;
+}
+.product-guide-mock-row {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid rgba(143, 160, 184, 0.12);
+    font-size: 0.9rem;
+}
+.product-guide-mock-row:last-child { border-bottom: 0; }
+.product-guide-mock-title {
+    margin: 0 0 0.5rem;
+    font-weight: 600;
+}
+.product-guide-mock-list {
+    margin: 0 0 0.75rem 1.1rem;
+    padding: 0;
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+.product-guide-mock-list strong { color: var(--text); }
+.product-guide-tc-banner {
+    border-color: rgba(13, 154, 168, 0.35);
+}
+@media (max-width: 900px) {
+    .product-guide-cards { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 560px) {
+    .product-guide-cards { grid-template-columns: 1fr; }
+    .product-guide-mock-row { grid-template-columns: 1fr; }
+}

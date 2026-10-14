@@ -146,7 +146,7 @@ public class KeelVisualReskinPhasesTest extends AbstractTestNGSpringContextTests
                 .andReturn().getResponse().getContentAsString();
         Assert.assertTrue(packages.contains("keel-page"));
 
-        String guide = mockMvc.perform(get("/tc-guide")
+        String guide = mockMvc.perform(get("/guide")
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();

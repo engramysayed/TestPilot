@@ -131,7 +131,8 @@ public class PortalUiController {
             case "bug-hunter" -> "Bug Hunter";
             case "runs" -> "Run history";
             case "packages" -> "Code packages";
-            case "tc-guide" -> "How to write test cases";
+            case "guide" -> "Guide";
+            case "tc-guide" -> "Guide";
             case "account" -> "Account";
             case "users" -> "Administration";
             case "domains" -> "Domains";
@@ -286,10 +287,16 @@ public class PortalUiController {
         return "redirect:/automate?projectId=" + projectId;
     }
 
+    @GetMapping("/guide")
+    public String guide(Model model) {
+        addNav(model, "guide");
+        return "guide";
+    }
+
+    /** Old TC guide URL — bookmarks land on the product Guide TC authoring section. */
     @GetMapping("/tc-guide")
-    public String tcGuide(Model model) {
-        addNav(model, "tc-guide");
-        return "tc-guide";
+    public String tcGuideRedirect() {
+        return "redirect:/guide#tc-authoring";
     }
 
     @GetMapping({"/runs", "/jobs"})

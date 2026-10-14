@@ -33,7 +33,7 @@ public class GuideMotionMvcTest extends AbstractTestNGSpringContextTests {
     private MockMvc mockMvc;
 
     private String fetchGuideBody() throws Exception {
-        return mockMvc.perform(get("/tc-guide").with(httpBasic(AUTH_USER, AUTH_PASS)))
+        return mockMvc.perform(get("/guide").with(httpBasic(AUTH_USER, AUTH_PASS)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
