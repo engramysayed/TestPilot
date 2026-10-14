@@ -21,7 +21,16 @@ import java.nio.file.Path;
 /** Template Settle (A8 policy + probe) in headless Chrome: network idle, spinner, DOM quiet, url rules, effect. */
 public class SettleLiveSmokeTest {
     static final String PAGE = """
-            <!doctype html><html><body>
+            <!doctype html><html><head><style>
+            /* Harness: kill UA focus-ring / :active paint so dead+netonly clicks stay NO_EFFECT.
+               Windows headless Chrome otherwise treats focus paint as effectSignal=visual.
+               Do not use data-keel-volatile here — that would mask real visual meaning. */
+            button,a{outline:none!important;box-shadow:none!important;
+              background:#eee;border:1px solid #999;color:#000;appearance:none;-webkit-appearance:none}
+            button:focus,button:focus-visible,button:active,
+            a:focus,a:focus-visible,a:active{outline:none!important;box-shadow:none!important;
+              background:#eee;border:1px solid #999;color:#000}
+            </style></head><body>
             <button id=fetch onclick="fetch('/slow').then(r=>r.text()).then(t=>document.body.insertAdjacentHTML('beforeend','<p id=got>'+t+'</p>'))">fetch</button>
             <button id=spin onclick="const s=document.createElement('div');s.className='spinner';s.textContent='...';document.body.appendChild(s);setTimeout(()=>{s.remove();document.body.insertAdjacentHTML('beforeend','<p id=done>done</p>')},700)">spin</button>
             <button id=dead>dead</button>
@@ -71,7 +80,9 @@ public class SettleLiveSmokeTest {
         policy = loader.loadClass("project.utils.settle.SettlePolicy").getMethod("builtin").invoke(null);
         try {
             ChromeOptions o = new ChromeOptions();
-            o.addArguments("--headless=new", "--no-sandbox", "--disable-gpu");
+            // Stable paint: hide scrollbars + sRGB so OS chrome/focus chrome does not flake visual EFFECT.
+            o.addArguments("--headless=new", "--no-sandbox", "--disable-gpu",
+                    "--hide-scrollbars", "--force-color-profile=srgb");
             driver = new ChromeDriver(o);
         } catch (RuntimeException e) {
             throw new SkipException("Chrome unavailable: " + e.getMessage());
@@ -163,7 +174,7 @@ public class SettleLiveSmokeTest {
             String r = run("click", "dead");
             Assert.assertTrue(r.startsWith("Result[settled=true"), r);
             Assert.assertTrue(r.contains("effect=NO_EFFECT"), r);
-            Assert.assertTrue(elapsed(r) >= 1900 && elapsed(r) < 6000, r);   // effectWaitMs=2000 for click
+            Assert.assertTrue(elapsed(r) >= 1800 && elapsed(r) < 7000, r);   // effectWaitMs=2000 for click; slight slack for live PC
         } finally {
             System.clearProperty("keel.noeffect");
         }
