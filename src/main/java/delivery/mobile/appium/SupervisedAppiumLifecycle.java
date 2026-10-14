@@ -15,7 +15,7 @@ import java.util.function.BooleanSupplier;
  * tied to lease ACTIVE→RELEASING; session create/quit bookkeeping; crash / cancel-while-starting /
  * cleanup failure → quarantine via {@link LeaseLifecycleGate}.
  * <p>
- * No Appium jars on portal — process supervisor + port ownership + session bookkeeping only.
+ * No Appium jars on portal — process supervisor + port ownership + raw-HTTP NewSession (AE-L6) only.
  * Never kills unrelated PIDs; never runs {@code adb kill-server}.
  */
 @Component
@@ -80,7 +80,7 @@ public class SupervisedAppiumLifecycle {
                 throw new AppiumLifecycleException(AppiumErrorCode.CANCELLED_WHILE_STARTING,
                         "cancel after process start");
             }
-            session = sessions.createSession(leaseId, fenceToken, process);
+            session = sessions.createSession(leaseId, fenceToken, process, deviceSerial);
             MobileLeaseRecord activated = leases.activate(
                     leaseId, fenceToken, session.getSessionId(), process.getProcessRef());
             Binding binding = new Binding(leaseId, fenceToken, ownerKey, bundle, process, session, activated);

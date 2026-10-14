@@ -3,50 +3,67 @@ package delivery.mobile.appium;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * M1-06 session create/quit bookkeeping. Portal never imports Appium driver classes;
- * AE/mobile-runner perform the real HTTP NewSession in M2 against {@link OwnedAppiumProcess#getBaseUrl()}.
+ * AE-L6 session create/quit: W3C NewSession over raw HTTP against owned loopback Appium,
+ * plus ConcurrentHashMap bookkeeping. Portal never imports Appium driver / java-client jars.
  */
 public final class AppiumSessionFactory {
     private final Clock clock;
+    private final AppiumSessionTransporter transporter;
     private final ConcurrentHashMap<String, AppiumSessionRecord> byId = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> leaseToSession = new ConcurrentHashMap<>();
 
     public AppiumSessionFactory() {
-        this(Clock.systemUTC());
+        this(Clock.systemUTC(), new HttpAppiumSessionTransporter());
     }
 
     public AppiumSessionFactory(Clock clock) {
+        this(clock, new HttpAppiumSessionTransporter());
+    }
+
+    /** Injectable transporter for offline unit tests (mock NewSession without network). */
+    public AppiumSessionFactory(Clock clock, AppiumSessionTransporter transporter) {
         this.clock = clock == null ? Clock.systemUTC() : clock;
+        this.transporter = Objects.requireNonNull(transporter, "transporter");
     }
 
     /**
-     * Record a new session bound to the lease + owned process. Does not call Appium HTTP.
+     * POST W3C NewSession with {@code appium:udid}=deviceSerial; store the real Appium session id.
+     * Blank/null serial → {@link AppiumErrorCode#INVALID_STATE}. Non-loopback / HTTP failure →
+     * {@link AppiumErrorCode#APPIUM_UNAVAILABLE}.
      */
     public AppiumSessionRecord createSession(String leaseId,
                                              long fenceToken,
-                                             OwnedAppiumProcess process) {
+                                             OwnedAppiumProcess process,
+                                             String deviceSerial) {
         if (leaseId == null || leaseId.isBlank()) {
             throw new AppiumLifecycleException(AppiumErrorCode.INVALID_STATE, "leaseId required");
         }
         if (process == null) {
             throw new AppiumLifecycleException(AppiumErrorCode.APPIUM_UNAVAILABLE, "owned process required");
         }
-        String sessionId = "sess_" + shortId();
+        String serial = AppiumW3cCapabilities.requireSerial(deviceSerial);
+        String sessionId = transporter.createSession(process.getBaseUrl(), serial);
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new AppiumLifecycleException(AppiumErrorCode.APPIUM_UNAVAILABLE,
+                    "NewSession returned blank sessionId");
+        }
         Instant now = clock.instant();
         AppiumSessionRecord rec = new AppiumSessionRecord(
                 sessionId, leaseId, fenceToken, process.getProcessRef(),
-                process.getServerPort(), now, AppiumSessionRecord.State.ACTIVE);
+                process.getServerPort(), now, AppiumSessionRecord.State.ACTIVE, serial);
         byId.put(sessionId, rec);
         leaseToSession.put(leaseId, sessionId);
         return rec;
     }
 
-    /** Quit bookkeeping for the session; idempotent if already QUIT. */
+    /**
+     * Quit: best-effort HTTP DELETE /session/{id}, then bookkeeping QUIT (idempotent if already QUIT).
+     */
     public AppiumSessionRecord quitSession(String sessionId) {
         AppiumSessionRecord rec = byId.get(sessionId);
         if (rec == null) {
@@ -56,6 +73,13 @@ public final class AppiumSessionFactory {
             return rec;
         }
         rec.markQuitting();
+        // Best-effort HTTP delete against owned loopback derived from recorded server port.
+        String baseUrl = "http://127.0.0.1:" + rec.getServerPort();
+        try {
+            transporter.deleteSession(baseUrl, sessionId);
+        } catch (RuntimeException ignored) {
+            // bookkeeping still marks QUIT
+        }
         rec.markQuit(clock.instant());
         return rec;
     }
@@ -76,7 +100,8 @@ public final class AppiumSessionFactory {
         return Map.copyOf(byId);
     }
 
-    private static String shortId() {
-        return UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+    /** Visible for tests. */
+    AppiumSessionTransporter transporter() {
+        return transporter;
     }
 }

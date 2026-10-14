@@ -42,7 +42,8 @@ public class SupervisedAppiumLifecycleTest {
         appium.setAvailable(true);
         appium.setStartBehavior(ScriptedAppiumBackend.StartBehavior.SUCCESS);
         ports = new OwnedLoopbackPortAllocator(props);
-        sessions = new AppiumSessionFactory();
+        ScriptedAppiumSessionTransporter sessionTransport = new ScriptedAppiumSessionTransporter();
+        sessions = new AppiumSessionFactory(java.time.Clock.systemUTC(), sessionTransport);
         leases = new FakeLeaseLifecycleGate();
         MobilePreflight preflight = new MobilePreflight(new AdbDeviceDiscovery(props, adb), appium);
         lifecycle = new SupervisedAppiumLifecycle(props, preflight, ports, appium, sessions, leases);
