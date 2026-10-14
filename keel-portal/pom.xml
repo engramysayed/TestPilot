@@ -21,6 +21,8 @@
         <!-- Root of the legacy single-module layout; sources and the working dir stay there for now. -->
         <keel.root>${project.basedir}/..</keel.root>
         <exec.skip>false</exec.skip>
+        <!-- Overridable via -Dexec.mainClass=... (start-engine.cmd runs EngineAgent). -->
+        <exec.mainClass>delivery.cli.DeliveryCli</exec.mainClass>
         <spring-boot.run.skip>false</spring-boot.run.skip>
     </properties>
 
@@ -377,7 +379,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
                 <configuration>
-                    <mainClass>delivery.cli.DeliveryCli</mainClass>
+                    <mainClass>${exec.mainClass}</mainClass>
                 </configuration>
             </plugin>
             <plugin>

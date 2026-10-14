@@ -14,6 +14,9 @@
     <name>mobile-contracts</name>
 
     <properties>
+        <!-- Standalone module (no keel-parent): skip CLI exec/spring-boot so -pl keel-portal -am exec:java only runs in keel-portal. -->
+        <exec.skip>true</exec.skip>
+        <spring-boot.run.skip>true</spring-boot.run.skip>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <maven.compiler.parameters>true</maven.compiler.parameters>

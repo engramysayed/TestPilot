@@ -23,6 +23,8 @@ if "%KEEL_ENGINE_LEGACY%"=="1" (
   echo Using the legacy v1 private runner agent ^(KEEL_ENGINE_LEGACY=1^).
   call mvn -q -Dmaven.compiler.release=21 -pl keel-portal -am -DskipTests exec:java "-Dexec.mainClass=delivery.runner.PrivateRunnerAgent" "-Dexec.args=--portal %KEEL_PORTAL_URL% --work-dir %KEEL_ENGINE_HOME%\work --dry-run %KEEL_RUNNER_DRY_RUN%"
 ) else (
+  REM -am pulls mobile-contracts (standalone, no parent); those modules set exec.skip=true so only keel-portal runs.
+  REM keel-portal mainClass is ${exec.mainClass} so -Dexec.mainClass overrides DeliveryCli default.
   call mvn -q -Dmaven.compiler.release=21 -pl keel-portal -am -DskipTests exec:java "-Dexec.mainClass=delivery.runner.EngineAgent" "-Dexec.args=--keel.engine.portal-url=%KEEL_PORTAL_URL% --keel.engine.home=%KEEL_ENGINE_HOME% --keel.engine.dry-run=%KEEL_RUNNER_DRY_RUN%"
 )
 endlocal

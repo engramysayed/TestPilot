@@ -3,7 +3,7 @@ REM Phase 0a (company machine): start the Keel portal manually on http://localho
 REM No services, certificates, proxy or firewall changes; nothing is installed.
 REM Optional: set KEEL_PORTAL_HOME to keep portal data in its own folder
 REM (e.g. %USERPROFILE%\Keel\portal). If unset, data stays in .\delivery-store as today.
-setlocal
+setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
 if exist "%~dp0api-keys.local.bat" call "%~dp0api-keys.local.bat"
@@ -21,15 +21,31 @@ if not "%KEEL_PORTAL_HOME%"=="" (
 )
 
 REM Free port 8080 only if a previous Keel (java.exe) still holds it; never kill other programs.
+REM netstat often lists the same PID twice (0.0.0.0 + [::]); after the first taskkill the second
+REM pass must not treat a dead PID as "another program".
+set "SEEN_PIDS=;"
 for /f "tokens=5" %%p in ('netstat -ano ^| findstr /R /C:":%KEEL_PORT% .*LISTENING"') do (
-  tasklist /FI "PID eq %%p" /FI "IMAGENAME eq java.exe" | findstr /I "java.exe" >nul && (
-    echo Stopping previous Keel java.exe PID %%p on port %KEEL_PORT%...
-    taskkill /PID %%p /F >nul 2>&1
-  ) || (
-    echo Port %KEEL_PORT% is used by another program ^(PID %%p^). Close it and retry.
-    exit /b 1
+  echo !SEEN_PIDS! | findstr /C:";%%p;" >nul 2>&1
+  if errorlevel 1 (
+    set "SEEN_PIDS=!SEEN_PIDS!%%p;"
+    tasklist /FI "PID eq %%p" /FI "IMAGENAME eq java.exe" 2>nul | findstr /I "java.exe" >nul
+    if not errorlevel 1 (
+      echo Stopping previous Keel java.exe PID %%p on port %KEEL_PORT%...
+      taskkill /PID %%p /F >nul 2>&1
+    ) else (
+      tasklist /FI "PID eq %%p" 2>nul | findstr /R /C:" %%p " >nul
+      if not errorlevel 1 (
+        echo Port %KEEL_PORT% is used by another program ^(PID %%p^). Close it and retry.
+        exit /b 1
+      )
+    )
   )
 )
+
+REM Also stop any leftover Keel portal JVM that no longer listens but still holds H2 (portal-db.mv.db).
+powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='java.exe'\" | Where-Object { $_.CommandLine -match 'keel-portal|PortalApplication' } | ForEach-Object { Write-Host ('Stopping leftover Keel java.exe PID ' + $_.ProcessId); Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" 2>nul
+REM Give the OS a moment to release the port and H2 file lock after taskkill.
+timeout /t 3 /nobreak >nul
 
 title Keel portal :%KEEL_PORT%
 echo Starting Keel portal on http://localhost:%KEEL_PORT% ...
