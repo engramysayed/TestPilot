@@ -49,7 +49,24 @@ final class CodegenDataKeys {
         return keys;
     }
 
+    /** Property keys whose value came from an IR {@code secret: true} step. */
+    private final java.util.Set<String> secretKeys = new java.util.LinkedHashSet<>();
+    private boolean allocatingSecret;
+
+    boolean isSecretKey(String key) {
+        return secretKeys.contains(key);
+    }
+
     String keyFor(String fallbackTcId, String emitPhase, ProvenStep step) {
+        allocatingSecret = step.secret();
+        try {
+            return keyFor0(fallbackTcId, emitPhase, step);
+        } finally {
+            allocatingSecret = false;
+        }
+    }
+
+    private String keyFor0(String fallbackTcId, String emitPhase, ProvenStep step) {
         String value = step.value() == null ? "" : step.value();
         String special = CodeWriter.specialPropKey(value);
         if (special != null) {
@@ -108,8 +125,13 @@ final class CodegenDataKeys {
         slots.put(slotId(ownerId, phase, fingerprint), key);
         String previous = valuesByKey.put(key, value);
         if (previous != null && !previous.equals(value)) {
+            boolean redact = secretKeys.contains(key) || allocatingSecret;
             throw new IllegalStateException(
-                    "Conflicting test data for key '" + key + "': already '" + previous + "', new '" + value + "'");
+                    "Conflicting test data for key '" + key + "': already '" + (redact ? CodegenSecrets.MASK : previous)
+                            + "', new '" + (redact ? CodegenSecrets.MASK : value) + "'");
+        }
+        if (allocatingSecret) {
+            secretKeys.add(key);
         }
         return key;
     }

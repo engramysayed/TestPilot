@@ -114,4 +114,16 @@ public class FrameworkPackagerTest {
         Assert.assertEquals(Files.readString(copied).trim(), "BASE_WEB=https://customer.example");
         Assert.assertFalse(Files.exists(dest.resolve("src/test/resources/config/webapp.properties.example")));
     }
+
+    /** r3: the page-scoped network tracker and the .gitattributes that keeps the settle files byte-exact ship to customers. */
+    @Test
+    public void settleResourcesAndGitattributesShip() throws Exception {
+        for (String f : new String[]{"src/main/resources/keel/settle-policy.json", "src/main/resources/keel/settle-probe.js",
+                "src/main/resources/keel/settle-network.js", "src/test/resources/keel/settle-policy.golden.txt", ".gitattributes"}) {
+            org.testng.Assert.assertTrue(FrameworkPackager.shouldInclude(f), f);
+            org.testng.Assert.assertTrue(Files.isRegularFile(Path.of("customer-framework-template").resolve(f)), "template has " + f);
+        }
+        String attrs = Files.readString(Path.of("customer-framework-template/.gitattributes"));
+        org.testng.Assert.assertTrue(attrs.contains("**/keel/settle-network.js        -text"), attrs);
+    }
 }

@@ -1,11 +1,9 @@
 package delivery.job;
 
-import delivery.portal.model.ProjectRecord;
-
 import java.nio.file.Path;
 
 public record GenerateBatchJobRequest(
-        ProjectRecord project,
+        String projectId,
         Path storiesPath,
         Path outputDir,
         boolean reviewPass,

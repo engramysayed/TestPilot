@@ -2,7 +2,7 @@ package delivery.portal.service;
 
 import delivery.identity.ScopePaths;
 import delivery.identity.TenantId;
-import delivery.job.WebhookDestinationStore;
+import delivery.portal.jobs.WebhookDestinationStore;
 import delivery.job.WebhookSigner;
 import delivery.net.TargetNetworkPolicy;
 import delivery.portal.DeliveryPortalProperties;

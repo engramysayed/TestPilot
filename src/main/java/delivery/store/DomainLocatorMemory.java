@@ -21,6 +21,8 @@ public class DomainLocatorMemory {
     public static final String FILE_NAME = "domain-locator-memory.json";
 
     private final Map<String, Slot> slots = new LinkedHashMap<>();
+    private final Map<String, Slot> pending = new LinkedHashMap<>();
+    private final java.util.Set<String> removed = new java.util.HashSet<>();
 
     public static Path sharedFile(Path storeRoot, String baseUrl) {
         Path domain = DomainStorePaths.resolveDomainRoot(storeRoot, baseUrl);
@@ -87,6 +89,8 @@ public class DomainLocatorMemory {
     }
 
     public void remember(String host, String excelPath, StepIntentBinder.IntentLine intent, ProvenStep step) {
+        // Locator-only memory cannot round-trip assertion semantics, captures or expected values.
+        if (intent != null && intent.kind() == StepIntentBinder.IntentKind.ASSERT_VISIBLE) return;
         if (intent == null || step == null || step.locatorValue() == null || step.locatorValue().isBlank()) {
             return;
         }
@@ -106,12 +110,17 @@ public class DomainLocatorMemory {
                 step.locatorStrategy() == null ? "" : step.locatorStrategy(),
                 step.locatorValue(),
                 step.action() == null ? "" : step.action()));
+        pending.put(key, slots.get(key));
+        removed.remove(key);
     }
 
     public Optional<ProvenStep> recall(
             String host, String excelPath, StepIntentBinder.IntentLine intent, String tcId) {
         if (intent == null) {
             return Optional.empty();
+        }
+        if (intent.kind() == StepIntentBinder.IntentKind.ASSERT_VISIBLE) {
+            return recallFieldAssertion(host, excelPath, intent, tcId);
         }
         Slot slot = slots.get(slotKey(host, excelPath, intentKey(intent)));
         if (slot == null) {
@@ -147,8 +156,38 @@ public class DomainLocatorMemory {
         return ":field=" + field.trim().replaceAll("\\s+", "_");
     }
 
+    private Optional<ProvenStep> recallFieldAssertion(String host, String path,
+            StepIntentBinder.IntentLine intent, String tcId) {
+        var match = java.util.regex.Pattern.compile(
+                "(?i)^(?:confirm|verify|assert)\\s+the\\s+(.+?)\\s+field\\s+is\\s+(not\\s+)?visible[.!]?$")
+                .matcher(intent.text().trim());
+        if (!match.matches()) return Optional.empty(); // Compound and text assertions must bind normally.
+        String field = match.group(1).trim();
+        Map<String, Slot> matches = new LinkedHashMap<>();
+        for (Slot candidate : slots.values()) {
+            if (!candidate.host().equals(normalizeHost(host)) || !candidate.path().equals(normalizePath(path))
+                    || !"type".equals(candidate.action()) || !candidate.intentKey().startsWith("TYPE_")) continue;
+            String text = candidate.intentKey().substring(candidate.intentKey().indexOf('|') + 1);
+            String name = StepIntentBinder.intentFieldPhrase(text);
+            if (name == null || !field.equalsIgnoreCase(name.trim())) continue;
+            String selector = candidate.locator();
+            if ("css".equals(candidate.strategy())) selector = selector.replaceFirst("^input(?=\\[)", "");
+            String key = candidate.strategy() + "|" + selector;
+            Slot existing = matches.get(key);
+            if (existing == null || candidate.locator().startsWith("input[")) matches.put(key, candidate);
+        }
+        if (matches.size() != 1) return Optional.empty();
+        Slot target = matches.values().iterator().next();
+        return Optional.of(new ProvenStep(tcId, "Page", "elementAction", "assert", target.strategy(),
+                target.locator(), "", match.group(2) == null ? "visible" : "notVisible", "", true,
+                "memory:field-assertion"));
+    }
+
     public void forget(String host, String excelPath, StepIntentBinder.IntentLine intent) {
-        slots.remove(slotKey(host, excelPath, intentKey(intent)));
+        String key = slotKey(host, excelPath, intentKey(intent));
+        slots.remove(key);
+        pending.remove(key);
+        removed.add(key);
     }
 
     public void load(Path file) {
@@ -194,12 +233,19 @@ public class DomainLocatorMemory {
             return;
         }
         try {
+            delivery.identity.PublicationLock.run(file.toAbsolutePath().resolveSibling(file.getFileName() + ".lock"), () -> {
+            DomainLocatorMemory current = new DomainLocatorMemory();
+            current.load(file);
+            // Apply only this writer's changes; an older job must not erase another job's entries.
+            if (!Files.exists(file)) current.slots.putAll(slots);
+            removed.forEach(current.slots::remove);
+            current.slots.putAll(pending);
             if (file.getParent() != null) {
                 Files.createDirectories(file.getParent());
             }
             JSONObject root = new JSONObject();
             JSONArray entries = new JSONArray();
-            for (Slot slot : slots.values()) {
+            for (Slot slot : current.slots.values()) {
                 JSONObject o = new JSONObject();
                 o.put("host", slot.host());
                 o.put("path", slot.path());
@@ -210,9 +256,25 @@ public class DomainLocatorMemory {
                 entries.put(o);
             }
             root.put("entries", entries);
-            Files.writeString(file, root.toString(2), StandardCharsets.UTF_8);
+            Path temp = Files.createTempFile(file.toAbsolutePath().getParent(), "locator-memory-", ".tmp");
+            try {
+                Files.writeString(temp, root.toString(2), StandardCharsets.UTF_8);
+                try {
+                    Files.move(temp, file, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
+                    Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+            } finally { Files.deleteIfExists(temp); }
+            slots.clear();
+            slots.putAll(current.slots);
+            pending.clear();
+            removed.clear();
+            return null;
+            });
         } catch (Exception ignored) {
-            // Persistence is best-effort; prove still succeeds without it.
+            utils.LogsManager.warn("LOCATOR_MEMORY: persistence failed; changes retained for retry ("
+                    + ignored.getClass().getSimpleName() + ")");
         }
     }
 
@@ -242,6 +304,7 @@ public class DomainLocatorMemory {
             return false;
         }
         String key = intentKey.toLowerCase(Locale.ROOT);
+        if (key.startsWith("assert_visible|")) return false;
         String loc = locator.toLowerCase(Locale.ROOT);
         boolean authLocator = looksLikeAuthControlLocator(loc);
         boolean loginIntent = key.startsWith("type_user|")

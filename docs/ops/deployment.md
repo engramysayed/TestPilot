@@ -38,7 +38,7 @@ Change the admin password before any shared or remote use. TLS, session cookies,
 
 ## Database and store
 
-Default: H2 file `./delivery-store/portal-db` plus `delivery-store/tenants/{tenantId}/…`. Postgres may replace H2 later; keep artifact files on the same volume as the DB backup.
+Default: H2 file `./delivery-store/portal-db` (no AUTO_SERVER; password from `KEEL_DB_PASSWORD`, see backup-restore.md) plus `delivery-store/tenants/{tenantId}/…`. Postgres may replace H2 later; keep artifact files on the same volume as the DB backup.
 
 Upgrade from a previous layout: `TenantLayoutMigrator` (legacy domain folders → tenant paths, quarantine ambiguous shared files). Preflight on a copy of production data before touching live disks.
 

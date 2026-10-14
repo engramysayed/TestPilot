@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset="utf-8"><style>.spinner{width:20px;height:20px;background:#333}</style></head><body>
+<button id="spin" onclick="var s=document.createElement('div');s.className='spinner';document.body.appendChild(s);setTimeout(function(){s.remove()},600)">Spin</button>
+<button id="anim" onclick="document.getElementById('box').animate([{transform:'translateX(0)'},{transform:'translateX(100px)'}],{duration:600})">Anim</button>
+<button id="fetch" onclick="fetch('/slow').then(function(r){return r.text()}).then(function(t){document.getElementById('out').textContent=t})">Fetch</button>
+<button id="mutate" onclick="var n=0,i=setInterval(function(){document.getElementById('out').textContent='m'+(++n);if(n>=10)clearInterval(i)},60)">Mutate</button>
+<button id="push" onclick="history.pushState({},'', '/next')">Push</button>
+<button id="nothing" onclick="void 0">Nothing</button>
+<div id="box" style="width:30px;height:30px;background:#09c"></div>
+<p id="out">idle</p>
+</body></html>

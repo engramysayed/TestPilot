@@ -203,6 +203,10 @@ public final class AccessibleName {
         if (CONTENTS_NAME_TAGS.contains(tag)) {
             return true;
         }
+        if ("li".equals(tag) && ("true".equals(el.attr("data-keel-nav-item"))
+                || el.closest("nav, aside, [role=navigation], [class*=sidebar], [class*=side-menu]") != null)) {
+            return true;
+        }
         String role = el.attr("role") == null ? "" : el.attr("role").trim().toLowerCase(Locale.ROOT);
         return CONTENTS_NAME_ROLES.contains(role);
     }

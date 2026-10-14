@@ -1,0 +1,123 @@
+openapi: 3.0.3
+info:
+  title: Keel Runner API v2
+  version: 2.0.0
+  description: |
+    Engine -> portal API on the existing 8080 connector (Phase 0a, SPLIT_DESIGN rev 10).
+    Every request carries Authorization: Bearer tp_run_..., X-Keel-Timestamp (epoch s, +-300 s),
+    X-Keel-Nonce (single use) and X-Keel-Signature: v1=hex(HMAC-SHA256(token, canonical)).
+    canonical = METHOD \n path \n query \n timestamp \n nonce \n sha256hex(body).
+    Requests about a claimed job also carry X-Keel-Attempt-Id, X-Keel-Cancel-Generation and X-Keel-Fencing-Token.
+    No loopback trust: a request from 127.0.0.1 is authenticated like any other.
+paths:
+  /api/v2/runners/claim:
+    post:
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ClaimRequest'}}}}
+      responses:
+        '200': {content: {application/json: {schema: {$ref: '#/components/schemas/ClaimResponse'}}}}
+        '204': {description: no work}
+        '401': {$ref: '#/components/responses/Error'}
+  /api/v2/runners/jobs/{jobId}/lease:
+    post:
+      parameters: [{$ref: '#/components/parameters/jobId'}]
+      responses:
+        '200': {content: {application/json: {schema: {$ref: '#/components/schemas/LeaseResponse'}}}}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v2/runners/jobs/{jobId}/stage:
+    post:
+      parameters: [{$ref: '#/components/parameters/jobId'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/StageRequest'}}}}
+      responses: {'200': {description: ok}, '409': {$ref: '#/components/responses/Error'}}
+  /api/v2/runners/jobs/{jobId}/progress:
+    post:
+      parameters: [{$ref: '#/components/parameters/jobId'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ProgressRequest'}}}}
+      responses: {'202': {description: accepted}, '409': {$ref: '#/components/responses/Error'}}
+  /api/v2/runners/jobs/{jobId}/artifacts/{artifactId}/chunks/{index}:
+    put:
+      parameters:
+        - {$ref: '#/components/parameters/jobId'}
+        - {name: artifactId, in: path, required: true, schema: {type: string}}
+        - {name: index, in: path, required: true, schema: {type: integer}}
+        - {name: last, in: query, required: false, schema: {type: boolean}}
+      requestBody: {content: {application/octet-stream: {schema: {type: string, format: binary}}}}
+      responses:
+        '202': {content: {application/json: {schema: {$ref: '#/components/schemas/ArtifactChunkResponse'}}}}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v2/runners/jobs/{jobId}/result:
+    post:
+      parameters: [{$ref: '#/components/parameters/jobId'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ResultRequest'}}}}
+      responses: {'200': {description: ok}, '409': {$ref: '#/components/responses/Error'}}
+  /api/v2/runners/jobs/{jobId}/cancel:
+    get:
+      parameters: [{$ref: '#/components/parameters/jobId'}]
+      responses:
+        '200': {content: {application/json: {schema: {$ref: '#/components/schemas/LeaseResponse'}}}}
+components:
+  parameters:
+    jobId: {name: jobId, in: path, required: true, schema: {type: string}}
+  responses:
+    Error: {description: error, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorBody'}}}}
+  schemas:
+    ClaimRequest:
+      type: object
+      properties:
+        capabilities: {type: array, items: {$ref: '#/components/schemas/RunnerCapability'}}
+        kinds: {type: array, items: {$ref: '#/components/schemas/WireJobKind'}}
+    ClaimResponse:
+      type: object
+      properties:
+        jobId: {type: string}
+        attemptId: {type: string}
+        cancelGeneration: {type: integer, format: int64}
+        fencingToken: {type: integer, format: int64}
+        projectId: {type: string}
+        jobKind: {$ref: '#/components/schemas/WireJobKind'}
+        libraryRevisionId: {type: string}
+        environmentRevisionId: {type: string}
+        inputSnapshotHash: {type: string}
+        providerAllowlistSnapshot: {type: string}
+        leaseUntil: {type: string}
+    LeaseResponse:
+      type: object
+      properties:
+        jobId: {type: string}
+        cancelRequested: {type: boolean}
+        cancelGeneration: {type: integer, format: int64}
+        leaseUntil: {type: string}
+    StageRequest:
+      type: object
+      properties:
+        stage: {$ref: '#/components/schemas/WireStage'}
+    ProgressRequest:
+      type: object
+      properties:
+        message: {type: string}
+        done: {type: integer}
+        total: {type: integer}
+    ArtifactChunkResponse:
+      type: object
+      properties:
+        jobId: {type: string}
+        artifactId: {type: string}
+        index: {type: integer}
+        stored: {type: boolean}
+        complete: {type: boolean}
+    ResultRequest:
+      type: object
+      properties:
+        status: {type: string}
+        passedCount: {type: integer}
+        todoCount: {type: integer}
+        message: {type: string}
+        inputSnapshotHash: {type: string}
+        providerAllowlistSnapshot: {type: string}
+    ErrorBody:
+      type: object
+      properties:
+        code: {type: string}
+        message: {type: string}
+    WireJobKind: {type: string, enum: [CONVERT, EXECUTE, GENERATE_BATCH, GENERATE_COMPARE, HUNT]}
+    WireStage: {type: string, enum: [ADMITTED, BROWSER, EMIT, PUBLISH]}
+    RunnerCapability: {type: string, enum: [BROWSER_CHROME, LLM_LOCAL, LLM_CLOUD, VISION, CODEGEN_JAVA, HUNT]}

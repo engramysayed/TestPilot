@@ -261,14 +261,18 @@ public class JobCompareApiTest extends AbstractTestNGSpringContextTests {
 
     private JobRecord executeJob(
             String projectId, String tenantId, String jobId,
-            JobRecord.Status status, int passed, int todo) {
+            JobRecord.Status status, int passed, int todo) throws Exception {
         JobRecord job = new JobRecord(
                 jobId, projectId, adminId(), "NEW",
                 Path.of("src/test/resources/delivery/sample-manual-tcs.xlsx"),
                 "https://staging.example/", "", "", false, JobRecord.JobKind.EXECUTE);
         job.setTenantId(tenantId);
         job.setLibraryRevisionId("rev_cmp");
-        job.setEnvironmentRevisionId("envrev_cmp");
+        var environments = new delivery.env.EnvironmentStore(store.environmentRoot(projectId));
+        var head = environments.head();
+        var revision = head.isPresent() ? head.get() : environments.commit(null,
+                new delivery.env.EnvironmentProfile("staging", "https://staging.example/", "", "ollama", 0, 0));
+        job.setEnvironmentRevisionId(revision.id());
         job.setProviderAllowlistSnapshot("ollama");
         job.setStatus(status);
         job.setPassedCount(passed);

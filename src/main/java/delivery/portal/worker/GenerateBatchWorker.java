@@ -64,7 +64,7 @@ public class GenerateBatchWorker {
                     .orElseThrow(() -> new IllegalArgumentException("Unknown project"));
             Path outputDir = Path.of(props.getStoreRoot(), job.getProjectId(), "generate-runs", jobId);
             GenerateBatchJobRequest request = new GenerateBatchJobRequest(
-                    project,
+                    project.getProjectId(),
                     job.getExcelPath(),
                     outputDir,
                     job.isFinalRevise(),
@@ -76,13 +76,13 @@ public class GenerateBatchWorker {
             GenerateBatchJobResult result = runWithProgressMirror(
                     job,
                     runner.progress(),
-                    () -> runner.run(request, generate, cancelCheck)
+                    () -> runner.run(request, generate.forProject(project), cancelCheck)
             );
             job.setPassedCount(result.generatedTcCount());
             job.setTodoCount(result.failedStoryCount());
             job.setZipPath(result.outputCsv());
             job.setMessage(result.message());
-            if (!delivery.job.DurableJobClaim.sameAttempt(job, lease.get())) {
+            if (!delivery.portal.jobs.DurableJobClaim.sameAttempt(job, lease.get())) {
                 log.info("Generate batch {} fenced; skipping publish", jobId);
             } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
@@ -106,7 +106,9 @@ public class GenerateBatchWorker {
             if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
             } else {
-                fail(job, "Generate batch failed", e);
+                String reason = e.getMessage();
+                fail(job, reason != null && reason.startsWith("LIBRARY_ID_CONFLICT:")
+                        ? reason : "Generate batch failed", e);
             }
         } finally {
             portalStore.clearCancelRequest(jobId);

@@ -110,14 +110,24 @@ public class TcDraftStore {
     }
 
     public static TcDraft fromJson(JSONObject o) {
+        // One draft file == one IR load: contract deprecations are logged once for both step lists.
+        ProvenStepCodec.Load load = new ProvenStepCodec.Load("TcDraft " + o.optString("tcId", ""));
+        try {
+            return fromJson(o, load);
+        } finally {
+            load.finish();
+        }
+    }
+
+    private static TcDraft fromJson(JSONObject o, ProvenStepCodec.Load load) {
         return new TcDraft(
                 o.optString("tcId", ""),
                 o.optString("title", ""),
                 o.optString("stepsText", ""),
                 o.optString("expectedResult", ""),
                 TcDraftStatus.valueOf(o.optString("status", "TODO")),
-                ProvenStepCodec.fromJsonArray(o.optJSONArray("provenSteps")),
-                ProvenStepCodec.fromJsonArray(o.optJSONArray("loginSteps")),
+                ProvenStepCodec.fromJsonArray(o.optJSONArray("provenSteps"), load),
+                ProvenStepCodec.fromJsonArray(o.optJSONArray("loginSteps"), load),
                 o.optBoolean("needsLoginBeforeMethod", false),
                 o.optInt("blockerStepIndex", -1),
                 o.optString("blockerIntent", ""),

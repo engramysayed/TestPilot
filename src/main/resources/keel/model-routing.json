@@ -1,0 +1,23 @@
+{
+  "contract": "keel.model-routing",
+  "version": 1,
+  "doc": "A11. intents -> model keys; models carry context size and cost tags. -Dkeel.route.<intent>=<modelKey> overrides one intent. costPer1k* are relative units (local models: energy/GPU-time proxy), not currency.",
+  "models": {
+    "uitars-local":  {"provider": "ollama", "model": "ui-tars",       "contextTokens": 32768,  "charsPerToken": 3.5, "vision": true,  "costTag": "local-gpu", "costPer1kIn": 0.2, "costPer1kOut": 0.4},
+    "qwen7b-local":  {"provider": "ollama", "model": "qwen2.5vl:7b",  "contextTokens": 32768,  "charsPerToken": 3.5, "vision": true,  "costTag": "local-gpu", "costPer1kIn": 0.3, "costPer1kOut": 0.6},
+    "gemma-local":   {"provider": "ollama", "model": "gemma4:e2b",    "contextTokens": 8192,   "charsPerToken": 3.5, "vision": false, "costTag": "local-cpu", "costPer1kIn": 0.05,"costPer1kOut": 0.1},
+    "qwen-text":     {"provider": "ollama", "model": "qwen2.5:latest","contextTokens": 32768,  "charsPerToken": 3.5, "vision": false, "costTag": "local-gpu", "costPer1kIn": 0.1, "costPer1kOut": 0.2},
+    "cursor-heal":   {"provider": "cursor", "model": "cursor-agent",  "contextTokens": 200000, "charsPerToken": 4.0, "vision": false, "costTag": "cloud-paid","costPer1kIn": 3.0, "costPer1kOut": 15.0}
+  },
+  "intents": {
+    "grounding":    {"model": "uitars-local", "reserveTokens": 4096, "imageTokens": 2500, "observationShare": 0.5},
+    "assertion":    {"model": "uitars-local", "reserveTokens": 4096, "imageTokens": 2500, "observationShare": 0.3},
+    "bind":         {"model": "gemma-local",  "reserveTokens": 2048, "imageTokens": 0,    "observationShare": 0.8},
+    "heal":         {"model": "cursor-heal",  "reserveTokens": 8192, "imageTokens": 0,    "observationShare": 0.6},
+    "planning":     {"model": "qwen-text",    "reserveTokens": 4096, "imageTokens": 0,    "observationShare": 0.6},
+    "precision":    {"model": "qwen-text",    "reserveTokens": 4096, "imageTokens": 0,    "observationShare": 0.7},
+    "huntPlanning": {"model": "qwen-text",    "reserveTokens": 4096, "imageTokens": 0,    "observationShare": 0.6},
+    "generate":     {"model": "gemma-local",  "reserveTokens": 4096, "imageTokens": 0,    "observationShare": 0.5},
+    "naming":       {"model": "gemma-local",  "reserveTokens": 1024, "imageTokens": 0,    "observationShare": 0.5}
+  }
+}

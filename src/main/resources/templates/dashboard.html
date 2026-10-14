@@ -17,6 +17,8 @@
         </div>
         <div class="actions">
             <a class="button ghost" href="/projects">View projects</a>
+            
+            <a class="button" href="/generate#record">Record a new test</a>
             <a class="button primary" href="/execute">+ New run</a>
         </div>
     </header>
@@ -41,7 +43,7 @@
         <div class="stat">
             <label>Needs attention</label>
             <strong th:text="${stats.attentionCount}">0</strong>
-            <small th:text="|${stats.statusFailed} failed · ${stats.statusBlocked} blocked|">0 failed · 0 blocked</small>
+            <small th:text="|${stats.statusFailed} need a look · ${stats.statusBlocked} blocked|">0 failed · 0 blocked</small>
         </div>
         <div class="stat">
             <label>Running now</label>
@@ -277,3 +279,5 @@
 </script>
 </body>
 </html>
+
+

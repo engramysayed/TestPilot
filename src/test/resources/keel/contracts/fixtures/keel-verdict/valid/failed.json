@@ -1,0 +1,7 @@
+{
+  "test": "a.B.c",
+  "verdict": "FAILED",
+  "attempt": 1,
+  "readOnly": false,
+  "error": "java.lang.AssertionError: x"
+}

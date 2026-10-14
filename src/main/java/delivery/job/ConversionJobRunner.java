@@ -38,6 +38,11 @@ public class ConversionJobRunner {
     }
 
     public ConversionJobResult run(ConversionJobRequest request, BooleanSupplier cancelCheck) throws Exception {
+        return run(request, cancelCheck, PublicationGuard.cancellable(cancelCheck));
+    }
+
+    public ConversionJobResult run(ConversionJobRequest request, BooleanSupplier cancelCheck,
+                                   PublicationGuard publicationGuard) throws Exception {
         String mode = request.mode() == null ? "NEW" : request.mode().trim().toUpperCase();
         ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
         if ("UPDATE".equals(mode) && !store.hasFramework(request.projectId())) {
@@ -89,7 +94,7 @@ public class ConversionJobRunner {
 
         progress.update(proveUnits, jobTotal, "Phase2 starting");
         EmitPhase emit = new EmitPhase(progress);
-        return emit.emit(request, allCases, work, projectDir, workFolder, mode);
+        return emit.emit(request, allCases, work, projectDir, workFolder, mode, cancelCheck, publicationGuard);
     }
 
     /** Strip login instructions so body authoring does not re-emit login clicks. */

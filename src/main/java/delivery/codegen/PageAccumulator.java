@@ -98,14 +98,65 @@ public class PageAccumulator {
     private String allocateField(PageModel page, ProvenStep step) {
         String strategy = normalizeByStrategy(step.locatorStrategy());
         String locatorValue = normalizeLocatorValue(step.locatorStrategy(), step.locatorValue());
-        String existing = findFieldForLocator(page, strategy, locatorValue);
+        List<String> ranked = rankedFor(step);
+        if (ranked.isEmpty() && LocatorCandidate.KEEL.equalsIgnoreCase(
+                step.locatorStrategy() == null ? "" : step.locatorStrategy().trim())) {
+            throw new IllegalStateException("keel step " + step.tcId() + " has no emittable target"
+                    + " (text= literal rejected by the PII filter?): " + step.locatorValue());
+        }
+        if (ranked.size() == 1 && LocatorCandidate.isPlainCss(ranked.get(0))) {
+            // css= only: plain By.cssSelector, no runtime helper needed
+            strategy = "cssSelector";
+            locatorValue = LocatorCandidate.terminalCss(ranked.get(0));
+            ranked = List.of();
+        }
+        String existing = findFieldForLocator(page, strategy, locatorValue, ranked);
         if (existing != null) {
             return existing;
         }
         String field = uniqueFieldName(page, CodegenNaming.locatorFieldName(step));
         page.fieldNames().add(field);
-        page.fields().add(new FieldModel(field, strategy, locatorValue));
+        if (ranked.isEmpty()) {
+            page.fields().add(new FieldModel(field, strategy, locatorValue));
+        } else {
+            page.fields().add(new FieldModel(field, strategy, locatorValue, ranked,
+                    LocatorCandidate.keelByExpression(field, ranked)));
+        }
         return field;
+    }
+
+    /**
+     * Ranked fallbacks for a step carrying the candidate model; empty for legacy steps whose single
+     * locator lives in the top document (they keep the plain {@code By} field).
+     */
+    static List<String> rankedFor(ProvenStep step) {
+        if (step == null) {
+            return List.of();
+        }
+        boolean keel = LocatorCandidate.KEEL.equalsIgnoreCase(
+                step.locatorStrategy() == null ? "" : step.locatorStrategy().trim());
+        if (step.locatorCandidates().isEmpty() && !keel) {
+            return List.of();
+        }
+        return LocatorCandidate.rankedTargets(step.locatorStrategy(), step.locatorValue(), step.locatorCandidates());
+    }
+
+    static FieldModel fieldModel(PageModel page, String fieldName) {
+        for (FieldModel f : page.fields()) {
+            if (f.name().equals(fieldName)) {
+                return f;
+            }
+        }
+        return new FieldModel(fieldName, "", "");
+    }
+
+    boolean isSmartField(PageModel page, String fieldName) {
+        for (FieldModel f : page.fields()) {
+            if (f.name().equals(fieldName)) {
+                return f.smart();
+            }
+        }
+        return false;
     }
 
     private void allocateAction(PageModel page, ProvenStep step, String field) {
@@ -115,11 +166,26 @@ public class PageAccumulator {
         }
         String method = uniqueSymbol(page, CodegenNaming.actionMethodName(step));
         page.methodNames().add(method);
+        String dropField = "";
+        if (step.isDrag()) {
+            if (step.dropCandidates().isEmpty()) {
+                throw new IllegalStateException("drag step " + step.tcId() + " has no dropTarget");
+            }
+            LocatorCandidate drop = step.dropCandidates().get(0);
+            ProvenStep dropStep = new ProvenStep(step.tcId(), step.pageName(), step.actionType(), "drop",
+                    drop.strategy(), drop.value(), "", "", "", step.validated(), step.rationale(), "",
+                    step.dropCandidates().subList(1, step.dropCandidates().size()));
+            dropField = allocateField(page, dropStep);
+        }
         page.methods().add(new MethodModel(
                 method,
                 step.action(),
                 field,
-                "type".equalsIgnoreCase(step.action()) || "select".equalsIgnoreCase(step.action())
+                "type".equalsIgnoreCase(step.action()) || "select".equalsIgnoreCase(step.action()),
+                isSmartField(page, field),
+                fieldModel(page, field).pointer(),
+                dropField,
+                step.secret()
         ));
         page.actionByIdentity().put(identity, method);
     }
@@ -137,7 +203,8 @@ public class PageAccumulator {
                 step.assertionType(),
                 step.assertionExpected() == null ? "" : step.assertionExpected(),
                 isParameterizedAssertion(step.assertionType()),
-                slotOf(step)
+                slotOf(step),
+                field != null && isSmartField(page, field)
         ));
         page.assertByIdentity().put(identity, name);
     }
@@ -162,14 +229,22 @@ public class PageAccumulator {
         return unique;
     }
 
-    private static String findFieldForLocator(PageModel page, String strategy, String value) {
+    private static String findFieldForLocator(
+            PageModel page, String strategy, String value, List<String> ranked) {
         String incoming = locatorIdentity(strategy, value);
+        String incomingContext = contextIdentity(ranked);
         for (FieldModel f : page.fields()) {
-            if (locatorIdentity(f.strategy(), f.value()).equals(incoming)) {
+            // Same selector text in a different frame / shadow tree is a different element.
+            if (locatorIdentity(f.strategy(), f.value()).equals(incoming)
+                    && contextIdentity(f.candidates()).equals(incomingContext)) {
                 return f.name();
             }
         }
         return null;
+    }
+
+    private static String contextIdentity(List<String> ranked) {
+        return ranked == null || ranked.isEmpty() ? "" : ranked.get(0);
     }
 
     static String actionIdentity(ProvenStep step) {
@@ -178,7 +253,14 @@ public class PageAccumulator {
                 + locatorIdentity(normalizeByStrategy(step.locatorStrategy()),
                 normalizeLocatorValue(step.locatorStrategy(), step.locatorValue()))
                 + '\0'
-                + (step.action() == null ? "" : step.action().trim().toLowerCase(Locale.ROOT));
+                + (step.action() == null ? "" : step.action().trim().toLowerCase(Locale.ROOT))
+                + (step.secret() ? "\0secret" : "")
+                + contextSuffix(step);
+    }
+
+    private static String contextSuffix(ProvenStep step) {
+        String ctx = contextIdentity(rankedFor(step));
+        return ctx.isEmpty() ? "" : "\u0000ctx:" + ctx;
     }
 
     static String assertIdentity(ProvenStep step) {
@@ -186,10 +268,10 @@ public class PageAccumulator {
         String loc = locatorIdentity(normalizeByStrategy(step.locatorStrategy()),
                 normalizeLocatorValue(step.locatorStrategy(), step.locatorValue()));
         if (isParameterizedAssertion(step.assertionType())) {
-            return pageKey(step) + '\0' + type + '\0' + loc;
+            return pageKey(step) + '\0' + type + '\0' + loc + contextSuffix(step);
         }
         String expected = step.assertionExpected() == null ? "" : step.assertionExpected();
-        return pageKey(step) + '\0' + type + '\0' + loc + '\0' + expected;
+        return pageKey(step) + '\0' + type + '\0' + loc + '\0' + expected + contextSuffix(step);
     }
 
     static boolean isParameterizedAssertion(String assertionType) {
@@ -245,6 +327,7 @@ public class PageAccumulator {
     private static boolean isAction(ProvenStep step) {
         String action = step.action() == null ? "" : step.action();
         return "click".equalsIgnoreCase(action)
+                || "drag".equalsIgnoreCase(action)
                 || "type".equalsIgnoreCase(action)
                 || "select".equalsIgnoreCase(action);
     }
@@ -288,6 +371,14 @@ public class PageAccumulator {
         return isBodyTextAssert(step);
     }
 
+    static String normalizeByStrategyForCandidates(String strategy) {
+        return normalizeByStrategy(strategy);
+    }
+
+    static String normalizeLocatorValueForCandidates(String strategy, String value) {
+        return normalizeLocatorValue(strategy, value);
+    }
+
     private static String normalizeByStrategy(String strategy) {
         if (strategy == null) {
             return "cssSelector";
@@ -316,17 +407,98 @@ public class PageAccumulator {
         return value;
     }
 
-    public record FieldModel(String name, String strategy, String value) {
+    /**
+     * @param candidates ranked KeelTarget fallbacks (empty = plain By)
+     * @param smartExpr  Java {@code KeelBy.of(...)} expression emitted for keel fields
+     */
+    public record FieldModel(String name, String strategy, String value,
+                             List<String> candidates, String smartExpr) {
+        public FieldModel(String name, String strategy, String value) {
+            this(name, strategy, value, List.of(), "");
+        }
+
+        public FieldModel {
+            candidates = candidates == null ? List.of() : List.copyOf(candidates);
+            smartExpr = smartExpr == null ? "" : smartExpr;
+        }
+
+        /** FreeMarker: {@code field.smart}. */
+        public boolean smart() {
+            return !candidates.isEmpty();
+        }
+
+        /** Any target with a v2 provider=/point= modifier: actions click at an offset. */
+        public boolean pointer() {
+            return candidates.stream().anyMatch(LocatorCandidate::hasPointer);
+        }
+
+        public boolean isPointer() {
+            return pointer();
+        }
+
+        /** Highest contract version among this field's targets (1 for plain By). */
+        public int contract() {
+            return candidates.stream().mapToInt(LocatorCandidate::requiredVersion).max().orElse(1);
+        }
+
+        public boolean isSmart() {
+            return smart();
+        }
     }
 
-    public record MethodModel(String name, String action, String fieldName, boolean needsValue) {
+    public record MethodModel(String name, String action, String fieldName, boolean needsValue, boolean smart,
+                              boolean pointer, String dropFieldName, boolean secret) {
+        public MethodModel(String name, String action, String fieldName, boolean needsValue) {
+            this(name, action, fieldName, needsValue, false, false, "");
+        }
+
+        public MethodModel(String name, String action, String fieldName, boolean needsValue, boolean smart,
+                           boolean pointer, String dropFieldName) {
+            this(name, action, fieldName, needsValue, smart, pointer, dropFieldName, false);
+        }
+
+        public MethodModel(String name, String action, String fieldName, boolean needsValue, boolean smart) {
+            this(name, action, fieldName, needsValue, smart, false, "");
+        }
+
+        public MethodModel {
+            dropFieldName = dropFieldName == null ? "" : dropFieldName;
+        }
+
+        public boolean isSmart() {
+            return smart;
+        }
+
+        public boolean isPointer() {
+            return pointer;
+        }
+
+        public boolean isSecret() {
+            return secret;
+        }
+
+        /** A8 settle-policy key: {@code typeSecret} for IR {@code secret: true} type/clear steps (r2 SPEC). */
+        public String getSettleAction() {
+            return CodegenSecrets.settleKind(action, secret);
+        }
     }
 
     public record AssertionModel(
-            String name, String fieldName, String assertionType, String expected, boolean parameterized, String slot) {
+            String name, String fieldName, String assertionType, String expected, boolean parameterized, String slot,
+            boolean smart) {
         public AssertionModel(
                 String name, String fieldName, String assertionType, String expected, boolean parameterized) {
-            this(name, fieldName, assertionType, expected, parameterized, "");
+            this(name, fieldName, assertionType, expected, parameterized, "", false);
+        }
+
+        public AssertionModel(
+                String name, String fieldName, String assertionType, String expected, boolean parameterized,
+                String slot) {
+            this(name, fieldName, assertionType, expected, parameterized, slot, false);
+        }
+
+        public boolean isSmart() {
+            return smart;
         }
 
         public AssertionModel {

@@ -1,0 +1,11 @@
+# settle-policy v1 is byte-pinned by sha256 (SettlePolicyFrozenTest, SettlePolicyParityTest.frozenV1ShaPins,
+# r2 SPEC section 1). -text: git never converts these files (no CRLF on Windows checkouts with
+# core.autocrlf=true, no normalisation on add), so the bytes on disk are the pinned bytes.
+# Globs (r3 LF-FILES.txt) cover the engine copy, the customer-framework-template copy and any future copy.
+**/keel/settle-policy.json       -text
+**/keel/settle-probe.js          -text
+**/keel/settle-policy.golden.txt -text
+# r3: byte-parity engine <-> template (networkScopeScriptMatchesTheEngine), not sha-pinned; also kept byte-exact.
+**/keel/settle-network.js        -text
+# r3: A8 live fixture, LF recommended (not pinned): normalise to LF.
+**/fixtures/a8/settle.html       text eol=lf

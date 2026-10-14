@@ -40,7 +40,10 @@ public class ChromeFactory extends AbstractDriver{
     public WebDriver createDriver() {
         String execution = executionType();
         if (isLocal(execution)) {
-            return new ChromeDriver(getOptions());
+            ChromeDriver driver = new ChromeDriver(getOptions());
+            // before the first navigation: captures closed shadow roots for shadow-closed= targets
+            project.utils.locators.KeelHook.install(driver);
+            return driver;
         }
         throw new IllegalStateException("Unsupported EXECUTION_TYPE: " + execution);
     }

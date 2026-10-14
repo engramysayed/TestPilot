@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.dev/contracts/ranked-locators-ir.schema.json",
+  "title": "Engine RankedLocators IR (A3 PLAN section 3 + contract v2 section 2)",
+  "type": "object",
+  "required": [
+    "locatorStrategy",
+    "locatorValue",
+    "locatorCandidates"
+  ],
+  "properties": {
+    "locatorStrategy": {
+      "const": "keel"
+    },
+    "locatorValue": {
+      "$ref": "keel-target-v2.schema.json"
+    },
+    "locatorCandidates": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "$ref": "locator-candidate.schema.json"
+      }
+    },
+    "fallbacks": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "$ref": "locator-candidate.schema.json"
+      }
+    },
+    "route": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contract": {
+      "enum": [
+        1,
+        2
+      ],
+      "description": "Absent means 1; an explicit 1 is allowed. The engine writes 2 only when a candidate needs v2. Readers must reject a contract above their CONTRACT_VERSION."
+    }
+  },
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "anyOf": [
+          {
+            "not": {
+              "required": [
+                "contract"
+              ]
+            }
+          },
+          {
+            "properties": {
+              "contract": {
+                "const": 1
+              }
+            },
+            "required": [
+              "contract"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "locatorValue": {
+            "$ref": "keel-target-v1.schema.json"
+          },
+          "locatorCandidates": {
+            "items": {
+              "$ref": "#/$defs/v1Candidate"
+            }
+          },
+          "fallbacks": {
+            "items": {
+              "$ref": "#/$defs/v1Candidate"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "v1Candidate": {
+      "if": {
+        "properties": {
+          "strategy": {
+            "const": "keel"
+          }
+        },
+        "required": [
+          "strategy"
+        ]
+      },
+      "then": {
+        "properties": {
+          "value": {
+            "$ref": "keel-target-v1.schema.json"
+          }
+        }
+      }
+    }
+  }
+}

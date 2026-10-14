@@ -4,6 +4,7 @@
     <th:block th:fragment="portalStyles">
         <link rel="stylesheet" th:href="@{/css/portal.css}"/>
         <link rel="stylesheet" th:href="@{/css/keel-reskin.css}"/>
+        <link rel="stylesheet" th:href="@{/css/keel-theme-calm.css}"/>
     </th:block>
     <th:block th:fragment="authFonts">
         <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -20,17 +21,36 @@
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <title th:text="${title} + ' — Keel'">Keel</title>
         <link rel="icon" type="image/svg+xml" th:href="@{/img/favicon.svg}"/>
+        <script>
+            (function () {
+                try {
+                    var t = localStorage.getItem('keel-theme') || 'dark';
+                    document.documentElement.setAttribute('data-theme', t);
+                } catch (e) { /* private mode */ }
+            })();
+        </script>
         <th:block th:replace="~{fragments :: portalStyles}"></th:block>
         <th:block th:replace="~{fragments :: authFonts}"></th:block>
+        <script defer th:src="@{/js/keel-theme.js}"></script>
     </th:block>
     <th:block th:fragment="pageHead(title)">
         <meta charset="UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <title th:text="${title} + ' — Keel'">Keel</title>
         <link rel="icon" type="image/svg+xml" th:href="@{/img/favicon.svg}"/>
+        <script>
+            (function () {
+                try {
+                    var t = localStorage.getItem('keel-theme') || 'dark';
+                    document.documentElement.setAttribute('data-theme', t);
+                } catch (e) { /* private mode */ }
+            })();
+        </script>
         <th:block th:replace="~{fragments :: portalStyles}"></th:block>
         <th:block th:replace="~{fragments :: appFonts}"></th:block>
         <script defer th:src="@{/js/portal-nav.js}"></script>
+        <script defer th:src="@{/js/keel-labels.js}"></script>
+        <script defer th:src="@{/js/keel-theme.js}"></script>
     </th:block>
 </head>
 <body>
@@ -124,6 +144,11 @@
             </a>
         </th:block>
     </nav>
+
+
+    <button type="button" class="theme-toggle" id="keel-theme-toggle" aria-pressed="true">
+        Light theme
+    </button>
 
     <script>
         (function () {
@@ -219,3 +244,4 @@
 </aside>
 </body>
 </html>
+

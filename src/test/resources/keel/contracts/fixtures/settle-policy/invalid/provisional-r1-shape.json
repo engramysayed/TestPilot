@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "source": "PENDING-A8: provisional table built from DEEP_RESEARCH.md section 3c (e2e agent/settle-policy.ts). Replace this file verbatim with the Keel Automation Engine A8 artifact when it lands.",
+  "constants": {
+    "FULL_CHANGE_WAIT_MS": 2000,
+    "BRIEF_CHANGE_WAIT_MS": 500,
+    "HELD_STILL_MS": 1000,
+    "POLL_MS": 200
+  },
+  "settleAfter": {
+    "tap": {
+      "changeWaitMs": 2000,
+      "look": "held-still"
+    },
+    "longPress": {
+      "changeWaitMs": 2000,
+      "look": "held-still"
+    },
+    "back": {
+      "changeWaitMs": 2000,
+      "look": "held-still"
+    },
+    "type": {
+      "changeWaitMs": 2000,
+      "look": "after-change"
+    },
+    "typeSecret": {
+      "changeWaitMs": 0,
+      "look": "held-still"
+    },
+    "scroll": {
+      "changeWaitMs": 500,
+      "look": "held-still"
+    }
+  }
+}

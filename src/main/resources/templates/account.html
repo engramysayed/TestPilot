@@ -48,6 +48,50 @@
             <p id="em-err" class="error" hidden></p>
         </section>
     </div>
+
+    <section class="panel" id="calm-preferences">
+        <h2>How Keel works</h2>
+        <p class="panel-intro">These preferences stay in this browser for now. A future update will save them on your account.</p>
+
+        <h3 style="margin-top:1.2rem">AI model</h3>
+        <p class="muted">The AI that reads your website and clicks through your tests.</p>
+        <div class="calm-seg" role="radiogroup" aria-label="AI model" style="margin:0.75rem 0">
+            <label><input type="radio" name="calm-model" value="ui-tars" checked> UI-TARS</label>
+            <label><input type="radio" name="calm-model" value="qwen"> Qwen</label>
+        </div>
+        <p class="hint" id="calm-model-hint">UI-TARS: best at finding buttons and fields on busy pages.</p>
+
+        <h3 style="margin-top:1.6rem">Alerts</h3>
+        <p class="muted">Get a message when a test needs your attention.</p>
+        <div class="calm-channel">
+            <label class="calm-toggle"><input type="checkbox" data-calm-ch="telegram" checked aria-label="Telegram alerts"><span></span></label>
+            <b>Telegram</b>
+            <div>
+                <input type="text" id="calm-ch-telegram" value="" placeholder="@your-group" aria-label="Telegram chat or group"/>
+                <p class="hint">Chat or group name</p>
+            </div>
+        </div>
+        <div class="calm-channel">
+            <label class="calm-toggle"><input type="checkbox" data-calm-ch="email" checked aria-label="Email alerts"><span></span></label>
+            <b>Email</b>
+            <div>
+                <input type="email" id="calm-ch-email" value="" placeholder="you@company.com" aria-label="Alert email"/>
+                <p class="hint">Email address</p>
+            </div>
+        </div>
+        <div class="calm-channel">
+            <label class="calm-toggle"><input type="checkbox" data-calm-ch="slack" aria-label="Slack alerts"><span></span></label>
+            <b>Slack</b>
+            <div>
+                <input type="text" id="calm-ch-slack" value="" placeholder="#website-tests" aria-label="Slack channel" disabled/>
+                <p class="hint">Channel · turned off</p>
+            </div>
+        </div>
+        <p style="margin-top:1rem">
+            <button type="button" class="button primary" id="calm-prefs-save">Save preferences</button>
+            <span class="muted" id="calm-prefs-msg" style="margin-left:0.75rem"></span>
+        </p>
+    </section>
 </main>
 </div>
 <script>
@@ -100,6 +144,64 @@
         }
         window.location.href = '/login?registered';
     });
+</script>
+
+<script>
+(function () {
+    var KEY = 'keel.calmPrefs';
+    var hints = {
+        'ui-tars': 'UI-TARS: best at finding buttons and fields on busy pages.',
+        'qwen': 'Qwen: quick and light, good for simple pages.'
+    };
+    function load() {
+        var raw = null;
+        try { raw = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { raw = null; }
+        if (!raw) return;
+        var m = document.querySelector('input[name="calm-model"][value="' + raw.model + '"]');
+        if (m) m.checked = true;
+        document.getElementById('calm-model-hint').textContent = hints[raw.model] || hints['ui-tars'];
+        ['telegram', 'email', 'slack'].forEach(function (k) {
+            var on = !!(raw.channels && raw.channels[k] && raw.channels[k].on);
+            var cb = document.querySelector('[data-calm-ch="' + k + '"]');
+            var inp = document.getElementById('calm-ch-' + k);
+            if (cb) cb.checked = on;
+            if (inp) {
+                inp.disabled = !on;
+                if (raw.channels[k] && raw.channels[k].target) inp.value = raw.channels[k].target;
+                var hint = inp.parentElement.querySelector('.hint');
+                if (hint && k === 'slack') hint.textContent = on ? 'Channel' : 'Channel · turned off';
+            }
+        });
+    }
+    document.querySelectorAll('input[name="calm-model"]').forEach(function (r) {
+        r.addEventListener('change', function () {
+            document.getElementById('calm-model-hint').textContent = hints[r.value] || '';
+        });
+    });
+    document.querySelectorAll('[data-calm-ch]').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            var inp = document.getElementById('calm-ch-' + cb.getAttribute('data-calm-ch'));
+            if (inp) inp.disabled = !cb.checked;
+            if (cb.getAttribute('data-calm-ch') === 'slack') {
+                var hint = inp && inp.parentElement.querySelector('.hint');
+                if (hint) hint.textContent = cb.checked ? 'Channel' : 'Channel · turned off';
+            }
+        });
+    });
+    document.getElementById('calm-prefs-save').addEventListener('click', function () {
+        var model = (document.querySelector('input[name="calm-model"]:checked') || {}).value || 'ui-tars';
+        var data = { model: model, channels: {} };
+        ['telegram', 'email', 'slack'].forEach(function (k) {
+            var cb = document.querySelector('[data-calm-ch="' + k + '"]');
+            var inp = document.getElementById('calm-ch-' + k);
+            data.channels[k] = { on: !!(cb && cb.checked), target: inp ? inp.value.trim() : '' };
+        });
+        try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { /* ignore */ }
+        var msg = document.getElementById('calm-prefs-msg');
+        msg.textContent = 'Saved in this browser.';
+    });
+    load();
+})();
 </script>
 </body>
 </html>

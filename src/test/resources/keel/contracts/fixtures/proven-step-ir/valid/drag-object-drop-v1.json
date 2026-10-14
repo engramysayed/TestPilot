@@ -1,0 +1,32 @@
+{
+  "tcId": "TC_1",
+  "pageName": "Checkout",
+  "actionType": "elementAction",
+  "action": "drag",
+  "locatorStrategy": "keel",
+  "locatorValue": "css=#card-1",
+  "value": "",
+  "assertionType": "",
+  "assertionExpected": "",
+  "validated": true,
+  "rationale": "ok",
+  "screenshotRelPath": "",
+  "actionHint": "drag",
+  "dropTarget": {
+    "strategy": "keel",
+    "value": "css=#lane-done",
+    "score": 0.9
+  },
+  "dropCandidates": [
+    {
+      "strategy": "keel",
+      "value": "css=#lane-done",
+      "score": 0.9
+    },
+    {
+      "strategy": "keel",
+      "value": "css=[data-lane=\"done\"]",
+      "score": 0.85
+    }
+  ]
+}

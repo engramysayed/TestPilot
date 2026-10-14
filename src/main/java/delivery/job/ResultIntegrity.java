@@ -77,7 +77,7 @@ public final class ResultIntegrity {
                 ? "Pass rate is " + provenPassed + "/" + judged
                 + " proven cases (blocked and unchecked stay in the denominator). "
                 + simulated + " simulated dry-run case(s) are excluded."
-                : "No proven cases yet";
+                : "No finished test runs yet";
         return new Summary(provenPassed, blocked, unchecked, simulated, rate, note, hasSample);
     }
 

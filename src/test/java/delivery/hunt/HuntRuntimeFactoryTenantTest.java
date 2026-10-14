@@ -28,7 +28,7 @@ public class HuntRuntimeFactoryTenantTest {
         );
         job.setTenantId(tenant.value());
         DeliveryPortalProperties props = new DeliveryPortalProperties();
-        ConversionJobRequest request = HuntRuntimeFactory.loginRequest(job, props);
+        ConversionJobRequest request = HuntRuntimeFactory.loginRequest(delivery.portal.engine.InProcessJobContext.of(job, props, null));
         Assert.assertEquals(request.tenantId(), tenant);
         Assert.assertEquals(request.jobId(), "hunt_abc123def456");
         Assert.assertEquals(request.storeRoot(), Path.of(props.getStoreRoot()));

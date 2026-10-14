@@ -191,7 +191,7 @@ public class FrameworkPackager {
         if (rel.isEmpty() || isExcludedPath(rel) || isExcludedFile(rel)) {
             return false;
         }
-        if (rel.equals("pom.xml") || rel.equals("README.md") || rel.equals(".gitignore")) {
+        if (rel.equals("pom.xml") || rel.equals("README.md") || rel.equals(".gitignore") || rel.equals(".gitattributes")) {
             return true;
         }
         return rel.startsWith("src/") || rel.startsWith("docs/") || rel.startsWith(".github/");
@@ -235,7 +235,7 @@ public class FrameworkPackager {
         if (name.endsWith(".class") || name.endsWith(".log")) {
             return true;
         }
-        if ("delivery-target.local.properties".equals(name)) {
+        if ("delivery-target.local.properties".equals(name) || "delivery-secrets.local.properties".equals(name)) {
             return true;
         }
         if ("webapp.properties".equals(name) && !rel.endsWith(".example")) {

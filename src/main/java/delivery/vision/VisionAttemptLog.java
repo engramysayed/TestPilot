@@ -6,8 +6,12 @@ import java.util.List;
 public final class VisionAttemptLog {
 
     private static final int MAX = 8;
-    private static final ThreadLocal<List<VisionAttempt>> CURRENT =
-            ThreadLocal.withInitial(ArrayList::new);
+    /**
+     * Attempts are scoped to one intent (ProvePhase: beginIntent ... endIntent). Outside a scope nothing
+     * is recorded or returned: before r2 a lazily created per-thread list collected records from any
+     * vision call (Hunt, tests, pooled worker threads) and leaked them into the next heal prompt.
+     */
+    private static final ThreadLocal<List<VisionAttempt>> CURRENT = new ThreadLocal<>();
 
     private VisionAttemptLog() {
     }
@@ -21,7 +25,7 @@ public final class VisionAttemptLog {
             return;
         }
         List<VisionAttempt> list = CURRENT.get();
-        if (list.size() >= MAX) {
+        if (list == null || list.size() >= MAX) {
             return;
         }
         list.add(attempt);
@@ -31,11 +35,20 @@ public final class VisionAttemptLog {
         if (!VisionGroundingConfig.healHintsEnabled()) {
             return List.of();
         }
-        return CURRENT.get().stream()
+        List<VisionAttempt> list = CURRENT.get();
+        if (list == null) {
+            return List.of();
+        }
+        return list.stream()
                 .map(VisionAttempt::formatLine)
                 .filter(s -> s != null && !s.isBlank())
                 .map(s -> s.length() > 200 ? s.substring(0, 200) : s)
                 .toList();
+    }
+
+    /** True between beginIntent and endIntent on this thread. */
+    public static boolean inIntent() {
+        return CURRENT.get() != null;
     }
 
     public static void endIntent() {

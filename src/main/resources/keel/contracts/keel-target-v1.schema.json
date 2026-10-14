@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.dev/contracts/keel-target-v1.schema.json",
+  "title": "KeelTarget string, contract v1 (A2 PLAN section 5)",
+  "description": "context* css. context := frame=|shadow=|shadow-closed= CSS. Hops joined by ' >> '; a literal '>>' in CSS is written '\\>>'. The parser (KeelTarget/KeelLocate) is authoritative; this pattern is pinned to it by ContractSchemaTest.",
+  "type": "string",
+  "pattern": "^(?:(?:frame|shadow|shadow-closed)=(?:(?!(?<!\\\\) >> ).)+ >> )*css=(?:(?!(?<!\\\\) >> ).)+$"
+}

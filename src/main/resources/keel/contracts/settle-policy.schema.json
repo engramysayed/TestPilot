@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.dev/contracts/settle-policy.schema.json",
+  "title": "A8 settle policy (keel.settle-policy v1), owned by Keel Automation Engine; copied verbatim into the generated framework",
+  "description": "Mirrors delivery.settle.SettlePolicy.parse: exact contract/version, all 24 action kinds (22 web + tap/longPress) required, no unknown actions or fields, network=idle needs networkIdleMs>0, effect required|optional needs effectWaitMs>0.",
+  "type": "object",
+  "required": [
+    "contract",
+    "version",
+    "defaults",
+    "actions"
+  ],
+  "properties": {
+    "contract": {
+      "const": "keel.settle-policy"
+    },
+    "version": {
+      "const": 1
+    },
+    "doc": {
+      "type": "string"
+    },
+    "defaults": {
+      "type": "object",
+      "required": [
+        "pollMs",
+        "spinnerSelectors"
+      ],
+      "properties": {
+        "pollMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "spinnerSelectors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "actions": {
+      "type": "object",
+      "required": [
+        "click",
+        "doubleClick",
+        "rightClick",
+        "hover",
+        "type",
+        "typeSecret",
+        "clear",
+        "press",
+        "select",
+        "check",
+        "submit",
+        "navigate",
+        "back",
+        "reload",
+        "scroll",
+        "scrollIntoView",
+        "drag",
+        "upload",
+        "switchFrame",
+        "switchWindow",
+        "wait",
+        "assert",
+        "tap",
+        "longPress"
+      ],
+      "propertyNames": {
+        "enum": [
+          "click",
+          "doubleClick",
+          "rightClick",
+          "hover",
+          "type",
+          "typeSecret",
+          "clear",
+          "press",
+          "select",
+          "check",
+          "submit",
+          "navigate",
+          "back",
+          "reload",
+          "scroll",
+          "scrollIntoView",
+          "drag",
+          "upload",
+          "switchFrame",
+          "switchWindow",
+          "wait",
+          "assert",
+          "tap",
+          "longPress"
+        ]
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/rule"
+      }
+    }
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timeoutMs",
+        "network",
+        "networkIdleMs",
+        "domStableMs",
+        "animations",
+        "spinners",
+        "url",
+        "effect",
+        "effectWaitMs",
+        "sideEffects"
+      ],
+      "properties": {
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "network": {
+          "enum": [
+            "idle",
+            "none"
+          ]
+        },
+        "networkIdleMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "domStableMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "animations": {
+          "type": "boolean"
+        },
+        "spinners": {
+          "type": "boolean"
+        },
+        "url": {
+          "enum": [
+            "any",
+            "same",
+            "changed"
+          ]
+        },
+        "effect": {
+          "enum": [
+            "required",
+            "optional",
+            "none"
+          ]
+        },
+        "effectWaitMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sideEffects": {
+          "enum": [
+            "none",
+            "mutating",
+            "unknown",
+            null
+          ],
+          "description": "Kind default for the IR step sideEffects marker; null == unknown."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "network": {
+                "const": "idle"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "networkIdleMs": {
+                "minimum": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "effect": {
+                "enum": [
+                  "required",
+                  "optional"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "effectWaitMs": {
+                "minimum": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -15,9 +15,37 @@ import project.validations.Validation;
 
 import java.io.File;
 
+/**
+ * Framework listener. Registered via META-INF/services (ServiceLoader) and, for compatibility,
+ * BaseTest {@code @Listeners}. Both paths may yield two instances in one run, so every callback is
+ * idempotent: execution start/finish run once per JVM run, per-test callbacks once per ITestResult.
+ * Set -Dkeel.testng.listeners=off to disable it (e.g. tooling that runs TestNG programmatically).
+ */
 public class TestNGListeners implements ITestListener, IExecutionListener, IInvokedMethodListener {
+    private static final java.util.concurrent.atomic.AtomicBoolean STARTED = new java.util.concurrent.atomic.AtomicBoolean();
+    private static final java.util.concurrent.atomic.AtomicBoolean FINISHED = new java.util.concurrent.atomic.AtomicBoolean();
+
+    static boolean disabled() {
+        return "off".equalsIgnoreCase(System.getProperty("keel.testng.listeners", ""));
+    }
+
+    /** True the first time this callback runs for this result (dedupes a double-registered listener). */
+    static boolean firstFor(ITestResult r, String callback) {
+        String key = "keel.TestNGListeners." + callback;
+        synchronized (r) {
+            if (r.getAttribute(key) != null) {
+                return false;
+            }
+            r.setAttribute(key, Boolean.TRUE);
+            return true;
+        }
+    }
 
     public void onExecutionStart() {
+        if (disabled() || !STARTED.compareAndSet(false, true)) {
+            return;
+        }
+        FINISHED.set(false);
         LogsManager.info("Execution started");
         cleanTestOutputDir();
         LogsManager.info( "Test output directory cleaned");
@@ -32,6 +60,10 @@ public class TestNGListeners implements ITestListener, IExecutionListener, IInvo
     }
 
     public void onExecutionFinish() {
+        if (disabled() || !STARTED.get() || !FINISHED.compareAndSet(false, true)) {
+            return;
+        }
+        STARTED.set(false);
         AllureReportGenerator.generateReports(false);
         AllureReportGenerator.copyHistory();
         AllureReportGenerator.generateReports(true);
@@ -40,6 +72,9 @@ public class TestNGListeners implements ITestListener, IExecutionListener, IInvo
     }
 
     public void beforeInvocation(IInvokedMethod method, ITestResult testResult) {
+        if (disabled() || !firstFor(testResult, "before")) {
+            return;
+        }
         if(method.isTestMethod()){
             LogsManager.info("Starting TestCase: " + testResult.getName());
         }
@@ -47,6 +82,9 @@ public class TestNGListeners implements ITestListener, IExecutionListener, IInvo
     }
 
     public void afterInvocation(IInvokedMethod method, ITestResult testResult) {
+        if (disabled() || !firstFor(testResult, "after")) {
+            return;
+        }
         WebDriver driver=null;
         if(method.isTestMethod()){
             try {
@@ -77,14 +115,23 @@ public class TestNGListeners implements ITestListener, IExecutionListener, IInvo
     }
 
     public void onTestSuccess(ITestResult result) {
+        if (disabled() || !firstFor(result, "success")) {
+            return;
+        }
         LogsManager.info("TestCase passed: " + result.getName());
     }
 
     public void onTestFailure(ITestResult result) {
+        if (disabled() || !firstFor(result, "failure")) {
+            return;
+        }
         LogsManager.error("TestCase failed: " + result.getName());
     }
 
     public void onTestSkipped(ITestResult result) {
+        if (disabled() || !firstFor(result, "skipped")) {
+            return;
+        }
         LogsManager.info("TestCase skipped: " + result.getName());
     }
 

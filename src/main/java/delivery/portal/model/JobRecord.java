@@ -18,9 +18,9 @@ public class JobRecord {
     private final Long ownerUserId;
     private final String mode;
     private final Path excelPath;
-    private final String baseUrl;
-    private final String username;
-    private final String password;
+    private String baseUrl;
+    private String username;
+    private String password;
     private final boolean finalRevise;
     private final JobKind jobKind;
     private AuthoringEngine authoringEngine = AuthoringEngine.KEEL;
@@ -48,6 +48,7 @@ public class JobRecord {
     private volatile String parentJobId = "";
     private volatile int precisionMaxSnapshot;
     private volatile Boolean precisionEnabledSnapshot;
+    private volatile Boolean precisionReuseLocatorMemorySnapshot;
     private volatile boolean requirePrivateRunner;
     private volatile String providersUsed = "";
     private volatile boolean fallbackUsed;
@@ -85,6 +86,13 @@ public class JobRecord {
     public String getBaseUrl() { return baseUrl; }
     public String getUsername() { return username; }
     public String getPassword() { return password; }
+    /** Resolve an immutable environment before the initial admission snapshot is persisted. */
+    public void applyEnvironmentInputs(String origin, String user, String secret) {
+        if (getStatus() != Status.QUEUED) throw new IllegalStateException("Inputs already admitted");
+        baseUrl = origin;
+        username = user;
+        password = secret;
+    }
     public boolean isFinalRevise() { return finalRevise; }
     public JobKind getJobKind() { return jobKind; }
     public AuthoringEngine getAuthoringEngine() {
@@ -135,6 +143,14 @@ public class JobRecord {
     public void setPrecisionMaxSnapshot(int precisionMaxSnapshot) {
         this.precisionMaxSnapshot = Math.max(0, precisionMaxSnapshot);
     }
+    public Boolean getPrecisionReuseLocatorMemorySnapshot() { return precisionReuseLocatorMemorySnapshot; }
+    public void setPrecisionReuseLocatorMemorySnapshot(Boolean value) {
+        this.precisionReuseLocatorMemorySnapshot = value;
+    }
+    private long fencingToken;
+    /** B08: last v2 fencing token issued (0 = never claimed over v2). Persisted in jobs.fencing_token. */
+    public long getFencingToken() { return fencingToken; }
+    public void setFencingToken(long fencingToken) { this.fencingToken = fencingToken; }
     public boolean isRequirePrivateRunner() { return requirePrivateRunner; }
     public void setRequirePrivateRunner(boolean requirePrivateRunner) {
         this.requirePrivateRunner = requirePrivateRunner;

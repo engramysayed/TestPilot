@@ -41,7 +41,10 @@ public class EdgeFactory extends AbstractDriver {
     public WebDriver createDriver() {
         String execution = executionType();
         if (isLocal(execution)) {
-            return new EdgeDriver(getOptions());
+            EdgeDriver driver = new EdgeDriver(getOptions());
+            // before the first navigation: captures closed shadow roots for shadow-closed= targets
+            project.utils.locators.KeelHook.install(driver);
+            return driver;
         }
         throw new IllegalStateException("Unsupported EXECUTION_TYPE: " + execution);
     }

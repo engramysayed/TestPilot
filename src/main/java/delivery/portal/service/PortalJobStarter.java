@@ -116,7 +116,7 @@ public class PortalJobStarter implements JobStarter {
         }
         try {
             Path requestPath = AuthoringJobRequestFiles.requestPath(
-                    store.projectDiskRoot(projectId), kind, jobId);
+                    store.projectDiskRoot(projectId), delivery.portal.engine.InProcessJobContext.wire(kind), jobId);
             AuthoringJobRequestFiles.write(requestPath, engine);
         } catch (Exception e) {
             throw new IllegalStateException("REQUEST_JSON_WRITE_FAILED", e);

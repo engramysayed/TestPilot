@@ -1,0 +1,94 @@
+# Keel PR report (OPT-IN, off by default).
+#
+# Nothing runs until a repository admin sets the repository VARIABLE (not a secret)
+#   KEEL_PR_REPORT = true    -> run tests on PRs, write the job summary, upload results
+#   KEEL_PR_COMMENT = true   -> additionally create/update ONE sticky PR comment
+# Settings > Secrets and variables > Actions > Variables. See docs/CI_PR_REPORT.md.
+#
+# Security: uses only the built-in GITHUB_TOKEN with the minimum permissions below; no secrets
+# are read or embedded. Runs on `pull_request` (never `pull_request_target`), and comments only
+# on PRs from this repository (fork PRs get a read-only token).
+name: keel pr report
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keel-pr-report-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  report:
+    if: ${{ vars.KEEL_PR_REPORT == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      # Optional: set KEEL_TEST_ARGS as a repository variable, e.g. -Dtest="TC_*" -DBROWSER_TYPE=CHROME
+      KEEL_TEST_ARGS: ${{ vars.KEEL_TEST_ARGS || '-DEXECUTION_TYPE=HEADLESS -DBROWSER_TYPE=CHROME' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+          cache: maven
+
+      - name: Run tests
+        id: tests
+        continue-on-error: true
+        run: mvn -B test $KEEL_TEST_ARGS
+
+      - name: Summarise results
+        if: always()
+        run: |
+          python3 .github/keel/summarize_results.py \
+            --surefire target/surefire-reports \
+            --keel test-output/keel-results \
+            --out keel-summary.md
+          cat keel-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keel-test-results
+          if-no-files-found: ignore
+          path: |
+            target/surefire-reports
+            target/allure-results
+            test-output/keel-results
+            keel-summary.md
+
+      - name: Sticky PR comment
+        if: >-
+          always() && vars.KEEL_PR_COMMENT == 'true' && github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- keel-pr-report v1 -->';
+            const body = fs.readFileSync('keel-summary.md', 'utf8').slice(0, 60000);
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+            const mine = comments.find(c => c.user && c.user.type === 'Bot' && (c.body || '').startsWith(marker));
+            if (mine) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Fail the job when tests failed
+        if: steps.tests.outcome == 'failure'
+        run: exit 1

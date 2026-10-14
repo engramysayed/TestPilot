@@ -1,0 +1,17 @@
+{
+  "tcId": "TC_1",
+  "pageName": "Checkout",
+  "actionType": "elementAction",
+  "action": "drag",
+  "locatorStrategy": "keel",
+  "locatorValue": "css=#card-1",
+  "value": "",
+  "assertionType": "",
+  "assertionExpected": "",
+  "validated": true,
+  "rationale": "ok",
+  "screenshotRelPath": "",
+  "actionHint": "drag",
+  "dropTarget": "css=#lane-done >> point=50,10@200x400",
+  "contract": 2
+}

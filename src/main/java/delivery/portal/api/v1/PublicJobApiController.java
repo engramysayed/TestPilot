@@ -144,68 +144,84 @@ public class PublicJobApiController {
         Path idemFile = delivery.identity.ScopePaths.tenantRoot(store.directory().storeRoot(), svc.tenant())
                 .resolve("idempotency.json");
         IdempotencyStore keys = new IdempotencyStore(idemFile);
-        Path excelPath;
         try {
-            excelPath = delivery.portal.service.JobWorkbookResolver.resolve(
-                    workbooks, projectId, true, null, null);
+            if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                try {
+                    var result = keys.submit(idempotencyKey, bodyHash,
+                            store::isJobPersisted, id -> admit(project, body, id));
+                    if (result.replay()) return ResponseEntity.ok(Map.of("jobId", result.jobId(), "idempotentReplay", true));
+                    return accepted(result.jobId());
+                } catch (IdempotencyStore.Conflict e) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT)
+                            .body(new ApiError("IDEMPOTENCY_CONFLICT", e.getMessage()).asMap());
+                }
+            }
+            String jobId = "job_ci_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+            admit(project, body, jobId);
+            return accepted(jobId);
         } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ApiError("NO_GENERATED_WORKBOOK",
-                            "No generated workbook for this project — generate TCs first").asMap());
+            if (!"NO_GENERATED_WORKBOOK".equals(e.getMessage())) throw e;
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError("NO_GENERATED_WORKBOOK",
+                    "No generated workbook for this project — generate TCs first").asMap());
+        } catch (IllegalArgumentException e) {
+            if (!"CREDENTIAL_PROFILE_REQUIRED".equals(e.getMessage())) throw e;
+            return ResponseEntity.badRequest().body(new ApiError("CREDENTIAL_PROFILE_REQUIRED",
+                    "credentialProfile is required").asMap());
+        }
+    }
+
+    private void admit(ProjectRecord project, SubmitRequest body, String jobId) throws Exception {
+        String projectId = project.getProjectId();
+        // Resolve credentials before producing a temp workbook; replay never consults mutable inputs.
+        String profile = body == null ? null : body.credentialProfile();
+        if (body != null && body.environmentRevisionId() != null && !body.environmentRevisionId().isBlank()) {
+            try {
+                var env = new delivery.env.EnvironmentStore(store.environmentRoot(projectId)).read(body.environmentRevisionId());
+                if (!env.profile().credentialProfileRef().isBlank()) profile = env.profile().credentialProfileRef();
+            } catch (Exception e) { throw new delivery.job.JobAdmissionException("ENVIRONMENT_INVALID", "Environment unavailable"); }
         }
         String username = "";
         String password = "";
-        String profile = body == null ? null : body.credentialProfile();
         if (!credentials.list(projectId).isEmpty()) {
-            if (profile == null || profile.isBlank()) {
-                return ResponseEntity.badRequest()
-                        .body(new ApiError("CREDENTIAL_PROFILE_REQUIRED", "credentialProfile is required").asMap());
-            }
+            if (profile == null || profile.isBlank()) throw new IllegalArgumentException("CREDENTIAL_PROFILE_REQUIRED");
             var resolved = credentials.resolveForJob(projectId, profile.trim());
             username = resolved.username();
             password = resolved.passwordPlain();
         }
-        String jobId = "job_ci_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            try {
-                IdempotencyStore.Entry recorded = keys.putOrGet(idempotencyKey, bodyHash, jobId);
-                if (!jobId.equals(recorded.jobId())) {
-                    return ResponseEntity.ok(Map.of("jobId", recorded.jobId(), "idempotentReplay", true));
-                }
-            } catch (IdempotencyStore.Conflict e) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(new ApiError("IDEMPOTENCY_CONFLICT", e.getMessage()).asMap());
+        Path excelPath = delivery.portal.service.JobWorkbookResolver.resolve(workbooks, projectId, true, null, null);
+        boolean saved = false;
+        try {
+            String baseUrl = project.getBaseUrl();
+            JobRecord job = new JobRecord(
+                    jobId,
+                    projectId,
+                    project.getOwnerUserId(),
+                    "EXECUTE",
+                    excelPath,
+                    baseUrl == null ? "" : baseUrl,
+                    username,
+                    password,
+                    false,
+                    JobRecord.JobKind.EXECUTE);
+            job.setTenantId(project.getTenantId());
+            job.setAuthoringEngine(project.getAuthoringEngine());
+            if (body != null && body.environmentRevisionId() != null) {
+                job.setEnvironmentRevisionId(body.environmentRevisionId());
             }
+            boolean privateRunner = body != null && body.runner() != null
+                    && "private".equalsIgnoreCase(body.runner().trim());
+            job.setRequirePrivateRunner(privateRunner);
+            store.saveJob(job);
+            saved = true;
+            if (!privateRunner) executeWorker.submit(jobId);
+        } finally {
+            if (!saved) delivery.portal.service.JobUploadCleanup.deleteIfTempUpload(excelPath);
         }
-        String baseUrl = project.getBaseUrl();
-        JobRecord job = new JobRecord(
-                jobId,
-                projectId,
-                project.getOwnerUserId(),
-                "EXECUTE",
-                excelPath,
-                baseUrl == null ? "" : baseUrl,
-                username,
-                password,
-                false,
-                JobRecord.JobKind.EXECUTE);
-        job.setTenantId(project.getTenantId());
-        job.setAuthoringEngine(project.getAuthoringEngine());
-        if (body != null && body.environmentRevisionId() != null) {
-            job.setEnvironmentRevisionId(body.environmentRevisionId());
-        }
-        boolean privateRunner = body != null && body.runner() != null
-                && "private".equalsIgnoreCase(body.runner().trim());
-        job.setRequirePrivateRunner(privateRunner);
-        store.saveJob(job);
-        if (!privateRunner) {
-            executeWorker.submit(jobId);
-        }
+    }
+
+    private ResponseEntity<?> accepted(String jobId) {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
-                "jobId", jobId,
-                "status", JobRecord.Status.QUEUED.name(),
-                "rateLimit", RATE_LIMIT_NOTE
-        ));
+                "jobId", jobId, "status", JobRecord.Status.QUEUED.name(), "rateLimit", RATE_LIMIT_NOTE));
     }
 
     private boolean rateLimit(TenantId tenant) {

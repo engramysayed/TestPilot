@@ -37,4 +37,14 @@ public class LocalLlmClientTest {
         LocalLlmClient client = new LocalLlmClient("http://127.0.0.1:9", "m", Duration.ofSeconds(630));
         Assert.assertEquals(client.requestTimeout(), Duration.ofSeconds(630));
     }
+
+    @Test public void timingPreservesProviderMeasurementsAndMissingValues() {
+        var stats = LocalLlmClient.OllamaTiming.from(new org.json.JSONObject()
+                .put("total_duration", 9000000000L).put("load_duration", 3000000000L)
+                .put("prompt_eval_duration", 2000000000L).put("eval_duration", 4000000000L)
+                .put("prompt_eval_count", 200).put("eval_count", 30));
+        Assert.assertEquals(stats.loadNs(), 3000000000L);
+        Assert.assertEquals(stats.generatedTokens(), 30L);
+        Assert.assertEquals(LocalLlmClient.OllamaTiming.from(new org.json.JSONObject()).loadNs(), -1L);
+    }
 }

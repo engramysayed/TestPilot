@@ -1,0 +1,19 @@
+{
+  "strategy": "keel",
+  "value": "shadow=#o >> frame=#sf >> css=button",
+  "frames": [
+    {
+      "selector": "#sf",
+      "index": 0,
+      "name": "",
+      "shadowPath": [
+        {
+          "host": "#o",
+          "mode": "open"
+        }
+      ]
+    }
+  ],
+  "shadowPath": [],
+  "css": "button"
+}

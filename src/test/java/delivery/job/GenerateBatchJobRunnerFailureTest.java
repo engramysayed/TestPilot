@@ -38,7 +38,7 @@ public class GenerateBatchJobRunnerFailureTest {
         };
 
         GenerateBatchJobRequest request = new GenerateBatchJobRequest(
-                new ProjectRecord("prj_x", "Facebook Login Negative", 1L, 0),
+                "prj_x",
                 storiesPath,
                 outputDir,
                 false,
@@ -48,7 +48,7 @@ public class GenerateBatchJobRunnerFailureTest {
 
         GenerateBatchJobRunner runner = new GenerateBatchJobRunner();
         try {
-            runner.run(request, generate);
+            runner.run(request, generate.forProject(new ProjectRecord("prj_x", "Facebook Login Negative", 1L, 0)));
             Assert.fail("expected IllegalStateException");
         } catch (IllegalStateException e) {
             String msg = e.getMessage();

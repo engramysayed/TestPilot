@@ -3,7 +3,7 @@ package delivery.portal.api;
 import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStatus;
 import delivery.job.Intermittency;
-import delivery.job.RerunSupport;
+import delivery.portal.jobs.RerunSupport;
 import delivery.job.RunCompare;
 import delivery.portal.model.JobRecord;
 import delivery.portal.security.CurrentUserService;

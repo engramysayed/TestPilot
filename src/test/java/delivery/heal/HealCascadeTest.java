@@ -406,6 +406,7 @@ public class HealCascadeTest {
                 StepIntentBinder.IntentKind.CLICK, "Click Submit");
 
         for (int i = 0; i < 5; i++) {
+            cascade.beginIntent(); // P0: fresh A10 guard per independent heal (ProvePhase does this per intent)
             cascade.heal("TC_BUDGET", intent, HTML, null, "pick failed", null, true, List.of());
         }
 
@@ -449,6 +450,7 @@ public class HealCascadeTest {
                 StepIntentBinder.IntentKind.CLICK, "Click Submit");
 
         for (int i = 0; i < 5; i++) {
+            cascade.beginIntent();
             cascade.heal("TC_BUDGET_OK", intent, HTML, null, "pick failed", null, true, List.of());
         }
 

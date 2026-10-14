@@ -1,0 +1,25 @@
+contract=keel.settle-policy version=1 pollMs=100
+click timeout=10000 net=idle/500 dom=300 anim=true spin=true url=any effect=required/2000 sideEffects=unknown
+doubleClick timeout=10000 net=idle/500 dom=300 anim=true spin=true url=any effect=required/2000 sideEffects=unknown
+rightClick timeout=5000 net=none/0 dom=300 anim=true spin=false url=same effect=required/2000 sideEffects=unknown
+hover timeout=3000 net=none/0 dom=200 anim=true spin=false url=same effect=optional/1000 sideEffects=none
+type timeout=5000 net=idle/300 dom=200 anim=false spin=true url=same effect=required/2000 sideEffects=unknown
+typeSecret timeout=5000 net=idle/300 dom=200 anim=false spin=true url=same effect=none/0 sideEffects=unknown
+clear timeout=3000 net=none/0 dom=200 anim=false spin=false url=same effect=required/1000 sideEffects=unknown
+press timeout=10000 net=idle/500 dom=300 anim=true spin=true url=any effect=optional/2000 sideEffects=unknown
+select timeout=10000 net=idle/500 dom=300 anim=true spin=true url=any effect=required/2000 sideEffects=unknown
+check timeout=5000 net=idle/300 dom=200 anim=true spin=true url=same effect=required/2000 sideEffects=unknown
+submit timeout=30000 net=idle/500 dom=500 anim=true spin=true url=any effect=required/5000 sideEffects=mutating
+navigate timeout=30000 net=idle/500 dom=500 anim=true spin=true url=changed effect=none/0 sideEffects=none
+back timeout=30000 net=idle/500 dom=500 anim=true spin=true url=changed effect=required/2000 sideEffects=none
+reload timeout=30000 net=idle/500 dom=500 anim=true spin=true url=same effect=none/0 sideEffects=none
+scroll timeout=3000 net=idle/300 dom=200 anim=true spin=true url=same effect=optional/500 sideEffects=none
+scrollIntoView timeout=3000 net=none/0 dom=200 anim=true spin=false url=same effect=none/0 sideEffects=none
+drag timeout=10000 net=idle/500 dom=300 anim=true spin=true url=same effect=required/2000 sideEffects=unknown
+upload timeout=60000 net=idle/1000 dom=500 anim=true spin=true url=any effect=required/5000 sideEffects=mutating
+switchFrame timeout=5000 net=none/0 dom=0 anim=false spin=false url=any effect=none/0 sideEffects=none
+switchWindow timeout=10000 net=idle/500 dom=300 anim=false spin=true url=any effect=none/0 sideEffects=none
+wait timeout=0 net=none/0 dom=0 anim=false spin=false url=any effect=none/0 sideEffects=none
+assert timeout=5000 net=idle/300 dom=300 anim=true spin=true url=any effect=none/0 sideEffects=none
+tap timeout=10000 net=none/0 dom=300 anim=true spin=true url=any effect=required/2000 sideEffects=unknown
+longPress timeout=10000 net=none/0 dom=300 anim=true spin=true url=any effect=required/2000 sideEffects=unknown

@@ -1,0 +1,15 @@
+package delivery.portal.alerts;
+
+/**
+ * Pluggable alert channel (SPLIT_DESIGN §8, AL-1). {@code keel.alerts.channels.<id>.enabled} and
+ * {@code keel.alerts.channels.<id>.min-severity}. A failing channel never blocks the others.
+ */
+public interface AlertChannel {
+    String id();
+
+    boolean enabled();
+
+    Alert.Severity minSeverity();
+
+    void send(Alert alert) throws Exception;
+}

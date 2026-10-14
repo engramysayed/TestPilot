@@ -1,5 +1,7 @@
 package delivery.job;
 
+import delivery.portal.jobs.*;
+
 import delivery.authoring.AuthoringEngine;
 import delivery.portal.model.JobRecord;
 import org.testng.Assert;
@@ -15,7 +17,7 @@ public class DurableJobClaimTest {
     @Test
     public void secondWorkerCannotClaimWhileLeaseIsValid() {
         JobRecord job = queued("job_a");
-        Instant now = Instant.parse("2026-09-17T00:00:00Z");
+        Instant now = Instant.now();
         Optional<DurableJobClaim.Lease> first = DurableJobClaim.tryClaim(job, "wkr_1", now, Duration.ofSeconds(30));
         Assert.assertTrue(first.isPresent());
         Assert.assertEquals(job.getStatus(), JobRecord.Status.RUNNING);
@@ -28,7 +30,7 @@ public class DurableJobClaimTest {
     @Test
     public void expiredAdmittedLeaseIsReclaimableAndStaleAttemptCannotPublish() {
         JobRecord job = queued("job_b");
-        Instant now = Instant.parse("2026-09-17T00:00:00Z");
+        Instant now = Instant.now();
         DurableJobClaim.Lease stale = DurableJobClaim.tryClaim(job, "wkr_1", now, Duration.ofSeconds(10)).orElseThrow();
         Instant later = now.plusSeconds(11);
         Assert.assertTrue(DurableJobClaim.reconcileExpired(job, later));
@@ -43,7 +45,7 @@ public class DurableJobClaimTest {
     @Test
     public void expiredBrowserLeaseIsUncertainAndNotReplayed() {
         JobRecord job = queued("job_c");
-        Instant now = Instant.parse("2026-09-17T00:00:00Z");
+        Instant now = Instant.now();
         DurableJobClaim.Lease lease = DurableJobClaim.tryClaim(job, "wkr_1", now, Duration.ofSeconds(10)).orElseThrow();
         DurableJobClaim.markStage(job, lease.attemptId(), DurableJobClaim.Stage.BROWSER);
         Assert.assertTrue(DurableJobClaim.reconcileExpired(job, now.plusSeconds(11)));
@@ -59,7 +61,7 @@ public class DurableJobClaimTest {
         Assert.assertTrue(queuedOnly.getAttemptId().isBlank());
 
         JobRecord job = queued("job_e");
-        Instant now = Instant.parse("2026-09-17T00:00:00Z");
+        Instant now = Instant.now();
         DurableJobClaim.Lease lease = DurableJobClaim.tryClaim(job, "wkr_1", now, Duration.ofSeconds(30)).orElseThrow();
         DurableJobClaim.requestCancel(job);
         Assert.assertFalse(DurableJobClaim.mayPublish(job, lease));

@@ -43,6 +43,9 @@ public class ProjectEntity {
     /** Per-job Cursor call cap when Precision is selected; null = server default */
     private Integer precisionMaxCallsPerJob;
 
+    /** When Precision: try domain locator memory before Cursor groundRank. */
+    private Boolean precisionReuseLocatorMemory;
+
     /** Opaque workspace id; membership is stored separately. */
     @Column(name = "tenant_id", length = 40)
     private String tenantId;
@@ -67,6 +70,10 @@ public class ProjectEntity {
     public Integer getPrecisionMaxCallsPerJob() { return precisionMaxCallsPerJob; }
     public void setPrecisionMaxCallsPerJob(Integer precisionMaxCallsPerJob) {
         this.precisionMaxCallsPerJob = precisionMaxCallsPerJob;
+    }
+    public Boolean getPrecisionReuseLocatorMemory() { return precisionReuseLocatorMemory; }
+    public void setPrecisionReuseLocatorMemory(Boolean precisionReuseLocatorMemory) {
+        this.precisionReuseLocatorMemory = precisionReuseLocatorMemory;
     }
     public String getTenantId() { return tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId; }

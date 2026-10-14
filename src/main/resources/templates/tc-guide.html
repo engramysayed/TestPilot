@@ -10,15 +10,15 @@
 <main class="shell shell-wide keel-page">
     <header class="heading guide-hero guide-reveal">
         <div>
-            <p class="eyebrow">Authoring standard</p>
-            <h1>Valid test case guide</h1>
+            <p class="eyebrow">Help</p>
+            <h1>How to write test cases</h1>
             <p class="lede">
-                Format and writing rules for client Excel sheets. Follow this so Keel can design
-                automation from the workbook alone. AI may rewrite wording — keep the column headers.
+                How to fill in the test case spreadsheet so Keel can run your tests and build automation code
+                without guessing. AI tools may reword your cases — just keep the column headers.
             </p>
         </div>
         <div class="actions guide-hero-actions">
-            <a class="button" href="/automate">Go to Automate</a>
+            <a class="button" href="/projects">Add test cases to a project</a>
             <a class="button ghost" href="/prompts/keel-manual-tcs-template.csv" download>Download template</a>
             <a class="button ghost" href="#format">Jump to format</a>
         </div>
@@ -81,7 +81,7 @@
                 </div>
                 <p class="guide-howto-note">
                     <a href="/prompts/keel-manual-tcs-template.csv" download>Download CSV template</a>
-                    — open in Excel, edit rows, save as <code>.xlsx</code>, then upload via Automate.
+                    — open it in Excel, fill in your rows, save, then upload it on your project's <strong>Test cases</strong> tab (Projects → your project → Test cases → Upload spreadsheet).
                 </p>
                 <ul class="guide-points">
                     <li><strong>TC_ID</strong> — unique per row (e.g. <code>TC_01</code>)</li>
@@ -91,7 +91,7 @@
                     <li><strong>Preconditions</strong> — login need, role, starting context</li>
                     <li><strong>Priority / Tags</strong> — e.g. <code>P1</code>, <code>smoke,login</code></li>
                     <li><strong>VisualAssertion</strong> — optional <em>text</em> describing how the screen should look after steps pass (not an image; Figma/mockup PNGs are uploaded separately on the project for Execute)</li>
-                    <li><strong>TestData</strong> — optional values, <em>line-aligned</em> with Steps (aliases: <code>Test Data</code>, <code>StepData</code>)</li>
+                    <li><strong>TestData</strong> — optional values, <em>one line per step, in the same order</em> as Steps (aliases: <code>Test Data</code>, <code>StepData</code>)</li>
                 </ul>
             </section>
 
@@ -100,7 +100,7 @@
                     <span class="guide-num">02</span>
                     <div>
                         <h2>Login &amp; credentials</h2>
-                        <p class="panel-intro">Say when auth is needed in Preconditions. Put shared secrets in run config.</p>
+                        <p class="panel-intro">Say in Preconditions when a case needs sign-in. Keep passwords out of the spreadsheet — save them once as a login account on the project.</p>
                     </div>
                 </header>
                 <div class="decision-row">
@@ -118,8 +118,8 @@
                     <div class="decision-arrow" aria-hidden="true"></div>
                     <article class="decision-card accent">
                         <span class="decision-label">Many cases</span>
-                        <h3>Run config</h3>
-                        <p>Leave Excel empty of secrets. Enter Username / Password once on Upload.</p>
+                        <h3>Login account</h3>
+                        <p>Leave passwords out of the spreadsheet. Add the username and password once under <strong>Project → Settings → Login accounts</strong>. Run tests, Build code and Bug Hunter use it automatically.</p>
                     </article>
                 </div>
                 <div class="guide-callouts">
@@ -285,12 +285,12 @@ Bennett
                     <span class="guide-num">06</span>
                     <div>
                         <h2>Visual assertion</h2>
-                        <p class="panel-intro">Optional. Describes what the screen should look like after the case’s DOM steps pass.</p>
+                        <p class="panel-intro">Optional. Describes what the screen should look like after the case’s steps pass.</p>
                     </div>
                 </header>
                 <ul class="guide-points">
                     <li>Write a short claim in plain language (form visible, heading present, cart still shown).</li>
-                    <li>DOM steps remain the source of truth for pass/fail of actions.</li>
+                    <li>The steps decide pass or fail; the screen check is an extra check on top.</li>
                     <li>Uncertain or very low-confidence visual answers alone do not fail a case that already passed its steps.</li>
                 </ul>
             </section>
@@ -300,7 +300,7 @@ Bennett
                     <span class="guide-num">07</span>
                     <div>
                         <h2>What each case must include</h2>
-                        <p class="panel-intro">Everything the converter needs to design the automated case — no guessing.</p>
+                        <p class="panel-intro">Everything Keel needs to run the case without guessing.</p>
                     </div>
                 </header>
                 <div class="must-grid">
@@ -335,7 +335,7 @@ Bennett
                     <div>
                         <h3>File upload flows</h3>
                         <p>Choose file, attach document, and drag-and-drop upload are not supported.
-                            Do not include TCs whose only purpose is uploading. Cover the rest of the flow without upload steps.</p>
+                            Leave out test cases whose only purpose is uploading a file. Cover the rest of the flow without upload steps.</p>
                     </div>
                 </div>
             </section>
@@ -345,15 +345,15 @@ Bennett
                     <span class="guide-num">09</span>
                     <div>
                         <h2>AI rewrite &rarr; CSV</h2>
-                        <p class="panel-intro">Copy a ready prompt into any AI chat. The AI returns CSV (not .xlsx) with Keel headers — then open in Excel and import via Automate.</p>
+                        <p class="panel-intro">Copy a ready prompt into any AI chat. The AI returns CSV with Keel's column headers. Paste it on <strong>Write test cases → Paste from external AI</strong>, or save it and upload it on your project's Test cases tab.</p>
                     </div>
                 </header>
                 <ol class="guide-howto">
                     <li>Click <strong>Copy prompt</strong>.</li>
                     <li>Paste into any AI chat (ChatGPT, Claude, Cursor, etc.).</li>
-                    <li>Paste <strong>one batch</strong> of rough TCs (about <strong>5–15</strong>, or one feature/tag).</li>
+                    <li>Paste <strong>one batch</strong> of rough test cases (about <strong>5–15</strong>, or one feature/tag).</li>
                     <li>Copy the AI's <strong>CSV only</strong> into Excel (or save as <code>.xlsx</code>).</li>
-                    <li>Spot-check a few rows, then open <a href="/automate">Automate</a> to upload.</li>
+                    <li>Spot-check a few rows, then paste them on <a href="/generate">Write test cases</a> (Import into project) or upload the file on your project's Test cases tab.</li>
                 </ol>
                 <p class="guide-howto-note">Large suites: repeat per batch and append rows in Excel. Do not paste the whole workbook at once.</p>
                 <p class="guide-howto-note">
@@ -369,7 +369,7 @@ Bennett
                     <p id="guide-ai-status" class="ai-prompt-status" role="status"></p>
                 </div>
                 <div class="ai-tip-actions">
-                    <a class="button" href="/automate">Ready — open Automate</a>
+                    <a class="button" href="/projects">Ready — open your project</a>
                 </div>
             </section>
         </div>

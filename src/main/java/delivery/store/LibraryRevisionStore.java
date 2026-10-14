@@ -80,6 +80,9 @@ public final class LibraryRevisionStore {
     public synchronized Revision restoreAsNew(String revisionId, String author) throws IOException {
         Revision source = readMeta(revisionId);
         byte[] body = Files.readAllBytes(revisionsDir().resolve(source.id() + ".bin"));
+        if (!sha256(body).equals(source.sha256())) {
+            throw new IOException("LIBRARY_REVISION_CORRUPT: " + revisionId);
+        }
         String parent = head().map(Revision::id).orElse("");
         return commit(parent, "restore:" + source.id(), author, body);
     }

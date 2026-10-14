@@ -106,13 +106,13 @@ public class PortalUiController {
         return switch (navActive) {
             case "dashboard" -> "Overview";
             case "projects" -> "Projects";
-            case "generate" -> "Generate";
-            case "execute" -> "Execute";
-            case "automate" -> "Automate";
+            case "generate" -> "Write test cases";
+            case "execute" -> "Run tests";
+            case "automate" -> "Build code";
             case "bug-hunter" -> "Bug Hunter";
-            case "runs" -> "Runs & evidence";
-            case "packages" -> "Automation";
-            case "tc-guide" -> "TC guide";
+            case "runs" -> "Run history";
+            case "packages" -> "Code packages";
+            case "tc-guide" -> "How to write test cases";
             case "account" -> "Account";
             case "users" -> "Administration";
             case "domains" -> "Domains";
@@ -234,7 +234,7 @@ public class PortalUiController {
                            Model model) {
         addNav(model, "runs");
         model.addAttribute("pageTitle", "Evidence");
-        model.addAttribute("pageCrumb", "Runs & evidence");
+        model.addAttribute("pageCrumb", "Run history");
         model.addAttribute("jobId", jobId);
         model.addAttribute("tcId", tcId == null ? "" : tcId);
         var owned = store.getOwnedJob(jobId, currentUser.requireUserId());
@@ -296,7 +296,7 @@ public class PortalUiController {
     public String status(@RequestParam("jobId") String jobId, Model model) {
         addNav(model, "runs");
         model.addAttribute("pageTitle", "Status");
-        model.addAttribute("pageCrumb", "Runs & evidence");
+        model.addAttribute("pageCrumb", "Run history");
         model.addAttribute("jobId", jobId);
         String status = "QUEUED";
         String message = "Waiting for worker…";

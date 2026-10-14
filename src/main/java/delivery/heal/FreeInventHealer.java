@@ -29,6 +29,7 @@ public class FreeInventHealer {
     private final String provider;
     private final boolean enabled;
     private String presenceHtml = "";
+    private CursorHealClient.HealSafety healSafety;
 
     public FreeInventHealer(
             CursorHealClient cursor,
@@ -47,6 +48,10 @@ public class FreeInventHealer {
 
     public void setPresenceHtml(String html) {
         this.presenceHtml = html == null ? "" : html;
+    }
+
+    public void setHealSafety(CursorHealClient.HealSafety safety) {
+        this.healSafety = safety;
     }
 
     private boolean providerAllowlisted() {
@@ -130,6 +135,7 @@ public class FreeInventHealer {
                                 pngOrNull != null && pngOrNull.length > 0),
                         pngOrNull);
             } else {
+                if (healSafety != null) cursor.setPendingSafety(healSafety);
                 raw = cursor.inventSteps(
                         intent.text(), reason, history, html, screenshotPathOrNull, allowedOpenPath);
             }
@@ -217,6 +223,7 @@ public class FreeInventHealer {
                                 pngOrNull != null && pngOrNull.length > 0),
                         pngOrNull);
             } else {
+                if (healSafety != null) cursor.setPendingSafety(healSafety);
                 raw = cursor.inventSteps(
                         intent.text(), reason, history, html, screenshotPathOrNull, allowedOpenPath);
             }

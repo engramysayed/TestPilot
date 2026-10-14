@@ -1,6 +1,6 @@
 package delivery.portal.api;
 
-import delivery.job.RerunSupport;
+import delivery.portal.jobs.RerunSupport;
 import delivery.portal.model.JobRecord;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.GeneratedWorkbookService;

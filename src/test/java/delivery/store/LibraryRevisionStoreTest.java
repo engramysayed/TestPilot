@@ -8,6 +8,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class LibraryRevisionStoreTest {
+    @Test public void corruptedRestoreDoesNotChangeTheHead() throws Exception {
+        Path dir = Files.createTempDirectory("restore-corrupt-");
+        LibraryRevisionStore store = new LibraryRevisionStore(dir);
+        var first = store.commit(null, "import", "owner", "original".getBytes(StandardCharsets.UTF_8));
+        var second = store.commit(first.id(), "edit", "owner", "current".getBytes(StandardCharsets.UTF_8));
+        Files.writeString(store.bytes(first.id()), "corrupted");
+        try { store.restoreAsNew(first.id(), "owner"); Assert.fail("Expected corrupt revision rejection"); }
+        catch (java.io.IOException e) { Assert.assertTrue(e.getMessage().contains("LIBRARY_REVISION_CORRUPT")); }
+        Assert.assertEquals(store.head().orElseThrow().id(), second.id());
+        Assert.assertEquals(Files.readString(store.headBytes()), "current");
+    }
 
     @Test
     public void staleBaseRevisionCannotOverwriteANewerEdit() throws Exception {

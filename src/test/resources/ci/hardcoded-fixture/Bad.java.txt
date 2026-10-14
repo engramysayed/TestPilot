@@ -1,0 +1,14 @@
+// Fixture for HardcodedLiteralCheckTest: every literal below must trip the B10 check. COMMENT localhost 127.0.0.1
+/* COMMENT C:\keel delivery-store portal.internal */
+class Bad {
+    String a = "http://localhost:8080";
+    String b = "C:\\Keel\\engine";
+    String c = "D:/keel/portal";
+    String d = "./delivery-store/portal-db";
+    String e = "https://portal.internal:8443";
+    String ok = "http://portal.example:8080";
+    char q = '"';
+    String f = """
+            E:\\keel\\engine
+            """;
+}

@@ -15,7 +15,7 @@ public class EmitGeneratedLayerContractTest {
         Assert.assertFalse(source.contains("if (d.status() != TcDraftStatus.REUSED)"),
                 "UPDATE must not skip REUSED drafts at codegen");
         Assert.assertTrue(source.contains("CodeWriter"), source);
-        int compileAt = source.indexOf("EmitCompileCheck.runIfEnabled");
+        int compileAt = source.indexOf("compileProject(projectDir");
         int publishAt = source.indexOf("store.saveVersion");
         Assert.assertTrue(compileAt >= 0 && publishAt > compileAt,
                 "compile check must run before publishing a new version");

@@ -356,6 +356,19 @@ public final class WorkspaceDirectory {
         return List.copyOf(out);
     }
 
+    /** B12: every enrolled runner/engine across tenants (AL-1 dead-man check reads last heartbeats). */
+    public List<RunnerEnrollment> allRunners() throws Exception {
+        JSONArray runners = read().optJSONArray("runners");
+        List<RunnerEnrollment> out = new ArrayList<>();
+        for (int i = 0; runners != null && i < runners.length(); i++) {
+            JSONObject row = runners.getJSONObject(i);
+            if (!row.optString("tenantId").isBlank()) {
+                out.add(parseRunner(row));
+            }
+        }
+        return List.copyOf(out);
+    }
+
     public Optional<RunnerEnrollment> runner(TenantId tenant, String runnerId) throws Exception {
         JSONObject root = read();
         JSONObject row = runnerRow(root, tenant, runnerId);

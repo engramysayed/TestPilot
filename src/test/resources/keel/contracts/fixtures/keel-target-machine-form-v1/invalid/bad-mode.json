@@ -1,0 +1,11 @@
+{
+  "strategy": "keel",
+  "value": "css=button",
+  "shadowPath": [
+    {
+      "host": "#o",
+      "mode": "half-open"
+    }
+  ],
+  "css": "button"
+}

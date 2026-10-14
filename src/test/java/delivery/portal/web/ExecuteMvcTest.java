@@ -68,6 +68,10 @@ public class ExecuteMvcTest extends AbstractTestNGSpringContextTests {
 
         Assert.assertTrue(main.contains("id=\"project-select\""), "project picker missing");
         Assert.assertTrue(main.contains("id=\"execute-form\""), "execute form missing");
+        Assert.assertTrue(main.contains("id=\"execute-form-panel\""), "start run panel missing");
+        String body = fetchExecuteBody();
+        Assert.assertTrue(body.contains("const formPanel = document.getElementById('execute-form-panel')"),
+                "execute JS must bind execute-form-panel so Start run panel can unhide");
     }
 
     @Test

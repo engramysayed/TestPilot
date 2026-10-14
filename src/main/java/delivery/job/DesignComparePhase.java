@@ -2,7 +2,6 @@ package delivery.job;
 
 import delivery.authoring.LocalLlmClient;
 import delivery.excel.ManualTestCase;
-import delivery.portal.service.DesignReferenceService;
 import delivery.store.ProjectStore;
 import delivery.vision.DesignCompareEvidence;
 import delivery.vision.DesignCompareGate;
@@ -20,7 +19,7 @@ import java.util.Optional;
  */
 public final class DesignComparePhase {
 
-    private final DesignReferenceService references = new DesignReferenceService();
+    private final delivery.job.port.SiteMemoryPort references = delivery.job.port.EnginePorts.siteMemory();
 
     public void run(ConversionJobRequest request, Path workDir, List<ManualTestCase> cases) {
         if (request == null || workDir == null || cases == null || cases.isEmpty()) {
@@ -34,13 +33,13 @@ public final class DesignComparePhase {
         String model = resolveModel(request);
 
         for (ManualTestCase tc : cases) {
-            Optional<Path> reference = references.resolve(projectRoot, tc.tcId());
+            Optional<Path> reference = references.designReference(projectRoot, tc.tcId());
             if (reference.isEmpty()) {
                 continue;
             }
             Path evidenceDir = evidenceRoot.resolve(tc.tcId());
             try {
-                Optional<Path> actual = DesignReferenceService.pickActualScreenshot(evidenceDir);
+                Optional<Path> actual = references.pickActualScreenshot(evidenceDir);
                 if (actual.isEmpty()) {
                     DesignCompareEvidence.write(
                             evidenceDir,

@@ -26,13 +26,18 @@ public final class ViewportSweep {
 
 
 
+    // Must stay in parity with SeleniumGroundingBrowser.ELEMENT_FROM_POINT_JS#isInteractive:
+    // the JS walker already stops only on interactive nodes (incl. nav <li> and menuitem roles),
+    // so rejecting them here turned every correct sidebar hit into a "sweep-miss".
     private static final Set<String> INTERACTIVE_TAGS = Set.of(
 
-            "button", "a", "input", "select", "textarea");
+            "button", "a", "input", "select", "textarea", "li");
 
     private static final Set<String> INTERACTIVE_ROLES = Set.of(
 
-            "button", "link", "textbox", "combobox", "checkbox", "radio");
+            "button", "link", "textbox", "combobox", "listbox", "searchbox", "checkbox", "radio",
+            "switch", "spinbutton", "slider", "menuitem", "menuitemcheckbox", "menuitemradio",
+            "tab", "treeitem");
 
 
 
@@ -111,7 +116,8 @@ public final class ViewportSweep {
             }
             if (!version.equals(browser.observationVersion())) continue;
 
-            Optional<VisualCandidate> hit = firstHit(analysis, browser, metrics, intent);
+            String[] observed = {"not-probed"};
+            Optional<VisualCandidate> hit = firstHit(analysis, browser, metrics, intent, observed);
 
             if (hit.isPresent()) {
 
@@ -120,7 +126,7 @@ public final class ViewportSweep {
 
             }
 
-            recordSweepMiss(analysis);
+            recordSweepMiss(analysis, observed[0]);
 
             if (allCandidatesImplausible(analysis, metrics)) {
                 LogsManager.info("VISION: abort implausible bbox (region, not a widget)");
@@ -158,6 +164,13 @@ public final class ViewportSweep {
             GroundingBrowser browser,
 
             ViewportMetrics metrics, StepIntentBinder.IntentLine intent) {
+        return firstHit(analysis, browser, metrics, intent, new String[1]);
+    }
+
+    private static Optional<VisualCandidate> firstHit(
+            VisionAnalysisResult analysis,
+            GroundingBrowser browser,
+            ViewportMetrics metrics, StepIntentBinder.IntentLine intent, String[] observed) {
 
         if (analysis == null || !analysis.found() || analysis.candidates() == null) {
 
@@ -203,6 +216,7 @@ public final class ViewportSweep {
             CssPoint css = CoordinateMapper.toCss(imageCenter, imageW, imageH, viewW, viewH);
 
             GroundedNode node = browser.elementFromPoint(css.x(), css.y());
+            observed[0] = describeProbe(css, metrics, node, intent);
 
             if (node != null && node.displayed() && node.enabled() && isInteractive(node)
                     && StepIntentBinder.actionCompatible(intent, new delivery.authoring.DomCandidate(
@@ -288,7 +302,31 @@ public final class ViewportSweep {
         return true;
     }
 
+    /** Diagnostic summary of what was actually under the mapped point (was hard-coded "none"). */
+    static String describeProbe(CssPoint css, ViewportMetrics m, GroundedNode node,
+            StepIntentBinder.IntentLine intent) {
+        String where = String.format(Locale.ROOT, "css=%.0f,%.0f shot=%dx%d view=%dx%d", css.x(), css.y(),
+                m == null ? 0 : m.screenshotWidth(), m == null ? 0 : m.screenshotHeight(),
+                m == null ? 0 : m.innerWidth(), m == null ? 0 : m.innerHeight());
+        if (node == null) return where + " node=null";
+        String text = safe(node.visibleText());
+        if (text.length() > 40) text = text.substring(0, 40);
+        String reason = !node.displayed() ? "not-displayed" : !node.enabled() ? "disabled"
+                : !isInteractive(node) ? "not-interactive"
+                : !StepIntentBinder.actionCompatible(intent, new delivery.authoring.DomCandidate(
+                        "observed", "id", node.id(), safe(node.role()).isBlank() ? node.tag() : node.role(),
+                        safe(node.ariaLabel()).isBlank() ? node.visibleText() : node.ariaLabel()))
+                        ? "action-incompatible" : "accepted";
+        return where + " node=" + safe(node.outerFingerprint()) + " role=" + safe(node.role())
+                + (safe(node.preferredValue()).isBlank() ? "" : " hook=" + node.preferredValue())
+                + " text=" + text + " verdict=" + reason;
+    }
+
     private static void recordSweepMiss(VisionAnalysisResult analysis) {
+        recordSweepMiss(analysis, "none");
+    }
+
+    private static void recordSweepMiss(VisionAnalysisResult analysis, String observed) {
         if (analysis != null && analysis.error() != null) {
             return;
         }
@@ -306,7 +344,7 @@ public final class ViewportSweep {
                 best.boundingBox(),
                 best.confidence(),
                 best.description(),
-                "none",
+                observed == null || observed.isBlank() ? "none" : observed,
                 null);
     }
 

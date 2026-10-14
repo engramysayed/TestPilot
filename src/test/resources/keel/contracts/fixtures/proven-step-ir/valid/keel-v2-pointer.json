@@ -1,0 +1,15 @@
+{
+  "tcId": "TC_1",
+  "pageName": "Checkout",
+  "actionType": "elementAction",
+  "action": "click",
+  "locatorStrategy": "keel",
+  "locatorValue": "css=canvas#chart >> provider=chartjs:bar/3 >> point=100,50@800x400",
+  "value": "",
+  "assertionType": "",
+  "assertionExpected": "",
+  "validated": true,
+  "rationale": "ok",
+  "screenshotRelPath": "",
+  "contract": 2
+}

@@ -45,9 +45,19 @@ public final class ElementGrounder {
             LogsManager.info("GROUNDING: miss id=");
             return Optional.empty();
         }
-        Optional<GroundingHit> hit = addOrMatch(table, node, visual);
+        // Existing candidates describe the observed control; their labels alone are not identity.
+        // Honour configured hooks before stable fallbacks, and verify uniqueness against the live node.
+        Optional<GroundingHit> hit = table.stream()
+                .sorted(java.util.Comparator.comparingInt(c -> delivery.store.PreferredHooksStore.matches(
+                        c.value(), delivery.store.PreferredHooksStore.current()) ? 0 : 1))
+                .filter(c -> browser.hasObservationIdentity() || matches(c, node))
+                .filter(c -> safe(node.preferredAttribute()).isBlank() || preferredMatches(c, node))
+                .filter(c -> browser.matchesObservedNode(c.strategy(), c.value()))
+                .findFirst().map(c -> new GroundingHit(c.id(), new ArrayList<>(table), false));
+        if (hit.isEmpty()) hit = addOrMatch(table, node, visual);
+        final Optional<GroundingHit> resolved = hit;
         if (hit.isPresent()) {
-            var chosen = hit.get().table().stream().filter(c -> c.id().equals(hit.get().candidateId())).findFirst();
+            var chosen = hit.get().table().stream().filter(c -> c.id().equals(resolved.get().candidateId())).findFirst();
             if (chosen.isEmpty() || !browser.matchesObservedNode(chosen.get().strategy(), chosen.get().value())) return Optional.empty();
         }
         if (hit.isPresent()) {
@@ -67,6 +77,7 @@ public final class ElementGrounder {
     public static Optional<GroundingHit> addOrMatch(
             List<DomCandidate> table, GroundedNode node, VisualCandidate visual) {
         List<DomCandidate> mutable = new ArrayList<>(table);
+        mutable.sort(java.util.Comparator.comparingInt(c -> preferredMatches(c, node) ? 0 : 1));
         for (DomCandidate candidate : mutable) {
             if (matches(candidate, node)) {
                 return Optional.of(new GroundingHit(candidate.id(), mutable, false));
@@ -87,6 +98,8 @@ public final class ElementGrounder {
     }
 
     private static boolean matches(DomCandidate candidate, GroundedNode node) {
+        if (preferredMatches(candidate, node)) return true;
+        if (!safe(node.preferredAttribute()).isBlank()) return false;
         String strategy = safe(candidate.strategy()).toLowerCase(Locale.ROOT);
         String value = safe(candidate.value());
         if ("id".equals(strategy) && !safe(node.id()).isBlank()) {
@@ -101,6 +114,9 @@ public final class ElementGrounder {
     }
 
     private static Optional<LocatorCandidate> buildLocator(GroundedNode node) {
+        if (!safe(node.preferredAttribute()).isBlank() && !safe(node.preferredValue()).isBlank()) {
+            return Optional.of(new LocatorCandidate("css", preferredCss(node), safe(node.tag()), ""));
+        }
         if (!safe(node.id()).isBlank()) {
             return Optional.of(new LocatorCandidate("id", node.id(), safe(node.tag()), ""));
         }
@@ -137,6 +153,17 @@ public final class ElementGrounder {
             return tag + "[aria-label='" + ariaLabel.replace("'", "\\'") + "']";
         }
         return tag + "[aria-label='" + ariaLabel + "']";
+    }
+
+    private static String preferredCss(GroundedNode node) {
+        return safe(node.tag()) + "[" + node.preferredAttribute() + "='"
+                + node.preferredValue().replace("\\", "\\\\").replace("'", "\\'") + "']";
+    }
+
+    private static boolean preferredMatches(DomCandidate candidate, GroundedNode node) {
+        return !safe(node.preferredAttribute()).isBlank()
+                && ("css".equalsIgnoreCase(candidate.strategy()) || "cssselector".equalsIgnoreCase(candidate.strategy()))
+                && preferredCss(node).equals(candidate.value());
     }
 
     private static String labelFor(GroundedNode node, VisualCandidate visual) {

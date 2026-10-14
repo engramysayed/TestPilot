@@ -1,0 +1,25 @@
+{
+  "locatorStrategy": "keel",
+  "locatorValue": "text=\"Refresh\"",
+  "locatorCandidates": [
+    {
+      "strategy": "keel",
+      "value": "text=\"Refresh\"",
+      "score": 0.65
+    },
+    {
+      "strategy": "keel",
+      "value": "css=button.btn",
+      "score": 0.4
+    }
+  ],
+  "fallbacks": [
+    {
+      "strategy": "keel",
+      "value": "css=button.btn",
+      "score": 0.4
+    }
+  ],
+  "route": "h/x",
+  "contract": 3
+}

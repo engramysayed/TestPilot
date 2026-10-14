@@ -1,0 +1,4 @@
+{
+  "strategy": "xpath",
+  "value": "//button[1]"
+}

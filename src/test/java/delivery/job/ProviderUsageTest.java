@@ -1,5 +1,7 @@
 package delivery.job;
 
+import delivery.portal.jobs.*;
+
 import delivery.authoring.AuthoringEngine;
 import delivery.codegen.ProvenStep;
 import delivery.ir.TcDraft;

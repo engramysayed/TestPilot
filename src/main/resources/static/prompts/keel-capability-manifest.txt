@@ -3,7 +3,8 @@ KEEL CAPABILITY MANIFEST — classify every generated test case with KeelPath.
 AUTOMATE (codegen conversion pipeline):
 - Linear UI flows with stable button/field/menu labels
 - Click, type, select, navigate by URL, login with credentials
-- No file upload, CAPTCHA, OTP, native OS dialogs, or email magic links
+- Lab static OTP when requirements give a fixed code (e.g. QA OTP 245345) — type OTP + click Verify OTP
+- No file upload, CAPTCHA, native OS dialogs, or email magic links
 - Good candidate for Selenium package generation
 
 EXECUTE (live browser prove — DOM + vision):
@@ -19,7 +20,7 @@ VISION_ONLY (assert-heavy execute):
 
 MANUAL (not runnable in Keel today):
 - File upload (choose file, attach, drag-drop)
-- CAPTCHA, OTP, magic-link email, SMS verification
+- CAPTCHA, SMS/email OTP without a fixed lab code, magic-link email
 - Native OS / printer / Bluetooth / hardware
 - API-only or database-only checks with no UI
 - Multi-browser matrix in one TC

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.dev/contracts/keel-target-machine-form-v1.schema.json",
+  "title": "KeelTarget machine form, contract v1 (A2 PLAN section 5, optional; the string form is authoritative)",
+  "type": "object",
+  "required": [
+    "strategy",
+    "value",
+    "css"
+  ],
+  "properties": {
+    "strategy": {
+      "const": "keel"
+    },
+    "value": {
+      "$ref": "keel-target-v1.schema.json"
+    },
+    "frames": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "selector"
+        ],
+        "properties": {
+          "selector": {
+            "type": "string",
+            "minLength": 1
+          },
+          "index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "shadowPath": {
+            "$ref": "#/$defs/shadowPath"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "shadowPath": {
+      "$ref": "#/$defs/shadowPath"
+    },
+    "css": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "shadowPath": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "host",
+          "mode"
+        ],
+        "properties": {
+          "host": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mode": {
+            "enum": [
+              "open",
+              "closed"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

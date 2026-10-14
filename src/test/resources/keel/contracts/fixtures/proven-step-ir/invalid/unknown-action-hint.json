@@ -1,0 +1,15 @@
+{
+  "tcId": "TC_1",
+  "pageName": "Checkout",
+  "actionType": "elementAction",
+  "action": "click",
+  "locatorStrategy": "keel",
+  "locatorValue": "frame=#pay >> css=button[data-testid=\"pay\"]",
+  "value": "",
+  "assertionType": "",
+  "assertionExpected": "",
+  "validated": true,
+  "rationale": "ok",
+  "screenshotRelPath": "",
+  "actionHint": "swipe"
+}

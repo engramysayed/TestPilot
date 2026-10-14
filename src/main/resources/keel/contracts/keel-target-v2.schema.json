@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.dev/contracts/keel-target-v2.schema.json",
+  "title": "KeelTarget string, contract v2 (contract-v2/SPEC.md section 1)",
+  "description": "context* (css=CSS [>> provider=NAME:ID] | text=\"JSON\") [>> point=X,Y@WxH]. Every v1 string is also a valid v2 string. requiredVersion is 2 iff text=, provider= or point= is present.",
+  "type": "string",
+  "pattern": "^(?:(?:frame|shadow|shadow-closed)=(?:(?!(?<!\\\\) >> ).)+ >> )*(?:css=(?:(?!(?<!\\\\) >> ).)+(?: >> provider=[a-z0-9_-]+:\\S+)?|text=\"(?:[^\"\\\\\\x00-\\x1f]|\\\\[\"\\\\/nrt]|\\\\u[0-9a-fA-F]{4})+\")(?: >> point=\\d+(?:\\.\\d+)?,\\d+(?:\\.\\d+)?@(?:\\d*[1-9]\\d*(?:\\.\\d+)?|\\d+\\.\\d*[1-9]\\d*)x(?:\\d*[1-9]\\d*(?:\\.\\d+)?|\\d+\\.\\d*[1-9]\\d*))?$"
+}

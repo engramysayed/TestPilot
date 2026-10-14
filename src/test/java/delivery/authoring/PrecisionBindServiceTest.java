@@ -2,6 +2,7 @@ package delivery.authoring;
 
 import delivery.codegen.ProvenStep;
 import delivery.heal.CursorHealClient;
+import delivery.authoring.GroundRankBatchResult;
 import delivery.heal.FailedLocator;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -168,6 +169,66 @@ public class PrecisionBindServiceTest {
     }
 
     @Test
+    public void bindIntentBatchConsumesOneCallForMultipleIntents() {
+        String html = """
+                <input data-axis-test-id='username_Input'/>
+                <input data-axis-test-id='password-input'/>
+                <button data-axis-test-id='sign_In_Button'>Sign in</button>
+                """;
+        var candidates = DomCandidateExtractor.extract(html);
+        String userId = candidates.stream().filter(c -> c.value().contains("username_Input"))
+                .findFirst().orElseThrow().id();
+        String passId = candidates.stream().filter(c -> c.value().contains("password-input"))
+                .findFirst().orElseThrow().id();
+        String signId = candidates.stream().filter(c -> c.value().contains("sign_In_Button"))
+                .findFirst().orElseThrow().id();
+        CursorHealClient cursor = new CursorHealClient(true, "node noop", 1) {
+            @Override
+            public boolean isRuntimeReady() {
+                return true;
+            }
+
+            @Override
+            public GroundRankBatchResult groundRankBatchResult(
+                    String intentsBlock,
+                    String slimHtmlExcerpt,
+                    java.nio.file.Path screenshotPathOrNull,
+                    List<String> priorSteps
+            ) {
+                return GroundRankBatchResult.parse("""
+                        {"picks":[
+                          {"intentIndex":0,"candidateId":"%s","confidence":"high"},
+                          {"intentIndex":1,"candidateId":"%s","confidence":"high"},
+                          {"intentIndex":2,"candidateId":"%s","confidence":"high"}
+                        ]}""".formatted(userId, passId, signId));
+            }
+        };
+        PrecisionBindService service = new PrecisionBindService(
+                new AuthoringService(new LocalLlmClient("", ""), new LocatorValidator()),
+                cursor,
+                new PrecisionCallBudget(3),
+                true);
+        List<StepIntentBinder.IntentLine> intents = List.of(
+                new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.TYPE_USER, "Enter username"),
+                new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.TYPE_PASS, "Enter password"),
+                new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK_LOGIN, "Click Sign in"));
+        var probes = new java.util.concurrent.atomic.AtomicInteger();
+        delivery.heal.CandidateLivenessProbe probe = candidate -> {
+            probes.incrementAndGet();
+            return new delivery.heal.CandidateLiveness(true, !candidate.tag().equals("button"), 20, 20);
+        };
+        PrecisionBatchBindOutcome outcome = service.bindIntentBatch(
+                "TC_01", intents, html, null, List.of(), List.of(), List.of(), probe);
+        Assert.assertTrue(outcome instanceof PrecisionBatchBindOutcome.BatchBound);
+        Assert.assertEquals(3, ((PrecisionBatchBindOutcome.BatchBound) outcome).boundInOrder().size());
+        Assert.assertEquals(1, service.callsUsed());
+        int distinctSelectors = (int) candidates.stream().map(c -> List.of(c.strategy(), c.value())).distinct().count();
+        Assert.assertEquals(probes.get(), distinctSelectors, "one probe per selector, not per intent");
+        service.bindIntentBatch("TC_02", intents, html, null, List.of(), List.of(), List.of(), probe);
+        Assert.assertEquals(probes.get(), distinctSelectors * 2, "a new snapshot must never reuse old liveness");
+    }
+
+    @Test
     public void solveOnceAcceptsWrittenStepsJson() {
         PrecisionCallBudget budget = new PrecisionCallBudget(2);
         CursorHealClient cursor = new CursorHealClient(true, "node noop", 1) {
@@ -209,5 +270,65 @@ public class PrecisionBindServiceTest {
         List<ProvenStep> steps = ((PrecisionBindOutcome.Bound) outcome).steps();
         Assert.assertFalse(steps.isEmpty());
         Assert.assertEquals(1, budget.used());
+    }
+
+    @Test public void malformedBatchIndicesAndUnknownCandidatesFailClosed() {
+        String html = "<input id='email' aria-label='Email'><input id='password' type='password'>";
+        for (var picks : List.of(
+                List.of(new GroundRankBatchResult.Pick(99, "c1", "high")),
+                List.of(new GroundRankBatchResult.Pick(0, "c1", "high"), new GroundRankBatchResult.Pick(0, "c2", "high")),
+                List.of(new GroundRankBatchResult.Pick(0, "not-offered", "high")))) {
+            var cursor = new CursorHealClient(true, "node noop", 1) {
+                @Override public boolean isRuntimeReady() { return true; }
+                @Override public GroundRankBatchResult groundRankBatchResult(String block, String excerpt,
+                        java.nio.file.Path shot, List<String> prior) { return new GroundRankBatchResult(picks, ""); }
+            };
+            var service = new PrecisionBindService(new AuthoringService(new LocalLlmClient("", ""), new LocatorValidator()),
+                    cursor, new PrecisionCallBudget(2), true);
+            var result = service.bindIntentBatch("TC", List.of(
+                    new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.TYPE_USER, "Enter email"),
+                    new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.TYPE_PASS, "Enter password")),
+                    html, null, List.of(), List.of(), List.of(), null);
+            Assert.assertTrue(result instanceof PrecisionBatchBindOutcome.FallbackKeel, result.toString());
+        }
+    }
+
+    @Test public void exhaustedBudgetDoesNotProbeTheBrowser() {
+        var cursor = new CursorHealClient(true, "node noop", 1) {
+            @Override public boolean isRuntimeReady() { return true; }
+        };
+        var service = new PrecisionBindService(new AuthoringService(new LocalLlmClient("", ""), new LocatorValidator()),
+                cursor, new PrecisionCallBudget(0), true);
+        var outcome = service.bindIntent("TC", new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, "Click Save"),
+                "<button id='save'>Save</button>", null, List.of(), List.of(), List.of(),
+                candidate -> { throw new AssertionError("budget exhausted: browser should not be probed"); });
+        Assert.assertEquals(((PrecisionBindOutcome.FallbackKeel) outcome).reason(), "CAP_EXCEEDED");
+    }
+
+    @Test public void textEntryDoesNotProbeIrrelevantButtons() {
+        StringBuilder html = new StringBuilder("<input id='username' aria-label='Username'>");
+        for (int i = 0; i < 100; i++) html.append("<button id='action-").append(i).append("'>Action</button>");
+        var candidates = DomCandidateExtractor.extract(html.toString());
+        String chosen = candidates.stream().filter(c -> c.value().equals("username")).findFirst().orElseThrow().id();
+        var cursor = new CursorHealClient(true, "node noop", 1) {
+            @Override public boolean isRuntimeReady() { return true; }
+            @Override public GroundRankResult groundRankResult(String intent, String table, String excerpt,
+                    java.nio.file.Path shot, List<String> prior) {
+                Assert.assertFalse(table.contains("action-"), "incompatible controls must not reach model shortlist");
+                return new GroundRankResult(chosen, "high", "");
+            }
+        };
+        var service = new PrecisionBindService(new AuthoringService(new LocalLlmClient("", ""), new LocatorValidator()),
+                cursor, new PrecisionCallBudget(1), true);
+        var probes = new java.util.concurrent.atomic.AtomicInteger();
+        var result = service.bindIntent("TC", new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.TYPE_USER, "Enter username"),
+                html.toString(), null, List.of(), List.of(), List.of(), c -> {
+                    probes.incrementAndGet();
+                    Assert.assertEquals(c.tag(), "input");
+                    return new delivery.heal.CandidateLiveness(true, true, 30, 20);
+                });
+        Assert.assertTrue(result instanceof PrecisionBindOutcome.Bound, result.toString());
+        Assert.assertEquals(probes.get(), 1);
+        Assert.assertTrue(candidates.size() >= 101);
     }
 }

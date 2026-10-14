@@ -28,11 +28,17 @@ public final class AllureSteps {
             Allure.getLifecycle().updateStep(uuid, result -> result.setStatus(status));
             finished = true;
         } catch (RuntimeException | Error e) {
+            String message = Secrets.redact(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
             Allure.getLifecycle().updateStep(uuid, result -> result
                     .setStatus(Status.FAILED)
-                    .setStatusDetails(new StatusDetails().setMessage(
-                            e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage())));
+                    .setStatusDetails(new StatusDetails().setMessage(message)));
             finished = true;
+            if (Secrets.containsSecret(e.getMessage())) {
+                // The test-level Allure/TestNG result would echo the raw message: rethrow redacted.
+                AssertionError redacted = new AssertionError(e.getClass().getName() + ": " + message);
+                redacted.setStackTrace(e.getStackTrace());
+                throw redacted;
+            }
             throw e;
         } finally {
             if (!finished) {

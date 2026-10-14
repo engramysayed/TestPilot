@@ -49,8 +49,8 @@ public class ConversionWorker {
         job = portalStore.getJob(jobId).orElse(job);
         job.setMessage(props.isDryRun() ? "Dry-run packaging" : "Starting conversion");
         if (!props.isDryRun()) {
-            delivery.job.DurableJobClaim.markStage(
-                    job, lease.get().attemptId(), delivery.job.DurableJobClaim.Stage.BROWSER);
+            delivery.portal.jobs.DurableJobClaim.markStage(
+                    job, lease.get().attemptId(), delivery.portal.jobs.DurableJobClaim.Stage.BROWSER);
         }
         portalStore.syncJobPersistence(job);
         try {
@@ -91,22 +91,28 @@ public class ConversionWorker {
             );
 
             ConversionJobResult result;
-            BooleanSupplier cancelCheck = () -> portalStore.isCancelRequested(jobId);
+            BooleanSupplier cancelCheck = () -> !portalStore.ownsAttempt(
+                    portalStore.getJob(jobId).orElse(null), lease.get());
+            delivery.job.PublicationGuard guard = new delivery.job.PublicationGuard() {
+                public <T> T publish(java.util.concurrent.Callable<T> action) throws Exception {
+                    return portalStore.publishAttempt(jobId, lease.get(), action);
+                }
+            };
             if (props.isDryRun()) {
                 JobProgressTracker tracker = new JobProgressTracker();
                 result = runWithProgressMirror(job, tracker, lease.get(),
-                        () -> new DryRunConversionService().run(request, tracker, cancelCheck));
+                        () -> new DryRunConversionService().run(request, tracker, cancelCheck, guard));
             } else {
                 ConversionJobRunner runner = new ConversionJobRunner();
                 result = runWithProgressMirror(job, runner.progress(), lease.get(),
-                        () -> runner.run(request, cancelCheck));
+                        () -> runner.run(request, cancelCheck, guard));
             }
 
             job.setPassedCount(result.passed());
             job.setTodoCount(result.todo());
             job.setZipPath(result.zipFile());
             job.setMessage(result.message());
-            if (!sameAttempt(job, lease.get())) {
+            if (!sameAttempt(job, lease.get()) || JobRecord.isTerminal(job.getStatus())) {
                 log.info("Job {} fenced; skipping publish", jobId);
             } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
@@ -137,11 +143,12 @@ public class ConversionWorker {
             }
             log.info("Job {} completed passed={} todo={}", jobId, result.passed(), result.todo());
         } catch (JobCancelledException e) {
-            if (sameAttempt(job, lease.get())) {
-                cancel(job);
+            if (sameAttempt(job, lease.get()) && !JobRecord.isTerminal(job.getStatus())) {
+                if (portalStore.shouldAbortCompletion(job)) cancel(job);
+                else portalStore.reconcileExpiredLeases();
             }
         } catch (IllegalStateException e) {
-            if (!sameAttempt(job, lease.get())) {
+            if (!sameAttempt(job, lease.get()) || JobRecord.isTerminal(job.getStatus())) {
                 log.info("Job {} fenced after error; skipping fail", jobId);
             } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
@@ -149,7 +156,7 @@ public class ConversionWorker {
                 fail(job, e.getMessage(), e);
             }
         } catch (Exception e) {
-            if (!sameAttempt(job, lease.get())) {
+            if (!sameAttempt(job, lease.get()) || JobRecord.isTerminal(job.getStatus())) {
                 log.info("Job {} fenced after error; skipping fail", jobId);
             } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
@@ -165,7 +172,7 @@ public class ConversionWorker {
     private ConversionJobResult runWithProgressMirror(
             JobRecord job,
             JobProgressTracker tracker,
-            delivery.job.DurableJobClaim.Lease lease,
+            delivery.portal.jobs.DurableJobClaim.Lease lease,
             ConversionCallable callable
     ) throws Exception {
         AtomicBoolean running = new AtomicBoolean(true);
@@ -198,7 +205,7 @@ public class ConversionWorker {
         }
     }
 
-    private static boolean sameAttempt(JobRecord job, delivery.job.DurableJobClaim.Lease lease) {
+    private static boolean sameAttempt(JobRecord job, delivery.portal.jobs.DurableJobClaim.Lease lease) {
         return job != null && lease != null && lease.attemptId().equals(job.getAttemptId());
     }
 

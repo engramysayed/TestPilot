@@ -1,7 +1,7 @@
 package delivery.job;
 
 import delivery.authoring.AuthoringEngine;
-import delivery.portal.model.JobRecord;
+import keel.contract.runner.WireJobKind;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -13,8 +13,8 @@ public final class AuthoringJobRequestFiles {
     private AuthoringJobRequestFiles() {
     }
 
-    public static Path requestPath(Path projectRoot, JobRecord.JobKind kind, String jobId) {
-        String subdir = kind == JobRecord.JobKind.EXECUTE ? "execute-runs" : "automate-runs";
+    public static Path requestPath(Path projectRoot, WireJobKind kind, String jobId) {
+        String subdir = kind == WireJobKind.EXECUTE ? "execute-runs" : "automate-runs";
         return projectRoot.resolve(subdir).resolve(jobId).resolve("request.json");
     }
 

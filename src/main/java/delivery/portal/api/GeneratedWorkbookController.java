@@ -153,6 +153,10 @@ public class GeneratedWorkbookController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
         } catch (java.io.IOException e) {
+            if (e.getMessage() != null && e.getMessage().startsWith("LIBRARY_REVISION_CORRUPT:")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ApiError("LIBRARY_REVISION_CORRUPT", e.getMessage()).asMap());
+            }
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", "unknown library revision: " + revisionId).asMap());
         }

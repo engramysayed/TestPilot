@@ -1,0 +1,18 @@
+{
+  "locatorStrategy": "keel",
+  "locatorValue": "css=button[data-axis-test-id=\"save-hook\"]",
+  "locatorCandidates": [],
+  "fallbacks": [
+    {
+      "strategy": "keel",
+      "value": "css=button[data-testid=\"save\"]",
+      "score": 0.95
+    },
+    {
+      "strategy": "keel",
+      "value": "css=button[aria-label=\"Save\"]",
+      "score": 0.85
+    }
+  ],
+  "route": "127.0.0.1:8080/orders/:id"
+}

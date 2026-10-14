@@ -10,7 +10,9 @@ public class ReleaseCiContractTest {
 
     @Test
     public void pomForksSharedAndDedicatedInstallDrills() throws Exception {
-        String pom = Files.readString(Path.of("pom.xml"));
+        // B02: the drills live in the keel-portal module pom since the multi-module split
+        Path portalPom = Path.of("keel-portal", "pom.xml");
+        String pom = Files.readString(Files.exists(portalPom) ? portalPom : Path.of("pom.xml"));
         Assert.assertTrue(pom.contains("<id>shared-install-drill</id>"),
                 "pom must declare a shared-install-drill Surefire execution");
         Assert.assertTrue(pom.contains("<id>dedicated-install-drill</id>"),

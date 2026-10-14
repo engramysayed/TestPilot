@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "step": "click save",
+      "entry": {
+        "locatorStrategy": "keel"
+      }
+    }
+  ]
+}

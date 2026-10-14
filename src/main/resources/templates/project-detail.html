@@ -120,6 +120,15 @@
                                min="1" max="500" step="1"
                                th:attr="placeholder=${defaultPrecisionMaxCalls}"/>
                     </label>
+                    <label class="check" id="settings-precision-reuse-memory-wrap" hidden>
+                        <input type="checkbox" name="precisionReuseLocatorMemory"
+                               id="settings-precision-reuse-locator-memory"/>
+                        Use known-good locators first (domain locator memory)
+                    </label>
+                    <p class="muted" id="settings-precision-reuse-memory-hint" hidden>
+                        When enabled, Precision tries proven locators saved from past Keel or Precision runs on this
+                        host before calling Cursor. When off, every bind uses Cursor (or Keel fallback) as today.
+                    </p>
                     <p class="muted">Leave blank to use the server default
                         (<span th:text="${defaultPrecisionMaxCalls}">50</span>).</p>
                     <p class="muted">Cursor selects targets first. If unavailable, unsuccessful, or at the call limit,
@@ -753,7 +762,11 @@
         if (maxCalls) {
             maxCalls.value = p.precisionMaxCallsPerJob > 0 ? String(p.precisionMaxCallsPerJob) : '';
         }
-        updateSettingsPrecisionWarning(precisionEnabled);
+        const reuseMem = document.getElementById('settings-precision-reuse-locator-memory');
+        if (reuseMem) {
+            reuseMem.checked = !!p.precisionReuseLocatorMemory;
+        }
+        updateSettingsPrecisionOptions(precisionEnabled);
         const heading = document.getElementById('project-name-heading');
         if (heading && p.name) heading.textContent = p.name;
         const badge = document.getElementById('archived-badge');
@@ -1256,18 +1269,24 @@
         });
     }
 
-    function updateSettingsPrecisionWarning(precisionEnabled) {
+    function updateSettingsPrecisionOptions(precisionEnabled) {
         const warn = document.getElementById('settingsPrecisionDisabledWarn');
-        if (!warn) return;
         const precisionSelected = document.querySelector(
                 '#settings-form input[name="authoringEngine"][value="precision"]:checked');
-        warn.hidden = !(precisionSelected && precisionEnabled === false);
+        if (warn) {
+            warn.hidden = !(precisionSelected && precisionEnabled === false);
+        }
+        const reuseWrap = document.getElementById('settings-precision-reuse-memory-wrap');
+        const reuseHint = document.getElementById('settings-precision-reuse-memory-hint');
+        const showPrecisionOpts = !!precisionSelected;
+        if (reuseWrap) reuseWrap.hidden = !showPrecisionOpts;
+        if (reuseHint) reuseHint.hidden = !showPrecisionOpts;
     }
     document.querySelectorAll('#settings-form input[name="authoringEngine"]').forEach(radio => {
         radio.addEventListener('change', () => {
             const enginePanel = document.getElementById('settings-authoring-engine');
             const precisionEnabled = enginePanel && enginePanel.dataset.precisionEnabled === 'true';
-            updateSettingsPrecisionWarning(precisionEnabled);
+            updateSettingsPrecisionOptions(precisionEnabled);
         });
     });
 
@@ -1288,6 +1307,8 @@
         } else {
             body.precisionMaxCallsPerJob = 0;
         }
+        const reuseEl = document.getElementById('settings-precision-reuse-locator-memory');
+        body.precisionReuseLocatorMemory = !!(reuseEl && reuseEl.checked);
         const res = await fetch(apiUrl(''), {
             method: 'PATCH',
             credentials: 'same-origin',

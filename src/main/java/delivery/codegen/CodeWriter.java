@@ -154,6 +154,7 @@ public class CodeWriter {
             model.put("pageImports", pageImportsFor(chronCalls, beforeCalls));
             model.put("needsLoginBeforeMethod", outcome.needsLoginBeforeMethod());
             model.put("reviewComments", List.of());
+            model.put("readOnly", isReadOnlyCase(chronCalls, setupChron));
             String testFile = className + ".java";
             registerFile(usedTestFiles, testFile, "test class", outcome.tcId());
             Path out = (passed ? generatedDir : todoDir).resolve(testFile);
@@ -179,6 +180,22 @@ public class CodeWriter {
         deleteObsoleteJava(todoDir, keepTodo);
     }
 
+    /**
+     * A case is read-only (retry-eligible, see KeelReadOnly in the template) when its test body has
+     * at least one call and every call in the body and the non-login setup is either an assertion or
+     * an action step that prove marked {@code sideEffects:"none"}. Without the marker (absent ==
+     * "unknown") an action is treated as mutating, so the rule falls back to "assertions only".
+     * Login in @BeforeMethod is allowed because it re-runs on a fresh driver for every attempt.
+     */
+    static boolean isReadOnlyCase(List<Map<String, Object>> body, List<Map<String, Object>> setup) {
+        if (body == null || body.isEmpty()) {
+            return false;
+        }
+        java.util.function.Predicate<Map<String, Object>> assertOnly = c -> "assert".equals(c.get("kind"))
+                || ("action".equals(c.get("kind")) && ProvenStep.SIDE_EFFECTS_NONE.equals(c.get("sideEffects")));
+        return body.stream().allMatch(assertOnly) && (setup == null || setup.stream().allMatch(assertOnly));
+    }
+
     static String testDescription(String tcId, String title) {
         String id = tcId == null ? "" : tcId.trim();
         String t = title == null ? "" : title.trim();
@@ -200,7 +217,8 @@ public class CodeWriter {
         for (ProvenStep step : steps) {
             String action = step.action() == null ? "" : step.action().toLowerCase(Locale.ROOT);
             boolean isAssert = step.assertionType() != null && !step.assertionType().isBlank();
-            boolean isAction = "click".equals(action) || "type".equals(action) || "select".equals(action);
+            boolean isAction = "click".equals(action) || "type".equals(action) || "select".equals(action)
+                    || "drag".equals(action);
             if (!isAssert && !isAction) {
                 continue;
             }
@@ -221,10 +239,20 @@ public class CodeWriter {
                 String method = pages.actionSymbol(step);
                 call.put("kind", "action");
                 call.put("method", method);
+                call.put("sideEffects", step.sideEffects());
                 call.put("needsValue", "type".equals(action) || "select".equals(action));
                 String value = step.value() == null ? "" : step.value();
+                String propKey = keys.keyFor(tcId, phase, step);
+                if (step.secret()) {
+                    // IR secret: the value lives only in the secrets/data file, never as a Java literal.
+                    if (propKey.isBlank() && !value.isEmpty()) {
+                        throw new IllegalStateException("secret step " + step.tcId() + " got no property key");
+                    }
+                    value = "";
+                    call.put("secret", true);
+                }
                 call.put("value", value);
-                call.put("propKey", keys.keyFor(tcId, phase, step));
+                call.put("propKey", propKey);
             }
             calls.add(call);
             if (isAction && isAssert && !"assert".equals(action)) {

@@ -55,9 +55,15 @@ public class ProjectStore {
     }
 
     public StoredProject saveVersion(String projectId, Path frameworkDir, Path zipFile) throws Exception {
+        return saveVersion(projectId, frameworkDir, zipFile, null,
+                delivery.job.PublicationGuard.cancellable(() -> false));
+    }
+
+    public StoredProject saveVersion(String projectId, Path frameworkDir, Path zipFile,
+                                    Path stagedState, delivery.job.PublicationGuard guard) throws Exception {
         Path root = projectRoot(projectId);
         Path lockFile = root.resolve(".publish.lock");
-        return delivery.identity.PublicationLock.call(lockFile, () -> {
+        return delivery.identity.PublicationLock.call(lockFile, () -> guard.publish(() -> {
             Path framework = root.resolve("framework");
             Files.createDirectories(root.resolve("versions"));
             if (Files.exists(framework)) {
@@ -98,9 +104,20 @@ public class ProjectStore {
             if (tenant != null) {
                 meta.put("tenantId", tenant.value());
             }
+            if (stagedState != null && Files.isDirectory(stagedState)) {
+                try (var entries = Files.list(stagedState)) {
+                    for (Path entry : entries.toList()) {
+                        Path dest = root.resolve(entry.getFileName());
+                        if (Files.isDirectory(entry)) {
+                            if (!entry.getFileName().toString().equals("evidence")) deleteRecursive(dest);
+                            copyRecursive(entry, dest);
+                        } else Files.copy(entry, dest, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+            }
             Files.writeString(root.resolve("project.json"), meta.toString(2), StandardCharsets.UTF_8);
             return new StoredProject(projectId, root, next);
-        });
+        }));
     }
 
     public java.util.Optional<Path> latestVersionZip(String projectId) {

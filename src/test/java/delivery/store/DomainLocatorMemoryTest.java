@@ -10,6 +10,48 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 public class DomainLocatorMemoryTest {
+    @Test public void locatorOnlyMemoryCannotRecallAssertionsAsActions() {
+        var memory = new DomainLocatorMemory();
+        var intent = new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.ASSERT_VISIBLE, "Confirm OTP is not visible");
+        memory.remember("example.com", "/login", intent, new ProvenStep("TC", "Page", "elementAction",
+                "assert", "id", "otp", "", "notVisible", "", true, ""));
+        Assert.assertTrue(memory.recall("example.com", "/login", intent, "TC").isEmpty());
+    }
+    @Test
+    public void staleWriterCannotEraseNewEntriesOrResurrectForgottenEntries() throws Exception {
+        Path file = Files.createTempDirectory("memory-writers").resolve("memory.json");
+        var user = new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.TYPE_USER, "Enter username");
+        var pass = new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.TYPE_PASS, "Enter password");
+        DomainLocatorMemory first = new DomainLocatorMemory();
+        DomainLocatorMemory stale = new DomainLocatorMemory();
+        first.remember("example.com", "/login", user, new ProvenStep("TC", "Page", "type_User", "type", "id", "username", "", "", "", true, ""));
+        first.save(file);
+        stale.load(file);
+        first.forget("example.com", "/login", user);
+        first.save(file);
+        stale.remember("example.com", "/login", pass, new ProvenStep("TC", "Page", "type_Pass", "type", "id", "password", "", "", "", true, ""));
+        stale.save(file);
+        first.save(file);
+        DomainLocatorMemory loaded = new DomainLocatorMemory();
+        loaded.load(file);
+        Assert.assertTrue(loaded.recall("example.com", "/login", user, "TC").isEmpty());
+        Assert.assertTrue(loaded.recall("example.com", "/login", pass, "TC").isPresent());
+    }
+
+    @Test
+    public void emptyTenantFileNeverImportsAnotherCustomersLegacyMemory() throws Exception {
+        Path root = Files.createTempDirectory("memory-tenant");
+        var tenant = delivery.identity.TenantId.mint();
+        Path legacy = DomainLocatorMemory.sharedFile(root, "https://example.com");
+        Files.createDirectories(legacy.getParent());
+        Files.writeString(legacy, "{\"entries\":[{\"host\":\"example.com\",\"path\":\"/login\",\"intentKey\":\"TYPE_USER|enter username\",\"strategy\":\"id\",\"locator\":\"username\",\"action\":\"type\"}]}");
+        Path canonical = DomainLocatorMemory.sharedFile(root, tenant, "https://example.com");
+        Files.createDirectories(canonical.getParent());
+        Files.writeString(canonical, "{\"entries\":[]}");
+        DomainLocatorMemory loaded = new DomainLocatorMemory();
+        Assert.assertEquals(loaded.openShared(root, tenant, "https://example.com"), canonical);
+        Assert.assertTrue(loaded.recall("example.com", "/login", new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.TYPE_USER, "Enter username"), "TC").isEmpty());
+    }
 
     @Test
     public void remembersAndRecallsByHostPathAndIntent() {

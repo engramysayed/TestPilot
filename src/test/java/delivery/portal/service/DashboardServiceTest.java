@@ -88,7 +88,7 @@ public class DashboardServiceTest {
         Map<String, Object> stats = service(projects, jobs).statsFor(OWNER);
 
         Assert.assertEquals(stats.get("hasProvenSample"), false);
-        Assert.assertEquals(stats.get("passRateNote"), "No proven cases yet");
+        Assert.assertEquals(stats.get("passRateNote"), "No finished test runs yet");
         Assert.assertFalse(String.valueOf(stats.get("passRateNote")).contains("0/0"));
     }
 

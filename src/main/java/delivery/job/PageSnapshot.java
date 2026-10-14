@@ -19,30 +19,62 @@ public final class PageSnapshot {
     private static final String EMBEDDED_HTML_JS = """
             const LIMIT = arguments[0];
             let out = '';
-            function collectShadow(root, depth) {
+            const esc = (v) => (window.CSS && CSS.escape) ? CSS.escape(v) : String(v).replace(/[^a-zA-Z0-9_-]/g, '\\\\$&');
+            const attrSel = (tag, name, v) => tag + '[' + name + '="' + String(v).replace(/\\\\/g, '\\\\\\\\').replace(/"/g, '\\\\"') + '"]';
+            const enc = (s) => s.replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/</g, '&lt;');
+            // Stable selector for an element inside its own document / shadow root.
+            function selectorFor(el) {
+              const tag = el.tagName.toLowerCase();
+              const root = el.getRootNode();
+              const unique = (sel) => { try { return root.querySelectorAll(sel).length === 1; } catch (e) { return false; } };
+              if (el.id && unique('#' + esc(el.id))) return '#' + esc(el.id);
+              for (const a of ['data-testid', 'data-test', 'data-qa', 'name', 'title']) {
+                const v = el.getAttribute(a);
+                if (v && unique(attrSel(tag, a, v))) return attrSel(tag, a, v);
+              }
+              const src = el.getAttribute('src');
+              if (src && unique(attrSel(tag, 'src', src))) return attrSel(tag, 'src', src);
+              if (unique(tag)) return tag;
+              return tag + ':nth-of-type(' + (Array.from(el.parentNode.children).filter(c => c.tagName === el.tagName).indexOf(el) + 1) + ')';
+            }
+            function wrap(kind, framePath, shadowPath, html) {
+              out += '<div data-testpilot-context="' + kind + '"'
+                + " data-testpilot-frame-path='" + enc(JSON.stringify(framePath)) + "'"
+                + (shadowPath ? " data-testpilot-shadow-path='" + enc(JSON.stringify(shadowPath)) + "'" : '')
+                + '>' + html + '</div>';
+            }
+            function collectShadow(root, framePath, hostPath, depth) {
               if (!root || depth > 5 || out.length > LIMIT) return;
               const all = root.querySelectorAll ? root.querySelectorAll('*') : [];
               for (const el of all) {
                 if (out.length > LIMIT) return;
                 if (el.shadowRoot) {
-                  out += '<div data-testpilot-context="shadow">' + el.shadowRoot.innerHTML + '</div>';
-                  collectShadow(el.shadowRoot, depth + 1);
+                  const hops = hostPath.concat([selectorFor(el)]);
+                  wrap('shadow', framePath, hops, el.shadowRoot.innerHTML);
+                  collectShadow(el.shadowRoot, framePath, hops, depth + 1);
                 }
               }
             }
-            collectShadow(document, 0);
-            const frames = document.querySelectorAll('iframe, frame');
-            for (const frame of frames) {
-              if (out.length > LIMIT) break;
-              try {
-                const doc = frame.contentDocument;
-                if (doc && doc.body) {
-                  out += '<div data-testpilot-context="iframe">' + doc.body.innerHTML + '</div>';
+            function collectFrames(doc, framePath, depth) {
+              if (depth > 5) return;
+              const frames = doc.querySelectorAll('iframe, frame');
+              for (const frame of frames) {
+                if (out.length > LIMIT) return;
+                const path = framePath.concat([selectorFor(frame)]);
+                try {
+                  const inner = frame.contentDocument;
+                  if (inner && inner.body) {
+                    wrap('iframe', path, null, inner.body.innerHTML);
+                    collectShadow(inner, path, [], 0);
+                    collectFrames(inner, path, depth + 1);
+                  }
+                } catch (crossOrigin) {
+                  // A cross-origin frame is unreadable by design; the runtime still switches into it.
                 }
-              } catch (crossOrigin) {
-                // A cross-origin frame is unreadable by design; the runtime still switches into it.
               }
             }
+            collectShadow(document, [], [], 0);
+            collectFrames(document, [], 0);
             return out;
             """;
 

@@ -60,8 +60,8 @@ public class HuntWorker {
         JobRecord job = portalStore.getJob(jobId).orElse(queued);
         job.setMessage(props.isDryRun() ? "Dry-run Bug Hunter" : "Starting Bug Hunter");
         if (!props.isDryRun()) {
-            delivery.job.DurableJobClaim.markStage(
-                    job, lease.get().attemptId(), delivery.job.DurableJobClaim.Stage.BROWSER);
+            delivery.portal.jobs.DurableJobClaim.markStage(
+                    job, lease.get().attemptId(), delivery.portal.jobs.DurableJobClaim.Stage.BROWSER);
         }
         portalStore.syncJobPersistence(job);
         try {
@@ -93,12 +93,12 @@ public class HuntWorker {
                 if (props.isDryRun()) {
                     return new DryRunHuntService().run(request, selected, huntRoot, tracker, cancelCheck);
                 }
-                HuntPlanner planner = HuntRuntimeFactory.plannerFor(request, props);
+                HuntPlanner planner = HuntRuntimeFactory.plannerFor(request, delivery.portal.engine.InProcessJobContext.settings(props));
                 return new LiveHuntService().run(
                         request,
                         selected,
                         huntRoot,
-                        HuntRuntimeFactory.loginRequest(job, props),
+                        HuntRuntimeFactory.loginRequest(delivery.portal.engine.InProcessJobContext.of(job, props, cancelCheck)),
                         planner,
                         tracker,
                         cancelCheck,
@@ -106,7 +106,7 @@ public class HuntWorker {
                 );
             });
 
-            if (!delivery.job.DurableJobClaim.sameAttempt(job, lease.get())) {
+            if (!delivery.portal.jobs.DurableJobClaim.sameAttempt(job, lease.get())) {
                 log.info("Hunt job {} fenced; skipping publish", jobId);
                 return;
             }

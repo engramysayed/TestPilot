@@ -53,7 +53,7 @@ public class GuideMotionMvcTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
-    public void guide_automateLinksNotUploadHero() throws Exception {
+    public void guide_heroLinksToProjectTestCases() throws Exception {
         String body = fetchGuideBody();
 
         int heroStart = body.indexOf("class=\"heading guide-hero");
@@ -62,13 +62,15 @@ public class GuideMotionMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(heroEnd > heroStart, "guide layout missing");
         String hero = body.substring(heroStart, heroEnd);
 
-        Assert.assertTrue(hero.contains("href=\"/automate\">Go to Automate</a>"));
+        Assert.assertTrue(hero.contains("href=\"/projects\">Add test cases to a project</a>"),
+                "guide hero must point to the single upload spot (project Test cases tab)");
+        Assert.assertFalse(hero.contains("Go to Automate"));
         Assert.assertFalse(hero.contains("href=\"/upload\">Go to Upload</a>"));
         Assert.assertFalse(hero.contains("Go to Upload"));
     }
 
     @Test
-    public void guide_section9_hasAutomateLink() throws Exception {
+    public void guide_section9_linksToProject() throws Exception {
         String body = fetchGuideBody();
 
         int sectionStart = body.indexOf("data-guide-section=\"ai\"");
@@ -77,7 +79,8 @@ public class GuideMotionMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(sectionEnd > sectionStart, "§9 section unclosed");
         String section9 = body.substring(sectionStart, sectionEnd);
 
-        Assert.assertTrue(section9.contains("href=\"/automate\">Ready — open Automate</a>"));
+        Assert.assertTrue(section9.contains("href=\"/projects\">Ready — open your project</a>"));
+        Assert.assertFalse(section9.contains("open Automate"), "guide must not send uploads to Automate");
     }
 
     @Test

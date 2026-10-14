@@ -4,6 +4,12 @@ Date: 2026-09-22
 Status: conversational design approved; written specification awaiting review.
 Implementation has not started. This specification does not close existing launch gates.
 
+Planning update (2026-09-27): the detailed [implementation plan](../plans/2026-09-27-android-mobile/README.md)
+now covers architecture, data/IR/API contracts, properties and generated framework,
+dependency-ordered tasks, qualification research and acceptance. Mobile implementation
+remains deferred at the user's request. Technical defaults in that pack are proposals
+to implement and validate, not completed mobile capabilities.
+
 ## Objective
 
 Extend Keel Execute and Automate to Flutter Android applications through Appium

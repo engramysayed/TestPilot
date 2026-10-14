@@ -169,6 +169,12 @@ public class TcGenerateService {
     public record StoryGenerateResult(List<ManualTestCase> cases, String coverageNotes, String model) {
     }
 
+    /** B05: binds this service to one project as the worker-facing {@link delivery.job.port.StoryCaseGenerator}. */
+    public delivery.job.port.StoryCaseGenerator forProject(ProjectRecord project) {
+        return (stories, reviewPass, storyLabel, model, cancelCheck) ->
+                generateCasesForStory(project, stories, reviewPass, storyLabel, model, cancelCheck);
+    }
+
     public List<ManualTestCase> generateCasesForStory(
             ProjectRecord project,
             String stories,

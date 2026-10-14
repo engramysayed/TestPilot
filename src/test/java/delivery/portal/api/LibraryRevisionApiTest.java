@@ -45,6 +45,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 public class LibraryRevisionApiTest extends AbstractTestNGSpringContextTests {
+    @Test public void corruptRestoreIsAConflictAndKeepsCurrentLibrary() throws Exception {
+        String projectId = createProject();
+        workbooks.saveFromCases(projectId, List.of(tc("TC_01", "Original")), "IMPORT", "owner");
+        String original = describeRevisionId(projectId);
+        workbooks.saveFromCases(projectId, List.of(tc("TC_01", "Current")), "EDIT", "owner");
+        String current = describeRevisionId(projectId);
+        java.nio.file.Files.writeString(workbooks.generatedDir(projectId).resolve("revisions").resolve(original+".bin"), "corrupt");
+        mockMvc.perform(post("/api/projects/"+projectId+"/library/revisions/"+original+"/restore")
+                .with(admin()).header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("LIBRARY_REVISION_CORRUPT"));
+        Assert.assertEquals(describeRevisionId(projectId), current);
+        Assert.assertEquals(workbooks.readCases(projectId).get(0).title(), "Current");
+    }
 
     @Autowired
     private MockMvc mockMvc;

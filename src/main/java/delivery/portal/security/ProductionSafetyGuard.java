@@ -60,6 +60,35 @@ public final class ProductionSafetyGuard {
         return List.copyOf(out);
     }
 
+    /**
+     * B06 runner transport settings. 0a runs the engine over plain http://localhost:8080 with runner token + HMAC;
+     * that is refused for a production install or for {@code keel.topology=split} unless mTLS is required.
+     */
+    public record RunnerTransport(boolean production, String topology, boolean mtlsRequired) {
+    }
+
+    public static List<String> runnerTransportViolations(RunnerTransport t) {
+        if (t == null || t.mtlsRequired()) {
+            return List.of();
+        }
+        String topology = t.topology() == null ? "" : t.topology().trim().toLowerCase(Locale.ROOT);
+        List<String> out = new ArrayList<>();
+        if (t.production()) {
+            out.add("keel.runner.mtls.required=false is not allowed in production");
+        }
+        if ("split".equals(topology)) {
+            out.add("keel.runner.mtls.required=false is not allowed with keel.topology=split");
+        }
+        return List.copyOf(out);
+    }
+
+    public static void requireSafeRunnerTransport(RunnerTransport t) {
+        List<String> found = runnerTransportViolations(t);
+        if (!found.isEmpty()) {
+            throw new IllegalStateException("INSECURE_RUNNER_TRANSPORT: " + String.join("; ", found));
+        }
+    }
+
     public static void requireSafe(Config config) {
         List<String> found = violations(config);
         if (!found.isEmpty()) {

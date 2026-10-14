@@ -1,6 +1,8 @@
 package delivery.heal;
 
 import delivery.authoring.AuthoringService;
+import delivery.guard.LoopGuard;
+import delivery.settle.SettlePolicy;
 import delivery.authoring.PrecisionCallBudget;
 import delivery.authoring.DomCandidate;
 import delivery.authoring.DomCandidateExtractor;
@@ -43,6 +45,9 @@ public class HealCascade {
     private String presenceHtml = "";
     /** When set, Cursor heal/solve calls share the Precision per-job cap. */
     private PrecisionCallBudget precisionBudget;
+    /** A10: per-intent heal loop guard (reset via {@link #beginIntent}). */
+    private LoopGuard intentGuard;
+    private CursorHealClient.HealSafety lastSafety = CursorHealClient.HealSafety.empty();
 
     public void setPresenceHtml(String html) {
         this.presenceHtml = html == null ? "" : html;
@@ -110,6 +115,19 @@ public class HealCascade {
 
     public void attachPrecisionBudget(PrecisionCallBudget budget) {
         this.precisionBudget = budget;
+    }
+
+    /** Start a fresh A10 heal guard for this intent (call once before retries). */
+    public void beginIntent() {
+        this.intentGuard = loopGuardsEnabled() ? LoopGuard.of(LoopGuard.Loop.HEAL) : null;
+    }
+
+    static boolean loopGuardsEnabled() {
+        String v = System.getProperty("delivery.guard.loop", "on");
+        if (v == null || v.isBlank()) {
+            try { v = utils.PropertyReader.getProperty("delivery.guard.loop"); } catch (RuntimeException ignored) { v = "on"; }
+        }
+        return v == null || !("off".equalsIgnoreCase(v) || "false".equalsIgnoreCase(v));
     }
 
     public HealCascade(AuthoringService authoring) {
@@ -224,10 +242,28 @@ public class HealCascade {
         List<String> priorSteps = priorStepSummaries == null ? List.of() : priorStepSummaries;
         List<ProvenStep> spentSteps = spent == null ? List.of() : spent;
         List<FailedLocator> failedLocators = failed == null ? List.of() : failed;
+        if (intentGuard == null && loopGuardsEnabled()) {
+            intentGuard = LoopGuard.of(LoopGuard.Loop.HEAL);
+        }
+        boolean secret = HealPromptSafety.isSecretIntent(intent);
+        SettlePolicy.SideEffects se = HealPromptSafety.sideEffectsOf(intent);
+        List<String> banned = HealPromptSafety.formatBanned(failedLocators);
+        boolean crash = HealPromptSafety.looksLikeCrash(failureReason, slimHtml);
+        String safetyText = HealPromptSafety.safetyBlock(secret, se, banned, crash);
+        lastSafety = new CursorHealClient.HealSafety(secret, se.wire, banned, crash, safetyText);
+        if (crash) {
+            LogsManager.info("HEAL_ABORT: crash/error page detected for " + tcId);
+            return HealResult.fail("HEAL_ABORTED: crash or fatal error page — heal skipped");
+        }
+        LoopGuard.Verdict pre = guardBefore("heal:" + (intent.text() == null ? "" : intent.text()));
+        if (pre != null && pre.stop()) {
+            return HealResult.fail("HEAL_STOPPED: " + pre.reason());
+        }
         String reason = failureReason == null ? "" : failureReason;
         if (!failedLocators.isEmpty()) {
             reason = reason + bannedBlock(failedLocators);
         }
+        reason = safetyText + "\n" + reason;
         List<DomCandidate> candidates = DomCandidateExtractor.extract(slimHtml);
         if (StepIntentBinder.spendsMustAvoidPriorFills(intent)) {
             candidates = StepIntentBinder.withoutSpentControls(candidates, spentSteps);
@@ -265,7 +301,8 @@ public class HealCascade {
                 if (validHealSteps(intent, candidates, retrySteps, false, spentSteps)) {
                     LogsManager.info("HEAL_RETRY: named control " + pick.id() + " for "
                             + trim(intent.text(), 40));
-                    return HealResult.success(retrySteps, "retry");
+                    LoopGuard.Verdict gv = guardRecord("retry:" + pick.id(), true, 0, se);
+                    return stoppedOr(gv, HealResult.success(retrySteps, "retry"));
                 }
             }
         }
@@ -319,7 +356,8 @@ public class HealCascade {
                     tcId, intent, candidates, shortlist, pngOrNull, reason, priorSteps, widened);
             if (validHealSteps(intent, candidates, ollamaSteps, widened, spentSteps)) {
                 LogsManager.info("HEAL_OLLAMA: resolved " + tcId + " intent=" + trim(intent.text(), 40));
-                return HealResult.success(ollamaSteps, widened ? "vision" : "ollama");
+                LoopGuard.Verdict gv = guardRecord("ollama", true, 1, se);
+                return stoppedOr(gv, HealResult.success(ollamaSteps, widened ? "vision" : "ollama"));
             }
             LogsManager.info("HEAL_OLLAMA: no valid pick for " + tcId + " — escalating to Cursor");
         } else if (tryOllama && !ollamaAllowed) {
@@ -340,18 +378,28 @@ public class HealCascade {
         if (!allowPrecisionCursorCall("solve")) {
             return HealResult.fail("HEAL_EXHAUSTED: precision call cap exceeded");
         }
+        LoopGuard.Verdict beforeSolve = guardBefore("solve");
+        if (beforeSolve != null && beforeSolve.stop()) {
+            return HealResult.fail("HEAL_STOPPED: " + beforeSolve.reason());
+        }
         String raw = cursor.solve(
-                intent.text(), solveReason, table, htmlExcerpt, screenshotPathOrNull, priorSteps);
+                intent.text(), solveReason, table, htmlExcerpt, screenshotPathOrNull, priorSteps, lastSafety); // sets pendingSafety
         String chosen = CursorHealClient.parseCandidateId(raw);
+        if (raw != null && raw.contains("\"mode\":\"abort\"")) {
+            guardRecord("solve:abort", false, 1, se);
+            return HealResult.fail("HEAL_ABORTED: model refused — crash/unsafe");
+        }
         if (!chosen.isBlank() && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(chosen))) {
             LogsManager.info("CURSOR_HEAL: Auto picked candidateId=" + chosen);
             List<ProvenStep> cursorSteps =
                     authoring.stepsPreferringCandidate(tcId, intent, candidates, chosen, widened);
             if (validHealSteps(intent, candidates, cursorSteps, widened, spentSteps)) {
                 LogsManager.info("HEAL_CURSOR: resolved " + tcId + " candidateId=" + chosen);
-                return HealResult.success(cursorSteps, widened ? "vision" : "cursor");
+                LoopGuard.Verdict gv = guardRecord("solve:" + chosen, true, 1, se);
+                return stoppedOr(gv, HealResult.success(cursorSteps, widened ? "vision" : "cursor"));
             }
         }
+        guardRecord("solve:miss", false, 1, se);
 
         HealResult written = acceptWrittenLocator(tcId, intent, raw, htmlExcerpt, allowInvent);
         if (written != null) {
@@ -640,6 +688,37 @@ public class HealCascade {
         return false;
     }
 
+
+    private LoopGuard.Verdict guardBefore(String action) {
+        if (intentGuard == null) return null;
+        LoopGuard.Verdict v = intentGuard.beforeIteration();
+        if (v.stop()) {
+            LogsManager.info("HEAL_LOOP_GUARD stop before " + action + ": " + v.reason());
+        } else if (v.level() == LoopGuard.Level.WARN) {
+            LogsManager.info("HEAL_LOOP_GUARD warn: " + v.reason());
+        }
+        return v;
+    }
+
+    private LoopGuard.Verdict guardRecord(String action, boolean ok, int modelCalls, SettlePolicy.SideEffects se) {
+        if (intentGuard == null) return null;
+        LoopGuard.Verdict v = intentGuard.record(new LoopGuard.Step(
+                null, action, ok, modelCalls, modelCalls, se == null ? SettlePolicy.SideEffects.UNKNOWN : se));
+        if (v.stop()) {
+            LogsManager.info("HEAL_LOOP_GUARD stop after " + action + ": " + v.reason());
+        } else if (v.level() == LoopGuard.Level.WARN) {
+            LogsManager.info("HEAL_LOOP_GUARD warn: " + v.reason());
+        }
+        return v;
+    }
+
+    private HealResult stoppedOr(LoopGuard.Verdict v, HealResult okResult) {
+        if (v != null && v.stop()) {
+            return HealResult.fail("HEAL_STOPPED: " + v.reason());
+        }
+        return okResult;
+    }
+
     private HealResult tryInvent(
             String tcId,
             StepIntentBinder.IntentLine intent,
@@ -660,6 +739,7 @@ public class HealCascade {
         if (precisionBudget != null && !allowPrecisionCursorCall("invent")) {
             return null;
         }
+        freeInvent.setHealSafety(lastSafety);
         Optional<HealResult> healed = freeInvent.inventHealResult(
                 tcId, intent, slimHtml, pngOrNull, failureReason, priorSteps,
                 whyInvoked, screenshotPathOrNull, allowedOpenPath);

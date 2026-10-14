@@ -61,6 +61,14 @@ public class EmitPhase {
             String workFolder,
             String mode
     ) throws Exception {
+        return emit(request, allCases, workDir, projectDir, workFolder, mode, () -> false,
+                PublicationGuard.cancellable(() -> false));
+    }
+
+    public ConversionJobResult emit(ConversionJobRequest request, List<ManualTestCase> allCases,
+            Path workDir, Path projectDir, String workFolder, String mode,
+            java.util.function.BooleanSupplier cancel, PublicationGuard guard) throws Exception {
+        JobCancelSupport.checkCancelled(cancel);
         proveBase = progress.current();
         emitStep = 0;
         bumpProgress("Phase2 emit: loading IR drafts");
@@ -121,7 +129,8 @@ public class EmitPhase {
         packager.writeTargetConfig(projectDir, request.baseUrl(), request.username(), request.password());
 
         bumpProgress("Phase2 emit: compile smoke check");
-        EmitCompileCheck.runIfEnabled(projectDir);
+        compileProject(projectDir, cancel);
+        JobCancelSupport.checkCancelled(cancel);
 
         bumpProgress("Phase3 revise: static Excel vs emit check");
         new RevisePhase().revise(projectDir, clustered, allCases);
@@ -132,11 +141,12 @@ public class EmitPhase {
         Files.writeString(mapInProject, locatorMap.toString(2));
 
         ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
-        new LocatorMapStore(store.projectRoot(request.projectId()).resolve("locator-map.json"))
+        Path stagedState = workDir.resolve("publication-state");
+        new LocatorMapStore(stagedState.resolve("locator-map.json"))
                 .save(locatorMap);
 
         // Also keep IR copies under project store for UPDATE / review
-        Path irStore = store.projectRoot(request.projectId()).resolve("ir");
+        Path irStore = stagedState.resolve("ir");
         Files.createDirectories(irStore);
         for (TcDraft d : clustered) {
             JSONObject json = TcDraftStore.toJson(d);
@@ -147,7 +157,7 @@ public class EmitPhase {
 
         // Persist per-step screenshots for portal timeline
         Path evidenceSrc = workDir.resolve("evidence");
-        Path evidenceDest = store.projectRoot(request.projectId()).resolve("evidence");
+        Path evidenceDest = stagedState.resolve("evidence");
         if (Files.isDirectory(evidenceSrc)) {
             copyEvidenceTree(evidenceSrc, evidenceDest);
         }
@@ -157,13 +167,11 @@ public class EmitPhase {
         packager.zip(projectDir, zip);
 
         TcDiffService diffService = new TcDiffService();
-        Path hashFile = store.projectRoot(request.projectId()).resolve("tc-hashes.json");
+        Path hashFile = stagedState.resolve("tc-hashes.json");
         JSONObject hashes = new JSONObject(diffService.hashesOf(allCases));
         Files.createDirectories(hashFile.getParent());
         Files.writeString(hashFile, hashes.toString(2));
-        ReuseEligibility.write(store.projectRoot(request.projectId()), ReuseEligibility.current(request));
-
-        store.saveVersion(request.projectId(), projectDir, zip);
+        ReuseEligibility.write(stagedState, ReuseEligibility.current(request));
 
         int passed = (int) outcomes.stream().filter(o -> o.status() == TcStatus.PASSED).count();
         int todo = (int) outcomes.stream()
@@ -184,7 +192,9 @@ public class EmitPhase {
         lastJob.put("phase", "two-phase");
         lastJob.put("finalRevise", clientDelivery);
         lastJob.put("completedAt", java.time.Instant.now().toString());
-        store.writeLastJob(request.projectId(), lastJob);
+        Files.writeString(stagedState.resolve("last-job.json"), lastJob.toString(2));
+        JobCancelSupport.checkCancelled(cancel);
+        store.saveVersion(request.projectId(), projectDir, zip, stagedState, guard);
 
         int jobTotal = progress.effectiveTotal(proveBase);
         progress.update(jobTotal, jobTotal, reviseResult.softBlocked()
@@ -216,6 +226,10 @@ public class EmitPhase {
         return new TcOutcome(
                 d.tcId(), d.title() == null ? "" : d.title(), status, d.provenSteps(), reason, evidence,
                 d.needsLoginBeforeMethod(), d.loginSteps());
+    }
+
+    protected void compileProject(Path projectDir, java.util.function.BooleanSupplier cancel) throws Exception {
+        EmitCompileCheck.runIfEnabled(projectDir, java.time.Duration.ofMinutes(10), cancel);
     }
 
     private static void copyEvidenceTree(Path src, Path dest) throws Exception {

@@ -458,4 +458,13 @@ public class ReuseEligibilityTest {
             throw new IllegalStateException(e);
         }
     }
+
+    @Test public void locatorMemorySettingInvalidatesReuse() {
+        var original = request("https://example.com", AuthoringEngine.PRECISION);
+        var changed = new ConversionJobRequest(original.projectId(), original.excel(), original.baseUrl(),
+                original.username(), original.password(), original.workDir(), original.storeRoot(), original.templateRoot(),
+                original.mode(), original.localLlmBaseUrl(), original.localLlmModel(), false, false,
+                AuthoringEngine.PRECISION, new delivery.authoring.PrecisionJobConfig(true, 50, true), null, null);
+        Assert.assertFalse(ReuseEligibility.environmentMatches(ReuseEligibility.current(original), ReuseEligibility.current(changed)));
+    }
 }

@@ -1,2 +1,3 @@
 org.springframework.boot.env.EnvironmentPostProcessor=\
-delivery.portal.BrowserConfigEnvironmentPostProcessor
+delivery.portal.BrowserConfigEnvironmentPostProcessor,\
+delivery.portal.db.H2DatasourceEnvironmentPostProcessor

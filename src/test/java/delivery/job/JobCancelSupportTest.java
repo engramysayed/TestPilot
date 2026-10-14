@@ -76,7 +76,7 @@ public class JobCancelSupportTest {
         };
 
         GenerateBatchJobRequest request = new GenerateBatchJobRequest(
-                new ProjectRecord("prj_x", "Test", 1L, 0),
+                "prj_x",
                 storiesPath,
                 outputDir,
                 false,
@@ -86,7 +86,7 @@ public class JobCancelSupportTest {
 
         GenerateBatchJobRunner runner = new GenerateBatchJobRunner();
         try {
-            runner.run(request, generate, cancelled::get);
+            runner.run(request, generate.forProject(new ProjectRecord("prj_x", "Test", 1L, 0)), cancelled::get);
             Assert.fail("expected JobCancelledException");
         } catch (JobCancelledException e) {
             Assert.assertEquals(storyCalls.get(), 2);
@@ -117,7 +117,7 @@ public class JobCancelSupportTest {
         };
 
         GenerateBatchJobRequest request = new GenerateBatchJobRequest(
-                new ProjectRecord("prj_x", "Test", 1L, 0),
+                "prj_x",
                 storiesPath,
                 outputDir,
                 false,
@@ -126,7 +126,7 @@ public class JobCancelSupportTest {
         );
 
         try {
-            new GenerateBatchJobRunner().run(request, generate, () -> true);
+            new GenerateBatchJobRunner().run(request, generate.forProject(new ProjectRecord("prj_x", "Test", 1L, 0)), () -> true);
             Assert.fail("expected JobCancelledException");
         } catch (JobCancelledException e) {
             Assert.assertEquals(e.getMessage(), "Job cancelled");

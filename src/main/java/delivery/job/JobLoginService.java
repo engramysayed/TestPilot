@@ -31,15 +31,22 @@ public class JobLoginService {
             return;
         }
         if (request.password() == null) {
-            throw new IllegalStateException("LOGIN_FAILED: password is required when username is provided");
+            throw new LoginFailedException(LoginFailedException.Reason.MISSING_PASSWORD,
+                    "password is required when username is provided", null);
         }
-        WebDriver driver = driverFactory.get();
+        login(driverFactory.get(), request.username(), request.password(), preferredHooks);
+    }
+
+    /** Package-private for tests: same error mapping as {@link #loginIfNeeded}. */
+    void login(WebDriver driver, String username, String password, List<String> preferredHooks) {
         try {
-            loginWithCredentials(driver, request.username(), request.password(), preferredHooks);
+            loginWithCredentials(driver, username, password, preferredHooks);
         } catch (IllegalStateException e) {
             throw e;
+        } catch (org.openqa.selenium.TimeoutException e) {
+            throw new LoginFailedException(LoginFailedException.Reason.TIMEOUT, e.getMessage(), e);
         } catch (Exception e) {
-            throw new IllegalStateException("LOGIN_FAILED: " + e.getMessage(), e);
+            throw new LoginFailedException(LoginFailedException.Reason.DRIVER_ERROR, e.getMessage(), e);
         }
     }
 
@@ -80,8 +87,8 @@ public class JobLoginService {
                 .filter(WebElement::isDisplayed)
                 .toList();
         if (!stillVisibleUser.isEmpty() && safeUrl(driver).equals(beforeUrl)) {
-            throw new IllegalStateException(
-                    "LOGIN_FAILED: still on login form after submit (check credentials or selectors)");
+            throw new LoginFailedException(LoginFailedException.Reason.STILL_ON_LOGIN_FORM,
+                    "still on login form after submit (check credentials or selectors)", null);
         }
     }
 

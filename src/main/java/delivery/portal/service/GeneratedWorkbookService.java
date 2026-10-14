@@ -132,7 +132,7 @@ public class GeneratedWorkbookService {
         return dest;
     }
 
-    public Map<String, Object> restoreRevision(String projectId, String revisionId, String author) throws Exception {
+    public synchronized Map<String, Object> restoreRevision(String projectId, String revisionId, String author) throws Exception {
         Path dir = generatedDir(projectId);
         Files.createDirectories(dir);
         LibraryRevisionStore store = new LibraryRevisionStore(dir);
@@ -228,7 +228,7 @@ public class GeneratedWorkbookService {
         saveFromCases(projectId, cases, source, sourceRef, model, null);
     }
 
-    public void saveFromCases(
+    public synchronized void saveFromCases(
             String projectId,
             List<ManualTestCase> cases,
             String source,
@@ -358,20 +358,7 @@ public class GeneratedWorkbookService {
             String baseUrl,
             String baseRevision
     ) throws Exception {
-        if (bytes == null || bytes.length == 0) {
-            throw new IllegalArgumentException("file is required");
-        }
-        Path tmp = Path.of(System.getProperty("java.io.tmpdir"), "delivery-uploads", projectId,
-                UUID.randomUUID() + "-lib-merge.xlsx");
-        Files.createDirectories(tmp.getParent());
-        List<ManualTestCase> uploadCases;
-        try {
-            WorkbookUploadSupport.materializeExcel(originalFilename, bytes, tmp);
-            uploadCases = new ExcelTcReader().read(tmp);
-        } finally {
-            Files.deleteIfExists(tmp);
-        }
-        List<ManualTestCase> repaired = TcImportRepair.repairCases(uploadCases);
+        List<ManualTestCase> repaired = parseUploadCases(projectId, originalFilename, bytes);
         List<String> gateErrors = GenerateQualityGate.validate(repaired, baseUrl);
         if (!gateErrors.isEmpty()) {
             throw GenerateQualityGate.failureException(gateErrors);
@@ -390,6 +377,28 @@ public class GeneratedWorkbookService {
         out.put("addedCount", merged.addedCount());
         out.put("uploadCount", repaired.size());
         return out;
+    }
+
+    /**
+     * Parse an Excel/CSV upload into repaired cases without saving anything (shared by the upload merge
+     * and the B15 upload preview).
+     */
+    public List<ManualTestCase> parseUploadCases(String projectId, String originalFilename, byte[] bytes)
+            throws Exception {
+        if (bytes == null || bytes.length == 0) {
+            throw new IllegalArgumentException("file is required");
+        }
+        Path tmp = Path.of(System.getProperty("java.io.tmpdir"), "delivery-uploads", projectId,
+                UUID.randomUUID() + "-lib-merge.xlsx");
+        Files.createDirectories(tmp.getParent());
+        List<ManualTestCase> uploadCases;
+        try {
+            WorkbookUploadSupport.materializeExcel(originalFilename, bytes, tmp);
+            uploadCases = new ExcelTcReader().read(tmp);
+        } finally {
+            Files.deleteIfExists(tmp);
+        }
+        return TcImportRepair.repairCases(uploadCases);
     }
 
     /** Persists coverage notes into workbook meta (does not rewrite Excel rows). */
@@ -514,7 +523,7 @@ public class GeneratedWorkbookService {
             if (model != null && model.isBlank()) {
                 model = null;
             }
-            saveFromCases(projectId, repaired, source, sourceRef, model);
+            saveFromCases(projectId, repaired, "HEAL_PATCH", sourceRef, model);
             mergeAutomationNotes(projectId, normalizedTcId, automationNotes);
             appendHealCoverageNotes(projectId, normalizedTcId, patched.unmatchedNotes());
             return new HealPatchApplyResult(true, false, "", patched.appliedSummaries());
@@ -565,7 +574,7 @@ public class GeneratedWorkbookService {
         saveFromCsvFile(projectId, csvPath, source, sourceRef, null);
     }
 
-    public void saveFromCsvFile(
+    public synchronized void saveFromCsvFile(
             String projectId,
             Path csvPath,
             String source,
@@ -573,7 +582,27 @@ public class GeneratedWorkbookService {
             String model
     ) throws Exception {
         String raw = Files.readString(csvPath, StandardCharsets.UTF_8);
-        saveFromCases(projectId, GeneratedTcCsvParser.parse(raw), source, sourceRef, model);
+        List<ManualTestCase> incoming = GeneratedTcCsvParser.parse(raw);
+        if (incoming.isEmpty()) throw new IllegalArgumentException("No test cases to save");
+        if ("GENERATE_BATCH".equals(source)) {
+            String base = headRevisionId(projectId).orElse(null);
+            List<ManualTestCase> existing = base == null
+                    ? (hasWorkbook(projectId) ? readCases(projectId) : List.of())
+                    : readRevisionCases(projectId, base);
+            Set<String> ids = new LinkedHashSet<>();
+            for (ManualTestCase tc : existing) ids.add(tc.tcId().trim());
+            for (ManualTestCase tc : incoming) {
+                if (!ids.add(tc.tcId().trim())) {
+                    throw new IllegalArgumentException("LIBRARY_ID_CONFLICT: " + tc.tcId()
+                            + "; existing library preserved. Review the generated CSV and assign unique IDs before importing.");
+                }
+            }
+            List<ManualTestCase> combined = new ArrayList<>(existing);
+            combined.addAll(incoming);
+            saveFromCases(projectId, combined, source, sourceRef, model, base);
+        } else {
+            saveFromCases(projectId, incoming, source, sourceRef, model);
+        }
     }
 
     public Optional<Map<String, Object>> describe(String projectId) throws Exception {
@@ -676,7 +705,7 @@ public class GeneratedWorkbookService {
             model = null;
         }
 
-        saveFromCases(projectId, patched, source, sourceRef, model);
+        saveFromCases(projectId, patched, "KEEL_PATH_EDIT", sourceRef, model);
         Map<String, Object> out = new LinkedHashMap<>(
                 describe(projectId).orElseThrow(() -> new IllegalStateException("NO_GENERATED_WORKBOOK")));
         out.put("csv", GeneratedTcCsvParser.toCsv(patched));
@@ -757,7 +786,7 @@ public class GeneratedWorkbookService {
             model = null;
         }
 
-        saveFromCases(projectId, repaired, source, sourceRef, model, baseRevision);
+        saveFromCases(projectId, repaired, "CASE_EDIT", sourceRef, model, baseRevision);
 
         ManualTestCase savedRow = repaired.stream()
                 .filter(tc -> normalizedTcId.equals(tc.tcId()))
@@ -853,7 +882,7 @@ public class GeneratedWorkbookService {
     /**
      * Deletes workbook rows by TC_ID. Refuses to delete the last remaining case.
      */
-    public Map<String, Object> deleteCases(String projectId, List<String> tcIds) throws Exception {
+    public synchronized Map<String, Object> deleteCases(String projectId, List<String> tcIds) throws Exception {
         if (tcIds == null || tcIds.isEmpty()) {
             throw new IllegalArgumentException("tcIds is required");
         }
@@ -884,6 +913,13 @@ public class GeneratedWorkbookService {
         if (kept.isEmpty()) {
             throw new IllegalArgumentException("Cannot delete the last test case in the workbook");
         }
+        List<String> dependents = kept.stream()
+                .filter(tc -> delivery.job.CallBeforeSetup.prerequisiteIds(cases, tc.tcId()).stream().anyMatch(want::contains))
+                .map(ManualTestCase::tcId).toList();
+        if (!dependents.isEmpty()) {
+            throw new IllegalArgumentException("CALL_BEFORE_DEPENDENTS: cannot delete prerequisites of "
+                    + String.join(", ", dependents));
+        }
         String source = String.valueOf(meta.getOrDefault("source", "GENERATE"));
         String sourceRef = String.valueOf(meta.getOrDefault("sourceRef", ""));
         Object modelObj = meta.get("model");
@@ -891,7 +927,7 @@ public class GeneratedWorkbookService {
         if (model != null && model.isBlank()) {
             model = null;
         }
-        saveFromCases(projectId, kept, source, sourceRef, model);
+        saveFromCases(projectId, kept, "CASE_DELETE", sourceRef, model);
         Map<String, Object> out = listCases(projectId);
         out.put("removedCount", removed);
         return out;

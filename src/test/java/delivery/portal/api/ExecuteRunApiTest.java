@@ -104,6 +104,10 @@ public class ExecuteRunApiTest extends AbstractTestNGSpringContextTests {
         for (int i = 0; i < tcs.length(); i++) {
             JSONObject tc = tcs.getJSONObject(i);
             Assert.assertEquals(tc.getString("qaStatus"), "FAIL");
+            // B16: additive fields; old fields untouched
+            Assert.assertTrue(tc.has("failureReasonUser"), tc.toString());
+            Assert.assertTrue(tc.has("failedStepIndex"), tc.toString());
+            Assert.assertTrue(tc.has("blockerStepIndex"), tc.toString());
         }
 
         mockMvc.perform(get("/api/execute-runs/" + jobId + "/tcs/TC_001/screenshots/missing.png")

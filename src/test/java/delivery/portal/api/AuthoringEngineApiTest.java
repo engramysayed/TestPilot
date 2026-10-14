@@ -63,7 +63,7 @@ public class AuthoringEngineApiTest extends AbstractTestNGSpringContextTests {
         String jobId = new JSONObject(jobRes.getResponse().getContentAsString()).getString("jobId");
 
         Path requestPath = AuthoringJobRequestFiles.requestPath(
-                store.projectDiskRoot(projectId), JobRecord.JobKind.CONVERT, jobId);
+                store.projectDiskRoot(projectId), delivery.portal.engine.InProcessJobContext.wire(JobRecord.JobKind.CONVERT), jobId);
         Assert.assertTrue(Files.isRegularFile(requestPath), "request.json should exist");
         JSONObject body = new JSONObject(Files.readString(requestPath));
         Assert.assertEquals("precision", body.getString("authoringEngine"));
@@ -94,7 +94,7 @@ public class AuthoringEngineApiTest extends AbstractTestNGSpringContextTests {
         String jobId = new JSONObject(jobRes.getResponse().getContentAsString()).getString("jobId");
 
         Path requestPath = AuthoringJobRequestFiles.requestPath(
-                store.projectDiskRoot(projectId), JobRecord.JobKind.EXECUTE, jobId);
+                store.projectDiskRoot(projectId), delivery.portal.engine.InProcessJobContext.wire(JobRecord.JobKind.EXECUTE), jobId);
         Assert.assertTrue(Files.isRegularFile(requestPath), "request.json should exist");
         JSONObject body = new JSONObject(Files.readString(requestPath));
         Assert.assertEquals("precision", body.getString("authoringEngine"));

@@ -30,7 +30,9 @@ public class ${className} extends BaseTest {
 </#list>
 <#if needsLoginBeforeMethod!false>
 <#list loginChronCalls as call>
-<#if call.propKey?has_content>
+<#if call.propKey?has_content && (call.secret!false)>
+        ${call.pageVar}.${call.method}(project.utils.reports.Secrets.property("${call.propKey?j_string}"));
+<#elseif call.propKey?has_content>
         ${call.pageVar}.${call.method}(requiredProperty("${call.propKey?j_string}"));
 <#elseif call.needsValue>
         ${call.pageVar}.${call.method}("${call.value?j_string}");
@@ -40,7 +42,9 @@ public class ${className} extends BaseTest {
 </#list>
 </#if>
 <#list setupChronCalls as call>
-<#if call.propKey?has_content>
+<#if call.propKey?has_content && (call.secret!false)>
+        ${call.pageVar}.${call.method}(project.utils.reports.Secrets.property("${call.propKey?j_string}"));
+<#elseif call.propKey?has_content>
         ${call.pageVar}.${call.method}(requiredProperty("${call.propKey?j_string}"));
 <#elseif call.needsValue>
         ${call.pageVar}.${call.method}("${call.value?j_string}");
@@ -69,7 +73,9 @@ public class ${className} extends BaseTest {
         ${p.className} ${p.varName} = new ${p.className}(driver);
 </#list>
 <#list chronCalls as call>
-<#if call.propKey?has_content>
+<#if call.propKey?has_content && (call.secret!false)>
+        ${call.pageVar}.${call.method}(project.utils.reports.Secrets.property("${call.propKey?j_string}"));
+<#elseif call.propKey?has_content>
         ${call.pageVar}.${call.method}(requiredProperty("${call.propKey?j_string}"));
 <#elseif call.needsValue>
         ${call.pageVar}.${call.method}("${call.value?j_string}");

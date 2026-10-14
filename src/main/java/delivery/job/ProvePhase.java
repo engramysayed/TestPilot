@@ -1,11 +1,13 @@
 package delivery.job;
 
+import delivery.authoring.CompoundAssert;
 import delivery.authoring.AuthoringEngine;
 import delivery.authoring.AuthoringService;
 import delivery.authoring.DummyValueInventor;
 import delivery.authoring.LocalLlmClient;
 import delivery.authoring.LocatorValidator;
 import delivery.authoring.LoginStepDetector;
+import delivery.authoring.PrecisionBatchBindOutcome;
 import delivery.authoring.PrecisionBindOutcome;
 import delivery.authoring.PrecisionBindService;
 import delivery.authoring.PrecisionCallBudget;
@@ -76,6 +78,8 @@ public class ProvePhase {
     private BooleanSupplier cancelCheck = () -> false;
     private HealWorkbookApplier healWorkbookApplier;
     private PrecisionBindService precisionBindService;
+    private boolean precisionReuseLocatorMemory;
+    private boolean precisionLocatorMemoryDisabledLogged;
     private PrecisionJobTracker precisionTracker = new PrecisionJobTracker(AuthoringEngine.KEEL);
 
     private static final class PrecisionJobTracker {
@@ -180,8 +184,11 @@ public class ProvePhase {
                 ? AuthoringEngine.KEEL : request.authoringEngine();
         precisionTracker = new PrecisionJobTracker(jobEngine);
         precisionBindService = null;
+        precisionReuseLocatorMemory = false;
+        precisionLocatorMemoryDisabledLogged = false;
         PrecisionJobConfig precisionConfig = request == null || request.precisionConfig() == null
                 ? PrecisionJobConfig.DEFAULTS : request.precisionConfig();
+        precisionReuseLocatorMemory = precisionConfig.reuseLocatorMemory();
         if (jobEngine == AuthoringEngine.PRECISION) {
             PrecisionCallBudget budget = PrecisionCallBudget.fromProperties(
                     precisionConfig.enabled(), precisionConfig.maxCallsPerJob());
@@ -452,15 +459,37 @@ public class ProvePhase {
         int intentIndex = 0;
         String maxHealTier = "none";
         String healSkipAccum = "";
-        for (StepIntentBinder.IntentLine intent : intents) {
+        while (intentIndex < intents.size()) {
             JobCancelSupport.checkCancelled(cancelCheck);
+            StepIntentBinder.IntentLine intent = intents.get(intentIndex);
             progress.update(tcIndex, tcTotal,
                     "Phase1 " + tc.tcId() + " step " + (intentIndex + 1) + "/" + intents.size()
                             + ": " + trim(intent.text(), 60));
 
-            StepAttempt attempt = attemptIntentWithRetry(
-                    tc, request, intent, intentIndex, authoring, healCascade, execution, evidence,
-                    driverFactory, provenAll, failedThisTc);
+            StepAttempt attempt = null;
+            int batchConsumed = 0;
+            PrecisionBatchStepAttempt batchAttempt = null;
+            String bindingPageUrl = currentUrl(driverFactory);
+            if (precisionBindService != null) {
+                int batchEnd = precisionBatchEnd(intents, intentIndex);
+                if (batchEnd - intentIndex >= 2) {
+                    List<StepIntentBinder.IntentLine> batchSlice =
+                            intents.subList(intentIndex, batchEnd);
+                    batchAttempt = attemptPrecisionBatch(
+                            tc, request, batchSlice, intentIndex, authoring, execution,
+                            evidence, driverFactory, provenAll, failedThisTc);
+                    if (batchAttempt != null && batchAttempt.usedBatch()) {
+                        attempt = batchAttempt.attempt();
+                        batchConsumed = batchAttempt.intentsConsumed();
+                    }
+                }
+            }
+            if (attempt == null) {
+                attempt = attemptIntentWithRetry(
+                        tc, request, intent, intentIndex, authoring, healCascade, execution, evidence,
+                        driverFactory, provenAll, failedThisTc);
+                batchConsumed = 1;
+            }
             maxHealTier = mergeHealTier(maxHealTier, attempt.healTier());
             if (attempt.healSkipReason() != null && !attempt.healSkipReason().isBlank()) {
                 healSkipAccum = attempt.healSkipReason();
@@ -480,9 +509,17 @@ public class ProvePhase {
                         .withHeal(maxHealTier, attempt.healSkipReason())
                         .withLoginFormUrl(loginFormUrl);
             }
-            rememberSuccessfulLocator(request, driverFactory, tc, intent, attempt.steps());
+            List<List<ProvenStep>> stepsByIntent = batchAttempt != null && batchAttempt.usedBatch()
+                    ? batchAttempt.stepsPerIntent()
+                    : List.of(attempt.steps());
+            for (int bi = 0; bi < batchConsumed && intentIndex + bi < intents.size(); bi++) {
+                StepIntentBinder.IntentLine boundIntent = intents.get(intentIndex + bi);
+                List<ProvenStep> slice = bi < stepsByIntent.size()
+                        ? stepsByIntent.get(bi) : List.of();
+                rememberSuccessfulLocator(request, driverFactory, tc, boundIntent, slice, bindingPageUrl);
+            }
             provenAll.addAll(attempt.steps());
-            intentIndex++;
+            intentIndex += batchConsumed;
         }
 
         String url = currentUrl(driverFactory);
@@ -633,6 +670,7 @@ public class ProvePhase {
                 : failedLocators;
         CandidateLivenessProbe probe = new SeleniumCandidateLivenessProbe(driverFactory);
         VisionAttemptLog.beginIntent();
+        if (healCascade != null) healCascade.beginIntent();
         boolean recoveredThisIntent = false;
         int recoveryAttemptsThisIntent = 0;
         List<ProvenStep> recoveredNav = new ArrayList<>();
@@ -647,7 +685,8 @@ public class ProvePhase {
                                 + " on step " + (intentIndex + 1));
             }
             try {
-                String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
+                NamedNavigationDiscovery.reveal(driverFactory.get(), intent);
+                String html = ProveWiring.authoringHtml(driverFactory.get(), intent.text(), 80000);
                 List<ProvenStep> autoFillSteps = List.of();
                 if (precisionBindService == null && intent.kind() == StepIntentBinder.IntentKind.CLICK) {
                     List<StepIntentBinder.IntentLine> typeIntents = StepIntentBinder.parseIntents(tc).stream()
@@ -668,8 +707,16 @@ public class ProvePhase {
                         }
                         autoFillSteps = fillOutcome.provenSteps();
                         PostActionSettle.afterAction();
-                        html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
+                        html = ProveWiring.authoringHtml(driverFactory.get(), intent.text(), 80000);
                     }
+                }
+
+                if (intent.kind() == StepIntentBinder.IntentKind.ASSERT_VISIBLE
+                        && CompoundAssert.isCompound(intent.text())) {
+                    return attemptCompoundSoftAssert(
+                            tc, intent, authoring, execution, evidence, driverFactory, provenSoFar,
+                            failedThisIntent, autoFillSteps, retriesUsed, healTier, recoveredNav,
+                            recoveredActions, baseUrl, recoveredThisIntent);
                 }
 
                 String memoryHost = hostOf(currentUrl(driverFactory));
@@ -678,7 +725,7 @@ public class ProvePhase {
                 }
                 // Key by live page path — Excel open-path (/login) poisoned cart clicks with login-button.
                 String pagePath = pathOf(currentUrl(driverFactory));
-                Optional<ProvenStep> remembered = precisionBindService == null
+                Optional<ProvenStep> remembered = mayUseLocatorMemory()
                         ? locatorMemory.recall(memoryHost, pagePath, intent, tc.tcId()) : Optional.empty();
                 if (remembered.isPresent()
                         && StepIntentBinder.spendsMustAvoidPriorFills(intent)
@@ -717,6 +764,10 @@ public class ProvePhase {
                         locatorMemory.forget(memoryHost, pagePath, intent);
                         LogsManager.info("LOCATOR_MEMORY: dropped after execute fail for " + intent.text());
                     }
+                } else if (precisionBindService != null && precisionReuseLocatorMemory) {
+                    logLocatorMemorySkip(locatorMemorySkipContext(
+                            "single step — no saved locator", memoryHost, pagePath, intent)
+                            + " (falling back to Cursor groundRank)");
                 }
 
                 byte[] healPng = execution.capturePngBytes();
@@ -725,6 +776,7 @@ public class ProvePhase {
                 // Bind only — heal cascade owns Ollama + Cursor after bind/execute failure
                 List<ProvenStep> stepBatch;
                 if (precisionPath) {
+                    logPrecisionLocatorMemoryDisabledOnce();
                     PrecisionBindResult precision = bindWithPrecision(
                             authoring, tc.tcId(), intent, html, bindShot, priorSteps,
                             provenSoFar, failedThisIntent, healPng, probe);
@@ -976,6 +1028,12 @@ public class ProvePhase {
                 lastReason = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
                 lastPartial = List.of();
             }
+        }
+        try {
+            ProveWiring.bindFailure(driverFactory.get(), evidence, tc.tcId(), intentIndex, intent.text(),
+                    intent.kind() == null ? null : intent.kind().name(), intent.testData(), lastReason);
+        } catch (RuntimeException ignored) {
+            // A9 evidence is best effort (flag off by default)
         }
         return StepAttempt.fail(lastReason, lastPartial, evidenceDir, retriesUsed, healTier, healSkipReason);
         } finally {
@@ -1298,16 +1356,17 @@ public class ProvePhase {
             WebDriverFactory driverFactory,
             ManualTestCase tc,
             StepIntentBinder.IntentLine intent,
-            List<ProvenStep> steps) {
+            List<ProvenStep> steps, String bindingPageUrl) {
         if (steps == null || steps.isEmpty() || intent == null) {
             return;
         }
-        String host = hostOf(currentUrl(driverFactory));
+        String host = hostOf(bindingPageUrl);
         if (host.isBlank()) {
             host = hostOf(request == null ? "" : request.baseUrl());
         }
-        String pagePath = pathOf(currentUrl(driverFactory));
+        String pagePath = pathOf(bindingPageUrl);
         locatorMemory.remember(host, pagePath, intent, steps.get(steps.size() - 1));
+        saveLocatorMemory();
     }
 
     private static String pathOf(String url) {
@@ -1350,7 +1409,376 @@ public class ProvePhase {
                 step.tcId(), step.pageName(), step.actionType(), step.action(),
                 step.locatorStrategy(), step.locatorValue(), value,
                 step.assertionType(), step.assertionExpected(), step.validated(),
-                step.rationale(), step.screenshotRelPath());
+                step.rationale(), step.screenshotRelPath(), step.locatorCandidates(), step.dropCandidates(), step.sideEffects(), step.secret());
+    }
+
+    private static boolean isOpenNavigationIntent(StepIntentBinder.IntentLine intent) {
+        if (intent == null || intent.text() == null) {
+            return false;
+        }
+        String t = intent.text().toLowerCase(Locale.ROOT);
+        return t.contains("open the") && t.contains(" at /");
+    }
+
+    /** Explicit navigation begins a new planning snapshot. */
+    private static boolean breaksPrecisionBatch(StepIntentBinder.IntentLine intent) {
+        if (intent == null) {
+            return true;
+        }
+        if (isOpenNavigationIntent(intent)) {
+            return true;
+        }
+        if (intent.kind() == StepIntentBinder.IntentKind.ASSERT_VISIBLE) {
+            return true;
+        }
+        return false;
+    }
+
+    static int precisionBatchEnd(List<StepIntentBinder.IntentLine> intents, int start) {
+        if (start >= intents.size()) {
+            return start;
+        }
+        if (breaksPrecisionBatch(intents.get(start))) {
+            return start + 1;
+        }
+        int end = start + 1;
+        int max = PrecisionBindService.MAX_INTENTS_PER_GROUNDRANK_BATCH;
+        while (end < intents.size() && end - start < max) {
+            if (breaksPrecisionBatch(intents.get(end))) {
+                break;
+            }
+            end++;
+        }
+        return end;
+    }
+
+    private PrecisionBatchStepAttempt attemptPrecisionBatch(
+            ManualTestCase tc,
+            ConversionJobRequest request,
+            List<StepIntentBinder.IntentLine> batchSlice,
+            int intentIndex,
+            AuthoringService authoring,
+            TcExecutionService execution,
+            Path evidence,
+            WebDriverFactory driverFactory,
+            List<ProvenStep> provenSoFar,
+            List<FailedLocator> failedThisTc
+    ) {
+        if (precisionBindService == null || batchSlice == null || batchSlice.size() < 2) {
+            return null;
+        }
+        if (precisionReuseLocatorMemory) {
+            PrecisionBatchStepAttempt fromMemory = attemptPrecisionBatchFromMemory(
+                    tc, request, batchSlice, intentIndex, execution, evidence, driverFactory, provenSoFar);
+            if (fromMemory != null) {
+                return fromMemory;
+            }
+        } else {
+            logPrecisionLocatorMemoryDisabledOnce();
+        }
+        try {
+            String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
+            byte[] png = execution.capturePngBytes();
+            Path shot = writeHealScreenshot(evidence, tc.tcId(), intentIndex, png);
+            List<String> priorSteps = priorStepSummaries(provenSoFar);
+            CandidateLivenessProbe probe = new SeleniumCandidateLivenessProbe(driverFactory);
+
+            PrecisionBatchBindOutcome outcome = precisionBindService.bindIntentBatch(
+                    tc.tcId(), batchSlice, html, shot, priorSteps, provenSoFar, failedThisTc, probe);
+            if (!(outcome instanceof PrecisionBatchBindOutcome.BatchBound bound)) {
+                return null;
+            }
+            List<ProvenStep> allSteps = new ArrayList<>();
+            List<List<ProvenStep>> perIntent = new ArrayList<>();
+            for (PrecisionBatchBindOutcome.IntentSteps row : bound.boundInOrder()) {
+                if (row.batchIndex() < 0 || row.batchIndex() >= batchSlice.size()) {
+                    return null;
+                }
+                StepIntentBinder.IntentLine rowIntent = batchSlice.get(row.batchIndex());
+                List<ProvenStep> resolved = new ArrayList<>();
+                for (ProvenStep step : row.steps()) {
+                    resolved.add(withInventedValue(step, rowIntent));
+                }
+                if (refusesSubmitNavigation(rowIntent, resolved)) {
+                    return null;
+                }
+                perIntent.add(resolved);
+                allSteps.addAll(resolved);
+            }
+            if (allSteps.isEmpty()) {
+                return null;
+            }
+            if (!html.equals(HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000))) return null;
+            PrecisionPageGuard guard = new PrecisionPageGuard(driverFactory.get(), perIntent);
+            return executePrecisionBound(tc.tcId(), perIntent, execution, evidence,
+                    bound.tier(), cancelCheck, () -> currentUrl(driverFactory),
+                    steps -> PostActionSettle.afterSteps(driverFactory.get(), steps), guard::valid);
+        } catch (Exception e) {
+            LogsManager.info("PRECISION_GROUNDRANK_BATCH: error " + e.getMessage());
+            return null;
+        }
+    }
+
+    private StepAttempt attemptCompoundSoftAssert(
+            ManualTestCase tc,
+            StepIntentBinder.IntentLine intent,
+            AuthoringService authoring,
+            TcExecutionService execution,
+            Path evidence,
+            WebDriverFactory driverFactory,
+            List<ProvenStep> provenSoFar,
+            List<FailedLocator> failedThisIntent,
+            List<ProvenStep> autoFillSteps,
+            int retriesUsed,
+            String healTier,
+            List<ProvenStep> recoveredNav,
+            List<ProvenStep> recoveredActions,
+            String baseUrl,
+            boolean recoveredThisIntent
+    ) {
+        List<String> clauses = CompoundAssert.splitClauses(intent.text());
+        LogsManager.info("COMPOUND_ASSERT: soft check " + clauses.size()
+                + " clauses (Keel bind, not Cursor)");
+        List<ProvenStep> provenCombined = new ArrayList<>(autoFillSteps);
+        int bound = 0;
+        int passed = 0;
+        int skipped = 0;
+        List<String> executeFails = new ArrayList<>();
+        String evidenceDir = "";
+        for (String clause : clauses) {
+            JobCancelSupport.checkCancelled(cancelCheck);
+            String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), 80000);
+            byte[] healPng = execution.capturePngBytes();
+            StepIntentBinder.IntentLine sub = new StepIntentBinder.IntentLine(
+                    StepIntentBinder.IntentKind.ASSERT_VISIBLE, clause, intent.testData());
+            List<ProvenStep> steps;
+            try {
+                steps = authoring.authorIntent(
+                        tc.tcId(), sub, html, healPng, false, provenSoFar, failedThisIntent);
+            } catch (Exception e) {
+                skipped++;
+                LogsManager.info("COMPOUND_ASSERT: skip — bind error: " + trim(clause, 80));
+                continue;
+            }
+            if (steps == null || steps.isEmpty() || steps.stream().anyMatch(s -> !s.validated())) {
+                skipped++;
+                LogsManager.info("COMPOUND_ASSERT: skip — could not bind: " + trim(clause, 100));
+                continue;
+            }
+            bound++;
+            TcOutcome out = execution.execute(tc.tcId(), steps, evidence);
+            if (out.status() == TcStatus.PASSED) {
+                passed++;
+                provenCombined.addAll(out.provenSteps());
+                PostActionSettle.afterSteps(driverFactory.get(), out.provenSteps());
+            } else {
+                String msg = trim(clause, 70) + ": " + trim(out.failureReason(), 120);
+                executeFails.add(msg);
+                LogsManager.info("COMPOUND_ASSERT: fail — " + msg);
+                if (out.evidenceDir() != null) {
+                    evidenceDir = out.evidenceDir().toString();
+                }
+            }
+        }
+        if (bound == 0) {
+            return StepAttempt.fail(
+                    "COMPOUND_ASSERT: no sub-clause could be bound (" + clauses.size() + " parts)",
+                    provenCombined, evidenceDir, retriesUsed, healTier, "");
+        }
+        if (!executeFails.isEmpty() || skipped > 0) {
+            if (skipped > 0) executeFails.add(skipped + " required clause(s) could not be bound");
+            return StepAttempt.fail(
+                    "COMPOUND_ASSERT failed: " + String.join("; ", executeFails),
+                    provenCombined, evidenceDir, retriesUsed, healTier, "");
+        }
+        LogsManager.info("COMPOUND_ASSERT: passed " + passed + "/" + clauses.size()
+                + " (bound=" + bound + ", skipped=" + skipped + ")");
+        List<ProvenStep> merged = withRecoveredPrefix(recoveredNav, recoveredActions, provenCombined);
+        if (retryAfterPageRecovery(merged, tc, baseUrl, intent, driverFactory, recoveredThisIntent)) {
+            return StepAttempt.fail(
+                    "COMPOUND_ASSERT passed sub-clauses but page recovery required",
+                    merged, evidenceDir, retriesUsed, healTier, "");
+        }
+        String skipNote = skipped > 0
+                ? "COMPOUND_ASSERT: skipped " + skipped + " unbound clause(s)"
+                : "";
+        return settledSuccess(
+                merged, retriesUsed, mergeHealTier(healTier, "compound-assert-soft"), skipNote,
+                driverFactory, intent.text());
+    }
+
+    private boolean mayUseLocatorMemory() {
+        return precisionBindService == null || precisionReuseLocatorMemory;
+    }
+
+    private PrecisionBatchStepAttempt attemptPrecisionBatchFromMemory(
+            ManualTestCase tc,
+            ConversionJobRequest request,
+            List<StepIntentBinder.IntentLine> batchSlice,
+            int intentIndex,
+            TcExecutionService execution,
+            Path evidence,
+            WebDriverFactory driverFactory,
+            List<ProvenStep> provenSoFar
+    ) {
+        String baseUrl = request == null ? "" : request.baseUrl();
+        String memoryHost = hostOf(currentUrl(driverFactory));
+        if (memoryHost.isBlank()) {
+            memoryHost = hostOf(baseUrl);
+        }
+        String pagePath = pathOf(currentUrl(driverFactory));
+        List<ProvenStep> allSteps = new ArrayList<>();
+        List<List<ProvenStep>> perIntent = new ArrayList<>();
+        for (int i = 0; i < batchSlice.size(); i++) {
+            StepIntentBinder.IntentLine intent = batchSlice.get(i);
+            Optional<ProvenStep> remembered = locatorMemory.recall(memoryHost, pagePath, intent, tc.tcId());
+            if (remembered.isEmpty()) {
+                logLocatorMemorySkip(locatorMemorySkipContext(
+                        "precision batch — no saved locator for step " + (i + 1) + "/"
+                                + batchSlice.size(),
+                        memoryHost, pagePath, intent)
+                        + " (falling back to Cursor batch)");
+                if (!perIntent.isEmpty()) break;
+                return null;
+            }
+            if (StepIntentBinder.spendsMustAvoidPriorFills(intent)
+                    && StepIntentBinder.isSpentLocator(remembered.get(), java.util.stream.Stream.concat(provenSoFar.stream(), allSteps.stream()).toList())) {
+                logLocatorMemorySkip("precision batch — spent locator for "
+                        + trim(intent.text(), 80) + " (" + locatorMemorySkipContext(
+                        "", memoryHost, pagePath, intent) + ") (falling back to Cursor batch)");
+                if (!perIntent.isEmpty()) break;
+                return null;
+            }
+            ProvenStep ready = withInventedValue(remembered.get(), intent);
+            if (refusesSubmitNavigation(intent, List.of(ready))) {
+                logLocatorMemorySkip("precision batch — remembered click is not a submit control for "
+                        + trim(intent.text(), 80) + " (falling back to Cursor batch)");
+                if (!perIntent.isEmpty()) break;
+                return null;
+            }
+            perIntent.add(List.of(ready));
+            allSteps.add(ready);
+        }
+        if (allSteps.isEmpty()) {
+            logLocatorMemorySkip("precision batch — no steps resolved from memory "
+                    + "(falling back to Cursor batch)");
+            return null;
+        }
+        LogsManager.info("LOCATOR_MEMORY: precision batch " + allSteps.size() + " steps from memory");
+        PrecisionPageGuard guard = new PrecisionPageGuard(driverFactory.get(), perIntent);
+        return executePrecisionBound(tc.tcId(), perIntent, execution, evidence,
+                "locator-memory", cancelCheck, () -> currentUrl(driverFactory),
+                    steps -> PostActionSettle.afterSteps(driverFactory.get(), steps), guard::valid);
+    }
+
+    // Once execution starts, never fall back to replaying the original batch.
+    static PrecisionBatchStepAttempt executePrecisionBound(String tcId,
+            List<List<ProvenStep>> perIntent, TcExecutionService execution, Path evidence,
+            String tier, BooleanSupplier cancelled, java.util.function.Supplier<String> pageState) {
+        return executePrecisionBound(tcId, perIntent, execution, evidence, tier, cancelled, pageState, PostActionSettle::afterAction);
+    }
+
+    static PrecisionBatchStepAttempt executePrecisionBound(String tcId,
+            List<List<ProvenStep>> perIntent, TcExecutionService execution, Path evidence,
+            String tier, BooleanSupplier cancelled, java.util.function.Supplier<String> pageState, Runnable settle) {
+        return executePrecisionBound(tcId, perIntent, execution, evidence, tier, cancelled, pageState, settle, steps -> true);
+    }
+
+    static PrecisionBatchStepAttempt executePrecisionBound(String tcId,
+            List<List<ProvenStep>> perIntent, TcExecutionService execution, Path evidence,
+            String tier, BooleanSupplier cancelled, java.util.function.Supplier<String> pageState, Runnable settle,
+            java.util.function.Predicate<List<ProvenStep>> targetsValid) {
+        return executePrecisionBound(tcId, perIntent, execution, evidence, tier, cancelled, pageState,
+                steps -> settle.run(), targetsValid);
+    }
+
+    static PrecisionBatchStepAttempt executePrecisionBound(String tcId,
+            List<List<ProvenStep>> perIntent, TcExecutionService execution, Path evidence,
+            String tier, BooleanSupplier cancelled, java.util.function.Supplier<String> pageState,
+            java.util.function.Consumer<List<ProvenStep>> settle,
+            java.util.function.Predicate<List<ProvenStep>> targetsValid) {
+        List<ProvenStep> proven = new ArrayList<>();
+        int consumed = 0;
+        try {
+            String initialState = pageState.get();
+            for (List<ProvenStep> steps : perIntent) {
+                JobCancelSupport.checkCancelled(cancelled);
+                if (!targetsValid.test(steps)) {
+                    LogsManager.info("PRECISION_BATCH: remaining targets changed; consumed=" + consumed);
+                    if (consumed == 0) return null;
+                    break;
+                }
+                TcOutcome outcome = execution.execute(tcId, steps, evidence);
+                proven.addAll(outcome.provenSteps());
+                consumed++;
+                if (outcome.status() != TcStatus.PASSED) {
+                    return new PrecisionBatchStepAttempt(true, consumed,
+                            StepAttempt.fail("PRECISION_BATCH_EXECUTION_FAILED: " + outcome.failureReason(),
+                                    proven, evidence.toString(), 0, tier, ""), perIntent);
+                }
+                settle.accept(steps);
+                JobCancelSupport.checkCancelled(cancelled);
+                if (!java.util.Objects.equals(initialState, pageState.get())) break;
+            }
+            return new PrecisionBatchStepAttempt(true, consumed,
+                    StepAttempt.success(proven, 0, tier, ""), perIntent);
+        } catch (Exception e) {
+            return new PrecisionBatchStepAttempt(true, consumed,
+                    StepAttempt.fail("PRECISION_BATCH_INTERRUPTED: " + e.getClass().getSimpleName(),
+                            proven, evidence.toString(), 0, tier, ""), perIntent);
+        }
+    }
+
+    private void logPrecisionLocatorMemoryDisabledOnce() {
+        if (precisionLocatorMemoryDisabledLogged || precisionBindService == null
+                || precisionReuseLocatorMemory) {
+            return;
+        }
+        precisionLocatorMemoryDisabledLogged = true;
+        logLocatorMemorySkip("disabled for Precision (enable \"Use known-good locators first\" "
+                + "in project settings, then queue a new job)");
+    }
+
+    private static void logLocatorMemorySkip(String detail) {
+        LogsManager.info("LOCATOR_MEMORY: skip — " + detail);
+    }
+
+    private static String locatorMemorySkipContext(
+            String prefix,
+            String host,
+            String pagePath,
+            StepIntentBinder.IntentLine intent) {
+        String key = DomainLocatorMemory.intentKey(intent);
+        String ctx = "host=" + (host == null || host.isBlank() ? "?" : host)
+                + " path=" + (pagePath == null || pagePath.isBlank() ? "/" : pagePath)
+                + " key=" + (key.isBlank() ? "?" : key);
+        if (prefix == null || prefix.isBlank()) {
+            return ctx;
+        }
+        return prefix + " " + ctx;
+    }
+
+    private static boolean batchEndedWithNavigationClick(StepIntentBinder.IntentLine intent) {
+        if (intent == null) {
+            return false;
+        }
+        if (intent.kind() == StepIntentBinder.IntentKind.CLICK_LOGIN) {
+            return true;
+        }
+        if (intent.kind() != StepIntentBinder.IntentKind.CLICK) {
+            return false;
+        }
+        String t = intent.text().toLowerCase(Locale.ROOT);
+        return t.contains("sign in") || t.contains("log in") || t.contains("login")
+                || t.contains("verify otp") || t.contains("submit");
+    }
+
+    record PrecisionBatchStepAttempt(
+            boolean usedBatch,
+            int intentsConsumed,
+            StepAttempt attempt,
+            List<List<ProvenStep>> stepsPerIntent
+    ) {
     }
 
     private PrecisionBindResult bindWithPrecision(
@@ -1551,16 +1979,19 @@ public class ProvePhase {
         List<ProvenStep> out = new ArrayList<>();
         for (ProvenStep s : steps) {
             String v = s.value() == null ? "" : s.value();
+            boolean secret = s.secret();
             if (!user.isBlank() && user.equals(v)) {
                 v = "${TARGET_USERNAME}";
             } else if (pass != null && !pass.isEmpty() && pass.equals(v)) {
                 v = "${TARGET_PASSWORD}";
+                secret = true; // r2: value comes from a credential
             }
+            secret = secret || delivery.ir.SecretStep.isSecretValue(v, java.util.List.of());
             out.add(new ProvenStep(
                     s.tcId(), s.pageName(), s.actionType(), s.action(),
                     s.locatorStrategy(), s.locatorValue(), v,
                     s.assertionType(), s.assertionExpected(), s.validated(), s.rationale(),
-                    s.screenshotRelPath()));
+                    s.screenshotRelPath(), s.locatorCandidates(), s.dropCandidates(), s.sideEffects(), secret));
         }
         return out;
     }
@@ -1747,11 +2178,11 @@ public class ProvePhase {
         } catch (RuntimeException e) {
             driver = null;
         }
-        PostActionSettle.afterNavigation(driver, null, intentText);
+        PostActionSettle.afterSteps(driver, steps);
         return StepAttempt.success(steps, retries, healTier, skip);
     }
 
-    private record StepAttempt(
+    record StepAttempt(
             boolean ok,
             List<ProvenStep> steps,
             List<ProvenStep> partialSteps,

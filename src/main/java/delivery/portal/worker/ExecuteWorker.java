@@ -49,8 +49,8 @@ public class ExecuteWorker {
         job = portalStore.getJob(jobId).orElse(job);
         job.setMessage(props.isDryRun() ? "Dry-run execute" : "Starting execute");
         if (!props.isDryRun()) {
-            delivery.job.DurableJobClaim.markStage(
-                    job, lease.get().attemptId(), delivery.job.DurableJobClaim.Stage.BROWSER);
+            delivery.portal.jobs.DurableJobClaim.markStage(
+                    job, lease.get().attemptId(), delivery.portal.jobs.DurableJobClaim.Stage.BROWSER);
         }
         portalStore.syncJobPersistence(job);
         try {
@@ -93,7 +93,7 @@ public class ExecuteWorker {
             job.setPassedCount(result.passed());
             job.setTodoCount(result.todo());
             job.setMessage(result.message());
-            if (!delivery.job.DurableJobClaim.sameAttempt(job, lease.get())) {
+            if (!delivery.portal.jobs.DurableJobClaim.sameAttempt(job, lease.get())) {
                 log.info("Execute job {} fenced; skipping publish", jobId);
             } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);

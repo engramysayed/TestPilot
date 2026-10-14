@@ -53,11 +53,11 @@ public class ResultIntegrityTest {
         ResultIntegrity.Summary empty = ResultIntegrity.summarize();
         Assert.assertEquals(empty.passRate(), 0);
         Assert.assertFalse(empty.hasProvenSample());
-        Assert.assertEquals(empty.denominatorNote(), "No proven cases yet");
+        Assert.assertEquals(empty.denominatorNote(), "No finished test runs yet");
         ResultIntegrity.Summary simulatedOnly = ResultIntegrity.summarize(
                 ResultIntegrity.JobSlice.simulated(4, 0));
         Assert.assertFalse(simulatedOnly.hasProvenSample());
-        Assert.assertEquals(simulatedOnly.denominatorNote(), "No proven cases yet");
+        Assert.assertEquals(simulatedOnly.denominatorNote(), "No finished test runs yet");
         Assert.assertFalse(simulatedOnly.denominatorNote().contains("0/0"));
     }
 }

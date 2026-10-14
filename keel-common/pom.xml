@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.example</groupId>
+        <artifactId>keel-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>keel-common</artifactId>
+    <!-- Pure shared domain: IR, ManualTestCase/TcDraft/ProvenStep, locator-memory model (empty until B04). -->
+    <dependencies>
+        <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>keel-contract</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>keel-common-banned-dependencies</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <searchTransitive>true</searchTransitive>
+                                    <excludes>
+                                        <!-- no DB/JPA/JDBC driver outside keel-portal -->
+                                        <exclude>org.springframework.boot:spring-boot-starter-data-jpa</exclude>
+                                        <exclude>org.springframework.boot:spring-boot-starter-jdbc</exclude>
+                                        <exclude>org.springframework.data:*</exclude>
+                                        <exclude>org.hibernate.orm:*</exclude>
+                                        <exclude>org.hibernate:*</exclude>
+                                        <exclude>jakarta.persistence:*</exclude>
+                                        <exclude>com.h2database:*</exclude>
+                                        <exclude>com.microsoft.sqlserver:*</exclude>
+                                        <exclude>org.postgresql:*</exclude>
+                                        <exclude>com.zaxxer:HikariCP</exclude>
+                                        <!-- no browser automation in shared modules -->
+                                        <exclude>org.seleniumhq.selenium:*</exclude>
+                                    </excludes>
+                                    <message>keel-common: forbidden dependency (SPLIT_DESIGN §2 module rules).</message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

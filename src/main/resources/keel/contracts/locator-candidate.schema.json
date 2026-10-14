@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.dev/contracts/locator-candidate.schema.json",
+  "title": "Locator candidate {strategy, value, score?, route?} (A3 PLAN section 3)",
+  "description": "strategy 'keel' values must be KeelTarget strings (v2 grammar; the enclosing IR's contract field decides whether v2 hops are allowed).",
+  "type": "object",
+  "required": [
+    "strategy",
+    "value"
+  ],
+  "properties": {
+    "strategy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "value": {
+      "type": "string",
+      "minLength": 1
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "route": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "if": {
+    "properties": {
+      "strategy": {
+        "const": "keel"
+      }
+    },
+    "required": [
+      "strategy"
+    ]
+  },
+  "then": {
+    "properties": {
+      "value": {
+        "$ref": "keel-target-v2.schema.json"
+      }
+    }
+  }
+}

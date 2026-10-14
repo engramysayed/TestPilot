@@ -187,6 +187,9 @@ public class ExecuteRunService {
         m.put("blockerIntent", d.blockerIntent());
         m.put("failureReason", d.failureReason());
         m.put("failureReasonUser", FailureReasonHumanizer.forUser(d.failureReason()));
+        // B16 (additive, ux-patches/BACKEND_NEEDS.md §3): the step that failed, null for passed tests or when
+        // unknown. Same index base as blockerStepIndex.
+        m.put("failedStepIndex", failedStepIndex(d));
         m.put("needsLoginBeforeMethod", d.needsLoginBeforeMethod());
         m.put("expandable", true);
         BugReportService.readEvidenceStatus(tcEvidenceDir(job, d.tcId()), "design-compare.json")
@@ -235,6 +238,13 @@ public class ExecuteRunService {
             return List.of();
         }
         return urls;
+    }
+
+    static Integer failedStepIndex(TcDraft d) {
+        if (d == null || !"FAIL".equals(qaStatus(d.status())) || d.blockerStepIndex() < 0) {
+            return null;
+        }
+        return d.blockerStepIndex();
     }
 
     static String qaStatus(TcDraftStatus status) {

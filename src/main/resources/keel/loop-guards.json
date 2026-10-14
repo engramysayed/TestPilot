@@ -1,0 +1,10 @@
+{
+  "contract": "keel.loop-guards",
+  "version": 1,
+  "doc": "Per-loop guard limits (A10). warn* injects a notice into the next prompt; stop* forces a terminal outcome. Budgets stay the outer bound.",
+  "loops": {
+    "heal":      {"maxAttempts": 6,  "maxWallMs": 120000, "maxModelCalls": 8,  "maxCostUnits": 40,  "warnRepeatAction": 2, "stopRepeatAction": 3, "warnCycle": 2, "stopCycle": 3, "warnFailureStreak": 3, "stopFailureStreak": 4, "stopNoProgress": 4},
+    "bugHunter": {"maxAttempts": 60, "maxWallMs": 900000, "maxModelCalls": 80, "maxCostUnits": 400, "warnRepeatAction": 3, "stopRepeatAction": 5, "warnCycle": 2, "stopCycle": 3, "warnFailureStreak": 3, "stopFailureStreak": 5, "stopNoProgress": 8},
+    "precision": {"maxAttempts": 4,  "maxWallMs": 60000,  "maxModelCalls": 4,  "maxCostUnits": 20,  "warnRepeatAction": 2, "stopRepeatAction": 2, "warnCycle": 2, "stopCycle": 2, "warnFailureStreak": 2, "stopFailureStreak": 3, "stopNoProgress": 3}
+  }
+}

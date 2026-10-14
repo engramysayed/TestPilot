@@ -99,7 +99,7 @@ public final class UiTarsVisionProvider implements VisionGroundingProvider {
             int imageH) throws IOException, InterruptedException {
         String raw = llm.completeChat(UiTarsPrompt.groundingSystem(), user, prepared.png(), false);
         lastAnalyzeRaw = raw;
-        VisionAnalysisResult parsed = UiTarsResponseParser.parse(raw, imageW, imageH);
+        VisionAnalysisResult parsed = UiTarsResponseParser.parseUiTars(raw, prepared.grid(UiTarsCoords.configuredSpace()));
         if (parsed.error() != null && !parsed.error().isBlank() && parsed.candidates().isEmpty()) {
             return parsed;
         }

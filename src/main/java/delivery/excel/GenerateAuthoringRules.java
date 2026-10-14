@@ -46,9 +46,26 @@ public final class GenerateAuthoringRules {
         String context = (title + " " + expected).toLowerCase(Locale.ROOT);
 
         checkVagueAssertSteps(tcId, steps, errors);
+        checkAbsentThenTyped(tcId, steps, errors);
         checkLoginFieldLabels(tcId, steps, title + " " + expected, errors);
         checkLeaveEmptyTestData(tcId, steps, testData, errors);
         checkEmptyFieldConsistency(tcId, steps, testData, context, errors);
+    }
+
+    static void checkAbsentThenTyped(String tcId, String steps, List<String> errors) {
+        List<String> lines = splitNumberedSteps(steps);
+        Pattern absent = Pattern.compile("(?i)^(?:confirm|verify|assert)\\s+(?:the\\s+)?(.+?)\\s+(?:field|input|textbox)\\s+is\\s+(?:not\\s+(?:visible|shown|displayed)|hidden)[.!]?$");
+        Pattern typed = Pattern.compile("(?i)^(?:enter|type|fill)\\b.*?\\b(?:the\\s+)?(.+?)\\s+(?:field|input|textbox)\\b.*");
+        for (int i = 0; i + 1 < lines.size(); i++) {
+            var a = absent.matcher(lines.get(i).trim());
+            if (!a.matches()) continue;
+            String name = a.group(1).trim().toLowerCase(Locale.ROOT);
+            String next = lines.get(i + 1).trim().toLowerCase(Locale.ROOT);
+            if (typed.matcher(next).matches() && Pattern.compile("\\b" + Pattern.quote(name) + "\\s+(?:field|input|textbox)\\b").matcher(next).find()) {
+                errors.add("tcId '" + tcId + "': FIELD_VISIBILITY_CONTRADICTION at steps " + (i + 1) + "/" + (i + 2)
+                        + ": field asserted absent immediately before entry; require visibility or an explicit reveal action");
+            }
+        }
     }
 
     static void checkLeaveEmptyTestData(String tcId, String steps, String testData, List<String> errors) {

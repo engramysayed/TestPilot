@@ -35,6 +35,11 @@ public class DryRunConversionService {
             JobProgressTracker progress,
             BooleanSupplier cancelCheck
     ) throws Exception {
+        return run(request, progress, cancelCheck, PublicationGuard.cancellable(cancelCheck));
+    }
+
+    public ConversionJobResult run(ConversionJobRequest request, JobProgressTracker progress,
+            BooleanSupplier cancelCheck, PublicationGuard guard) throws Exception {
         String mode = request.mode() == null ? "NEW" : request.mode().trim().toUpperCase();
         ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
         if ("UPDATE".equals(mode) && !store.hasFramework(request.projectId())) {
@@ -88,10 +93,10 @@ public class DryRunConversionService {
         packager.zip(projectDir, zip);
 
         JSONObject hashes = new JSONObject(new TcDiffService().hashesOf(cases));
-        Path hashFile = store.projectRoot(request.projectId()).resolve("tc-hashes.json");
+        Path stagedState = work.resolve("publication-state");
+        Path hashFile = stagedState.resolve("tc-hashes.json");
         Files.createDirectories(hashFile.getParent());
         Files.writeString(hashFile, hashes.toString(2));
-        store.saveVersion(request.projectId(), projectDir, zip);
 
         JSONObject lastJob = new JSONObject();
         lastJob.put("status", "COMPLETED");
@@ -100,7 +105,9 @@ public class DryRunConversionService {
         lastJob.put("mode", mode);
         lastJob.put("dryRun", true);
         lastJob.put("completedAt", java.time.Instant.now().toString());
-        store.writeLastJob(request.projectId(), lastJob);
+        Files.writeString(stagedState.resolve("last-job.json"), lastJob.toString(2));
+        JobCancelSupport.checkCancelled(cancelCheck);
+        store.saveVersion(request.projectId(), projectDir, zip, stagedState, guard);
 
         return new ConversionJobResult(zip, 0, outcomes.size(),
                 projectDir.resolve("docs/AUTOMATION_SCORE.md"),

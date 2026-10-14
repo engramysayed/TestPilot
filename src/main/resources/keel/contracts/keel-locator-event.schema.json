@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.dev/contracts/keel-locator-event.schema.json",
+  "title": "One line of test-output/keel-results/locator-events.jsonl (KeelBy fallback win)",
+  "type": "object",
+  "required": [
+    "locator",
+    "index",
+    "target"
+  ],
+  "properties": {
+    "locator": {
+      "type": "string"
+    },
+    "index": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2
+    },
+    "target": {
+      "$ref": "keel-target-v2.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

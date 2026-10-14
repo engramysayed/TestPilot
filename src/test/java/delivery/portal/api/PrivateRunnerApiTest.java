@@ -127,6 +127,8 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
         ((java.util.Map<?, ?>) org.springframework.test.util.ReflectionTestUtils.getField(store, "jobs")).remove(jobId);
         Assert.assertEquals(store.getJob(jobId).orElseThrow().getAuthoringEngine().wireValue(), "precision");
         byte[] frozenInput = mockMvc.perform(get("/api/v1/runners/jobs/" + jobId + "/input")
+                        .header("X-Keel-Attempt-Id", store.getJob(jobId).orElseThrow().getAttemptId())
+                        .header("X-Keel-Cancel-Generation", store.getJob(jobId).orElseThrow().getCancelGeneration())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
         try (var zip = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(frozenInput))) {
@@ -141,6 +143,8 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
 
         byte[] empty = new byte[] {1, 2, 3};
         mockMvc.perform(post("/api/v1/runners/jobs/" + jobId + "/artifacts")
+                        .header("X-Keel-Attempt-Id", store.getJob(jobId).orElseThrow().getAttemptId())
+                        .header("X-Keel-Cancel-Generation", store.getJob(jobId).orElseThrow().getCancelGeneration())
                         .header("Authorization", "Bearer " + token)
                         .header("X-Keel-Requested-With", "Keel")
                         .header(PrivateRunnerArtifacts.SIGNATURE_HEADER, "sha256=deadbeef")
@@ -150,6 +154,8 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
 
         String sig = PrivateRunnerArtifacts.signature(token, jobId, claim.getString("attemptId"), empty);
         mockMvc.perform(post("/api/v1/runners/jobs/" + jobId + "/artifacts")
+                        .header("X-Keel-Attempt-Id", store.getJob(jobId).orElseThrow().getAttemptId())
+                        .header("X-Keel-Cancel-Generation", store.getJob(jobId).orElseThrow().getCancelGeneration())
                         .header("Authorization", "Bearer " + token)
                         .header("X-Keel-Requested-With", "Keel")
                         .header(PrivateRunnerArtifacts.SIGNATURE_HEADER, "sha256=" + sig)
@@ -158,6 +164,8 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
                 .andExpect(status().isAccepted());
 
         mockMvc.perform(post("/api/v1/runners/jobs/" + jobId + "/complete")
+                        .header("X-Keel-Attempt-Id", store.getJob(jobId).orElseThrow().getAttemptId())
+                        .header("X-Keel-Cancel-Generation", store.getJob(jobId).orElseThrow().getCancelGeneration())
                         .header("Authorization", "Bearer " + token)
                         .header("X-Keel-Requested-With", "Keel")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -250,6 +258,8 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
                 .andReturn().getResponse().getContentAsString());
 
         mockMvc.perform(post("/api/v1/runners/jobs/" + jobId + "/complete")
+                        .header("X-Keel-Attempt-Id", store.getJob(jobId).orElseThrow().getAttemptId())
+                        .header("X-Keel-Cancel-Generation", store.getJob(jobId).orElseThrow().getCancelGeneration())
                         .header("Authorization", "Bearer " + token)
                         .header("X-Keel-Requested-With", "Keel")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -258,6 +268,8 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
                 .andExpect(jsonPath("$.error").value("FROZEN_INPUT_MISMATCH"));
 
         mockMvc.perform(post("/api/v1/runners/jobs/" + jobId + "/complete")
+                        .header("X-Keel-Attempt-Id", store.getJob(jobId).orElseThrow().getAttemptId())
+                        .header("X-Keel-Cancel-Generation", store.getJob(jobId).orElseThrow().getCancelGeneration())
                         .header("Authorization", "Bearer " + token)
                         .header("X-Keel-Requested-With", "Keel")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -272,11 +284,15 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
                         .header("X-Keel-Requested-With", "Keel"))
                 .andExpect(status().isAccepted());
         mockMvc.perform(post("/api/v1/runners/jobs/" + jobId + "/lease")
+                        .header("X-Keel-Attempt-Id", store.getJob(jobId).orElseThrow().getAttemptId())
+                        .header("X-Keel-Cancel-Generation", store.getJob(jobId).orElseThrow().getCancelGeneration())
                         .header("Authorization", "Bearer " + token)
                         .header("X-Keel-Requested-With", "Keel"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cancelRequested").value(true));
         mockMvc.perform(post("/api/v1/runners/jobs/" + jobId + "/complete")
+                        .header("X-Keel-Attempt-Id", store.getJob(jobId).orElseThrow().getAttemptId())
+                        .header("X-Keel-Cancel-Generation", store.getJob(jobId).orElseThrow().getCancelGeneration())
                         .header("Authorization", "Bearer " + token)
                         .header("X-Keel-Requested-With", "Keel")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -302,6 +318,8 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
                         .header("X-Keel-Requested-With", "Keel"))
                 .andExpect(status().isOk());
         mockMvc.perform(post("/api/v1/runners/jobs/" + jobId + "/stage")
+                        .header("X-Keel-Attempt-Id", store.getJob(jobId).orElseThrow().getAttemptId())
+                        .header("X-Keel-Cancel-Generation", store.getJob(jobId).orElseThrow().getCancelGeneration())
                         .header("Authorization", "Bearer " + token)
                         .header("X-Keel-Requested-With", "Keel")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -316,7 +334,7 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(store.reconcileExpiredLeases() >= 1);
         JobRecord dead = store.getJob(jobId).orElseThrow();
         Assert.assertEquals(dead.getStatus(), JobRecord.Status.FAILED);
-        Assert.assertEquals(dead.getError(), delivery.job.DurableJobClaim.INTERRUPTED_UNCERTAIN);
+        Assert.assertEquals(dead.getError(), delivery.portal.jobs.DurableJobClaim.INTERRUPTED_UNCERTAIN);
     }
 
     @Test

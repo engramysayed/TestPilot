@@ -3,8 +3,6 @@ package delivery.job;
 import delivery.excel.ExcelTcReader;
 import delivery.excel.KeelPathCaseFilter;
 import delivery.excel.ManualTestCase;
-import delivery.portal.DeliveryPortalProperties;
-import delivery.portal.service.GeneratedWorkbookService;
 import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStore;
 import delivery.ir.TcIdentity;
@@ -83,18 +81,8 @@ public class ExecuteJobRunner {
         if (request == null || request.storeRoot() == null) {
             return null;
         }
-        DeliveryPortalProperties props = new DeliveryPortalProperties();
-        props.setStoreRoot(request.storeRoot().toString());
-        GeneratedWorkbookService workbooks = new GeneratedWorkbookService(props);
-        return (projectId, tcId, steps, notes, baseUrl) -> {
-            GeneratedWorkbookService.HealPatchApplyResult result =
-                    workbooks.applyHealRecoveryPatch(projectId, tcId, steps, notes, baseUrl);
-            if (result.excelSaved()) {
-                utils.LogsManager.info("HEAL_WORKBOOK_PATCH: saved for " + tcId);
-            } else if (result.skipped() && result.reason() != null && !result.reason().isBlank()) {
-                utils.LogsManager.warn(result.reason());
-            }
-        };
+        // B05: through SiteMemoryPort (in-process: GeneratedWorkbookService, unchanged behaviour).
+        return delivery.job.port.EnginePorts.siteMemory().healWorkbookApplier(request.storeRoot());
     }
 
     private static void copyTree(Path src, Path dest) throws Exception {

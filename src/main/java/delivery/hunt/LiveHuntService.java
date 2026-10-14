@@ -1,5 +1,7 @@
 package delivery.hunt;
 
+import delivery.guard.LoopGuard;
+
 import delivery.excel.ManualTestCase;
 import delivery.job.ConversionJobRequest;
 import delivery.job.DeadBrowserSession;
@@ -133,6 +135,9 @@ public final class LiveHuntService {
             actions.setNetworkGuard(new delivery.net.WorkerNetworkGuard(
                     delivery.net.TargetNetworkPolicy.forJob(request.getBaseUrl())));
 
+            LoopGuard huntGuard = huntLoopGuardsEnabled()
+                    ? LoopGuard.of(LoopGuard.Loop.BUG_HUNTER) : null;
+            String guardWarn = "";
             iterationLoop:
             for (int iteration = 1; iteration <= request.getIterationCeiling() && !stopEntireHunt; iteration++) {
                 iterationsUsed = iteration;
@@ -208,6 +213,21 @@ public final class LiveHuntService {
                 String strategyHint = request.isStrategiesEnabled()
                         ? sequencer.forPrompt()
                         : "mode=explore";
+                if (huntGuard != null) {
+                    LoopGuard.Verdict before = huntGuard.beforeIteration();
+                    if (before.stop()) {
+                        stopReason = HuntLoopGuardSupport.stopReason(before);
+                        HuntRunLog.info("loop guard stop before cycle " + cycle + ": " + before.reason());
+                        iterJournal.appendExecutionNote("LOOP_GUARD: " + before.reason());
+                        iterJournal.flushResults(stopReason);
+                        stopEntireHunt = true;
+                        break iterationLoop;
+                    }
+                    if (!guardWarn.isBlank()) {
+                        strategyHint = strategyHint + "\n## Loop guard\n" + guardWarn + "\n";
+                    }
+                    // one planner call counts as a model call on the next record
+                }
                 HuntRunLog.cycleStart(cycle, request.getCycleCeiling(), map.url(), strategyHint);
 
                 iterJournal.flushPlan();
@@ -278,11 +298,35 @@ public final class LiveHuntService {
                 groundedRejects += countGroundedRejects(actionLog);
                 coverage.recordActions(actionLog);
                 updateCoverageGaps(coverage, actionLog);
+                if (huntGuard != null) {
+                    // count planner as 1 model call on a synthetic step, then each action
+                    LoopGuard.Verdict pv = huntGuard.record(new LoopGuard.Step(
+                            null, "planner:" + decision.decision().name().toLowerCase(),
+                            true, 1, 1.0, delivery.settle.SettlePolicy.SideEffects.NONE));
+                    LoopGuard.Verdict av = HuntLoopGuardSupport.recordAll(huntGuard, actionLog);
+                    LoopGuard.Verdict hv = av.stop() ? av : pv;
+                    if (hv.level() == LoopGuard.Level.WARN) {
+                        guardWarn = hv.reason();
+                        HuntRunLog.info("loop guard warn: " + hv.reason());
+                    }
+                    if (hv.stop()) {
+                        stopReason = HuntLoopGuardSupport.stopReason(hv);
+                        HuntRunLog.info("loop guard stop: " + hv.reason());
+                        iterJournal.appendExecutionNote("LOOP_GUARD: " + hv.reason());
+                        Files.writeString(cycleDir.resolve("loop-guard-stop.txt"), hv.reason(),
+                                java.nio.charset.StandardCharsets.UTF_8);
+                        iterJournal.flushResults(stopReason);
+                        stopEntireHunt = true;
+                    }
+                }
 
                 journal.appendCycleHeader(cycle,
                         decision.decision().name().toLowerCase(),
                         decision.rationale());
                 journal.appendActions(cycle, actionLog);
+                if (stopEntireHunt && stopReason != null && stopReason.startsWith("LOOP_GUARD")) {
+                    break iterationLoop;
+                }
 
                 List<Map<String, Object>> plannerBugs = decision.bugs();
                 for (Map<String, Object> bug : plannerBugs) {
@@ -711,5 +755,14 @@ public final class LiveHuntService {
             }
         }
         return n;
+    }
+
+
+    static boolean huntLoopGuardsEnabled() {
+        String v = System.getProperty("delivery.guard.loop", "on");
+        if (v == null || v.isBlank()) {
+            try { v = utils.PropertyReader.getProperty("delivery.guard.loop"); } catch (RuntimeException ignored) { v = "on"; }
+        }
+        return v == null || !("off".equalsIgnoreCase(v) || "false".equalsIgnoreCase(v));
     }
 }

@@ -19,6 +19,9 @@ public class HtmlSlimmer {
         }
 
         Document doc = Jsoup.parse(html);
+        doc.getAllElements().forEach(el -> el.removeAttr("data-keel-nav-item"));
+        for (Element el : doc.select("nav li,aside li,[role=navigation] li,[class*=sidebar] li,[class*=side-menu] li"))
+            el.attr("data-keel-nav-item", "true");
         java.util.Map<String, Integer> attributeCounts = new java.util.HashMap<>();
         for (Element el : doc.getAllElements()) {
             el.removeAttr("data-keel-ambiguous-attrs");
@@ -32,24 +35,48 @@ public class HtmlSlimmer {
         for (Element el : doc.getAllElements()) {
             el.removeAttr("data-keel-source-xpath");
             el.removeAttr("data-keel-source-text-ambiguous");
+            el.removeAttr("data-keel-frame-path");
+            el.removeAttr("data-keel-shadow-path");
             String tag = el.tagName();
-            int ordinal = ordinals.merge(tag, 1, Integer::sum);
+            // Ordinals are per browsing context: an element inside an iframe is addressed by an
+            // xpath evaluated in ITS frame document (after switchTo().frame), not in the merged page.
+            Element context = el.parent() == null ? null : el.parent().closest("[data-testpilot-context]");
+            String contextKey = context == null ? "" : "ctx" + System.identityHashCode(context) + "\u0000";
+            int ordinal = ordinals.merge(contextKey + tag, 1, Integer::sum);
             if (el.is(delivery.authoring.DomCandidateExtractor.INTERACTIVE_QUERY)) {
                 String label = el.text().trim().replaceAll("\\s+", " ");
-                if (!label.isBlank() && textMatches.computeIfAbsent(tag + "\u0000" + label,
+                // Nav <li> candidates bind by exact normalize-space() text, so only an exact twin
+                // (e.g. the hidden responsive copy) is ambiguous; "Hidden Support" or a parent li
+                // that merely contains "Support" is not. Other tags bind with contains().
+                boolean exact = "li".equals(tag);
+                if (!label.isBlank() && textMatches.computeIfAbsent(tag + "\u0000" + exact + "\u0000" + label,
                         ignored -> doc.getElementsByTag(tag).stream()
-                                .filter(n -> n.text().trim().replaceAll("\\s+", " ").contains(label)).count()) > 1) {
+                                .map(n -> n.text().trim().replaceAll("\\s+", " "))
+                                .filter(t -> exact ? t.equals(label) : t.contains(label)).count()) > 1) {
                     el.attr("data-keel-source-text-ambiguous", "true");
                 }
                 el.attr("data-keel-source-xpath", "(//" + tag + ")[" + ordinal + "]");
                 String role = el.attr("role");
                 if (java.util.Set.of("combobox", "textbox", "listbox", "checkbox", "radio", "switch").contains(role)) {
-                    int roleOrdinal = ordinals.merge(tag + "@" + role, 1, Integer::sum);
+                    int roleOrdinal = ordinals.merge(contextKey + tag + "@" + role, 1, Integer::sum);
                     el.attr("data-keel-source-xpath", "(//" + tag + "[@role='" + role + "'])[" + roleOrdinal + "]");
                 }
-                if (!el.parents().select("[data-testpilot-context]").isEmpty()) {
-                    // A flattened embedded context has no valid top-document ordinal.
-                    el.attr("data-keel-source-xpath", "unsupported-context-ordinal");
+                if (context != null) {
+                    String framePath = context.attr("data-testpilot-frame-path");
+                    if (!framePath.isBlank()) {
+                        el.attr("data-keel-frame-path", framePath);
+                    }
+                    if ("shadow".equals(context.attr("data-testpilot-context"))) {
+                        // XPath cannot be evaluated inside a shadow root; CSS hops are the only form.
+                        el.attr("data-keel-source-xpath", "unsupported-context-ordinal");
+                        String shadowPath = context.attr("data-testpilot-shadow-path");
+                        if (!shadowPath.isBlank()) {
+                            el.attr("data-keel-shadow-path", shadowPath);
+                        }
+                    } else if (framePath.isBlank()) {
+                        // Embedded context without a frame path (older snapshot): no valid ordinal anywhere.
+                        el.attr("data-keel-source-xpath", "unsupported-context-ordinal");
+                    }
                 }
             }
             java.util.List<String> ambiguous = new java.util.ArrayList<>();
@@ -98,15 +125,21 @@ public class HtmlSlimmer {
         StringBuilder controls = new StringBuilder(Math.min(maxChars, 32000));
         controls.append("<body>");
         if (doc.body() != null) {
-            for (Element el : doc.body().select(
+            java.util.List<Element> nodes = new java.util.ArrayList<>(doc.body().select(
                     delivery.authoring.DomCandidateExtractor.INTERACTIVE_QUERY
-                            + ", [data-test], [data-testid], [id]")) {
+                            + ", [data-test], [data-testid], [id]"));
+            nodes.sort(java.util.Comparator.comparingInt(el -> {
+                if (el.closest("nav,aside,[role=navigation],[class*=sidebar],[class*=side-menu]") == null) return 2;
+                return "true".equals(el.attr("data-keel-source-text-ambiguous")) ? 1 : 0;
+            }));
+            for (Element el : nodes) {
                 // A node is represented once; parent fragments must not duplicate descendants.
                 if (!el.select(delivery.authoring.DomCandidateExtractor.INTERACTIVE_QUERY).isEmpty()
                         && !el.is(delivery.authoring.DomCandidateExtractor.INTERACTIVE_QUERY)) continue;
                 Element copy = el.clone();
                 copy.select(delivery.authoring.DomCandidateExtractor.INTERACTIVE_QUERY).stream()
-                        .filter(child -> child != copy).toList().forEach(Element::remove);
+                        .filter(child -> child != copy).toList().forEach(child ->
+                                child.replaceWith(new org.jsoup.nodes.TextNode(child.text())));
                 String snip = copy.outerHtml().replaceAll("\\s+", " ").trim();
                 if (snip.isBlank()) {
                     continue;

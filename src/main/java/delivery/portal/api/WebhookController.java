@@ -1,6 +1,6 @@
 package delivery.portal.api;
 
-import delivery.job.WebhookDestinationStore;
+import delivery.portal.jobs.WebhookDestinationStore;
 import delivery.net.TargetNetworkPolicy;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.PortalStore;

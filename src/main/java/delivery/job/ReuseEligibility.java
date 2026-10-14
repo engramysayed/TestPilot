@@ -101,7 +101,7 @@ public final class ReuseEligibility {
                 bound,
                 precision.enabled(),
                 precision.maxCallsPerJob(),
-                authoringConfigFingerprint(llmUrl, llmModel));
+                authoringConfigFingerprint(llmUrl, llmModel) + ":locator-memory=" + precision.reuseLocatorMemory());
     }
 
     public static boolean environmentMatches(Context stored, Context current) {

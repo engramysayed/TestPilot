@@ -1,0 +1,35 @@
+{
+  "tcId": "TC_1",
+  "pageName": "Checkout",
+  "actionType": "elementAction",
+  "action": "click",
+  "locatorStrategy": "keel",
+  "locatorValue": "frame=#pay >> css=button[data-testid=\"pay\"]",
+  "value": "",
+  "assertionType": "",
+  "assertionExpected": "",
+  "validated": true,
+  "rationale": "ok",
+  "screenshotRelPath": "",
+  "locatorCandidates": [
+    {
+      "strategy": "keel",
+      "value": "frame=#pay >> css=button[data-testid=\"pay\"]",
+      "score": 0.95
+    },
+    {
+      "strategy": "keel",
+      "value": "frame=#pay >> css=[id=\"pay\"]",
+      "score": 0.6
+    }
+  ],
+  "fallbacks": [
+    {
+      "strategy": "keel",
+      "value": "frame=#pay >> css=[id=\"pay\"]",
+      "score": 0.6
+    }
+  ],
+  "route": "shop/checkout",
+  "sideEffects": "none"
+}

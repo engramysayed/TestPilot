@@ -117,7 +117,7 @@ public class VisionGroundingConfigTest {
             Assert.assertEquals(VisionGroundingConfig.groundingProviderId(), "qwen");
             Assert.assertEquals(VisionGroundingConfig.assertProviderId(), "qwen");
             Assert.assertEquals(VisionGroundingConfig.groundingModel(), "qwen2.5vl:3b");
-            Assert.assertEquals(VisionGroundingConfig.assertModel(), "qwen2.5vl:3b");
+            Assert.assertEquals(VisionGroundingConfig.assertModel(), "qwen2.5vl:7b");
         } finally {
             System.clearProperty("delivery.vision.grounding.provider");
             System.clearProperty("delivery.vision.grounding.model");
@@ -158,7 +158,7 @@ public class VisionGroundingConfigTest {
         try {
             Assert.assertTrue(VisionGroundingConfig.createProvider() instanceof UiTarsVisionProvider);
             Assert.assertTrue(VisionGroundingConfig.createAssertionProvider() instanceof QwenVisionProvider);
-            Assert.assertEquals(VisionGroundingConfig.assertModel(), "qwen2.5vl:3b");
+            Assert.assertEquals(VisionGroundingConfig.assertModel(), "qwen2.5vl:7b");
         } finally {
             System.clearProperty("delivery.vision.provider");
             System.clearProperty("delivery.vision.model");

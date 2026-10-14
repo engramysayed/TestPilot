@@ -26,6 +26,7 @@ public class ProjectsSchemaPatch implements ApplicationRunner {
         addColumnQuietly("base_url", "VARCHAR(2048)");
         addColumnQuietly("archived_at", "TIMESTAMP");
         addColumnQuietly("tenant_id", "VARCHAR(40)");
+        addColumnQuietly("precision_reuse_locator_memory", "BOOLEAN DEFAULT FALSE");
         try {
             jdbc.update("UPDATE projects SET archived = FALSE WHERE archived IS NULL");
         } catch (Exception e) {

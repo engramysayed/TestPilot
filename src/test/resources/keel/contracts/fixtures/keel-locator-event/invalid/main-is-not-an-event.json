@@ -1,0 +1,5 @@
+{
+  "locator": "payButton",
+  "index": 0,
+  "target": "css=#pay"
+}

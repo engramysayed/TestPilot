@@ -77,7 +77,7 @@ public class GeneratedWorkbookKeelPathUpdateTest {
         service.updateKeelPaths(projectId, Map.of("TC_01", "EXECUTE"));
 
         Map<String, Object> meta = service.describe(projectId).orElseThrow();
-        Assert.assertEquals(meta.get("source"), "GENERATE");
+        Assert.assertEquals(meta.get("source"), "KEEL_PATH_EDIT");
         Assert.assertEquals(meta.get("sourceRef"), "keep-ref");
         Assert.assertEquals(meta.get("model"), "gemma4:e2b");
     }

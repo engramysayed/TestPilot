@@ -66,6 +66,7 @@ public class GenerateMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertFalse(main.contains("Generate now (wait here)"), "blocking sync generate removed");
         Assert.assertFalse(main.contains("id=\"generate-async-btn\""), "duplicate async button removed");
         Assert.assertTrue(main.contains(">Generate<") || main.contains("Generate</button>"), "Generate CTA missing");
+        Assert.assertTrue(body.contains("record-wizard") || body.contains("Record a new test"), "guided record wizard missing");
         Assert.assertTrue(body.contains("/generate-async"), "Generate must use background async API");
         Assert.assertFalse(body.contains("/generate-tcs"), "page must not call blocking generate-tcs");
         Assert.assertTrue(main.contains("All in one"), "pipeline CTA missing");
@@ -233,3 +234,4 @@ public class GenerateMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(main.contains("Coverage notes"), "coverage notes panel heading missing");
     }
 }
+

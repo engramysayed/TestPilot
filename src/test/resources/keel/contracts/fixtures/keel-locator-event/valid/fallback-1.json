@@ -1,0 +1,5 @@
+{
+  "locator": "payButton",
+  "index": 1,
+  "target": "frame=#pay >> css=[id=\"pay\"]"
+}

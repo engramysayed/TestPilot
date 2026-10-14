@@ -31,8 +31,8 @@ public final class QwenVisionProvider implements VisionGroundingProvider {
             "Return the full JSON again with non-empty observation and evidence. "
                     + "confidence must be 0.7–0.99 for PASS or FAIL. No angle-bracket placeholders.";
 
-    /** Fits ~4GB laptop GPUs (e.g. RTX A2000). Override with delivery.vision.model. */
-    private static final String DEFAULT_MODEL = "qwen2.5vl:3b";
+    /** Qwen2.5-VL 7B (Apache-2.0); the 3B weights are non-commercial. Override with delivery.vision.assert.model. */
+    static final String DEFAULT_MODEL = "qwen2.5vl:7b";
 
     private final LocalLlmClient client;
     private final String unavailableReason;

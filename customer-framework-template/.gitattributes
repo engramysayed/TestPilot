@@ -1,0 +1,7 @@
+# Keel settle files: settle-policy v1 (table, probe, golden) is sha256-pinned by the Keel engine and
+# settle-network.js must stay byte-identical to the engine copy. -text: git never converts these files
+# (no CRLF on Windows checkouts with core.autocrlf=true, no normalisation on add).
+**/keel/settle-policy.json       -text
+**/keel/settle-probe.js          -text
+**/keel/settle-policy.golden.txt -text
+**/keel/settle-network.js        -text

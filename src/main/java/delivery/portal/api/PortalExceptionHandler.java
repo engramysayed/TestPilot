@@ -17,7 +17,9 @@ public class PortalExceptionHandler {
 
     @ExceptionHandler(delivery.job.JobAdmissionException.class)
     public ResponseEntity<Map<String, String>> admissionRejected(delivery.job.JobAdmissionException e) {
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        HttpStatus status = "BUDGET_UNAVAILABLE".equals(e.code()) ? HttpStatus.SERVICE_UNAVAILABLE
+                : "ENVIRONMENT_INVALID".equals(e.code()) ? HttpStatus.CONFLICT : HttpStatus.TOO_MANY_REQUESTS;
+        return ResponseEntity.status(status)
                 .body(new ApiError(e.code(), e.getMessage()).asMap());
     }
 
@@ -50,6 +52,8 @@ public class PortalExceptionHandler {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, String>> conflictState(IllegalStateException e) {
+        if ("LEASE_LOST".equals(e.getMessage())) return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiError("LEASE_LOST", "lease expired or attempt no longer owned").asMap());
         String code = e.getMessage() != null && e.getMessage().contains("UPDATE")
                 ? "UPDATE_WITHOUT_FRAMEWORK"
                 : "CONFLICT";

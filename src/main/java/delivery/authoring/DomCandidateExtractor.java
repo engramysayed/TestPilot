@@ -38,7 +38,7 @@ public final class DomCandidateExtractor {
             "[role=checkbox]", "[role=radio]", "[role=switch]", "[role=spinbutton]",
             "[role=slider]", "[role=tab]", "[role=menuitem]", "[role=menuitemcheckbox]",
             "[role=menuitemradio]", "[aria-expanded]", "[aria-haspopup]",
-            "[contenteditable=true]");
+            "[contenteditable=true]", "li[data-keel-nav-item=true]", "nav li", "aside li", "[role=navigation] li", "[class*=sidebar] li", "[class*=side-menu] li");
     /** Roles that describe the control better than the tag it happens to be built from. */
     private static final List<String> WIDGET_ROLES = List.of(
             "combobox", "listbox", "textbox", "searchbox", "checkbox", "radio", "switch",
@@ -176,18 +176,26 @@ public final class DomCandidateExtractor {
 
         // Buttons / links / menu entries identified by visible text when they lack stable attributes.
         for (Element el : doc.select(
-                "button, a, [role=button], [role=menuitem], [aria-expanded], [aria-haspopup]")) {
+                "button, a, [role=button], [role=menuitem], [aria-expanded], [aria-haspopup], li[data-keel-nav-item=true], nav li, aside li, [role=navigation] li, [class*=sidebar] li, [class*=side-menu] li")) {
+            if ("li".equals(el.tagName()) && el.children().stream().anyMatch(child -> !child.select("li").isEmpty())) continue;
             if (hasStableAttr(el, repeatedIds) || isHidden(el)) {
                 continue;
             }
             String text = visibleLabel(el);
             if (text == null || text.length() < 2 || text.length() > 512
-                    || "true".equals(el.attr("data-keel-source-text-ambiguous"))) {
+                    || (!"li".equals(el.tagName()) && "true".equals(el.attr("data-keel-source-text-ambiguous")))) {
                 continue;
             }
             String tag = el.tagName().toLowerCase(Locale.ROOT);
             String kind = controlKind(el);
-            seq = put(byKey, seq, "xpath", innermostTextXpath(tag, text), kind, text);
+            String xpath = "li".equals(tag) ? "//li[normalize-space(.)=" + XpathLiterals.quote(text) + "]" : innermostTextXpath(tag, text);
+            // An exact-text twin exists in the source DOM (e.g. hidden responsive nav copy): the text
+            // xpath would match it first at runtime. Use the source-DOM ordinal instead.
+            if ("li".equals(tag) && "true".equals(el.attr("data-keel-source-text-ambiguous"))
+                    && el.attr("data-keel-source-xpath").startsWith("(//li)[")) {
+                xpath = el.attr("data-keel-source-xpath");
+            }
+            seq = put(byKey, seq, "xpath", xpath, kind, text);
         }
 
         // A selector matching several nodes is not one candidate, even if identical rows deduplicate.
@@ -387,6 +395,7 @@ public final class DomCandidateExtractor {
     public static String controlKind(Element el) {
         String tag = el.tagName().toLowerCase(Locale.ROOT);
         String role = el.attr("role").trim().toLowerCase(Locale.ROOT);
+        if ("li".equals(tag) && (el.hasAttr("data-keel-nav-item") || el.closest("nav,aside,[role=navigation],[class*=sidebar],[class*=side-menu]") != null)) return "menuitem";
         if ("input".equals(tag) && List.of("submit", "button", "reset", "image").contains(el.attr("type").toLowerCase(Locale.ROOT))) return "button";
         if (GENERIC_TAGS.contains(tag) && WIDGET_ROLES.contains(role)) {
             return role;

@@ -1,0 +1,6 @@
+{
+  "test": "project.tests.generated.TC_1Test.tc1",
+  "verdict": "FLAKY",
+  "attempt": 2,
+  "readOnly": true
+}

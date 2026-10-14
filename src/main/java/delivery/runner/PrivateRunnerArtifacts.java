@@ -1,44 +1,27 @@
 package delivery.runner;
 
-import delivery.job.WebhookSigner;
+import keel.contract.runner.ArtifactSignature;
+import keel.contract.runner.RunnerHeaders;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.HexFormat;
-
-/** HMAC of the artifact digest using the runner token. Bodies stay on the runner until this check passes. */
+/**
+ * HMAC of the artifact digest using the runner token. Bodies stay on the runner until this check passes.
+ * B03: the algorithm lives in {@code keel-contract} ({@link ArtifactSignature}); this facade keeps old call sites.
+ */
 public final class PrivateRunnerArtifacts {
-    public static final String SIGNATURE_HEADER = "X-Keel-Runner-Signature";
+    public static final String SIGNATURE_HEADER = RunnerHeaders.ARTIFACT_SIGNATURE;
 
     private PrivateRunnerArtifacts() {
     }
 
     public static String digest(byte[] body) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(body == null ? new byte[0] : body));
-        } catch (Exception e) {
-            throw new IllegalStateException("sha256 unavailable", e);
-        }
+        return ArtifactSignature.digest(body);
     }
 
     public static String signature(String token, String jobId, String attemptId, byte[] body) {
-        return WebhookSigner.signature(
-                token == null ? "" : token,
-                (jobId == null ? "" : jobId) + "." + (attemptId == null ? "" : attemptId),
-                digest(body));
+        return ArtifactSignature.signature(token == null ? "" : token, jobId, attemptId, body);
     }
 
     public static boolean matches(String token, String jobId, String attemptId, byte[] body, String header) {
-        if (header == null || header.isBlank() || token == null || token.isBlank()) {
-            return false;
-        }
-        String expected = signature(token, jobId, attemptId, body).toLowerCase();
-        String incoming = header.trim().toLowerCase();
-        if (incoming.startsWith("sha256=")) {
-            incoming = incoming.substring(7);
-        }
-        return MessageDigest.isEqual(
-                expected.getBytes(StandardCharsets.UTF_8), incoming.getBytes(StandardCharsets.UTF_8));
+        return ArtifactSignature.matches(token, jobId, attemptId, body, header);
     }
 }

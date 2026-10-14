@@ -52,7 +52,12 @@ public final class PrivateRunnerAgent {
         new PrivateRunnerAgent(portal, token, work, dry).runLoop();
     }
 
+    private String activeAttempt = "";
+    private int activeGeneration;
+
     public int runOnce() throws Exception {
+        activeAttempt = "";
+        activeGeneration = 0;
         heartbeat();
         HttpResponse<String> claim = post("/api/v1/runners/claim", "");
         if (claim.statusCode() == 204) {
@@ -63,6 +68,8 @@ public final class PrivateRunnerAgent {
         }
         JSONObject body = new JSONObject(claim.body());
         String jobId = body.getString("jobId");
+        activeAttempt = body.getString("attemptId");
+        activeGeneration = body.optInt("cancelGeneration");
         executeClaimed(jobId, body.optString("inputSnapshotHash"), body.optString("providerAllowlistSnapshot"));
         return 1;
     }
@@ -88,7 +95,8 @@ public final class PrivateRunnerAgent {
         if (!dryRun) {
             JSONObject stage = new JSONObject();
             stage.put("stage", "BROWSER");
-            post("/api/v1/runners/jobs/" + jobId + "/stage", stage.toString());
+            if (post("/api/v1/runners/jobs/" + jobId + "/stage", stage.toString()).statusCode() != 200)
+                throw new IllegalStateException("Runner stage rejected");
         }
         if (cancelRequested(jobId)) {
             completeCancelled(jobId, inputHash, meta, allowlist);
@@ -112,7 +120,8 @@ public final class PrivateRunnerAgent {
                 .header(PrivateRunnerArtifacts.SIGNATURE_HEADER, "sha256=" + sig)
                 .header("Content-Type", "application/octet-stream")
                 .POST(HttpRequest.BodyPublishers.ofByteArray(artifacts)));
-        http.send(upload, HttpResponse.BodyHandlers.ofString());
+        var uploadResponse = http.send(upload, HttpResponse.BodyHandlers.ofString());
+        if (uploadResponse.statusCode() != 202) throw new IllegalStateException("Artifact upload rejected: " + uploadResponse.statusCode());
         JSONObject complete = new JSONObject();
         complete.put("status", "COMPLETED");
         complete.put("passedCount", result.passed());
@@ -121,7 +130,8 @@ public final class PrivateRunnerAgent {
         complete.put("inputSnapshotHash", inputHash == null ? meta.optString("inputSnapshotHash") : inputHash);
         complete.put("providerAllowlistSnapshot",
                 allowlist == null || allowlist.isBlank() ? meta.optString("providerAllowlistSnapshot") : allowlist);
-        post("/api/v1/runners/jobs/" + jobId + "/complete", complete.toString());
+        if (post("/api/v1/runners/jobs/" + jobId + "/complete", complete.toString()).statusCode() != 200)
+            throw new IllegalStateException("Runner completion rejected");
     }
 
     private ExecuteJobResult runJob(String jobId, JSONObject meta, Path excel, Path jobDir) throws Exception {
@@ -141,7 +151,10 @@ public final class PrivateRunnerAgent {
                 false,
                 false,
                 AuthoringEngine.parse(meta.optString("authoringEngine", "keel")),
-                new PrecisionJobConfig(meta.optBoolean("precisionEnabled", false), meta.optInt("precisionMaxCalls", 50)),
+                new PrecisionJobConfig(
+                        meta.optBoolean("precisionEnabled", false),
+                        meta.optInt("precisionMaxCalls", 50),
+                        meta.optBoolean("precisionReuseLocatorMemory", false)),
                 tenant,
                 jobId,
                 TenantScope.HOSTED
@@ -151,7 +164,7 @@ public final class PrivateRunnerAgent {
                 try {
                     return cancelRequested(jobId);
                 } catch (Exception e) {
-                    return false;
+                    return true;
                 }
             });
         }
@@ -159,7 +172,7 @@ public final class PrivateRunnerAgent {
             try {
                 return cancelRequested(jobId);
             } catch (Exception e) {
-                return false;
+                return true;
             }
         });
     }
@@ -174,12 +187,13 @@ public final class PrivateRunnerAgent {
         complete.put("inputSnapshotHash", inputHash == null ? meta.optString("inputSnapshotHash") : inputHash);
         complete.put("providerAllowlistSnapshot",
                 allowlist == null || allowlist.isBlank() ? meta.optString("providerAllowlistSnapshot") : allowlist);
-        post("/api/v1/runners/jobs/" + jobId + "/complete", complete.toString());
+        if (post("/api/v1/runners/jobs/" + jobId + "/complete", complete.toString()).statusCode() != 200)
+            throw new IllegalStateException("Runner cancellation completion rejected");
     }
 
     private boolean cancelRequested(String jobId) throws Exception {
         HttpResponse<String> lease = post("/api/v1/runners/jobs/" + jobId + "/lease", "");
-        if (lease.statusCode() == 409) {
+        if (lease.statusCode() != 200) {
             return true;
         }
         if (lease.statusCode() == 200 && new JSONObject(lease.body()).optBoolean("cancelRequested", false)) {
@@ -211,10 +225,14 @@ public final class PrivateRunnerAgent {
 
     private byte[] getBytes(String path) throws Exception {
         HttpRequest.Builder b = HttpRequest.newBuilder().uri(URI.create(portal + path)).GET();
-        return http.send(authorized(b), HttpResponse.BodyHandlers.ofByteArray()).body();
+        var response = http.send(authorized(b), HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() != 200) throw new IllegalStateException("Frozen runner input rejected");
+        return response.body();
     }
 
     private HttpRequest authorized(HttpRequest.Builder builder) {
+        if (!activeAttempt.isBlank()) builder.header(keel.contract.runner.RunnerHeaders.ATTEMPT, activeAttempt)
+                .header(keel.contract.runner.RunnerHeaders.CANCEL_GENERATION, String.valueOf(activeGeneration));
         return builder
                 .header("Authorization", "Bearer " + token)
                 .header(ApiRequestHeaderFilter.HEADER, ApiRequestHeaderFilter.VALUE)

@@ -38,6 +38,8 @@ public class JobsSchemaPatch implements ApplicationRunner {
         addColumnQuietly("environment_revision_id", "VARCHAR(64)");
         addColumnQuietly("parent_job_id", "VARCHAR(80)");
         addColumnQuietly("precision_max_snapshot", "INT DEFAULT 0 NOT NULL");
+        addColumnQuietly("precision_enabled_snapshot", "BOOLEAN");
+        addColumnQuietly("precision_reuse_locator_memory_snapshot", "BOOLEAN DEFAULT FALSE");
         addColumnQuietly("require_private_runner", "BOOLEAN DEFAULT FALSE");
         addColumnQuietly("providers_used", "VARCHAR(128)");
         addColumnQuietly("fallback_used", "BOOLEAN DEFAULT FALSE");

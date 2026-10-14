@@ -1,0 +1,14 @@
+# B10 reviewed hard-coded host/path literals: file|literal|reason. Shrink-only (stale entries fail the check).
+src/main/java/delivery/cli/DeliveryCli.java|./delivery-store|developer CLI default (not portal/engine runtime); removed with the CLI in 0b
+src/main/java/delivery/cli/DeliveryCli.java|http://127.0.0.1:11434|developer CLI default Ollama URL (not portal/engine runtime)
+src/main/java/delivery/net/TargetNetworkPolicy.java|localhost|security matcher: names to BLOCK as targets, not a host we connect to
+src/main/java/delivery/net/TargetNetworkPolicy.java|localhost.localdomain|security matcher: names to BLOCK as targets
+src/main/java/delivery/net/TargetNetworkPolicy.java|ip6-localhost|security matcher: names to BLOCK as targets
+src/main/java/delivery/net/WorkerPac.java|  return 'PROXY 127.0.0.1:9';\n|deliberate blackhole proxy (discard port) for denied hosts in the PAC
+src/main/java/delivery/portal/DeliveryPortalProperties.java|./delivery-store|mirrors delivery.store-root in application.properties; Java fallback removed in 0b
+src/main/java/delivery/portal/DeliveryPortalProperties.java|http://127.0.0.1:11434|mirrors delivery.llm-base-url in application.properties; Java fallback removed in 0b
+src/main/java/delivery/portal/DeliveryPortalProperties.java|http://localhost:8080|mirrors delivery.public-base-url in application.properties; Java fallback removed in 0b
+src/main/java/delivery/portal/api/AdminOpsController.java|Check delivery-store free space and retention sweeper logs.|operator help text, not a path in use
+src/main/java/delivery/portal/security/JobSecretCrypto.java|./delivery-store|fallback when delivery.store-root system property is absent (portal-only); 0b makes it required
+src/main/java/delivery/runner/EngineConfig.java|delivery-store|engine startup guard: the forbidden word itself
+src/main/java/delivery/runner/PrivateRunnerAgent.java|http://127.0.0.1:8081|legacy v1 agent fallback (KEEL_ENGINE_LEGACY=1); deleted with the v1 runner in 0b

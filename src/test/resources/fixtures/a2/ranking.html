@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<h1>Order</h1>
+<button id="btn-save" data-axis-test-id="save-hook" data-testid="save" aria-label="Save order" class="btn primary" title="Save" onclick="document.getElementById('out').textContent='saved'">Save</button>
+<button id="del-1" class="btn danger" aria-label="Delete">Delete</button>
+<button id="del-2" class="btn danger" aria-label="Delete">Delete</button>
+<input placeholder="Search orders" name="q">
+<button id="ember1234">Refresh</button>
+<p id="out">none</p>
+<script>
+window.dupSave = function () {
+  const b = document.getElementById('btn-save').cloneNode(true); b.removeAttribute('id'); document.body.appendChild(b);
+};
+window.dropSave = function () { document.getElementById('btn-save').remove(); };
+</script>
+</body></html>

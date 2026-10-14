@@ -1,0 +1,1 @@
+# B02 module-boundary allowlist (RULE|originClass|targetPackage). May only shrink.

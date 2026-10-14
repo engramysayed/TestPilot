@@ -1,7 +1,7 @@
 # Architecture audit — flow, defects, enhancements
 
-**Date:** 2026-08-09  
-**Graphify:** `graphify update . --force` → 10685 nodes / 27479 edges / 504 communities (`graphify-out/`, refreshed 2026-09-27, commit `f26b6d9`).  
+**Date:** 2026-10-13  
+**Graphify:** `graphify update . --force` → 11046 nodes / 28557 edges / 530 communities (`graphify-out/`, refreshed 2026-10-13, commit `de7f579`).  
 **Diagnose:** re-run `graphify diagnose multigraph` after major refactors; graph.html uses aggregated community view above 5000 nodes.
 
 ## Flow to lowest nodes (runtime)

@@ -7,7 +7,6 @@ import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStatus;
 import delivery.ir.TcDraftStore;
 import delivery.ir.TcIdentity;
-import delivery.portal.service.DesignReferenceService;
 import delivery.store.ProjectStore;
 import delivery.vision.DesignCompareEvidence;
 import delivery.vision.DesignCompareResult;
@@ -46,7 +45,7 @@ public class DryRunExecuteService {
         Path dest = projectRoot.resolve("execute-runs").resolve(jobId);
         Files.createDirectories(dest);
         TcDraftStore drafts = new TcDraftStore(dest);
-        DesignReferenceService references = new DesignReferenceService();
+        delivery.job.port.SiteMemoryPort references = delivery.job.port.EnginePorts.siteMemory();
         String provider = VisionGroundingConfig.assertProviderId();
         String model = VisionGroundingConfig.assertModel();
 
@@ -71,7 +70,7 @@ public class DryRunExecuteService {
                     ""
             );
             drafts.write(draft);
-            if (references.resolve(projectRoot, tc.tcId()).isPresent()) {
+            if (references.designReference(projectRoot, tc.tcId()).isPresent()) {
                 Path evidenceDir = dest.resolve("evidence").resolve(TcIdentity.storageKey(tc.tcId()));
                 DesignCompareEvidence.write(
                         evidenceDir,

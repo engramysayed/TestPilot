@@ -3,7 +3,7 @@ package delivery.job;
 import delivery.excel.GeneratedTcCsvParser;
 import delivery.excel.ManualTestCase;
 import delivery.excel.UserStoryBulkParser;
-import delivery.portal.service.TcGenerateService;
+import delivery.job.port.StoryCaseGenerator;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -19,13 +19,13 @@ public class GenerateBatchJobRunner {
         return progress;
     }
 
-    public GenerateBatchJobResult run(GenerateBatchJobRequest request, TcGenerateService generate) throws Exception {
+    public GenerateBatchJobResult run(GenerateBatchJobRequest request, StoryCaseGenerator generate) throws Exception {
         return run(request, generate, () -> false);
     }
 
     public GenerateBatchJobResult run(
             GenerateBatchJobRequest request,
-            TcGenerateService generate,
+            StoryCaseGenerator generate,
             BooleanSupplier cancelCheck
     ) throws Exception {
         String raw = Files.readString(request.storiesPath(), StandardCharsets.UTF_8);
@@ -42,8 +42,7 @@ public class GenerateBatchJobRunner {
             progress.update(index, stories.size(),
                     "Generating " + entry.usId() + " — " + shortLabel(entry.title()));
             try {
-                List<ManualTestCase> batch = generate.generateCasesForStory(
-                        request.project(),
+                List<ManualTestCase> batch = generate.generate(
                         entry.toPromptBlock(),
                         request.reviewPass(),
                         entry.usId(),

@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.dev/contracts/proven-step-ir.schema.json",
+  "title": "Codegen IR step (ProvenStepCodec): legacy fields + A3 candidates/fallbacks/route + v2 contract + drag + sideEffects + secret",
+  "type": "object",
+  "required": [
+    "action",
+    "locatorStrategy",
+    "locatorValue"
+  ],
+  "properties": {
+    "tcId": {
+      "type": "string"
+    },
+    "pageName": {
+      "type": "string"
+    },
+    "actionType": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string"
+    },
+    "locatorStrategy": {
+      "type": "string"
+    },
+    "locatorValue": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "assertionType": {
+      "type": "string"
+    },
+    "assertionExpected": {
+      "type": "string"
+    },
+    "validated": {
+      "type": "boolean"
+    },
+    "rationale": {
+      "type": "string"
+    },
+    "screenshotRelPath": {
+      "type": "string"
+    },
+    "locatorCandidates": {
+      "type": "array",
+      "items": {
+        "$ref": "locator-candidate.schema.json"
+      }
+    },
+    "fallbacks": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "$ref": "locator-candidate.schema.json"
+      }
+    },
+    "route": {
+      "type": "string"
+    },
+    "contract": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2,
+      "description": "Keel locator contract. Absent = 1; an explicit 1 is allowed. A value above 2 is rejected by codegen with a clear error (here: schema-invalid). With 1 (or absent) every keel value must be v1."
+    },
+    "actionHint": {
+      "enum": [
+        "drag"
+      ]
+    },
+    "dropTarget": {
+      "oneOf": [
+        {
+          "$ref": "keel-target-v2.schema.json"
+        },
+        {
+          "$ref": "locator-candidate.schema.json"
+        }
+      ]
+    },
+    "dropCandidates": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "$ref": "locator-candidate.schema.json"
+      }
+    },
+    "sideEffects": {
+      "enum": [
+        "none",
+        "mutating",
+        "unknown"
+      ],
+      "default": "unknown",
+      "description": "Set by prove per step. 'none': re-running the step cannot change application state (navigation, opening menus/tabs/accordions, sorting/filtering a view, hovering, scrolling). 'mutating': it may create/update/delete state or submit data. 'unknown' (also when absent or null): treated as mutating. Codegen marks a case read-only (retry-eligible) only if every action step is 'none' or the case has assertions only. Ignored on assertion steps."
+    },
+    "secret": {
+      "type": "boolean",
+      "default": false,
+      "description": "r2 SPEC section 2. true: password / masked / OTP target, or the value comes from a secret or credential. JSON boolean; absent or null == false (null tolerated by the codec; writers omit the key unless true); any other type is rejected. Allowed on any action and independent of sideEffects. Codegen: secret type/clear steps settle with the A8 typeSecret rule (effect none, effectWaitMs 0); the value is never inlined (read via Secrets.property: -D<key>, env <key> or KEEL_SECRET_<KEY>, or the local test-data/delivery-secrets.local.properties, excluded from package.zip) and is masked as \u2022\u2022\u2022 in logs, Allure, the PR report and keel-results/*.jsonl."
+    }
+  },
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "locatorStrategy": {
+            "const": "keel"
+          }
+        },
+        "required": [
+          "locatorStrategy"
+        ]
+      },
+      "then": {
+        "properties": {
+          "locatorValue": {
+            "$ref": "keel-target-v2.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "locatorStrategy": {
+            "const": "keel"
+          }
+        },
+        "required": [
+          "locatorStrategy"
+        ],
+        "anyOf": [
+          {
+            "not": {
+              "required": [
+                "contract"
+              ]
+            }
+          },
+          {
+            "properties": {
+              "contract": {
+                "const": 1
+              }
+            },
+            "required": [
+              "contract"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "locatorValue": {
+            "$ref": "keel-target-v1.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "anyOf": [
+          {
+            "not": {
+              "required": [
+                "contract"
+              ]
+            }
+          },
+          {
+            "properties": {
+              "contract": {
+                "const": 1
+              }
+            },
+            "required": [
+              "contract"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "locatorCandidates": {
+            "items": {
+              "$ref": "#/$defs/v1Candidate"
+            }
+          },
+          "fallbacks": {
+            "items": {
+              "$ref": "#/$defs/v1Candidate"
+            }
+          },
+          "dropCandidates": {
+            "items": {
+              "$ref": "#/$defs/v1Candidate"
+            }
+          },
+          "dropTarget": {
+            "anyOf": [
+              {
+                "type": "string",
+                "$ref": "keel-target-v1.schema.json"
+              },
+              {
+                "type": "object",
+                "$ref": "#/$defs/v1Candidate"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actionHint": {
+            "const": "drag"
+          }
+        },
+        "required": [
+          "actionHint"
+        ]
+      },
+      "then": {
+        "required": [
+          "dropTarget"
+        ]
+      }
+    },
+    {
+      "if": {
+        "anyOf": [
+          {
+            "required": [
+              "dropTarget"
+            ]
+          },
+          {
+            "required": [
+              "dropCandidates"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "required": [
+          "actionHint"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "v1Candidate": {
+      "if": {
+        "properties": {
+          "strategy": {
+            "const": "keel"
+          }
+        },
+        "required": [
+          "strategy"
+        ]
+      },
+      "then": {
+        "properties": {
+          "value": {
+            "$ref": "keel-target-v1.schema.json"
+          }
+        }
+      }
+    }
+  }
+}

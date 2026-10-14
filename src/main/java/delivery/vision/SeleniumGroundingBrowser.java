@@ -15,8 +15,17 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
             """;
 
     private static final String SCROLL_JS = """
-            const s = document.scrollingElement || document.documentElement;
-            s.scrollBy(0, Math.floor((window.innerHeight||0)*0.8));
+            const candidates=Array.from(document.querySelectorAll('*')).filter(e=>{
+              const r=e.getBoundingClientRect(),s=getComputedStyle(e);
+              return r.width>0&&r.height>40&&r.bottom>0&&r.top<innerHeight
+                && /(auto|scroll)/.test(s.overflowY)&&e.scrollHeight>e.clientHeight+2;
+            }).sort((a,b)=>{
+              const nav=e=>e.closest('nav,aside,[role=navigation],[class*=sidebar],[class*=side-menu]')?1:0;
+              return nav(b)-nav(a);
+            });
+            for(const s of candidates){const before=s.scrollTop;s.scrollBy(0,Math.floor(s.clientHeight*0.8));if(s.scrollTop!==before)return;}
+            const s=document.scrollingElement||document.documentElement;
+            s.scrollBy(0, Math.floor(innerHeight*0.8));
             """;
 
     private static final String ELEMENT_FROM_POINT_JS = """
@@ -25,7 +34,12 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
               const tag = el.tagName.toLowerCase();
               if (['button','a','input','select','textarea'].indexOf(tag) >= 0) return true;
               const role = (el.getAttribute('role') || '').toLowerCase();
-              return ['button','link','textbox','combobox','checkbox','radio'].indexOf(role) >= 0;
+              if (['button','link','textbox','combobox','listbox','searchbox','checkbox','radio','switch','spinbutton','slider','menuitem','menuitemcheckbox','menuitemradio','tab','treeitem'].includes(role)
+                  || el.getAttribute('contenteditable') === 'true') return true;
+              if (el.hasAttribute('onclick') || typeof el.onclick === 'function') return true;
+              return tag === 'li' && !el.querySelector('li')
+                  && (el.getAttribute('data-keel-nav-item') === 'true'
+                      || !!el.closest('nav,aside,[role=navigation],[class*=sidebar],[class*=side-menu]'));
             }
             function isDisplayed(el) {
               if (!el) return false;
@@ -50,7 +64,13 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
               el = el.parentElement;
             }
             if (!el) return null;
+            const preferred = (arguments[2] || []).find(a => {
+              const value = el.getAttribute(a);
+              return value && document.querySelectorAll(el.tagName.toLowerCase()+'['+a+'="'+CSS.escape(value)+'"]').length === 1;
+            });
             return {
+              preferredAttribute: preferred || '',
+              preferredValue: preferred ? el.getAttribute(preferred) : '',
               tag: el.tagName.toLowerCase(),
               id: el.id || '',
               name: el.getAttribute('name') || '',
@@ -80,7 +100,9 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
             return null;
         }
         try {
-            Object raw = js.executeScript(ELEMENT_FROM_POINT_JS, cssX, cssY);
+            observed = null;
+            Object raw = js.executeScript(ELEMENT_FROM_POINT_JS, cssX, cssY,
+                    delivery.store.PreferredHooksStore.current());
             if (!(raw instanceof Map<?, ?> map)) {
                 return null;
             }
@@ -95,7 +117,8 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
                     boolVal(map.get("displayed")),
                     boolVal(map.get("enabled")),
                     stringVal(map.get("outerFingerprint")),
-                    stringVal(map.get("visibleText")), stringVal(map.get("dataTestAttribute")));
+                    stringVal(map.get("visibleText")), stringVal(map.get("dataTestAttribute")),
+                    stringVal(map.get("preferredAttribute")), stringVal(map.get("preferredValue")));
         } catch (WebDriverException e) {
             return null;
         }
@@ -134,6 +157,8 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
         } catch (RuntimeException unavailable) { return false; }
     }
 
+    @Override public boolean hasObservationIdentity() { return true; }
+
     @Override
     public String observationVersion() {
         if (!(driver instanceof JavascriptExecutor js)) return "";
@@ -144,17 +169,19 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
                   window.__keelGroundObserver = new MutationObserver(() => window.__keelGroundVersion++);
                   window.__keelGroundObserver.observe(document.documentElement, {subtree:true,childList:true,attributes:true,characterData:true});
                 }
-                return location.href+'|'+innerWidth+'|'+innerHeight+'|'+scrollX+'|'+scrollY+'|'+window.__keelGroundVersion;
+                const nested=Array.from(document.querySelectorAll('*')).filter(e=>e.scrollTop||e.scrollLeft)
+                  .map(e=>e.scrollLeft+','+e.scrollTop).join(';');
+                return location.href+'|'+innerWidth+'|'+innerHeight+'|'+scrollX+'|'+scrollY+'|'+nested+'|'+window.__keelGroundVersion;
                 """));
         } catch (RuntimeException unavailable) { return "unavailable"; }
     }
 
     @Override public Object saveScroll() {
-        return driver instanceof JavascriptExecutor js ? js.executeScript("return [scrollX,scrollY]") : null;
+        return driver instanceof JavascriptExecutor js ? js.executeScript("return Array.from(document.querySelectorAll('*')).filter(e=>e.scrollHeight>e.clientHeight+2&&e.clientHeight>0).map(e=>[e,e.scrollLeft,e.scrollTop])") : null;
     }
     @Override public void restoreScroll(Object position) {
-        if (driver instanceof JavascriptExecutor js && position instanceof java.util.List<?> p && p.size() == 2)
-            js.executeScript("window.scrollTo(arguments[0],arguments[1])", p.get(0), p.get(1));
+        if (driver instanceof JavascriptExecutor js && position instanceof java.util.List<?> p)
+            js.executeScript("for(const row of arguments[0]){if(row[0].isConnected){row[0].scrollLeft=row[1];row[0].scrollTop=row[2]}}", p);
     }
 
     @Override

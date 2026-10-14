@@ -1,0 +1,15 @@
+<!doctype html><html><body><h1>Shadow</h1>
+<x-open id="o"></x-open><x-closed id="c"></x-closed><p id="out">none</p>
+<script>
+customElements.define('x-inner', class extends HTMLElement { constructor(){ super();
+  const r=this.attachShadow({mode:'open'});
+  r.innerHTML='<button class="nested" onclick="document.getElementById(\'out\').textContent=\'nested\'">Nested action</button>'; }});
+customElements.define('x-open', class extends HTMLElement { constructor(){ super();
+  const r=this.attachShadow({mode:'open'});
+  r.innerHTML='<button id="ob">Open action</button><iframe id="sf" srcdoc="<button>Frame in shadow</button>"></iframe>';
+  r.getElementById('ob').onclick=()=>document.getElementById('out').textContent='open'; }});
+customElements.define('x-closed', class extends HTMLElement { constructor(){ super();
+  const r=this.attachShadow({mode:'closed'});
+  r.innerHTML='<button id="cb">Closed action</button><x-inner></x-inner>';
+  r.getElementById('cb').onclick=()=>document.getElementById('out').textContent='closed'; }});
+</script></body></html>

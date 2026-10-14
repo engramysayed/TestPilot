@@ -105,11 +105,16 @@ public class JobEntity {
     @Column(name = "precision_max_snapshot", nullable = false, columnDefinition = "integer default 0")
     private int precisionMaxSnapshot;
     private Boolean precisionEnabledSnapshot;
+    private Boolean precisionReuseLocatorMemorySnapshot;
     @Column(length = 32)
     private String authoringEngineSnapshot;
 
     @Column(name = "require_private_runner", nullable = false, columnDefinition = "boolean default false")
     private boolean requirePrivateRunner;
+
+    /** B08: last fencing token issued for this job (Runner API v2); survives portal restarts. */
+    @Column(name = "fencing_token")
+    private Long fencingToken;
 
     @Column(name = "providers_used", length = 128)
     private String providersUsed;
@@ -191,10 +196,16 @@ public class JobEntity {
     public void setPrecisionEnabledSnapshot(Boolean value) { precisionEnabledSnapshot = value; }
     public int getPrecisionMaxSnapshot() { return precisionMaxSnapshot; }
     public void setPrecisionMaxSnapshot(int precisionMaxSnapshot) { this.precisionMaxSnapshot = precisionMaxSnapshot; }
+    public Boolean getPrecisionReuseLocatorMemorySnapshot() { return precisionReuseLocatorMemorySnapshot; }
+    public void setPrecisionReuseLocatorMemorySnapshot(Boolean value) {
+        this.precisionReuseLocatorMemorySnapshot = value;
+    }
     public boolean isRequirePrivateRunner() { return requirePrivateRunner; }
     public void setRequirePrivateRunner(boolean requirePrivateRunner) {
         this.requirePrivateRunner = requirePrivateRunner;
     }
+    public long getFencingToken() { return fencingToken == null ? 0L : fencingToken; }
+    public void setFencingToken(long fencingToken) { this.fencingToken = fencingToken; }
     public String getProvidersUsed() { return providersUsed; }
     public void setProvidersUsed(String providersUsed) { this.providersUsed = providersUsed; }
     public boolean isFallbackUsed() { return fallbackUsed; }

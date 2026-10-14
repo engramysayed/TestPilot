@@ -22,6 +22,9 @@ MEMBER tokens can poll status; they cannot submit or cancel.
 - Repeat the same `Idempotency-Key` header to reuse the first job id (`idempotentReplay: true`).
 - A different body with the same key returns `409 IDEMPOTENCY_CONFLICT`.
 - The job pins the current library (and environment, when supplied). A later library edit does not rewrite this run.
+- An environment revision resolves the execution origin, optional credential profile and provider allowlist before admission. Missing/corrupt revisions or credential references return `409 ENVIRONMENT_INVALID`. Positive environment caps narrow admission/claim limits; zero inherits installation limits. Storage identity remains unchanged.
+- Failed admission does not reserve an idempotency key for a nonexistent job. A retry can admit the job after the rejection is resolved. Successful replay does not consult a changed current workbook or credential profile.
+- Unavailable/corrupt scoped budget storage rejects admission with `503 BUDGET_UNAVAILABLE`.
 
 ## Poll and cancel
 

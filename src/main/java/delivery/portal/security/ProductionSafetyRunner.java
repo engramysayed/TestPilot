@@ -35,5 +35,9 @@ public class ProductionSafetyRunner implements ApplicationRunner {
                 env.getProperty("delivery.public-base-url", "").toLowerCase(Locale.ROOT).startsWith("https://"),
                 env.getProperty("delivery.install.private-cidrs", "")
         ));
+        ProductionSafetyGuard.requireSafeRunnerTransport(new ProductionSafetyGuard.RunnerTransport(
+                production,
+                env.getProperty("keel.topology", "single"),
+                Boolean.parseBoolean(env.getProperty("keel.runner.mtls.required", "false"))));
     }
 }

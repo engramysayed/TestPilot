@@ -1,0 +1,12 @@
+# Known pre-existing keel-portal failures at integration series 0045 (full-suite-0045.log).
+# Same 9 fail on bare base 616813e — not caused by the series. One entry per line: FQCN#method
+# Updated: 2026-10-14 (QA/DevOps). Company-machine constraint unchanged (no infra in CI).
+delivery.acceptance.LocalAcceptanceHarnessTest#replayUsesSupervisorDeadlineAndKillsProcessTree
+delivery.job.DurableJobClaimTest#expiredAdmittedLeaseIsReclaimableAndStaleAttemptCannotPublish
+delivery.job.EmitGeneratedLayerContractTest#emitCodegensEveryDraftIncludingReusedThenCompilesBeforePublish
+delivery.portal.api.JobCompareApiTest#populatedHistoryShowsFallbackCompareClassifyAndPreservesOriginalAfterRerun
+delivery.portal.api.JobCompareApiTest#rerunMintsANewAttemptWithPinnedInputs
+delivery.portal.api.PrivateRunnerApiTest#completeRejectsFrozenInputAndProviderDriftAndHonorsCancel
+delivery.portal.api.PrivateRunnerApiTest#enrollHeartbeatClaimRejectsCrossTenantAndRevokes
+delivery.portal.api.PrivateRunnerApiTest#runnerMarksBrowserStageThenDisconnectIsUncertain
+delivery.portal.service.GeneratedWorkbookKeelPathUpdateTest#updateKeelPaths_preservesOtherMetaFields

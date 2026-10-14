@@ -85,7 +85,7 @@ public class CompareGenerateWorker {
             CompareJobFiles.writeResult(resultFile, compareResult);
             job.setZipPath(resultFile);
             job.setMessage("Comparison ready — open Generate to pick a model");
-            if (!delivery.job.DurableJobClaim.sameAttempt(job, lease.get())) {
+            if (!delivery.portal.jobs.DurableJobClaim.sameAttempt(job, lease.get())) {
                 log.info("Compare job {} fenced; skipping publish", jobId);
             } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);

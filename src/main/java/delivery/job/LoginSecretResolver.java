@@ -22,6 +22,7 @@ public final class LoginSecretResolver {
         List<ProvenStep> out = new ArrayList<>(steps.size());
         for (ProvenStep s : steps) {
             String v = s.value() == null ? "" : s.value();
+            boolean secret = s.secret() || delivery.ir.SecretStep.isSecretValue(v, List.of());
             if ("${TARGET_USERNAME}".equals(v)) {
                 v = user;
             } else if ("${TARGET_PASSWORD}".equals(v)) {
@@ -31,7 +32,7 @@ public final class LoginSecretResolver {
                     s.tcId(), s.pageName(), s.actionType(), s.action(),
                     s.locatorStrategy(), s.locatorValue(), v,
                     s.assertionType(), s.assertionExpected(), s.validated(), s.rationale(),
-                    s.screenshotRelPath()));
+                    s.screenshotRelPath(), s.locatorCandidates(), s.dropCandidates(), s.sideEffects(), secret));
         }
         return out;
     }

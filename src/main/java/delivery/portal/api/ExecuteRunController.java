@@ -172,7 +172,7 @@ public class ExecuteRunController {
             workbooks.headRevisionId(projectId).ifPresent(job::setLibraryRevisionId);
         }
         Path requestPath = AuthoringJobRequestFiles.requestPath(
-                store.projectDiskRoot(projectId), JobRecord.JobKind.EXECUTE, jobId);
+                store.projectDiskRoot(projectId), delivery.portal.engine.InProcessJobContext.wire(JobRecord.JobKind.EXECUTE), jobId);
         AuthoringJobRequestFiles.write(requestPath, engine);
         if (runner != null && "private".equalsIgnoreCase(runner.trim())) {
             job.setRequirePrivateRunner(true);

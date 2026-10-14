@@ -1,0 +1,51 @@
+{
+  "contract": 2,
+  "parse": [
+    {
+      "in": "css=#a",
+      "hops": [
+        [
+          "css",
+          "#a"
+        ]
+      ],
+      "version": 1,
+      "format": "css=#a"
+    }
+  ],
+  "invalid": [
+    ""
+  ],
+  "normalize": [
+    {
+      "in": "  Save\n  order ",
+      "out": "Save order"
+    }
+  ],
+  "match": [
+    {
+      "html": "<button>Save</button><button>Save order</button>",
+      "text": "Save",
+      "count": 1
+    }
+  ],
+  "point": [
+    {
+      "point": "100,50@800x400",
+      "current": [
+        400,
+        200
+      ],
+      "offset": [
+        -150,
+        -75
+      ]
+    }
+  ],
+  "sanitizer": [
+    {
+      "text": "Save",
+      "allowed": true
+    }
+  ]
+}

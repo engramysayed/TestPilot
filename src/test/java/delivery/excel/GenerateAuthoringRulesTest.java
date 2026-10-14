@@ -7,6 +7,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GenerateAuthoringRulesTest {
+    @Test public void rejectsAbsentFieldImmediatelyBeforeEntry() {
+        var errors = new ArrayList<String>();
+        GenerateAuthoringRules.checkAbsentThenTyped("TC_01", "1. Confirm the OTP field is not visible\n2. Enter in the OTP field", errors);
+        Assert.assertTrue(errors.stream().anyMatch(e -> e.contains("FIELD_VISIBILITY_CONTRADICTION")));
+    }
+    @Test public void permitsVisibleEntryAndAbsenceAfterSubmitAndExplicitReveal() {
+        for (String steps : List.of(
+                "1. Confirm the OTP field is visible\n2. Enter in the OTP field\n3. Click Verify OTP\n4. Confirm the OTP field is not visible",
+                "1. Confirm the OTP field is not visible\n2. Click Show OTP\n3. Enter in the OTP field",
+                "1. Confirm the OTP field is not visible\n2. Enter in the Username field")) {
+            var errors = new ArrayList<String>();
+            GenerateAuthoringRules.checkAbsentThenTyped("TC", steps, errors);
+            Assert.assertTrue(errors.isEmpty(), errors.toString());
+        }
+    }
 
     private static List<String> check(ManualTestCase tc) {
         return check(tc, null);

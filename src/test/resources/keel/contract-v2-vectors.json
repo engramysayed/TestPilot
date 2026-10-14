@@ -1,0 +1,60 @@
+{
+  "contract": 2,
+  "parse": [
+    {"in": "css=#a", "hops": [["css","#a"]], "version": 1, "format": "css=#a"},
+    {"in": "frame=iframe#f >> shadow=x-app >> css=button", "hops": [["frame","iframe#f"],["shadow","x-app"],["css","button"]], "version": 1, "format": "frame=iframe#f >> shadow=x-app >> css=button"},
+    {"in": "css=a[title=\"x \\>> y\"]", "hops": [["css","a[title=\"x >> y\"]"]], "version": 1, "format": "css=a[title=\"x \\>> y\"]"},
+    {"in": "text=\"Save\"", "hops": [["text","Save"]], "version": 2, "format": "text=\"Save\""},
+    {"in": "shadow-closed=x-menu >> text=\"Item 50\"", "hops": [["shadow-closed","x-menu"],["text","Item 50"]], "version": 2, "format": "shadow-closed=x-menu >> text=\"Item 50\""},
+    {"in": "text=\"a >> b\"", "hops": [["text","a >> b"]], "version": 2, "format": "text=\"a >> b\""},
+    {"in": "text=\"say \\\"hi\\\" \\\\ ok\"", "hops": [["text","say \"hi\" \\ ok"]], "version": 2, "format": "text=\"say \\\"hi\\\" \\\\ ok\""},
+    {"in": "text=\"caf\\u00e9\"", "hops": [["text","café"]], "version": 2, "format": "text=\"café\""},
+    {"in": "css=canvas#c >> point=100,50@800x400", "hops": [["css","canvas#c"],["point","100,50@800x400"]], "version": 2, "format": "css=canvas#c >> point=100,50@800x400"},
+    {"in": "css=canvas#c >> provider=chartjs:bar/3 >> point=100,50@800x400", "hops": [["css","canvas#c"],["provider","chartjs:bar/3"],["point","100,50@800x400"]], "version": 2, "format": "css=canvas#c >> provider=chartjs:bar/3 >> point=100,50@800x400"}
+  ],
+  "invalid": [
+    "", "frame=iframe", "shadow=x-app", "css=a >> css=b", "text=Save", "text=\"unterminated",
+    "text=\"\"", "text=\"a\" >> css=b", "point=1,2@3x4", "css=a >> point=1,2", "css=a >> point=-1,2@10x10",
+    "css=a >> point=1,2@0x10", "text=\"x\" >> provider=chartjs:1", "css=a >> provider=Chart JS:1",
+    "css=a >> point=1,2@3x4 >> provider=p:1", "xpath=//a", "text=\"bad \\q\""
+  ],
+  "normalize": [
+    {"in": "  Save\n  order ", "out": "Save order"},
+    {"in": "Save\u00a0order", "out": "Save order"},
+    {"in": "Sa\u200bve", "out": "Save"},
+    {"in": "cafe\u0301", "out": "café"},
+    {"in": "SAVE", "out": "SAVE"},
+    {"in": "\t\u202fA\u2007B\ufeff", "out": "A B"}
+  ],
+  "match": [
+    {"html": "<button>Save</button><button>Save order</button>", "text": "Save", "count": 1},
+    {"html": "<button>Save</button><button> Save </button>", "text": "Save", "count": 2},
+    {"html": "<button>save</button>", "text": "Save", "count": 0},
+    {"html": "<a href='#'><span>Item</span> <b>50</b></a>", "text": "Item 50", "count": 1},
+    {"html": "<p>Save</p>", "text": "Save", "count": 0},
+    {"html": "<button style='display:none'>Save</button>", "text": "Save", "count": 0},
+    {"html": "<button style='visibility:hidden'>Save</button>", "text": "Save", "count": 0},
+    {"html": "<button style='position:absolute;left:-5000px'>Save</button>", "text": "Save", "count": 1},
+    {"html": "<input type='submit' value='Go'>", "text": "Go", "count": 1},
+    {"html": "<div role='button'><button>Go</button></div>", "text": "Go", "count": 1},
+    {"html": "<nav><ul><li>Support</li><li>Billing</li></ul></nav>", "text": "Support", "count": 1},
+    {"html": "<ul><li>Support</li></ul>", "text": "Support", "count": 0}
+  ],
+  "point": [
+    {"point": "100,50@800x400", "current": [400, 200], "offset": [-150, -75]},
+    {"point": "400,200@800x400", "current": [800, 400], "offset": [0, 0]},
+    {"point": "0,0@100x100", "current": [200, 50], "offset": [-100, -25]}
+  ],
+  "sanitizer": [
+    {"text": "Save", "allowed": true},
+    {"text": "Item 50", "allowed": true},
+    {"text": "S", "allowed": false},
+    {"text": "john.doe@example.com", "allowed": false},
+    {"text": "Call 0100 123 4567", "allowed": false},
+    {"text": "EG380019000500000000263180002", "allowed": false},
+    {"text": "Total $120", "allowed": false},
+    {"text": "Due 12/10/2026", "allowed": false},
+    {"text": "Hello, Sayed", "allowed": false},
+    {"text": "Order #12345", "allowed": true}
+  ]
+}

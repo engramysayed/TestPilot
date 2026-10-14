@@ -85,6 +85,30 @@ public class PortalStore {
         this.webhooks = webhooks;
     }
 
+    private delivery.portal.jobs.JobDispatchPolicy dispatchPolicy;
+
+    /** B08: per-kind dispatch (inprocess | remote). Optional so plain unit-test stores keep today's behaviour. */
+    @Autowired(required = false)
+    public void setDispatchPolicy(delivery.portal.jobs.JobDispatchPolicy dispatchPolicy) {
+        this.dispatchPolicy = dispatchPolicy;
+    }
+
+    /** B08: issues the next fencing token for a claimed job and persists it before it is returned to the engine. */
+    public synchronized long issueFencingToken(String jobId) {
+        JobRecord job = getJob(jobId).orElseThrow(() -> new IllegalArgumentException("unknown job"));
+        long next = Math.max(job.getFencingToken(),
+                jobRepository.findByJobId(jobId).map(JobEntity::getFencingToken).orElse(0L)) + 1;
+        job.setFencingToken(next);
+        syncJobPersistence(job);
+        return next;
+    }
+
+    /** B08: current persisted fencing token (0 if never issued). */
+    public synchronized long currentFencingToken(String jobId) {
+        return jobRepository.findByJobId(jobId).map(JobEntity::getFencingToken)
+                .orElseGet(() -> getJob(jobId).map(JobRecord::getFencingToken).orElse(0L));
+    }
+
     public AuthoringEngine authoringEngineForProject(String projectId) {
         return projectRepository.findByProjectId(projectId)
                 .map(e -> AuthoringEngine.parse(e.getAuthoringEngine()))
@@ -101,7 +125,10 @@ public class PortalStore {
                 : portalProperties.getPrecisionMaxCallsPerJob();
         boolean enabled = portalProperties.isPrecisionAuthoringEnabled()
                 && engine == AuthoringEngine.PRECISION;
-        return new PrecisionJobConfig(enabled, max);
+        boolean reuse = projectRepository.findByProjectId(projectId)
+                .map(e -> Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()))
+                .orElse(false);
+        return new PrecisionJobConfig(enabled, max, reuse);
     }
 
     public PrecisionJobConfig precisionConfigForJob(JobRecord job) {
@@ -109,8 +136,13 @@ public class PortalStore {
                 ? job.getPrecisionEnabledSnapshot()
                 : portalProperties.isPrecisionAuthoringEnabled()
                   && job.getAuthoringEngine() == AuthoringEngine.PRECISION;
+        boolean reuse = job.getPrecisionReuseLocatorMemorySnapshot() != null
+                ? job.getPrecisionReuseLocatorMemorySnapshot()
+                : projectRepository.findByProjectId(job.getProjectId())
+                .map(e -> Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()))
+                .orElse(false);
         return new PrecisionJobConfig(enabled, job.getPrecisionMaxSnapshot() > 0
-                ? job.getPrecisionMaxSnapshot() : portalProperties.getPrecisionMaxCallsPerJob());
+                ? job.getPrecisionMaxSnapshot() : portalProperties.getPrecisionMaxCallsPerJob(), reuse);
     }
 
     public ProjectStore filesystemStore() {
@@ -298,6 +330,9 @@ public class PortalStore {
             int max = patch.precisionMaxCallsPerJob();
             entity.setPrecisionMaxCallsPerJob(max <= 0 ? null : Math.min(max, 500));
         }
+        if (patch.precisionReuseLocatorMemory() != null) {
+            entity.setPrecisionReuseLocatorMemory(patch.precisionReuseLocatorMemory());
+        }
         projectRepository.save(entity);
         return Optional.of(toRecord(entity));
     }
@@ -395,7 +430,7 @@ public class PortalStore {
                 .orElse(false);
     }
 
-    private boolean purgeProject(ProjectEntity entity) {
+    private synchronized boolean purgeProject(ProjectEntity entity) {
         String projectId = entity.getProjectId();
         Long ownerUserId = entity.getOwnerUserId();
         entity.setArchived(true);
@@ -455,7 +490,7 @@ public class PortalStore {
     }
 
     @Transactional
-    public JobRecord saveJob(JobRecord job) {
+    public synchronized JobRecord saveJob(JobRecord job) {
         boolean creating = job.getStatus() == JobRecord.Status.QUEUED
                 && jobRepository.findByJobId(job.getJobId()).isEmpty();
         String previousStatus = jobRepository.findByJobId(job.getJobId())
@@ -468,13 +503,16 @@ public class PortalStore {
                 }
             });
             freezeQueuedInputs(job);
+            if (dispatchPolicy != null && dispatchPolicy.remote(job.getJobKind())) {
+                job.setRequirePrivateRunner(true); // B08: the engine claims it over Runner API v2
+            }
             delivery.job.JobAdmission.require(
                     countActiveJobsForTenant(job.getTenantId()),
                     countRunningJobs(),
                     delivery.job.JobAdmission.Limits.fromEnvironment());
+            requireEnvironmentAdmission(job);
             reserveBudget(job);
         }
-        jobs.put(job.getJobId(), job);
         JobEntity entity = jobRepository.findByJobId(job.getJobId()).orElseGet(JobEntity::new);
         entity.setJobId(job.getJobId());
         entity.setProjectId(job.getProjectId());
@@ -536,14 +574,16 @@ public class PortalStore {
         entity.setParentJobId(job.getParentJobId());
         entity.setPrecisionMaxSnapshot(job.getPrecisionMaxSnapshot());
         entity.setPrecisionEnabledSnapshot(job.getPrecisionEnabledSnapshot());
+        entity.setPrecisionReuseLocatorMemorySnapshot(job.getPrecisionReuseLocatorMemorySnapshot());
         entity.setAuthoringEngineSnapshot(job.getAuthoringEngine().wireValue());
         entity.setRequirePrivateRunner(job.isRequirePrivateRunner());
+        entity.setFencingToken(job.getFencingToken());
         if (JobRecord.isTerminal(job.getStatus())
                 && (job.getProvidersUsed() == null || job.getProvidersUsed().isBlank())) {
             try {
-                delivery.job.ProviderUsage.apply(job, recordedDrafts(job));
+                delivery.portal.jobs.ProviderUsage.apply(job, recordedDrafts(job));
             } catch (Exception ignored) {
-                delivery.job.ProviderUsage.apply(job, java.util.List.of());
+                delivery.portal.jobs.ProviderUsage.apply(job, java.util.List.of());
             }
         }
         entity.setProvidersUsed(job.getProvidersUsed());
@@ -551,10 +591,16 @@ public class PortalStore {
         entity.setFallbackReason(job.getFallbackReason());
         if ((job.getInputSnapshotHash() == null || job.getInputSnapshotHash().isBlank())
                 && job.getStatus() == JobRecord.Status.QUEUED) {
-            job.setInputSnapshotHash(delivery.job.DurableJobClaim.hashInputs(job));
+            job.setInputSnapshotHash(delivery.portal.jobs.DurableJobClaim.hashInputs(job));
         }
         entity.setInputSnapshotHash(job.getInputSnapshotHash());
         jobRepository.save(entity);
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override public void afterCommit() { jobs.put(job.getJobId(), job); }
+                    });
+        } else jobs.put(job.getJobId(), job);
         if (entity.getTenantId() != null && !entity.getTenantId().isBlank()) {
             job.setTenantId(entity.getTenantId());
         }
@@ -575,11 +621,12 @@ public class PortalStore {
         saveJob(job);
     }
 
-    public synchronized Optional<delivery.job.DurableJobClaim.Lease> beginWork(String jobId) {
+    public synchronized Optional<delivery.portal.jobs.DurableJobClaim.Lease> beginWork(String jobId) {
         JobRecord job = getJob(jobId).orElse(null);
         if (job != null && job.isRequirePrivateRunner()) {
             return Optional.empty();
         }
+        if (job != null && !environmentHasRunningSlot(job)) return Optional.empty();
         if (job != null) {
             boolean archived = projectRepository.findByProjectId(job.getProjectId())
                     .map(ProjectEntity::isArchived)
@@ -588,27 +635,36 @@ public class PortalStore {
                 return Optional.empty();
             }
         }
-        Optional<delivery.job.DurableJobClaim.Lease> lease = delivery.job.DurableJobClaim.tryClaim(
-                job, delivery.job.DurableJobClaim.newWorkerId(), Instant.now(),
-                delivery.job.DurableJobClaim.DEFAULT_LEASE);
+        Optional<delivery.portal.jobs.DurableJobClaim.Lease> lease = delivery.portal.jobs.DurableJobClaim.tryClaim(
+                job, delivery.portal.jobs.DurableJobClaim.newWorkerId(), Instant.now(),
+                delivery.portal.jobs.DurableJobClaim.DEFAULT_LEASE);
         if (lease.isPresent()) {
             syncJobPersistence(job);
         }
         return lease;
     }
 
-    public synchronized boolean heartbeat(String jobId, delivery.job.DurableJobClaim.Lease lease) {
+    public synchronized boolean heartbeat(String jobId, delivery.portal.jobs.DurableJobClaim.Lease lease) {
         JobRecord job = getJob(jobId).orElse(null);
-        boolean ok = delivery.job.DurableJobClaim.heartbeat(
-                job, lease, Instant.now(), delivery.job.DurableJobClaim.DEFAULT_LEASE);
+        boolean ok = delivery.portal.jobs.DurableJobClaim.heartbeat(
+                job, lease, Instant.now(), delivery.portal.jobs.DurableJobClaim.DEFAULT_LEASE);
         if (ok) {
             syncJobPersistence(job);
         }
         return ok;
     }
 
-    public boolean ownsAttempt(JobRecord job, delivery.job.DurableJobClaim.Lease lease) {
-        return delivery.job.DurableJobClaim.mayPublish(job, lease) && !shouldAbortCompletion(job);
+    public boolean ownsAttempt(JobRecord job, delivery.portal.jobs.DurableJobClaim.Lease lease) {
+        return delivery.portal.jobs.DurableJobClaim.mayPublish(job, lease) && !shouldAbortCompletion(job);
+    }
+
+    public synchronized <T> T publishAttempt(String jobId, delivery.portal.jobs.DurableJobClaim.Lease lease,
+                                             java.util.concurrent.Callable<T> action) throws Exception {
+        JobRecord current = getJob(jobId).orElse(null);
+        boolean projectPresent = current != null && projectRepository.findByProjectId(current.getProjectId())
+                .map(p -> !p.isArchived()).orElse(false);
+        if (!projectPresent || !ownsAttempt(current, lease)) throw new delivery.job.JobCancelledException();
+        return action.call();
     }
 
     public synchronized int reconcileExpiredLeases() {
@@ -619,7 +675,7 @@ public class PortalStore {
             if (job == null) {
                 job = hydrate(entity);
             }
-            if (delivery.job.DurableJobClaim.reconcileExpired(job, now)) {
+            if (delivery.portal.jobs.DurableJobClaim.reconcileExpired(job, now)) {
                 syncJobPersistence(job);
                 n++;
             }
@@ -628,14 +684,14 @@ public class PortalStore {
     }
 
     /** Cooperative cancel flag (memory-only; status CANCELLED is persisted). */
-    public void requestCancel(String jobId) {
+    public synchronized void requestCancel(String jobId) {
         if (jobId == null || jobId.isBlank()) {
             return;
         }
         cancelRequested.computeIfAbsent(jobId, ignored -> new java.util.concurrent.atomic.AtomicBoolean())
                 .set(true);
         getJob(jobId).ifPresent(job -> {
-            delivery.job.DurableJobClaim.requestCancel(job);
+            delivery.portal.jobs.DurableJobClaim.requestCancel(job);
             if (job.getStatus() == JobRecord.Status.QUEUED) {
                 job.setStatus(JobRecord.Status.CANCELLED);
                 job.setMessage("Cancelled before claim");
@@ -702,6 +758,11 @@ public class PortalStore {
             return Optional.of(mem);
         }
         return jobRepository.findByJobId(jobId).map(this::hydrate);
+    }
+
+    /** Idempotency recovery must inspect committed storage, not a provisional in-memory record. */
+    public boolean isJobPersisted(String jobId) {
+        return jobRepository.findByJobId(jobId).isPresent();
     }
 
     public Optional<JobRecord> getOwnedJob(String jobId, Long ownerUserId) {
@@ -899,7 +960,9 @@ public class PortalStore {
         job.setParentJobId(e.getParentJobId());
         job.setPrecisionMaxSnapshot(e.getPrecisionMaxSnapshot());
         job.setPrecisionEnabledSnapshot(e.getPrecisionEnabledSnapshot());
+        job.setPrecisionReuseLocatorMemorySnapshot(e.getPrecisionReuseLocatorMemorySnapshot());
         job.setRequirePrivateRunner(e.isRequirePrivateRunner());
+        job.setFencingToken(e.getFencingToken());
         job.setProvidersUsed(e.getProvidersUsed());
         job.setFallbackUsed(e.isFallbackUsed());
         job.setFallbackReason(e.getFallbackReason());
@@ -915,7 +978,7 @@ public class PortalStore {
                 ? AuthoringEngine.parse(e.getAuthoringEngineSnapshot())
                 : delivery.job.AuthoringJobRequestFiles.read(
                 delivery.job.AuthoringJobRequestFiles.requestPath(
-                        projectDiskRoot(e.getProjectId()), parseJobKind(e.getJobKind()), e.getJobId())));
+                        projectDiskRoot(e.getProjectId()), delivery.portal.engine.InProcessJobContext.wire(parseJobKind(e.getJobKind())), e.getJobId())));
         jobs.put(job.getJobId(), job);
         return job;
     }
@@ -939,6 +1002,7 @@ public class PortalStore {
         rec.setPrecisionMaxCallsPerJob(e.getPrecisionMaxCallsPerJob() == null
                 ? 0
                 : e.getPrecisionMaxCallsPerJob());
+        rec.setPrecisionReuseLocatorMemory(Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()));
         rec.setTenantId(e.getTenantId() == null ? "" : e.getTenantId());
         rec.setArchived(e.isArchived());
         if (e.getArchivedAt() != null) {
@@ -963,6 +1027,10 @@ public class PortalStore {
         if (job.getPrecisionMaxSnapshot() <= 0) {
             job.setPrecisionMaxSnapshot(precisionConfigForProject(job.getProjectId()).maxCallsPerJob());
         }
+        if (job.getPrecisionReuseLocatorMemorySnapshot() == null) {
+            job.setPrecisionReuseLocatorMemorySnapshot(
+                    precisionConfigForProject(job.getProjectId()).reuseLocatorMemory());
+        }
         if (job.getLibraryRevisionId() == null || job.getLibraryRevisionId().isBlank()) {
             try {
                 Path gen = GeneratedStoreLayout.resolveGeneratedDir(
@@ -974,25 +1042,64 @@ public class PortalStore {
         }
         if (job.getEnvironmentRevisionId() != null && !job.getEnvironmentRevisionId().isBlank()) {
             try {
-                var env = new delivery.env.EnvironmentStore(environmentRoot(job.getProjectId()))
-                        .read(job.getEnvironmentRevisionId());
-                if (env.profile().providerAllowlist() != null && !env.profile().providerAllowlist().isBlank()) {
-                    job.setProviderAllowlistSnapshot(env.profile().providerAllowlist());
+                var profile = environmentProfile(job);
+                String user = job.getUsername();
+                String password = job.getPassword();
+                if (!profile.credentialProfileRef().isBlank() && job.getParentJobId().isBlank()) {
+                    if (credentialRepository == null) throw new IllegalStateException("Credential store unavailable");
+                    var credentials = new ProjectCredentialService(credentialRepository)
+                            .resolveForJob(job.getProjectId(), profile.credentialProfileRef());
+                    user = credentials.username();
+                    password = credentials.passwordPlain();
                 }
-            } catch (Exception ignored) {
-                // missing environment revision stays as queued with caller fields
+                job.applyEnvironmentInputs(profile.origin(), user, password);
+                if (!profile.providerAllowlist().isBlank()) job.setProviderAllowlistSnapshot(profile.providerAllowlist());
+            } catch (Exception e) {
+                throw new delivery.job.JobAdmissionException("ENVIRONMENT_INVALID",
+                        "Environment revision or its credential profile could not be resolved");
             }
         }
         if (job.getProviderAllowlistSnapshot() == null || job.getProviderAllowlistSnapshot().isBlank()) {
             job.setProviderAllowlistSnapshot(delivery.privacy.ProviderPolicy.fromEnvironment().snapshot());
         }
-        if (job.getInputSnapshotHash() == null || job.getInputSnapshotHash().isBlank()) {
-            job.setInputSnapshotHash(delivery.job.DurableJobClaim.hashInputs(job));
-        }
+        job.setInputSnapshotHash(job.getParentJobId().isBlank()
+                ? delivery.portal.jobs.DurableJobClaim.hashInputs(job) : delivery.portal.jobs.RerunSupport.hashPinnedInputs(job));
     }
 
     public Path environmentRoot(String projectId) {
         return projectDiskRoot(projectId).resolve("environments");
+    }
+
+    private delivery.env.EnvironmentProfile environmentProfile(JobRecord job) throws Exception {
+        return new delivery.env.EnvironmentStore(environmentRoot(job.getProjectId()))
+                .read(job.getEnvironmentRevisionId()).profile();
+    }
+
+    private long environmentJobCount(JobRecord job, boolean runningOnly) {
+        return jobRepository.findByProjectId(job.getProjectId()).stream()
+                .filter(e -> job.getEnvironmentRevisionId().equals(e.getEnvironmentRevisionId()))
+                .filter(e -> !job.getJobId().equals(e.getJobId()))
+                .filter(e -> runningOnly ? JobRecord.Status.RUNNING.name().equals(e.getStatus()) : isActiveStatus(e.getStatus()))
+                .count();
+    }
+
+    private void requireEnvironmentAdmission(JobRecord job) {
+        if (job.getEnvironmentRevisionId().isBlank()) return;
+        try {
+            var profile = environmentProfile(job);
+            // Zero inherits installation limits; a positive value adds a narrower environment cap.
+            if (profile.maxQueued() > 0 && environmentJobCount(job, false) >= profile.maxQueued())
+                throw new delivery.job.JobAdmissionException("ENVIRONMENT_BUSY", "Environment active-job cap reached");
+        } catch (delivery.job.JobAdmissionException e) { throw e; }
+        catch (Exception e) { throw new delivery.job.JobAdmissionException("ENVIRONMENT_INVALID", "Environment unavailable"); }
+    }
+
+    private boolean environmentHasRunningSlot(JobRecord job) {
+        if (job.getEnvironmentRevisionId().isBlank()) return true;
+        try {
+            int cap = environmentProfile(job).maxRunning();
+            return cap == 0 || environmentJobCount(job, true) < cap;
+        } catch (Exception e) { return false; }
     }
 
     public Path webhookFile(String projectId) {
@@ -1004,7 +1111,7 @@ public class PortalStore {
             return java.util.List.of();
         }
         try {
-            return delivery.job.RecordedEvidence.drafts(projectDiskRoot(job.getProjectId()), job);
+            return delivery.portal.jobs.RecordedEvidence.drafts(projectDiskRoot(job.getProjectId()), job);
         } catch (Exception e) {
             return java.util.List.of();
         }
@@ -1107,8 +1214,9 @@ public class PortalStore {
                     .reserve(job.getJobId(), 1, delivery.job.BudgetLedger.CostKind.ESTIMATED);
         } catch (delivery.job.BudgetLedger.Rejected e) {
             throw new delivery.job.JobAdmissionException(e.code(), e.getMessage());
-        } catch (Exception ignored) {
-            // missing tenant path is non-fatal for legacy unscoped jobs
+        } catch (Exception e) {
+            throw new delivery.job.JobAdmissionException("BUDGET_UNAVAILABLE",
+                    "Budget ledger could not be read or updated; job was not admitted");
         }
     }
 
@@ -1256,8 +1364,16 @@ public class PortalStore {
         directory().revokeRunner(requireTenant(projectId), runnerId, actorUserId);
     }
 
-    public synchronized Optional<delivery.job.DurableJobClaim.Lease> claimNextForRunner(
+    public synchronized Optional<delivery.portal.jobs.DurableJobClaim.Lease> claimNextForRunner(
             delivery.identity.WorkspaceDirectory.RunnerEnrollment runner
+    ) throws Exception {
+        return claimNextForRunner(runner, null);
+    }
+
+    /** B07: same as {@link #claimNextForRunner(delivery.identity.WorkspaceDirectory.RunnerEnrollment)}, limited to {@code kinds} (null = any). */
+    public synchronized Optional<delivery.portal.jobs.DurableJobClaim.Lease> claimNextForRunner(
+            delivery.identity.WorkspaceDirectory.RunnerEnrollment runner,
+            java.util.Set<JobRecord.JobKind> kinds
     ) throws Exception {
         if (runner == null) {
             return Optional.empty();
@@ -1265,19 +1381,23 @@ public class PortalStore {
         Instant now = Instant.now();
         directory().touchRunnerHeartbeat(runner.id(), runner.tenant(), now);
         var live = directory().runner(runner.tenant(), runner.id()).orElse(runner);
-        var rules = delivery.runner.PrivateRunnerBindings.toRules(live);
+        var rules = delivery.portal.jobs.PrivateRunnerBindings.toRules(live);
         for (JobEntity entity : jobRepository.findAll()) {
             JobRecord job = getJob(entity.getJobId()).orElse(null);
             if (job == null || !job.isRequirePrivateRunner()) {
                 continue;
             }
-            if (!delivery.runner.PrivateRunnerBindings.sameTenant(live, job)) {
+            if (kinds != null && !kinds.isEmpty() && !kinds.contains(job.getJobKind())) {
                 continue;
             }
+            if (!delivery.portal.jobs.PrivateRunnerBindings.sameTenant(live, job)) {
+                continue;
+            }
+            if (!environmentHasRunningSlot(job)) continue;
             try {
-                delivery.runner.PrivateRunnerRules.claim(rules, job, now);
+                delivery.portal.jobs.PrivateRunnerRules.claim(rules, job, now);
                 syncJobPersistence(job);
-                return Optional.of(delivery.job.DurableJobClaim.toLease(job));
+                return Optional.of(delivery.portal.jobs.DurableJobClaim.toLease(job));
             } catch (SecurityException | IllegalStateException ignored) {
                 // try the next queued private job for this tenant
             }
@@ -1286,36 +1406,36 @@ public class PortalStore {
     }
 
     public synchronized boolean heartbeatRunnerLease(
-            delivery.identity.WorkspaceDirectory.RunnerEnrollment runner, String jobId
+            delivery.identity.WorkspaceDirectory.RunnerEnrollment runner, String jobId, String attemptId, int generation
     ) throws Exception {
         JobRecord job = getJob(jobId).orElse(null);
-        if (job == null || !delivery.runner.PrivateRunnerBindings.sameTenant(runner, job)) {
+        if (job == null || !delivery.portal.jobs.PrivateRunnerBindings.sameTenant(runner, job)
+                || !runner.id().equals(job.getWorkerId()) || !job.getAttemptId().equals(attemptId)) {
             return false;
         }
         directory().touchRunnerHeartbeat(runner.id(), runner.tenant(), Instant.now());
-        var lease = delivery.job.DurableJobClaim.toLease(job);
+        var lease = new delivery.portal.jobs.DurableJobClaim.Lease(jobId, attemptId, runner.id(),
+                job.getLeaseUntil(), generation, delivery.portal.jobs.DurableJobClaim.Stage.ADMITTED);
         return heartbeat(jobId, lease);
     }
 
     public synchronized String markRunnerStage(
             delivery.identity.WorkspaceDirectory.RunnerEnrollment runner,
             String jobId,
-            String stageName
+            String stageName, String attemptId
     ) throws Exception {
         JobRecord job = getJob(jobId).orElse(null);
-        if (job == null || !delivery.runner.PrivateRunnerBindings.sameTenant(runner, job)) {
+        if (job == null || !delivery.portal.jobs.PrivateRunnerBindings.sameTenant(runner, job)) {
             throw new IllegalArgumentException("unknown job");
         }
-        if (!runner.id().equals(job.getWorkerId())) {
-            throw new SecurityException("runner does not own this attempt");
-        }
-        delivery.job.DurableJobClaim.Stage stage =
-                delivery.job.DurableJobClaim.Stage.valueOf(stageName.trim().toUpperCase());
-        if (stage != delivery.job.DurableJobClaim.Stage.BROWSER
-                && stage != delivery.job.DurableJobClaim.Stage.EMIT) {
+        requireRunnerAttempt(runner, job, attemptId);
+        delivery.portal.jobs.DurableJobClaim.Stage stage =
+                delivery.portal.jobs.DurableJobClaim.Stage.valueOf(stageName.trim().toUpperCase());
+        if (stage != delivery.portal.jobs.DurableJobClaim.Stage.BROWSER
+                && stage != delivery.portal.jobs.DurableJobClaim.Stage.EMIT) {
             throw new IllegalArgumentException("unsupported stage");
         }
-        delivery.job.DurableJobClaim.markStage(job, job.getAttemptId(), stage);
+        delivery.portal.jobs.DurableJobClaim.markStage(job, job.getAttemptId(), stage);
         syncJobPersistence(job);
         directory().touchRunnerHeartbeat(runner.id(), runner.tenant(), Instant.now());
         return job.getClaimStage();
@@ -1328,15 +1448,13 @@ public class PortalStore {
             int passed,
             int todo,
             String message,
-            String inputSnapshotHash
+            String inputSnapshotHash, String attemptId
     ) throws Exception {
         JobRecord job = getJob(jobId).orElse(null);
-        if (job == null || !delivery.runner.PrivateRunnerBindings.sameTenant(runner, job)) {
+        if (job == null || !delivery.portal.jobs.PrivateRunnerBindings.sameTenant(runner, job)) {
             throw new IllegalArgumentException("unknown job");
         }
-        if (!runner.id().equals(job.getWorkerId())) {
-            throw new SecurityException("runner does not own this attempt");
-        }
+        requireRunnerAttempt(runner, job, attemptId);
         if (inputSnapshotHash != null && !inputSnapshotHash.isBlank()
                 && !inputSnapshotHash.equals(job.getInputSnapshotHash())) {
             throw new IllegalStateException("FROZEN_INPUT_MISMATCH");
@@ -1370,15 +1488,13 @@ public class PortalStore {
     public synchronized Path storeRunnerArtifact(
             delivery.identity.WorkspaceDirectory.RunnerEnrollment runner,
             String jobId,
-            byte[] zipBytes
+            byte[] zipBytes, String attemptId
     ) throws Exception {
         JobRecord job = getJob(jobId).orElse(null);
-        if (job == null || !delivery.runner.PrivateRunnerBindings.sameTenant(runner, job)) {
+        if (job == null || !delivery.portal.jobs.PrivateRunnerBindings.sameTenant(runner, job)) {
             throw new IllegalArgumentException("unknown job");
         }
-        if (!runner.id().equals(job.getWorkerId())) {
-            throw new SecurityException("runner does not own this attempt");
-        }
+        requireRunnerAttempt(runner, job, attemptId);
         Path dest = projectDiskRoot(job.getProjectId()).resolve("runner-artifacts")
                 .resolve(jobId + ".zip");
         Files.createDirectories(dest.getParent());
@@ -1386,6 +1502,15 @@ public class PortalStore {
         job.setZipPath(dest);
         syncJobPersistence(job);
         return dest;
+    }
+
+    public void requireRunnerAttempt(delivery.identity.WorkspaceDirectory.RunnerEnrollment runner,
+                                     JobRecord job, String attemptId) {
+        if (job == null || runner == null || !delivery.portal.jobs.PrivateRunnerBindings.sameTenant(runner, job)
+                || !runner.id().equals(job.getWorkerId()) || attemptId == null || attemptId.isBlank()
+                || !attemptId.equals(job.getAttemptId())) throw new SecurityException("runner does not own this attempt");
+        if (delivery.portal.jobs.DurableJobClaim.leaseExpired(job, Instant.now())
+                || JobRecord.isTerminal(job.getStatus())) throw new IllegalStateException("LEASE_LOST");
     }
 
     private delivery.identity.TenantId requireTenant(String projectId) {

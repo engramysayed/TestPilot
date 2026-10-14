@@ -1,5 +1,6 @@
 package delivery.heal;
 
+import delivery.authoring.GroundRankBatchResult;
 import delivery.authoring.GroundRankResult;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -25,6 +26,7 @@ public class CursorHealClient {
     private final boolean enabled;
     private final String command;
     private final long timeoutSec;
+    private volatile HealSafety pendingSafety;
 
     public CursorHealClient() {
         ensureDeliveryPropsLoaded();
@@ -47,6 +49,11 @@ public class CursorHealClient {
         } catch (Exception ignored) {
             // optional — env vars still work
         }
+    }
+
+    /** P0: attach safety fields to the next solve/invent/pick invoke (cleared after use). */
+    public void setPendingSafety(HealSafety safety) {
+        this.pendingSafety = safety;
     }
 
     public boolean isEnabled() {
@@ -124,6 +131,20 @@ public class CursorHealClient {
             String shortlistTable,
             String slimHtmlExcerpt,
             Path screenshotPathOrNull,
+            List<String> priorSteps,
+            HealSafety safety
+    ) {
+        if (safety != null) setPendingSafety(safety);
+        return solve(intentText, failureReason, shortlistTable, slimHtmlExcerpt,
+                screenshotPathOrNull, priorSteps);
+    }
+
+    public String solve(
+            String intentText,
+            String failureReason,
+            String shortlistTable,
+            String slimHtmlExcerpt,
+            Path screenshotPathOrNull,
             List<String> priorSteps
     ) {
         JSONObject req = new JSONObject();
@@ -135,6 +156,9 @@ public class CursorHealClient {
         req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
         putVisionAttempts(req);
         putExcelOpenPath(req, failureReason);
+        HealSafety safety = pendingSafety;
+        pendingSafety = null;
+        putHealSafety(req, safety);
         if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
             req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
         }
@@ -142,6 +166,18 @@ public class CursorHealClient {
     }
 
     /** One-shot free-invent request. Returns the raw JSON response for validation by FreeInventHealer. */
+    public String inventSteps(
+            String intentText,
+            String failureReason,
+            List<String> priorSteps,
+            String slimHtmlExcerpt,
+            Path screenshotPathOrNull,
+            HealSafety safety
+    ) {
+        if (safety != null) setPendingSafety(safety);
+        return inventSteps(intentText, failureReason, priorSteps, slimHtmlExcerpt, screenshotPathOrNull);
+    }
+
     public String inventSteps(
             String intentText,
             String failureReason,
@@ -157,6 +193,9 @@ public class CursorHealClient {
         req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
         putVisionAttempts(req);
         putExcelOpenPath(req, failureReason);
+        HealSafety safety = pendingSafety;
+        pendingSafety = null;
+        putHealSafety(req, safety);
         if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
             req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
         }
@@ -176,7 +215,22 @@ public class CursorHealClient {
                 && !reason.contains("Excel open-path")) {
             reason = reason + "\nExcel open-path (only allowed navigation target): " + excelOpenPath.trim();
         }
+        // Preserve pendingSafety (set by FreeInventHealer / HealCascade) for the 5-arg override path.
         return inventSteps(intentText, reason, priorSteps, slimHtmlExcerpt, screenshotPathOrNull);
+    }
+
+    public String inventSteps(
+            String intentText,
+            String failureReason,
+            List<String> priorSteps,
+            String slimHtmlExcerpt,
+            Path screenshotPathOrNull,
+            String excelOpenPath,
+            HealSafety safety
+    ) {
+        if (safety != null) setPendingSafety(safety);
+        return inventSteps(intentText, failureReason, priorSteps, slimHtmlExcerpt,
+                screenshotPathOrNull, excelOpenPath);
     }
 
     /** Ask Cursor Auto to review a complete authoring suite. Returns raw model JSON for parsing. */
@@ -227,6 +281,38 @@ public class CursorHealClient {
                 intentText, shortlistTable, slimHtmlExcerpt, screenshotPathOrNull, priorSteps));
     }
 
+    /**
+     * Precision batch: several intents + shortlists on one page → multiple candidate picks in one call.
+     */
+    public String groundRankBatch(
+            String intentsBlock,
+            String slimHtmlExcerpt,
+            Path screenshotPathOrNull,
+            List<String> priorSteps
+    ) {
+        JSONObject req = new JSONObject();
+        req.put("mode", "groundRankBatch");
+        req.put("maxIntents", delivery.authoring.PrecisionBindService.MAX_INTENTS_PER_GROUNDRANK_BATCH);
+        req.put("intents", intentsBlock == null ? "" : intentsBlock);
+        req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
+        req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
+        putVisionAttempts(req);
+        if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
+            req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
+        }
+        return invoke(req);
+    }
+
+    public GroundRankBatchResult groundRankBatchResult(
+            String intentsBlock,
+            String slimHtmlExcerpt,
+            Path screenshotPathOrNull,
+            List<String> priorSteps
+    ) {
+        return GroundRankBatchResult.parse(groundRankBatch(
+                intentsBlock, slimHtmlExcerpt, screenshotPathOrNull, priorSteps));
+    }
+
     public String huntPlan(String userPrompt, String slimHtmlExcerpt, Path screenshotPathOrNull) {
         JSONObject req = new JSONObject();
         req.put("mode", "hunt");
@@ -236,6 +322,30 @@ public class CursorHealClient {
             req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
         }
         return invoke(req);
+    }
+
+    /** P0: secret / sideEffects / banned / crash for heal.mjs Safety section. */
+    public record HealSafety(
+            boolean secret,
+            String sideEffects,
+            java.util.List<String> bannedLocators,
+            boolean crash,
+            String safetyBlock
+    ) {
+        public static HealSafety empty() {
+            return new HealSafety(false, "unknown", List.of(), false, "");
+        }
+    }
+
+    static void putHealSafety(JSONObject req, HealSafety safety) {
+        if (req == null || safety == null) return;
+        req.put("secret", safety.secret());
+        req.put("sideEffects", safety.sideEffects() == null ? "unknown" : safety.sideEffects());
+        req.put("bannedLocators", safety.bannedLocators() == null ? List.of() : safety.bannedLocators());
+        req.put("crash", safety.crash());
+        if (safety.safetyBlock() != null && !safety.safetyBlock().isBlank()) {
+            req.put("safetyBlock", safety.safetyBlock());
+        }
     }
 
     static void putVisionAttempts(JSONObject req) {
@@ -269,6 +379,17 @@ public class CursorHealClient {
     }
 
     private String invoke(JSONObject req) {
+        long started = System.nanoTime();
+        try {
+            return invokeTimed(req);
+        } finally {
+            // Numeric telemetry only: no prompt, URL, screenshot path, token or response.
+            LogsManager.info("PERF cursor_call elapsedMs="
+                    + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
+        }
+    }
+
+    private String invokeTimed(JSONObject req) {
         if (!enabled) {
             LogsManager.warn("CURSOR_HEAL_SKIPPED: delivery.cursor-heal.enabled=false");
             return "";
@@ -298,7 +419,12 @@ public class CursorHealClient {
             // D9: keep stderr separate; parse stdout only
             pb.redirectErrorStream(false);
             pb.environment().put("CURSOR_API_KEY", apiKey);
+            // B11: heal.mjs (Node) through the engine proxy when keel.engine.proxy.enabled (default off)
+            pb.environment().putAll(delivery.runner.EngineProxy.fromSystem().nodeEnv());
+            long spawnStarted = System.nanoTime();
             Process proc = pb.start();
+            LogsManager.info("PERF cursor_spawn elapsedMs="
+                    + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - spawnStarted));
             try (OutputStreamWriter w = new OutputStreamWriter(proc.getOutputStream(), StandardCharsets.UTF_8)) {
                 w.write(req.toString());
                 w.flush();

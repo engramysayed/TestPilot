@@ -44,7 +44,16 @@ public class ChromeFactory extends AbstractDriver {
         }
         options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
         delivery.net.WorkerPac.apply(options);
+        // B11: engine forward proxy (keel.engine.proxy.enabled, default off); a worker PAC above wins
+        delivery.runner.EngineProxy.fromSystem().chromeArgs(proxyArgs(options)).forEach(options::addArguments);
         return options;
+    }
+
+    @SuppressWarnings("unchecked")
+    static java.util.List<String> proxyArgs(ChromeOptions options) {
+        Object args = ((Map<String, Object>) options.asMap().getOrDefault(ChromeOptions.CAPABILITY, Map.of()))
+                .getOrDefault("args", java.util.List.of());
+        return args instanceof java.util.List<?> l ? l.stream().map(String::valueOf).toList() : java.util.List.of();
     }
 
     @Override

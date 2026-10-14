@@ -1,7 +1,7 @@
 package delivery.runner;
 
 import delivery.excel.ManualTestCase;
-import delivery.job.DurableJobClaim;
+import delivery.portal.jobs.DurableJobClaim;
 import delivery.portal.PortalApplication;
 import delivery.portal.model.JobRecord;
 import delivery.portal.service.GeneratedWorkbookService;

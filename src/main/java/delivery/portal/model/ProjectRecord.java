@@ -16,6 +16,7 @@ public class ProjectRecord {
     private AuthoringEngine authoringEngine = AuthoringEngine.KEEL;
     /** 0 = use server default from application.properties */
     private int precisionMaxCallsPerJob = 0;
+    private boolean precisionReuseLocatorMemory = false;
     private String tenantId = "";
 
     public ProjectRecord(String projectId, String name, Long ownerUserId, int latestVersion) {
@@ -59,6 +60,12 @@ public class ProjectRecord {
     }
     public void setPrecisionMaxCallsPerJob(int precisionMaxCallsPerJob) {
         this.precisionMaxCallsPerJob = Math.max(0, precisionMaxCallsPerJob);
+    }
+    public boolean isPrecisionReuseLocatorMemory() {
+        return precisionReuseLocatorMemory;
+    }
+    public void setPrecisionReuseLocatorMemory(boolean precisionReuseLocatorMemory) {
+        this.precisionReuseLocatorMemory = precisionReuseLocatorMemory;
     }
     public String getTenantId() { return tenantId == null ? "" : tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId == null ? "" : tenantId; }

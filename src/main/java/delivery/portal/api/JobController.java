@@ -175,7 +175,7 @@ public class JobController {
             workbooks.headRevisionId(projectId).ifPresent(job::setLibraryRevisionId);
         }
         Path requestPath = AuthoringJobRequestFiles.requestPath(
-                store.projectDiskRoot(projectId), JobRecord.JobKind.CONVERT, jobId);
+                store.projectDiskRoot(projectId), delivery.portal.engine.InProcessJobContext.wire(JobRecord.JobKind.CONVERT), jobId);
         AuthoringJobRequestFiles.write(requestPath, engine);
         store.saveJob(job);
         worker.submit(jobId);
@@ -267,7 +267,7 @@ public class JobController {
                             && (job.getStatus() == JobRecord.Status.COMPLETED
                             || job.getStatus() == JobRecord.Status.COMPLETED_WITH_BLOCK
                             || job.getStatus() == JobRecord.Status.FAILED);
-                    body.putAll(delivery.job.JobDiagnostics.describe(job, present, expired));
+                    body.putAll(delivery.portal.jobs.JobDiagnostics.describe(job, present, expired));
                     try {
                         store.failureClassification(job).ifPresentOrElse(c -> {
                             body.put("failureClassSuggested", c.suggested().name());

@@ -8,6 +8,8 @@ Local runner tests do not certify a shared staging host. Public rollout stays HO
 
 ## What this release implements
 
+**Attempt protocol (11 October 2026):** rebuild portal and agents together. The claim response supplies `attemptId` and `cancelGeneration`. Send the original `X-Keel-Attempt-Id` on job input, stage, artifact and completion requests; lease heartbeats additionally require `X-Keel-Cancel-Generation`. Do not refresh these values from the current job row. A reclaimed attempt needs a new claim. Expired or foreign attempts are rejected, including an older attempt from the same runner. The bundled agent sends these headers automatically.
+
 - Enrollment and revocation APIs on the project (`POST/GET/DELETE /api/projects/{id}/runners`). OWNER and ADMIN may enroll or revoke; MEMBER may list. Tokens are `tp_run_…` and stored as SHA-256 only.
 - Runner HTTP API under `/api/v1/runners/**` (Bearer `tp_run_`): heartbeat, tenant-scoped claim, frozen input download, lease heartbeat, HMAC artifact upload, complete.
 - In-process portal workers skip jobs with `runner=private`. Claim uses existing durable leases; expired **BROWSER** leases become `INTERRUPTED_UNCERTAIN`; other stages re-queue.

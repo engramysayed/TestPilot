@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.dev/contracts/contract-v2-vectors.schema.json",
+  "title": "Golden vector file for contract v2 (contract-v2/SPEC.md section 5)",
+  "type": "object",
+  "required": [
+    "contract",
+    "parse",
+    "invalid",
+    "normalize",
+    "match",
+    "point",
+    "sanitizer"
+  ],
+  "properties": {
+    "contract": {
+      "const": 2
+    },
+    "parse": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "in",
+          "hops",
+          "version",
+          "format"
+        ],
+        "properties": {
+          "in": {
+            "$ref": "keel-target-v2.schema.json"
+          },
+          "format": {
+            "$ref": "keel-target-v2.schema.json"
+          },
+          "version": {
+            "enum": [
+              1,
+              2
+            ]
+          },
+          "hops": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "prefixItems": [
+                {
+                  "enum": [
+                    "frame",
+                    "shadow",
+                    "shadow-closed",
+                    "css",
+                    "text",
+                    "provider",
+                    "point"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "invalid": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "normalize": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "in",
+          "out"
+        ],
+        "properties": {
+          "in": {
+            "type": "string"
+          },
+          "out": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "match": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "html",
+          "text",
+          "count"
+        ],
+        "properties": {
+          "html": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "point": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "point",
+          "current",
+          "offset"
+        ],
+        "properties": {
+          "point": {
+            "type": "string",
+            "pattern": "^\\d+(?:\\.\\d+)?,\\d+(?:\\.\\d+)?@\\d+(?:\\.\\d+)?x\\d+(?:\\.\\d+)?$"
+          },
+          "current": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "offset": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    },
+    "sanitizer": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "text",
+          "allowed"
+        ],
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "allowed": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

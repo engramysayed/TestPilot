@@ -7,7 +7,7 @@ public final class VisionGroundingConfig {
     private static final String DEFAULT_GROUNDING_PROVIDER = "uitars";
     private static final String DEFAULT_ASSERT_PROVIDER = "qwen";
     private static final String DEFAULT_UITARS_MODEL = "ui-tars";
-    private static final String DEFAULT_QWEN_MODEL = "qwen2.5vl:3b";
+    private static final String DEFAULT_QWEN_MODEL = AssertVisionProvider.QWEN7B_MODEL;
 
     private VisionGroundingConfig() {
     }
@@ -63,33 +63,30 @@ public final class VisionGroundingConfig {
         return defaultModelFor(groundingProviderId());
     }
 
-    public static String assertProviderId() {
-        String split = firstProp("delivery.vision.assert.provider");
-        if (split != null && !split.isBlank()) {
-            return split.trim();
-        }
-        String legacy = firstProp("delivery.vision.provider");
-        if (legacy != null && !legacy.isBlank()) {
-            return legacy.trim();
-        }
-        return DEFAULT_ASSERT_PROVIDER;
+    /** Selected assertion model family ({@code delivery.vision.assert.provider}); see {@link AssertVisionProvider}. */
+    public static AssertVisionProvider assertVisionProvider() {
+        // per-job override > -D (any key) > application.properties > default uitars
+        return AssertVisionProvider.resolveConfigured();
     }
 
+    public static String assertProviderId() {
+        return assertVisionProvider().engineId;
+    }
+
+    /**
+     * Model for the selected assertion provider. {@code delivery.vision.assert.model} still overrides
+     * the tag, except that a non-commercial qwen2.5vl:3b pin is replaced by the 7B default.
+     */
     public static String assertModel() {
+        AssertVisionProvider p = assertVisionProvider();
         String split = firstProp("delivery.vision.assert.model");
         if (split != null && !split.isBlank()) {
-            return split.trim();
+            String m = split.trim();
+            boolean qwenTag = m.toLowerCase().startsWith("qwen");
+            if (p == AssertVisionProvider.QWEN && qwenTag && !m.equalsIgnoreCase("qwen2.5vl:3b")) return m;
+            if (p == AssertVisionProvider.UITARS && !qwenTag) return m;
         }
-        String legacyModel = firstProp("delivery.vision.model");
-        String legacyProvider = firstProp("delivery.vision.provider");
-        String assertProv = assertProviderId();
-        // Only inherit legacy model when assert provider matches explicit legacy provider.
-        if (legacyModel != null && !legacyModel.isBlank()
-                && legacyProvider != null && !legacyProvider.isBlank()
-                && assertProv.equalsIgnoreCase(legacyProvider.trim())) {
-            return legacyModel.trim();
-        }
-        return defaultModelFor(assertProv);
+        return p.defaultModel;
     }
 
     public static VisionGroundingProvider createProvider() {

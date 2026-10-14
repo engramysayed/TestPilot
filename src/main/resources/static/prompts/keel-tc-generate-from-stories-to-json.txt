@@ -62,6 +62,9 @@ LOGIN & ASSERT AUTHORING (Execute-safe)
 - Empty-field negative cases: step must say "Leave the … field empty" (not "Enter in the … field"). The matching testData line for that step must be blank.
 - Title, steps, testData, and expectedResult must agree (empty email case → no email value in testData).
 - Final confirm/assert steps must quote the exact error message from requirements (e.g. Confirm the message 'Please enter your email or phone number' is visible). Forbidden vague phrases: "clear validation/error state", "validation/error state is shown".
+- Static OTP (lab / QA only): when requirements name a fixed OTP (e.g. 245345), use separate Username field and Password field (not combined email/phone) when the app uses username login. Use the exact submit label from requirements (Sign in vs Log in vs Login button). After submit, expect a Verification Code / OTP screen if described. Steps: Enter in the Username field; Enter in the Password field; Click the Sign in button (or Login button if requirements say so); Confirm the Verification Code screen is visible when requirements describe it; Enter in the OTP field; Click the Verify OTP button; Confirm the text Verification Code is not visible; Confirm the OTP field is not visible; Confirm post-login markers from requirements (e.g. Welcome! on Dashboard). On the TestData line that pairs with the OTP Enter step only, put the fixed OTP digits; leave all other TestData lines empty. Username/password still come from the credential profile at Automate/Execute. keelPath AUTOMATE or EXECUTE — not MANUAL.
+
+- Field-state consistency: never assert a field is not visible and immediately enter into that same field. For OTP login, confirm the OTP field is visible before entry. Check its disappearance only after Verify OTP succeeds. Expected results must use the same polarity as the corresponding steps.
 
 TINY SHAPE EXAMPLE (illustrative only — not extra cases to emit unless the requirements support them)
 {

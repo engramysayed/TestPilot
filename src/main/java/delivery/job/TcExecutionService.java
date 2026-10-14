@@ -62,6 +62,15 @@ public class TcExecutionService {
     }
 
     public TcOutcome execute(String tcId, List<ProvenStep> steps, Path evidenceRoot) {
+        long started = System.nanoTime();
+        try { return executeTimed(tcId, steps, evidenceRoot); }
+        finally {
+            LogsManager.info("PERF browser_execute steps=" + (steps == null ? 0 : steps.size())
+                    + " elapsedMs=" + java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
+        }
+    }
+
+    private TcOutcome executeTimed(String tcId, List<ProvenStep> steps, Path evidenceRoot) {
         steps = LoginSecretResolver.resolveForLive(steps, request);
         List<ProvenStep> proven = new ArrayList<>();
         Path evidenceDir = evidenceRoot == null ? null : evidenceRoot.resolve(evidenceKey(tcId));
@@ -86,6 +95,20 @@ public class TcExecutionService {
                     locator = SelectorParser.toBy(selector);
                 }
 
+                // wiring: A3 ranker (delivery.locator.ranker, off by default) may adopt a better plain-css locator
+                if (locator != null && ProveWiring.rankerOn()) {
+                    ProvenStep ranked = ProveWiring.rerank(driverFactory.get(), step, locator);
+                    if (ranked != step) {
+                        step = ranked;
+                        locator = SelectorParser.toBy(normalizeStrategy(step.locatorStrategy()) + ":" + step.locatorValue());
+                    }
+                }
+                // r2 IR "secret": password / masked / OTP target (read before typing; never reads the value)
+                boolean secret = step.secret() || secretTarget(step, locator);
+                // r3: IR "sideEffects" from SideEffectClassifier (read before the action; only known values, never overwrites)
+                if (hasAction) {
+                    step = SideEffectWiring.apply(driverFactory.get(), step, locator);
+                }
                 if (hasAction) {
                     String result;
                     if ("navigate".equalsIgnoreCase(step.action())) {
@@ -108,14 +131,16 @@ public class TcExecutionService {
                         if (isClick && DomPostClickValidator.enabled()) {
                             beforeClick = DomPostClickValidator.capture(driverFactory.get());
                         }
-                        result = executor.checkAction(
-                            step.actionType(),
-                            step.action(),
-                            step.value(),
-                            "",
-                            locator,
-                            step.value()
-                        );
+                        final ProvenStep cur = step;
+                        final By curLocator = locator;
+                        // wiring: A7 effect check (delivery.effect.check, off by default = direct call)
+                        ProveWiring.Effect eff = ProveWiring.runWithEffect(driverFactory.get(), step, locator,
+                                () -> executor.checkAction(cur.actionType(), cur.action(), cur.value(), "", curLocator, cur.value()));
+                        result = eff.result();
+                        if (eff.failure() != null) {
+                            captureFailure(evidenceDir);
+                            return new TcOutcome(tcId, TcStatus.TODO, proven, eff.failure(), evidenceDir);
+                        }
                         if (isClick && beforeClick != null
                                 && (result == null || !result.startsWith("false"))) {
                             DomPostClickValidator.Result post = DomPostClickValidator.validate(
@@ -168,7 +193,8 @@ public class TcExecutionService {
                 proven.add(new ProvenStep(
                         step.tcId(), pageName, step.actionType(), step.action(),
                         step.locatorStrategy(), step.locatorValue(), step.value(),
-                        step.assertionType(), step.assertionExpected(), true, step.rationale(), shot
+                        step.assertionType(), step.assertionExpected(), true, step.rationale(), shot,
+                        step.locatorCandidates(), step.dropCandidates(), step.sideEffects(), secret
                 ));
             }
             return new TcOutcome(tcId, TcStatus.PASSED, proven, "", evidenceDir);
@@ -180,6 +206,19 @@ public class TcExecutionService {
                 driverFactory.get().switchTo().defaultContent();
             } catch (Exception ignored) {
             }
+        }
+    }
+
+    private boolean secretTarget(ProvenStep step, By locator) {
+        String action = step.action() == null ? "" : step.action().toLowerCase(java.util.Locale.ROOT);
+        if (locator == null || !(action.equals("type") || action.equals("clear"))) {
+            return false;
+        }
+        try {
+            List<WebElement> found = driverFactory.get().findElements(locator);
+            return !found.isEmpty() && delivery.ir.SecretStep.isSecretTarget(delivery.ir.SecretStep.fromElement(found.get(0)));
+        } catch (RuntimeException e) {
+            return false;
         }
     }
 

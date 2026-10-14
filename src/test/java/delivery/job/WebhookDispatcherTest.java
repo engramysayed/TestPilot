@@ -1,5 +1,7 @@
 package delivery.job;
 
+import delivery.portal.jobs.*;
+
 import com.sun.net.httpserver.HttpServer;
 import delivery.portal.model.JobRecord;
 import delivery.portal.security.JobSecretCrypto;

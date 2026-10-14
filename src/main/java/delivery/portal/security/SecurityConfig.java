@@ -41,10 +41,17 @@ public class SecurityConfig {
         return new ApiRequestHeaderFilter();
     }
 
+    /** B06: one nonce/replay cache shared by every /api/v2/runners request. */
+    @Bean
+    public RunnerRequestVerifier runnerRequestVerifier() {
+        return new RunnerRequestVerifier();
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, ApiRequestHeaderFilter apiHeaderFilter,
                                            LoginThrottle loginThrottle,
-                                           delivery.portal.DeliveryPortalProperties props)
+                                           delivery.portal.DeliveryPortalProperties props,
+                                           RunnerRequestVerifier runnerRequestVerifier)
             throws Exception {
         // Browser → form login redirect (no HTTP Basic popup). API → 401 JSON/status.
         LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
@@ -91,7 +98,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
                 .addFilterAfter(apiHeaderFilter, CsrfFilter.class)
                 .addFilterAfter(new ServiceIdentityFilter(props), CsrfFilter.class)
-                .addFilterAfter(new PrivateRunnerFilter(props), CsrfFilter.class);
+                .addFilterAfter(new PrivateRunnerFilter(props, runnerRequestVerifier), CsrfFilter.class);
         return http.build();
     }
 }

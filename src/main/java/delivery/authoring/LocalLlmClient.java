@@ -21,6 +21,12 @@ public class LocalLlmClient {
     /** Default generate budget — long TC JSON batches truncate at Ollama's ~1k default. */
     public static final int DEFAULT_GENERATE_NUM_PREDICT = 8192;
 
+    public static final int RANKING_NUM_PREDICT = 512;
+    private static final ThreadLocal<Integer> REQUEST_OUTPUT_CAP = new ThreadLocal<>();
+    // Stateless transport: no cookies/authenticator; endpoint and policy remain per request.
+    private static final HttpClient SHARED_HTTP = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(30)).build();
+
     private final String baseUrl;
     private final String model;
     private final Duration requestTimeout;
@@ -45,9 +51,7 @@ public class LocalLlmClient {
                 ? Duration.ofMinutes(5)
                 : requestTimeout;
         this.defaultNumPredict = Math.max(0, defaultNumPredict);
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(30))
-                .build();
+        this.httpClient = SHARED_HTTP;
     }
 
     Duration requestTimeout() {
@@ -56,6 +60,25 @@ public class LocalLlmClient {
 
     public String completeJson(String system, String user) throws IOException, InterruptedException {
         return completeJson(system, user, (byte[]) null);
+    }
+
+    /** Candidate selection is a tiny JSON response, not a full-suite generation request. */
+    public String completeRankingJson(String system, String user) throws IOException, InterruptedException {
+        Integer previous = REQUEST_OUTPUT_CAP.get();
+        REQUEST_OUTPUT_CAP.set(RANKING_NUM_PREDICT);
+        try { return completeJson(system, user); }
+        finally { restoreOutputCap(previous); }
+    }
+
+    public String completeRankingJson(String system, String user, byte[] image) throws IOException, InterruptedException {
+        Integer previous = REQUEST_OUTPUT_CAP.get();
+        REQUEST_OUTPUT_CAP.set(RANKING_NUM_PREDICT);
+        try { return completeJson(system, user, image); }
+        finally { restoreOutputCap(previous); }
+    }
+
+    private static void restoreOutputCap(Integer previous) {
+        if (previous == null) REQUEST_OUTPUT_CAP.remove(); else REQUEST_OUTPUT_CAP.set(previous);
     }
 
     /**
@@ -107,7 +130,11 @@ public class LocalLlmClient {
                 .require(delivery.privacy.ProviderPolicy.Kind.OLLAMA);
         system = delivery.privacy.SecretSanitizer.scrubText(system);
         user = delivery.privacy.SecretSanitizer.scrubText(user);
-        String bodyJson = buildChatRequestBody(model, system, user, forceJson, numPredict, pngs);
+        Integer outputCap = REQUEST_OUTPUT_CAP.get();
+        int effectivePredict = outputCap == null ? numPredict
+                : numPredict > 0 ? Math.min(numPredict, outputCap) : outputCap;
+        String bodyJson = buildChatRequestBody(model, system, user, forceJson, effectivePredict, pngs);
+        if (outputCap != null) bodyJson = new JSONObject(bodyJson).put("think", false).toString();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/chat"))
                 .timeout(LlmCallDeadline.limit(requestTimeout))
@@ -115,7 +142,15 @@ public class LocalLlmClient {
                 .POST(HttpRequest.BodyPublishers.ofString(bodyJson, StandardCharsets.UTF_8))
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        long started = System.nanoTime();
+        HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        } finally {
+            utils.LogsManager.info("PERF ollama_http elapsedMs="
+                    + java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+                    + " requestBytes=" + bodyJson.getBytes(StandardCharsets.UTF_8).length);
+        }
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new IOException("Ollama HTTP " + response.statusCode() + ": " + response.body());
         }
@@ -125,11 +160,17 @@ public class LocalLlmClient {
             throw new IOException("Ollama response missing message");
         }
         String content = message.optString("content", "");
-        if (content.isBlank()) {
+        if (content.isBlank() && outputCap == null) {
             content = message.optString("thinking", "");
         }
         String doneReason = root.optString("done_reason", "");
-        return new ChatOutcome(stripThinkingWrappers(content), doneReason);
+        OllamaTiming timing = OllamaTiming.from(root);
+        utils.LogsManager.info("PERF ollama_model " + timing);
+        if (outputCap != null && "length".equalsIgnoreCase(doneReason)) {
+            throw new IOException("Ollama ranking response reached output budget; refusing truncated selection");
+        }
+        if (outputCap != null && content.isBlank()) throw new IOException("Ollama ranking returned no final answer");
+        return new ChatOutcome(stripThinkingWrappers(content), doneReason, timing);
     }
 
     static String buildChatRequestBody(
@@ -196,7 +237,17 @@ public class LocalLlmClient {
         return new AuthorBatchResponse(completeJson(request.systemPrompt(), request.userPrompt()));
     }
 
-    public record ChatOutcome(String content, String doneReason) {
+    public record OllamaTiming(long totalNs, long loadNs, long promptNs, long generationNs,
+                               long promptTokens, long generatedTokens) {
+        static OllamaTiming from(JSONObject root) {
+            return new OllamaTiming(root.optLong("total_duration", -1), root.optLong("load_duration", -1),
+                    root.optLong("prompt_eval_duration", -1), root.optLong("eval_duration", -1),
+                    root.optLong("prompt_eval_count", -1), root.optLong("eval_count", -1));
+        }
+    }
+
+    public record ChatOutcome(String content, String doneReason, OllamaTiming timing) {
+        public ChatOutcome(String content, String doneReason) { this(content, doneReason, null); }
         public boolean truncated() {
             return doneReason != null && "length".equalsIgnoreCase(doneReason.trim());
         }

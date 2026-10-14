@@ -1,6 +1,7 @@
 package delivery.runner;
 
-import delivery.job.DurableJobClaim;
+import delivery.portal.jobs.DurableJobClaim;
+import delivery.portal.jobs.PrivateRunnerRules;
 import delivery.portal.model.JobRecord;
 import org.testng.Assert;
 import org.testng.annotations.Test;

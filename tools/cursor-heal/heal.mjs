@@ -33,6 +33,7 @@ function extractJsonObject(text) {
 }
 
 async function main() {
+  const prepareStarted = performance.now();
   const apiKey = process.env.CURSOR_API_KEY;
   if (!apiKey) {
     console.error("CURSOR_API_KEY missing");
@@ -48,7 +49,7 @@ async function main() {
     process.exit(2);
   }
 
-  const mode = ["invent", "solve", "authoring-review", "hunt", "groundRank"].includes(req.mode)
+  const mode = ["invent", "solve", "authoring-review", "hunt", "groundRank", "groundRankBatch"].includes(req.mode)
     ? req.mode
     : "pick";
   const intent = req.intent || "";
@@ -58,7 +59,7 @@ async function main() {
   const visionAttempts = Array.isArray(req.visionAttempts) ? req.visionAttempts.slice(0, 8) : [];
   const slimHtmlExcerpt = (req.slimHtmlExcerpt || "").slice(
     0,
-    mode === "pick" ? 8000 : mode === "groundRank" ? 12000 : mode === "hunt" ? 24000 : 16000
+    mode === "pick" ? 8000 : mode === "groundRank" ? 12000 : mode === "groundRankBatch" ? 16000 : mode === "hunt" ? 24000 : 16000
   );
   const screenshotPath = req.screenshotPath || "";
 
@@ -71,6 +72,34 @@ async function main() {
       : "(screenshot larger than 24KB — open the file at screenshotPath; do not invent without looking)";
     screenshotNote = `\nscreenshotPath: ${screenshotPath}\nFailure screenshot PNG preview/base64:\n${preview}\nUse this visual evidence with the HTML/history above. This request has NO prior chat memory.`;
   }
+
+  const safetySection = (() => {
+    if (req.safetyBlock && String(req.safetyBlock).trim()) return "\n" + String(req.safetyBlock).trim() + "\n";
+    const secret = !!req.secret;
+    const se = req.sideEffects || "unknown";
+    const banned = Array.isArray(req.bannedLocators) ? req.bannedLocators : [];
+    const crash = !!req.crash;
+    let block = "\n## Safety (must obey)\n";
+    if (crash) {
+      block += "- CRASH/ERROR PAGE DETECTED. Return ONLY {\"mode\":\"abort\",\"thought\":\"crash or fatal error page — do not invent locators\"} — do not pick, invent, or recover.\n";
+    }
+    block += "- secret=" + secret;
+    block += secret
+      ? ": NEVER echo, print, or invent real secret/password/OTP values; use empty value or ${TARGET_PASSWORD}/${TARGET_OTP} tokens only.\n"
+      : ".\n";
+    block += "- sideEffects=" + se;
+    block += (se === "none")
+      ? ": read-only — recovery retries on the same control are allowed.\n"
+      : ": do NOT invent mutating retries (no re-submit/delete/pay/logout). Recovery may only clear/dismiss or navigate to the Excel open-path. Mark invented steps with \"sideEffects\":\"" + se + "\".\n";
+    if (banned.length) {
+      block += "- Banned locators (already failed — do not return these):\n";
+      for (const b of banned) block += "  - " + b + "\n";
+    } else {
+      block += "- Banned locators: (none)\n";
+    }
+    block += "- Stop: if you cannot decide safely, return empty candidateId / empty steps (or mode=abort on crash) rather than guessing.\n";
+    return block;
+  })();
 
   const history = priorSteps.length ? priorSteps.map((step) => `- ${step}`).join("\n") : "(none)";
   const visionBlock = visionAttempts.length
@@ -110,6 +139,32 @@ ${slimHtmlExcerpt}
 ${screenshotNote}
 `;
 
+  const batchIntents = req.intents || "";
+  const groundRankBatchPrompt = `${guard}You are the Precision authoring engine for MULTIPLE Excel UI intents on the CURRENT page only.
+Using intent text, prior steps, slim HTML, and screenshot, pick locators for as many CONSECUTIVE intents as can run NOW without navigation or waiting for a new screen.
+
+Respond with a short Thought, then Action JSON:
+{"picks":[{"intentIndex":0,"candidateId":"<id from intent 0 shortlist>","confidence":"high|medium|low"},...],"rationale":"one line"}
+
+Rules:
+- intentIndex MUST start at 0 and increase by 1 with no gaps (0, then 1, then 2, …)
+- Stop before an intent that needs a new page (e.g. after Sign in if OTP screen is not yet visible)
+- Each candidateId MUST come from that intent's shortlist only
+- confidence high|medium only when sure; otherwise stop the batch (omit later intents)
+- Maximum ${req.maxIntents || 5} picks
+- Do not invent ids or locators
+
+## Already completed in this TC
+${history}
+${visionBlock}
+Intents and shortlists (Intent N + table):
+${batchIntents}
+
+Slim HTML excerpt:
+${slimHtmlExcerpt}
+${screenshotNote}
+`;
+
   const pickPrompt = `${guard}You are healing a failed Selenium UI test step.
 
 Pick EXACTLY ONE candidateId from the Shortlist below that best matches the Excel intent and the failure context.
@@ -121,7 +176,7 @@ ${intent}
 
 Failure reason:
 ${failureReason}
-
+${safetySection}
 ## Already completed in this TC
 ${history}
 ${visionBlock}
@@ -164,7 +219,7 @@ ${intent}
 
 Failure reason:
 ${failureReason}
-
+${safetySection}
 ## Already completed in this TC
 ${history}
 ${visionBlock}
@@ -213,7 +268,7 @@ ${intent}
 
 Failure reason:
 ${failureReason}
-
+${safetySection}
 ## Already completed in this TC
 ${history}
 ${visionBlock}
@@ -280,16 +335,24 @@ ${screenshotNote}
   const prompts = {
     pick: pickPrompt,
     groundRank: groundRankPrompt,
+    groundRankBatch: groundRankBatchPrompt,
     invent: inventPrompt,
     solve: solvePrompt,
     "authoring-review": authoringReviewPrompt,
     hunt: huntPrompt,
   };
-  const result = await Agent.prompt(prompts[mode], {
+  console.error(`PERF cursor_prepare elapsedMs=${Math.round(performance.now() - prepareStarted)}`);
+  const agentStarted = performance.now();
+  let result;
+  try {
+    result = await Agent.prompt(prompts[mode], {
     apiKey,
     model: { id: "auto" },
     local: { cwd: process.cwd() },
-  });
+    });
+  } finally {
+    console.error(`PERF cursor_agent elapsedMs=${Math.round(performance.now() - agentStarted)}`);
+  }
 
   const text =
     (result && (result.result || result.text || result.output)) ||
@@ -324,7 +387,19 @@ ${screenshotNote}
     }) + "\n");
     return;
   }
+  if (mode === "groundRankBatch") {
+    const picks = parsed && Array.isArray(parsed.picks) ? parsed.picks : [];
+    process.stdout.write(JSON.stringify({
+      picks,
+      rationale: parsed && parsed.rationale ? String(parsed.rationale) : "",
+    }) + "\n");
+    return;
+  }
   if (mode === "solve") {
+    if (parsed && parsed.mode === "abort") {
+      process.stdout.write(JSON.stringify(parsed) + "\n");
+      return;
+    }
     const id = parsed && parsed.candidateId ? String(parsed.candidateId).trim() : "";
     const steps = parsed && Array.isArray(parsed.steps) ? parsed.steps : [];
     const recovery = parsed && parsed.mode === "recovery";
@@ -336,6 +411,10 @@ ${screenshotNote}
     return;
   }
   if (mode === "invent") {
+    if (parsed && parsed.mode === "abort") {
+      process.stdout.write(JSON.stringify(parsed) + "\n");
+      return;
+    }
     if (!parsed || (!Array.isArray(parsed.steps) && parsed.mode !== "recovery")) {
       console.error("No invent steps in agent response:", String(text).slice(0, 500));
       process.exit(1);

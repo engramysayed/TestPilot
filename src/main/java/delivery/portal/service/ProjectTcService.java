@@ -127,7 +127,7 @@ public class ProjectTcService {
         m.put("tcId", d.tcId());
         m.put("title", d.title());
         m.put("status", d.status().name());
-        m.put("proofKind", delivery.job.JobDiagnostics.caseProofKind(d.status(), false));
+        m.put("proofKind", delivery.portal.jobs.JobDiagnostics.caseProofKind(d.status(), false));
         m.put("provenCount", d.provenSteps().size());
         m.put("blockerStepIndex", d.blockerStepIndex());
         m.put("blockerIntent", d.blockerIntent());

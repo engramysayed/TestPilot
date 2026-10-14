@@ -7,7 +7,7 @@ import project.drivers.WebDriverFactory;
 import project.drivers.WebDriverProvider;
 import project.utils.dataReader.JsonReader;
 
-@Listeners({project.listeners.TestNGListeners.class})
+@Listeners({project.listeners.TestNGListeners.class, project.utils.retry.KeelRetryListener.class})
 public class BaseTest implements WebDriverProvider {
 
     protected WebDriverFactory driver;

@@ -121,6 +121,7 @@ public class ProjectController {
         map.put("preferredHooks", store.preferredHooksJoined(p.getProjectId()));
         map.put("authoringEngine", p.getAuthoringEngine().wireValue());
         map.put("precisionMaxCallsPerJob", p.getPrecisionMaxCallsPerJob());
+        map.put("precisionReuseLocatorMemory", p.isPrecisionReuseLocatorMemory());
         map.put("archived", p.isArchived());
         map.put("lastModified", p.getLastModified());
         map.put("lastModifiedLabel", p.getLastModifiedLabel());

@@ -254,7 +254,9 @@ public final class StepIntentBinder {
                 ? extractAssertTextPhrase(intent.text())
                 : null;
 
-        if ("notVisible".equals(stateAssert)) {
+        boolean absentField = "notVisible".equals(stateAssert)
+                && intent.text().toLowerCase(Locale.ROOT).matches(".*\\b(field|input|textbox)\\b.*");
+        if ("notVisible".equals(stateAssert) && !absentField) {
             String name = extractDisappearedControlName(intent.text());
             if (name != null && !name.isBlank()) {
                 String xpath = "//*[self::button or self::a or self::input or @role='button']"
@@ -384,7 +386,7 @@ public final class StepIntentBinder {
                     "No distinctive-token match for intent " + intent.kind() + ": " + intent.text());
         }
         if ((intent.kind() == IntentKind.TYPE_FIELD || intent.kind() == IntentKind.ASSERT_VISIBLE)
-                && stateAssert == null
+                && (stateAssert == null || absentField)
                 && !candidateSharesFieldToken(intent.text(), best.candidate)) {
             return new BindResult(List.of(),
                     "No field-name match for intent " + intent.kind() + ": " + intent.text());
@@ -2076,7 +2078,8 @@ public final class StepIntentBinder {
             "shopping", "checkout", "continue", "finish", "submit", "login", "logout",
             "main", "primary", "secondary", "menu", "header", "footer", "nav", "sidebar",
             "left", "right", "top", "bottom", "collapsed", "expanded",
-            "page", "shown", "visible", "display", "displayed", "confirm", "click");
+            "page", "shown", "visible", "display", "displayed", "confirm", "click",
+            "clicks", "clicked", "navigation", "submenu", "sub");
 
     private static DomCandidate bestTokenMatch(String text, List<DomCandidate> candidates) {
         List<String> tokens = tokens(text);

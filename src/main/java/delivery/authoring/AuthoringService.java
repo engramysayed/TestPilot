@@ -222,8 +222,8 @@ public class AuthoringService {
         );
         try {
             String raw = hasImage
-                    ? llmClient.completeJson(system, user, pngOrNull)
-                    : llmClient.completeJson(system, user);
+                    ? llmClient.completeRankingJson(system, user, pngOrNull)
+                    : llmClient.completeRankingJson(system, user);
             String chosenId = parseCandidateId(raw);
             if (!shortlistContains(shortlist, chosenId)) {
                 return List.of();
@@ -232,7 +232,7 @@ public class AuthoringService {
         } catch (Exception e) {
             if (hasImage) {
                 try {
-                    String raw = llmClient.completeJson("""
+                    String raw = llmClient.completeRankingJson("""
                             Pick exactly one candidateId from the shortlist that best matches the Excel step intent.
                             Respond with a short Thought, then Action JSON:
                             {"candidateId":"<id from shortlist>"}.
@@ -297,6 +297,15 @@ public class AuthoringService {
                         "heal rejected: form submit cannot use non-submit navigation: "
                                 + candidateId));
             }
+        }
+        // A selected absence target must remain the actual named control, not a text XPath
+        // that can pass simply because a field has no visible descendant text.
+        if (intent.kind() == StepIntentBinder.IntentKind.ASSERT_VISIBLE
+                && "notVisible".equals(StepIntentBinder.extractStateAssertion(intent.text()))) {
+            if (!StepIntentBinder.candidateSharesFieldToken(intent.text(), selected))
+                return List.of(rejectStep(tcId, "absence target does not match the named control"));
+            return List.of(new ProvenStep(tcId, "Page", "elementAction", "assert",
+                    selected.strategy(), selected.value(), "", "notVisible", "", true, "explicit absence target"));
         }
         // Text-visibility intents: keep textContains (body text), don't swap to a weak landmark
         if (intent.kind() == StepIntentBinder.IntentKind.ASSERT_VISIBLE) {
@@ -501,14 +510,14 @@ public class AuthoringService {
         );
         try {
             String raw = hasImage
-                    ? llmClient.completeJson(system, user, pngOrNull)
-                    : llmClient.completeJson(system, user);
+                    ? llmClient.completeRankingJson(system, user, pngOrNull)
+                    : llmClient.completeRankingJson(system, user);
             return preferCandidate(tc, candidates, shortlist, raw, ambiguousReason);
         } catch (Exception e) {
             // Vision model missing / reject image — fall back to text-only once
             if (hasImage) {
                 try {
-                    String raw = llmClient.completeJson("""
+                    String raw = llmClient.completeRankingJson("""
                             Pick exactly one candidateId from the shortlist that best matches the Excel step intent.
                             Return ONLY JSON: {"candidateId":"<id from shortlist>"}.
                             """, user);
@@ -540,7 +549,7 @@ public class AuthoringService {
                 %s
                 """.formatted(reason, tc.steps(), DomCandidateExtractor.formatTable(shortlist));
         try {
-            String raw = llmClient.completeJson(LocatorPolicy.visionHealRules(), user, pngOrNull);
+            String raw = llmClient.completeRankingJson(LocatorPolicy.visionHealRules(), user, pngOrNull);
             return preferCandidate(tc, candidates, shortlist, raw, reason);
         } catch (Exception e) {
             return List.of();

@@ -1,0 +1,2507 @@
+{
+ "source": "Midscene ui-tars/parser.ts + @ui-tars/action-parser smartResizeForV15 + model-adapter/image-preprocess.ts (prepared vs content)",
+ "cases": [
+  {
+   "screenshot": [
+    1920,
+    842
+   ],
+   "dpr": 1,
+   "inner": [
+    1920,
+    842
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    561
+   ],
+   "model": [
+    1280,
+    561
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      960.0,
+      421.0
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      192.0,
+      757.8000000000001
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      480.0,
+      33.68
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      1918.0799999999997,
+      840.4991087344027
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1920,
+    842
+   ],
+   "dpr": 1,
+   "inner": [
+    1920,
+    842
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    561
+   ],
+   "model": [
+    1280,
+    561
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    560
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      280
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,280)<|box_end|>')",
+     "css": [
+      960.0,
+      421.0
+     ]
+    },
+    {
+     "model": [
+      129,
+      504
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,504)<|box_end|>')",
+     "css": [
+      192.29813664596273,
+      757.8000000000001
+     ]
+    },
+    {
+     "model": [
+      1287,
+      559
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,559)<|box_end|>')",
+     "css": [
+      1918.5,
+      840.4964285714286
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1920,
+    842
+   ],
+   "dpr": 1,
+   "inner": [
+    1920,
+    842
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    561
+   ],
+   "model": [
+    1288,
+    588
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      966.0,
+      441.2620320855615
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      193.20000000000002,
+      794.2716577540108
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      483.0,
+      35.30096256684492
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      1918.5,
+      840.4991087344027
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1920,
+    842
+   ],
+   "dpr": 1,
+   "inner": [
+    1920,
+    842
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    561
+   ],
+   "model": [
+    1288,
+    588
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    588
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      294
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,294)<|box_end|>')",
+     "css": [
+      966.0,
+      441.2620320855615
+     ]
+    },
+    {
+     "model": [
+      129,
+      529
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,529)<|box_end|>')",
+     "css": [
+      193.5,
+      793.9714795008913
+     ]
+    },
+    {
+     "model": [
+      1287,
+      587
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,587)<|box_end|>')",
+     "css": [
+      1918.5,
+      840.4991087344027
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1920,
+    842
+   ],
+   "dpr": 1.25,
+   "inner": [
+    1536,
+    674
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    561
+   ],
+   "model": [
+    1280,
+    561
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      768.0,
+      337.0
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      153.6,
+      606.6000000000001
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      384.0,
+      26.96
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      1534.464,
+      672.7985739750445
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1920,
+    842
+   ],
+   "dpr": 1.25,
+   "inner": [
+    1536,
+    674
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    561
+   ],
+   "model": [
+    1280,
+    561
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    560
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      280
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,280)<|box_end|>')",
+     "css": [
+      768.0,
+      337.0
+     ]
+    },
+    {
+     "model": [
+      129,
+      504
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,504)<|box_end|>')",
+     "css": [
+      153.8385093167702,
+      606.6000000000001
+     ]
+    },
+    {
+     "model": [
+      1287,
+      559
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,559)<|box_end|>')",
+     "css": [
+      1534.8,
+      672.7964285714286
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1920,
+    842
+   ],
+   "dpr": 1.25,
+   "inner": [
+    1536,
+    674
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    561
+   ],
+   "model": [
+    1288,
+    588
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      772.8,
+      353.21925133689837
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      154.56,
+      635.7946524064172
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      386.4,
+      28.257540106951875
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      1534.8,
+      672.7985739750445
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1920,
+    842
+   ],
+   "dpr": 1.25,
+   "inner": [
+    1536,
+    674
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    561
+   ],
+   "model": [
+    1288,
+    588
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    588
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      294
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,294)<|box_end|>')",
+     "css": [
+      772.8,
+      353.21925133689837
+     ]
+    },
+    {
+     "model": [
+      129,
+      529
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,529)<|box_end|>')",
+     "css": [
+      154.8,
+      635.554367201426
+     ]
+    },
+    {
+     "model": [
+      1287,
+      587
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,587)<|box_end|>')",
+     "css": [
+      1534.8,
+      672.7985739750445
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1920,
+    842
+   ],
+   "dpr": 2,
+   "inner": [
+    960,
+    421
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    561
+   ],
+   "model": [
+    1280,
+    561
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      480.0,
+      210.5
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      96.0,
+      378.90000000000003
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      240.0,
+      16.84
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      959.0399999999998,
+      420.24955436720137
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1920,
+    842
+   ],
+   "dpr": 2,
+   "inner": [
+    960,
+    421
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    561
+   ],
+   "model": [
+    1280,
+    561
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    560
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      280
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,280)<|box_end|>')",
+     "css": [
+      480.0,
+      210.5
+     ]
+    },
+    {
+     "model": [
+      129,
+      504
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,504)<|box_end|>')",
+     "css": [
+      96.14906832298136,
+      378.90000000000003
+     ]
+    },
+    {
+     "model": [
+      1287,
+      559
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,559)<|box_end|>')",
+     "css": [
+      959.25,
+      420.2482142857143
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1920,
+    842
+   ],
+   "dpr": 2,
+   "inner": [
+    960,
+    421
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    561
+   ],
+   "model": [
+    1288,
+    588
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      483.0,
+      220.63101604278074
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      96.60000000000001,
+      397.1358288770054
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      241.5,
+      17.65048128342246
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      959.25,
+      420.24955436720137
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1920,
+    842
+   ],
+   "dpr": 2,
+   "inner": [
+    960,
+    421
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    561
+   ],
+   "model": [
+    1288,
+    588
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    588
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      294
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,294)<|box_end|>')",
+     "css": [
+      483.0,
+      220.63101604278074
+     ]
+    },
+    {
+     "model": [
+      129,
+      529
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,529)<|box_end|>')",
+     "css": [
+      96.75,
+      396.98573975044565
+     ]
+    },
+    {
+     "model": [
+      1287,
+      587
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,587)<|box_end|>')",
+     "css": [
+      959.25,
+      420.24955436720137
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1280,
+    800
+   ],
+   "dpr": 1,
+   "inner": [
+    1280,
+    800
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    800
+   ],
+   "model": [
+    1280,
+    800
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      640.0,
+      400.0
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      128.0,
+      720.0
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      320.0,
+      32.0
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      1278.72,
+      799.0
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1280,
+    800
+   ],
+   "dpr": 1,
+   "inner": [
+    1280,
+    800
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    800
+   ],
+   "model": [
+    1280,
+    800
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    812
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      406
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,406)<|box_end|>')",
+     "css": [
+      640.0,
+      400.0
+     ]
+    },
+    {
+     "model": [
+      129,
+      731
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,731)<|box_end|>')",
+     "css": [
+      128.19875776397515,
+      720.1970443349753
+     ]
+    },
+    {
+     "model": [
+      1287,
+      811
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,811)<|box_end|>')",
+     "css": [
+      1279.0,
+      799.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1280,
+    800
+   ],
+   "dpr": 1,
+   "inner": [
+    1280,
+    800
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    800
+   ],
+   "model": [
+    1288,
+    812
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      644.0,
+      406.0
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      128.8,
+      730.8
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      322.0,
+      32.480000000000004
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      1279.0,
+      799.0
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1280,
+    800
+   ],
+   "dpr": 1,
+   "inner": [
+    1280,
+    800
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    800
+   ],
+   "model": [
+    1288,
+    812
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    812
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      406
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,406)<|box_end|>')",
+     "css": [
+      644.0,
+      406.0
+     ]
+    },
+    {
+     "model": [
+      129,
+      731
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,731)<|box_end|>')",
+     "css": [
+      129.0,
+      731.0
+     ]
+    },
+    {
+     "model": [
+      1287,
+      811
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,811)<|box_end|>')",
+     "css": [
+      1279.0,
+      799.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1280,
+    800
+   ],
+   "dpr": 1.25,
+   "inner": [
+    1024,
+    640
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    800
+   ],
+   "model": [
+    1280,
+    800
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      512.0,
+      320.0
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      102.4,
+      576.0
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      256.0,
+      25.6
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      1022.976,
+      639.2
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1280,
+    800
+   ],
+   "dpr": 1.25,
+   "inner": [
+    1024,
+    640
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    800
+   ],
+   "model": [
+    1280,
+    800
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    812
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      406
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,406)<|box_end|>')",
+     "css": [
+      512.0,
+      320.0
+     ]
+    },
+    {
+     "model": [
+      129,
+      731
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,731)<|box_end|>')",
+     "css": [
+      102.55900621118012,
+      576.1576354679803
+     ]
+    },
+    {
+     "model": [
+      1287,
+      811
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,811)<|box_end|>')",
+     "css": [
+      1023.2,
+      639.2
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1280,
+    800
+   ],
+   "dpr": 1.25,
+   "inner": [
+    1024,
+    640
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    800
+   ],
+   "model": [
+    1288,
+    812
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      515.2,
+      324.8
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      103.04,
+      584.64
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      257.6,
+      25.984000000000005
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      1023.2,
+      639.2
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1280,
+    800
+   ],
+   "dpr": 1.25,
+   "inner": [
+    1024,
+    640
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    800
+   ],
+   "model": [
+    1288,
+    812
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    812
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      406
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,406)<|box_end|>')",
+     "css": [
+      515.2,
+      324.8
+     ]
+    },
+    {
+     "model": [
+      129,
+      731
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,731)<|box_end|>')",
+     "css": [
+      103.2,
+      584.8
+     ]
+    },
+    {
+     "model": [
+      1287,
+      811
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,811)<|box_end|>')",
+     "css": [
+      1023.2,
+      639.2
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1280,
+    800
+   ],
+   "dpr": 2,
+   "inner": [
+    640,
+    400
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    800
+   ],
+   "model": [
+    1280,
+    800
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      320.0,
+      200.0
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      64.0,
+      360.0
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      160.0,
+      16.0
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      639.36,
+      399.5
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1280,
+    800
+   ],
+   "dpr": 2,
+   "inner": [
+    640,
+    400
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    800
+   ],
+   "model": [
+    1280,
+    800
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    812
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      406
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,406)<|box_end|>')",
+     "css": [
+      320.0,
+      200.0
+     ]
+    },
+    {
+     "model": [
+      129,
+      731
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,731)<|box_end|>')",
+     "css": [
+      64.09937888198758,
+      360.09852216748766
+     ]
+    },
+    {
+     "model": [
+      1287,
+      811
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,811)<|box_end|>')",
+     "css": [
+      639.5,
+      399.5
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1280,
+    800
+   ],
+   "dpr": 2,
+   "inner": [
+    640,
+    400
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    800
+   ],
+   "model": [
+    1288,
+    812
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      322.0,
+      203.0
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      64.4,
+      365.4
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      161.0,
+      16.240000000000002
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      639.5,
+      399.5
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1280,
+    800
+   ],
+   "dpr": 2,
+   "inner": [
+    640,
+    400
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    800
+   ],
+   "model": [
+    1288,
+    812
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    812
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      406
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,406)<|box_end|>')",
+     "css": [
+      322.0,
+      203.0
+     ]
+    },
+    {
+     "model": [
+      129,
+      731
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,731)<|box_end|>')",
+     "css": [
+      64.5,
+      365.5
+     ]
+    },
+    {
+     "model": [
+      1287,
+      811
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,811)<|box_end|>')",
+     "css": [
+      639.5,
+      399.5
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1366,
+    768
+   ],
+   "dpr": 1,
+   "inner": [
+    1366,
+    768
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    720
+   ],
+   "model": [
+    1280,
+    720
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      683.0,
+      384.0
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      136.6,
+      691.2000000000002
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      341.5,
+      30.720000000000002
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      1364.634,
+      766.9333333333333
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1366,
+    768
+   ],
+   "dpr": 1,
+   "inner": [
+    1366,
+    768
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    720
+   ],
+   "model": [
+    1280,
+    720
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    728
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      364
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,364)<|box_end|>')",
+     "css": [
+      683.0,
+      384.0
+     ]
+    },
+    {
+     "model": [
+      129,
+      655
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,655)<|box_end|>')",
+     "css": [
+      136.81211180124222,
+      690.989010989011
+     ]
+    },
+    {
+     "model": [
+      1287,
+      727
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,727)<|box_end|>')",
+     "css": [
+      1364.9328125,
+      766.9333333333333
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1366,
+    768
+   ],
+   "dpr": 1,
+   "inner": [
+    1366,
+    768
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    720
+   ],
+   "model": [
+    1288,
+    728
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      687.26875,
+      388.26666666666665
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      137.45375,
+      698.88
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      343.634375,
+      31.061333333333334
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      1364.9328125,
+      766.9333333333333
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1366,
+    768
+   ],
+   "dpr": 1,
+   "inner": [
+    1366,
+    768
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    720
+   ],
+   "model": [
+    1288,
+    728
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    728
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      364
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,364)<|box_end|>')",
+     "css": [
+      687.26875,
+      388.26666666666665
+     ]
+    },
+    {
+     "model": [
+      129,
+      655
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,655)<|box_end|>')",
+     "css": [
+      137.6671875,
+      698.6666666666666
+     ]
+    },
+    {
+     "model": [
+      1287,
+      727
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,727)<|box_end|>')",
+     "css": [
+      1364.9328125,
+      766.9333333333333
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1366,
+    768
+   ],
+   "dpr": 1.25,
+   "inner": [
+    1093,
+    614
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    720
+   ],
+   "model": [
+    1280,
+    720
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      546.5,
+      307.0
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      109.3,
+      552.6
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      273.25,
+      24.560000000000002
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      1091.9070000000002,
+      613.1472222222222
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1366,
+    768
+   ],
+   "dpr": 1.25,
+   "inner": [
+    1093,
+    614
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    720
+   ],
+   "model": [
+    1280,
+    720
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    728
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      364
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,364)<|box_end|>')",
+     "css": [
+      546.5,
+      307.0
+     ]
+    },
+    {
+     "model": [
+      129,
+      655
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,655)<|box_end|>')",
+     "css": [
+      109.4697204968944,
+      552.4313186813187
+     ]
+    },
+    {
+     "model": [
+      1287,
+      727
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,727)<|box_end|>')",
+     "css": [
+      1092.1460937499999,
+      613.1472222222222
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1366,
+    768
+   ],
+   "dpr": 1.25,
+   "inner": [
+    1093,
+    614
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    720
+   ],
+   "model": [
+    1288,
+    728
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      549.915625,
+      310.4111111111111
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      109.983125,
+      558.74
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      274.9578125,
+      24.83288888888889
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      1092.1460937499999,
+      613.1472222222222
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1366,
+    768
+   ],
+   "dpr": 1.25,
+   "inner": [
+    1093,
+    614
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    720
+   ],
+   "model": [
+    1288,
+    728
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    728
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      364
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,364)<|box_end|>')",
+     "css": [
+      549.915625,
+      310.4111111111111
+     ]
+    },
+    {
+     "model": [
+      129,
+      655
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,655)<|box_end|>')",
+     "css": [
+      110.15390625000002,
+      558.5694444444445
+     ]
+    },
+    {
+     "model": [
+      1287,
+      727
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,727)<|box_end|>')",
+     "css": [
+      1092.1460937499999,
+      613.1472222222222
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1366,
+    768
+   ],
+   "dpr": 2,
+   "inner": [
+    683,
+    384
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    720
+   ],
+   "model": [
+    1280,
+    720
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      341.5,
+      192.0
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      68.3,
+      345.6000000000001
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      170.75,
+      15.360000000000001
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      682.317,
+      383.46666666666664
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1366,
+    768
+   ],
+   "dpr": 2,
+   "inner": [
+    683,
+    384
+   ],
+   "pad": 0,
+   "send": [
+    1280,
+    720
+   ],
+   "model": [
+    1280,
+    720
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    728
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      364
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,364)<|box_end|>')",
+     "css": [
+      341.5,
+      192.0
+     ]
+    },
+    {
+     "model": [
+      129,
+      655
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,655)<|box_end|>')",
+     "css": [
+      68.40605590062111,
+      345.4945054945055
+     ]
+    },
+    {
+     "model": [
+      1287,
+      727
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,727)<|box_end|>')",
+     "css": [
+      682.46640625,
+      383.46666666666664
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1366,
+    768
+   ],
+   "dpr": 2,
+   "inner": [
+    683,
+    384
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    720
+   ],
+   "model": [
+    1288,
+    728
+   ],
+   "space": "THOUSAND",
+   "smartResize": null,
+   "points": [
+    {
+     "model": [
+      500,
+      500
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(500,500)<|box_end|>')",
+     "css": [
+      343.634375,
+      194.13333333333333
+     ]
+    },
+    {
+     "model": [
+      100,
+      900
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(100,900)<|box_end|>')",
+     "css": [
+      68.726875,
+      349.44
+     ]
+    },
+    {
+     "model": [
+      250,
+      40
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(250,40)<|box_end|>')",
+     "css": [
+      171.8171875,
+      15.530666666666667
+     ]
+    },
+    {
+     "model": [
+      999,
+      999
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(999,999)<|box_end|>')",
+     "css": [
+      682.46640625,
+      383.46666666666664
+     ]
+    },
+    {
+     "model": [
+      0,
+      0
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(0,0)<|box_end|>')",
+     "css": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "screenshot": [
+    1366,
+    768
+   ],
+   "dpr": 2,
+   "inner": [
+    683,
+    384
+   ],
+   "pad": 28,
+   "send": [
+    1280,
+    720
+   ],
+   "model": [
+    1288,
+    728
+   ],
+   "space": "SMART_RESIZE_V15",
+   "smartResize": [
+    1288,
+    728
+   ],
+   "points": [
+    {
+     "model": [
+      644,
+      364
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(644,364)<|box_end|>')",
+     "css": [
+      343.634375,
+      194.13333333333333
+     ]
+    },
+    {
+     "model": [
+      129,
+      655
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(129,655)<|box_end|>')",
+     "css": [
+      68.83359375,
+      349.3333333333333
+     ]
+    },
+    {
+     "model": [
+      1287,
+      727
+     ],
+     "raw": "Thought: target\nAction: click(start_box='<|box_start|>(1287,727)<|box_end|>')",
+     "css": [
+      682.46640625,
+      383.46666666666664
+     ]
+    }
+   ]
+  }
+ ]
+}

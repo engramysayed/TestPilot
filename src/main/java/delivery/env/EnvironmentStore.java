@@ -129,11 +129,18 @@ public final class EnvironmentStore {
     }
 
     private Revision readMeta(String id) throws Exception {
+        if (id == null || !id.matches("envrev_[a-f0-9]{16}")) throw new IllegalArgumentException("unknown environment revision");
         Path meta = revisionsDir().resolve(id + ".json");
         if (!Files.isRegularFile(meta)) {
             throw new IllegalArgumentException("unknown environment revision: " + id);
         }
-        return parseMeta(Files.readString(meta, StandardCharsets.UTF_8));
+        Revision revision = parseMeta(Files.readString(meta, StandardCharsets.UTF_8));
+        byte[] body = Files.readAllBytes(revisionsDir().resolve(id + ".bin"));
+        var profile = EnvironmentProfile.fromJson(new org.json.JSONObject(new String(body, StandardCharsets.UTF_8)));
+        if (!id.equals(revision.id()) || !sha256(body).equals(revision.sha256())
+                || !profile.equals(revision.profile()) || profile.origin().isBlank())
+            throw new IllegalStateException("ENVIRONMENT_REVISION_CORRUPT");
+        return revision;
     }
 
     private static Revision parseMeta(String json) {

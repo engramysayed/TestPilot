@@ -1,0 +1,268 @@
+/*
+ * Keel calm theme — loaded after keel-reskin.css.
+ * Look source: /workspace/testpilot/ui-prototype/
+ * Does not remove reskin selectors; softens them (blue accent, roomier type, light+dark).
+ */
+:root {
+    --calm-bg: #f6f7f9;
+    --calm-card: #ffffff;
+    --calm-ink: #1d2433;
+    --calm-muted: #5d6678;
+    --calm-line: #e3e6ec;
+    --calm-accent: #3d63dd;
+    --calm-accent-soft: #e9eefc;
+    --calm-ok: #2f7d4f;
+    --calm-ok-bg: #e6f4ea;
+    --calm-fix: #2c6e8f;
+    --calm-fix-bg: #e4f1f7;
+    --calm-flaky: #8a5a12;
+    --calm-flaky-bg: #fbf0dc;
+    --calm-bad: #b23b3b;
+    --calm-bad-bg: #fbe7e7;
+    --calm-radius: 16px;
+    --calm-shadow: 0 1px 2px rgba(20, 30, 50, 0.05), 0 4px 14px rgba(20, 30, 50, 0.05);
+    /* Map onto reskin tokens so existing rules pick up the calm look */
+    --ink: var(--calm-ink);
+    --paper: var(--calm-bg);
+    --teal: var(--calm-accent);
+    --mint: var(--calm-accent-soft);
+    --nav: #152038;
+    --red: var(--calm-bad);
+    --amber: var(--calm-flaky);
+    --panel: var(--calm-card);
+    --panel-solid: var(--calm-card);
+    --sidebar: var(--nav);
+    --text: var(--calm-ink);
+    --muted: var(--calm-muted);
+    --accent: var(--calm-accent);
+    --line: var(--calm-line);
+    --radius: 12px;
+    color-scheme: light;
+}
+html[data-theme="dark"] {
+    --calm-bg: #14171d;
+    --calm-card: #1d222b;
+    --calm-ink: #e7eaf0;
+    --calm-muted: #a1a9b8;
+    --calm-line: #2d3440;
+    --calm-accent: #8aa4f5;
+    --calm-accent-soft: #26304a;
+    --calm-ok: #7fd19c;
+    --calm-ok-bg: #1f3428;
+    --calm-fix: #86c6e4;
+    --calm-fix-bg: #1c3140;
+    --calm-flaky: #f0c27a;
+    --calm-flaky-bg: #3a2e1a;
+    --calm-bad: #f19a9a;
+    --calm-bad-bg: #3e2224;
+    --calm-shadow: none;
+    --ink: var(--calm-ink);
+    --paper: var(--calm-bg);
+    --teal: var(--calm-accent);
+    --mint: var(--calm-accent-soft);
+    --nav: #0f131a;
+    --red: var(--calm-bad);
+    --amber: var(--calm-flaky);
+    --panel: var(--calm-card);
+    --panel-solid: var(--calm-card);
+    --sidebar: var(--nav);
+    --text: var(--calm-ink);
+    --muted: var(--calm-muted);
+    --accent: var(--calm-accent);
+    --line: var(--calm-line);
+    color-scheme: dark;
+}
+html { font-size: 17px; }
+body {
+    background: var(--calm-bg) !important;
+    color: var(--calm-ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.55;
+}
+.app-shell, .app-main, .shell, .keel-page { background: transparent; }
+.topbar {
+    background: var(--calm-card);
+    border-bottom: 1px solid var(--calm-line);
+}
+.sidebar {
+    background: var(--sidebar);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+.sidebar-nav a {
+    border-radius: 12px;
+    padding: 11px 14px;
+    font-size: 1.02rem;
+}
+.sidebar-nav a.active {
+    background: rgba(61, 99, 221, 0.22);
+    color: #fff;
+}
+html[data-theme="dark"] .sidebar-nav a.active {
+    background: var(--calm-accent-soft);
+    color: var(--calm-accent);
+}
+.panel, .panel--keel, .card, .projectcard {
+    background: var(--calm-card);
+    border: 1px solid var(--calm-line);
+    border-radius: var(--calm-radius);
+    box-shadow: var(--calm-shadow);
+}
+.panel--keel, .panel { padding: 1.4rem 1.55rem; }
+.heading h1, .keel-page h1, .shell h1 {
+    font-size: 1.85rem;
+    letter-spacing: -0.01em;
+    color: var(--calm-ink);
+}
+.sub, .lede, .muted, .panel-intro { color: var(--calm-muted); }
+.button, button.button, a.button {
+    border-radius: 12px;
+    padding: 0.65rem 1.1rem;
+    font-weight: 600;
+    font-size: 0.98rem;
+}
+.button.primary, button.primary, a.button.primary {
+    background: var(--calm-accent);
+    border-color: var(--calm-accent);
+    color: #fff;
+}
+html[data-theme="dark"] .button.primary,
+html[data-theme="dark"] a.button.primary {
+    color: #10162a;
+}
+.button.ghost { background: transparent; border-color: var(--calm-line); color: var(--calm-ink); }
+.stats--bar, .stat, .kpi {
+    border-radius: var(--calm-radius);
+    background: var(--calm-card);
+    border: 1px solid var(--calm-line);
+}
+input, select, textarea {
+    border-radius: 12px !important;
+    border-color: var(--calm-line) !important;
+    font-size: 1rem;
+    background: var(--calm-card);
+    color: var(--calm-ink);
+}
+table.table th { color: var(--calm-muted); font-weight: 600; }
+table.table td, table.table th {
+    padding: 0.85rem 0.75rem;
+    border-color: var(--calm-line);
+}
+
+/* Friendly status chips (prototype wording) */
+.chip, .badge, .keel-chip,
+.badge--pass, .badge--fail, .badge--warn, .badge--info,
+[data-friendly="status"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 999px;
+    padding: 0.2rem 0.75rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    border: 0;
+}
+.chip:before, .badge--pass:before, .badge--fail:before, .badge--warn:before {
+    content: "";
+    width: 8px; height: 8px; border-radius: 50%; background: currentColor;
+}
+.chip--pass, .badge--pass, .c-pass { background: var(--calm-ok-bg); color: var(--calm-ok); }
+.chip--fix, .badge--info, .c-fix { background: var(--calm-fix-bg); color: var(--calm-fix); }
+.chip--flaky, .badge--warn, .c-flaky { background: var(--calm-flaky-bg); color: var(--calm-flaky); }
+.chip--bad, .badge--fail, .c-bad { background: var(--calm-bad-bg); color: var(--calm-bad); }
+
+/* Keep retry-metrics classes intact; only soft-align with calm tokens */
+.keel-verdict { border-radius: 999px; }
+.keel-retry-tile {
+    border-radius: 14px;
+    border-color: var(--calm-line);
+    background: var(--calm-card);
+}
+.keel-retry-tile__value { color: var(--calm-ink); }
+.keel-retry-tile__label { color: var(--calm-muted); }
+
+/* Theme toggle in sidebar */
+.theme-toggle {
+    margin: 0.75rem 0.6rem 0;
+    width: calc(100% - 1.2rem);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+    color: #e7eaf0;
+    border-radius: 12px;
+    padding: 0.65rem 0.9rem;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+}
+.theme-toggle:hover { background: rgba(255, 255, 255, 0.12); }
+html[data-theme="dark"] .theme-toggle {
+    border-color: var(--calm-line);
+    background: var(--calm-card);
+    color: var(--calm-ink);
+}
+
+/* Guided record wizard */
+.record-wizard .steps {
+    display: flex; gap: 0.6rem; list-style: none; margin: 0 0 1.25rem; padding: 0;
+}
+.record-wizard .steps li {
+    flex: 1; display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.7rem 0.85rem; border-radius: 12px;
+    background: var(--calm-card); border: 1px solid var(--calm-line); color: var(--calm-muted);
+}
+.record-wizard .steps li b {
+    width: 1.65rem; height: 1.65rem; border-radius: 50%;
+    display: grid; place-items: center; background: var(--calm-bg); font-size: 0.9rem;
+}
+.record-wizard .steps li.on { border-color: var(--calm-accent); color: var(--calm-ink); }
+.record-wizard .steps li.on b { background: var(--calm-accent); color: #fff; }
+.record-wizard .steps li.done b { background: var(--calm-ok-bg); color: var(--calm-ok); }
+.record-wizard .choice {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem;
+}
+.record-wizard .choice label {
+    border: 1px solid var(--calm-line); border-radius: 14px; padding: 1rem; cursor: pointer; display: block;
+}
+.record-wizard .choice label:has(input:checked) {
+    border-color: var(--calm-accent); background: var(--calm-accent-soft);
+}
+.record-wizard .recbox {
+    border: 2px dashed var(--calm-line); border-radius: 16px; padding: 1.5rem; text-align: center;
+}
+.record-wizard .wnav { display: flex; justify-content: space-between; margin-top: 1.4rem; }
+
+/* Settings segment + channels (account / project) */
+.calm-seg {
+    display: inline-flex; border: 1px solid var(--calm-line); border-radius: 14px;
+    padding: 4px; background: var(--calm-bg);
+}
+.calm-seg label {
+    padding: 0.55rem 1.1rem; border-radius: 10px; cursor: pointer; font-weight: 600;
+}
+.calm-seg input { position: absolute; opacity: 0; pointer-events: none; }
+.calm-seg label:has(input:checked) {
+    background: var(--calm-card); box-shadow: var(--calm-shadow); color: var(--calm-accent);
+}
+.calm-channel {
+    display: grid; grid-template-columns: 52px 140px 1fr; gap: 1rem;
+    align-items: center; padding: 0.9rem 0; border-bottom: 1px solid var(--calm-line);
+}
+.calm-channel:last-child { border-bottom: 0; }
+.calm-toggle { position: relative; width: 52px; height: 30px; flex: none; }
+.calm-toggle input { opacity: 0; width: 0; height: 0; }
+.calm-toggle span {
+    position: absolute; inset: 0; background: var(--calm-line); border-radius: 999px; cursor: pointer;
+}
+.calm-toggle span:before {
+    content: ""; position: absolute; width: 24px; height: 24px; left: 3px; top: 3px;
+    background: #fff; border-radius: 50%; transition: 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.calm-toggle input:checked + span { background: var(--calm-accent); }
+.calm-toggle input:checked + span:before { transform: translateX(22px); }
+.calm-channel input[disabled] { opacity: 0.5; }
+
+.example-pill {
+    display: inline-block; font-size: 0.8rem; font-weight: 600; color: var(--calm-muted);
+    border: 1px dashed var(--calm-muted); border-radius: 999px; padding: 2px 10px; margin-left: 0.4rem;
+}

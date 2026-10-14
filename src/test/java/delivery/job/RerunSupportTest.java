@@ -1,5 +1,7 @@
 package delivery.job;
 
+import delivery.portal.jobs.*;
+
 import delivery.portal.model.JobRecord;
 import org.testng.Assert;
 import org.testng.annotations.Test;

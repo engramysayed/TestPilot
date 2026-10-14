@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Checkout for john.doe@example.com</title><style>body{font:16px sans-serif}</style></head><body>
+<p id="hello">Hello, Sayed</p>
+<p>Contact: john.doe@example.com, phone 0100 123 4567</p>
+<form action="/pay?token=secret123">
+<label>Email <input id="email" name="email" value="prefilled@example.com"></label>
+<label>Card <input id="card" name="card"></label>
+<input type="password" id="pw" value="hunter2">
+<button id="submit-order" type="button">Submit order</button>
+<button id="cancel" type="button">Cancel</button>
+<a href="/help?ref=abc">Help</a>
+</form>
+<script>var secretToken='abc123';</script>
+</body></html>

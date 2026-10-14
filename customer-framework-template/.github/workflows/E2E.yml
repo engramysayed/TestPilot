@@ -10,9 +10,10 @@ on:
       - master
 
   schedule:
-    # * * * * * -> minutes,hours,week,month,day  for ex: (* 3 * * *) every day at 3 utc time -> 6 egp time
-    # every day at 12 pm egypt time
-    - cron: '* 21 * * *'
+    # minute hour day-of-month month day-of-week (UTC). '0 21 * * *' = once a day at 21:00 UTC
+    # (midnight Cairo summer time). The old '* 21 * * *' fired every minute of that hour.
+    # How to disable this workflow: docs/CI_E2E_WORKFLOW.md
+    - cron: '0 21 * * *'
 
   workflow_dispatch:
 

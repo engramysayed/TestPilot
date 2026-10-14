@@ -92,7 +92,7 @@ public class DashboardMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(body.contains("stats--bar"));
         Assert.assertTrue(body.contains("Execution outcomes"));
         Assert.assertTrue(body.contains("Proven pass rate"));
-        Assert.assertTrue(body.contains("No proven cases yet") || body.contains("Pass rate is"),
+        Assert.assertTrue(body.contains("No finished test runs yet") || body.contains("Pass rate is"),
                 "dashboard must explain the proven-rate denominator");
         Assert.assertTrue(body.contains("Recent runs"));
         Assert.assertTrue(body.contains("+ New run"));

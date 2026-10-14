@@ -1,0 +1,6 @@
+{
+  "test": "a.B.c",
+  "verdict": "FLAKY",
+  "attempt": 1,
+  "readOnly": true
+}

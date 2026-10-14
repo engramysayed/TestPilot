@@ -46,6 +46,7 @@ LOGIN & ASSERT AUTHORING (Execute-safe)
 - Empty-field negative cases: step must say "Leave the … field empty" (not "Enter in the … field"). The matching TestData line for that step must be blank.
 - Title, Steps, TestData, and ExpectedResult must agree (empty email case → no email value in TestData).
 - Final confirm/assert steps must quote the exact error message from requirements (e.g. Confirm the message 'Please enter your email or phone number' is visible). Forbidden vague phrases: "clear validation/error state", "validation/error state is shown".
+- Static OTP (lab / QA only): when requirements name a fixed OTP (e.g. 245345), use Username + Password fields and the exact submit label (Sign in vs Login). Include Verification Code screen when requirements describe it. Steps: Enter Username; Enter Password; Click Sign in; Confirm Verification Code screen if applicable; Enter OTP; Click Verify OTP; Confirm Verification Code and OTP field are not visible; Confirm post-login text (e.g. Welcome!). OTP digits only on the matching TestData line. keelPath AUTOMATE or EXECUTE — not MANUAL.
 
 TINY SHAPE EXAMPLE (illustrative only — not extra cases to emit unless the requirements support them)
 TC_ID,Title,Steps,ExpectedResult,Preconditions,Priority,Tags,VisualAssertion,TestData,KeelPath

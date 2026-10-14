@@ -13,6 +13,47 @@ import java.util.List;
 import java.util.Map;
 
 public class GeneratedWorkbookRevisionFlowTest {
+    @Test public void generatedBatchAppendsAndConflictsPreserveTheLibrary() throws Exception {
+        DeliveryPortalProperties props = new DeliveryPortalProperties();
+        props.setStoreRoot(Files.createTempDirectory("generation-append-").toString());
+        GeneratedWorkbookService service = new GeneratedWorkbookService(props);
+        String projectId = "project";
+        service.saveFromCases(projectId, List.of(tc("TC_01", "Existing")), "IMPORT", "owner");
+        Path csv = Files.createTempFile("generation-batch-", ".csv");
+        try {
+            Files.writeString(csv, delivery.excel.GeneratedTcCsvParser.toCsv(List.of(tc("TC_02", "New"))));
+            service.saveFromCsvFile(projectId, csv, "GENERATE_BATCH", "job-new");
+            Assert.assertEquals(service.readCases(projectId).stream().map(ManualTestCase::tcId).toList(), List.of("TC_01", "TC_02"));
+            String head = service.headRevisionId(projectId).orElseThrow();
+            byte[] latest = Files.readAllBytes(service.generatedDir(projectId).resolve("latest.xlsx"));
+            Files.writeString(csv, delivery.excel.GeneratedTcCsvParser.toCsv(List.of(tc("TC_03", "Other"), tc("TC_01", "Overwrite"))));
+            try { service.saveFromCsvFile(projectId, csv, "GENERATE_BATCH", "job-conflict"); Assert.fail("Expected conflict"); }
+            catch (IllegalArgumentException e) { Assert.assertTrue(e.getMessage().startsWith("LIBRARY_ID_CONFLICT:")); }
+            Assert.assertEquals(service.headRevisionId(projectId).orElseThrow(), head);
+            Assert.assertEquals(Files.readAllBytes(service.generatedDir(projectId).resolve("latest.xlsx")), latest);
+            Assert.assertEquals(service.readCases(projectId).get(0).title(), "Existing");
+            Files.writeString(csv, delivery.excel.GeneratedTcCsvParser.toCsv(List.of()));
+            try { service.saveFromCsvFile(projectId, csv, "GENERATE_BATCH", "empty"); Assert.fail("Expected empty batch rejection"); }
+            catch (IllegalArgumentException e) { Assert.assertNotNull(e.getMessage()); }
+            Assert.assertEquals(service.headRevisionId(projectId).orElseThrow(), head);
+        } finally { Files.deleteIfExists(csv); }
+    }
+
+    @Test public void restoreCopiesAllCasesAndDeletionHasItsOwnHistoryLabel() throws Exception {
+        DeliveryPortalProperties props = new DeliveryPortalProperties();
+        props.setStoreRoot(Files.createTempDirectory("restore-all-").toString());
+        GeneratedWorkbookService service = new GeneratedWorkbookService(props);
+        service.saveFromCases("project", List.of(tc("TC_01", "One"), tc("TC_02", "Two"), tc("TC_03", "Three")), "IMPORT", "owner");
+        String original = service.headRevisionId("project").orElseThrow();
+        service.deleteCases("project", List.of("TC_03"));
+        service.restoreRevision("project", original, "owner");
+        Assert.assertEquals(service.readCases("project").size(), 3);
+        service.updateCaseFields("project", "TC_01", Map.of("title", "Edited"), "https://example.test");
+        Assert.assertEquals(service.describe("project").orElseThrow().get("source"), "CASE_EDIT");
+        service.deleteCases("project", List.of("TC_03"));
+        Assert.assertEquals(service.describe("project").orElseThrow().get("source"), "CASE_DELETE");
+        Assert.assertEquals(service.readRevisionCases("project", original).size(), 3);
+    }
 
     private GeneratedWorkbookService service() {
         DeliveryPortalProperties props = new DeliveryPortalProperties();

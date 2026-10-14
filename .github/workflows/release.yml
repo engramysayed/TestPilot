@@ -33,7 +33,7 @@ jobs:
       - name: Compile customer framework template
         run: mvn -B -f customer-framework-template/pom.xml -DskipTests compile
       - name: Dependency inventory
-        run: mvn -B -q dependency:tree > target/dependency-tree.txt
+        run: mkdir -p target && mvn -B -q dependency:tree > target/dependency-tree.txt
       - name: Artifact checksums
         run: |
           mkdir -p target/provenance
@@ -49,7 +49,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: release-evidence
+          # B02 multi-module: surefire reports land under keel-*/target/ (not root target/).
+          # Keep root target/ paths for dependency-tree / provenance written by earlier steps.
+          if-no-files-found: warn
           path: |
+            keel-*/target/surefire-reports/
             target/surefire-reports/
             target/dependency-tree.txt
             target/provenance/
@@ -73,4 +77,57 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: benchmark-evidence
-          path: target/surefire-reports/
+          if-no-files-found: warn
+          path: |
+            keel-*/target/surefire-reports/
+            target/surefire-reports/
+
+  # B09 (SPLIT_DESIGN rev 10): EngineIsolationIT, CI only. Portal and engine are two processes with disjoint data
+  # roots; the engine reaches the portal only by URL + runner token. Never run on the company machine.
+  engine-isolation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: EngineIsolationIT (separate data roots)
+        run: mvn -B -pl keel-portal -am test "-Dtest=EngineIsolationIT" "-Dsurefire.failIfNoSpecifiedTests=false"
+        env:
+          CI: "true"
+
+  engine-isolation-windows:
+    # Engine root on a different drive letter (subst E:), portal root on the checkout drive.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Map engine root to E:
+        shell: cmd
+        run: |
+          mkdir "%RUNNER_TEMP%\keel-engine-root"
+          subst E: "%RUNNER_TEMP%\keel-engine-root"
+      - name: EngineIsolationIT (engine on E:)
+        shell: cmd
+        run: mvn -B -pl keel-portal -am test "-Dtest=EngineIsolationIT" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dkeel.it.engine-root=E:\engine"
+        env:
+          CI: "true"
+
+  # B10 (OPS §12.5 Part A item 1): hard-coded hosts/paths check.
+  hardcoded-hosts-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Check for hard-coded hosts and paths
+        run: scripts/ci/check-hardcoded.sh

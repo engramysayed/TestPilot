@@ -42,3 +42,7 @@ docs/design/keel-preview/signoff-screenshots/
 .idea/compiler.xml
 .idea/libraries/
 
+
+# Local scratch (never commit)
+tmp/
+

@@ -17,7 +17,9 @@ public class WebDriverFactory {
         Browser browserType= Browser.valueOf(browser.toUpperCase());
         AbstractDriver abstractDriver = browserType.getDriverFactory();
         LogsManager.info("Starting Driver for Browser Type: " + browserType);
-        WebDriver driver= ThreadGuard.protect(abstractDriver.createDriver());
+        WebDriver raw = abstractDriver.createDriver();
+        delivery.job.ProveWiring.onDriverCreated(raw); // A2 closed-shadow hook when serializer=v2 (no-op by default)
+        WebDriver driver= ThreadGuard.protect(raw);
         driverThreadLocal.set(driver);
     }
 
@@ -39,7 +41,9 @@ public class WebDriverFactory {
         Browser browserType = Browser.valueOf(browser.toUpperCase());
         AbstractDriver abstractDriver = browserType.getDriverFactory();
         LogsManager.info("Restarting Driver for Browser Type: " + browserType);
-        WebDriver driver = ThreadGuard.protect(abstractDriver.createDriver());
+        WebDriver raw = abstractDriver.createDriver();
+        delivery.job.ProveWiring.onDriverCreated(raw);
+        WebDriver driver = ThreadGuard.protect(raw);
         driverThreadLocal.set(driver);
     }
 
