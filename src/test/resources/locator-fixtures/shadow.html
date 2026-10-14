@@ -1,0 +1,12 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Shadow DOM</title></head><body>
+<h1>Settings</h1>
+<open-panel id="op"></open-panel>
+<closed-panel id="cp"></closed-panel>
+<script>
+customElements.define('open-panel',class extends HTMLElement{connectedCallback(){const r=this.attachShadow({mode:'open'});
+ r.innerHTML='<div class="panel"><button id="save" data-gt="open-save">Save settings</button><inner-chip id="chip"></inner-chip></div>';}});
+customElements.define('inner-chip',class extends HTMLElement{connectedCallback(){const r=this.attachShadow({mode:'open'});
+ r.innerHTML='<a href="#" id="chip-link" data-gt="open-nested-link">Nested Chip</a>';}});
+customElements.define('closed-panel',class extends HTMLElement{connectedCallback(){const r=this.attachShadow({mode:'closed'});
+ r.innerHTML='<button id="delete" data-gt="closed-delete">Delete account</button><input id="confirm" aria-label="Type DELETE" data-gt="closed-input">';}});
+</script></body></html>

@@ -1,0 +1,12 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Canvas widget</title></head><body>
+<h1>Chart</h1><canvas id="chart" width="400" height="200" style="border:1px solid #000"></canvas><p id="hit">none</p>
+<script>
+/* Drawn clickable regions; ground truth exposed only for the harness (window.__canvasRegions). */
+const regions=[{name:'Q1',x:20,y:120,w:60,h:60,c:'#e66'},{name:'Q2',x:120,y:80,w:60,h:100,c:'#6e6'},{name:'Q3',x:220,y:40,w:60,h:140,c:'#66e'},{name:'Export',x:320,y:10,w:70,h:30,c:'#999'}];
+window.__canvasRegions={selector:'#chart',regions:regions.map(r=>({gt:'canvas-'+r.name,name:r.name,x:r.x,y:r.y,w:r.w,h:r.h}))};
+const cv=document.getElementById('chart'),g=cv.getContext('2d');
+regions.forEach(r=>{g.fillStyle=r.c;g.fillRect(r.x,r.y,r.w,r.h);g.fillStyle='#000';g.font='12px sans-serif';g.fillText(r.name,r.x+4,r.y+16);});
+window.__lastCanvasHit=null;
+cv.addEventListener('click',e=>{const b=cv.getBoundingClientRect(),x=e.clientX-b.left,y=e.clientY-b.top;
+ const r=regions.find(r=>x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h);window.__lastCanvasHit=r?'canvas-'+r.name:null;document.getElementById('hit').textContent=r?r.name:'none';});
+</script></body></html>

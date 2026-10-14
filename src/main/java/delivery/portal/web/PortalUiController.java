@@ -65,7 +65,7 @@ public class PortalUiController {
         model.addAttribute("workspaceTitle", workspaceTitleFromEmail(email));
         model.addAttribute("workspaceSubtitle", user.getRole() == PortalUser.Role.ADMIN
                 ? "Platform admin"
-                : "Personal workspace · Owner");
+                : "Personal workspace Â· Owner");
         model.addAttribute("pageCrumb", "Workspace");
         model.addAttribute("pageTitle", pageTitleForNav(navActive));
         boolean creditsOn = portalProperties.isCreditsEnabled();
@@ -234,6 +234,7 @@ public class PortalUiController {
         addNav(model, "execute");
         model.addAttribute("projectId", projectId == null ? "" : projectId);
         model.addAttribute("mobileEnabled", mobileProperties.isEnabled());
+        model.addAttribute("retryVerdicts", delivery.portal.service.RetryMetricsView.legend());
         return "execute";
     }
 
@@ -293,7 +294,7 @@ public class PortalUiController {
         return "guide";
     }
 
-    /** Old TC guide URL — bookmarks land on the product Guide TC authoring section. */
+    /** Old TC guide URL â€” bookmarks land on the product Guide TC authoring section. */
     @GetMapping("/tc-guide")
     public String tcGuideRedirect() {
         return "redirect:/guide#tc-authoring";
@@ -333,7 +334,7 @@ public class PortalUiController {
         model.addAttribute("pageCrumb", "Run history");
         model.addAttribute("jobId", jobId);
         String status = "QUEUED";
-        String message = "Waiting for worker…";
+        String message = "Waiting for workerâ€¦";
         String jobKind = JobRecord.JobKind.CONVERT.name();
         int passed = 0;
         int todo = 0;

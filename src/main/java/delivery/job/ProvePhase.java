@@ -72,6 +72,16 @@ import java.util.function.BooleanSupplier;
 public class ProvePhase {
     /** Extra attempts after the first failure (plan: retry 2 times max). */
     public static final int MAX_RETRIES = 2;
+    /** Extra attempts allowed for INFRA-category failures; does not consume {@link #MAX_RETRIES}. */
+    public static final int MAX_INFRA_RETRIES = 2;
+    /** Infra backoff schedule + sleeper; package-visible for tests (no real 2 s / 5 s waits). */
+    long[] infraBackoffMs = RetryBudget.DEFAULT_INFRA_BACKOFF_MS;
+    RetryBudget.Sleeper infraSleeper = RetryBudget.Sleeper.REAL;
+
+    /** Per-TC accumulator of retry-budget usage across intents (reset before each proveOne). */
+    private int tcTestRetries;
+    private int tcTestFailures;
+    private int tcInfraRetries;
 
     private final JobProgressTracker progress;
     private DomainLocatorMemory locatorMemory = new DomainLocatorMemory();
@@ -170,6 +180,9 @@ public class ProvePhase {
             Path workDir
     ) throws Exception {
         TcDraftStore drafts = new TcDraftStore(workDir);
+        RetryRecordStore retryRecords = new RetryRecordStore(workDir);
+        List<RetryVerdict> verdicts = new ArrayList<>();
+        int reusedFlaky = 0;
         Path evidence = workDir.resolve("evidence");
         LocalLlmClient llm = new LocalLlmClient(request.localLlmBaseUrl(), request.localLlmModel());
         AuthoringService authoring = new AuthoringService(llm, new LocatorValidator());
@@ -254,6 +267,17 @@ public class ProvePhase {
                         mirrorDraft(workDir, reused.tcId());
                         out.add(reused);
                         progress.recordOutcome(TcDraftStatus.REUSED);
+                        verdicts.add(RetryVerdict.REUSED);
+                        progress.recordVerdict(RetryVerdict.REUSED);
+                        try {
+                            if (retryRecords.writeReused(reused.tcId(),
+                                    RetryRecordStore.priorVerdict(previousRoot, tc.tcId()))) {
+                                reusedFlaky++;
+                                progress.recordReusedFlaky();
+                            }
+                        } catch (Exception e) {
+                            LogsManager.info("Retry reuse record failed for " + tc.tcId() + ": " + e.getMessage());
+                        }
                         progress.update(index, jobTotal,
                                 "Phase1 reused " + tc.tcId()
                                         + " â€” passed " + progress.passed()
@@ -272,6 +296,8 @@ public class ProvePhase {
                     out.add(skipped);
                     failedCallBeforeIds.add(tc.tcId());
                     progress.recordOutcome(skipped.status());
+                    verdicts.add(RetryVerdict.FAILED);
+                    progress.recordVerdict(RetryVerdict.FAILED);
                     progress.update(index, jobTotal,
                             "Phase1 skipped " + tc.tcId() + " â€” call-before failed");
                     continue;
@@ -280,6 +306,9 @@ public class ProvePhase {
                 // Fresh browser at each leaf-chain start; Call-before â†’ leaf keep the same session.
                 int occurrence = occurrences.merge(tc.tcId(), 1, Integer::sum);
                 String evidenceFolder = OccurrenceIdentity.folder(tc.tcId(), occurrence);
+                tcTestRetries = 0;
+                tcTestFailures = 0;
+                tcInfraRetries = 0;
                 TcDraft draft = proveOne(tc, request, authoring, healCascade, execution, jobLogin,
                         driverFactory, evidence, jobHasCredentials, index, jobTotal, freshSession,
                         evidenceFolder);
@@ -294,7 +323,17 @@ public class ProvePhase {
                     failedCallBeforeIds.add(tc.tcId());
                 }
                 saveLocatorMemory();
+                RetryVerdict verdict = RetryVerdict.of(draft.status(), tcTestFailures, draft.healTier(),
+                        draft.failureReason());
+                verdicts.add(verdict);
+                try {
+                    retryRecords.write(draft.tcId(), verdict, tcTestRetries, tcTestFailures, tcInfraRetries,
+                            draft.failureReason());
+                } catch (Exception e) {
+                    LogsManager.info("Retry record write failed for " + draft.tcId() + ": " + e.getMessage());
+                }
                 progress.recordOutcome(draft.status());
+                progress.recordVerdict(verdict);
                 progress.update(index, jobTotal,
                         "Phase1 " + draft.status() + " " + tc.tcId()
                                 + " â€” passed " + progress.passed()
@@ -304,6 +343,11 @@ public class ProvePhase {
             try {
                 driverFactory.quit();
             } catch (Exception ignored) {
+            }
+            try {
+                retryRecords.writeRun(RunHealth.of(verdicts, reusedFlaky));
+            } catch (Exception e) {
+                LogsManager.info("Retry run metrics write failed: " + e.getMessage());
             }
         }
         return out;
@@ -679,12 +723,21 @@ public class ProvePhase {
         List<ProvenStep> recoveredNav = new ArrayList<>();
         List<ProvenStep> recoveredActions = new ArrayList<>();
         try {
-        for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        RetryBudget budget = new RetryBudget(MAX_RETRIES, MAX_INFRA_RETRIES, infraBackoffMs, infraSleeper);
+        try {
+        for (int attempt = 0; ; attempt++) {
             JobCancelSupport.checkCancelled(cancelCheck);
             if (attempt > 0) {
-                retriesUsed = attempt;
+                RetryCategory category = RetryCategory.classify(lastReason);
+                if (!budget.allowRetry(category)) {
+                    break;
+                }
+                retriesUsed = budget.testRetriesUsed();
                 progress.update(progress.current(), progress.total(),
-                        "Phase1 " + tc.tcId() + " retry " + attempt + "/" + MAX_RETRIES
+                        "Phase1 " + tc.tcId() + " retry " + retriesUsed + "/" + MAX_RETRIES
+                                + (category == RetryCategory.INFRA
+                                        ? " (infra " + budget.infraRetriesUsed() + "/" + MAX_INFRA_RETRIES + ")"
+                                        : "")
                                 + " on step " + (intentIndex + 1));
             }
             try {
@@ -1039,6 +1092,11 @@ public class ProvePhase {
             // A9 evidence is best effort (flag off by default)
         }
         return StepAttempt.fail(lastReason, lastPartial, evidenceDir, retriesUsed, healTier, healSkipReason);
+        } finally {
+            tcTestRetries += budget.testRetriesUsed();
+            tcTestFailures += budget.testFailures();
+            tcInfraRetries += budget.infraRetriesUsed();
+        }
         } finally {
             VisionAttemptLog.endIntent();
         }

@@ -75,6 +75,24 @@ public class ExecuteMvcTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    public void execute_hasRetryVerdictBadgesAndTiles() throws Exception {
+        String body = fetchExecuteBody();
+        String main = mainShell(body);
+
+        Assert.assertTrue(main.contains(">Verdict</th>"), "Verdict column header missing");
+        Assert.assertTrue(main.contains("id=\"retry-metrics-tiles\""), "retry metrics tiles missing");
+        Assert.assertTrue(main.contains("id=\"rm-first-pass\""), "first-pass tile missing");
+        Assert.assertTrue(main.contains("id=\"rm-final-pass\""), "final-pass tile missing");
+        for (String id : new String[]{"rm-flaky", "rm-healed", "rm-infra", "rm-config"}) {
+            Assert.assertTrue(main.contains("id=\"" + id + "\""), id + " tile missing");
+        }
+        for (String key : new String[]{"passed", "flaky", "healed", "failed", "infra", "config", "reused", "legacy"}) {
+            Assert.assertTrue(main.contains("keel-verdict--" + key), "legend badge missing: " + key);
+        }
+        Assert.assertTrue(body.contains("/retry-metrics"), "retry metrics fetch missing");
+    }
+
+    @Test
     public void execute_hasDesignCompareAndBugReportUi() throws Exception {
         String body = fetchExecuteBody();
         String main = mainShell(body);

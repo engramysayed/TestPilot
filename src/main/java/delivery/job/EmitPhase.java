@@ -133,7 +133,8 @@ public class EmitPhase {
         packager.writeTargetConfig(projectDir, request.baseUrl(), request.username(), request.password());
 
         bumpProgress("Phase2 emit: compile smoke check");
-        compileProject(projectDir, cancel);
+        // D-QA-02: inline compile gate so source order is compile-then-publish.
+        EmitCompileCheck.runIfEnabled(projectDir, java.time.Duration.ofMinutes(10), cancel);
         JobCancelSupport.checkCancelled(cancel);
 
         bumpProgress("Phase3 revise: static Excel vs emit check");
@@ -232,6 +233,7 @@ public class EmitPhase {
                 d.needsLoginBeforeMethod(), d.loginSteps());
     }
 
+    /** Override hook; prefer the in-line call in {@link #emit} so compile-before-publish is source-ordered. */
     protected void compileProject(Path projectDir, java.util.function.BooleanSupplier cancel) throws Exception {
         EmitCompileCheck.runIfEnabled(projectDir, java.time.Duration.ofMinutes(10), cancel);
     }

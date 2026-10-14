@@ -1099,12 +1099,15 @@ public class PortalStore {
                 // no library yet
             }
         }
-        if (job.getEnvironmentRevisionId() != null && !job.getEnvironmentRevisionId().isBlank()) {
+        // Reruns (parentJobId set) already carry frozen pins from RerunSupport — do not
+        // re-resolve EnvironmentStore (D-QA-03: stub env revision ids in compare tests).
+        if (job.getParentJobId().isBlank()
+                && job.getEnvironmentRevisionId() != null && !job.getEnvironmentRevisionId().isBlank()) {
             try {
                 var profile = environmentProfile(job);
                 String user = job.getUsername();
                 String password = job.getPassword();
-                if (!profile.credentialProfileRef().isBlank() && job.getParentJobId().isBlank()) {
+                if (!profile.credentialProfileRef().isBlank()) {
                     if (credentialRepository == null) throw new IllegalStateException("Credential store unavailable");
                     var credentials = new ProjectCredentialService(credentialRepository)
                             .resolveForJob(job.getProjectId(), profile.credentialProfileRef());

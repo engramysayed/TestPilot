@@ -77,8 +77,9 @@ public class GeneratedWorkbookKeelPathUpdateTest {
         service.updateKeelPaths(projectId, Map.of("TC_01", "EXECUTE"));
 
         Map<String, Object> meta = service.describe(projectId).orElseThrow();
+        // Product provenance: path edits stamp KEEL_PATH_EDIT (not original GENERATE) — D-QA-07.
         Assert.assertEquals(meta.get("source"), "KEEL_PATH_EDIT");
-        Assert.assertEquals(meta.get("sourceRef"), "keep-ref");
-        Assert.assertEquals(meta.get("model"), "gemma4:e2b");
+        Assert.assertEquals(meta.get("sourceRef"), "keep-ref", "sourceRef must survive path edit");
+        Assert.assertEquals(meta.get("model"), "gemma4:e2b", "model must survive path edit");
     }
 }

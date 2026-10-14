@@ -1,14 +1,6 @@
-# known-failures-product.txt — canonical known-failure allowlist (tip 0054+/settle smoke)
+# known-failures-product.txt â€” canonical known-failure allowlist (tip 0054+/settle smoke)
 # Alias: known-failures-0045.txt -> this file (compat for 0052 workflow refs)
 # Update this file when the known-fail set changes; bump tip comment.
-# Same 9 fail on bare base 616813e — not caused by the series. One entry per line: FQCN#method
+# Same 9 fail on bare base 616813e â€” not caused by the series. One entry per line: FQCN#method
 # Updated: 2026-10-14 (QA/DevOps). Company-machine constraint unchanged (no infra in CI).
 delivery.acceptance.LocalAcceptanceHarnessTest#replayUsesSupervisorDeadlineAndKillsProcessTree
-delivery.job.DurableJobClaimTest#expiredAdmittedLeaseIsReclaimableAndStaleAttemptCannotPublish
-delivery.job.EmitGeneratedLayerContractTest#emitCodegensEveryDraftIncludingReusedThenCompilesBeforePublish
-delivery.portal.api.JobCompareApiTest#populatedHistoryShowsFallbackCompareClassifyAndPreservesOriginalAfterRerun
-delivery.portal.api.JobCompareApiTest#rerunMintsANewAttemptWithPinnedInputs
-delivery.portal.api.PrivateRunnerApiTest#completeRejectsFrozenInputAndProviderDriftAndHonorsCancel
-delivery.portal.api.PrivateRunnerApiTest#enrollHeartbeatClaimRejectsCrossTenantAndRevokes
-delivery.portal.api.PrivateRunnerApiTest#runnerMarksBrowserStageThenDisconnectIsUncertain
-delivery.portal.service.GeneratedWorkbookKeelPathUpdateTest#updateKeelPaths_preservesOtherMetaFields

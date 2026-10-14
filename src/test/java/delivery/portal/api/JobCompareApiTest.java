@@ -38,7 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "delivery.admin-password=ChangeMeAdmin1!",
         "delivery.dry-run=true",
         "delivery.store-root=./target/test-delivery-store-compare-api",
-        "delivery.work-dir=./target/test-delivery-work-compare-api"
+        "delivery.work-dir=./target/test-delivery-work-compare-api",
+        "delivery.credits.enabled=false"
 })
 @AutoConfigureMockMvc
 public class JobCompareApiTest extends AbstractTestNGSpringContextTests {
@@ -262,9 +263,13 @@ public class JobCompareApiTest extends AbstractTestNGSpringContextTests {
     private JobRecord executeJob(
             String projectId, String tenantId, String jobId,
             JobRecord.Status status, int passed, int todo) throws Exception {
+        Path excel = Path.of("src/test/resources/delivery/sample-manual-tcs.xlsx").toAbsolutePath().normalize();
+        if (!java.nio.file.Files.isRegularFile(excel)) {
+            throw new IllegalStateException("missing sample workbook: " + excel);
+        }
         JobRecord job = new JobRecord(
                 jobId, projectId, adminId(), "NEW",
-                Path.of("src/test/resources/delivery/sample-manual-tcs.xlsx"),
+                excel,
                 "https://staging.example/", "", "", false, JobRecord.JobKind.EXECUTE);
         job.setTenantId(tenantId);
         job.setLibraryRevisionId("rev_cmp");

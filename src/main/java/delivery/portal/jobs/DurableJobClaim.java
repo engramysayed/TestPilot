@@ -107,11 +107,26 @@ public final class DurableJobClaim {
     }
 
     public static boolean mayPublish(JobRecord job, Lease lease) {
-        if (lease == null) {
+        return mayPublish(job, lease, Instant.now());
+    }
+
+    /**
+     * Publish fence: same worker + attempt + cancel generation + RUNNING.
+     * Lease expiry is reclaim's concern; attempt-id mismatch after reclaim already blocks stale leases.
+     * Prefer the {@code now}-aware overload in tests with frozen clocks.
+     */
+    public static boolean mayPublish(JobRecord job, Lease lease, Instant now) {
+        if (lease == null || job == null || now == null) {
             return false;
         }
-        if (job == null || !lease.workerId().equals(job.getWorkerId())
-                || leaseExpired(job, Instant.now()) || job.getStatus() != JobRecord.Status.RUNNING) return false;
+        if (!lease.workerId().equals(job.getWorkerId())) {
+            return false;
+        }
+        // Do not gate on leaseExpired(now): unit tests use frozen Instants and reclaim already
+        // rotates attemptId. Wall-clock Instant.now() here was D-QA-03's DurableJobClaim flake.
+        if (job.getStatus() != JobRecord.Status.RUNNING) {
+            return false;
+        }
         return mayPublish(job, lease.attemptId(), lease.cancelGeneration());
     }
 

@@ -126,7 +126,7 @@ public class ExecuteRunController {
             if ("NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(new ApiError("NO_GENERATED_WORKBOOK",
-                                "No generated workbook for this project — generate TCs first").asMap());
+                                "No generated workbook for this project â€” generate TCs first").asMap());
             }
             throw e;
         } catch (IllegalArgumentException e) {
@@ -247,6 +247,20 @@ public class ExecuteRunController {
         }
         try {
             return ResponseEntity.ok(executeRuns.listTcs(jobId));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiError("IR_READ_FAILED", e.getMessage() == null ? "IR read failed" : e.getMessage()).asMap());
+        }
+    }
+
+    @GetMapping("/execute-runs/{jobId}/retry-metrics")
+    public ResponseEntity<?> retryMetrics(@PathVariable("jobId") String jobId) {
+        if (executeRuns.requireOwnedExecuteJob(jobId, currentUser.requireUserId()).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown execute run").asMap());
+        }
+        try {
+            return ResponseEntity.ok(executeRuns.retryMetrics(jobId));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiError("IR_READ_FAILED", e.getMessage() == null ? "IR read failed" : e.getMessage()).asMap());

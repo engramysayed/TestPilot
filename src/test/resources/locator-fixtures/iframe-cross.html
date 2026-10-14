@@ -1,0 +1,6 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Cross-origin iframe</title></head><body>
+<h1>Checkout</h1><a href="#" id="back" data-gt="cross-back">Back to cart</a>
+<iframe id="xo" title="widget" width="500" height="250"></iframe>
+<script>/* cross-origin: localhost:P vs 127.0.0.1:P+1 */
+document.getElementById('xo').src=location.protocol+'//127.0.0.1:'+(Number(location.port)+1)+'/frames/cross-inner.html';</script>
+</body></html>

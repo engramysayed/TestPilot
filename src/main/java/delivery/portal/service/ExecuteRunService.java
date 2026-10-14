@@ -70,6 +70,12 @@ public class ExecuteRunService {
         return out;
     }
 
+    /** Honest retry metrics tiles for one execute run (first-pass / final-pass + verdict counts). */
+    public Map<String, Object> retryMetrics(String jobId) throws Exception {
+        JobRecord job = store.getJob(jobId).orElseThrow(() -> new IllegalArgumentException("Unknown job"));
+        return RetryMetricsView.summary(runRoot(job), readDrafts(jobId));
+    }
+
     public Map<String, Object> getTc(String jobId, String tcId) throws Exception {
         JobRecord job = store.getJob(jobId).orElseThrow(() -> new IllegalArgumentException("Unknown job"));
         TcDraftStore drafts = draftStore(job);
@@ -192,6 +198,7 @@ public class ExecuteRunService {
         m.put("failedStepIndex", failedStepIndex(d));
         m.put("needsLoginBeforeMethod", d.needsLoginBeforeMethod());
         m.put("expandable", true);
+        m.putAll(RetryMetricsView.forTc(runRoot(job), d));
         BugReportService.readEvidenceStatus(tcEvidenceDir(job, d.tcId()), "design-compare.json")
                 .ifPresent(status -> m.put("designCompareStatus", status));
         return m;

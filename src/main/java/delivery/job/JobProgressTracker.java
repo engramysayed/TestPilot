@@ -12,6 +12,10 @@ public class JobProgressTracker {
     private volatile int passed;
     private volatile int todo;
     private volatile int partial;
+    private volatile int flaky;
+    private volatile int infraError;
+    private volatile int reusedFlaky;
+    private final java.util.List<RetryVerdict> verdicts = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     public void update(int current, int total, String message) {
         this.current = current;
@@ -37,6 +41,48 @@ public class JobProgressTracker {
             }
             case TODO -> todo++;
         }
+    }
+
+    /** Honest retry verdict per executed TC (FLAKY / INFRA_ERROR surface alongside passed/todo). */
+    public void recordVerdict(RetryVerdict verdict) {
+        if (verdict == null) {
+            return;
+        }
+        verdicts.add(verdict);
+        if (verdict == RetryVerdict.FLAKY) {
+            flaky++;
+        } else if (verdict == RetryVerdict.INFRA_ERROR) {
+            infraError++;
+        }
+    }
+
+    /** A reused TC whose prior verdict was FLAKY (reuse allowed but flagged). */
+    public void recordReusedFlaky() {
+        reusedFlaky++;
+    }
+
+    public int healed() {
+        return health().healed();
+    }
+
+    public int configError() {
+        return health().configError();
+    }
+
+    public int reusedFlaky() {
+        return reusedFlaky;
+    }
+
+    public int flaky() {
+        return flaky;
+    }
+
+    public int infraError() {
+        return infraError;
+    }
+
+    public RunHealth health() {
+        return RunHealth.of(verdicts, reusedFlaky);
     }
 
     /** For dry-run / emit final without TcDraftStatus. */

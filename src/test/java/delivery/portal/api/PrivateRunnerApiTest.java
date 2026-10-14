@@ -43,7 +43,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "delivery.admin-password=ChangeMeAdmin1!",
         "delivery.dry-run=true",
         "delivery.store-root=./target/test-delivery-store-private-runner",
-        "delivery.work-dir=./target/test-delivery-work-private-runner"
+        "delivery.work-dir=./target/test-delivery-work-private-runner",
+        "delivery.credits.enabled=false"
 })
 @AutoConfigureMockMvc
 public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
@@ -58,6 +59,14 @@ public class PrivateRunnerApiTest extends AbstractTestNGSpringContextTests {
     private PortalUserRepository users;
     @Autowired
     private PasswordEncoder encoder;
+
+
+    private static final String ATTEMPT = keel.contract.runner.RunnerHeaders.ATTEMPT;
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder withAttempt(
+            org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder b, String attemptId) {
+        return b.header(ATTEMPT, attemptId);
+    }
 
     @BeforeMethod
     public void cleanStore() throws Exception {

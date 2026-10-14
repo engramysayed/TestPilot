@@ -36,8 +36,8 @@ public class DurableJobClaimTest {
         Assert.assertTrue(DurableJobClaim.reconcileExpired(job, later));
         Assert.assertEquals(job.getStatus(), JobRecord.Status.QUEUED);
         DurableJobClaim.Lease fresh = DurableJobClaim.tryClaim(job, "wkr_2", later, Duration.ofSeconds(10)).orElseThrow();
-        Assert.assertFalse(DurableJobClaim.mayPublish(job, stale));
-        Assert.assertTrue(DurableJobClaim.mayPublish(job, fresh));
+        Assert.assertFalse(DurableJobClaim.mayPublish(job, stale, later));
+        Assert.assertTrue(DurableJobClaim.mayPublish(job, fresh, later));
         job.setStatus(JobRecord.Status.COMPLETED);
         Assert.assertFalse(DurableJobClaim.mayPublish(job, fresh), "duplicate complete must not publish twice");
     }

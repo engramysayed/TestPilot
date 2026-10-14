@@ -59,12 +59,14 @@ public class ExecuteJobRunner {
             progress.update(proveUnits + 1, jobTotal, "Saving evidence");
             copyTree(work.resolve("ir"), dest.resolve("ir"));
             copyTree(work.resolve("evidence"), dest.resolve("evidence"));
+            copyTree(work.resolve("retry"), dest.resolve("retry"));
             progress.update(jobTotal, jobTotal, "Execute completed");
         } catch (Exception e) {
             // Persist whatever IR/evidence ProvePhase already wrote so the UI is not empty on fail.
             try {
                 copyTree(work.resolve("ir"), dest.resolve("ir"));
                 copyTree(work.resolve("evidence"), dest.resolve("evidence"));
+                copyTree(work.resolve("retry"), dest.resolve("retry"));
             } catch (Exception ignored) {
                 // best-effort
             }
@@ -74,7 +76,11 @@ public class ExecuteJobRunner {
         TcDraftStore draftStore = new TcDraftStore(work);
         List<TcDraft> drafts = draftStore.readAll();
         String message = PrecisionFallbackMessage.appendIfNeeded(drafts, "execute completed");
-        return new ExecuteJobResult(progress.passed(), progress.todo(), message);
+        RunHealth health = progress.health();
+        message = message + " — " + health.summary();
+        return new ExecuteJobResult(progress.passed(), progress.todo(), message,
+                health.flaky(), health.healed(), health.infraError(), health.configError(),
+                health.firstPassRate(), health.finalPassRate());
     }
 
     static ProvePhase.HealWorkbookApplier healWorkbookApplier(ConversionJobRequest request) {
