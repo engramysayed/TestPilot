@@ -2,6 +2,77 @@
 .mobile-panel[hidden],
 .mobile-only[hidden] { display: none !important; }
 
+/* Project type — segmented control (Website / Android). Radios stay for the create payload. */
+.platform-segment {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 16.5rem;
+  min-inline-size: 0;
+  flex: 0 1 20rem;
+}
+.platform-segment legend {
+  padding: 0;
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.platform-segment-track {
+  display: flex;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--paper, var(--calm-bg, #f6f7f9));
+}
+.platform-segment-option {
+  position: relative;
+  flex: 1 1 0;
+  margin: 0;
+  min-width: 0;
+}
+.platform-segment-option input {
+  position: absolute !important;
+  opacity: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  pointer-events: none;
+}
+.platform-segment-option span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.45rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 9px;
+  font-weight: 650;
+  font-size: 0.88rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.platform-segment-option input:checked + span {
+  background: var(--panel, #fff);
+  color: var(--teal, #087f78);
+  box-shadow: 0 1px 2px rgba(20, 30, 50, 0.08);
+}
+.platform-segment-option input:focus-visible + span {
+  outline: 2px solid var(--teal, #087f78);
+  outline-offset: 2px;
+}
+html[data-theme="dark"] .platform-segment-track {
+  background: var(--calm-bg, #14171d);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .platform-segment-option input:checked + span {
+  background: var(--calm-accent-soft, #1a3330);
+  color: var(--calm-accent, #7ecfc5);
+}
+
 .mobile-source-options {
   display: flex;
   flex-direction: column;

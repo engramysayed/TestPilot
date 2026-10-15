@@ -49,6 +49,8 @@ body.app-body {
     position: sticky;
     top: 0;
     height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     padding: 1.25rem 0.9rem 1rem;
@@ -107,7 +109,9 @@ body.app-body {
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
 }
 .sidebar-nav a {
@@ -256,11 +260,12 @@ body.app-body {
     padding: 1.75rem 1.25rem 4rem;
 }
 .app-body .shell {
-    max-width: 72rem;
+    max-width: none;
+    width: 100%;
     margin: 0;
     padding: 1.75rem 1.75rem 3.5rem;
 }
-.shell.wide { max-width: 72rem; }
+.shell.wide { max-width: none; width: 100%; }
 
 .page-title {
     display: flex;
@@ -2614,6 +2619,8 @@ body:not(.app-body) .shell {
     .sidebar {
         position: relative;
         height: auto;
+        max-height: none;
+        overflow: visible;
         border-right: none;
         border-bottom: 1px solid var(--sidebar-line);
     }
@@ -2621,6 +2628,7 @@ body:not(.app-body) .shell {
         flex-direction: row;
         flex-wrap: wrap;
         gap: 0.35rem;
+        overflow: visible;
     }
     .sidebar-label { display: none; }
     .sidebar-nav a { padding: 0.5rem 0.7rem; font-size: 0.86rem; }

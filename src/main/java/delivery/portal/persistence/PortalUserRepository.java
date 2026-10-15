@@ -9,4 +9,7 @@ public interface PortalUserRepository extends JpaRepository<PortalUser, Long> {
     Optional<PortalUser> findByEmailIgnoreCase(String email);
     boolean existsByEmailIgnoreCase(String email);
     List<PortalUser> findAllByOrderByIdAsc();
+
+    /** Explicit {@code portal_users.role_id} membership. Null role ids are not counted. */
+    long countByRoleId(String roleId);
 }

@@ -32,16 +32,18 @@
             <label class="grow" id="create-base-url-label">Base URL <span class="muted">(optional)</span>
                 <input type="url" name="baseUrl" id="create-base-url" placeholder="https://app.example.com"/>
             </label>
-            <fieldset class="mobile-only" id="create-platform-fieldset" th:if="${mobileEnabled}">
+            <fieldset class="mobile-only platform-segment" id="create-platform-fieldset" th:if="${mobileEnabled}">
                 <legend>Project type</legend>
-                <label class="check">
-                    <input type="radio" name="platform" value="WEB" checked/>
-                    Website
-                </label>
-                <label class="check">
-                    <input type="radio" name="platform" value="ANDROID"/>
-                    Android app
-                </label>
+                <div class="platform-segment-track" role="radiogroup" aria-label="Project type">
+                    <label class="platform-segment-option">
+                        <input type="radio" name="platform" value="WEB" checked/>
+                        <span>Website</span>
+                    </label>
+                    <label class="platform-segment-option">
+                        <input type="radio" name="platform" value="ANDROID"/>
+                        <span>Android app</span>
+                    </label>
+                </div>
             </fieldset>
             <button type="submit">Create project</button>
         </form>

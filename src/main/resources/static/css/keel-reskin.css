@@ -91,7 +91,7 @@ body.login-body {
     font-size: 0.82rem;
     padding: 0.58rem 0.75rem;
 }
-.sidebar-nav a span { white-space: normal; }
+.sidebar-nav a span { white-space: nowrap; }
 .sidebar-nav a:hover {
     color: #ffffff;
     background: #1d3d48;
@@ -683,7 +683,9 @@ label.field > span {
     margin: 0 0 1.5rem;
     padding: 0;
     border-bottom: 1px solid var(--line);
+    /* overflow-x:auto alone computes overflow-y to auto and paints a useless vertical bar */
     overflow-x: auto;
+    overflow-y: hidden;
     background: transparent;
     border-radius: 0;
 }
@@ -935,7 +937,9 @@ button.small {
     .sidebar {
         position: relative;
         height: auto;
+        max-height: none;
         min-height: 0;
+        overflow: visible;
     }
     .loginpage { grid-template-columns: 1fr; }
     .loginbrand { display: none; }
