@@ -537,14 +537,17 @@ html[data-theme="dark"] .keel-pending-banner {
     width: 0 !important;
     height: 0 !important;
 }
-/* Pack 11 extras: topbar moon/sun + EN Account menu (gap fill — was on synced tip, not git tip) */
+/* Pack 12: theme + EN on one compact row (no initials avatar) */
 .topbar-actions {
-    display: flex;
+    display: inline-flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.4rem;
     margin-left: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
-.topbar-actions .avatar--top { margin-left: 0; }
 .theme-toggle.theme-toggle--icon {
     margin: 0;
     width: 2rem;
@@ -561,7 +564,17 @@ html[data-theme="dark"] .keel-pending-banner {
     font-size: 1rem;
     line-height: 1;
     text-align: center;
+    flex: 0 0 auto;
 }
+.theme-toggle-ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+}
+.theme-toggle-ico .theme-ico { display: block; }
+.theme-toggle-ico .theme-ico[hidden] { display: none !important; }
 .theme-toggle.theme-toggle--icon:hover {
     background: var(--table-hover, #f7faf9);
 }
@@ -577,12 +590,17 @@ html[data-theme="dark"] .theme-toggle.theme-toggle--icon {
     background: var(--panel, #fff);
     color: var(--text, #1d2433);
     border-radius: 999px;
-    padding: 0.28rem 0.7rem;
+    height: 2rem;
+    padding: 0 0.75rem;
     font: inherit;
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    box-sizing: border-box;
 }
 html[data-theme="dark"] .topbar-en-btn {
     border-color: var(--calm-line, #2d3440);

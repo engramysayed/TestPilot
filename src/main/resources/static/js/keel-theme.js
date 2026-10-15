@@ -18,8 +18,15 @@
             btn.title = dark ? 'Light theme' : 'Dark theme';
             var ico = btn.querySelector('.theme-toggle-ico');
             if (ico) {
-                /* Show destination / alternate mode icon */
-                ico.textContent = dark ? '☀' : '☾';
+                /* Show destination mode: sun when dark (switch to light), moon when light (switch to dark) */
+                var sun = ico.querySelector('.theme-ico--sun');
+                var moon = ico.querySelector('.theme-ico--moon');
+                if (sun && moon) {
+                    sun.hidden = !dark;
+                    moon.hidden = dark;
+                } else {
+                    ico.textContent = dark ? '☀' : '☾';
+                }
             } else if (!btn.classList.contains('theme-toggle--icon')) {
                 btn.textContent = dark ? 'Light theme' : 'Dark theme';
             }
