@@ -6,6 +6,48 @@ The **full product** (every surface, not only the last week) is [`docs/PRODUCT.m
 
 Internal design notes stay under `docs/superpowers/`. Engineers can start from `docs/ENGINEERING_HANDOFF.md`.
 
+## 2026-10-15 — Record a test, then build the framework
+
+**Surfaces:** **Record** (`/record`), **Account** alerts, **Generate**, **Execute**, **Automate**, **Guide**, project cards, roles.
+
+### What you can do
+
+- Open **Record** from the sidebar and click through the project website in Chrome. Keel writes the steps into the project library.
+- Use the Keel bar inside that Chrome window: **Steps**, **Check this** (confirm visible text), and **This page** (confirm the address).
+- On the last step, choose **Build the framework from this recording**. Keel writes the Selenium framework from the locators it already captured. Chrome does not open again.
+- Turn on Telegram, email, or Slack on **Account**. Keel sends a message when a run fails or finishes with a block, after a confirmation send succeeds.
+- See extra Generate, Execute, and Automate fields already open. Project cards keep Open, Archive, and Delete. Roles use one multi-select for permissions.
+
+### Why
+
+A saved recording was only English steps. Automate had to open the site again to find locators. Alerts were saved in the browser and never sent.
+
+### How to use it
+
+1. Create a project and set its website.
+2. **Record** → name the test → start Chrome → click through the site. Use **Check this** on the text that must be true.
+3. Stop, leave **Build the framework** checked, and save. Watch the job under Runs. The download appears under Code packages.
+4. On **Account**, turn on a channel only after that channel is configured. Saving sends a confirmation first.
+
+### What we did not change
+
+- Product credits stay on. A framework build is an Automate job and spends credits.
+- The normal Automate path still opens Chrome and proves the case.
+- Bug Hunter findings still do not join the library by themselves.
+- The engine dead-man alert stays off and log-only.
+
+### Known limits
+
+- Recording is web only. An Android project is refused.
+- Passwords typed in Chrome are not stored. A sign-in note tells the later run to use a project login.
+- A click with no stable locator stays as written English and is left out of the framework.
+- One recording at a time, for at most 20 minutes.
+- This machine has no Telegram token and no mail server, so those switches stay off until they are configured.
+
+**Plan:** `docs/superpowers/plans/2026-10-15-record-to-framework.md`.
+
+---
+
 ## How to add a publish note
 
 1. List every user-visible change (screens, buttons, job behavior), not file names.

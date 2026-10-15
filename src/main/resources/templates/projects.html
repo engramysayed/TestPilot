@@ -231,13 +231,16 @@
             openBtn.textContent = 'Open project';
             footer.appendChild(openBtn);
 
+            const secondary = document.createElement('div');
+            secondary.className = 'cardfooter-secondary';
+
             if (!p.archived) {
                 const archiveBtn = document.createElement('button');
                 archiveBtn.type = 'button';
                 archiveBtn.className = 'button ghost small';
                 archiveBtn.textContent = 'Archive';
                 archiveBtn.addEventListener('click', () => openArchiveModal(p));
-                footer.appendChild(archiveBtn);
+                secondary.appendChild(archiveBtn);
             }
 
             const deleteBtn = document.createElement('button');
@@ -245,7 +248,8 @@
             deleteBtn.className = 'button ghost small danger';
             deleteBtn.textContent = 'Delete';
             deleteBtn.addEventListener('click', () => openDeleteModal(p));
-            footer.appendChild(deleteBtn);
+            secondary.appendChild(deleteBtn);
+            footer.appendChild(secondary);
 
             card.append(top, title, kpiWrap, meta, footer);
             cards.appendChild(card);

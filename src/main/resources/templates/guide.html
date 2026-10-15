@@ -13,13 +13,14 @@
             <p class="eyebrow">Help</p>
             <h1>Guide</h1>
             <p class="lede">
-                Everything you need to use Keel without a walkthrough — Generate, Run tests, Build code,
-                Bug Hunter, credits, roles, mobile, quality gate, and how to author test cases.
+                Everything you need to use Keel without a walkthrough — Generate, Record, Run tests, Build code,
+                Bug Hunter, credits, alerts, roles, mobile, quality gate, and how to author test cases.
             </p>
         </div>
         <div class="actions guide-hero-actions">
             <a class="button" href="/projects">Add test cases to a project</a>
             <a class="button ghost" href="#generate">Start with Generate</a>
+            <a class="button ghost" href="#record">Record</a>
             <a class="button ghost" href="#tc-authoring">TC authoring</a>
         </div>
     </header>
@@ -29,6 +30,7 @@
             <p class="guide-toc-title">On this page</p>
             <a href="#overview">Overview</a>
             <a href="#generate">Generate</a>
+            <a href="#record">Record</a>
             <a href="#quality-gate">Quality gate</a>
             <a href="#execute">Execute</a>
             <a href="#automate">Automate</a>
@@ -36,6 +38,7 @@
             <a href="#hunt">Bug Hunt</a>
             <a href="#credits">Credits</a>
             <a href="#roles">Roles</a>
+            <a href="#account">Account</a>
             <a href="#mobile">Mobile</a>
             <a href="#tc-authoring">TC authoring</a>
             <a href="#format">·· Excel format</a>
@@ -61,6 +64,7 @@
                 </header>
                 <div class="product-guide-cards">
                     <a class="product-guide-card" href="#generate"><strong>Write test cases</strong><span>Stories → quality gate → import</span></a>
+                    <a class="product-guide-card" href="#record"><strong>Record a test</strong><span>Click through Chrome → save steps</span></a>
                     <a class="product-guide-card" href="#execute"><strong>Run tests</strong><span>Live browser + screenshots</span></a>
                     <a class="product-guide-card" href="#automate"><strong>Build code</strong><span>Workbook → framework ZIP</span></a>
                     <a class="product-guide-card" href="#hunt"><strong>Bug Hunter</strong><span>Explore — never auto-merges</span></a>
@@ -68,7 +72,7 @@
                 <div class="guide-callouts">
                     <div class="callout ok">
                         <strong>Prerequisite</strong>
-                        <p>Create a <a href="/projects">project</a>, set the website URL under Settings, and add a login account when cases need sign-in.</p>
+                        <p>Create a <a href="/projects">project</a>, set the website URL under Settings, and add a login account when cases need sign-in. Generate, Record, Execute, Automate, and Bug Hunter are in the sidebar.</p>
                     </div>
                     <div class="callout warn">
                         <strong>Credits</strong>
@@ -100,7 +104,7 @@
                 </div>
                 <ol class="guide-howto">
                     <li>Open <a href="/generate">Write test cases</a> and pick your project.</li>
-                    <li>Fill structured story fields (role, goal, benefit, acceptance). Free-text stories sit under More when you need them.</li>
+                    <li>Fill the story title, acceptance criteria, role, and surface. Free-text, the AI model, compare, bulk upload, and paste-from-another-AI are already open on the page.</li>
                     <li>Generate. Review the quality-gate panel before you import.</li>
                     <li>If the gate failed, fix issues or explicitly confirm import — Keel refuses silent import when checks have not passed.</li>
                     <li>Use the suggested how-to-test (Keel path) tip when shown — it is guidance, not a second product.</li>
@@ -113,9 +117,35 @@
                 </div>
             </section>
 
-            <section class="panel guide-section guide-reveal" id="quality-gate" data-guide-section="quality-gate">
+            <section class="panel guide-section guide-reveal" id="record" data-guide-section="record">
                 <header class="guide-section-head">
                     <span class="guide-num">02</span>
+                    <div>
+                        <h2>Record</h2>
+                        <p class="panel-intro">On <a href="/record">Record</a>, you click through the real site in Chrome on this computer. Keel writes the steps in plain language and saves them into the project’s test cases. This is separate from Generate.</p>
+                    </div>
+                </header>
+                <ol class="guide-howto">
+                    <li>Create a project and set its website under Settings. Record opens that address.</li>
+                    <li>Open <a href="/record">Record</a>, pick the project, and name the test.</li>
+                    <li>Press <strong>Start recording</strong>. A Chrome window opens. Click and type as a visitor would. The step list updates as you go.</li>
+                    <li>If the site asks you to sign in, type the password yourself. Keel does not store passwords. A password field is saved as “Enter password into the field”, with the value left out.</li>
+                    <li>Press <strong>Stop</strong>, check the steps, then <strong>Save test</strong>. The case is added to the project library (the next <code>TC_</code> number).</li>
+                    <li>On the Keel bar inside Chrome, <strong>Check this</strong> then click the heading or message that must be true. <strong>This page</strong> checks the address. Those become assertions in the test.</li>
+                    <li><strong>Build the framework</strong> uses the same framework builder as Automate, with the locators already captured. Chrome does not open again. The download appears under Code packages when the build finishes.</li>
+                </ol>
+                <ul class="guide-points">
+                    <li><strong>Same website only.</strong> Another address has to be on the project’s website. Other hosts, and private addresses that are not that site, are refused.</li>
+                    <li><strong>Web only.</strong> A mobile-app project cannot be recorded. Recording opens Chrome.</li>
+                    <li><strong>Sign-in note.</strong> Choosing “Yes” adds a precondition that the later run should sign in with a project login account. It does not type the password for you.</li>
+                    <li><strong>Run it once.</strong> Leave this on to start a normal Execute check after save. It uses the first login account on the project when one exists. Turn it off to only save the steps.</li>
+                    <li><strong>One recording at a time.</strong> Starting again closes the previous Chrome window. Recording stops after 20 minutes; you can still save those steps.</li>
+                </ul>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="quality-gate" data-guide-section="quality-gate">
+                <header class="guide-section-head">
+                    <span class="guide-num">03</span>
                     <div>
                         <h2>Quality gate</h2>
                         <p class="panel-intro">Before cases land in your library, Keel shows a structured panel. Fix blocking issues; treat coverage warnings as informational.</p>
@@ -144,7 +174,7 @@
 
             <section class="panel guide-section guide-reveal" id="execute" data-guide-section="execute">
                 <header class="guide-section-head">
-                    <span class="guide-num">03</span>
+                    <span class="guide-num">04</span>
                     <div>
                         <h2>Execute</h2>
                         <p class="panel-intro">On <a href="/execute">Run tests</a>, Keel runs cases in a real browser. Every step can produce a screenshot. Open <a href="/runs">Run history</a> and Evidence for results.</p>
@@ -179,7 +209,7 @@
 
             <section class="panel guide-section guide-reveal" id="automate" data-guide-section="automate">
                 <header class="guide-section-head">
-                    <span class="guide-num">04</span>
+                    <span class="guide-num">05</span>
                     <div>
                         <h2>Automate</h2>
                         <p class="panel-intro">On <a href="/automate">Build code</a>, upload or select a workbook. Keel proves and heals steps, then builds a customer framework you can download.</p>
@@ -201,7 +231,7 @@
 
             <section class="panel guide-section guide-reveal" id="packages" data-guide-section="packages">
                 <header class="guide-section-head">
-                    <span class="guide-num">05</span>
+                    <span class="guide-num">06</span>
                     <div>
                         <h2>Framework export / packages</h2>
                         <p class="panel-intro"><a href="/packages">Code packages</a> lists automation ZIPs Keel built. Download the framework for your project when Automate finishes.</p>
@@ -215,7 +245,7 @@
 
             <section class="panel guide-section guide-reveal" id="hunt" data-guide-section="hunt">
                 <header class="guide-section-head">
-                    <span class="guide-num">06</span>
+                    <span class="guide-num">07</span>
                     <div>
                         <h2>Bug Hunt / triage</h2>
                         <p class="panel-intro">On <a href="/bug-hunter">Bug Hunter</a>, Keel explores the site and produces a report. Nothing is added to your test library automatically.</p>
@@ -241,7 +271,7 @@
 
             <section class="panel guide-section guide-reveal" id="credits" data-guide-section="credits">
                 <header class="guide-section-head">
-                    <span class="guide-num">07</span>
+                    <span class="guide-num">08</span>
                     <div>
                         <h2>Credits</h2>
                         <p class="panel-intro">When credits are enabled, your balance appears in the chrome. Jobs debit credits; admins grant or set balance after payment. New accounts stay pending until approved — no free trial.</p>
@@ -274,7 +304,7 @@
 
             <section class="panel guide-section guide-reveal" id="roles" data-guide-section="roles">
                 <header class="guide-section-head">
-                    <span class="guide-num">08</span>
+                    <span class="guide-num">09</span>
                     <div>
                         <h2>Roles / approve signup</h2>
                         <p class="panel-intro">Admins approve access requests and assign a role. Built-in roles include Owner, Admin, and Member; owners can define custom roles with permission codes.</p>
@@ -284,7 +314,7 @@
                     <li>Visitor submits Request access with a work email.</li>
                     <li>Admin opens Administration, reviews pending users, and approves with an explicit role (no silent default).</li>
                     <li>Set credits separately after payment — approval alone does not grant credits.</li>
-                    <li>Optionally manage custom roles and permissions under Administration (when available).</li>
+                    <li>Custom roles pick permissions from one multi-select list, the same kind of list used to pick test cases on Execute.</li>
                 </ol>
                 <div class="guide-callouts">
                     <div class="callout warn">
@@ -294,9 +324,25 @@
                 </div>
             </section>
 
+            <section class="panel guide-section guide-reveal" id="account" data-guide-section="account">
+                <header class="guide-section-head">
+                    <span class="guide-num">10</span>
+                    <div>
+                        <h2>Account</h2>
+                        <p class="panel-intro">On <a href="/account">Account</a>, the vision choice and the alerts are two different settings.</p>
+                    </div>
+                </header>
+                <ul class="guide-points">
+                    <li><strong>Vision model</strong> is only the model that looks at the screen during a run (UI-TARS, or Qwen vision). It stays in this browser. It does not write test cases. Writing uses Gemma, chosen on Generate.</li>
+                    <li><strong>Alerts</strong> are saved on the account. Keel sends a message when a run fails or finishes with a block. Turning a channel on sends a confirmation first, and the setting is kept only if that message goes out.</li>
+                    <li>Telegram and email send only after this Keel computer has a bot token or a mail server configured. Slack uses the incoming webhook you paste.</li>
+                    <li>A project’s Usage and budget is a cap on that project. It is not the same as the account credit balance in the top bar.</li>
+                </ul>
+            </section>
+
             <section class="panel guide-section guide-reveal" id="mobile" data-guide-section="mobile">
                 <header class="guide-section-head">
-                    <span class="guide-num">09</span>
+                    <span class="guide-num">11</span>
                     <div>
                         <h2>Mobile</h2>
                         <p class="panel-intro">When mobile is enabled for a project, configure the app and a device under Project Settings. Appium must be available to the runner.</p>
@@ -317,7 +363,7 @@
 
             <section class="panel guide-section guide-reveal product-guide-tc-banner" id="tc-authoring" data-guide-section="tc-authoring">
                 <header class="guide-section-head">
-                    <span class="guide-num">10</span>
+                    <span class="guide-num">12</span>
                     <div>
                         <h2>How to write test cases</h2>
                         <p class="panel-intro">

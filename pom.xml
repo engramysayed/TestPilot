@@ -31,7 +31,7 @@
         <surefire.failIfNoSpecifiedTests>false</surefire.failIfNoSpecifiedTests>
         <!-- `mvn exec:java -Dexec.mainClass=…` from the root runs only in keel-portal (it sets false). -->
         <exec.skip>true</exec.skip>
-        <!-- Same for `mvn spring-boot:run` (start-portal.bat): only keel-portal runs (it sets false). -->
+        <!-- Same for `mvn spring-boot:run` (start-portal.cmd): only keel-portal runs (it sets false). -->
         <spring-boot.run.skip>true</spring-boot.run.skip>
         <keel.arch.allowlist.portal-selenium>true</keel.arch.allowlist.portal-selenium>
     </properties>

@@ -183,6 +183,10 @@
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18 M5 5l14 14 M5 19 19 5"/></svg>
             <span>Generate</span>
         </a>
+        <a href="/record" data-feature-perm="feature.generate" th:classappend="${navActive == 'record'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>
+            <span>Record</span>
+        </a>
         <a href="/execute" data-feature-perm="feature.execute" th:classappend="${navActive == 'execute'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l12 8-12 8z"/></svg>
             <span>Execute</span>

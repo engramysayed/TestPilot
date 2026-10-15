@@ -27,10 +27,6 @@
            th:classappend="${activeTab == 'summary'} ? ' active' : ''">Summary</a>
         <a th:href="@{/projects/{id}(id=${projectId}, tab='tcs')}"
            th:classappend="${activeTab == 'tcs'} ? ' active' : ''">Test cases</a>
-        <a th:href="@{/generate(projectId=${projectId})}">Generate</a>
-        <a th:href="@{/execute(projectId=${projectId})}">Execute</a>
-        <a th:href="@{/automate(projectId=${projectId})}">Automate</a>
-        <a th:href="@{/bug-hunter}">Bug Hunter</a>
         <a th:href="@{/projects/{id}(id=${projectId}, tab='automation')}"
            th:classappend="${activeTab == 'automation'} ? ' active' : ''">Packages</a>
         <a th:href="@{/projects/{id}(id=${projectId}, tab='settings')}"
@@ -62,10 +58,7 @@
                 Automate / Generate open Status; Execute expands here.
             </p>
             <p id="summary-jobs-empty" class="muted" hidden>
-                No runs yet.
-                <a href="/automate">Automate</a> ·
-                <a href="/execute">Execute</a> ·
-                <a href="/generate">Generate</a>
+                No runs yet. Start Generate, Execute, or Automate from the sidebar.
             </p>
             <table class="table" id="summary-jobs-table" hidden>
                 <thead>

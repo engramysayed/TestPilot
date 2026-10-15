@@ -16,7 +16,7 @@
         <a class="button" href="/automate">New Automate run</a>
     </div>
     <section class="panel" th:if="${#lists.isEmpty(jobs)}">
-        <p class="muted">No runs yet. Start from <a href="/generate">Generate</a>, <a href="/automate">Automate</a>, or <a href="/execute">Execute</a>.</p>
+        <p class="muted">No runs yet. Start from <a href="/generate">Generate</a>, <a href="/record">Record</a>, <a href="/automate">Automate</a>, or <a href="/execute">Execute</a>.</p>
     </section>
     <section class="panel panel-runs" th:if="${!#lists.isEmpty(jobs)}">
         <h2>All runs</h2>

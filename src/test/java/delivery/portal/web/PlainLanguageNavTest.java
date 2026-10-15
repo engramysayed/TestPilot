@@ -52,6 +52,7 @@ public class PlainLanguageNavTest extends AbstractTestNGSpringContextTests {
         search("build code", "Build code");
         search("automate", "Build code");
         search("write test cases", "Write test cases");
+        search("record", "Record a test");
         search("history", "Run history");
         search("code packages", "Code packages");
         search("how to write", "Guide");
@@ -66,6 +67,7 @@ public class PlainLanguageNavTest extends AbstractTestNGSpringContextTests {
         String[][] pages = {
                 {"/execute", "Run tests"},
                 {"/generate", "Write test cases"},
+                {"/record", "Record a test"},
                 {"/automate", "Build code"},
                 {"/runs", "Run history"},
                 {"/packages", "Code packages"},

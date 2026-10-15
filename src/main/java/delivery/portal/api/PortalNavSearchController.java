@@ -23,6 +23,7 @@ public class PortalNavSearchController {
             new NavEntry("/dashboard", "Overview", "overview dashboard"),
             new NavEntry("/projects", "Projects", "projects workspace"),
             new NavEntry("/generate", "Write test cases", "write test cases generate stories ollama"),
+            new NavEntry("/record", "Record a test", "record recording chrome click through steps capture"),
             new NavEntry("/execute", "Run tests", "run tests execute prove"),
             new NavEntry("/automate", "Build code", "build code automate automation conversion upload"),
             new NavEntry("/runs", "Run history", "run history runs jobs evidence results"),

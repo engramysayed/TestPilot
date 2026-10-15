@@ -8,10 +8,10 @@ After any change under `src/main/java/delivery/**` that should affect live jobs.
 
 ## Steps (Windows)
 
-`start-portal.bat` now **kills whatever is listening on 8080**, waits briefly, then starts Spring Boot. Prefer:
+`start-portal.cmd` stops a previous Keel `java.exe` on port 8080, waits briefly, then starts the portal. It does not kill other programs on that port.
 
 ```bat
-start-portal.bat
+start-portal.cmd
 ```
 
 Manual alternative:
@@ -19,7 +19,7 @@ Manual alternative:
 ```bat
 netstat -ano | findstr :8080
 taskkill /PID <pid> /F
-mvn -Dmaven.compiler.release=21 spring-boot:run
+mvn -pl keel-portal -am -Dmaven.compiler.release=21 spring-boot:run
 ```
 
 Confirm log: `SemanticPassGate: intent/action checks only…`

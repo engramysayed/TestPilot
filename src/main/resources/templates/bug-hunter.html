@@ -737,7 +737,7 @@
         if (!projectId || !triageJobSel) return;
         triageJobSel.innerHTML = '<option value="">— Pick a completed hunt —</option>';
         try {
-            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/jobs?kind=HUNT', {
+            const res = await fetch('/api/jobs?projectId=' + encodeURIComponent(projectId) + '&kind=HUNT', {
                 credentials: 'same-origin', headers: API_HEADERS
             });
             let jobs = [];

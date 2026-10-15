@@ -29,9 +29,7 @@ cd tools\cursor-heal
 npm install
 ```
 
-Easiest: copy `api-keys.local.bat.example` → `api-keys.local.bat` (gitignored), set `CURSOR_API_KEY` (and optionally `AGENTROUTER_API_KEY`), then run `start-portal.bat` or `start-portal-with-cursor-heal.bat`.
-
-Legacy: `cursor-api-key.local.bat.example` → `cursor-api-key.local.bat` still works.
+Easiest: copy `api-keys.local.bat.example` → `api-keys.local.bat` (gitignored), set `CURSOR_API_KEY` (and optionally `AGENTROUTER_API_KEY`), then run `start-keel.cmd` or `start-portal.cmd`.
 
 ```bat
 set CURSOR_API_KEY=your_key_here
@@ -70,7 +68,7 @@ Excel cases that include login steps get login in generated `@BeforeMethod`; inv
 
 ## Portal smoke
 
-1. `start-portal.bat`
+1. `start-portal.cmd`
 2. Login → Users/Account as needed  
 3. Upload → project → Excel `saucedemo-smoke.xlsx`  
 4. Base URL `https://www.saucedemo.com/`  
@@ -86,4 +84,4 @@ See `docs/superpowers/specs/2026-08-05-codegen-rules.md` (locator order, POM pag
 1. Install JDK, Maven, Chrome, Ollama on the VPS  
 2. `ollama pull gemma4:e2b`  
 3. Copy this repo; keep the same `application.properties` values (point LLM to `127.0.0.1` on that machine)  
-4. Run `start-portal.bat` or Windows Service  
+4. Run `start-portal.cmd` or Windows Service  

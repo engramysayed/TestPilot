@@ -11,6 +11,7 @@ Paste user stories or import structured test cases, prove them against a real si
 | Surface | Purpose |
 |---------|---------|
 | **Generate** | Stories or external AI JSON/CSV → quality-gated workbook (`latest.xlsx` / CSV) |
+| **Record** | Click through the site in Chrome → library case, with locators, then an optional framework build that does not open Chrome again |
 | **Automate** | Workbook → live prove + heal → Java Selenium TestNG ZIP |
 | **Execute** | Run selected cases against the live site with evidence, without full codegen packaging |
 | **Bug Hunter** | Exploratory live hunt: break features + invent edge scenarios → downloadable hunter pack (no auto-merge into the library) |
@@ -87,6 +88,7 @@ Use this to pick **one primary path** (you can still run others later on the sam
 | If you want… | Go to | Output |
 |--------------|--------|--------|
 | Cases from stories or external AI | **Generate** (+ optional **Compare** / Review with AI) | Project library workbook |
+| Cases by clicking through the site | **Record** | Library case; optional framework ZIP from the captured locators |
 | “Does this written TC pass on the live site?” | **Execute** | Evidence, screenshots, bug export |
 | “Give me customer-ready Java automation” | **Automate** | Selenium/TestNG framework ZIP |
 | “Break the feature / invent edge cases I didn’t write” | **Bug Hunter** | Hunter pack (bugs + candidate scenarios) |
@@ -110,8 +112,9 @@ KeelPath reminder: **Automate** and **Execute** both run every row except `MANUA
 - **Local Ollama** for generate / authoring (configurable models)
 - Optional **Cursor Auto** heal sidecar (`tools/cursor-heal/`)
 - Optional vision models (e.g. UI-TARS / Qwen-VL) for grounding and visual asserts
-- Filesystem store: `delivery-store/` · H2 or Postgres for portal accounts
-- Customer TAF template: `customer-framework-template/`
+- Filesystem store: `delivery-store/` · H2 file `./delivery-store/portal-db` for portal accounts
+- Customer web template: `customer-framework-template/`
+- Customer Android template: `customer-mobile-framework-template/` (not a finished device release)
 
 ---
 
@@ -125,19 +128,29 @@ KeelPath reminder: **Automate** and **Execute** both run every row except `MANUA
 - [Ollama](https://ollama.com/) with at least one generate model pulled (see `application.properties`)
 - Node.js 18+ if you enable the Cursor heal sidecar
 
-### Run the portal
+### Run Keel
+
+One step. This loads `api-keys.local.bat`, starts Ollama (`:11434`) and Appium (`:4723`) only if they are down, then opens the portal and the engine:
 
 ```bat
-start-portal.bat
+start-keel.cmd
 ```
 
-With Cursor heal (requires `CURSOR_API_KEY` via env or a local BAT — never commit keys):
+Portal only (product profile, port 8080). It stops a previous Keel `java.exe` on 8080. It does not stop other programs.
 
 ```bat
-start-portal-with-cursor-heal.bat
+start-portal.cmd
 ```
 
-Open **http://localhost:8080**.
+Engine only. It needs the portal and `KEEL_RUNNER_TOKEN` in `api-keys.local.bat`.
+
+```bat
+start-engine.cmd
+```
+
+Open **http://localhost:8080**. After a CSS or template change, rebuild or restart, then hard-refresh (Ctrl+F5).
+
+Copy `api-keys.local.bat.example` to `api-keys.local.bat` for local keys. Do not commit that file.
 
 Default admin credentials are set in `src/main/resources/application.properties` — **change them before any shared or remote use**.
 
@@ -231,19 +244,33 @@ Specs: [`docs/superpowers/specs/2026-09-09-bug-hunter-design.md`](docs/superpowe
 ```text
 src/main/java/delivery/     Portal, jobs, authoring, heal, hunt, codegen, Excel
 src/main/resources/         application.properties, templates, static UI
-customer-framework-template/  Shipped TAF core inside every Automate ZIP
+keel-portal/                Builds the portal from the sources above
+keel-contract/              Runner wire shared with the engine
+mobile-contracts/           Android IR and result records
+mobile-runner/              Android execute rules (no portal database)
+mobile-codegen/             Android screen and test writer
+customer-framework-template/  Web Selenium/TestNG core inside every web ZIP
+customer-mobile-framework-template/  Android template inside a mobile ZIP
+start-keel.cmd              Portal + engine, and Ollama/Appium if they are down
 tools/cursor-heal/          Cursor Auto heal (+ hunt) sidecar
 docs/                       Specs, plans, and ops guides
-scripts/                    Setup helpers (e.g. vision models)
 ```
 
 Engineering depth (flows, quality gates, historical workstream notes): [`docs/ENGINEERING_HANDOFF.md`](docs/ENGINEERING_HANDOFF.md).
 
 ---
 
+## Where things stand (2026-10-15)
+
+- **Web portal.** Quiet teal theme, dark by default. The Runs table and top bar stay on one row (`keel-layout.css`, commit `0bbee58` on `keel/main`).
+- **Start path.** `start-keel.cmd`, `start-portal.cmd`, and `start-engine.cmd`. The older `start-portal.bat` launcher is gone.
+- **Android.** Native execute and ZIP generation code is in the tree (M0–M4). WebView, vision, and Precision rules have unit tests only (M5). No phone or emulator acceptance run has been done (M6). Do not treat mobile as ready for a device test. Limits: [`docs/ops/mobile-operator-limits.md`](docs/ops/mobile-operator-limits.md).
+
+---
+
 ## Security notes
 
-- Do not commit API keys. Use env vars (`CURSOR_API_KEY`, `AGENTROUTER_API_KEY`, …) or gitignored local BAT files (`cursor-api-key.local.bat`).
+- Do not commit API keys. Use env vars (`CURSOR_API_KEY`, `AGENTROUTER_API_KEY`, `KEEL_RUNNER_TOKEN`, …) or the gitignored file `api-keys.local.bat`.
 - Change the portal admin password before exposing the app beyond localhost. Production (`delivery.install.production=true`) refuses the default password, empty allowlist, H2 console, and HTTP public URLs.
 - `delivery-store/` and `delivery-work/` hold runtime data and are gitignored.
 - Privacy and isolation are **not** launch-complete: screenshot redaction, live-sidecar canaries, and worker-network isolation remain open. See [SUPPORT.md](docs/SUPPORT.md).

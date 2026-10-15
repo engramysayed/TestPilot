@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Record')}"></th:block>
+</head>
+<body class="app-body" th:attr="data-project-id=${projectId}">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1>Record a test</h1>
+            <p class="lede">Click through your website in Chrome. Keel writes each step, then saves it as a test case. Passwords are not stored.</p>
+        </div>
+    </div>
+
+    <section class="panel">
+        <label>Project
+            <select id="record-project">
+                <option value="">Loading projects…</option>
+            </select>
+        </label>
+        <p id="record-project-site" class="muted"></p>
+        <p id="record-project-err" class="error" hidden></p>
+        <p id="record-no-projects" class="muted" hidden>
+            No projects yet — <a href="/projects">create one</a> and set its website first.
+        </p>
+    </section>
+
+    <section class="panel record-wizard" id="record-wizard" aria-labelledby="record-wizard-title">
+        <h2 id="record-wizard-title">Show Keel the steps</h2>
+        <div id="record-wizard-body">
+            <ol class="steps" id="record-steps" aria-label="Record steps">
+                <li class="on" data-step="1"><b>1</b>Name it</li>
+                <li data-step="2"><b>2</b>Pick the website</li>
+                <li data-step="3"><b>3</b>Record</li>
+                <li data-step="4"><b>4</b>Check and save</li>
+            </ol>
+            <div class="record-pane" data-pane="1">
+                <h3>What should this test check?</h3>
+                <label class="f">Test name
+                    <input type="text" id="rw-name" placeholder="Pay with a saved card" autocomplete="off"/>
+                </label>
+                <p class="hint">Describe it like you would to a colleague.</p>
+                <label class="f">What should happen at the end? <span class="muted">(optional)</span>
+                    <textarea id="rw-expect" rows="3" placeholder="The order confirmation page shows an order number."></textarea>
+                </label>
+            </div>
+            <div class="record-pane" data-pane="2" hidden>
+                <h3>Where should Keel start?</h3>
+                <p class="panel-intro">Uses the project you picked above.</p>
+                <div class="choice" id="rw-site-choice">
+                    <label><input type="radio" name="rw-site" value="project" checked> <b>This project’s website</b><div class="muted">Uses the address from project settings</div></label>
+                    <label><input type="radio" name="rw-site" value="manual"> <b>Another address…</b><div class="muted">Must be the same website. Type a full https:// link</div></label>
+                </div>
+                <label class="f" id="rw-url-wrap" hidden>Website address
+                    <input type="url" id="rw-url" placeholder="https://shop.example.com/checkout"/>
+                </label>
+                <label class="f">Sign in first?
+                    <select id="rw-login">
+                        <option value="yes">Yes — use a login account from Settings</option>
+                        <option value="no" selected>No sign-in needed</option>
+                    </select>
+                </label>
+                <p class="hint">If the site asks you to sign in, type the password yourself in Chrome. Keel does not store it. Choosing Yes only adds a note that the later run should sign in with a project login account.</p>
+            </div>
+            <div class="record-pane" data-pane="3" hidden>
+                <h3>Show Keel what to do</h3>
+                <div class="recbox">
+                    <p><strong>A Chrome window opens on this computer.</strong> Click through the site as a visitor would. Each click, field, and page change shows up here.</p>
+                    <p class="muted">Press Stop when you are done. Recording stops on its own after 20 minutes, and you can still save the steps.</p>
+                    <p>
+                        <button type="button" class="button primary" id="rw-start-rec">Start recording</button>
+                        <button type="button" class="button ghost" id="rw-stop-rec" hidden>■ Stop</button>
+                    </p>
+                    <p id="rw-rec-status" class="muted" hidden aria-live="polite"></p>
+                    <ol id="rw-live-steps" class="rw-live" hidden></ol>
+                </div>
+            </div>
+            <div class="record-pane" data-pane="4" hidden>
+                <h3>Looks good?</h3>
+                <ul class="list" style="list-style:none;padding:0">
+                    <li style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--calm-line, #e3e6ec)"><span class="muted">Name</span><b id="rw-sum-name">—</b></li>
+                    <li style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--calm-line, #e3e6ec)"><span class="muted">Website</span><b id="rw-sum-site">This project</b></li>
+                    <li style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--calm-line, #e3e6ec)"><span class="muted">Sign-in</span><b id="rw-sum-login">—</b></li>
+                    <li style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--calm-line, #e3e6ec)"><span class="muted">Steps</span><b id="rw-sum-count">—</b></li>
+                    <li style="display:flex;justify-content:space-between;padding:0.6rem 0"><span class="muted">Next step</span><b>Save into the project’s test cases</b></li>
+                </ul>
+                <ol id="rw-sum-steps" class="rw-live" hidden></ol>
+                <div class="rw-build" id="rw-build-card">
+                    <p class="rw-build-kicker">Already in hand</p>
+                    <p id="rw-build-count"><strong>Keel remembered the controls you used.</strong></p>
+                    <p class="hint">While Chrome was open, each click kept a locator. Check this, on the Keel bar in that window, saves a real confirmation. Building uses the same framework writer and does not open Chrome again.</p>
+                    <label><input type="checkbox" id="rw-build" checked> Build the framework from this recording</label>
+                </div>
+                <label style="display:block;margin-top:0.8rem"><input type="checkbox" id="rw-run-once"> Run it once now to check it works</label>
+                <p class="hint">Run it once opens the site again as a normal Execute check. Leave it off when you only want the framework.</p>
+                <p id="rw-save-msg" class="ok" hidden></p>
+                <p id="rw-save-err" class="error" hidden></p>
+            </div>
+            <p id="rw-step-err" class="error" hidden></p>
+            <div class="wnav">
+                <button type="button" class="button ghost" id="rw-back" hidden>← Back</button>
+                <span></span>
+                <button type="button" class="button primary" id="rw-next">Next →</button>
+            </div>
+        </div>
+    </section>
+</main>
+</div>
+<script>
+(function () {
+    var step = 1;
+    var steps = [];
+    var sessionId = '';
+    var activeProject = '';
+    var recording = false;
+    var pollTimer = 0;
+    var saved = false;
+    var projects = [];
+    var locatedCount = 0;
+    var checkCount = 0;
+    var headers = { 'X-Keel-Requested-With': 'Keel' };
+    var wizard = document.getElementById('record-wizard-body');
+    var projectSel = document.getElementById('record-project');
+
+    function projectId() {
+        return projectSel && projectSel.value ? projectSel.value : '';
+    }
+
+    function selectedProject() {
+        var id = projectId();
+        for (var i = 0; i < projects.length; i++) {
+            if (projects[i].projectId === id) return projects[i];
+        }
+        return null;
+    }
+
+    function showProjectSite() {
+        var el = document.getElementById('record-project-site');
+        var project = selectedProject();
+        if (!project) {
+            el.textContent = '';
+            return;
+        }
+        if (String(project.platform || 'WEB').toUpperCase() === 'ANDROID') {
+            el.textContent = 'This project is a mobile app. Recording opens a website in Chrome, so pick a web project.';
+            return;
+        }
+        el.textContent = project.baseUrl
+            ? ('Chrome opens at ' + project.baseUrl + '.')
+            : 'Set the website in project Settings before you record.';
+    }
+
+    function manualSite() {
+        var picked = document.querySelector('input[name="rw-site"][value="manual"]');
+        return !!(picked && picked.checked);
+    }
+
+    function stepErr(text) {
+        var el = document.getElementById('rw-step-err');
+        el.hidden = !text;
+        el.textContent = text || '';
+    }
+
+    function renderSteps(list, el) {
+        if (!el) return;
+        el.textContent = '';
+        if (!list || !list.length) {
+            el.hidden = true;
+            return;
+        }
+        list.forEach(function (line) {
+            var li = document.createElement('li');
+            li.textContent = line;
+            el.appendChild(li);
+        });
+        el.hidden = false;
+    }
+
+    function setRecordingUi(on) {
+        recording = on;
+        document.getElementById('rw-start-rec').hidden = on;
+        document.getElementById('rw-stop-rec').hidden = !on;
+        var box = document.querySelector('#record-wizard .recbox');
+        if (box) box.classList.toggle('is-recording', on);
+    }
+
+    function status(text) {
+        var st = document.getElementById('rw-rec-status');
+        st.hidden = !text;
+        st.textContent = text || '';
+    }
+
+    function showOk(text, links) {
+        var msg = document.getElementById('rw-save-msg');
+        var err = document.getElementById('rw-save-err');
+        err.hidden = true;
+        msg.hidden = false;
+        msg.textContent = '';
+        msg.appendChild(document.createTextNode(text));
+        (links || []).forEach(function (link) {
+            msg.appendChild(document.createTextNode(' '));
+            var a = document.createElement('a');
+            a.href = link.href;
+            a.textContent = link.label;
+            msg.appendChild(a);
+        });
+    }
+
+    function showSaveErr(text) {
+        document.getElementById('rw-save-msg').hidden = true;
+        var err = document.getElementById('rw-save-err');
+        err.hidden = false;
+        err.textContent = text;
+    }
+
+    function showStep(n) {
+        step = Math.min(4, Math.max(1, n));
+        stepErr('');
+        wizard.querySelectorAll('.record-pane').forEach(function (pane) {
+            pane.hidden = String(pane.getAttribute('data-pane')) !== String(step);
+        });
+        wizard.querySelectorAll('#record-steps li').forEach(function (li) {
+            var s = +li.getAttribute('data-step');
+            li.classList.toggle('on', s === step);
+            li.classList.toggle('done', s < step);
+            var mark = li.querySelector('b');
+            if (mark) mark.textContent = s < step ? '\u2713' : String(s);
+        });
+        document.getElementById('rw-back').hidden = step === 1;
+        var next = document.getElementById('rw-next');
+        next.textContent = step === 4 ? 'Save test' : 'Next \u2192';
+        next.disabled = false;
+        if (step === 4) {
+            document.getElementById('rw-sum-name').textContent = document.getElementById('rw-name').value.trim() || '\u2014';
+            document.getElementById('rw-sum-site').textContent = manualSite()
+                ? (document.getElementById('rw-url').value || '\u2014')
+                : "This project's website";
+            document.getElementById('rw-sum-login').textContent =
+                document.getElementById('rw-login').value === 'yes' ? 'Yes' : 'No sign-in';
+            document.getElementById('rw-sum-count').textContent = steps.length ? String(steps.length) : '\u2014';
+            renderSteps(steps, document.getElementById('rw-sum-steps'));
+            var count = document.getElementById('rw-build-count');
+            var buildBox = document.getElementById('rw-build');
+            if (count) {
+                var bits = [];
+                bits.push(locatedCount === 1 ? '1 control has a locator' : locatedCount + ' controls have locators');
+                bits.push(checkCount === 1 ? '1 check' : checkCount + ' checks');
+                count.textContent = '';
+                var strong = document.createElement('strong');
+                strong.textContent = bits.join(', ') + '.';
+                count.appendChild(strong);
+            }
+            if (buildBox) {
+                buildBox.checked = locatedCount + checkCount > 0;
+                buildBox.disabled = locatedCount + checkCount === 0;
+            }
+        }
+    }
+
+    function stopPolling() {
+        if (pollTimer) {
+            window.clearInterval(pollTimer);
+            pollTimer = 0;
+        }
+    }
+
+    function applySnapshot(bodyJson) {
+        if (bodyJson && Array.isArray(bodyJson.steps)) {
+            steps = bodyJson.steps;
+            renderSteps(steps, document.getElementById('rw-live-steps'));
+        }
+        if (bodyJson && typeof bodyJson.locatedCount === 'number') locatedCount = bodyJson.locatedCount;
+        if (bodyJson && typeof bodyJson.checkCount === 'number') checkCount = bodyJson.checkCount;
+        if (bodyJson && bodyJson.status === 'stopped') {
+            setRecordingUi(false);
+            stopPolling();
+            status(bodyJson.message || 'Recording stopped. Check the steps, then save.');
+        } else if (recording) {
+            status(steps.length
+                ? ('Recording. ' + steps.length + (steps.length === 1 ? ' step so far.' : ' steps so far.') + ' Click through the site, then press Stop.')
+                : 'Chrome is open. Click through the site as a visitor would.');
+        }
+    }
+
+    async function poll() {
+        if (!sessionId || !recording) return;
+        var pid = activeProject || projectId();
+        if (!pid) return;
+        try {
+            var res = await fetch('/api/projects/' + encodeURIComponent(pid) + '/recordings/' + encodeURIComponent(sessionId), {
+                credentials: 'same-origin',
+                headers: headers
+            });
+            var payload = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                setRecordingUi(false);
+                stopPolling();
+                status(payload.message || 'That recording is no longer open. Start it again.');
+                return;
+            }
+            applySnapshot(payload);
+        } catch (e) {
+            status('Still recording. The step list will catch up when the page can reach Keel.');
+        }
+    }
+
+    function startPolling() {
+        stopPolling();
+        pollTimer = window.setInterval(poll, 1000);
+    }
+
+    async function stopRecording(goToReview) {
+        if (!sessionId || !recording) {
+            if (goToReview) showStep(4);
+            return;
+        }
+        var pid = activeProject || projectId();
+        setRecordingUi(false);
+        stopPolling();
+        status('Stopping\u2026');
+        try {
+            var res = await fetch('/api/projects/' + encodeURIComponent(pid) + '/recordings/' + encodeURIComponent(sessionId) + '/stop', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: headers
+            });
+            var payload = await res.json().catch(function () { return {}; });
+            if (res.ok) applySnapshot(payload);
+            else status(payload.message || 'Recording stopped.');
+        } catch (e) {
+            status('Recording stopped. Check the steps, then save.');
+        }
+        if (goToReview) showStep(4);
+    }
+
+    function approvalBlock() {
+        var st = document.body && document.body.getAttribute('data-approval-status');
+        if (!st || st === 'APPROVED') return '';
+        if (st === 'LOCKED') return 'Your account is locked, so the check run was not started.';
+        if (st === 'REJECTED') return 'Your account was not approved, so the check run was not started.';
+        return 'Your account is pending approval, so the check run was not started.';
+    }
+
+    async function runOnce(pid, tcId) {
+        var blocked = approvalBlock();
+        if (blocked) return blocked;
+        var profile = '';
+        try {
+            var credRes = await fetch('/api/projects/' + encodeURIComponent(pid) + '/credentials', {
+                credentials: 'same-origin',
+                headers: headers
+            });
+            if (credRes.ok) {
+                var profiles = await credRes.json();
+                if (Array.isArray(profiles) && profiles.length) profile = profiles[0].profileName || '';
+            }
+        } catch (e) { /* the run request reports a missing login account */ }
+        var form = new FormData();
+        form.append('useGenerated', 'true');
+        form.append('tcIds', tcId);
+        if (profile) form.append('credentialProfile', profile);
+        var res = await fetch('/api/projects/' + encodeURIComponent(pid) + '/execute-runs', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: headers,
+            body: form
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok) {
+            var gate = window.KeelCredits && KeelCredits.gateMessage(data);
+            return gate || (data.message || 'The check run did not start.');
+        }
+        return { jobId: data.jobId, profile: profile };
+    }
+
+    async function saveTest() {
+        var next = document.getElementById('rw-next');
+        var name = document.getElementById('rw-name').value.trim();
+        if (!name) {
+            showStep(1);
+            stepErr('Give the test a short name first.');
+            return;
+        }
+        if (!sessionId || !steps.length) {
+            showStep(3);
+            stepErr('Start recording and click through the site first.');
+            return;
+        }
+        if (recording) await stopRecording(false);
+        var pid = activeProject || projectId();
+        if (!pid) {
+            showSaveErr('Choose a project first.');
+            return;
+        }
+        next.disabled = true;
+        document.getElementById('rw-save-err').hidden = true;
+        document.getElementById('rw-save-msg').hidden = true;
+        try {
+            var res = await fetch('/api/projects/' + encodeURIComponent(pid) + '/recordings/' + encodeURIComponent(sessionId) + '/save', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+                body: JSON.stringify({
+                    name: name,
+                    expected: document.getElementById('rw-expect').value,
+                    signIn: document.getElementById('rw-login').value === 'yes',
+                    build: document.getElementById('rw-build').checked
+                })
+            });
+            var payload = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                showSaveErr(payload.message || 'Could not save this test.');
+                next.disabled = false;
+                return;
+            }
+            saved = true;
+            if (Array.isArray(payload.steps)) {
+                steps = payload.steps;
+                renderSteps(steps, document.getElementById('rw-sum-steps'));
+            }
+            var tcId = payload.tcId || 'the test';
+            var links = [{ href: '/projects/' + encodeURIComponent(pid) + '?tab=tcs', label: 'Open test cases' }];
+            var text = 'Saved ' + tcId + " into this project's test cases.";
+            if (payload.jobId) {
+                text += ' The framework is being written from the locators.';
+                links.unshift({ href: '/status?jobId=' + encodeURIComponent(payload.jobId), label: 'Watch the framework build' });
+                links.push({ href: '/packages', label: 'Code packages' });
+            } else if (payload.buildMessage) {
+                var buildErr = document.getElementById('rw-save-err');
+                buildErr.hidden = false;
+                buildErr.textContent = payload.buildMessage;
+            }
+            if (document.getElementById('rw-run-once').checked) {
+                var run = await runOnce(pid, payload.tcId);
+                if (run && run.jobId) {
+                    text += run.profile
+                        ? (' Checking it now with the login account ' + run.profile + '.')
+                        : ' Checking it now.';
+                    links.unshift({ href: '/status?jobId=' + encodeURIComponent(run.jobId), label: 'Watch the check run' });
+                } else if (typeof run === 'string' && run) {
+                    text += ' ' + run;
+                }
+            }
+            showOk(text, links);
+            next.textContent = 'Saved';
+        } catch (e) {
+            showSaveErr('Could not save this test.');
+            next.disabled = false;
+        }
+    }
+
+    async function loadProjects() {
+        var err = document.getElementById('record-project-err');
+        var empty = document.getElementById('record-no-projects');
+        err.hidden = true;
+        try {
+            var res = await fetch('/api/projects', { credentials: 'same-origin', headers: headers });
+            if (!res.ok) {
+                err.hidden = false;
+                err.textContent = 'Could not load projects.';
+                projectSel.innerHTML = '<option value="">Choose a project</option>';
+                return;
+            }
+            projects = await res.json();
+            projectSel.innerHTML = '';
+            if (!projects.length) {
+                empty.hidden = false;
+                projectSel.innerHTML = '<option value="">No projects yet</option>';
+                return;
+            }
+            empty.hidden = true;
+            var wanted = new URLSearchParams(location.search).get('projectId')
+                || document.body.getAttribute('data-project-id')
+                || '';
+            projects.forEach(function (project) {
+                var opt = document.createElement('option');
+                opt.value = project.projectId;
+                opt.textContent = (project.name || project.projectId) + ' (' + project.projectId + ')';
+                if (project.projectId === wanted) opt.selected = true;
+                projectSel.appendChild(opt);
+            });
+            showProjectSite();
+        } catch (e) {
+            err.hidden = false;
+            err.textContent = 'Could not load projects.';
+        }
+    }
+
+    document.getElementById('rw-back').addEventListener('click', function () { showStep(step - 1); });
+    document.getElementById('rw-next').addEventListener('click', function () {
+        if (saved) return;
+        stepErr('');
+        if (step === 1) {
+            if (!document.getElementById('rw-name').value.trim()) {
+                stepErr('Give the test a short name first.');
+                return;
+            }
+            showStep(2);
+            return;
+        }
+        if (step === 2) {
+            if (!projectId()) {
+                stepErr('Choose a project first.');
+                return;
+            }
+            var project = selectedProject();
+            if (project && String(project.platform || 'WEB').toUpperCase() === 'ANDROID') {
+                stepErr('Recording opens a website in Chrome. This project is set up as a mobile app.');
+                return;
+            }
+            if (manualSite() && !document.getElementById('rw-url').value.trim()) {
+                stepErr('Type a full http or https address.');
+                return;
+            }
+            showStep(3);
+            return;
+        }
+        if (step === 3) {
+            if (recording) {
+                stopRecording(true);
+                return;
+            }
+            if (!steps.length) {
+                stepErr('Start recording and click through the site first.');
+                return;
+            }
+            showStep(4);
+            return;
+        }
+        saveTest();
+    });
+    document.querySelectorAll('input[name="rw-site"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            document.getElementById('rw-url-wrap').hidden = !manualSite();
+        });
+    });
+    projectSel.addEventListener('change', showProjectSite);
+    document.getElementById('rw-start-rec').addEventListener('click', async function () {
+        var startBtn = document.getElementById('rw-start-rec');
+        var pid = projectId();
+        if (!pid) {
+            status('Choose a project first.');
+            return;
+        }
+        if (manualSite() && !document.getElementById('rw-url').value.trim()) {
+            status('Type a full http or https address.');
+            return;
+        }
+        startBtn.disabled = true;
+        status('Opening Chrome\u2026');
+        try {
+            var res = await fetch('/api/projects/' + encodeURIComponent(pid) + '/recordings', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+                body: JSON.stringify({
+                    url: manualSite() ? document.getElementById('rw-url').value.trim() : '',
+                    useProjectSite: !manualSite()
+                })
+            });
+            var payload = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                startBtn.disabled = false;
+                status(payload.message || 'Could not start recording.');
+                return;
+            }
+            sessionId = payload.sessionId || '';
+            activeProject = pid;
+            saved = false;
+            setRecordingUi(true);
+            startBtn.disabled = false;
+            applySnapshot(payload);
+            if (!steps.length) status('Chrome is open. Click through the site as a visitor would.');
+            startPolling();
+        } catch (e) {
+            startBtn.disabled = false;
+            status('Could not start recording.');
+        }
+    });
+    document.getElementById('rw-stop-rec').addEventListener('click', function () {
+        stopRecording(true);
+    });
+    window.addEventListener('pagehide', function () {
+        if (!recording || !sessionId) return;
+        var pid = activeProject || projectId();
+        if (!pid) return;
+        fetch('/api/projects/' + encodeURIComponent(pid) + '/recordings/' + encodeURIComponent(sessionId) + '/stop', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: headers,
+            keepalive: true
+        });
+    });
+    showStep(1);
+    loadProjects();
+})();
+</script>
+</body>
+</html>

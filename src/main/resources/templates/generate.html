@@ -4,6 +4,9 @@
     <th:block th:replace="~{fragments :: pageHead(title='Generate')}"></th:block>
 </head>
 <body class="app-body" th:attr="data-structured-intake=${generateStructuredIntake} ?: true">
+<script>
+if (location.hash === '#record') location.replace('/record' + location.search);
+</script>
 <link rel="stylesheet" th:href="@{/css/keel-portal-enhancements.css}"/>
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
@@ -12,84 +15,10 @@
     <div class="page-title">
         <div>
             <h1>Write test cases</h1>
-            <p class="lede">Describe what a visitor does, or let Keel write the steps from your stories. No code needed.</p>
+            <p class="lede">Describe what a visitor does, or let Keel write the steps from your stories. No code needed. To click through the site yourself, use <a href="/record">Record</a>.</p>
         </div>
     </div>
 
-
-    <section class="panel record-wizard" id="record-wizard" aria-labelledby="record-wizard-title">
-        <div class="page-title" style="margin-bottom:0.5rem">
-            <div>
-                <h2 id="record-wizard-title">Record a new test</h2>
-                <p class="panel-intro">A short guided path. You can still paste stories below if you prefer.</p>
-            </div>
-            <button type="button" class="button ghost" id="record-wizard-toggle">Start</button>
-        </div>
-        <div id="record-wizard-body" hidden>
-            <ol class="steps" id="record-steps" aria-label="Record steps">
-                <li class="on" data-step="1"><b>1</b>Name it</li>
-                <li data-step="2"><b>2</b>Pick the website</li>
-                <li data-step="3"><b>3</b>Record</li>
-                <li data-step="4"><b>4</b>Check and save</li>
-            </ol>
-            <div class="record-pane" data-pane="1">
-                <h3>What should this test check?</h3>
-                <label class="f">Test name
-                    <input type="text" id="rw-name" placeholder="Pay with a saved card" autocomplete="off"/>
-                </label>
-                <p class="hint">Describe it like you would to a colleague.</p>
-                <label class="f">What should happen at the end? <span class="muted">(optional)</span>
-                    <textarea id="rw-expect" rows="3" placeholder="The order confirmation page shows an order number."></textarea>
-                </label>
-            </div>
-            <div class="record-pane" data-pane="2" hidden>
-                <h3>Where should Keel start?</h3>
-                <p class="panel-intro">Uses the project you pick above. Change project first if needed.</p>
-                <div class="choice" id="rw-site-choice">
-                    <label><input type="radio" name="rw-site" value="project" checked> <b>This project’s website</b><div class="muted">Uses the address from project settings</div></label>
-                    <label><input type="radio" name="rw-site" value="manual"> <b>Another address…</b><div class="muted">Type a full https:// link</div></label>
-                </div>
-                <label class="f" id="rw-url-wrap" hidden>Website address
-                    <input type="url" id="rw-url" placeholder="https://shop.example.com"/>
-                </label>
-                <label class="f">Sign in first?
-                    <select id="rw-login">
-                        <option value="yes">Yes — use a login account from Settings</option>
-                        <option value="no">No sign-in needed</option>
-                    </select>
-                </label>
-            </div>
-            <div class="record-pane" data-pane="3" hidden>
-                <h3>Show Keel what to do</h3>
-                <div class="recbox">
-                    <p><strong>Recording opens in a real browser window.</strong> Click through your site as a visitor would; Keel writes down each step.</p>
-                    <p class="muted">In this portal build, use “Write from stories” below if live recording isn’t available yet.</p>
-                    <p>
-                        <button type="button" class="button primary" id="rw-start-rec">Start recording</button>
-                        <button type="button" class="button ghost" id="rw-stop-rec" hidden>■ Stop</button>
-                    </p>
-                    <p id="rw-rec-status" class="muted" hidden></p>
-                </div>
-            </div>
-            <div class="record-pane" data-pane="4" hidden>
-                <h3>Looks good?</h3>
-                <ul class="list" style="list-style:none;padding:0">
-                    <li style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--calm-line, #e3e6ec)"><span class="muted">Name</span><b id="rw-sum-name">—</b></li>
-                    <li style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--calm-line, #e3e6ec)"><span class="muted">Website</span><b id="rw-sum-site">This project</b></li>
-                    <li style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--calm-line, #e3e6ec)"><span class="muted">Sign-in</span><b id="rw-sum-login">—</b></li>
-                    <li style="display:flex;justify-content:space-between;padding:0.6rem 0"><span class="muted">Next step</span><b>Save into the project’s test cases</b></li>
-                </ul>
-                <label style="display:block;margin-top:0.8rem"><input type="checkbox" id="rw-run-once" checked> Run it once now to check it works</label>
-                <p id="rw-save-msg" class="ok" hidden></p>
-                <p id="rw-save-err" class="error" hidden></p>
-            </div>
-            <div class="wnav">
-                <button type="button" class="button ghost" id="rw-back" hidden>← Back</button>
-                <span></span>
-                <button type="button" class="button primary" id="rw-next">Next →</button>
-            </div>
-        </div>
-    </section>
 
     <section class="panel workspace-launcher" id="workspace-launcher">
         <p class="guide-kicker">Workspace</p>
@@ -173,7 +102,7 @@
             <textarea id="stories-input" rows="10" hidden
                       placeholder="As a shopper I want to add items to my cart so that I can check out…"></textarea>
 
-            <details class="more-options" id="generate-free-text-more">
+            <details class="more-options" id="generate-free-text-more" open>
                 <summary>More — paste free-text story instead</summary>
                 <p class="field-hint">Use this if you already have a full story blob. It is merged with the fields above when you Generate.</p>
                 <label for="intake-freetext">Free-text story
@@ -190,7 +119,7 @@
                 <p id="quality-gate-warnings" class="muted" hidden></p>
             </div>
 
-            <details class="more-options" id="generate-more-options">
+            <details class="more-options" id="generate-more-options" open>
                 <summary>More options</summary>
             <div class="generate-model-row">
                 <label for="generate-model-select">AI model
@@ -225,7 +154,7 @@
                 <span id="generate-status" class="generate-status" role="status" aria-live="polite"></span>
             </div>
             <p class="muted generate-option-hint">Writing test cases can take a few minutes; we show progress on the next page.</p>
-            <details class="more-options" id="generate-other-ways">
+            <details class="more-options" id="generate-other-ways" open>
                 <summary>Other ways to write test cases</summary>
                 <div class="generate-actions">
                 <button type="button" class="button btn-compare" id="compare-btn" disabled
@@ -296,7 +225,7 @@
                 </table>
             </div>
 
-            <details class="panel-details generate-coverage" id="coverage-panel">
+            <details class="panel-details generate-coverage" id="coverage-panel" open>
                 <summary>Coverage notes</summary>
                 <textarea id="coverage-notes" class="generate-coverage-text" rows="6"
                           placeholder="Coverage notes from Generate/Import"></textarea>
@@ -357,7 +286,7 @@
                 </div>
                 <h4 class="review-cases-heading">Proposed test cases</h4>
                 <div id="authoring-review-cases" class="review-case-list"></div>
-                <details class="review-csv-raw">
+                <details class="review-csv-raw" open>
                     <summary>Raw CSV</summary>
                     <pre id="authoring-review-csv" class="ai-prompt-preview"></pre>
                 </details>
@@ -395,7 +324,7 @@
             </div>
         </section>
 
-        <details class="more-options" id="generate-more-ways">
+        <details class="more-options" id="generate-more-ways" open>
             <summary>More ways to add test cases: many stories at once, or paste from another AI tool</summary>
         <section class="generate-bulk" id="generate-bulk">
             <div class="generate-primary-head">
@@ -482,7 +411,7 @@
             </p>
         </section>
 
-        <details class="panel-details generate-fallback">
+        <details class="panel-details generate-fallback" open>
             <summary>Use another AI chat (copy our prompt)</summary>
             <ol class="guide-howto">
                 <li>Click <strong>Copy prompt</strong> (it includes your project's name and website).</li>
@@ -2806,90 +2735,7 @@
 })();
 </script>
 
-<script>
-(function () {
-    var step = 1;
-    var body = document.getElementById('record-wizard-body');
-    var toggle = document.getElementById('record-wizard-toggle');
-    if (!body || !toggle) return;
-    function showStep(n) {
-        step = Math.min(4, Math.max(1, n));
-        body.querySelectorAll('.record-pane').forEach(function (p) {
-            p.hidden = String(p.getAttribute('data-pane')) !== String(step);
-        });
-        body.querySelectorAll('#record-steps li').forEach(function (li) {
-            var s = +li.getAttribute('data-step');
-            li.classList.toggle('on', s === step);
-            li.classList.toggle('done', s < step);
-            var b = li.querySelector('b');
-            if (b) b.textContent = s < step ? '✓' : String(s);
-        });
-        document.getElementById('rw-back').hidden = step === 1;
-        document.getElementById('rw-next').textContent = step === 4 ? 'Save test' : 'Next →';
-        if (step === 4) {
-            document.getElementById('rw-sum-name').textContent = document.getElementById('rw-name').value.trim() || '—';
-            document.getElementById('rw-sum-site').textContent =
-                (document.querySelector('input[name="rw-site"]:checked') || {}).value === 'manual'
-                    ? (document.getElementById('rw-url').value || '—')
-                    : 'This project’s website';
-            document.getElementById('rw-sum-login').textContent =
-                document.getElementById('rw-login').value === 'yes' ? 'Yes' : 'No sign-in';
-        }
-    }
-    toggle.addEventListener('click', function () {
-        var open = body.hidden;
-        body.hidden = !open;
-        toggle.textContent = open ? 'Hide' : 'Start';
-        if (open) showStep(1);
-    });
-    document.getElementById('rw-back').addEventListener('click', function () { showStep(step - 1); });
-    document.getElementById('rw-next').addEventListener('click', function () {
-        if (step < 4) { showStep(step + 1); return; }
-        var name = document.getElementById('rw-name').value.trim();
-        var err = document.getElementById('rw-save-err');
-        var msg = document.getElementById('rw-save-msg');
-        err.hidden = true; msg.hidden = true;
-        if (!name) { err.hidden = false; err.textContent = 'Give the test a short name first.'; showStep(1); return; }
-        msg.hidden = false;
-        msg.textContent = 'Saved the plan for “' + name + '”. Open the project’s Test cases tab to add steps, or keep writing from stories below.';
-        try {
-            sessionStorage.setItem('keel.recordDraft', JSON.stringify({
-                name: name,
-                expect: document.getElementById('rw-expect').value,
-                site: (document.querySelector('input[name="rw-site"]:checked') || {}).value,
-                url: document.getElementById('rw-url').value,
-                login: document.getElementById('rw-login').value,
-                runOnce: document.getElementById('rw-run-once').checked
-            }));
-        } catch (e) { /* ignore */ }
-    });
-    document.querySelectorAll('input[name="rw-site"]').forEach(function (r) {
-        r.addEventListener('change', function () {
-            document.getElementById('rw-url-wrap').hidden = r.value !== 'manual' || !r.checked
-                ? (document.querySelector('input[name="rw-site"][value="manual"]').checked ? false : true)
-                : false;
-            document.getElementById('rw-url-wrap').hidden =
-                !document.querySelector('input[name="rw-site"][value="manual"]').checked;
-        });
-    });
-    document.getElementById('rw-start-rec').addEventListener('click', function () {
-        document.getElementById('rw-start-rec').hidden = true;
-        document.getElementById('rw-stop-rec').hidden = false;
-        var st = document.getElementById('rw-rec-status');
-        st.hidden = false;
-        st.textContent = 'Recording isn’t wired to a live browser in this build yet — stop and continue, or use “Write from stories” below.';
-    });
-    document.getElementById('rw-stop-rec').addEventListener('click', function () {
-        document.getElementById('rw-start-rec').hidden = false;
-        document.getElementById('rw-stop-rec').hidden = true;
-        showStep(4);
-    });
-    if (location.hash === '#record' || /[?&]record=1/.test(location.search)) {
-        body.hidden = false;
-        toggle.textContent = 'Hide';
-        showStep(1);
-    }
-})();
-</script>
+
+
 </body>
 </html>

@@ -4,6 +4,7 @@ import delivery.authoring.PrecisionJobConfig;
 import delivery.job.ConversionJobRequest;
 import delivery.job.ConversionJobResult;
 import delivery.job.ConversionJobRunner;
+import delivery.job.RecordedCaptureFile;
 import delivery.job.DryRunConversionService;
 import delivery.job.JobCancelledException;
 import delivery.job.JobProgressTracker;
@@ -17,6 +18,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
@@ -47,10 +49,17 @@ public class ConversionWorker {
             return;
         }
         job = portalStore.getJob(jobId).orElse(job);
-        job.setMessage(props.isDryRun() ? "Dry-run packaging" : "Starting conversion");
+        Path recordedFile = RecordedCaptureFile.path(Path.of(props.getWorkDir()), jobId);
+        boolean fromRecording = Files.isRegularFile(recordedFile);
+        job.setMessage(fromRecording
+                ? "Building the framework from the recording"
+                : (props.isDryRun() ? "Dry-run packaging" : "Starting conversion"));
         if (!props.isDryRun()) {
             delivery.portal.jobs.DurableJobClaim.markStage(
-                    job, lease.get().attemptId(), delivery.portal.jobs.DurableJobClaim.Stage.BROWSER);
+                    job, lease.get().attemptId(),
+                    fromRecording
+                            ? delivery.portal.jobs.DurableJobClaim.Stage.EMIT
+                            : delivery.portal.jobs.DurableJobClaim.Stage.BROWSER);
         }
         portalStore.syncJobPersistence(job);
         try {
@@ -98,7 +107,12 @@ public class ConversionWorker {
                     return portalStore.publishAttempt(jobId, lease.get(), action);
                 }
             };
-            if (props.isDryRun()) {
+            if (fromRecording) {
+                var captures = RecordedCaptureFile.read(recordedFile);
+                ConversionJobRunner runner = new ConversionJobRunner();
+                result = runWithProgressMirror(job, runner.progress(), lease.get(),
+                        () -> runner.runRecorded(request, captures, cancelCheck, guard));
+            } else if (props.isDryRun()) {
                 JobProgressTracker tracker = new JobProgressTracker();
                 result = runWithProgressMirror(job, tracker, lease.get(),
                         () -> new DryRunConversionService().run(request, tracker, cancelCheck, guard));
@@ -165,6 +179,11 @@ public class ConversionWorker {
             }
         } finally {
             portalStore.clearCancelRequest(jobId);
+            try {
+                Files.deleteIfExists(RecordedCaptureFile.path(Path.of(props.getWorkDir()), jobId));
+            } catch (Exception ignored) {
+                // the sidecar is only a hint for this job
+            }
             JobUploadCleanup.deleteIfTempUpload(job.getExcelPath());
         }
     }

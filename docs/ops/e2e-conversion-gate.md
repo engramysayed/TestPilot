@@ -7,7 +7,7 @@
 - JDK 21, Maven, browser driver as used by TAF  
 - Ollama running with model from `application.properties`  
 - `delivery.dry-run=false`  
-- Portal started (`start-portal.bat` or `mvn spring-boot:run`)  
+- Portal started (`start-portal.cmd` or `mvn -pl keel-portal -am spring-boot:run`)  
 - Excel filled with **our template** for the app under test  
 
 ## Gate A — NEW (T041)

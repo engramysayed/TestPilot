@@ -94,22 +94,9 @@
             return;
         }
         const data = await res.json();
-        try {
-            const stub = await fetch('/api/admin/users/approvals-stub', { headers: { 'X-Keel-Requested-With': 'Keel' } });
-            if (stub.ok) {
-                const stubData = await stub.json();
-                const byId = {};
-                (stubData.users || []).forEach(function (row) { byId[row.userId] = row; });
-                (data.users || []).forEach(function (u) {
-                    const extra = byId[u.id];
-                    if (extra) {
-                        u.approvalStatus = extra.approvalStatus || u.approvalStatus;
-                        u.roleId = extra.roleId || u.roleId;
-                    }
-                    if (!u.approvalStatus) u.approvalStatus = u.self ? 'APPROVED' : 'PENDING_APPROVAL';
-                });
-            }
-        } catch (e) { /* stub optional */ }
+        (data.users || []).forEach(function (u) {
+            if (!u.approvalStatus) u.approvalStatus = u.self ? 'APPROVED' : 'PENDING_APPROVAL';
+        });
         document.getElementById('userCount').textContent = data.userCount;
         document.getElementById('pendingCount').textContent = data.pendingInviteCount;
         document.getElementById('accessCount').textContent = data.pendingAccessRequestCount || 0;

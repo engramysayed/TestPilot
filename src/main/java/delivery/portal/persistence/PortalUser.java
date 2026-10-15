@@ -49,6 +49,10 @@ public class PortalUser {
     @Column(name = "approved_by_user_id")
     private Long approvedByUserId;
 
+    /** JSON alert destinations for this account. Null means alerts are off. */
+    @Column(name = "alert_prefs", length = 4000)
+    private String alertPrefs;
+
     public Long getId() { return id; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
@@ -70,4 +74,6 @@ public class PortalUser {
     public void setApprovedAt(Instant approvedAt) { this.approvedAt = approvedAt; }
     public Long getApprovedByUserId() { return approvedByUserId; }
     public void setApprovedByUserId(Long approvedByUserId) { this.approvedByUserId = approvedByUserId; }
+    public String getAlertPrefs() { return alertPrefs; }
+    public void setAlertPrefs(String alertPrefs) { this.alertPrefs = alertPrefs; }
 }

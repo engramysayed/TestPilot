@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 
 /**
  * Loads gitignored local API keys into system properties so CLI conversions see the same
- * keys as {@code start-portal.bat}. Never logs secret values.
+ * keys as {@code start-portal.cmd}. Never logs secret values.
  */
 public final class LocalApiKeyLoader {
     private static final Pattern BAT_SET = Pattern.compile(

@@ -11,6 +11,7 @@ import org.testng.annotations.Test;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(classes = PortalApplication.class, properties = {
@@ -66,7 +67,10 @@ public class GenerateMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertFalse(main.contains("Generate now (wait here)"), "blocking sync generate removed");
         Assert.assertFalse(main.contains("id=\"generate-async-btn\""), "duplicate async button removed");
         Assert.assertTrue(main.contains(">Generate<") || main.contains("Generate</button>"), "Generate CTA missing");
-        Assert.assertTrue(body.contains("record-wizard") || body.contains("Record a new test"), "guided record wizard missing");
+        Assert.assertFalse(main.contains("record-wizard"), "record wizard lives on its own page");
+        Assert.assertTrue(body.contains("href=\"/record\""), "generate should point at the Record page");
+        Assert.assertTrue(main.contains("id=\"generate-more-options\" open"), "more options start open");
+        Assert.assertTrue(main.contains("id=\"generate-more-ways\" open"), "more ways start open");
         Assert.assertTrue(body.contains("/generate-async"), "Generate must use background async API");
         Assert.assertFalse(body.contains("/generate-tcs"), "page must not call blocking generate-tcs");
         Assert.assertTrue(main.contains("All in one"), "pipeline CTA missing");
@@ -84,6 +88,25 @@ public class GenerateMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(main.contains("id=\"generate-model-select\""), "generate model select missing");
         Assert.assertTrue(main.contains("id=\"bulk-queue-btn\""), "bulk queue button missing");
         Assert.assertTrue(main.contains("keel-user-stories-bulk-template.csv"), "bulk template link missing");
+    }
+
+    @Test
+    public void record_isItsOwnPage() throws Exception {
+        String body = mockMvc.perform(get("/record").with(httpBasic(AUTH_USER, AUTH_PASS)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Assert.assertTrue(body.contains("id=\"rw-start-rec\""), "start recording missing");
+        Assert.assertTrue(body.contains("Start recording"), "start recording label missing");
+        Assert.assertFalse(body.contains("not wired"), "old unwired copy must be gone");
+        Assert.assertFalse(body.contains("id=\"record-wizard-toggle\""), "record page should not hide the wizard");
+        Assert.assertTrue(body.contains("id=\"record-project\""), "project picker missing");
+        Assert.assertTrue(body.contains("Build the framework from this recording"), "framework build choice missing");
+        mockMvc.perform(get("/generate").param("record", "1").param("projectId", "prj_abc")
+                        .with(httpBasic(AUTH_USER, AUTH_PASS)))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("/record?projectId=prj_abc"));
     }
 
     @Test

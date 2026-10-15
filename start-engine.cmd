@@ -10,7 +10,7 @@ cd /d "%~dp0"
 if exist "%~dp0api-keys.local.bat" call "%~dp0api-keys.local.bat"
 if "%KEEL_PORTAL_URL%"=="" set "KEEL_PORTAL_URL=http://localhost:8080"
 if "%KEEL_ENGINE_HOME%"=="" set "KEEL_ENGINE_HOME=%USERPROFILE%\Keel\engine"
-if "%KEEL_RUNNER_DRY_RUN%"=="" set "KEEL_RUNNER_DRY_RUN=true"
+if "%KEEL_RUNNER_DRY_RUN%"=="" set "KEEL_RUNNER_DRY_RUN=false"
 if "%KEEL_RUNNER_TOKEN%"=="" (
   echo Set KEEL_RUNNER_TOKEN to the tp_run_ token from project Settings ^(e.g. in api-keys.local.bat^).
   exit /b 2

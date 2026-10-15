@@ -127,7 +127,7 @@
                 <input type="file" name="excel" id="excel-input" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required/>
             </label>
 
-            <details class="execute-optional">
+            <details class="execute-optional" open>
                 <summary>Optional design mockups</summary>
                 <p class="muted">Upload a PNG per TC ID for visual compare (not the Excel VisualAssertion column).</p>
                 <div id="design-ref-form" class="design-ref-form">
@@ -164,7 +164,7 @@
                     <ul id="pre-run-review-errors" class="error"></ul>
                     <h4 class="review-cases-heading">Proposed test cases</h4>
                     <div id="pre-run-review-cases" class="review-case-list"></div>
-                    <details class="review-csv-raw">
+                    <details class="review-csv-raw" open>
                         <summary>Raw CSV</summary>
                         <pre id="pre-run-review-csv" class="ai-prompt-preview"></pre>
                     </details>
@@ -1551,7 +1551,7 @@
             if (step.reason) {
                 html += '<div class="error">' + escapeHtml(step.reason) + '</div>';
                 if (step.reasonTechnical && step.reasonTechnical !== step.reason) {
-                    html += '<details class="panel-details"><summary class="muted">Technical detail</summary>'
+                    html += '<details class="panel-details" open><summary class="muted">Technical detail</summary>'
                         + '<pre class="generate-coverage-text">' + escapeHtml(step.reasonTechnical) + '</pre></details>';
                 }
             }
@@ -1628,7 +1628,7 @@
                 + escapeHtml(data.failureReasonUser || data.failureReason) + '</p>';
             if (data.failureReasonUser && data.failureReason
                     && data.failureReasonUser !== data.failureReason) {
-                html += '<details class="panel-details"><summary class="muted">Technical detail</summary>'
+                html += '<details class="panel-details" open><summary class="muted">Technical detail</summary>'
                     + '<pre class="generate-coverage-text">' + escapeHtml(data.failureReason) + '</pre></details>';
             }
         }

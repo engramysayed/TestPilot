@@ -4,6 +4,7 @@ import delivery.authoring.AuthoringEngine;
 import delivery.mobile.model.ProjectPlatform;
 import delivery.authoring.PrecisionJobConfig;
 import delivery.portal.DeliveryPortalProperties;
+import delivery.portal.alerts.AttentionAlertSender;
 import delivery.portal.model.JobRecord;
 import delivery.portal.model.PatchProjectRequest;
 import delivery.portal.model.ProjectRecord;
@@ -57,6 +58,7 @@ public class PortalStore {
     private final JobRepository jobRepository;
     private final ProjectCredentialRepository credentialRepository;
     private final ObjectProvider<WebhookDispatcher> webhooks;
+    private AccountAlertService attentionAlerts;
 
     public PortalStore(DeliveryPortalProperties props,
                        ProjectRepository projectRepository,
@@ -94,6 +96,12 @@ public class PortalStore {
     @Autowired(required = false)
     public void setDispatchPolicy(delivery.portal.jobs.JobDispatchPolicy dispatchPolicy) {
         this.dispatchPolicy = dispatchPolicy;
+    }
+
+    /** Account alerts when a run fails or finishes with a block. Optional for unit-test stores. */
+    @Autowired(required = false)
+    public void setAttentionAlerts(AccountAlertService attentionAlerts) {
+        this.attentionAlerts = attentionAlerts;
     }
 
     /** Keel Credits Phase 1–2: optional so unit-test stores without credit beans keep working. */
@@ -667,6 +675,14 @@ public class PortalStore {
             WebhookDispatcher dispatcher = webhooks.getIfAvailable();
             if (dispatcher != null) {
                 dispatcher.deliverAsync(job);
+            }
+        }
+        if (attentionAlerts != null
+                && AttentionAlertSender.newlyNeedsAttention(previousStatus, job.getStatus().name())) {
+            try {
+                attentionAlerts.notifyAttention(job, previousStatus);
+            } catch (Exception e) {
+                // A notification failure must not fail the job save.
             }
         }
         return job;

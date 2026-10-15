@@ -2,7 +2,7 @@
 
 First-release support is **shared hosting only** (`delivery.install.mode=shared`). Dedicated installs and private runners stay in the tree; they are **not** a first-launch gate.
 
-This procedure reuses [windows-vps-setup.md](windows-vps-setup.md), [deployment.md](deployment.md), [backup-restore.md](backup-restore.md), and `start-portal.bat`. It does **not** invent a second deploy path.
+This procedure reuses [windows-vps-setup.md](windows-vps-setup.md), [deployment.md](deployment.md), [backup-restore.md](backup-restore.md), and `start-portal.cmd`. It does **not** invent a second deploy path.
 
 **Validation candidate:** `2721e6d` (unchanged). Public rollout stays HOLD until staging isolation, staging restore, authorized live G→E→A, and named signatures pass on this SHA.
 
@@ -37,7 +37,7 @@ Copy [examples/application-shared-staging.properties](examples/application-share
 - Non-blank `spring.datasource.password`
 - Empty / unset `delivery.install.private-cidrs`
 
-Start with `start-portal.bat` (or NSSM/WinSW as in the VPS guide). Confirm:
+Start with `start-portal.cmd` (or NSSM/WinSW as in the VPS guide). Confirm:
 
 ```
 GET /api/health  → installMode=shared

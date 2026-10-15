@@ -18,7 +18,7 @@
 
     <section class="panel keel-role-editor" id="role-editor" hidden>
         <h2 id="role-editor-title">New role</h2>
-        <p class="panel-intro">Tick only what this role needs. Feature pages use these codes for the sidebar.</p>
+        <p class="panel-intro">Open the list and tick only what this role needs.</p>
         <label class="f">Name
             <input type="text" id="role-name" placeholder="e.g. QA lead" autocomplete="off"/>
         </label>
@@ -44,6 +44,15 @@
 (function () {
   var editingId = null;
   var catalog = [];
+  var permMs = null;
+  document.addEventListener('click', function (ev) {
+    if (!permMs || permMs.contains(ev.target)) return;
+    var drop = permMs.querySelector('.tc-ms-dropdown');
+    var trigger = permMs.querySelector('.tc-ms-trigger');
+    if (drop) drop.hidden = true;
+    permMs.classList.remove('is-open');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+  });
 
   async function api(url, opts) {
     opts = opts || {};
@@ -57,14 +66,147 @@
   function renderChecklist(selected) {
     selected = selected || [];
     var box = document.getElementById('perm-checklist');
+    box.className = 'tc-multiselect';
     box.innerHTML = '';
+
+    var label = document.createElement('span');
+    label.className = 'tc-ms-label';
+    label.textContent = 'Permissions';
+    box.appendChild(label);
+
+    var ms = document.createElement('div');
+    ms.className = 'tc-ms';
+    ms.id = 'perm-ms';
+
+    var trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'tc-ms-trigger';
+    trigger.id = 'perm-ms-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    var chips = document.createElement('span');
+    chips.className = 'tc-ms-chips';
+    chips.id = 'perm-ms-chips';
+    var summary = document.createElement('span');
+    summary.className = 'tc-ms-summary muted';
+    summary.id = 'perm-ms-summary';
+    summary.textContent = 'None selected';
+    var caret = document.createElement('span');
+    caret.className = 'tc-ms-caret';
+    caret.setAttribute('aria-hidden', 'true');
+    trigger.appendChild(chips);
+    trigger.appendChild(summary);
+    trigger.appendChild(caret);
+
+    var drop = document.createElement('div');
+    drop.className = 'tc-ms-dropdown';
+    drop.id = 'perm-ms-dropdown';
+    drop.hidden = true;
+
+    var search = document.createElement('input');
+    search.type = 'search';
+    search.className = 'tc-ms-search';
+    search.placeholder = 'Search permissions';
+    search.autocomplete = 'off';
+
+    var toolbar = document.createElement('div');
+    toolbar.className = 'tc-ms-toolbar';
+    var allBtn = document.createElement('button');
+    allBtn.type = 'button';
+    allBtn.className = 'button ghost';
+    allBtn.textContent = 'Select all';
+    var noneBtn = document.createElement('button');
+    noneBtn.type = 'button';
+    noneBtn.className = 'button ghost';
+    noneBtn.textContent = 'Clear';
+    toolbar.appendChild(allBtn);
+    toolbar.appendChild(noneBtn);
+
+    var list = document.createElement('div');
+    list.className = 'tc-ms-list';
+    list.setAttribute('role', 'listbox');
+
     catalog.forEach(function (p) {
-      var id = 'perm-' + p.code.replace(/\./g, '-');
       var lab = document.createElement('label');
-      lab.innerHTML = '<input type="checkbox" id="' + id + '" data-code="' + p.code + '"/> <span><b>' + p.label + '</b><br/><span class="muted">' + p.code + ' · ' + p.group + '</span></span>';
-      box.appendChild(lab);
-      if (selected.indexOf(p.code) >= 0) lab.querySelector('input').checked = true;
+      lab.className = 'tc-ms-option generate-check';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.setAttribute('data-code', p.code);
+      cb.checked = selected.indexOf(p.code) >= 0;
+      var text = document.createElement('span');
+      var title = document.createElement('b');
+      title.textContent = p.label || p.code;
+      var meta = document.createElement('span');
+      meta.className = 'muted perm-code';
+      meta.textContent = p.code + (p.group ? ' · ' + p.group : '');
+      text.appendChild(title);
+      text.appendChild(meta);
+      lab.appendChild(cb);
+      lab.appendChild(text);
+      lab.setAttribute('data-search', ((p.label || '') + ' ' + p.code + ' ' + (p.group || '')).toLowerCase());
+      cb.addEventListener('change', refreshPermSummary);
+      list.appendChild(lab);
     });
+
+    search.addEventListener('input', function () {
+      var q = search.value.trim().toLowerCase();
+      Array.prototype.forEach.call(list.children, function (lab) {
+        lab.hidden = q.length > 0 && lab.getAttribute('data-search').indexOf(q) < 0;
+      });
+    });
+    allBtn.addEventListener('click', function () {
+      Array.prototype.forEach.call(list.querySelectorAll('input'), function (cb) {
+        if (!cb.parentElement.hidden) cb.checked = true;
+      });
+      refreshPermSummary();
+    });
+    noneBtn.addEventListener('click', function () {
+      Array.prototype.forEach.call(list.querySelectorAll('input'), function (cb) { cb.checked = false; });
+      refreshPermSummary();
+    });
+    trigger.addEventListener('click', function () {
+      var open = drop.hidden;
+      drop.hidden = !open;
+      ms.classList.toggle('is-open', open);
+      trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) search.focus();
+    });
+    permMs = ms;
+
+    drop.appendChild(search);
+    drop.appendChild(toolbar);
+    drop.appendChild(list);
+    ms.appendChild(trigger);
+    ms.appendChild(drop);
+    box.appendChild(ms);
+    refreshPermSummary();
+  }
+
+  function refreshPermSummary() {
+    var chips = document.getElementById('perm-ms-chips');
+    var summary = document.getElementById('perm-ms-summary');
+    if (!chips || !summary) return;
+    var picked = selectedPerms();
+    chips.innerHTML = '';
+    var labels = picked.map(function (code) {
+      var found = catalog.filter(function (p) { return p.code === code; })[0];
+      return found && found.label ? found.label : code;
+    });
+    labels.slice(0, 3).forEach(function (name) {
+      var chip = document.createElement('span');
+      chip.className = 'tc-ms-chip';
+      chip.textContent = name;
+      chips.appendChild(chip);
+    });
+    if (labels.length > 3) {
+      var more = document.createElement('span');
+      more.className = 'tc-ms-chip tc-ms-chip-more';
+      more.textContent = '+' + (labels.length - 3);
+      chips.appendChild(more);
+    }
+    summary.textContent = labels.length === 0
+      ? 'None selected'
+      : labels.length + (labels.length === 1 ? ' permission' : ' permissions');
   }
 
   function selectedPerms() {

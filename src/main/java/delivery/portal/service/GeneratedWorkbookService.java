@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import delivery.codegen.ProvenStep;
 import delivery.excel.CallBefore;
 import delivery.excel.ExcelTcReader;
+import delivery.excel.ExcelStepText;
 import delivery.excel.GenerateQualityGate;
 import delivery.excel.GeneratedTcCsvParser;
 import delivery.excel.KeelPathCounts;
@@ -33,6 +34,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class GeneratedWorkbookService {
@@ -932,6 +935,84 @@ public class GeneratedWorkbookService {
         out.put("removedCount", removed);
         return out;
     }
+
+    /**
+     * Adds one case written by the browser recorder. Creates the library when the project has none.
+     */
+    public synchronized Map<String, Object> appendRecordedCase(
+            String projectId,
+            String title,
+            String steps,
+            String expectedResult,
+            String preconditions,
+            String baseUrl
+    ) throws Exception {
+        String name = title == null ? "" : title.trim();
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("Give the test a short name first.");
+        }
+        String stepText = ExcelStepText.normalizeMultiline(steps == null ? "" : steps).trim();
+        if (stepText.isBlank()) {
+            throw new IllegalArgumentException("Record at least one step before saving.");
+        }
+        List<ManualTestCase> existing = new ArrayList<>();
+        try {
+            existing.addAll(readCases(projectId));
+        } catch (IllegalStateException e) {
+            if (!"NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
+                throw e;
+            }
+        }
+        String tcId = nextRecordedTcId(existing);
+        String expected = expectedResult == null ? "" : expectedResult.trim();
+        String before = preconditions == null ? "" : preconditions.trim();
+        ManualTestCase added = new ManualTestCase(
+                tcId, name, before, stepText, expected, "P2", "recorded");
+        List<String> errors = GenerateQualityGate.validate(List.of(added), baseUrl);
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join(" ", errors));
+        }
+        existing.add(added);
+        saveFromCases(projectId, existing, "RECORD", tcId);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("tcId", tcId);
+        out.put("title", name);
+        out.put("stepCount", stepText.split("\n").length);
+        return out;
+    }
+
+    static String nextRecordedTcId(List<ManualTestCase> existing) {
+        int max = 0;
+        java.util.Set<String> used = new java.util.HashSet<>();
+        if (existing != null) {
+            for (ManualTestCase tc : existing) {
+                if (tc == null || tc.tcId() == null) {
+                    continue;
+                }
+                String id = tc.tcId().trim();
+                used.add(id);
+                Matcher matcher = NUMERIC_TC.matcher(id);
+                if (matcher.matches()) {
+                    try {
+                        max = Math.max(max, Integer.parseInt(matcher.group(1)));
+                    } catch (NumberFormatException ignored) {
+                        // non-decimal TC ids stay as they are
+                    }
+                }
+            }
+        }
+        String id = "TC_1";
+        for (int guard = 0; guard < 10000; guard++) {
+            max++;
+            id = "TC_" + max;
+            if (!used.contains(id)) {
+                return id;
+            }
+        }
+        return id;
+    }
+
+    private static final Pattern NUMERIC_TC = Pattern.compile("^TC_(\\d+)$");
 
     /**
      * Build a job-temp xlsx from library selection and/or upload cases.

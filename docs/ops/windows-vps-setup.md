@@ -27,7 +27,7 @@ Host TestPilot Delivery Portal on a Windows Server VPS using RDP — same skills
 3. Open PowerShell in the repo root and run:
 
 ```bat
-start-portal.bat
+start-portal.cmd
 ```
 
 Or:

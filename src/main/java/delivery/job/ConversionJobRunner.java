@@ -4,6 +4,7 @@ import delivery.excel.ExcelTcReader;
 import delivery.excel.KeelPathCaseFilter;
 import delivery.excel.ManualTestCase;
 import delivery.ir.TcDraft;
+import delivery.ir.TcDraftStore;
 import delivery.ir.TcIdentity;
 import delivery.packager.FrameworkPackager;
 import delivery.store.ProjectStore;
@@ -12,7 +13,9 @@ import org.json.JSONObject;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -95,6 +98,65 @@ public class ConversionJobRunner {
         progress.update(proveUnits, jobTotal, "Phase2 starting");
         EmitPhase emit = new EmitPhase(progress);
         return emit.emit(request, allCases, work, projectDir, workFolder, mode, cancelCheck, publicationGuard);
+    }
+
+    /**
+     * Same framework builder as {@link #run}, with the browser prove phase left out.
+     * Locators come from the recording. Other saved drafts are kept so an update does not wipe them.
+     */
+    public ConversionJobResult runRecorded(ConversionJobRequest request, List<RecordedCapture> captures,
+                                           BooleanSupplier cancelCheck, PublicationGuard publicationGuard)
+            throws Exception {
+        String mode = request.mode() == null ? "NEW" : request.mode().trim().toUpperCase();
+        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
+        List<ManualTestCase> selected = new ExcelTcReader(true).read(request.excel());
+        Map<String, TcDraft> stored = ReuseEligibility.loadStoredDrafts(store.projectRoot(request.projectId()));
+        List<TcDraft> drafts = new ArrayList<>();
+        Set<String> replaced = new HashSet<>();
+        for (ManualTestCase tc : selected) {
+            TcDraft built = RecordedDrafts.draft(tc, captures);
+            if (built.provenSteps().isEmpty() && built.loginSteps().isEmpty()) {
+                throw new IllegalStateException("NO_RECORDED_LOCATORS");
+            }
+            drafts.add(built);
+            replaced.add(tc.tcId());
+        }
+        for (TcDraft old : stored.values()) {
+            if (old != null && old.tcId() != null && !replaced.contains(old.tcId())) {
+                drafts.add(old);
+            }
+        }
+        List<ManualTestCase> allCases = new ArrayList<>(selected);
+        for (TcDraft draft : drafts) {
+            boolean known = false;
+            for (ManualTestCase tc : selected) {
+                if (tc.tcId() != null && tc.tcId().equals(draft.tcId())) {
+                    known = true;
+                    break;
+                }
+            }
+            if (!known) {
+                allCases.add(new ManualTestCase(
+                        draft.tcId(), draft.title(), "", draft.stepsText(), draft.expectedResult(),
+                        "P2", "recorded"));
+            }
+        }
+        Path work = JobWorkLayout.create(request);
+        String workFolder = work.getFileName().toString();
+        Path projectDir = work.resolve("project");
+        FrameworkPackager packager = new FrameworkPackager();
+        packager.copyTemplate(request.templateRoot(), projectDir);
+        if ("UPDATE".equals(mode) && store.hasFramework(request.projectId())) {
+            packager.overlayCustomerConfig(
+                    store.projectRoot(request.projectId()).resolve("framework"), projectDir);
+        }
+        TcDraftStore draftStore = new TcDraftStore(work);
+        for (TcDraft draft : drafts) {
+            draftStore.write(draft);
+        }
+        progress.update(0, EmitPhase.PROGRESS_UNITS, "Building the framework from the recording");
+        return new EmitPhase(progress).emit(
+                request, allCases, work, projectDir, workFolder, mode, cancelCheck, publicationGuard);
     }
 
     /** Strip login instructions so body authoring does not re-emit login clicks. */

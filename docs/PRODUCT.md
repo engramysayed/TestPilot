@@ -1,25 +1,27 @@
 # Keel — what the product can do today
 
 This is the **full feature list** for people who will use or review Keel.  
-It describes the portal as it exists now (September 2026), not only the last commit.
+It describes the portal as it exists now (October 2026), not only the last commit.
 
 - **What just shipped** (dated notes): [`CHANGELOG.md`](../CHANGELOG.md)
 - **How to run it**: [`README.md`](../README.md)
 - **Engineer pointers**: [`ENGINEERING_HANDOFF.md`](ENGINEERING_HANDOFF.md)
 
-Keel is a self-hosted portal. You sign in, create a **project** (site URL + login profiles), then work in **Generate** → **Execute** and/or **Automate**, plus exploratory **Bug Hunter**.
+Keel is a self-hosted portal. You sign in, create a **project** (site URL + login profiles), then work in **Generate** or **Record** → **Execute** and/or **Automate**, plus exploratory **Bug Hunter**.
 
 ```text
-Stories / Excel / CSV
-        │
-        ▼
-   Generate   →  saved workbook (project library)
-        │
+Stories / Excel / CSV          Click through the site in Chrome
+        │                                  │
+        ▼                                  ▼
+   Generate   →  saved workbook     Record  →  saved case + locators
+        │                                  │
         ├──────────────► Execute   →  live evidence, screenshots, bug export
         │
         ├──────────────► Automate  →  prove + heal → Selenium/TestNG ZIP
         │
         └──────────────► Bug Hunter → exploratory pack (bugs + candidate scenarios)
+
+Record can also build the ZIP directly from the locators it captured, without a second browser visit.
 ```
 
 ---
@@ -29,6 +31,8 @@ Stories / Excel / CSV
 - Sign in with email and password (`/login`).
 - **Request access** from the login page. An admin approves; the requester gets a set-password invite.
 - **Account**: change password, change email.
+- **Account → vision**: choose the model that looks at the screen (UI-TARS by default, or Qwen vision). This does not choose the model that writes test cases. Writing uses Gemma (`gemma4:e2b`), chosen on Generate.
+- **Account → alerts**: Telegram, email, or Slack. Keel sends a message when a run fails or finishes with a block. Turning a channel on sends a confirmation first and does not save the switch if that send fails. The engine dead-man check is separate and stays off.
 - **Admin → Users**: user list, access requests, pending invites, invite email status.
 - **Admin → Domains**: see stored site folders (projects, locator memory, maps); relocate legacy folders; delete a whole domain (typed confirm).
 
@@ -49,7 +53,8 @@ A project is one target app.
 ### Create and list
 
 - Create with a name and optional base URL.
-- Open, archive, or delete one project. Delete-all is available on the list (admin-style danger).
+- Each card has **Open project**, then **Archive** and **Delete**. Generate, Execute, Automate, and Bug Hunter stay in the sidebar.
+- Delete-all is available on the list (admin-style danger).
 
 ### Settings
 
@@ -140,6 +145,24 @@ Optional, after a workbook exists:
 - **Accept proposal** writes the project workbook.
 - **Discard** leaves the current file.
 - Banner when the gate found issues; review never starts by itself.
+
+---
+
+## Record
+
+`/record` — show Keel the steps in Chrome, then optionally write the framework from those locators.
+
+- Pick a web project. Android projects are refused.
+- Chrome opens headed, on the project website (or another address on that same site).
+- Each click, field, and page change becomes an English step. A stable locator is kept with the action when the page has one (`data-testid`, `data-test`, `data-qa`, id, name, a short css or xpath).
+- The Keel bar in that window: **Steps**, **Check this** (click the text that must be on the page), **This page** (confirm the address).
+- Passwords are not stored. Choosing “sign in” only adds a note that the later run should use a project login.
+- **Save** adds the next `TC_` case to the library. Blank KeelPath, so Execute and Automate can both use it.
+- **Build the framework** starts the same framework writer Automate uses, and skips the browser prove pass. Chrome stays closed. This spends Automate credits. A step with no stable locator stays English only.
+- **Run it once** is optional and off by default. It starts a normal Execute check.
+- One recording per person, 20 minutes maximum.
+
+Plan: `docs/superpowers/plans/2026-10-15-record-to-framework.md`.
 
 ---
 
@@ -328,7 +351,7 @@ Design: `docs/superpowers/specs/2026-09-11-authoring-precision-engine-design.md`
 
 ## Vision (optional)
 
-Requires a vision model in Ollama (UI-TARS by default; `delivery.vision.provider=qwen` to fall back).
+The Account page chooses the vision model only: UI-TARS by default, or Qwen vision. It does not change the Generate writer (Gemma). The server still needs that vision model in Ollama (`delivery.vision.provider=qwen` is the Qwen fallback).
 
 - Help find a control when DOM bind is weak (grounding).
 - **VisualAssertion** column: after steps succeed, one VLM check (PASS / FAIL / UNCERTAIN) + evidence.
@@ -345,8 +368,9 @@ Requires a vision model in Ollama (UI-TARS by default; `delivery.vision.provider
 
 Start scripts:
 
-- `start-portal.bat`
-- `start-portal-with-cursor-heal.bat` (needs `CURSOR_API_KEY`, never commit keys)
+- `start-keel.cmd` — portal, engine, and Ollama/Appium if they are down
+- `start-portal.cmd` — portal only
+- `start-engine.cmd` — engine only (`KEEL_RUNNER_TOKEN` in `api-keys.local.bat`)
 
 ---
 
@@ -370,6 +394,8 @@ Be explicit so a demo does not promise these:
 | Stop-on-first-fail toggle on Execute | Continues past failed TCs |
 | Bug Hunter auto-merge into library | Review pack only; import manually |
 | Bug Hunter two-pass DOM (Phase 3) | Not built; map + slim fallback first |
+| Recording an Android app | Record opens Chrome; mobile stays a separate path |
+| Storing the password typed while recording | The later run uses a project login account |
 
 ---
 
@@ -378,7 +404,7 @@ Be explicit so a demo does not promise these:
 1. Admin: change the default password. Start the portal. Hard-refresh after upgrades.
 2. Create a **project**. Set base URL. Add a credential profile.
 3. **Guide** — share columns and TestData rules with authors.
-4. **Generate** from stories (or import CSV). Check placeholders, not invented emails.
+4. **Generate** from stories (or import CSV), or **Record** a case in Chrome. Check placeholders, not invented emails.
 5. Optional: **Review with AI** on Generate → Accept to save.
 6. Project → **Test cases** → edit the library if needed.
 7. **Execute** a small subset. Open Results. Export a bug report if something failed.

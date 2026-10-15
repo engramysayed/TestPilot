@@ -1,6 +1,7 @@
 package delivery.portal.api;
 
 import delivery.portal.security.CurrentUserService;
+import delivery.portal.service.AccountAlertService;
 import delivery.portal.service.AccountService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,10 +18,12 @@ import java.util.Map;
 @RequestMapping("/api/account")
 public class AccountController {
     private final AccountService accounts;
+    private final AccountAlertService alerts;
     private final CurrentUserService currentUser;
 
-    public AccountController(AccountService accounts, CurrentUserService currentUser) {
+    public AccountController(AccountService accounts, AccountAlertService alerts, CurrentUserService currentUser) {
         this.accounts = accounts;
+        this.alerts = alerts;
         this.currentUser = currentUser;
     }
 
@@ -71,5 +74,15 @@ public class AccountController {
                 "email", user.getEmail(),
                 "message", "Email updated — please sign in again"
         ));
+    }
+
+    @GetMapping("/alerts")
+    public Map<String, Object> alerts() {
+        return alerts.view(currentUser.requireUserId());
+    }
+
+    @PostMapping("/alerts")
+    public Map<String, Object> saveAlerts(@RequestBody Map<String, Object> body) {
+        return alerts.save(currentUser.requireUserId(), body);
     }
 }

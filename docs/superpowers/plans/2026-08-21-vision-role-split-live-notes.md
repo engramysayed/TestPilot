@@ -1,6 +1,4 @@
-# Vision role-split live — 2026-09-22T16:30:40.399900Z
+# Vision role-split live — 2026-10-14T20:48:52.329633300Z
 
 - grounding: uitars / ui-tars
-- assert: qwen / qwen2.5vl:3b
-- found: false
-- candidates: 0
+- assert: qwen / qwen2.5vl:7b

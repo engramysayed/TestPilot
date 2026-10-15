@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -126,6 +128,7 @@ public class PortalUiController {
             case "dashboard" -> "Overview";
             case "projects" -> "Projects";
             case "generate" -> "Write test cases";
+            case "record" -> "Record a test";
             case "execute" -> "Run tests";
             case "automate" -> "Build code";
             case "bug-hunter" -> "Bug Hunter";
@@ -222,11 +225,26 @@ public class PortalUiController {
     }
 
     @GetMapping("/generate")
-    public String generate(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
+    public String generate(@RequestParam(value = "projectId", required = false) String projectId,
+                           @RequestParam(value = "record", required = false) String record,
+                           Model model) {
+        if ("1".equals(record)) {
+            if (projectId == null || projectId.isBlank()) {
+                return "redirect:/record";
+            }
+            return "redirect:/record?projectId=" + URLEncoder.encode(projectId, StandardCharsets.UTF_8);
+        }
         addNav(model, "generate");
         model.addAttribute("projectId", projectId == null ? "" : projectId);
         model.addAttribute("generateStructuredIntake", portalProperties.isGenerateStructuredIntake());
         return "generate";
+    }
+
+    @GetMapping("/record")
+    public String record(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
+        addNav(model, "record");
+        model.addAttribute("projectId", projectId == null ? "" : projectId);
+        return "record";
     }
 
     @GetMapping("/execute")

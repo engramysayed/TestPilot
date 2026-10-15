@@ -372,7 +372,43 @@ html[data-theme="dark"]:not(.auth-shell) .loginform {
 .record-wizard .recbox {
     border: 2px dashed var(--calm-line); border-radius: 16px; padding: 1.5rem; text-align: center;
 }
+.record-wizard .recbox.is-recording {
+    border-style: solid;
+    border-color: var(--calm-accent);
+}
+.record-wizard .rw-live {
+    text-align: left;
+    margin: 1rem auto 0;
+    padding-left: 1.25rem;
+    max-width: 40rem;
+    max-height: 16rem;
+    overflow: auto;
+}
+.record-wizard .rw-live li { margin: 0.25rem 0; }
+.record-wizard .choice input[type="radio"],
+.record-wizard input[type="checkbox"] {
+    width: auto;
+    display: inline-block;
+    margin: 0 0.4rem 0 0;
+    padding: 0;
+    vertical-align: middle;
+}
 .record-wizard .wnav { display: flex; justify-content: space-between; margin-top: 1.4rem; }
+.record-wizard .rw-build {
+    margin-top: 1rem;
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    background: var(--calm-ok-bg, #e7f4ef);
+    border: 1px solid var(--calm-line, #e3e6ec);
+}
+.record-wizard .rw-build-kicker {
+    margin: 0 0 0.2rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--calm-accent, #0f6b5c);
+}
+.record-wizard .rw-build label { display: block; margin-top: 0.4rem; }
 
 /* Settings segment + channels */
 .calm-seg {
