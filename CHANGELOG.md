@@ -6,6 +6,12 @@ The **full product** (every surface, not only the last week) is [`docs/PRODUCT.m
 
 Internal design notes stay under `docs/superpowers/`. Engineers can start from `docs/ENGINEERING_HANDOFF.md`.
 
+## 2026-10-15 — Project section tabs
+
+**Surfaces:** a project page.
+
+Summary, Test cases, Packages, and Settings sit in a short pill row. The open section is the filled pill, in light and in dark. Hard-refresh if the old underline is still on screen.
+
 ## 2026-10-15 — Prices per unit, and only the account owner can change them
 
 **Surfaces:** **Pricing** (`/pricing`), **Prices** (`/admin/pricing`), **Administration**, **Roles**, **Execute**, **Automate**, **Bug Hunter**, **Record**, **Guide**.

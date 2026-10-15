@@ -56,6 +56,7 @@ A project is one target app.
 
 - Create with a name and optional base URL.
 - Each card has **Open project**, then **Archive** and **Delete**. Generate, Execute, Automate, and Bug Hunter stay in the sidebar.
+- Inside a project, **Summary**, **Test cases**, **Packages**, and **Settings** are a short pill row. The open section is the filled pill.
 - Delete-all is available on the list (admin-style danger).
 
 ### Settings
