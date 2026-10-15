@@ -4,6 +4,7 @@ public final class BindException extends RuntimeException {
     public enum Code {
         INVALID_STRATEGY,
         CSS_IN_NATIVE,
+        NATIVE_IN_WEBVIEW,
         EMPTY_SELECTOR
     }
 

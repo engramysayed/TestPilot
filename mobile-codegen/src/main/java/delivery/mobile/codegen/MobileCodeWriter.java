@@ -308,7 +308,8 @@ public final class MobileCodeWriter {
         // Driver-level ops without screen
         if (step.operation() == MobileOperation.PRESS_BACK
                 || step.operation() == MobileOperation.HIDE_KEYBOARD
-                || step.operation() == MobileOperation.WAIT) {
+                || step.operation() == MobileOperation.WAIT
+                || step.operation() == MobileOperation.SWITCH_CONTEXT) {
             String call = driverLevelCall(step);
             if (call != null) {
                 calls.add(call);
@@ -341,6 +342,7 @@ public final class MobileCodeWriter {
         return switch (step.operation()) {
             case PRESS_BACK -> "project.runtime.gestures.MobileGestures.pressBack(getAndroidDriver())";
             case HIDE_KEYBOARD -> "project.runtime.keyboard.HideKeyboard.hide(getAndroidDriver())";
+            case SWITCH_CONTEXT -> MobileContextEmit.switchCall(step.context());
             default -> null;
         };
     }

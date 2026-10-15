@@ -73,12 +73,12 @@ Exit: independent downloaded native package replay passes its expected positives
 
 Dependencies: M4. All are in agreed scope, not optional scope removal.
 
-- [ ] M5-01 Implement deterministic WebView discovery/matching and native restoration. Tests: multiple/late/disappearing contexts, inaccessible WebView, URL mismatch, system permission dialog, stale PID handle not persisted.
-- [ ] M5-02 Qualify Chromedriver mapping/path and DOM-in-WebView bridge. Tests: driver mismatch, unapproved runtime download blocked, native selector rejected in WebView, mixed-context generated replay matches proof.
-- [ ] M5-03 Implement mobile vision provider adapter and fresh geometry checks. Tests: stale screenshot, rotation/insets, low confidence, blank secure screen, redaction, no model available, no stored-coordinate replay, uncertain post-tap no retry.
-- [ ] M5-04 Extend mobile Precision sidecar protocol/schema and budgets, single-intent ranking and fallback reporting. Tests: invalid/out-of-range IDs, wrong context, unavailable/disallowed/exhausted provider, secret redaction, candidate obeys user override rank, no arbitrary code or command execution.
-- [ ] M5-05 Add vision/Precision/context fields to generated runtime and portal evidence. Tests: actual used provider vs allowed provider, fallback distinction, downloadable fresh vision dependency failure is honest, missing provider not PASS.
-- [ ] M5-06 Run real configured Cursor and local vision acceptance separately from mocked contracts, on permitted synthetic data. Record model/version/calls/outcomes; test required vision-only steps with positive and negative controls. Invocation alone is not a success gate.
+- [x] M5-01 Implement deterministic WebView discovery/matching and native restoration. Tests: multiple/late/disappearing contexts, inaccessible WebView, URL mismatch, system permission dialog, stale PID handle not persisted. Local unit tests only (2026-10-15). No device.
+- [x] M5-02 Qualify Chromedriver mapping/path and DOM-in-WebView bridge. Tests: driver mismatch, unapproved runtime download blocked, native selector rejected in WebView, mixed-context generated replay matches proof. Local unit tests only (2026-10-15). Chromedriver binary was not qualified on a device.
+- [x] M5-03 Implement mobile vision provider adapter and fresh geometry checks. Tests: stale screenshot, rotation/insets, low confidence, blank secure screen, redaction, no model available, no stored-coordinate replay, uncertain post-tap no retry. Local unit tests only (2026-10-15).
+- [x] M5-04 Extend mobile Precision sidecar protocol/schema and budgets, single-intent ranking and fallback reporting. Tests: invalid/out-of-range IDs, wrong context, unavailable/disallowed/exhausted provider, secret redaction, candidate obeys user override rank, no arbitrary code or command execution. Local unit tests only (2026-10-15).
+- [x] M5-05 Add vision/Precision/context fields to generated runtime and portal evidence. Tests: actual used provider vs allowed provider, fallback distinction, downloadable fresh vision dependency failure is honest, missing provider not PASS. Contract + generated runtime unit tests (2026-10-15).
+- [ ] M5-06 Run real configured Cursor and local vision acceptance separately from mocked contracts, on permitted synthetic data. Record model/version/calls/outcomes; test required vision-only steps with positive and negative controls. Invocation alone is not a success gate. Open: not run.
 
 Exit: mixed native/WebView + vision-dependent + real Precision scenarios prove and replay. Provider availability is an environment prerequisite; missing credentials keeps this gate open rather than counting a fallback run as Cursor coverage.
 
@@ -90,8 +90,8 @@ Dependencies: M1–M5 complete.
 - [ ] M6-02 Run two-tenant/same-device contention, crash/kill/cancel/fence and late-upload drills. Assert no foreign evidence, commands or package publication; device quarantine/recovery is auditable.
 - [ ] M6-03 Run credential/PII canaries over worker transport, XML/screenshots, Allure, logs, Surefire, IR, properties and ZIP. Explicitly document any withheld artifacts; synthetic screenshots only for canaries.
 - [ ] M6-04 Run root deterministic web regression, web NEW/UPDATE downloaded benchmark, mobile contract/runtime tests and portal browser role walkthrough. Compare failures to a recorded clean baseline; do not silently exclude regressions.
-- [ ] M6-05 Write setup/troubleshooting/support/toolchain/migration/rollback docs and actual limits: Flutter semantics, WebView debug requirements, OTP supplied each run, device reset controls, unknown network isolation guarantees.
-- [ ] M6-06 Produce mobile acceptance report and support matrix. Distinguish planned/implemented/locally tested/host-qualified; record remaining device/OS/provider limitations. Do not change public launch decision or candidate without explicit release workflow.
+- [x] M6-05 Write setup/troubleshooting/support/toolchain/migration/rollback docs and actual limits: Flutter semantics, WebView debug requirements, OTP supplied each run, device reset controls, unknown network isolation guarantees. See `docs/ops/mobile-operator-limits.md` (2026-10-15).
+- [x] M6-06 Produce mobile acceptance report and support matrix. Distinguish planned/implemented/locally tested/host-qualified; record remaining device/OS/provider limitations. Do not change public launch decision or candidate without explicit release workflow. See `docs/reviews/mobile-m5-m6-acceptance-2026-10-15.md`. Device and provider rows stay open.
 
 ## Tracking rules
 
