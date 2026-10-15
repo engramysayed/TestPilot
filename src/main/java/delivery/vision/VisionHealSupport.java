@@ -37,7 +37,8 @@ public final class VisionHealSupport {
                 metrics.screenshotWidth(),
                 metrics.screenshotHeight(),
                 metrics.innerWidth(),
-                metrics.innerHeight());
+                metrics.innerHeight(),
+                StepIntentBinder.quotedVisibleName(intent == null ? null : intent.text()));
         if (!sweep.get().observationVersion().equals(browser.observationVersion())) return Optional.empty();
         Optional<GroundingHit> accepted = VisionFailedLocatorFilter.acceptHit(hit.orElse(null), failed);
         if (accepted.isPresent()) {

@@ -655,6 +655,11 @@ public final class StepIntentBinder {
             if (intent.kind() == IntentKind.CLICK) {
                 score += distinctiveTokenBoost(tokens, hay);
             }
+            // "Clicks \"Export\" in the toolbar" names Export. The place words are not
+            // required to appear on the element.
+            if (intent.kind() == IntentKind.CLICK && labelEqualsQuotedName(c, quotedVisibleName(intent.text()))) {
+                score += 40;
+            }
 
             // Excel names an entity + action verb: prefer controls that carry both
             if (intent.kind() == IntentKind.CLICK && intentRequiresNamedActionControl(intent.text())) {
@@ -810,6 +815,20 @@ public final class StepIntentBinder {
             return quoted;
         }
         return user ? "${TARGET_USERNAME}" : "${TARGET_PASSWORD}";
+    }
+
+    private static boolean labelEqualsQuotedName(DomCandidate candidate, String quoted) {
+        if (candidate == null || quoted == null || quoted.isBlank()) {
+            return false;
+        }
+        String want = quoted.replaceAll("\\s+", " ").trim();
+        String label = candidate.label() == null ? "" : candidate.label().replaceAll("\\s+", " ").trim();
+        return want.equalsIgnoreCase(label);
+    }
+
+    /** The name a click step puts in quotes, such as {@code Support} in {@code Clicks "Support"}. */
+    public static String quotedVisibleName(String stepText) {
+        return quotedStepLiteral(stepText);
     }
 
     private static String quotedStepLiteral(String stepText) {
@@ -1451,6 +1470,9 @@ public final class StepIntentBinder {
 
     public static boolean candidateCarriesDistinctiveTokens(
             String intentText, DomCandidate candidate, List<DomCandidate> corpus) {
+        if (labelEqualsQuotedName(candidate, quotedVisibleName(intentText))) {
+            return true;
+        }
         List<String> distinctive = discriminatingTokens(intentText, corpus);
         if (distinctive.isEmpty()) {
             return true;

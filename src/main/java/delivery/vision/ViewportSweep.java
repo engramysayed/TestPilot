@@ -215,13 +215,16 @@ public final class ViewportSweep {
 
             CssPoint css = CoordinateMapper.toCss(imageCenter, imageW, imageH, viewW, viewH);
 
-            GroundedNode node = browser.elementFromPoint(css.x(), css.y());
+            String named = StepIntentBinder.quotedVisibleName(intent == null ? null : intent.text());
+            GroundedNode node = browser.elementFromPoint(css.x(), css.y(), named == null ? "" : named);
             observed[0] = describeProbe(css, metrics, node, intent);
 
-            if (node != null && node.displayed() && node.enabled() && isInteractive(node)
-                    && StepIntentBinder.actionCompatible(intent, new delivery.authoring.DomCandidate(
+            boolean namedHit = namedClick(intent, node);
+            if (node != null && node.displayed() && node.enabled()
+                    && (isInteractive(node) || namedHit)
+                    && (namedHit || StepIntentBinder.actionCompatible(intent, new delivery.authoring.DomCandidate(
                     "observed", "id", node.id(), safe(node.role()).isBlank() ? node.tag() : node.role(),
-                    safe(node.ariaLabel()).isBlank() ? node.visibleText() : node.ariaLabel()))) {
+                    safe(node.ariaLabel()).isBlank() ? node.visibleText() : node.ariaLabel())))) {
 
                 return Optional.of(visual);
 
@@ -234,6 +237,21 @@ public final class ViewportSweep {
     }
 
 
+
+    /** The element's own text is the name the step quotes. Tag and page region do not matter. */
+    static boolean namedClick(StepIntentBinder.IntentLine intent, GroundedNode node) {
+        if (intent == null || node == null || intent.kind() != StepIntentBinder.IntentKind.CLICK) {
+            return false;
+        }
+        String want = StepIntentBinder.quotedVisibleName(intent.text());
+        if (want == null || want.isBlank()) {
+            return false;
+        }
+        String wanted = want.replaceAll("\\s+", " ").trim();
+        String text = safe(node.visibleText()).replaceAll("\\s+", " ").trim();
+        String aria = safe(node.ariaLabel()).replaceAll("\\s+", " ").trim();
+        return wanted.equalsIgnoreCase(text) || wanted.equalsIgnoreCase(aria);
+    }
 
     private static boolean isInteractive(GroundedNode node) {
 
@@ -312,6 +330,7 @@ public final class ViewportSweep {
         String text = safe(node.visibleText());
         if (text.length() > 40) text = text.substring(0, 40);
         String reason = !node.displayed() ? "not-displayed" : !node.enabled() ? "disabled"
+                : namedClick(intent, node) ? "named"
                 : !isInteractive(node) ? "not-interactive"
                 : !StepIntentBinder.actionCompatible(intent, new delivery.authoring.DomCandidate(
                         "observed", "id", node.id(), safe(node.role()).isBlank() ? node.tag() : node.role(),

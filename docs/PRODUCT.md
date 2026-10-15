@@ -294,6 +294,7 @@ Run cases on the live site **without** building a customer ZIP.
 - Mid-run TC list as each case finishes.
 - Login cases that already contain login steps run **as written** (no extra prelude that strips the body).
 - After opening a login URL, Keel waits for the page and a password field before typing (~12s).
+- A click step that quotes a name (`Clicks "Support"`) can use a label that is not a button, link, or menu row, anywhere on the page. Words such as “in the sidebar” or “in the toolbar” do not have to be written on the element. A longer block of text that merely contains the name is not the target. Two elements with that exact name stay unresolved.
 - If **every** case stays TODO / unproven, the job is **FAILED** (`ALL_CASES_TODO`), not a green complete.
 
 ### Results

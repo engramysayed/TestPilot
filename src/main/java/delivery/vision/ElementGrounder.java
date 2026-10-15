@@ -3,7 +3,6 @@ package delivery.vision;
 import delivery.authoring.DomCandidate;
 import delivery.authoring.LocatorCandidate;
 import delivery.authoring.LocatorValidator;
-import delivery.authoring.XpathLiterals;
 import utils.LogsManager;
 
 import java.util.ArrayList;
@@ -26,7 +25,7 @@ public final class ElementGrounder {
             int imageH,
             int viewW,
             int viewH) {
-        return groundToHit(table, visual, browser, imageW, imageH, viewW, viewH)
+        return groundToHit(table, visual, browser, imageW, imageH, viewW, viewH, "")
                 .map(GroundingHit::candidateId);
     }
 
@@ -38,9 +37,21 @@ public final class ElementGrounder {
             int imageH,
             int viewW,
             int viewH) {
+        return groundToHit(table, visual, browser, imageW, imageH, viewW, viewH, "");
+    }
+
+    public static Optional<GroundingHit> groundToHit(
+            List<DomCandidate> table,
+            VisualCandidate visual,
+            GroundingBrowser browser,
+            int imageW,
+            int imageH,
+            int viewW,
+            int viewH,
+            String namedText) {
         CssPoint imageCenter = CoordinateMapper.center(visual.boundingBox());
         CssPoint css = CoordinateMapper.toCss(imageCenter, imageW, imageH, viewW, viewH);
-        GroundedNode node = browser.elementFromPoint(css.x(), css.y());
+        GroundedNode node = browser.elementFromPoint(css.x(), css.y(), namedText == null ? "" : namedText);
         if (node == null || !node.displayed() || !node.enabled()) {
             LogsManager.info("GROUNDING: miss id=");
             return Optional.empty();
@@ -139,7 +150,7 @@ public final class ElementGrounder {
             if (tag.isBlank()) {
                 tag = "button";
             }
-            String xpath = "//" + tag + "[contains(normalize-space(.)," + XpathLiterals.quote(text) + ")]";
+            String xpath = delivery.authoring.DomCandidateExtractor.innermostTextXpath(tag, text);
             return Optional.of(new LocatorCandidate("xpath", xpath, tag, text));
         }
         return Optional.empty();

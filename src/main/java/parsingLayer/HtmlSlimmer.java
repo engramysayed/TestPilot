@@ -13,6 +13,14 @@ import org.jsoup.nodes.Node;
 public class HtmlSlimmer {
 
     public static String slim(String html, int maxChars) {
+        return slim(html, maxChars, java.util.List.of());
+    }
+
+    /**
+     * @param namedTexts words from the step. When the page is too long to keep whole, a label
+     *                   that carries one of these words is kept even if it is not a button or link.
+     */
+    public static String slim(String html, int maxChars, java.util.List<String> namedTexts) {
 
         if (html == null || html.isBlank()) {
             return "";
@@ -112,7 +120,7 @@ public class HtmlSlimmer {
         out = out.replaceAll("\\s+", " ").trim();
 
         if (maxChars > 0 && out.length() > maxChars) {
-            out = slimPreferringControls(doc, maxChars);
+            out = slimPreferringControls(doc, maxChars, namedTexts);
         }
 
         return delivery.privacy.SecretSanitizer.scrubText(out);
@@ -121,10 +129,16 @@ public class HtmlSlimmer {
     /**
      * Prefer keeping buttons/inputs/links (with stable attrs) over arbitrary head/tail slices.
      */
-    private static String slimPreferringControls(Document doc, int maxChars) {
+    private static String slimPreferringControls(Document doc, int maxChars, java.util.List<String> namedTexts) {
         StringBuilder controls = new StringBuilder(Math.min(maxChars, 32000));
         controls.append("<body>");
         if (doc.body() != null) {
+            for (Element el : doc.body().getAllElements()) {
+                if (!innermostNamed(el, namedTexts)) {
+                    continue;
+                }
+                appendSnippet(controls, el, maxChars);
+            }
             java.util.List<Element> nodes = new java.util.ArrayList<>(doc.body().select(
                     delivery.authoring.DomCandidateExtractor.INTERACTIVE_QUERY
                             + ", [data-test], [data-testid], [id]"));
@@ -163,6 +177,55 @@ public class HtmlSlimmer {
         String head = full.substring(0, Math.min(half, full.length()));
         String tail = full.substring(Math.max(0, full.length() - half));
         return head + " ...[HTML_TRUNCATED_HEAD_TAIL]... " + tail;
+    }
+
+    private static void appendSnippet(StringBuilder controls, Element el, int maxChars) {
+        String snip = el.outerHtml().replaceAll("\\s+", " ").trim();
+        if (snip.isBlank() || controls.length() + snip.length() + 8 > maxChars) {
+            return;
+        }
+        controls.append(snip);
+    }
+
+    /** True when this element carries a step word and no descendant does. */
+    private static boolean innermostNamed(Element el, java.util.List<String> names) {
+        if (!textHits(el, names)) {
+            return false;
+        }
+        for (Element child : el.getAllElements()) {
+            if (child != el && textHits(child, names)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean textHits(Element el, java.util.List<String> names) {
+        if (el == null || names == null || names.isEmpty()) {
+            return false;
+        }
+        String tag = el.tagName().toLowerCase(java.util.Locale.ROOT);
+        if ("html".equals(tag) || "body".equals(tag) || "script".equals(tag) || "style".equals(tag)) {
+            return false;
+        }
+        String text = el.text() == null ? "" : el.text().trim().replaceAll("\\s+", " ");
+        if (text.length() < 2 || text.length() > 80) {
+            return false;
+        }
+        String lower = text.toLowerCase(java.util.Locale.ROOT);
+        for (String name : names) {
+            if (name == null) {
+                continue;
+            }
+            String n = name.trim().toLowerCase(java.util.Locale.ROOT);
+            if (n.length() < 4) {
+                continue;
+            }
+            if (lower.equals(n) || lower.matches(".*\\b" + java.util.regex.Pattern.quote(n) + "\\b.*")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void removeComments(Document doc) {

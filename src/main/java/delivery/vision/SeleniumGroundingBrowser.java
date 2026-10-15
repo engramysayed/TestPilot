@@ -59,9 +59,24 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
               const id = el.id || '';
               return tag + (id ? '#' + id : '');
             }
+            function norm(s) {
+              return ((s || '') + '').replace(/\s+/g, ' ').trim().toLowerCase();
+            }
+            const want = norm(arguments[3] || '');
             var el = document.elementFromPoint(arguments[0], arguments[1]);
-            while (el && !isInteractive(el)) {
-              el = el.parentElement;
+            var named = null;
+            if (want && el) {
+              for (let cur = el; cur && cur.nodeType === 1 && cur !== document.body && cur !== document.documentElement; cur = cur.parentElement) {
+                const t = norm((cur.innerText || cur.textContent || '').slice(0, 120));
+                if (t === want) { named = cur; break; }
+              }
+            }
+            if (named) {
+              el = named;
+            } else {
+              while (el && !isInteractive(el)) {
+                el = el.parentElement;
+              }
             }
             if (!el) return null;
             const preferred = (arguments[2] || []).find(a => {
@@ -96,13 +111,19 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
 
     @Override
     public GroundedNode elementFromPoint(double cssX, double cssY) {
+        return elementFromPoint(cssX, cssY, "");
+    }
+
+    @Override
+    public GroundedNode elementFromPoint(double cssX, double cssY, String namedText) {
         if (!(driver instanceof JavascriptExecutor js)) {
             return null;
         }
         try {
             observed = null;
             Object raw = js.executeScript(ELEMENT_FROM_POINT_JS, cssX, cssY,
-                    delivery.store.PreferredHooksStore.current());
+                    delivery.store.PreferredHooksStore.current(),
+                    namedText == null ? "" : namedText);
             if (!(raw instanceof Map<?, ?> map)) {
                 return null;
             }

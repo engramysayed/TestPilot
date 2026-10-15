@@ -49,7 +49,8 @@ public final class VisionGroundingEngine {
         List<DomCandidate> mutableTable = new ArrayList<>(table == null ? List.of() : table);
 
         Optional<GroundingHit> hit = ElementGrounder.groundToHit(
-                mutableTable, visual, browser, imageW, imageH, viewW, viewH);
+                mutableTable, visual, browser, imageW, imageH, viewW, viewH,
+                StepIntentBinder.quotedVisibleName(intent == null ? null : intent.text()));
         if (hit.isEmpty() || !sweep.get().observationVersion().equals(browser.observationVersion())) {
             VisionAttemptLog.record(VisionAttempt.of(
                     visual.boundingBox(), visual.confidence(), "none", false, "miss"));

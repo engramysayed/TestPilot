@@ -132,6 +132,32 @@ public class DomCandidateExtractorTest {
     }
 
     @Test
+    public void extractsNamedLabelAnywhereOnThePage() {
+        String html = """
+                <body>
+                  <main>
+                    <div class="toolbar"><span>Export</span></div>
+                    <section>
+                      <h2>Reports</h2>
+                      <p>Download the monthly file.</p>
+                    </section>
+                  </main>
+                </body>
+                """;
+        List<DomCandidate> list = DomCandidateExtractor.extract(html);
+        Assert.assertTrue(list.stream().anyMatch(c ->
+                        "Export".equals(c.label()) && c.value() != null && c.value().contains("Export")),
+                DomCandidateExtractor.formatTable(list));
+        StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.CLICK, "Clicks \"Export\" in the toolbar."),
+                "TC_EXPORT", list, List.of());
+        Assert.assertTrue(bound.ok(), bound.rejectReason() + "\n" + DomCandidateExtractor.formatTable(list));
+        Assert.assertTrue(bound.steps().get(0).locatorValue().contains("Export"),
+                bound.steps().get(0).locatorValue());
+    }
+
+    @Test
     public void prefersStableOverCssDuplicate() {
         String html = """
                 <body>

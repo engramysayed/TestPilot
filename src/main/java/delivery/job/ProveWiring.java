@@ -101,7 +101,7 @@ public final class ProveWiring {
 
     /** v1: slimmed DOM (unchanged). v2: same, plus the frame/shadow-aware page model as an HTML comment. */
     public static String authoringHtml(WebDriver driver, String intentText, int maxChars) {
-        String v1 = HtmlSlimmer.slim(PageSnapshot.html(driver), maxChars);
+        String v1 = HtmlSlimmer.slim(PageSnapshot.html(driver), maxChars, keywords(intentText));
         if (!serializerV2()) return v1;
         try {
             PageModel m = PageSerializer.serialize(driver, keywords(intentText), List.of());

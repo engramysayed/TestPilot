@@ -174,6 +174,10 @@ public final class DomCandidateExtractor {
         seq = emitIndexedInputs(doc, byKey, seq, "checkbox", repeatedIds);
         seq = emitIndexedInputs(doc, byKey, seq, "radio", repeatedIds);
 
+        // A click may name a span, div, cell, or heading. Keep the innermost short label
+        // wherever it sits, so a menu title or a toolbar label is a candidate.
+        seq = emitNamedLabels(doc, byKey, seq);
+
         // Buttons / links / menu entries identified by visible text when they lack stable attributes.
         for (Element el : doc.select(
                 "button, a, [role=button], [role=menuitem], [aria-expanded], [aria-haspopup], li[data-keel-nav-item=true], nav li, aside li, [role=navigation] li, [class*=sidebar] li, [class*=side-menu] li")) {
@@ -211,7 +215,44 @@ public final class DomCandidateExtractor {
      * exclude matching descendants of the same tag, while retaining decorative
      * spans that carry the control's own label.
      */
-    static String innermostTextXpath(String tag, String text) {
+    /**
+     * Innermost element whose own visible text is a short name. A parent that only wraps that
+     * name is skipped, and so is a section whose text is the name plus other rows.
+     */
+    private static int emitNamedLabels(Document doc, Map<String, DomCandidate> byKey, int seq) {
+        for (Element el : doc.getAllElements()) {
+            String tag = el.tagName().toLowerCase(Locale.ROOT);
+            if ("html".equals(tag) || "body".equals(tag) || "head".equals(tag) || isHidden(el)) {
+                continue;
+            }
+            // The inner text of a button or link is the same click. Emitting it again
+            // fights the stable hook on the control.
+            if (el.parents().stream().anyMatch(p -> p.is(
+                    "button, a, [role=button], [role=link], [role=menuitem], [role=tab]"))) {
+                continue;
+            }
+            String text = visibleLabel(el);
+            if (text == null || text.length() < 2 || text.length() > 80) {
+                continue;
+            }
+            boolean wrapped = false;
+            for (Element child : el.children()) {
+                String childText = visibleLabel(child);
+                if (text.equals(childText)) {
+                    wrapped = true;
+                    break;
+                }
+            }
+            if (wrapped) {
+                continue;
+            }
+            String xpath = innermostTextXpath(tag, text);
+            seq = put(byKey, seq, "xpath", xpath, controlKind(el), text);
+        }
+        return seq;
+    }
+
+    public static String innermostTextXpath(String tag, String text) {
         String lit = XpathLiterals.quote(text);
         String tagged = "//" + tag + "[contains(normalize-space(.)," + lit + ")]";
         if (isInteractiveTextTag(tag)) {

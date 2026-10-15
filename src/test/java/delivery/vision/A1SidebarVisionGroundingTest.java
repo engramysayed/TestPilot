@@ -82,11 +82,50 @@ public class A1SidebarVisionGroundingTest {
         assertTrue(ViewportSweep.find(provider, SUPPORT, browser).isPresent());
     }
 
+    /** A toolbar span is not a button, link, menu item, or sidebar row. The name is still the target. */
+    @Test public void sweepAcceptsNamedLabelOnAnyTag() throws Exception {
+        byte[] shot = png(800, 600);
+        GroundingBrowser browser = new GroundingBrowser() {
+            @Override public GroundedNode elementFromPoint(double x, double y) {
+                return new GroundedNode("span", "", "", "", "", "", true, true, "span", "Export");
+            }
+            @Override public byte[] screenshotPng() { return shot; }
+            @Override public ViewportMetrics metrics() { return new ViewportMetrics(800, 600, 800, 600); }
+            @Override public void scrollViewport() { }
+        };
+        StepIntentBinder.IntentLine export = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK, "Clicks \"Export\" in the toolbar.", "");
+        VisionGroundingProvider provider = new FakeVisionGroundingProvider(List.of(
+                new VisualCandidate("Export", new BoundingBox(400, 40, 36, 20), 0.85)));
+        assertTrue(ViewportSweep.find(provider, export, browser).isPresent(),
+                "named span was dropped because it is not a button, link, or menu row");
+    }
+
+    @Test public void sweepRejectsALongerLabelThatOnlyContainsTheName() throws Exception {
+        byte[] shot = png(800, 600);
+        GroundingBrowser browser = new GroundingBrowser() {
+            @Override public GroundedNode elementFromPoint(double x, double y) {
+                return new GroundedNode("div", "", "", "", "", "", true, true, "div", "Export history");
+            }
+            @Override public byte[] screenshotPng() { return shot; }
+            @Override public ViewportMetrics metrics() { return new ViewportMetrics(800, 600, 800, 600); }
+            @Override public void scrollViewport() { }
+        };
+        StepIntentBinder.IntentLine export = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK, "Clicks \"Export\" in the toolbar.", "");
+        VisionGroundingProvider provider = new FakeVisionGroundingProvider(List.of(
+                new VisualCandidate("Export", new BoundingBox(400, 40, 36, 20), 0.85)));
+        assertTrue(ViewportSweep.find(provider, export, browser).isEmpty());
+    }
+
     @Test public void probeDiagnosticNamesTheNodeInsteadOfNone() {
         String d = ViewportSweep.describeProbe(new CssPoint(91, 595), new ViewportMetrics(1536, 674, 1920, 842),
                 new GroundedNode("span", "", "", "", "", "", true, true, "span", "Support"), SUPPORT);
         assertTrue(d.contains("css=91,595") && d.contains("shot=1920x842") && d.contains("view=1536x674"), d);
-        assertTrue(d.contains("verdict=not-interactive"), d);
+        assertTrue(d.contains("verdict=named"), d);
+        String other = ViewportSweep.describeProbe(new CssPoint(91, 595), new ViewportMetrics(1536, 674, 1920, 842),
+                new GroundedNode("span", "", "", "", "", "", true, true, "span", "Other"), SUPPORT);
+        assertTrue(other.contains("verdict=not-interactive"), other);
         assertTrue(ViewportSweep.describeProbe(new CssPoint(1, 1), null, null, SUPPORT).endsWith("node=null"));
     }
 }

@@ -6,6 +6,8 @@ import org.jsoup.nodes.Element;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.util.List;
+
 public class HtmlSlimmerFrameXpathTest {
     private static final String PAGE = "<html><body>"
             + "<button id='a'>Top one</button><button id='b'>Top two</button>"
@@ -22,6 +24,17 @@ public class HtmlSlimmerFrameXpathTest {
 
     private static Element button(Document d, String text) {
         return d.select("button").stream().filter(b -> b.text().equals(text)).findFirst().orElseThrow();
+    }
+
+    @Test
+    public void truncatedSnapshotKeepsANamedLabelThatIsNotAButton() {
+        StringBuilder html = new StringBuilder("<html><body>");
+        for (int i = 0; i < 40; i++) {
+            html.append("<button id='b").append(i).append("'>Button ").append(i).append("</button>");
+        }
+        html.append("<main><span>Export</span></main></body></html>");
+        String kept = HtmlSlimmer.slim(html.toString(), 800, List.of("export"));
+        Assert.assertTrue(kept.contains("Export"), kept);
     }
 
     @Test

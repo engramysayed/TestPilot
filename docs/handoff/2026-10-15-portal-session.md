@@ -31,6 +31,7 @@ Account switches persist on `portal_users.alert_prefs`. A job that newly becomes
 - Execute punctuation (`—`, `·`, `…`) was stored double-encoded in `execute.html`. The credential dropdown’s first row is the placeholder “— Select profile —”.
 - Bug Hunter, Execute, and Automate show a `.credit-quote` card above the start button. Hunt quantity is steps. Execute and Automate quantity is the selected runnable cases, or every runnable case when none are picked. An uploaded workbook shows the unit price only.
 - The users page no longer calls `GET /api/admin/users/approvals-stub` (that path collided with delete-user).
+- Execute click of a quoted name accepts that label on any tag, anywhere on the page. Vision keeps a box whose text is exactly the name. Ollama can pick that row because it is now on the candidate list. A longer wrapper is not the target. The portal jar must be rebuilt before a live run sees this.
 
 ## Checks
 

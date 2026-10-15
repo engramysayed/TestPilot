@@ -6,6 +6,12 @@ The **full product** (every surface, not only the last week) is [`docs/PRODUCT.m
 
 Internal design notes stay under `docs/superpowers/`. Engineers can start from `docs/ENGINEERING_HANDOFF.md`.
 
+## 2026-10-16 — Named labels are clickable
+
+**Surfaces:** **Execute**.
+
+A step such as `Clicks "Support" in the sidebar` can land on a label that is not a button, link, or menu row. The quoted name is enough. The same rule applies in a toolbar, a dialog, a table, or anywhere else on the page. A wrapper whose text is longer than that name is not clicked. Two elements with the same name stay unresolved. Restart the portal from a new build before the next run; the copy that is already running does not have this yet.
+
 ## 2026-10-16 — Live credit total
 
 **Surfaces:** **Bug Hunter**, **Execute**, **Automate**.
