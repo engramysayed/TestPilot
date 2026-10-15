@@ -26,14 +26,13 @@
             </thead>
             <tbody>
             <tr th:each="row : ${prices}">
-                <td th:text="${row.label}">Write test cases</td>
+                <td th:text="${row.label}">Generate</td>
                 <td th:text="${row.unit}">Each test case</td>
                 <td th:text="${row.detail}">Charged once for each test case.</td>
                 <td th:text="${row.cost}">10</td>
             </tr>
             </tbody>
         </table>
-        <p class="muted">These numbers are the ones Keel charges. Changing them is limited to the account owner.</p>
     </section>
 </main>
 </div>

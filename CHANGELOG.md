@@ -17,6 +17,7 @@ Internal design notes stay under `docs/superpowers/`. Engineers can start from `
 - A run charges the Run a test price once per test case. A framework build charges the Build the framework price once per test case, including a build from a recording. A manual-only row is not charged.
 - Bug Hunter charges the Bug Hunter price once per allowed action: iterations × cycles × actions per cycle. The hunt form shows the total before you start.
 - Writing test cases stays one price for the whole writing job.
+- The service names on Pricing are **Generate**, **Execute**, **Automation**, and **Bug Hunter**.
 
 ### Why
 

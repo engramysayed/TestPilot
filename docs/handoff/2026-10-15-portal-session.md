@@ -36,7 +36,7 @@ Account switches persist on `portal_users.alert_prefs`. A job that newly becomes
 
 ## Prices and the account owner
 
-`/pricing` is a read-only table for any signed-in user. `/admin/pricing` saves `service_prices` (code, label, cost). `CreditCostTable` reads that table. Hibernate `ddl-auto=update` creates the table. Missing rows are seeded from `delivery.credits.cost.*` (10 / 5 / 25 / 15).
+`/pricing` is a read-only table for any signed-in user. The service names are Generate, Execute, Automation, and Bug Hunter. `/admin/pricing` saves `service_prices` (code, label, cost). `CreditCostTable` reads that table. Hibernate `ddl-auto=update` creates the table. Missing rows are seeded from `delivery.credits.cost.*` (10 / 5 / 25 / 15).
 
 `BillableQuantity` decides the multiplier at debit time:
 

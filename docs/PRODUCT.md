@@ -174,9 +174,9 @@ Plan: `docs/superpowers/plans/2026-10-15-record-to-framework.md`.
 
 | Service | Charged as |
 |---------|------------|
-| Write test cases | One writing job |
-| Run a test | Each test case in the run, including Run it once |
-| Build the framework | Each test case in the build, including a recording |
+| Generate | One writing job |
+| Execute | Each test case in the run, including Run it once |
+| Automation | Each test case in the build, including a recording |
 | Bug Hunter | Each allowed action: iterations × cycles × actions per cycle |
 
 The number on the page is the price of one unit. Keel multiplies it when the job starts. A manual-only row is not included in a run or a build. The default hunt allows 80 actions (2 iterations × 8 cycles × 5 actions).

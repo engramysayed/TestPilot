@@ -291,7 +291,11 @@ public class CreditsApiTest extends AbstractTestNGSpringContextTests {
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        Assert.assertTrue(view.contains("Write test cases"));
+        Assert.assertTrue(view.contains("Generate"));
+        Assert.assertTrue(view.contains("Automation"));
+        Assert.assertTrue(view.contains("Execute"));
+        Assert.assertTrue(view.contains("Bug Hunter"));
+        Assert.assertFalse(view.contains("Changing them is limited"));
         Assert.assertFalse(view.contains("name=\"cost_"), "pricing is view only");
 
         mockMvc.perform(post("/admin/pricing")
@@ -354,11 +358,11 @@ public class CreditsApiTest extends AbstractTestNGSpringContextTests {
         mockMvc.perform(post("/admin/pricing")
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
                         .with(csrf())
-                        .param("label_GENERATE", "Write test cases")
+                        .param("label_GENERATE", "Generate")
                         .param("cost_GENERATE", "10")
-                        .param("label_EXECUTE", "Run a test")
+                        .param("label_EXECUTE", "Execute")
                         .param("cost_EXECUTE", "5")
-                        .param("label_AUTOMATE", "Build the framework")
+                        .param("label_AUTOMATE", "Automation")
                         .param("cost_AUTOMATE", "25")
                         .param("label_HUNT", "Bug Hunter")
                         .param("cost_HUNT", "15"))

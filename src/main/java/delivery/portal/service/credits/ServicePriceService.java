@@ -74,13 +74,26 @@ public class ServicePriceService {
     }
 
     private void ensureSeeded() {
-        if (prices.count() > 0) {
+        if (prices.count() == 0) {
+            saveDefault("GENERATE", "Generate", defaults.getCost().getGenerate(), 1);
+            saveDefault("EXECUTE", "Execute", defaults.getCost().getExecute(), 2);
+            saveDefault("AUTOMATE", "Automation", defaults.getCost().getAutomate(), 3);
+            saveDefault("HUNT", "Bug Hunter", defaults.getCost().getHunt(), 4);
             return;
         }
-        saveDefault("GENERATE", "Write test cases", defaults.getCost().getGenerate(), 1);
-        saveDefault("EXECUTE", "Run a test", defaults.getCost().getExecute(), 2);
-        saveDefault("AUTOMATE", "Build the framework", defaults.getCost().getAutomate(), 3);
-        saveDefault("HUNT", "Bug Hunter", defaults.getCost().getHunt(), 4);
+        renameLegacy("GENERATE", "Write test cases", "Generate");
+        renameLegacy("EXECUTE", "Run a test", "Execute");
+        renameLegacy("AUTOMATE", "Build the framework", "Automation");
+    }
+
+    private void renameLegacy(String code, String previousName, String featureName) {
+        prices.findById(code).ifPresent(row -> {
+            if (previousName.equals(row.getLabel())) {
+                row.setLabel(featureName);
+                row.setUpdatedAt(Instant.now());
+                prices.save(row);
+            }
+        });
     }
 
     private void saveDefault(String code, String label, long cost, int order) {
