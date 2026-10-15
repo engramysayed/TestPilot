@@ -149,7 +149,7 @@
                             <span th:text="${j.status}">COMPLETED</span>
                         </span>
                     </td>
-                    <td class="mono" th:text="${j.progressCurrent} + '/' + ${j.progressTotal}">0/0</td>
+                    <td class="mono num" th:text="${j.progressCurrent} + '/' + ${j.progressTotal}">0/0</td>
                     <td class="actions">
                         <a th:href="${j['statusUrl']}">Status</a>
                         <a th:if="${j['resultsUrl'] != null}" th:href="${j['resultsUrl']}">Results</a>

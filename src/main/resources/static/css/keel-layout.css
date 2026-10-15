@@ -1,0 +1,303 @@
+/*
+ * Layout repair — loaded last so it wins over reskin/calm padding and fixed tables.
+ * Keeps the shell on one row and lets data tables scroll instead of clipping text.
+ */
+
+/* —— Top bar: search can shrink; theme + account stay on the row —— */
+.app-main > .topbar {
+    flex-wrap: nowrap;
+    min-width: 0;
+    gap: 0.65rem 0.85rem;
+}
+.app-main > .topbar > .crumb {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.app-main > .topbar > .topbar-search {
+    flex: 1 1 10rem;
+    min-width: 7.5rem;
+    max-width: 22rem;
+}
+.app-main > .topbar > .keel-credits-chip {
+    flex: 0 0 auto;
+    margin-right: 0;
+}
+.app-main > .topbar > .topbar-actions {
+    order: 0;
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
+.topbar .theme-toggle.theme-toggle--icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    min-width: 2.25rem;
+    max-width: 2.25rem;
+    margin: 0;
+    padding: 0;
+    flex: 0 0 2.25rem;
+    border-radius: 999px;
+}
+.topbar .topbar-en-btn {
+    height: 2.25rem;
+    min-width: 2.75rem;
+    width: auto;
+    margin: 0;
+    padding: 0 0.85rem;
+}
+
+/* Light: a real edge so the controls are not white-on-white */
+html[data-theme="light"] .topbar .theme-toggle.theme-toggle--icon,
+html[data-theme="light"] .topbar .topbar-en-btn {
+    background: #ffffff;
+    border-color: #b7c3ce;
+    color: #1d2433;
+    box-shadow: 0 1px 2px rgba(20, 30, 50, 0.06);
+}
+/* Dark: same family as the bar, with a border you can see */
+html[data-theme="dark"] .topbar .theme-toggle.theme-toggle--icon,
+html[data-theme="dark"] .topbar .topbar-en-btn {
+    background: #262c36;
+    border-color: #4a5568;
+    color: #e7eaf0;
+}
+
+@media (max-width: 860px) {
+    .app-main > .topbar {
+        flex-wrap: wrap;
+    }
+    .app-main > .topbar > .topbar-search {
+        flex: 1 1 100%;
+        max-width: none;
+        order: 3;
+    }
+    .app-main > .topbar > .topbar-actions {
+        margin-left: auto;
+    }
+}
+
+/* —— Page titles: the action keeps its label —— */
+.keel-page .page-title > div:first-child,
+.overview-page .heading > div:first-child {
+    min-width: 0;
+    flex: 1 1 16rem;
+}
+.keel-page .page-title > .button,
+.keel-page .page-title > a.button,
+.overview-page .heading .actions .button,
+.overview-page .heading .actions a.button,
+.panelhead .button,
+.panelhead a.button,
+.table .actions .button,
+.table .actions a.button {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 100%;
+    margin-top: 0;
+    white-space: nowrap;
+}
+.keel-page .page-title > .button,
+.keel-page .page-title > a.button {
+    align-self: center;
+}
+
+/* —— Sidebar labels ellipsis instead of widening the rail —— */
+.workspace-pill,
+.sidebar-account {
+    min-width: 0;
+    max-width: 100%;
+}
+.sidebar-account > div {
+    min-width: 0;
+}
+.workspace-pill > span,
+.sidebar-account-name,
+.sidebar-account small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/* —— Data tables: size to content and scroll, don't crush columns —— */
+.table-scroll--runs,
+.table-scroll--hunt,
+.overview-page .tablewrap,
+.keel-page .tablewrap {
+    overflow-x: auto;
+    max-width: 100%;
+}
+.table.table--runs,
+.table.table--hunt-recent {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 0;
+}
+.table.table--runs th:nth-child(n),
+.table.table--runs td:nth-child(n),
+.table.table--hunt-recent th:nth-child(n),
+.table.table--hunt-recent td:nth-child(n) {
+    width: auto;
+}
+/* Runs page is 8 columns. Overview reuses the class with 6. */
+.shell-runs .table.table--runs th:nth-child(1),
+.shell-runs .table.table--runs td:nth-child(1) { width: 14%; }
+.shell-runs .table.table--runs th:nth-child(2),
+.shell-runs .table.table--runs td:nth-child(2) { width: 10%; }
+.shell-runs .table.table--runs th:nth-child(3),
+.shell-runs .table.table--runs td:nth-child(3) { width: 15%; }
+.shell-runs .table.table--runs th:nth-child(4),
+.shell-runs .table.table--runs td:nth-child(4) { width: 12%; }
+.shell-runs .table.table--runs th:nth-child(5),
+.shell-runs .table.table--runs td:nth-child(5) { width: 11%; }
+.shell-runs .table.table--runs th:nth-child(6),
+.shell-runs .table.table--runs td:nth-child(6) { width: 8%; }
+.shell-runs .table.table--runs th:nth-child(7),
+.shell-runs .table.table--runs td:nth-child(7) { width: 16%; }
+.shell-runs .table.table--runs th:nth-child(8),
+.shell-runs .table.table--runs td:nth-child(8) { width: 14%; }
+.overview-page .table.table--runs th:nth-child(1),
+.overview-page .table.table--runs td:nth-child(1) { width: 22%; }
+.overview-page .table.table--runs th:nth-child(2),
+.overview-page .table.table--runs td:nth-child(2) { width: 16%; }
+.overview-page .table.table--runs th:nth-child(3),
+.overview-page .table.table--runs td:nth-child(3) { width: 14%; }
+.overview-page .table.table--runs th:nth-child(4),
+.overview-page .table.table--runs td:nth-child(4) { width: 14%; }
+.overview-page .table.table--runs th:nth-child(5),
+.overview-page .table.table--runs td:nth-child(5) { width: 10%; }
+.overview-page .table.table--runs th:nth-child(6),
+.overview-page .table.table--runs td:nth-child(6) { width: 24%; }
+.table.table--hunt-recent th:nth-child(1),
+.table.table--hunt-recent td:nth-child(1) { width: 16%; }
+.table.table--hunt-recent th:nth-child(2),
+.table.table--hunt-recent td:nth-child(2) { width: 12%; }
+.table.table--hunt-recent th:nth-child(3),
+.table.table--hunt-recent td:nth-child(3) { width: 8%; }
+.table.table--hunt-recent th:nth-child(4),
+.table.table--hunt-recent td:nth-child(4) { width: 12%; }
+.table.table--hunt-recent th:nth-child(5),
+.table.table--hunt-recent td:nth-child(5) { width: 32%; }
+.table.table--hunt-recent th:nth-child(6),
+.table.table--hunt-recent td:nth-child(6) { width: 20%; }
+.keel-page .table > thead > tr > th,
+.keel-page .table > tbody > tr > td {
+    padding: 0.55rem 0.7rem;
+}
+.shell-runs .table.table--runs > thead > tr > th,
+.shell-runs .table.table--runs > tbody > tr > td {
+    padding: 0.5rem 0.4rem;
+}
+.table.table--runs td,
+.table.table--hunt-recent td {
+    overflow: hidden;
+}
+.table.table--runs .mono,
+.table.table--runs code.mono,
+.table.table--hunt-recent .mono,
+.table.table--hunt-recent code.mono {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.table.table--runs td.num,
+.table.table--runs td.num.mono,
+.table.table--hunt-recent td.num {
+    max-width: none;
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+.table.table--runs td.clip,
+.table.table--hunt-recent td.clip {
+    max-width: none;
+    overflow: hidden;
+    text-overflow: unset;
+    white-space: normal;
+}
+/* .table .actions { display:flex } was applied to the td and pulled it out of the column. */
+.table td.actions,
+.table th.actions {
+    display: table-cell;
+    vertical-align: middle;
+    overflow: hidden;
+    white-space: normal;
+}
+.table td.actions > a,
+.table td.actions > .button {
+    display: inline-block;
+    width: auto;
+    margin: 0.15rem 0.35rem 0.15rem 0;
+    vertical-align: middle;
+}
+.table.table--runs .actions .button,
+.table.table--hunt-recent .actions .button {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.78rem;
+}
+.table.table--runs td:nth-child(2),
+.table.table--hunt-recent td:nth-child(2) {
+    white-space: nowrap;
+}
+
+/* Running status was a light chip on the dark page */
+html[data-theme="dark"] .badge--run {
+    background: #1c3140;
+    color: #86c6e4;
+    border-color: transparent;
+}
+html[data-theme="dark"] .badge--block {
+    background: var(--calm-flaky-bg, #3a2e1a);
+    color: var(--calm-flaky, #f0c27a);
+    border-color: transparent;
+}
+
+/* —— Grids that were overflowing their cards —— */
+.keel-page .formgrid,
+.structured-intake-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.keel-page .formgrid > *,
+.create-row .grow,
+.platform-segment {
+    min-width: 0;
+}
+.create-row input,
+.create-row select,
+.keel-page .formgrid input,
+.keel-page .formgrid select,
+.keel-page .formgrid textarea {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.project-tabs,
+.tabs {
+    max-width: 100%;
+    overflow-x: auto;
+}
+.panel-toolbar,
+.overview-filters {
+    max-width: 100%;
+}
+.panel-toolbar select,
+.panel-toolbar input,
+.overview-filters select,
+.overview-filters input {
+    min-width: 0;
+    max-width: 100%;
+}
+
+@media (max-width: 720px) {
+    .keel-page .formgrid,
+    .structured-intake-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
