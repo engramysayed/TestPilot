@@ -36,7 +36,7 @@ Account switches persist on `portal_users.alert_prefs`. A job that newly becomes
 
 ## Prices and the account owner
 
-`/pricing` is a read-only table for any signed-in user. The service names are Generate, Execute, Automation, and Bug Hunter. `/admin/pricing` saves `service_prices` (code, label, cost). `CreditCostTable` reads that table. Hibernate `ddl-auto=update` creates the table. Missing rows are seeded from `delivery.credits.cost.*` (10 / 5 / 25 / 15).
+`/pricing` is a read-only table for any signed-in user. The service names are Generate, Execute, Automation, and Bug Hunter. Charged as and What it covers are stored on the price row (`charged_as`, `covers`) and edited on `/admin/pricing`. Bug Hunter’s default line is “a step is one click or one thing typed.” `/admin/pricing` saves `service_prices` (code, label, charged as, covers, cost). `CreditCostTable` reads the cost. Hibernate `ddl-auto=update` adds the new columns. Blank rows, and the old hunt sentence, are filled once on the next request. Missing rows are seeded from `delivery.credits.cost.*` (10 / 5 / 25 / 15).
 
 `BillableQuantity` decides the multiplier at debit time:
 
@@ -46,7 +46,7 @@ Account switches persist on `portal_users.alert_prefs`. A job that newly becomes
 
 Only a user whose stored role name is `OWNER` (`RolesService.isHeadAdmin`) can open Prices, Administration, and Roles, or call the user, credit, and role admin APIs. A role named Admin is refused with 403. Domains stays available to `ROLE_ADMIN`.
 
-Known defect: the stored Bug Hunter unit is still 15, so a default hunt costs 1,200 until the owner lowers it. Generate is still one charge per job. Both can be edited again.
+Known defect: the stored Bug Hunter unit is still 15, so a default hunt of 80 steps costs 1,200 until the owner lowers it. Generate is still one charge per job. Both can be edited again.
 
 ## Finish each job
 

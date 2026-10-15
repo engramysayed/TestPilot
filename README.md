@@ -91,7 +91,7 @@ Use this to pick **one primary path** (you can still run others later on the sam
 | Cases by clicking through the site | **Record** | Library case; optional framework ZIP from the captured locators |
 | “Does this written TC pass on the live site?” | **Execute** | Evidence, screenshots, bug export |
 | “Give me customer-ready Java automation” | **Automate** | Selenium/TestNG framework ZIP |
-| “Break the feature / invent edge cases I didn’t write” | **Bug Hunter** | Hunter pack (bugs + candidate scenarios). Charged per allowed action |
+| “Break the feature / invent edge cases I didn’t write” | **Bug Hunter** | Hunter pack (bugs + candidate scenarios). Charged per step |
 | See what a service costs | **Pricing** | Read-only table. The account owner edits unit prices under **Prices** |
 | Route cases by intent | Set **KeelPath** on each TC | Automate vs Execute vs Manual eligibility |
 

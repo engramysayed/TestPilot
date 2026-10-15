@@ -257,8 +257,9 @@ body.login-body textarea,
 }
 
 table.table th { color: var(--calm-muted); font-weight: 600; }
-.price-editor td input[type="text"] { max-width: 18rem; }
+.price-editor td input[type="text"] { max-width: 16rem; }
 .price-editor td input[type="number"] { max-width: 8rem; }
+.price-editor td textarea { width: 100%; max-width: none; min-height: 4.5rem; }
 table.table td, table.table th {
     padding: 0.85rem 0.75rem;
     border-color: var(--calm-line);

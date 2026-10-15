@@ -11,7 +11,7 @@
     <div class="page-title">
         <div>
             <h1>Prices</h1>
-            <p class="lede">Set the name and the price of one unit. A job multiplies that price by how many units it includes, for every account.</p>
+            <p class="lede">Set the name, how it is charged, and the price of one unit. A job multiplies that price by how many units it includes, for every account.</p>
         </div>
     </div>
     <section class="panel">
@@ -32,8 +32,12 @@
                     <td>
                         <input type="text" th:name="'label_' + ${row.code}" th:value="${row.label}" maxlength="80" required>
                     </td>
-                    <td th:text="${row.unit}">Each test case</td>
-                    <td th:text="${row.detail}">Charged once for each test case.</td>
+                    <td>
+                        <input type="text" th:name="'charged_' + ${row.code}" th:value="${row.unit}" maxlength="80" required>
+                    </td>
+                    <td>
+                        <textarea th:name="'covers_' + ${row.code}" th:text="${row.detail}" maxlength="240" rows="3" required></textarea>
+                    </td>
                     <td>
                         <input type="number" th:name="'cost_' + ${row.code}" th:value="${row.cost}" min="0" max="1000000" step="1" required>
                     </td>

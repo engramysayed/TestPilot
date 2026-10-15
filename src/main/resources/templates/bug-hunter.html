@@ -132,7 +132,7 @@
                 <span class="field-hint">Clicks or typing per round</span>
             </label>
         </div>
-        <p class="muted" id="hunt-price-hint">This hunt is charged per allowed action: iterations × cycles × actions.</p>
+        <p class="muted" id="hunt-price-hint">A step is one click or one thing typed. This hunt shows how many steps it may try.</p>
 
         <div class="hunt-library tc-multiselect" id="hunt-library-panel">
             <span class="tc-ms-label">Library cases</span>
@@ -950,10 +950,10 @@
         const actions = Math.min(15, Math.max(1, Number(document.getElementById('action-cap').value) || 5));
         const total = iterations * cycles * actions;
         if (huntUnit == null) {
-            hint.textContent = 'This hunt allows ' + total + ' actions. Each one costs the Bug Hunter price.';
+            hint.textContent = 'This hunt may try ' + total + ' steps. A step is one click or one thing typed.';
             return;
         }
-        hint.textContent = 'This hunt allows ' + total + ' actions. At ' + huntUnit
+        hint.textContent = 'This hunt may try ' + total + ' steps. At ' + huntUnit
             + ' credits each, it costs ' + (total * huntUnit) + '.';
     }
     ['iteration-ceiling', 'cycle-ceiling', 'action-cap'].forEach(function (id) {

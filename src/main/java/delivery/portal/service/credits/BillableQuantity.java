@@ -73,7 +73,7 @@ public final class BillableQuantity {
         }
         String noun = switch (kind) {
             case EXECUTE, AUTOMATE -> "test cases";
-            case HUNT -> "allowed actions";
+            case HUNT -> "steps";
             case GENERATE -> "writing jobs";
         };
         return quantity + " " + noun + " × " + unitPrice;

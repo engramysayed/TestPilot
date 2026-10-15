@@ -295,6 +295,7 @@ public class CreditsApiTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(view.contains("Automation"));
         Assert.assertTrue(view.contains("Execute"));
         Assert.assertTrue(view.contains("Bug Hunter"));
+        Assert.assertTrue(view.contains("A step is one click or one thing typed."));
         Assert.assertFalse(view.contains("Changing them is limited"));
         Assert.assertFalse(view.contains("name=\"cost_"), "pricing is view only");
 
@@ -302,12 +303,20 @@ public class CreditsApiTest extends AbstractTestNGSpringContextTests {
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
                         .with(csrf())
                         .param("label_GENERATE", "Write cases")
+                        .param("charged_GENERATE", "Each writing job")
+                        .param("covers_GENERATE", "One price for the whole writing job.")
                         .param("cost_GENERATE", "12")
                         .param("label_EXECUTE", "Run a test")
+                        .param("charged_EXECUTE", "Each test case")
+                        .param("covers_EXECUTE", "Once for every test case in the run.")
                         .param("cost_EXECUTE", "7")
                         .param("label_AUTOMATE", "Build the framework")
+                        .param("charged_AUTOMATE", "Each test case")
+                        .param("covers_AUTOMATE", "Once for every test case in the build.")
                         .param("cost_AUTOMATE", "25")
                         .param("label_HUNT", "Bug Hunter")
+                        .param("charged_HUNT", "Each step")
+                        .param("covers_HUNT", "A step is one click or one thing typed.")
                         .param("cost_HUNT", "15"))
                 .andExpect(status().is3xxRedirection());
 
@@ -359,12 +368,20 @@ public class CreditsApiTest extends AbstractTestNGSpringContextTests {
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
                         .with(csrf())
                         .param("label_GENERATE", "Generate")
+                        .param("charged_GENERATE", "Each writing job")
+                        .param("covers_GENERATE", "One price for the whole writing job.")
                         .param("cost_GENERATE", "10")
                         .param("label_EXECUTE", "Execute")
+                        .param("charged_EXECUTE", "Each test case")
+                        .param("covers_EXECUTE", "Charged once for each test case in the run, including Run it once.")
                         .param("cost_EXECUTE", "5")
                         .param("label_AUTOMATE", "Automation")
+                        .param("charged_AUTOMATE", "Each test case")
+                        .param("covers_AUTOMATE", "Charged once for each test case in the build, not once for the package.")
                         .param("cost_AUTOMATE", "25")
                         .param("label_HUNT", "Bug Hunter")
+                        .param("charged_HUNT", "Each step")
+                        .param("covers_HUNT", "A step is one click or one thing typed. The hunt page shows how many steps this run may try.")
                         .param("cost_HUNT", "15"))
                 .andExpect(status().is3xxRedirection());
     }

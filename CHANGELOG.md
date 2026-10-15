@@ -13,9 +13,9 @@ Internal design notes stay under `docs/superpowers/`. Engineers can start from `
 ### What you can do
 
 - Open **Pricing** and read the price of one unit for each service. The table cannot be edited.
-- As the account owner, open **Admin → Prices** and change the service name and the price of one unit. Saving applies that price to every account.
-- A run charges the Run a test price once per test case. A framework build charges the Build the framework price once per test case, including a build from a recording. A manual-only row is not charged.
-- Bug Hunter charges the Bug Hunter price once per allowed action: iterations × cycles × actions per cycle. The hunt form shows the total before you start.
+- As the account owner, open **Admin → Prices** and change the service name, **Charged as**, **What it covers**, and the price of one unit. Saving applies that to every account.
+- A run charges the Execute price once per test case. A framework build charges the Automation price once per test case, including a build from a recording. A manual-only row is not charged.
+- Bug Hunter charges once per step. A step is one click or one thing typed. The hunt page shows how many steps this run may try before you start.
 - Writing test cases stays one price for the whole writing job.
 - The service names on Pricing are **Generate**, **Execute**, **Automation**, and **Bug Hunter**.
 
@@ -26,9 +26,9 @@ A flat price treated a one-case run and a large run as the same job. Hiding an a
 ### How to use it
 
 1. **Pricing** shows the current unit prices.
-2. The account owner opens **Prices**, edits the name and the credits for one unit, and saves.
-3. Start a run, a framework build, or a hunt as usual. Keel multiplies the unit price by the cases or allowed actions in that job.
-4. If 15 was the old price of a whole Bug Hunter run, lower the Bug Hunter unit. The default hunt allows 80 actions (2 × 8 × 5), so 15 each costs 1,200.
+2. The account owner opens **Prices**, edits the name, Charged as, What it covers, and the credits for one unit, and saves.
+3. Start a run, a framework build, or a hunt as usual. Keel multiplies the unit price by the cases or steps in that job.
+4. If 15 was the old price of a whole Bug Hunter run, lower the Bug Hunter unit. The default hunt may try 80 steps (2 × 8 × 5), so 15 each costs 1,200.
 
 ### What we did not change
 
@@ -39,7 +39,7 @@ A flat price treated a one-case run and a large run as the same job. Hiding an a
 ### Known limits
 
 - The server refuses a non-owner, including a role named Admin, on prices, user management, credit grants, and roles. The check is the stored Owner role, not a hidden button.
-- A default Bug Hunter at 15 credits per action is expensive until the owner sets a smaller unit.
+- A default Bug Hunter at 15 credits per step is expensive until the owner sets a smaller unit.
 - This note is written while those prices can still be edited again.
 
 ## 2026-10-15 — Record a test, then build the framework

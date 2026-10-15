@@ -49,14 +49,15 @@ public class ServicePriceService {
         ensureSeeded();
         for (ServicePrice row : prices.findAllByOrderBySortOrderAsc()) {
             String label = form.get("label_" + row.getCode());
+            String chargedAs = form.get("charged_" + row.getCode());
+            String covers = form.get("covers_" + row.getCode());
             String costRaw = form.get("cost_" + row.getCode());
-            if (label == null || costRaw == null) {
-                throw new IllegalArgumentException("Enter a name and a price for every service.");
+            if (label == null || chargedAs == null || covers == null || costRaw == null) {
+                throw new IllegalArgumentException("Enter a name, charged as, what it covers, and a price for every service.");
             }
-            String cleaned = label.trim().replaceAll("[\\r\\n]+", " ");
-            if (cleaned.isBlank() || cleaned.length() > 80) {
-                throw new IllegalArgumentException("Each service name needs 1 to 80 characters.");
-            }
+            String cleaned = oneLine(label, 80, "Each service name needs 1 to 80 characters.");
+            String charged = oneLine(chargedAs, 80, "Charged as needs 1 to 80 characters.");
+            String cover = oneLine(covers, 240, "What it covers needs 1 to 240 characters.");
             long cost;
             try {
                 cost = Long.parseLong(costRaw.trim());
@@ -67,6 +68,8 @@ public class ServicePriceService {
                 throw new IllegalArgumentException("Each price must be from 0 to " + MAX_COST + ".");
             }
             row.setLabel(cleaned);
+            row.setChargedAs(charged);
+            row.setCovers(cover);
             row.setCost(cost);
             row.setUpdatedAt(Instant.now());
             prices.save(row);
@@ -84,6 +87,31 @@ public class ServicePriceService {
         renameLegacy("GENERATE", "Write test cases", "Generate");
         renameLegacy("EXECUTE", "Run a test", "Execute");
         renameLegacy("AUTOMATE", "Build the framework", "Automation");
+        for (ServicePrice row : prices.findAllByOrderBySortOrderAsc()) {
+            boolean changed = false;
+            if (row.getChargedAs() == null || row.getChargedAs().isBlank()
+                    || ("HUNT".equals(row.getCode()) && "Each allowed action".equals(row.getChargedAs()))) {
+                row.setChargedAs(unitLabel(row.getCode()));
+                changed = true;
+            }
+            if (row.getCovers() == null || row.getCovers().isBlank()
+                    || ("HUNT".equals(row.getCode()) && row.getCovers().startsWith("Charged once for each allowed action"))) {
+                row.setCovers(detail(row.getCode()));
+                changed = true;
+            }
+            if (changed) {
+                row.setUpdatedAt(Instant.now());
+                prices.save(row);
+            }
+        }
+    }
+
+    private static String oneLine(String raw, int max, String error) {
+        String cleaned = raw == null ? "" : raw.trim().replaceAll("[\\r\\n]+", " ");
+        if (cleaned.isBlank() || cleaned.length() > max) {
+            throw new IllegalArgumentException(error);
+        }
+        return cleaned;
     }
 
     private void renameLegacy(String code, String previousName, String featureName) {
@@ -100,6 +128,8 @@ public class ServicePriceService {
         ServicePrice row = new ServicePrice();
         row.setCode(code);
         row.setLabel(label);
+        row.setChargedAs(unitLabel(code));
+        row.setCovers(detail(code));
         row.setCost(Math.max(0, cost));
         row.setSortOrder(order);
         row.setUpdatedAt(Instant.now());
@@ -120,17 +150,21 @@ public class ServicePriceService {
         out.put("code", row.getCode());
         out.put("label", row.getLabel());
         out.put("cost", row.getCost());
-        out.put("unit", unitLabel(row.getCode()));
-        out.put("detail", detail(row.getCode()));
+        out.put("unit", blank(row.getChargedAs()) ? unitLabel(row.getCode()) : row.getChargedAs());
+        out.put("detail", blank(row.getCovers()) ? detail(row.getCode()) : row.getCovers());
         return out;
     }
 
     static String unitLabel(String code) {
         return switch (code == null ? "" : code.toUpperCase(Locale.ROOT)) {
             case "EXECUTE", "AUTOMATE" -> "Each test case";
-            case "HUNT" -> "Each allowed action";
+            case "HUNT" -> "Each step";
             default -> "Each writing job";
         };
+    }
+
+    private static boolean blank(String value) {
+        return value == null || value.isBlank();
     }
 
     static String detail(String code) {
@@ -138,7 +172,7 @@ public class ServicePriceService {
             case "GENERATE" -> "One price for the whole writing job.";
             case "EXECUTE" -> "Charged once for each test case in the run, including Run it once.";
             case "AUTOMATE" -> "Charged once for each test case in the build, not once for the package.";
-            case "HUNT" -> "Charged once for each allowed action: iterations × cycles × actions per cycle.";
+            case "HUNT" -> "A step is one click or one thing typed. The hunt page shows how many steps this run may try.";
             default -> "";
         };
     }

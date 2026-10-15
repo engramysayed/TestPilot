@@ -40,7 +40,7 @@ public class BillableQuantityTest {
         JobRecord job = new JobRecord("hunt_qty", "prj", 1L, "HUNT", request, "https://example.com", "", "", false,
                 JobRecord.JobKind.HUNT);
         Assert.assertEquals(BillableQuantity.count(job), 24);
-        Assert.assertEquals(BillableQuantity.breakdown(CreditsBillingKind.HUNT, 24, 15), "24 allowed actions × 15");
+        Assert.assertEquals(BillableQuantity.breakdown(CreditsBillingKind.HUNT, 24, 15), "24 steps × 15");
     }
 
     @Test

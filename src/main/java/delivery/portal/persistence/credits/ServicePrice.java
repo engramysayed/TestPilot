@@ -18,6 +18,12 @@ public class ServicePrice {
     @Column(nullable = false, length = 80)
     private String label;
 
+    @Column(name = "charged_as", length = 80)
+    private String chargedAs;
+
+    @Column(length = 240)
+    private String covers;
+
     @Column(nullable = false)
     private long cost;
 
@@ -31,6 +37,10 @@ public class ServicePrice {
     public void setCode(String code) { this.code = code; }
     public String getLabel() { return label; }
     public void setLabel(String label) { this.label = label; }
+    public String getChargedAs() { return chargedAs; }
+    public void setChargedAs(String chargedAs) { this.chargedAs = chargedAs; }
+    public String getCovers() { return covers; }
+    public void setCovers(String covers) { this.covers = covers; }
     public long getCost() { return cost; }
     public void setCost(long cost) { this.cost = cost; }
     public int getSortOrder() { return sortOrder; }

@@ -34,7 +34,7 @@ Record can also build the ZIP directly from the locators it captured, without a 
 - **Account → vision**: choose the model that looks at the screen (UI-TARS by default, or Qwen vision). This does not choose the model that writes test cases. Writing uses Gemma (`gemma4:e2b`), chosen on Generate.
 - **Account → alerts**: Telegram, email, or Slack. Keel sends a message when a run fails or finishes with a block. Turning a channel on sends a confirmation first and does not save the switch if that send fails. The engine dead-man check is separate and stays off.
 - **Pricing** (`/pricing`): a read-only table of each service, the unit it is charged as, and the current credit price. Every signed-in account sees the same numbers.
-- **Admin → Prices**: the account owner sets the service name and the price of one unit. Saving applies it to every account. A user whose role is only Admin is refused by the server.
+- **Admin → Prices**: the account owner sets the service name, Charged as, What it covers, and the price of one unit. Saving applies it to every account. A user whose role is only Admin is refused by the server.
 - **Admin → Users**, credit grants, and **Roles** are the same: only the account owner. Hiding the link is not the check.
 - **Admin → Domains**: see stored site folders (projects, locator memory, maps); relocate legacy folders; delete a whole domain (typed confirm). A user with the Admin role can still open Domains.
 
@@ -177,9 +177,9 @@ Plan: `docs/superpowers/plans/2026-10-15-record-to-framework.md`.
 | Generate | One writing job |
 | Execute | Each test case in the run, including Run it once |
 | Automation | Each test case in the build, including a recording |
-| Bug Hunter | Each allowed action: iterations × cycles × actions per cycle |
+| Bug Hunter | Each step. A step is one click or one thing typed. The hunt page shows how many steps the run may try. |
 
-The number on the page is the price of one unit. Keel multiplies it when the job starts. A manual-only row is not included in a run or a build. The default hunt allows 80 actions (2 iterations × 8 cycles × 5 actions).
+The number on the page is the price of one unit. Keel multiplies it when the job starts. A manual-only row is not included in a run or a build. The default hunt may try 80 steps (2 iterations × 8 cycles × 5 actions).
 
 ---
 
@@ -230,7 +230,7 @@ Exploratory live hunting from the project library. Goal: **break features** and 
 - **Credential profile** — hunter receives `$TARGET_USERNAME` / `$TARGET_PASSWORD` / `$TARGET_OTP` **tokens only** (never plaintext password in planner prompts or pack text). Choose **Open site only** for hunts without credentials.
 - Multi-select library TCs; optional free-text user story (OTP hints can be parsed from story text).
 - Planner: **Ollama** or **Cursor**.
-- Caps: scenario invent budget, iterations, cycles per iteration, **actions per cycle** (defaults 2 × 8 × 5). The credit charge is those three multiplied, times the Bug Hunter unit price. The form shows the total.
+- Caps: scenario invent budget, iterations, cycles per iteration, **actions per cycle** (defaults 2 × 8 × 5). Each click or typed value is one step. The credit charge is the number of steps this run may try, times the Bug Hunter unit price. The form shows that total.
 - **DOM mode**: Auto (structured page map; full slim HTML if the map is thin) · Map only · Full slim.
 - **Use hunt strategies** (default on): happy path → empty fields → boundary → abuse → session → invent.
 
