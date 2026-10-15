@@ -177,6 +177,17 @@
                 </div>
             </section>
 
+            <div class="credit-quote" id="execute-price-hint" role="status" aria-live="polite" hidden>
+                <div class="credit-quote-copy">
+                    <p class="credit-quote-kicker">This run</p>
+                    <p class="credit-quote-detail" id="execute-price-detail">Each test case</p>
+                    <p class="credit-quote-note" id="execute-price-note">Manual rows are not charged.</p>
+                </div>
+                <div class="credit-quote-figure">
+                    <p class="credit-quote-total" id="execute-price-total">—</p>
+                    <p class="credit-quote-unit" id="execute-price-unit">credits</p>
+                </div>
+            </div>
             <button type="submit" id="submit-btn">Start execute run</button>
         </form>
         <p id="form-error" class="error" hidden></p>
@@ -582,14 +593,54 @@
         // Library mode: upload optional (mix). Upload-only: required.
         excelLabel.hidden = false;
         excelInput.required = !useGenerated;
-        if (useGenerated) {
-            // keep optional file for mix
-        }
+        paintRunPrice();
     }
 
     document.querySelectorAll('input[name="workbookSource"]').forEach(function (el) {
         el.addEventListener('change', syncWorkbookSourceUi);
     });
+
+    let runUnit = null;
+    function creditDigits(n) {
+        return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    function billableCaseCount() {
+        const boxes = Array.from(document.querySelectorAll('.lib-pick-check'));
+        if (!boxes.length && generatedWorkbookMeta && generatedWorkbookMeta.keelPathCounts) {
+            return executeRunnable(generatedWorkbookMeta.keelPathCounts);
+        }
+        const chosen = boxes.filter(b => b.checked);
+        const use = chosen.length ? chosen : boxes;
+        return use.filter(b => String(b.dataset.keelPath || '').toUpperCase() !== 'MANUAL').length;
+    }
+    function paintRunPrice() {
+        const card = document.getElementById('execute-price-hint');
+        const detail = document.getElementById('execute-price-detail');
+        const totalEl = document.getElementById('execute-price-total');
+        const unitEl = document.getElementById('execute-price-unit');
+        if (!card || !detail || !totalEl || runUnit == null) return;
+        card.hidden = false;
+        const library = hasGeneratedWorkbook && workbookSource() === 'generated';
+        if (!library) {
+            detail.textContent = 'Each test case in the workbook × ' + creditDigits(runUnit);
+            totalEl.textContent = creditDigits(runUnit);
+            if (unitEl) unitEl.textContent = 'credits each';
+            return;
+        }
+        const count = billableCaseCount();
+        detail.textContent = count + (count === 1 ? ' test case × ' : ' test cases × ') + creditDigits(runUnit);
+        totalEl.textContent = creditDigits(count * runUnit);
+        if (unitEl) unitEl.textContent = 'credits';
+    }
+    fetch('/api/account/credits', { credentials: 'same-origin', headers: API_HEADERS })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (data) {
+            if (data && data.enabled && data.costs && typeof data.costs.execute === 'number') {
+                runUnit = data.costs.execute;
+                paintRunPrice();
+            }
+        })
+        .catch(function () { /* price card stays hidden */ });
 
     async function loadLibraryPickList(projectId) {
         const list = document.getElementById('library-pick-list');
@@ -610,7 +661,9 @@
                 + escapeHtml(tc.tcId) + '"/> <span class="mono">'
                 + escapeHtml(tc.tcId) + '</span> '
                 + '<span class="tc-ms-option-title">' + escapeHtml(tc.title || '') + '</span>';
-            label.querySelector('input').addEventListener('change', refreshTcMultiselectSummary);
+            const pick = label.querySelector('input');
+            pick.dataset.keelPath = tc.keelPath || '';
+            pick.addEventListener('change', refreshTcMultiselectSummary);
             list.appendChild(label);
         });
         refreshTcMultiselectSummary();
@@ -630,6 +683,7 @@
         if (selected.length === 0) {
             summary.textContent = total ? 'All cases (' + total + ')' : 'All cases';
             summary.hidden = false;
+            paintRunPrice();
             return;
         }
         const show = selected.slice(0, 4);
@@ -647,6 +701,7 @@
         }
         summary.textContent = selected.length + ' of ' + total;
         summary.hidden = false;
+        paintRunPrice();
     }
 
     function openTcMultiselect() {

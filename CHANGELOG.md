@@ -6,6 +6,12 @@ The **full product** (every surface, not only the last week) is [`docs/PRODUCT.m
 
 Internal design notes stay under `docs/superpowers/`. Engineers can start from `docs/ENGINEERING_HANDOFF.md`.
 
+## 2026-10-16 — Live credit total
+
+**Surfaces:** **Bug Hunter**, **Execute**, **Automate**.
+
+The cost sits in a card above the start button. Bug Hunter updates when iterations, cycles, or actions change. Execute and Automate update when you switch to the project library and change how many test cases are included. A workbook upload shows the price of one test case until the file is read at the start of the job. Hard-refresh if you still see the small grey sentence.
+
 ## 2026-10-16 — Dashes and dots on Execute
 
 **Surfaces:** **Execute**, and a few labels that used the same broken characters.

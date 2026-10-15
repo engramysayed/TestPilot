@@ -132,7 +132,6 @@
                 <span class="field-hint">Clicks or typing per round</span>
             </label>
         </div>
-        <p class="muted" id="hunt-price-hint">A step is one click or one thing typed. This hunt shows how many steps it may try.</p>
 
         <div class="hunt-library tc-multiselect" id="hunt-library-panel">
             <span class="tc-ms-label">Library cases</span>
@@ -159,6 +158,17 @@
         </div>
 
         <p id="hunt-err" class="error" hidden></p>
+        <div class="credit-quote" id="hunt-price-hint" role="status" aria-live="polite">
+            <div class="credit-quote-copy">
+                <p class="credit-quote-kicker">This hunt</p>
+                <p class="credit-quote-detail" id="hunt-price-detail">Counting steps…</p>
+                <p class="credit-quote-note" id="hunt-price-note">A step is one click or one thing typed.</p>
+            </div>
+            <div class="credit-quote-figure">
+                <p class="credit-quote-total" id="hunt-price-total">—</p>
+                <p class="credit-quote-unit" id="hunt-price-unit">credits</p>
+            </div>
+        </div>
         <div class="actions hunt-start-actions">
             <button type="button" class="button" id="start-hunt" disabled>
                 <span class="hunt-start-label">Start Bug Hunter</span>
@@ -942,19 +952,27 @@
     }
 
     let huntUnit = null;
+    function creditDigits(n) {
+        return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
     function paintHuntPrice() {
-        const hint = document.getElementById('hunt-price-hint');
-        if (!hint) return;
+        const detail = document.getElementById('hunt-price-detail');
+        const totalEl = document.getElementById('hunt-price-total');
+        const unitEl = document.getElementById('hunt-price-unit');
+        if (!detail || !totalEl) return;
         const iterations = Math.min(5, Math.max(1, Number(document.getElementById('iteration-ceiling').value) || 2));
         const cycles = Math.min(30, Math.max(1, Number(document.getElementById('cycle-ceiling').value) || 8));
         const actions = Math.min(15, Math.max(1, Number(document.getElementById('action-cap').value) || 5));
-        const total = iterations * cycles * actions;
+        const steps = iterations * cycles * actions;
         if (huntUnit == null) {
-            hint.textContent = 'This hunt may try ' + total + ' steps. A step is one click or one thing typed.';
+            detail.textContent = steps + ' steps';
+            totalEl.textContent = creditDigits(steps);
+            if (unitEl) unitEl.textContent = 'steps';
             return;
         }
-        hint.textContent = 'This hunt may try ' + total + ' steps. At ' + huntUnit
-            + ' credits each, it costs ' + (total * huntUnit) + '.';
+        detail.textContent = steps + ' steps × ' + creditDigits(huntUnit);
+        totalEl.textContent = creditDigits(steps * huntUnit);
+        if (unitEl) unitEl.textContent = 'credits';
     }
     ['iteration-ceiling', 'cycle-ceiling', 'action-cap'].forEach(function (id) {
         const input = document.getElementById(id);

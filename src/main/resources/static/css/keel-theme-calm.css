@@ -738,3 +738,52 @@ html[data-theme="dark"] .project-tabs a.active {
     background: var(--calm-accent-soft);
     box-shadow: none;
 }
+
+/* Live credit total. Sits above the start button so the cost is obvious. */
+.credit-quote {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 1rem 0 0.75rem;
+    padding: 0.9rem 1.05rem;
+    border: 1px solid color-mix(in srgb, var(--teal) 50%, var(--line));
+    border-radius: 14px;
+    background: var(--calm-accent-soft, #e3f3ef);
+}
+.credit-quote-copy { min-width: 0; }
+.credit-quote-kicker {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent-2, var(--teal));
+}
+.credit-quote-detail {
+    margin: 0.2rem 0 0;
+    color: var(--text);
+    font-size: 0.98rem;
+    font-weight: 600;
+}
+.credit-quote-note {
+    margin: 0.15rem 0 0;
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+.credit-quote-figure { text-align: right; flex: 0 0 auto; }
+.credit-quote-total {
+    margin: 0;
+    font-size: 1.85rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--accent-2, var(--teal));
+    font-variant-numeric: tabular-nums;
+}
+.credit-quote-unit {
+    margin: 0.25rem 0 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+html[data-theme="dark"] .credit-quote-total { color: var(--teal); }
