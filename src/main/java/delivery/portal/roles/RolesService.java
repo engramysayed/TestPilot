@@ -135,28 +135,43 @@ public class RolesService {
         row.put("description", role.getDescription() == null ? "" : role.getDescription());
         row.put("system", role.isSystem());
         row.put("permissions", permissionsForRoleId(role.getRoleId()));
-        row.put("userCount", countUsersWithRole(role.getRoleId(), role.getName()));
+        row.put("userCount", countAssignedUsers(role.getRoleId()));
         row.put("createdAt", role.getCreatedAt() == null ? null : role.getCreatedAt().toString());
         return row;
     }
 
-    private long countUsersWithRole(String roleId, String roleName) {
-        long direct = users.findAllByOrderByIdAsc().stream()
-                .filter(u -> roleId.equals(u.getRoleId()))
-                .count();
-        // Legacy enum users without roleId still map to system OWNER/MEMBER
-        if (SystemRoleNames.OWNER.equalsIgnoreCase(roleName)) {
-            direct += users.findAllByOrderByIdAsc().stream()
-                    .filter(u -> (u.getRoleId() == null || u.getRoleId().isBlank())
-                            && u.getRole() == PortalUser.Role.ADMIN)
-                    .count();
-        } else if (SystemRoleNames.MEMBER.equalsIgnoreCase(roleName)) {
-            direct += users.findAllByOrderByIdAsc().stream()
-                    .filter(u -> (u.getRoleId() == null || u.getRoleId().isBlank())
-                            && u.getRole() == PortalUser.Role.USER)
-                    .count();
+    /**
+     * Users whose stored {@code role_id} is this role.
+     * A null {@code role_id} is unassigned — it is not MEMBER (legacy USER) or OWNER
+     * (legacy ADMIN). {@link #resolveRoleId} may still fall back for permission checks;
+     * that fallback is not a membership count.
+     */
+    public long countAssignedUsers(String roleId) {
+        if (roleId == null || roleId.isBlank()) {
+            return 0L;
         }
-        return direct;
+        return users.countByRoleId(roleId.trim());
+    }
+
+    /**
+     * Stored assignment for admin lists. Does not invent MEMBER/OWNER when {@code role_id} is null.
+     */
+    public Map<String, Object> assignmentFields(PortalUser user) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        String stored = user == null ? null : user.getRoleId();
+        RoleEntity role = (stored == null || stored.isBlank())
+                ? null
+                : roles.findByRoleId(stored.trim()).orElse(null);
+        if (role == null) {
+            m.put("assignedRoleId", null);
+            m.put("roleId", null);
+            m.put("roleName", "Unassigned");
+            return m;
+        }
+        m.put("assignedRoleId", role.getRoleId());
+        m.put("roleId", role.getRoleId());
+        m.put("roleName", role.getName());
+        return m;
     }
 
     @Transactional

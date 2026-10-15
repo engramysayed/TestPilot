@@ -65,7 +65,8 @@ public class AdminUsersController {
                     row.put("id", u.getId());
                     row.put("email", u.getEmail());
                     row.put("role", u.getRole().name());
-                    row.put("roleId", rolesService.resolveRoleId(u));
+                    // Stored role only. Null role_id (legacy USER/ADMIN) stays in this list as Unassigned.
+                    row.putAll(rolesService.assignmentFields(u));
                     row.put("approvalStatus", u.getApprovalStatus().name());
                     row.put("approvedAt", u.getApprovedAt() == null ? null : u.getApprovedAt().toString());
                     row.put("approvedByUserId", u.getApprovedByUserId());

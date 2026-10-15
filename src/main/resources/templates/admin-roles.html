@@ -16,7 +16,7 @@
         <button type="button" class="button primary" id="btn-new-role">New role</button>
     </div>
 
-    <section class="panel" id="role-editor" hidden>
+    <section class="panel keel-role-editor" id="role-editor" hidden>
         <h2 id="role-editor-title">New role</h2>
         <p class="panel-intro">Tick only what this role needs. Feature pages use these codes for the sidebar.</p>
         <label class="f">Name
@@ -92,21 +92,47 @@
       return;
     }
     roles.forEach(function (role) {
-      var row = document.createElement('div');
-      row.className = 'keel-role-row';
-      var left = document.createElement('div');
-      left.innerHTML = '<strong>' + role.name + '</strong>' +
-        (role.system ? ' <span class="keel-badge keel-badge--approved">Built-in</span>' : '') +
-        '<div class="muted">' + (role.description || '') + '</div>' +
-        '<div class="muted">' + (role.permissions || []).join(', ') + ' · ' + (role.userCount || 0) + ' users</div>';
+      var card = document.createElement('article');
+      card.className = 'keel-role-card';
+
+      var head = document.createElement('div');
+      head.className = 'keel-role-card-head';
+
+      var identity = document.createElement('div');
+      identity.className = 'keel-role-card-id';
+      var title = document.createElement('h3');
+      title.appendChild(document.createTextNode(role.name || 'Role'));
+      if (role.system) {
+        var badge = document.createElement('span');
+        badge.className = 'keel-badge keel-badge--approved';
+        badge.textContent = 'Built-in';
+        title.appendChild(badge);
+      }
+      identity.appendChild(title);
+      if (role.description) {
+        var desc = document.createElement('p');
+        desc.className = 'keel-role-desc';
+        desc.textContent = role.description;
+        identity.appendChild(desc);
+      }
+
+      var meta = document.createElement('div');
+      meta.className = 'keel-role-card-meta';
+      var count = document.createElement('span');
+      count.className = 'keel-role-count';
+      var n = Number(role.userCount || 0);
+      count.textContent = n + (n === 1 ? ' user' : ' users');
+      meta.appendChild(count);
+
       var actions = document.createElement('div');
+      actions.className = 'keel-role-card-actions';
       var edit = document.createElement('button');
       edit.type = 'button'; edit.className = 'button ghost'; edit.textContent = 'Edit';
       edit.addEventListener('click', function () { openEditor(role); });
       actions.appendChild(edit);
       if (!role.system) {
         var del = document.createElement('button');
-        del.type = 'button'; del.className = 'danger'; del.textContent = 'Delete';
+        del.type = 'button'; del.className = 'button danger'; del.textContent = 'Delete';
         del.addEventListener('click', async function () {
           if (!confirm('Delete role ' + role.name + '?')) return;
           var d = await api('/api/admin/roles/' + encodeURIComponent(role.roleId), { method: 'DELETE' });
@@ -115,8 +141,21 @@
         });
         actions.appendChild(del);
       }
-      row.appendChild(left); row.appendChild(actions);
-      list.appendChild(row);
+      meta.appendChild(actions);
+
+      var chips = document.createElement('ul');
+      chips.className = 'keel-perm-chips';
+      (role.permissions || []).forEach(function (code) {
+        var li = document.createElement('li');
+        li.textContent = code;
+        chips.appendChild(li);
+      });
+
+      head.appendChild(identity);
+      head.appendChild(meta);
+      card.appendChild(head);
+      card.appendChild(chips);
+      list.appendChild(card);
     });
   }
 

@@ -193,6 +193,81 @@ public class RolesPermissionsApiTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    public void legacyNullRoleIdUserIsListedAndNotCountedAsMember() throws Exception {
+        String email = "rsayed@axisapp.com";
+        PortalUser legacy = users.findByEmailIgnoreCase(email).orElseGet(PortalUser::new);
+        legacy.setEmail(email);
+        legacy.setPasswordHash(encoder.encode("LegacyPass1!"));
+        legacy.setRole(PortalUser.Role.USER);
+        legacy.setEnabled(true);
+        legacy.setApprovalStatus(ApprovalStatus.APPROVED);
+        legacy.setApprovedAt(java.time.Instant.now());
+        legacy.setRoleId(null);
+        users.save(legacy);
+
+        MvcResult listed = mockMvc.perform(get("/api/admin/users")
+                        .with(httpBasic(adminAuth(), "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JSONArray arr = new JSONObject(listed.getResponse().getContentAsString()).getJSONArray("users");
+        JSONObject found = null;
+        for (int i = 0; i < arr.length(); i++) {
+            if (email.equalsIgnoreCase(arr.getJSONObject(i).optString("email"))) {
+                found = arr.getJSONObject(i);
+            }
+        }
+        Assert.assertNotNull(found, "approved user with null role_id must appear in Registered users");
+        Assert.assertTrue(found.isNull("assignedRoleId"));
+        Assert.assertTrue(found.isNull("roleId"));
+        Assert.assertEquals(found.getString("roleName"), "Unassigned");
+        Assert.assertEquals(found.getString("role"), "USER");
+        Assert.assertEquals(found.getString("approvalStatus"), "APPROVED");
+        Assert.assertTrue(found.getBoolean("enabled"));
+
+        String memberId = memberRoleId();
+        String ownerId = ownerRoleId();
+        long memberAssigned = users.findAllByOrderByIdAsc().stream()
+                .filter(u -> memberId.equals(u.getRoleId())).count();
+        long ownerAssigned = users.findAllByOrderByIdAsc().stream()
+                .filter(u -> ownerId.equals(u.getRoleId())).count();
+        Assert.assertTrue(memberAssigned >= 1, "seeded member assignment");
+        Assert.assertNotEquals(memberId, legacy.getRoleId());
+
+        MvcResult rolesRes = mockMvc.perform(get("/api/admin/roles")
+                        .with(httpBasic(adminAuth(), "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JSONArray roles = new JSONObject(rolesRes.getResponse().getContentAsString()).getJSONArray("roles");
+        Long memberCount = null;
+        Long ownerCount = null;
+        for (int i = 0; i < roles.length(); i++) {
+            JSONObject role = roles.getJSONObject(i);
+            if ("MEMBER".equalsIgnoreCase(role.getString("name"))) {
+                memberCount = role.getLong("userCount");
+            }
+            if ("OWNER".equalsIgnoreCase(role.getString("name"))) {
+                ownerCount = role.getLong("userCount");
+            }
+        }
+        Assert.assertEquals(memberCount, Long.valueOf(memberAssigned),
+                "MEMBER count is explicit role_id matches, not every legacy USER");
+        Assert.assertEquals(ownerCount, Long.valueOf(ownerAssigned));
+
+        mockMvc.perform(post("/api/admin/users/" + found.getLong("id") + "/role")
+                        .with(httpBasic(adminAuth(), "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roleId\":\"" + memberId + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roleId").value(memberId));
+        PortalUser assigned = users.findByEmailIgnoreCase(email).orElseThrow();
+        Assert.assertEquals(assigned.getRoleId(), memberId);
+        Assert.assertEquals(assigned.getApprovalStatus(), ApprovalStatus.APPROVED);
+    }
+
+    @Test
     public void adminUsersListIncludesApprovalStatus() throws Exception {
         MvcResult r = mockMvc.perform(get("/api/admin/users")
                         .with(httpBasic(adminAuth(), "ChangeMeAdmin1!"))

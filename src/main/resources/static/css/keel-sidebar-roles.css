@@ -17,7 +17,25 @@
 .keel-approve-card .f{display:block;margin:.75rem 0}
 .keel-approve-card select,.keel-approve-card textarea{width:100%}
 .keel-approve-actions{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem}
-.keel-perm-grid{display:grid;grid-template-columns:1fr 1fr;gap:.35rem .75rem;margin:.75rem 0}
-.keel-perm-grid label{display:flex;gap:.4rem;align-items:flex-start;font-size:.9rem}
-.keel-role-list{display:flex;flex-direction:column;gap:.5rem}
-.keel-role-row{display:flex;justify-content:space-between;gap:1rem;padding:.75rem;border:1px solid var(--calm-line,#e3e6ec);border-radius:10px}
+.keel-perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(16rem,1fr));gap:.65rem 1rem;margin:.85rem 0 1rem}
+.keel-perm-grid label{display:flex;gap:.45rem;align-items:flex-start;font-size:.9rem;padding:.55rem .65rem;border:1px solid var(--calm-line,#e3e6ec);border-radius:10px;background:transparent}
+.keel-role-editor{width:100%}
+.keel-role-editor .f{display:block;max-width:36rem;margin:.85rem 0}
+.keel-role-editor .f input{display:block;width:100%;margin-top:.35rem}
+.keel-role-list{display:flex;flex-direction:column;gap:.75rem;width:100%}
+.keel-role-card{display:flex;flex-direction:column;gap:.75rem;width:100%;padding:1rem 1.1rem;border:1px solid var(--calm-line,#e3e6ec);border-radius:12px;background:transparent}
+.keel-role-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+.keel-role-card-id{min-width:0;flex:1 1 auto}
+.keel-role-card-id h3{margin:0;font-size:.98rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.keel-role-desc{margin:.3rem 0 0;color:var(--muted);font-size:.85rem;line-height:1.4}
+.keel-role-card-meta{display:flex;align-items:center;gap:.75rem;flex:0 0 auto}
+.keel-role-card-actions{display:flex;gap:.4rem;align-items:center}
+.keel-role-count{font-variant-numeric:tabular-nums;font-weight:650;font-size:.85rem;white-space:nowrap;color:var(--text,inherit)}
+.keel-perm-chips{display:flex;flex-wrap:wrap;gap:.35rem;list-style:none;margin:0;padding:0}
+.keel-perm-chips li{font-family:var(--mono,ui-monospace,monospace);font-size:.72rem;line-height:1.3;padding:.22rem .55rem;border-radius:999px;background:var(--mint,#e3f3ef);color:var(--text,inherit);border:1px solid var(--line,#e3e6ec)}
+.keel-users-table{width:100%}
+.keel-user-actions{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center}
+.keel-user-actions button{margin:0}
+.keel-role-unassigned{color:var(--amber,#8a5a12);font-weight:650}
+html[data-theme="dark"] .keel-perm-chips li{background:var(--calm-accent-soft,#1a3330);color:var(--calm-ink,#e7eaf0);border-color:var(--calm-line,#2d3440)}
+html[data-theme="dark"] .keel-perm-grid label{background:transparent;border-color:var(--calm-line,#2d3440)}
