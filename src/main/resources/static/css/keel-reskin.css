@@ -224,7 +224,7 @@ body.login-body {
 
 .projectcard-progress {
     height: 6px;
-    background: #edf1f3;
+    background: var(--surface-2, #edf1f3);
     border-radius: 3px;
     overflow: hidden;
     margin: 0.65rem 0 0.5rem;
@@ -243,12 +243,7 @@ body.login-body {
     color: var(--muted);
     margin-bottom: 0.65rem;
 }
-.projectcard-tagline {
-    font-size: 0.78rem;
-    color: var(--muted);
-    margin: 0 0 0.35rem;
-    line-height: 1.4;
-}
+/* .projectcard-tagline removed pack 11 */
 
 /* —— Auth —— */
 .loginpage {
@@ -562,7 +557,7 @@ label.field > span {
     overflow: auto;
 }
 .table--runs th {
-    background: #fafbfc;
+    background: var(--table-head, #fafbfc);
     color: #74848e;
     font-size: 0.62rem;
     letter-spacing: 0.04em;
@@ -722,7 +717,7 @@ label.field > span {
 }
 
 .keel-page .workspace-launcher {
-    background: #eff7f4;
+    background: var(--mint, #eff7f4);
     border: 1px solid #bbddd4;
     border-radius: 8px;
 }
@@ -732,7 +727,7 @@ label.field > span {
 }
 .keel-page .workspace-pinned,
 .keel-page #pinned-project-bar {
-    background: #fafbfc;
+    background: var(--panel);
     border: 1px solid var(--line);
     border-radius: 8px;
     padding: 0.75rem 1rem;
@@ -741,7 +736,7 @@ label.field > span {
 
 .keel-page .table th {
     text-align: left;
-    background: #fafbfc;
+    background: var(--table-head, #fafbfc);
     padding: 0.7rem 1.15rem;
     color: #74848e;
     font-size: 0.62rem;
@@ -754,7 +749,7 @@ label.field > span {
     border-top: 1px solid #eef1f3;
     font-size: 0.78rem;
 }
-.keel-page .table tbody tr:hover { background: #f7faf9; }
+.keel-page .table tbody tr:hover { background: var(--table-hover, #f7faf9); }
 
 .keel-page .evidence-tabs {
     display: flex;
@@ -776,20 +771,20 @@ label.field > span {
 
 .keel-page .ir-block,
 .keel-page #ir-block {
-    background: #f7faf9;
+    background: var(--table-hover, #f7faf9);
     border: 1px solid #dfe8e4;
     border-radius: 7px;
 }
 .keel-page .triage-box,
 .keel-page #run-compare-panel {
-    background: #fafbfc;
+    background: var(--panel);
     border: 1px solid var(--line);
     border-radius: 8px;
 }
 
 .keel-page .progress-track {
     height: 8px;
-    background: #edf1f3;
+    background: var(--surface-2, #edf1f3);
     border-radius: 4px;
     overflow: hidden;
     margin: 1rem 0;
@@ -912,7 +907,7 @@ button.ghost {
 .button.ghost:hover,
 button.ghost:hover {
     filter: none;
-    background: #f0f7f6;
+    background: var(--mint, #f0f7f6);
     border-color: #9ebbb9;
 }
 .button.small,

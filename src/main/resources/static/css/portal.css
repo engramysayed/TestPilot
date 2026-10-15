@@ -113,29 +113,13 @@ body.app-body {
     min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
-    /* Quiet overlay-style bar. Track stays invisible; thumb only exists while content overflows. */
-    scrollbar-width: thin;
-    scrollbar-color: rgba(158, 184, 190, 0.42) transparent;
+    /* Pack 11: no visible scrollbar; still scrollable */
+    scrollbar-width: none;
 }
 .sidebar-nav::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
-}
-.sidebar-nav::-webkit-scrollbar-track,
-.sidebar-nav::-webkit-scrollbar-corner {
-    background: transparent;
-}
-.sidebar-nav::-webkit-scrollbar-button {
     display: none;
     width: 0;
     height: 0;
-}
-.sidebar-nav::-webkit-scrollbar-thumb {
-    background: rgba(158, 184, 190, 0.42);
-    border-radius: 999px;
-}
-.sidebar-nav::-webkit-scrollbar-thumb:hover {
-    background: rgba(125, 219, 201, 0.62);
 }
 .sidebar-nav a {
     display: flex;
@@ -1253,7 +1237,7 @@ code, .mono { font-family: var(--mono); font-size: 0.86em; }
     border-radius: 16px;
     border: 1px solid var(--line);
     overflow: hidden;
-    background: #ffffff;
+    background: var(--panel, #ffffff);
     box-shadow: 0 10px 28px rgba(18, 34, 44, 0.08);
 }
 .compare-pane.bad {
@@ -1331,7 +1315,7 @@ code, .mono { font-family: var(--mono); font-size: 0.86em; }
     border: 1px solid var(--line);
     border-radius: 12px;
     padding: 0.75rem 0.85rem;
-    background: #fff;
+    background: var(--panel, #fff);
 }
 .compare-tc-card-head {
     display: flex;
@@ -1984,7 +1968,7 @@ button.danger,
     border: none;
 }
 .access-actions .btn-deny {
-    background: #fff;
+    background: var(--panel, #fff);
     color: #9f2f2f;
     border: 1px solid rgba(201, 79, 79, 0.45);
     box-shadow: none;
@@ -2155,7 +2139,7 @@ button.danger,
 .lib-table tbody tr.lib-detail { display: none; }
 .lib-table tbody tr.lib-detail.is-open { display: table-row; }
 .lib-table tbody tr.lib-detail td {
-    background: #f7fafc;
+    background: var(--surface-2, #f7fafc);
     border-bottom: 1px solid var(--line);
     padding: 0 0.75rem 0.9rem;
 }
@@ -2182,7 +2166,7 @@ button.danger,
 .lib-diff-before, .lib-diff-after {
     white-space: pre-wrap;
     word-break: break-word;
-    background: #f7fafc;
+    background: var(--surface-2, #f7fafc);
     border-radius: 8px;
     padding: 0.4rem 0.5rem;
 }
@@ -2202,10 +2186,10 @@ button.danger,
     border: 1px solid var(--line);
     border-radius: 12px;
     overflow: hidden;
-    background: #fff;
+    background: var(--panel, #fff);
 }
 .lib-step-table thead th {
-    background: #eef5f7;
+    background: var(--table-head, #eef5f7);
     color: var(--muted);
     font-size: 0.7rem;
     font-weight: 700;
@@ -2221,7 +2205,7 @@ button.danger,
     border-bottom: 1px solid rgba(15, 40, 50, 0.06);
 }
 .lib-step-table tbody tr:last-child td { border-bottom: none; }
-.lib-step-table tbody tr:nth-child(even) td { background: #fafcfd; }
+.lib-step-table tbody tr:nth-child(even) td { background: var(--surface-2, #fafcfd); }
 .lib-step-table .lib-step-num {
     width: 2rem;
     color: var(--muted);
@@ -3746,7 +3730,7 @@ body:not(.app-body) .shell {
 #recent-execute-table tbody tr.exec-run-row:hover { background: rgba(13, 154, 168, 0.06); }
 #recent-execute-table tbody tr.exec-run-row.is-expanded { background: rgba(13, 154, 168, 0.08); }
 #recent-execute-table tbody tr.exec-run-detail td {
-    background: #f7fafc;
+    background: var(--surface-2, #f7fafc);
     padding: 0.75rem;
     border-bottom: 1px solid var(--line);
 }

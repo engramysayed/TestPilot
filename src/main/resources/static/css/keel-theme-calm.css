@@ -32,6 +32,10 @@
     --amber: var(--calm-flaky);
     --panel: var(--calm-card);
     --panel-solid: var(--calm-card);
+    --table-head: #fafbfc;
+    --table-hover: #f7faf9;
+    --surface: var(--calm-card);
+    --surface-2: #f6f7f9;
     --sidebar: var(--nav);
     --text: var(--calm-ink);
     --muted: var(--calm-muted);
@@ -53,6 +57,10 @@ html[data-theme="dark"] {
     --calm-line: #2d3440;
     --calm-accent: #7ecfc5;
     --calm-accent-soft: #1a3330;
+    --table-head: #232933;
+    --table-hover: #1a1f28;
+    --surface: var(--calm-card);
+    --surface-2: #1a1f28;
     --calm-ok: #7fd19c;
     --calm-ok-bg: #1f3428;
     --calm-fix: #86c6e4;
@@ -409,3 +417,212 @@ html[data-theme="dark"]:not(.auth-shell) .loginform {
 .sidehelp-accent { color: #9eb8b3; }
 
 a { color: var(--calm-accent); }
+
+
+/* ===== Pack 11: dark-mode white-bleed kill (last-in-stack) ===== */
+html[data-theme="dark"] .table--runs th,
+html[data-theme="dark"] .keel-page .table th,
+html[data-theme="dark"] table.table th,
+html[data-theme="dark"] .table thead th,
+html[data-theme="dark"] .lib-step-table thead th {
+    background: var(--table-head, #232933) !important;
+    color: var(--calm-muted) !important;
+    border-color: var(--calm-line) !important;
+}
+html[data-theme="dark"] .keel-page .table td,
+html[data-theme="dark"] table.table td,
+html[data-theme="dark"] .lib-step-table tbody td {
+    border-color: var(--calm-line) !important;
+    background: transparent;
+    color: var(--calm-ink);
+}
+html[data-theme="dark"] .keel-page .table tbody tr:hover,
+html[data-theme="dark"] table.table tbody tr:hover,
+html[data-theme="dark"] .lib-table tbody tr.lib-row:hover,
+html[data-theme="dark"] #recent-execute-table tbody tr.exec-run-row:hover {
+    background: var(--table-hover, #1a1f28) !important;
+}
+html[data-theme="dark"] .lib-step-table tbody tr:nth-child(even) td,
+html[data-theme="dark"] .lib-table tbody tr.lib-detail td,
+html[data-theme="dark"] .lib-diff-before,
+html[data-theme="dark"] .lib-diff-after,
+html[data-theme="dark"] #recent-execute-table tbody tr.exec-run-detail td {
+    background: var(--surface-2, #1a1f28) !important;
+    border-color: var(--calm-line) !important;
+    color: var(--calm-ink);
+}
+html[data-theme="dark"] .keel-page .workspace-pinned,
+html[data-theme="dark"] .keel-page #pinned-project-bar,
+html[data-theme="dark"] .keel-page .triage-box,
+html[data-theme="dark"] .keel-page #run-compare-panel,
+html[data-theme="dark"] .keel-page .ir-block,
+html[data-theme="dark"] .keel-page #ir-block,
+html[data-theme="dark"] .keel-page .workspace-launcher,
+html[data-theme="dark"] .compare-pane,
+html[data-theme="dark"] .compare-tc-card,
+html[data-theme="dark"] .lib-step-table,
+html[data-theme="dark"] .lib-diff,
+html[data-theme="dark"] .access-empty {
+    background: var(--calm-card) !important;
+    border-color: var(--calm-line) !important;
+    color: var(--calm-ink);
+    box-shadow: none !important;
+}
+html[data-theme="dark"] .compare-pane.bad,
+html[data-theme="dark"] .compare-pane.good {
+    background: var(--calm-card) !important;
+}
+html[data-theme="dark"] .keel-page .progress-track,
+html[data-theme="dark"] .projectcard-progress {
+    background: var(--calm-line) !important;
+}
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .keel-usage-summary .stat-card {
+    background: var(--calm-card) !important;
+    border-color: var(--calm-line) !important;
+    box-shadow: none !important;
+    color: var(--calm-ink);
+}
+html[data-theme="dark"] .stat-card:hover {
+    box-shadow: none !important;
+}
+html[data-theme="dark"] .keel-modal,
+html[data-theme="dark"] .keel-approve-card {
+    background: var(--calm-card) !important;
+    border-color: var(--calm-line) !important;
+    color: var(--calm-ink);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45) !important;
+}
+html[data-theme="dark"] .keel-modal select,
+html[data-theme="dark"] .keel-modal input,
+html[data-theme="dark"] .keel-modal textarea {
+    background: var(--calm-card) !important;
+    border-color: var(--calm-line) !important;
+    color: var(--calm-ink) !important;
+}
+html[data-theme="dark"] .access-actions .btn-deny {
+    background: var(--calm-card) !important;
+    color: var(--calm-bad) !important;
+    border-color: rgba(241, 154, 154, 0.45) !important;
+}
+html[data-theme="dark"] .access-card {
+    background: var(--calm-card) !important;
+    border-color: var(--calm-line) !important;
+}
+html[data-theme="dark"] .keel-page .button.ghost:hover,
+html[data-theme="dark"] .button.ghost:hover,
+html[data-theme="dark"] button.ghost:hover {
+    background: var(--calm-accent-soft) !important;
+    border-color: var(--calm-accent) !important;
+}
+html[data-theme="dark"] pre.mono,
+html[data-theme="dark"] .mono,
+html[data-theme="dark"] code:not(pre code) {
+    background: var(--surface-2, #1a1f28);
+    border-color: var(--calm-line);
+    color: var(--calm-ink);
+}
+html[data-theme="dark"] .keel-pending-banner {
+    background: var(--calm-flaky-bg) !important;
+    border-color: rgba(240, 194, 122, 0.4) !important;
+    color: var(--calm-flaky) !important;
+}
+/* Hide sidebar scrollbar (still scrollable) */
+.sidebar-nav {
+    scrollbar-width: none !important;
+    scrollbar-color: transparent transparent !important;
+}
+.sidebar-nav::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+/* Pack 11 extras: topbar moon/sun + EN Account menu (gap fill — was on synced tip, not git tip) */
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-left: auto;
+}
+.topbar-actions .avatar--top { margin-left: 0; }
+.theme-toggle.theme-toggle--icon {
+    margin: 0;
+    width: 2rem;
+    height: 2rem;
+    min-width: 2rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid var(--line, #e3e6ec);
+    background: var(--panel, #fff);
+    color: var(--text, #1d2433);
+    font-size: 1rem;
+    line-height: 1;
+    text-align: center;
+}
+.theme-toggle.theme-toggle--icon:hover {
+    background: var(--table-hover, #f7faf9);
+}
+html[data-theme="dark"] .theme-toggle.theme-toggle--icon {
+    border-color: var(--calm-line, #2d3440);
+    background: var(--calm-card, #1d222b);
+    color: var(--calm-ink, #e7eaf0);
+}
+.theme-toggle-ico { pointer-events: none; }
+.topbar-en { position: relative; }
+.topbar-en-btn {
+    border: 1px solid var(--line, #e3e6ec);
+    background: var(--panel, #fff);
+    color: var(--text, #1d2433);
+    border-radius: 999px;
+    padding: 0.28rem 0.7rem;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+}
+html[data-theme="dark"] .topbar-en-btn {
+    border-color: var(--calm-line, #2d3440);
+    background: var(--calm-card, #1d222b);
+    color: var(--calm-ink, #e7eaf0);
+}
+.topbar-en-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.35rem);
+    min-width: 9.5rem;
+    background: var(--panel, #fff);
+    border: 1px solid var(--line, #e3e6ec);
+    border-radius: 10px;
+    box-shadow: var(--calm-shadow, 0 4px 14px rgba(20,30,50,0.08));
+    padding: 0.35rem;
+    z-index: 40;
+}
+html[data-theme="dark"] .topbar-en-menu {
+    background: var(--calm-card, #1d222b);
+    border-color: var(--calm-line, #2d3440);
+    box-shadow: none;
+}
+.topbar-en-item,
+.topbar-en-item--btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.82rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: 7px;
+    text-decoration: none;
+    cursor: pointer;
+}
+.topbar-en-item:hover,
+.topbar-en-item--btn:hover { background: var(--table-hover, #f7faf9); }
+html[data-theme="dark"] .topbar-en-item:hover,
+html[data-theme="dark"] .topbar-en-item--btn:hover { background: rgba(255,255,255,0.06); }
+.topbar-en-logout { margin: 0; }

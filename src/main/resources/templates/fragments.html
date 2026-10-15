@@ -58,6 +58,7 @@
         <script defer th:src="@{/js/keel-theme.js}"></script>
         <script defer th:src="@{/js/keel-credits.js}"></script>
         <script defer th:src="@{/js/keel-sidebar-ia.js}"></script>
+        <script defer th:src="@{/js/keel-confirm.js}"></script>
         <meta id="keel-approval-meta" th:attr="data-approval-status=${approvalStatus}, data-credits-enabled=${creditsEnabled}"/>
         <script>
             (function () {
@@ -92,7 +93,50 @@
           th:attr="data-balance=${creditsBalance}" hidden>
         <span id="keel-credits-chip-label">… credits</span>
     </span>
-    <span class="avatar avatar--top" th:text="${userInitials}" th:title="${email}">RS</span>
+    <div class="topbar-actions">
+        <button type="button" class="theme-toggle theme-toggle--icon" id="keel-theme-toggle"
+                aria-pressed="true" aria-label="Switch to light theme" title="Theme">
+            <span class="theme-toggle-ico" aria-hidden="true">☀</span>
+        </button>
+        <div class="topbar-en" data-keel-menu>
+            <button type="button" class="topbar-en-btn" id="keel-en-btn" aria-haspopup="menu"
+                    aria-expanded="false" aria-controls="keel-en-menu">EN</button>
+            <div class="topbar-en-menu" id="keel-en-menu" role="menu" hidden>
+                <a role="menuitem" href="/account" class="topbar-en-item">Account</a>
+                <form th:action="@{/logout}" method="post" class="topbar-en-logout" role="none">
+                    <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit" role="menuitem" class="topbar-en-item topbar-en-item--btn">Log out</button>
+                </form>
+            </div>
+        </div>
+        <span class="avatar avatar--top" th:text="${userInitials}" th:title="${email}">RS</span>
+    </div>
+    <script>
+        (function () {
+            var wrap = document.querySelector('.topbar-en');
+            var btn = document.getElementById('keel-en-btn');
+            var menu = document.getElementById('keel-en-menu');
+            if (!wrap || !btn || !menu) return;
+            function close() {
+                menu.hidden = true;
+                btn.setAttribute('aria-expanded', 'false');
+            }
+            function open() {
+                menu.hidden = false;
+                btn.setAttribute('aria-expanded', 'true');
+            }
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (menu.hidden) open(); else close();
+            });
+            document.addEventListener('click', function (e) {
+                if (!wrap.contains(e.target)) close();
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') close();
+            });
+        })();
+    </script>
 </header>
 
 <aside class="sidebar" th:fragment="sidebar">
@@ -161,11 +205,7 @@
             <span>Guide</span>
         </a>
 
-        <p class="sidebar-label">Account</p>
-        <a href="/account" th:classappend="${navActive == 'account'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 19.5c1.2-3 3.5-4.5 7-4.5s5.8 1.5 7 4.5"/></svg>
-            <span>Account</span>
-        </a>
+        <!-- Account under EN menu (pack 11) -->
         <th:block th:if="${isAdmin}">
             <p class="sidebar-label">Admin</p>
             <a href="/admin/users" th:classappend="${navActive == 'users'} ? 'active'">
@@ -183,12 +223,7 @@
         </th:block>
     </nav>
 
-
-    <button type="button" class="theme-toggle" id="keel-theme-toggle" aria-pressed="true">
-        Light theme
-    </button>
-
-    <script>
+<script>
         (function () {
             var chip = document.getElementById('sidebar-job-chip');
             var labelEl = document.getElementById('sidebar-job-chip-label');
@@ -264,22 +299,14 @@
     </script>
 
     <div class="sidebar-foot">
-        <div class="sidehelp">
-            Designed for clear evidence.<br/>
-            <span class="sidehelp-accent">Web today. Mobile next.</span>
-        </div>
-        <div class="sidebar-account" th:if="${email}">
+<div class="sidebar-account" th:if="${email}">
             <span class="avatar" th:text="${userInitials}">RS</span>
             <div>
                 <span class="sidebar-account-name" th:text="${workspaceTitle}">My workspace</span>
                 <small th:text="${workspaceSubtitle}">Owner</small>
             </div>
         </div>
-        <form th:action="@{/logout}" method="post" class="sidebar-logout">
-            <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-            <button type="submit">Log out</button>
-        </form>
-    </div>
+</div>
 </aside>
 </body>
 </html>

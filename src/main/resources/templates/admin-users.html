@@ -196,7 +196,8 @@
         });
         accessList.querySelectorAll('[data-deny]').forEach(btn => {
             btn.addEventListener('click', async () => {
-                if (!confirm('Deny this access request?')) return;
+                if (!(await (window.keelConfirm || function(o){return Promise.resolve(confirm(o.message||o));})(
+                    { title: 'Deny request', message: 'Deny this access request?', confirmLabel: 'Deny', danger: true }))) return;
                 btn.disabled = true;
                 const r = await fetch('/api/admin/access-requests/' + btn.getAttribute('data-deny') + '/deny', {
                     method: 'POST',
@@ -234,9 +235,12 @@
                 if (st === 'PENDING_APPROVAL' || st === 'REJECTED') {
                     actions += '<button type="button" data-approve-user="' + esc(u.id) + '" data-email="' + esc(u.email) + '">Approve…</button> ';
                 }
+                /* Pack 11: Reject only on pending — not on Active (APPROVED) */
+                if (st === 'PENDING_APPROVAL') {
+                    actions += '<button type="button" class="danger" data-reject-user="' + esc(u.id) + '">Reject</button> ';
+                }
                 if (st === 'APPROVED') {
                     actions += '<button type="button" data-lock-user="' + esc(u.id) + '">Lock</button> ';
-                    actions += '<button type="button" class="danger" data-reject-user="' + esc(u.id) + '">Reject</button> ';
                 }
                 if (st === 'LOCKED') {
                     actions += '<button type="button" data-approve-user="' + esc(u.id) + '" data-email="' + esc(u.email) + '">Approve…</button> ';
@@ -264,10 +268,11 @@
         wireCreditsAdminActions();
         ub.querySelectorAll('[data-del-user]').forEach(btn => {
             btn.addEventListener('click', async () => {
-                if (!confirm('Delete this user and their projects/jobs from the portal DB?')) return;
+                if (!(await (window.keelConfirm || function(o){return Promise.resolve(confirm(o.message||o));})(
+                    { title: 'Delete user', message: 'Delete this user and their projects/jobs from the portal DB?', confirmLabel: 'Delete', danger: true }))) return;
                 const r = await fetch('/api/admin/users/' + btn.getAttribute('data-del-user'), { method: 'DELETE', headers: { 'X-Keel-Requested-With': 'Keel' } });
                 const d = await r.json();
-                if (!r.ok) { alert(d.message || 'Delete failed'); return; }
+                if (!r.ok) { await (window.keelAlert || function(m){alert(typeof m==='string'?m:m.message);return Promise.resolve();})(d.message || 'Delete failed'); return; }
                 load();
             });
         });
@@ -284,7 +289,7 @@
         ib.querySelectorAll('[data-del-invite]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const r = await fetch('/api/admin/invites/' + btn.getAttribute('data-del-invite'), { method: 'DELETE', headers: { 'X-Keel-Requested-With': 'Keel' } });
-                if (!r.ok) { const d = await r.json(); alert(d.message || 'Failed'); return; }
+                if (!r.ok) { const d = await r.json(); await (window.keelAlert || function(m){alert(typeof m==='string'?m:m.message);return Promise.resolve();})(d.message || 'Failed'); return; }
                 load();
             });
         });
@@ -509,7 +514,8 @@
             return;
         }
         document.getElementById('keel-approve-modal').hidden = true;
-        alert((data.message || 'User approved.') + ' Next: use Set credits if they should have a balance (manual — no free trial).');
+        await (window.keelAlert || function(m){alert(typeof m==='string'?m:m.message);return Promise.resolve();})(
+            (data.message || 'User approved.') + ' Next: use Set credits if they should have a balance (manual — no free trial).');
         load();
     });
 
@@ -520,7 +526,7 @@
             body: JSON.stringify({ status: status, note: note || undefined })
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) { alert(data.message || 'Update failed'); return; }
+        if (!res.ok) { await (window.keelAlert || function(m){alert(typeof m==='string'?m:m.message);return Promise.resolve();})(data.message || 'Update failed'); return; }
         load();
     }
 
@@ -562,7 +568,7 @@
         document.getElementById('keel-usage-email').textContent = email;
         const res = await fetch('/api/admin/credits/' + userId + '/ledger', { credentials: 'same-origin', headers: HDR });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) { alert(data.message || 'Could not load usage'); return; }
+        if (!res.ok) { await (window.keelAlert || function(m){alert(typeof m==='string'?m:m.message);return Promise.resolve();})(data.message || 'Could not load usage'); return; }
         document.getElementById('keel-usage-balance').textContent = data.balance != null ? data.balance : 0;
         document.getElementById('keel-usage-spent').textContent = data.spentInRange != null ? data.spentInRange : 0;
         document.getElementById('keel-usage-granted').textContent = data.grantedInRange != null ? data.grantedInRange : 0;
@@ -592,10 +598,20 @@
             btn.onclick = () => openApprove(btn.getAttribute('data-approve-user'), btn.getAttribute('data-email'));
         });
         document.querySelectorAll('[data-lock-user]').forEach(btn => {
-            btn.onclick = () => { if (confirm('Lock this account?')) setStatus(btn.getAttribute('data-lock-user'), 'LOCKED'); };
+            btn.onclick = async () => {
+                if (await (window.keelConfirm || function(o){return Promise.resolve(confirm(o.message||o));})(
+                    { title: 'Lock account', message: 'Lock this account?', confirmLabel: 'Lock', danger: true })) {
+                    setStatus(btn.getAttribute('data-lock-user'), 'LOCKED');
+                }
+            };
         });
         document.querySelectorAll('[data-reject-user]').forEach(btn => {
-            btn.onclick = () => { if (confirm('Reject this account?')) setStatus(btn.getAttribute('data-reject-user'), 'REJECTED'); };
+            btn.onclick = async () => {
+                if (await (window.keelConfirm || function(o){return Promise.resolve(confirm(o.message||o));})(
+                    { title: 'Reject account', message: 'Reject this account?', confirmLabel: 'Reject', danger: true })) {
+                    setStatus(btn.getAttribute('data-reject-user'), 'REJECTED');
+                }
+            };
         });
         document.querySelectorAll('[data-set-role]').forEach(btn => {
             btn.onclick = () => openSetRole(btn.getAttribute('data-set-role'), btn.getAttribute('data-email'),

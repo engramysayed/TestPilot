@@ -134,9 +134,18 @@
         var del = document.createElement('button');
         del.type = 'button'; del.className = 'button danger'; del.textContent = 'Delete';
         del.addEventListener('click', async function () {
-          if (!confirm('Delete role ' + role.name + '?')) return;
+          var ok = await (window.keelConfirm || function(o){return Promise.resolve(confirm(o.message||o));})({
+            title: 'Delete role',
+            message: 'Delete role ' + role.name + '?',
+            confirmLabel: 'Delete',
+            danger: true
+          });
+          if (!ok) return;
           var d = await api('/api/admin/roles/' + encodeURIComponent(role.roleId), { method: 'DELETE' });
-          if (!d.ok) { alert(d.data.message || 'Delete failed'); return; }
+          if (!d.ok) {
+            await (window.keelAlert || function(m){alert(typeof m==='string'?m:m.message);return Promise.resolve();})(d.data.message || 'Delete failed');
+            return;
+          }
           loadRoles();
         });
         actions.appendChild(del);

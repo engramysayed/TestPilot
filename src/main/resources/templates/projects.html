@@ -197,12 +197,6 @@
             nameLink.className = 'project-name-link';
             title.appendChild(nameLink);
 
-            const tagline = document.createElement('p');
-            tagline.className = 'projectcard-tagline';
-            tagline.textContent = p.baseUrl
-                ? truncateUrl(p.baseUrl, 52)
-                : 'Configure base URL in project settings when ready.';
-
             const caseCount = p.libraryCaseCount ?? 0;
             const rate = p.provenPassRatePercent;
             const kpiWrap = document.createElement('div');
@@ -253,7 +247,7 @@
             deleteBtn.addEventListener('click', () => openDeleteModal(p));
             footer.appendChild(deleteBtn);
 
-            card.append(top, title, tagline, kpiWrap, meta, footer);
+            card.append(top, title, kpiWrap, meta, footer);
             cards.appendChild(card);
         });
     }

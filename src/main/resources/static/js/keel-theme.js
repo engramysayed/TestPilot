@@ -13,9 +13,16 @@
         var btn = document.getElementById('keel-theme-toggle');
         if (btn) {
             var dark = t === 'dark';
-            /* Label is the action / destination theme */
-            btn.textContent = dark ? 'Light theme' : 'Dark theme';
             btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+            btn.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+            btn.title = dark ? 'Light theme' : 'Dark theme';
+            var ico = btn.querySelector('.theme-toggle-ico');
+            if (ico) {
+                /* Show destination / alternate mode icon */
+                ico.textContent = dark ? '☀' : '☾';
+            } else if (!btn.classList.contains('theme-toggle--icon')) {
+                btn.textContent = dark ? 'Light theme' : 'Dark theme';
+            }
         }
     }
     function isAuthShell() {
