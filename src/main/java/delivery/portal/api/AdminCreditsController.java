@@ -1,6 +1,6 @@
 package delivery.portal.api;
 
-import delivery.portal.persistence.PortalUser;
+import delivery.portal.roles.RolesService;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.credits.CreditService;
 import org.springframework.http.HttpStatus;
@@ -16,21 +16,23 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.util.Map;
 
-/** Platform ADMIN only (ROLE_ADMIN via /api/admin/**). */
+/** Account owner only. A role named Admin cannot grant credits. */
 @RestController
 @RequestMapping("/api/admin/credits")
 public class AdminCreditsController {
     private final CreditService credits;
     private final CurrentUserService currentUser;
+    private final RolesService roles;
 
-    public AdminCreditsController(CreditService credits, CurrentUserService currentUser) {
+    public AdminCreditsController(CreditService credits, CurrentUserService currentUser, RolesService roles) {
         this.credits = credits;
         this.currentUser = currentUser;
+        this.roles = roles;
     }
 
     @GetMapping("/costs")
     public Map<String, Object> costs() {
-        requireAdmin();
+        requireOwner();
         return credits.costs().asCostsDto();
     }
 
@@ -38,7 +40,7 @@ public class AdminCreditsController {
     public ResponseEntity<?> setCredits(
             @PathVariable("userId") Long userId,
             @RequestBody SetCreditsRequest body) {
-        requireAdmin();
+        requireOwner();
         try {
             Map<String, Object> out = credits.setCredits(
                     userId,
@@ -62,7 +64,7 @@ public class AdminCreditsController {
             @RequestParam(value = "from", required = false) String from,
             @RequestParam(value = "to", required = false) String to,
             @RequestParam(value = "jobKind", required = false) String jobKind) {
-        requireAdmin();
+        requireOwner();
         try {
             return ResponseEntity.ok(credits.usageForUser(
                     userId, parseInstant(from), parseInstant(to), jobKind));
@@ -77,10 +79,8 @@ public class AdminCreditsController {
     public record SetCreditsRequest(String mode, Long amount, String note, String idempotencyKey) {
     }
 
-    private void requireAdmin() {
-        if (currentUser.requireUser().getRole() != PortalUser.Role.ADMIN) {
-            throw new SecurityException("ADMIN role required for credits admin");
-        }
+    private void requireOwner() {
+        roles.requireHeadAdmin(currentUser.requireUser());
     }
 
     private static Instant parseInstant(String raw) {

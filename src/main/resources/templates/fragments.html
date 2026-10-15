@@ -207,6 +207,10 @@
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4z M3 7l9 5 9-5 M12 12v9"/></svg>
             <span>Automation</span>
         </a>
+        <a href="/pricing" th:classappend="${navActive == 'pricing'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span>Pricing</span>
+        </a>
         <a href="/guide" th:classappend="${navActive == 'guide'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4z"/><path d="M13 4h7v14a2 2 0 0 1-2 2h-7a2 2 0 0 0 2-2z"/><path d="M9 8h1 M9 12h1"/></svg>
             <span>Guide</span>
@@ -215,7 +219,11 @@
         <!-- Account under EN menu (pack 11) -->
         <th:block th:if="${isAdmin}">
             <p class="sidebar-label">Admin</p>
-            <a href="/admin/users" th:classappend="${navActive == 'users'} ? 'active'">
+            <a href="/admin/pricing" th:if="${headAdmin}" th:classappend="${navActive == 'prices'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span>Prices</span>
+            </a>
+            <a href="/admin/users" th:if="${headAdmin}" th:classappend="${navActive == 'users'} ? 'active'">
                 <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z M9 12l2 2 4-4"/></svg>
                 <span>Administration</span>
             </a>
@@ -223,7 +231,7 @@
                 <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M4 12h16"/><path d="M12 4a14 14 0 0 1 0 16"/><path d="M12 4a14 14 0 0 0 0 16"/></svg>
                 <span>Domains</span>
             </a>
-            <a href="/admin/roles" th:if="${rolesUiEnabled}" th:classappend="${navActive == 'roles'} ? 'active'" data-perm="roles.manage">
+            <a href="/admin/roles" th:if="${headAdmin and rolesUiEnabled}" th:classappend="${navActive == 'roles'} ? 'active'">
                 <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16 M4 12h16 M4 17h10"/></svg>
                 <span>Roles</span>
             </a>

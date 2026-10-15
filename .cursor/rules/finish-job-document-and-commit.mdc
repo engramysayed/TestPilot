@@ -1,0 +1,27 @@
+---
+description: After each finished job, document it and commit it, even when it still has defects
+alwaysApply: true
+---
+
+# Finish the job: document, then commit
+
+When a requested job is finished, do both before you stop. Defects, follow-up edits, and a later rewrite do not delay this.
+
+## Document
+
+- Add a dated section to `CHANGELOG.md`.
+- Update `docs/PRODUCT.md` when a person using Keel would notice the change.
+- Update `docs/handoff/` and `docs/ENGINEERING_HANDOFF.md`.
+- Update the machine notes in `D:\priv\testpilot\handoffs\`, starting with `RESUME-2026-10-15.md`.
+- Name what shipped, how to use it, and the known defects.
+
+## Commit
+
+- Commit that documentation with the code.
+- Author and committer are `rsayed <rsayed@axisapp.com>`. No `Co-authored-by: Cursor` trailer. If `git commit` adds one, use `git commit-tree` instead. Do not change git config.
+- Leave out secrets, `api-keys.local.bat`, `META-INF/`, build output, and the portal database.
+- Do not push unless the user asked. A keel push goes to `keel` only, never public `origin`.
+
+## Example
+
+A pricing page that still needs a copy edit is still finished enough: write the changelog and handoff, including the copy defect, then commit. Do not wait for the next edit.

@@ -34,6 +34,24 @@ Account switches persist on `portal_users.alert_prefs`. A job that newly becomes
 - `RecordedDraftsTest`, recording tests, and `GenerateMvcTest` / `PlainLanguageNavTest` passed on 2026-10-15.
 - Browser: Record wizard, Keel bar, Check this, This page, and the build card. A save on an account with 0 credits kept the test case and did not start the job (a build costs 25). The temporary project was deleted.
 
+## Prices and the account owner
+
+`/pricing` is a read-only table for any signed-in user. `/admin/pricing` saves `service_prices` (code, label, cost). `CreditCostTable` reads that table. Hibernate `ddl-auto=update` creates the table. Missing rows are seeded from `delivery.credits.cost.*` (10 / 5 / 25 / 15).
+
+`BillableQuantity` decides the multiplier at debit time:
+
+- Generate: 1 (one writing job).
+- Execute and Automate: runnable workbook rows. `MANUAL` is excluded. An unreadable workbook counts as 1 so a broken file is not free.
+- Hunt: `iterationCeiling × cycleCeiling × actionCapPerCycle` from `hunt-runs/{jobId}/request.json`, after `HuntRequest.normalize()`. The default is 80. The hunt form shows `iterations × cycles × actions × unit price`.
+
+Only a user whose stored role name is `OWNER` (`RolesService.isHeadAdmin`) can open Prices, Administration, and Roles, or call the user, credit, and role admin APIs. A role named Admin is refused with 403. Domains stays available to `ROLE_ADMIN`.
+
+Known defect: the stored Bug Hunter unit is still 15, so a default hunt costs 1,200 until the owner lowers it. Generate is still one charge per job. Both can be edited again.
+
+## Finish each job
+
+After a finished job, document it (this file, `CHANGELOG.md`, `docs/PRODUCT.md`, and `D:\priv\testpilot\handoffs\`) and commit it, even when it still has defects. The Cursor rule is `.cursor/rules/finish-job-document-and-commit.mdc`. Do not push unless asked.
+
 ## Still parked
 
 - Mobile is not ready for a phone. Unit commit `3ba9079` may be on `keel/main` with this push. Appium doctor stays on the personal machine.

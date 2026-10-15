@@ -119,6 +119,23 @@ public class RolesService {
         requirePermission(actor, PermissionCodes.ROLES_MANAGE);
     }
 
+    /** The account owner. A role that merely says Admin cannot change prices, users, or credits. */
+    public boolean isHeadAdmin(PortalUser user) {
+        if (user == null || user.getRoleId() == null || user.getRoleId().isBlank()) {
+            return false;
+        }
+        ensureSystemRolesSeeded();
+        return roles.findByRoleId(user.getRoleId().trim())
+                .map(role -> SystemRoleNames.OWNER.equalsIgnoreCase(role.getName()))
+                .orElse(false);
+    }
+
+    public void requireHeadAdmin(PortalUser user) {
+        if (!isHeadAdmin(user)) {
+            throw RoleRequiredException.forbidden("Only the account owner can do that.");
+        }
+    }
+
     public List<Map<String, Object>> listRoles() {
         ensureSystemRolesSeeded();
         List<Map<String, Object>> out = new ArrayList<>();

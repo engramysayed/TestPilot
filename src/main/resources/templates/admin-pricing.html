@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Prices')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1>Prices</h1>
+            <p class="lede">Set the name and the price of one unit. A job multiplies that price by how many units it includes, for every account.</p>
+        </div>
+    </div>
+    <section class="panel">
+        <p class="ok" th:if="${saved}">Saved. Every account is charged these prices now.</p>
+        <p class="error" th:if="${error}" th:text="${error}"></p>
+        <form class="price-editor" method="post" th:action="@{/admin/pricing}">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Service name</th>
+                    <th>Charged as</th>
+                    <th>What it covers</th>
+                    <th>Credits each</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${prices}">
+                    <td>
+                        <input type="text" th:name="'label_' + ${row.code}" th:value="${row.label}" maxlength="80" required>
+                    </td>
+                    <td th:text="${row.unit}">Each test case</td>
+                    <td th:text="${row.detail}">Charged once for each test case.</td>
+                    <td>
+                        <input type="number" th:name="'cost_' + ${row.code}" th:value="${row.cost}" min="0" max="1000000" step="1" required>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <button class="btn btn-primary" type="submit">Save prices</button>
+        </form>
+        <p class="muted">Everyone can read these on <a href="/pricing">Pricing</a>. Only this account can change them.</p>
+    </section>
+</main>
+</div>
+</body>
+</html>

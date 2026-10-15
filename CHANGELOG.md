@@ -6,6 +6,41 @@ The **full product** (every surface, not only the last week) is [`docs/PRODUCT.m
 
 Internal design notes stay under `docs/superpowers/`. Engineers can start from `docs/ENGINEERING_HANDOFF.md`.
 
+## 2026-10-15 — Prices per unit, and only the account owner can change them
+
+**Surfaces:** **Pricing** (`/pricing`), **Prices** (`/admin/pricing`), **Administration**, **Roles**, **Execute**, **Automate**, **Bug Hunter**, **Record**, **Guide**.
+
+### What you can do
+
+- Open **Pricing** and read the price of one unit for each service. The table cannot be edited.
+- As the account owner, open **Admin → Prices** and change the service name and the price of one unit. Saving applies that price to every account.
+- A run charges the Run a test price once per test case. A framework build charges the Build the framework price once per test case, including a build from a recording. A manual-only row is not charged.
+- Bug Hunter charges the Bug Hunter price once per allowed action: iterations × cycles × actions per cycle. The hunt form shows the total before you start.
+- Writing test cases stays one price for the whole writing job.
+
+### Why
+
+A flat price treated a one-case run and a large run as the same job. Hiding an admin button was not enough to keep prices, users, and credit grants with the account owner.
+
+### How to use it
+
+1. **Pricing** shows the current unit prices.
+2. The account owner opens **Prices**, edits the name and the credits for one unit, and saves.
+3. Start a run, a framework build, or a hunt as usual. Keel multiplies the unit price by the cases or allowed actions in that job.
+4. If 15 was the old price of a whole Bug Hunter run, lower the Bug Hunter unit. The default hunt allows 80 actions (2 × 8 × 5), so 15 each costs 1,200.
+
+### What we did not change
+
+- Product credits stay on. Grants are still manual.
+- Writing test cases is still one charge for the job, not one charge per story.
+- Domains stays available to a user whose role is Admin.
+
+### Known limits
+
+- The server refuses a non-owner, including a role named Admin, on prices, user management, credit grants, and roles. The check is the stored Owner role, not a hidden button.
+- A default Bug Hunter at 15 credits per action is expensive until the owner sets a smaller unit.
+- This note is written while those prices can still be edited again.
+
 ## 2026-10-15 — Record a test, then build the framework
 
 **Surfaces:** **Record** (`/record`), **Account** alerts, **Generate**, **Execute**, **Automate**, **Guide**, project cards, roles.

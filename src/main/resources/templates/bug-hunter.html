@@ -132,6 +132,7 @@
                 <span class="field-hint">Clicks or typing per round</span>
             </label>
         </div>
+        <p class="muted" id="hunt-price-hint">This hunt is charged per allowed action: iterations × cycles × actions.</p>
 
         <div class="hunt-library tc-multiselect" id="hunt-library-panel">
             <span class="tc-ms-label">Library cases</span>
@@ -939,6 +940,36 @@
     } else if (triagePanel) {
         triagePanel.hidden = true;
     }
+
+    let huntUnit = null;
+    function paintHuntPrice() {
+        const hint = document.getElementById('hunt-price-hint');
+        if (!hint) return;
+        const iterations = Math.min(5, Math.max(1, Number(document.getElementById('iteration-ceiling').value) || 2));
+        const cycles = Math.min(30, Math.max(1, Number(document.getElementById('cycle-ceiling').value) || 8));
+        const actions = Math.min(15, Math.max(1, Number(document.getElementById('action-cap').value) || 5));
+        const total = iterations * cycles * actions;
+        if (huntUnit == null) {
+            hint.textContent = 'This hunt allows ' + total + ' actions. Each one costs the Bug Hunter price.';
+            return;
+        }
+        hint.textContent = 'This hunt allows ' + total + ' actions. At ' + huntUnit
+            + ' credits each, it costs ' + (total * huntUnit) + '.';
+    }
+    ['iteration-ceiling', 'cycle-ceiling', 'action-cap'].forEach(function (id) {
+        const input = document.getElementById(id);
+        if (input) input.addEventListener('input', paintHuntPrice);
+    });
+    paintHuntPrice();
+    fetch('/api/account/credits', { credentials: 'same-origin', headers: API_HEADERS })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (data) {
+            if (data && data.costs && typeof data.costs.hunt === 'number') {
+                huntUnit = data.costs.hunt;
+                paintHuntPrice();
+            }
+        })
+        .catch(function () { /* hint already shows the action count */ });
 
     loadProjects();
 })();

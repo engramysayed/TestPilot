@@ -11,7 +11,7 @@ This document points engineers at deeper material already in the tree.
 | Topic | Where to look |
 |-------|----------------|
 | Record → framework (skip the browser prove pass) | `docs/superpowers/plans/2026-10-15-record-to-framework.md` |
-| 2026-10-15 portal session (Record, alerts, layout) | `docs/handoff/2026-10-15-portal-session.md` |
+| 2026-10-15 portal session (Record, alerts, layout, unit prices, owner-only admin) | `docs/handoff/2026-10-15-portal-session.md` |
 | End-to-end conversion | `docs/ops/end-to-end-flow.md` |
 | Local Ollama | `docs/ops/ollama-local.md`, `docs/ops/local-live-ollama.md` (if present) |
 | Portal restart / Windows | `docs/ops/portal-restart.md`, `docs/ops/windows-vps-setup.md` |

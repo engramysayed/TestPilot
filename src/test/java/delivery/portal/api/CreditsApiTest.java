@@ -26,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -247,6 +248,121 @@ public class CreditsApiTest extends AbstractTestNGSpringContextTests {
         credits.tryDebitForJob(job); // idempotent
         Assert.assertEquals(credits.userCreditsDto(u.getId()).get("balance"), 75L); // 100-25
         Assert.assertEquals(credits.userCreditsDto(u.getId()).get("lifetimeSpent"), 25L);
+    }
+
+    @Test
+    public void executeAndHuntScaleByUnit() throws Exception {
+        PortalUser u = new PortalUser();
+        u.setEmail("scale-" + System.nanoTime() + "@testpilot.local");
+        u.setPasswordHash(encoder.encode("ScalePass1!"));
+        u.setRole(PortalUser.Role.USER);
+        u.setEnabled(true);
+        u.setApprovalStatus(ApprovalStatus.APPROVED);
+        users.save(u);
+        credits.setCredits(u.getId(), "GRANT_DELTA", 200, "pack", "s-" + UUID.randomUUID(), null);
+
+        Path excel = Files.createTempFile("credits-two", ".xlsx");
+        delivery.excel.ManualTcExcelWriter.write(excel, java.util.List.of(
+                new delivery.excel.ManualTestCase("TC_1", "Pay", "", "Open the shop", "The shop opens", "P2", "", "", "", "", ""),
+                new delivery.excel.ManualTestCase("TC_2", "Ship", "", "Open the shop", "The shop opens", "P2", "", "", "", "EXECUTE", "")
+        ));
+        credits.tryDebitForJob(new delivery.portal.model.JobRecord(
+                "exec_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12),
+                "proj_scale", u.getId(), "EXECUTE", excel, "https://example.com", "", "", false,
+                delivery.portal.model.JobRecord.JobKind.EXECUTE));
+        Assert.assertEquals(credits.userCreditsDto(u.getId()).get("balance"), 190L); // 200 - (2 × 5)
+
+        delivery.hunt.HuntRequest hunt = new delivery.hunt.HuntRequest();
+        hunt.setIterationCeiling(1);
+        hunt.setCycleCeiling(2);
+        hunt.setActionCapPerCycle(2);
+        Path request = Files.createTempFile("credits-hunt", ".json");
+        new com.fasterxml.jackson.databind.ObjectMapper().writeValue(request.toFile(), hunt);
+        credits.tryDebitForJob(new delivery.portal.model.JobRecord(
+                "hunt_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12),
+                "proj_scale", u.getId(), "HUNT", request, "https://example.com", "", "", false,
+                delivery.portal.model.JobRecord.JobKind.HUNT));
+        Assert.assertEquals(credits.userCreditsDto(u.getId()).get("balance"), 130L); // 190 - (4 × 15)
+    }
+
+    @Test
+    public void ownerSetsPricesForEveryoneAndANamedAdminCannot() throws Exception {
+        String view = mockMvc.perform(get("/pricing")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        Assert.assertTrue(view.contains("Write test cases"));
+        Assert.assertFalse(view.contains("name=\"cost_"), "pricing is view only");
+
+        mockMvc.perform(post("/admin/pricing")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .with(csrf())
+                        .param("label_GENERATE", "Write cases")
+                        .param("cost_GENERATE", "12")
+                        .param("label_EXECUTE", "Run a test")
+                        .param("cost_EXECUTE", "7")
+                        .param("label_AUTOMATE", "Build the framework")
+                        .param("cost_AUTOMATE", "25")
+                        .param("label_HUNT", "Bug Hunter")
+                        .param("cost_HUNT", "15"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(get("/api/account/credits")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.costs.generate").value(12))
+                .andExpect(jsonPath("$.costs.execute").value(7));
+
+        String memberView = mockMvc.perform(get("/pricing")
+                        .with(httpBasic("member-credits@testpilot.local", "MemberPass1!")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        Assert.assertTrue(memberView.contains("Write cases"));
+        Assert.assertTrue(memberView.contains("12"));
+        Assert.assertFalse(memberView.contains("name=\"cost_"));
+
+        PortalUser deputy = users.findByEmailIgnoreCase("deputy-admin@testpilot.local").orElseGet(() -> {
+            PortalUser u = new PortalUser();
+            u.setEmail("deputy-admin@testpilot.local");
+            u.setPasswordHash(encoder.encode("DeputyPass1!"));
+            u.setEnabled(true);
+            return u;
+        });
+        deputy.setRole(PortalUser.Role.ADMIN);
+        deputy.setApprovalStatus(ApprovalStatus.APPROVED);
+        deputy.setRoleId(rolesService.findByName(SystemRoleNames.ADMIN).orElseThrow().getRoleId());
+        users.save(deputy);
+
+        mockMvc.perform(get("/admin/pricing")
+                        .with(httpBasic("deputy-admin@testpilot.local", "DeputyPass1!")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/admin/users")
+                        .with(httpBasic("deputy-admin@testpilot.local", "DeputyPass1!")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/admin/credits/" + member.getId())
+                        .with(httpBasic("deputy-admin@testpilot.local", "DeputyPass1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mode\":\"GRANT_DELTA\",\"amount\":5,\"note\":\"nope\",\"idempotencyKey\":\"deputy-no\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/admin/users")
+                        .with(httpBasic("deputy-admin@testpilot.local", "DeputyPass1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/admin/pricing")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .with(csrf())
+                        .param("label_GENERATE", "Write test cases")
+                        .param("cost_GENERATE", "10")
+                        .param("label_EXECUTE", "Run a test")
+                        .param("cost_EXECUTE", "5")
+                        .param("label_AUTOMATE", "Build the framework")
+                        .param("cost_AUTOMATE", "25")
+                        .param("label_HUNT", "Bug Hunter")
+                        .param("cost_HUNT", "15"))
+                .andExpect(status().is3xxRedirection());
     }
 
     private String memberRoleIdForTest() {

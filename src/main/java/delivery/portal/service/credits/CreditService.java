@@ -171,10 +171,16 @@ public class CreditService {
         if (kind == null) {
             return;
         }
-        long cost = costs.cost(kind);
-        if (cost <= 0L) {
+        long unit = costs.cost(kind);
+        if (unit <= 0L) {
             return;
         }
+        int quantity = BillableQuantity.count(job);
+        if (quantity > 1 && unit > Long.MAX_VALUE / quantity) {
+            throw new IllegalArgumentException("This job is too large to price.");
+        }
+        long cost = unit * quantity;
+        String breakdown = BillableQuantity.breakdown(kind, quantity, unit);
         String jobId = job.getJobId();
         String key = "debit:job:" + jobId;
         Optional<CreditLedgerEntry> existing = ledger.findByIdempotencyKey(key);
@@ -190,7 +196,7 @@ public class CreditService {
         }
         long balance = row.getBalance();
         if (balance < cost) {
-            throw new InsufficientCreditsException(cost, balance, kind.name());
+            throw new InsufficientCreditsException(cost, balance, kind.name(), breakdown);
         }
         long newBal = balance - cost;
         row.setBalance(newBal);
@@ -199,7 +205,7 @@ public class CreditService {
         credits.save(row);
 
         CreditLedgerEntry entry = newLedger(
-                userId, -cost, newBal, REASON_JOB_DEBIT, jobId, kind.name(), null, key, null);
+                userId, -cost, newBal, REASON_JOB_DEBIT, jobId, kind.name(), null, key, breakdown);
         try {
             ledger.save(entry);
         } catch (DataIntegrityViolationException race) {

@@ -64,7 +64,7 @@
                 </header>
                 <div class="product-guide-cards">
                     <a class="product-guide-card" href="#generate"><strong>Write test cases</strong><span>Stories → quality gate → import</span></a>
-                    <a class="product-guide-card" href="#record"><strong>Record a test</strong><span>Click through Chrome → save steps</span></a>
+                    <a class="product-guide-card" href="#record"><strong>Record and automate</strong><span>Click in Chrome → save the test → build the code</span></a>
                     <a class="product-guide-card" href="#execute"><strong>Run tests</strong><span>Live browser + screenshots</span></a>
                     <a class="product-guide-card" href="#automate"><strong>Build code</strong><span>Workbook → framework ZIP</span></a>
                     <a class="product-guide-card" href="#hunt"><strong>Bug Hunter</strong><span>Explore — never auto-merges</span></a>
@@ -121,25 +121,48 @@
                 <header class="guide-section-head">
                     <span class="guide-num">02</span>
                     <div>
-                        <h2>Record</h2>
-                        <p class="panel-intro">On <a href="/record">Record</a>, you click through the real site in Chrome on this computer. Keel writes the steps in plain language and saves them into the project’s test cases. This is separate from Generate.</p>
+                        <h2>Record and automate</h2>
+                        <p class="panel-intro">On <a href="/record">Record</a> you do the test yourself in Chrome. Keel writes the steps, remembers the buttons, and can write the automation code from that. Chrome does not open a second time for the code.</p>
                     </div>
                 </header>
+                <div class="guide-callouts">
+                    <div class="callout ok">
+                        <strong>You get two things</strong>
+                        <p>A written test case in the project, and — if you leave Build on — the same kind of code package Automate makes.</p>
+                    </div>
+                </div>
                 <ol class="guide-howto">
-                    <li>Create a project and set its website under Settings. Record opens that address.</li>
-                    <li>Open <a href="/record">Record</a>, pick the project, and name the test.</li>
-                    <li>Press <strong>Start recording</strong>. A Chrome window opens. Click and type as a visitor would. The step list updates as you go.</li>
-                    <li>If the site asks you to sign in, type the password yourself. Keel does not store passwords. A password field is saved as “Enter password into the field”, with the value left out.</li>
-                    <li>Press <strong>Stop</strong>, check the steps, then <strong>Save test</strong>. The case is added to the project library (the next <code>TC_</code> number).</li>
-                    <li>On the Keel bar inside Chrome, <strong>Check this</strong> then click the heading or message that must be true. <strong>This page</strong> checks the address. Those become assertions in the test.</li>
-                    <li><strong>Build the framework</strong> uses the same framework builder as Automate, with the locators already captured. Chrome does not open again. The download appears under Code packages when the build finishes.</li>
+                    <li>Create a project and set its website. Record opens that address.</li>
+                    <li>Open <a href="/record">Record</a>. Pick the project. Give the test a short name, such as “Pay with a saved card”. Press Next.</li>
+                    <li>Leave sign-in on “No sign-in needed” unless a later run must log in first. Press Next.</li>
+                    <li>Press <strong>Start recording</strong>. Chrome opens on this computer. Click and type the way a visitor would. The step list on the Record page grows as you go.</li>
+                    <li>Use the Keel bar at the bottom of that Chrome window when you want a check:
+                        <ul>
+                            <li><strong>Steps</strong> — back to normal. Clicks and typing are recorded.</li>
+                            <li><strong>Check this</strong> — then click the heading or message that must be on the page, such as “Order confirmed”.</li>
+                            <li><strong>This page</strong> — confirm the address you landed on.</li>
+                        </ul>
+                    </li>
+                    <li>Press <strong>Stop</strong>. Read the steps. The card tells you how many buttons were remembered and how many checks you added.</li>
+                    <li>Leave <strong>Build the framework from this recording</strong> checked when that card has something to build. Leave <strong>Run it once</strong> off. Run it once is an Execute run: Keel opens the site again and finds the buttons from the written steps. It does not reuse the locators from the recording. Cursor is involved only when that project’s authoring engine is Precision.</li>
+                    <li>Press <strong>Save test</strong>. The case is the next <code>TC_</code> number in the project. If the build starts, open <strong>Watch the framework build</strong>. When it finishes, download the ZIP from <a href="/packages">Code packages</a>.</li>
                 </ol>
+                <div class="guide-callouts">
+                    <div class="callout ok">
+                        <strong>A short example</strong>
+                        <p>Open the shop, click Pay, press Check this and click “Payment received”, then press This page. Stop, keep Build checked, and save. You get the written steps and a Java test for that page.</p>
+                    </div>
+                    <div class="callout warn">
+                        <strong>Credits</strong>
+                        <p>Building the code charges the framework price once for this test case. Running it once charges the run price once for this test case. If the account cannot cover that, the written test is still saved and the job is not started.</p>
+                    </div>
+                </div>
                 <ul class="guide-points">
-                    <li><strong>Same website only.</strong> Another address has to be on the project’s website. Other hosts, and private addresses that are not that site, are refused.</li>
-                    <li><strong>Web only.</strong> A mobile-app project cannot be recorded. Recording opens Chrome.</li>
-                    <li><strong>Sign-in note.</strong> Choosing “Yes” adds a precondition that the later run should sign in with a project login account. It does not type the password for you.</li>
-                    <li><strong>Run it once.</strong> Leave this on to start a normal Execute check after save. It uses the first login account on the project when one exists. Turn it off to only save the steps.</li>
-                    <li><strong>One recording at a time.</strong> Starting again closes the previous Chrome window. Recording stops after 20 minutes; you can still save those steps.</li>
+                    <li><strong>Password.</strong> If the site asks you to sign in, type the password yourself. Keel does not store it. Choosing “Yes” on sign-in only adds a note that the later run should use a project login account.</li>
+                    <li><strong>A button with no stable name</strong> stays in the written test only. It is left out of the code. Checks on text and on the page address still go into the code.</li>
+                    <li><strong>Same website only.</strong> Another address has to be on the project’s website.</li>
+                    <li><strong>Web only.</strong> A mobile-app project cannot be recorded.</li>
+                    <li><strong>One recording at a time,</strong> for at most 20 minutes. You can still save the steps you have.</li>
                 </ul>
             </section>
 
@@ -212,7 +235,7 @@
                     <span class="guide-num">05</span>
                     <div>
                         <h2>Automate</h2>
-                        <p class="panel-intro">On <a href="/automate">Build code</a>, upload or select a workbook. Keel proves and heals steps, then builds a customer framework you can download.</p>
+                        <p class="panel-intro">On <a href="/automate">Build code</a>, upload or select a workbook. Keel opens the site, proves the steps, then builds a framework you can download. If you already clicked through the site on <a href="#record">Record</a>, use Build the framework there instead. That uses the same builder and does not open Chrome again.</p>
                     </div>
                 </header>
                 <ol class="guide-howto">
@@ -234,7 +257,7 @@
                     <span class="guide-num">06</span>
                     <div>
                         <h2>Framework export / packages</h2>
-                        <p class="panel-intro"><a href="/packages">Code packages</a> lists automation ZIPs Keel built. Download the framework for your project when Automate finishes.</p>
+                        <p class="panel-intro"><a href="/packages">Code packages</a> lists automation ZIPs Keel built. Download the framework when Automate finishes, or when a Record build finishes.</p>
                     </div>
                 </header>
                 <ul class="guide-points">
@@ -297,8 +320,9 @@
                     </article>
                 </div>
                 <ul class="guide-points">
-                    <li>Typical costs (when enabled): generate, execute, automate, and hunt each have their own debit amount.</li>
-                    <li>Signup requests need admin approval and a credit grant — nothing is added automatically.</li>
+                    <li>Open <a href="/pricing">Pricing</a> to see the price of one unit. A run charges that price once per test case. A framework build does the same. Bug Hunter charges once per allowed action (iterations × cycles × actions). Writing test cases stays one price for the job.</li>
+                    <li>Only the account owner can change those prices, manage users, or set a user’s credits. Hiding the button is not the check — the server refuses anyone else.</li>
+                    <li>Signup requests need the account owner’s approval and a credit grant — nothing is added automatically.</li>
                 </ul>
             </section>
 

@@ -14,7 +14,11 @@ import delivery.portal.service.PortalStore;
 import delivery.portal.service.WorkspacePackageService;
 import delivery.portal.service.credits.CreditService;
 import delivery.portal.roles.ApprovalStatus;
+import delivery.portal.roles.RolesService;
+import delivery.portal.service.credits.ServicePriceService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,12 +44,15 @@ public class PortalUiController {
     private final WorkspacePackageService workspacePackages;
     private final MobileProperties mobileProperties;
     private final CreditService creditService;
+    private final RolesService roles;
+    private final ServicePriceService prices;
 
     public PortalUiController(DashboardService dashboard, CurrentUserService currentUser,
                               PortalStore store, InviteService invites,
                               DeliveryPortalProperties portalProperties,
                               JobLinkEnricher jobLinks, WorkspacePackageService workspacePackages,
-                              MobileProperties mobileProperties, CreditService creditService) {
+                              MobileProperties mobileProperties, CreditService creditService,
+                              RolesService roles, ServicePriceService prices) {
         this.dashboard = dashboard;
         this.currentUser = currentUser;
         this.store = store;
@@ -55,6 +62,8 @@ public class PortalUiController {
         this.workspacePackages = workspacePackages;
         this.mobileProperties = mobileProperties;
         this.creditService = creditService;
+        this.roles = roles;
+        this.prices = prices;
     }
 
     private void addNav(Model model, String navActive) {
@@ -62,6 +71,7 @@ public class PortalUiController {
         String email = user.getEmail();
         model.addAttribute("email", email);
         model.addAttribute("isAdmin", user.getRole() == PortalUser.Role.ADMIN);
+        model.addAttribute("headAdmin", roles.isHeadAdmin(user));
         model.addAttribute("navActive", navActive);
         model.addAttribute("userInitials", initialsFromEmail(email));
         model.addAttribute("workspaceTitle", workspaceTitleFromEmail(email));
@@ -137,6 +147,8 @@ public class PortalUiController {
             case "guide" -> "Guide";
             case "tc-guide" -> "Guide";
             case "account" -> "Account";
+            case "pricing" -> "Pricing";
+            case "prices" -> "Prices";
             case "users" -> "Administration";
             case "domains" -> "Domains";
             case "roles" -> "Roles";
@@ -440,8 +452,39 @@ public class PortalUiController {
         return "redirect:/admin/users";
     }
 
+    @GetMapping("/pricing")
+    public String pricing(Model model) {
+        addNav(model, "pricing");
+        model.addAttribute("prices", prices.list());
+        return "pricing";
+    }
+
+    @GetMapping("/admin/pricing")
+    public String adminPricing(@RequestParam(value = "saved", required = false) String saved, Model model) {
+        requireHeadPage();
+        addNav(model, "prices");
+        model.addAttribute("prices", prices.list());
+        model.addAttribute("saved", saved != null);
+        return "admin-pricing";
+    }
+
+    @PostMapping("/admin/pricing")
+    public String savePricing(@RequestParam Map<String, String> form, Model model) {
+        requireHeadPage();
+        try {
+            prices.save(form);
+        } catch (IllegalArgumentException e) {
+            addNav(model, "prices");
+            model.addAttribute("prices", prices.list());
+            model.addAttribute("error", e.getMessage());
+            return "admin-pricing";
+        }
+        return "redirect:/admin/pricing?saved";
+    }
+
     @GetMapping("/admin/users")
     public String adminUsers(Model model) {
+        requireHeadPage();
         addNav(model, "users");
         return "admin-users";
     }
@@ -454,6 +497,7 @@ public class PortalUiController {
 
     @GetMapping("/admin/roles")
     public String adminRoles(Model model) {
+        requireHeadPage();
         addNav(model, "roles");
         model.addAttribute("rolesUiEnabled", portalProperties.isRolesUiEnabled());
         if (!portalProperties.isRolesUiEnabled()) {
@@ -466,5 +510,11 @@ public class PortalUiController {
     public String account(Model model) {
         addNav(model, "account");
         return "account";
+    }
+
+    private void requireHeadPage() {
+        if (!roles.isHeadAdmin(currentUser.requireUser())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the account owner can open this page.");
+        }
     }
 }

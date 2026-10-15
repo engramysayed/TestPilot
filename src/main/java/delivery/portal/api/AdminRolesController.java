@@ -1,7 +1,6 @@
 package delivery.portal.api;
 
 import delivery.portal.roles.PermissionCodes;
-import delivery.portal.roles.PermissionEnforcer;
 import delivery.portal.roles.RoleRequiredException;
 import delivery.portal.roles.RolesService;
 import delivery.portal.security.CurrentUserService;
@@ -25,18 +24,15 @@ import java.util.Map;
 public class AdminRolesController {
     private final RolesService roles;
     private final CurrentUserService currentUser;
-    private final PermissionEnforcer enforcer;
 
-    public AdminRolesController(RolesService roles, CurrentUserService currentUser,
-                                PermissionEnforcer enforcer) {
+    public AdminRolesController(RolesService roles, CurrentUserService currentUser) {
         this.roles = roles;
         this.currentUser = currentUser;
-        this.enforcer = enforcer;
     }
 
     @GetMapping("/roles")
     public Map<String, Object> list() {
-        enforcer.requireRolesManage(currentUser.requireUser());
+        requireOwner();
         return Map.of("roles", roles.listRoles());
     }
 
@@ -45,7 +41,7 @@ public class AdminRolesController {
 
     @PostMapping("/roles")
     public ResponseEntity<?> create(@RequestBody CreateRoleRequest body) {
-        enforcer.requireRolesManage(currentUser.requireUser());
+        requireOwner();
         Map<String, Object> created = roles.createRole(
                 body == null ? null : body.name(),
                 body == null ? null : body.description(),
@@ -59,7 +55,7 @@ public class AdminRolesController {
     @PatchMapping("/roles/{roleId}")
     public Map<String, Object> patch(@PathVariable("roleId") String roleId,
                                      @RequestBody PatchRoleRequest body) {
-        enforcer.requireRolesManage(currentUser.requireUser());
+        requireOwner();
         return roles.patchRole(roleId,
                 body == null ? null : body.name(),
                 body == null ? null : body.description(),
@@ -68,7 +64,7 @@ public class AdminRolesController {
 
     @DeleteMapping("/roles/{roleId}")
     public ResponseEntity<?> delete(@PathVariable("roleId") String roleId) {
-        enforcer.requireRolesManage(currentUser.requireUser());
+        requireOwner();
         try {
             roles.deleteRole(roleId);
             return ResponseEntity.ok(Map.of("status", "ok"));
@@ -87,7 +83,7 @@ public class AdminRolesController {
     @PostMapping("/users/{userId}/role")
     public Map<String, Object> assignRole(@PathVariable("userId") Long userId,
                                          @RequestBody AssignRoleRequest body) {
-        enforcer.requireRolesManage(currentUser.requireUser());
+        requireOwner();
         var user = roles.assignRole(userId, body == null ? null : body.roleId());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("userId", user.getId());
@@ -103,7 +99,7 @@ public class AdminRolesController {
     @PostMapping("/users/{userId}/approval")
     public ResponseEntity<?> setApproval(@PathVariable("userId") Long userId,
                                          @RequestBody ApprovalRequest body) {
-        enforcer.requireRolesManage(currentUser.requireUser());
+        requireOwner();
         try {
             var user = roles.setApproval(
                     userId,
@@ -129,7 +125,11 @@ public class AdminRolesController {
 
     @GetMapping("/permissions")
     public Map<String, Object> permissionsCatalog() {
-        enforcer.requireRolesManage(currentUser.requireUser());
+        requireOwner();
         return PermissionCodes.catalogPayload();
+    }
+
+    private void requireOwner() {
+        roles.requireHeadAdmin(currentUser.requireUser());
     }
 }

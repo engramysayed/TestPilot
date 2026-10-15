@@ -58,6 +58,7 @@ public class AdminUsersController {
 
     @GetMapping("/users")
     public Map<String, Object> users() {
+        requireOwner();
         Long me = currentUser.requireUserId();
         List<Map<String, Object>> userRows = users.findAllByOrderByIdAsc().stream()
                 .map(u -> {
@@ -121,6 +122,7 @@ public class AdminUsersController {
 
     @PostMapping("/invites")
     public ResponseEntity<Map<String, Object>> create(@RequestBody CreateInviteRequest body) {
+        requireOwner();
         try {
             boolean send = body == null || body.sendEmail() == null || body.sendEmail();
             var result = inviteService.createInvite(
@@ -151,6 +153,7 @@ public class AdminUsersController {
     public ResponseEntity<Map<String, Object>> approveAccess(
             @PathVariable("id") Long id,
             @RequestBody(required = false) ApproveAccessRequest body) {
+        requireOwner();
         try {
             boolean send = body == null || body.sendEmail() == null || body.sendEmail();
             var result = accessRequests.approve(id, currentUser.requireUserId(), send);
@@ -170,6 +173,7 @@ public class AdminUsersController {
 
     @PostMapping("/access-requests/{id}/deny")
     public ResponseEntity<Map<String, String>> denyAccess(@PathVariable("id") Long id) {
+        requireOwner();
         try {
             accessRequests.deny(id, currentUser.requireUserId());
             return ResponseEntity.ok(Map.of("status", "ok", "message", "Request denied"));
@@ -180,13 +184,19 @@ public class AdminUsersController {
 
     @DeleteMapping("/users/{userId}")
     public ResponseEntity<Map<String, String>> deleteUser(@PathVariable("userId") Long userId) {
+        requireOwner();
         adminUsers.deleteUser(userId, currentUser.requireUserId());
         return ResponseEntity.ok(Map.of("status", "ok", "message", "User deleted"));
     }
 
     @DeleteMapping("/invites/{inviteId}")
     public ResponseEntity<Map<String, String>> deleteInvite(@PathVariable("inviteId") Long inviteId) {
+        requireOwner();
         adminUsers.deleteInvite(inviteId);
         return ResponseEntity.ok(Map.of("status", "ok", "message", "Invite deleted"));
+    }
+
+    private void requireOwner() {
+        rolesService.requireHeadAdmin(currentUser.requireUser());
     }
 }

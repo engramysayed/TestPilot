@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Pricing')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1>Pricing</h1>
+            <p class="lede">The price of one unit. A job multiplies it by how many units it includes. The same prices apply to every account.</p>
+        </div>
+    </div>
+    <section class="panel">
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Service</th>
+                <th>Charged as</th>
+                <th>What it covers</th>
+                <th>Credits each</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="row : ${prices}">
+                <td th:text="${row.label}">Write test cases</td>
+                <td th:text="${row.unit}">Each test case</td>
+                <td th:text="${row.detail}">Charged once for each test case.</td>
+                <td th:text="${row.cost}">10</td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="muted">These numbers are the ones Keel charges. Changing them is limited to the account owner.</p>
+    </section>
+</main>
+</div>
+</body>
+</html>

@@ -33,8 +33,10 @@ Record can also build the ZIP directly from the locators it captured, without a 
 - **Account**: change password, change email.
 - **Account → vision**: choose the model that looks at the screen (UI-TARS by default, or Qwen vision). This does not choose the model that writes test cases. Writing uses Gemma (`gemma4:e2b`), chosen on Generate.
 - **Account → alerts**: Telegram, email, or Slack. Keel sends a message when a run fails or finishes with a block. Turning a channel on sends a confirmation first and does not save the switch if that send fails. The engine dead-man check is separate and stays off.
-- **Admin → Users**: user list, access requests, pending invites, invite email status.
-- **Admin → Domains**: see stored site folders (projects, locator memory, maps); relocate legacy folders; delete a whole domain (typed confirm).
+- **Pricing** (`/pricing`): a read-only table of each service, the unit it is charged as, and the current credit price. Every signed-in account sees the same numbers.
+- **Admin → Prices**: the account owner sets the service name and the price of one unit. Saving applies it to every account. A user whose role is only Admin is refused by the server.
+- **Admin → Users**, credit grants, and **Roles** are the same: only the account owner. Hiding the link is not the check.
+- **Admin → Domains**: see stored site folders (projects, locator memory, maps); relocate legacy folders; delete a whole domain (typed confirm). A user with the Admin role can still open Domains.
 
 ---
 
@@ -158,11 +160,26 @@ Optional, after a workbook exists:
 - The Keel bar in that window: **Steps**, **Check this** (click the text that must be on the page), **This page** (confirm the address).
 - Passwords are not stored. Choosing “sign in” only adds a note that the later run should use a project login.
 - **Save** adds the next `TC_` case to the library. Blank KeelPath, so Execute and Automate can both use it.
-- **Build the framework** starts the same framework writer Automate uses, and skips the browser prove pass. Chrome stays closed. This spends Automate credits. A step with no stable locator stays English only.
-- **Run it once** is optional and off by default. It starts a normal Execute check.
+- **Build the framework** starts the same framework writer Automate uses, and skips the browser prove pass. Chrome stays closed. It charges the framework price once for this test case. A step with no stable locator stays English only.
+- **Run it once** is optional and off by default. It starts a normal Execute check and charges the run price once for this test case. Keel opens the site again and finds the buttons from the written steps. It does not reuse the recorded locators. Cursor is used only when that project’s authoring engine is Precision.
 - One recording per person, 20 minutes maximum.
 
 Plan: `docs/superpowers/plans/2026-10-15-record-to-framework.md`.
+
+---
+
+## Pricing
+
+`/pricing` — view only. `/admin/pricing` — account owner only.
+
+| Service | Charged as |
+|---------|------------|
+| Write test cases | One writing job |
+| Run a test | Each test case in the run, including Run it once |
+| Build the framework | Each test case in the build, including a recording |
+| Bug Hunter | Each allowed action: iterations × cycles × actions per cycle |
+
+The number on the page is the price of one unit. Keel multiplies it when the job starts. A manual-only row is not included in a run or a build. The default hunt allows 80 actions (2 iterations × 8 cycles × 5 actions).
 
 ---
 
@@ -213,7 +230,7 @@ Exploratory live hunting from the project library. Goal: **break features** and 
 - **Credential profile** — hunter receives `$TARGET_USERNAME` / `$TARGET_PASSWORD` / `$TARGET_OTP` **tokens only** (never plaintext password in planner prompts or pack text). Choose **Open site only** for hunts without credentials.
 - Multi-select library TCs; optional free-text user story (OTP hints can be parsed from story text).
 - Planner: **Ollama** or **Cursor**.
-- Caps: scenario invent budget, cycle ceiling, **actions per cycle** (default 5).
+- Caps: scenario invent budget, iterations, cycles per iteration, **actions per cycle** (defaults 2 × 8 × 5). The credit charge is those three multiplied, times the Bug Hunter unit price. The form shows the total.
 - **DOM mode**: Auto (structured page map; full slim HTML if the map is thin) · Map only · Full slim.
 - **Use hunt strategies** (default on): happy path → empty fields → boundary → abuse → session → invent.
 
@@ -268,7 +285,7 @@ Run cases on the live site **without** building a customer ZIP.
 - Mix: library ∪ upload; **same `TC_ID` → upload wins**.
 - Optional PNG design mockup per TC (also on project Settings).
 - Optional **Review selected TCs with Cursor before run** (propose only). **Accept & run** uses that CSV **for this job only** — it does not save the library.
-- **Start execute run**. Cancel while running. (Authoring engine: **project Settings**.)
+- **Start execute run**. The run price is charged once for each runnable test case. Cancel while running. (Authoring engine: **project Settings**.)
 
 ### While it runs
 
@@ -306,7 +323,7 @@ Turn the workbook into a **downloadable Java Selenium TestNG** package.
 - **UPDATE** — only TCs whose Steps/ExpectedResult changed; needs a prior NEW (`UPDATE_WITHOUT_FRAMEWORK` if none).
 - **Client delivery** checkbox — extra final-revise audit before download (off unless the server has `delivery.final-revise.enabled=true` and `AGENTROUTER_API_KEY`). You can still download; the job may be marked as needing review.
 - Optional Cursor **pre-run review** (same propose-only rule as Execute).
-- KeelPath guard: cannot start Automate if there are no runnable rows (everything except `MANUAL`). (Authoring engine: **project Settings**.)
+- KeelPath guard: cannot start Automate if there are no runnable rows (everything except `MANUAL`). The framework price is charged once for each runnable test case, not once for the package. (Authoring engine: **project Settings**.)
 
 ### What the job does (in order)
 

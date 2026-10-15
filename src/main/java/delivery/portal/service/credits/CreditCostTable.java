@@ -1,5 +1,6 @@
 package delivery.portal.service.credits;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
@@ -9,14 +10,24 @@ import java.util.Map;
 @Component
 public class CreditCostTable {
     private final DeliveryCreditsProperties props;
+    private final ServicePriceService prices;
 
     public CreditCostTable(DeliveryCreditsProperties props) {
+        this(props, null);
+    }
+
+    @Autowired
+    public CreditCostTable(DeliveryCreditsProperties props, ServicePriceService prices) {
         this.props = props;
+        this.prices = prices;
     }
 
     public long cost(CreditsBillingKind kind) {
         if (kind == null) {
             return 0L;
+        }
+        if (prices != null) {
+            return prices.cost(kind);
         }
         return switch (kind) {
             case GENERATE -> props.getCost().getGenerate();
@@ -28,10 +39,10 @@ public class CreditCostTable {
 
     public Map<String, Object> asCostsDto() {
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("generate", props.getCost().getGenerate());
-        out.put("execute", props.getCost().getExecute());
-        out.put("automate", props.getCost().getAutomate());
-        out.put("hunt", props.getCost().getHunt());
+        out.put("generate", cost(CreditsBillingKind.GENERATE));
+        out.put("execute", cost(CreditsBillingKind.EXECUTE));
+        out.put("automate", cost(CreditsBillingKind.AUTOMATE));
+        out.put("hunt", cost(CreditsBillingKind.HUNT));
         out.put("enabled", props.isEnabled());
         return out;
     }

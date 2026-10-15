@@ -4,7 +4,7 @@ These files capture the **Grok Bot “Keel team”** workstream (Oct 2026) so yo
 
 | Document | Use when |
 |----------|----------|
-| [2026-10-15-portal-session.md](2026-10-15-portal-session.md) | **Start here for the current portal** — Record, framework build without a second browser, account alerts, layout |
+| [2026-10-15-portal-session.md](2026-10-15-portal-session.md) | **Start here for the current portal** — Record, unit prices, owner-only admin, account alerts, layout |
 | [grok-maestro-handoff-2026-10-14.md](grok-maestro-handoff-2026-10-14.md) | Earlier timeline — what landed locally, what did not, priorities |
 | [per-bot-status.md](per-bot-status.md) | Who (Codegen, Frontend, Backend, Automation, QA) did what |
 | [locator-and-split-roadmap.md](locator-and-split-roadmap.md) | Locator bottlenecks, borrowed ideas, portal/engine split, mobile gate |
