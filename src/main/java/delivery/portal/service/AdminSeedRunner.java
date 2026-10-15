@@ -36,7 +36,7 @@ public class AdminSeedRunner implements ApplicationRunner {
         String email = props.getAdminEmail();
         String password = props.getAdminPassword();
         if (email == null || email.isBlank() || password == null || password.isBlank()) {
-            log.warn("Admin seed skipped â€” set delivery.admin-email and delivery.admin-password");
+            log.warn("Admin seed skipped — set delivery.admin-email and delivery.admin-password");
             return;
         }
         if (users.existsByEmailIgnoreCase(email.trim())) {

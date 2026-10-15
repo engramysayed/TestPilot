@@ -126,7 +126,7 @@ public class ExecuteRunController {
             if ("NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(new ApiError("NO_GENERATED_WORKBOOK",
-                                "No generated workbook for this project â€” generate TCs first").asMap());
+                                "No generated workbook for this project — generate TCs first").asMap());
             }
             throw e;
         } catch (IllegalArgumentException e) {

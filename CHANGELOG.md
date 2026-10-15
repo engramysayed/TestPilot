@@ -6,6 +6,12 @@ The **full product** (every surface, not only the last week) is [`docs/PRODUCT.m
 
 Internal design notes stay under `docs/superpowers/`. Engineers can start from `docs/ENGINEERING_HANDOFF.md`.
 
+## 2026-10-16 — Dashes and dots on Execute
+
+**Surfaces:** **Execute**, and a few labels that used the same broken characters.
+
+A dash (`—`) and a middle dot (`·`) had been saved with the wrong encoding, so the page showed `Ã¢â‚¬â€` and `Ã‚Â·`. They read as punctuation again. The first row in **Credential profile** is the empty choice “— Select profile —”. It is not an account. Hard-refresh if the old letters are still on screen.
+
 ## 2026-10-15 — Project section tabs
 
 **Surfaces:** a project page.

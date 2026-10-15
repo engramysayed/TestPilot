@@ -72,7 +72,7 @@ public class SecurityConfig {
                                            RunnerRequestVerifier runnerRequestVerifier,
                                            CreditsAdminPermissionFilter creditsAdminPermissionFilter)
             throws Exception {
-        // Browser â†’ form login redirect (no HTTP Basic popup). API â†’ 401 JSON/status.
+        // Browser → form login redirect (no HTTP Basic popup). API → 401 JSON/status.
         LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
         entryPoints.put(new AntPathRequestMatcher("/api/**"),
                 new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));

@@ -11,7 +11,7 @@
     <div class="page-title">
         <div>
             <h1>Execute &amp; verify</h1>
-            <p class="lede">Run manual test cases against your app with DOM and vision Ã¢â‚¬â€ find bugs without codegen first.</p>
+            <p class="lede">Run manual test cases against your app with DOM and vision — find bugs without codegen first.</p>
         </div>
     </div>
 
@@ -26,12 +26,12 @@
         <p class="panel-intro">Execute runs prove cases against one project's base URL and credential profile.</p>
         <label>Project
             <select id="launcher-project-select">
-                <option value="">Ã¢â‚¬â€ Loading projects Ã¢â‚¬â€</option>
+                <option value="">— Loading projects —</option>
             </select>
         </label>
         <p id="launcher-err" class="error" hidden></p>
         <p id="launcher-no-projects" class="muted" hidden>
-            No projects yet Ã¢â‚¬â€ <a href="/projects">create one</a> first.
+            No projects yet — <a href="/projects">create one</a> first.
         </p>
         <p style="margin-top:0.75rem">
             <button type="button" class="button" id="launcher-continue">Continue</button>
@@ -41,15 +41,15 @@
     <div id="workspace-config" hidden>
     <section class="panel workspace-pinned">
         <p class="muted" style="margin:0">
-            Project: <strong id="pinned-project-name">Ã¢â‚¬â€</strong>
+            Project: <strong id="pinned-project-name">—</strong>
             <button type="button" class="button ghost" id="change-project" style="margin-left:0.5rem">Change</button>
         </p>
         <select id="project-select" hidden aria-hidden="true">
-            <option value="">Ã¢â‚¬â€ Loading projects Ã¢â‚¬â€</option>
+            <option value="">— Loading projects —</option>
         </select>
         <p id="project-err" class="error" hidden></p>
         <p id="no-projects" class="muted" hidden>
-            No projects yet Ã¢â‚¬â€
+            No projects yet —
             <a href="/projects">create one</a> to start executing.
         </p>
     </section>
@@ -63,7 +63,7 @@
         <div id="mobile-run-devices-list" class="mobile-devices-list"></div>
         <label id="mobile-device-select-label" hidden>Phone name
             <select id="mobile-device-select">
-                <option value="">Ã¢â‚¬â€ Select phone Ã¢â‚¬â€</option>
+                <option value="">— Select phone —</option>
             </select>
         </label>
     </section>
@@ -82,7 +82,7 @@
                 </p>
                 <label id="credential-label" hidden>Credential profile
                     <select name="credentialProfile" id="credentialProfile">
-                        <option value="">Ã¢â‚¬â€ Select profile Ã¢â‚¬â€</option>
+                        <option value="">— Select profile —</option>
                     </select>
                 </label>
             </div>
@@ -111,7 +111,7 @@
                         </button>
                         <div class="tc-ms-dropdown" id="tc-ms-dropdown" hidden>
                             <input type="search" id="tc-ms-search" class="tc-ms-search"
-                                   placeholder="Search casesÃ¢â‚¬Â¦" autocomplete="off"/>
+                                   placeholder="Search cases…" autocomplete="off"/>
                             <div class="tc-ms-toolbar">
                                 <button type="button" class="button ghost" id="lib-pick-all">Select all</button>
                                 <button type="button" class="button ghost" id="lib-pick-none">Clear</button>
@@ -147,7 +147,7 @@
                 <input type="checkbox" id="pre-run-review"/>
                 Review with Cursor before run (propose only)
             </label>
-            <p class="muted generate-option-hint">Findings only Ã¢â‚¬â€ nothing runs until you accept.</p>
+            <p class="muted generate-option-hint">Findings only — nothing runs until you accept.</p>
 
             <section class="panel" id="pre-run-review-panel" hidden
                      data-endpoint="/pre-run-authoring-review">
@@ -157,7 +157,7 @@
                     <div class="progress-track progress-track--indeterminate" aria-hidden="true">
                         <div class="progress-fill progress-fill--indeterminate"></div>
                     </div>
-                    <p class="muted generate-option-hint">Cursor is still reviewingÃ¢â‚¬Â¦</p>
+                    <p class="muted generate-option-hint">Cursor is still reviewing…</p>
                 </div>
                 <div id="pre-run-review-result" hidden>
                     <ul id="pre-run-review-findings" class="review-findings"></ul>
@@ -184,7 +184,7 @@
 
     <section class="panel" id="recent-execute-panel" hidden>
         <h2>Recent execute runs</h2>
-        <p class="panel-intro">Last five runs Ã¢â‚¬â€ open a row for status and results, or delete permanently.</p>
+        <p class="panel-intro">Last five runs — open a row for status and results, or delete permanently.</p>
         <table class="table" id="recent-execute-table">
             <thead>
             <tr>
@@ -207,9 +207,9 @@
             Job <code class="mono" id="job-id-display"></code>
         </p>
         <dl class="status">
-            <dt>Status</dt><dd id="job-status">Ã¢â‚¬â€</dd>
+            <dt>Status</dt><dd id="job-status">—</dd>
             <dt>Progress</dt><dd id="job-progress">0 / 0</dd>
-            <dt>Message</dt><dd id="job-message">Ã¢â‚¬â€</dd>
+            <dt>Message</dt><dd id="job-message">—</dd>
             <dt>Passed</dt><dd id="job-passed">0</dd>
             <dt>Blocked / TODO</dt><dd id="job-todo">0</dd>
         </dl>
@@ -283,7 +283,7 @@
 
     <section class="panel mobile-panel" id="mobile-results-panel" hidden>
         <h2>Phone run results</h2>
-        <p class="panel-intro">How the phone run went Ã¢â‚¬â€ overall outcome, what was observed on the device, and each case.</p>
+        <p class="panel-intro">How the phone run went — overall outcome, what was observed on the device, and each case.</p>
         <p id="mobile-results-err" class="error" hidden></p>
         <p id="mobile-results-empty" class="muted" hidden>No phone results for this run yet.</p>
         <div id="mobile-results-summary" class="mobile-results-summary" hidden>
@@ -293,11 +293,11 @@
         <div id="mobile-results-runtime" class="mobile-results-runtime" hidden>
             <h3>What ran on the phone</h3>
             <dl class="mobile-runtime-dl">
-                <div><dt>App</dt><dd id="mobile-rt-app">Ã¢â‚¬â€</dd></div>
-                <div><dt>Phone</dt><dd id="mobile-rt-device">Ã¢â‚¬â€</dd></div>
-                <div><dt>Tools</dt><dd id="mobile-rt-toolchain">Ã¢â‚¬â€</dd></div>
+                <div><dt>App</dt><dd id="mobile-rt-app">—</dd></div>
+                <div><dt>Phone</dt><dd id="mobile-rt-device">—</dd></div>
+                <div><dt>Tools</dt><dd id="mobile-rt-toolchain">—</dd></div>
             </dl>
-            <p class="muted mobile-runtime-note">Observed at run time Ã¢â‚¬â€ separate from the app/phone settings you saved earlier.</p>
+            <p class="muted mobile-runtime-note">Observed at run time — separate from the app/phone settings you saved earlier.</p>
         </div>
         <table class="table" id="mobile-results-table" hidden>
             <thead>
@@ -473,7 +473,7 @@
         clearPreRunReview();
         preRunReviewPanel.hidden = false;
         setPreRunReviewBusy(true);
-        preRunReviewStatus.textContent = 'Cursor is reviewing the exact selected suiteÃ¢â‚¬Â¦';
+        preRunReviewStatus.textContent = 'Cursor is reviewing the exact selected suite…';
         submitBtn.disabled = true;
         try {
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
@@ -567,7 +567,7 @@
         if (counts.VISION_ONLY) parts.push('Vision ' + counts.VISION_ONLY);
         if (counts.MANUAL) parts.push('Manual ' + counts.MANUAL);
         if (counts.BLANK) parts.push('blank ' + counts.BLANK);
-        return parts.length ? ' Ã‚Â· paths: ' + parts.join(', ') : '';
+        return parts.length ? ' · paths: ' + parts.join(', ') : '';
     }
 
     function workbookSource() {
@@ -769,7 +769,7 @@
 
     function renderDesignBadge(status) {
         if (!status) {
-            return '<span class="muted">Ã¢â‚¬â€</span>';
+            return '<span class="muted">—</span>';
         }
         return '<span class="' + designBadgeClass(status) + '">' + escapeHtml(status) + '</span>';
     }
@@ -787,7 +787,7 @@
         baseUrlRow.hidden = true;
         baseUrlMissing.hidden = true;
         credLabel.hidden = true;
-        credSel.innerHTML = '<option value="">Ã¢â‚¬â€ Select profile Ã¢â‚¬â€</option>';
+        credSel.innerHTML = '<option value="">— Select profile —</option>';
         credSel.required = false;
         submitBtn.disabled = false;
         hasGeneratedWorkbook = false;
@@ -816,11 +816,11 @@
         generatedWorkbookMeta = data;
         if (generatedPanel) generatedPanel.hidden = false;
         const when = data.createdAt ? new Date(data.createdAt).toLocaleString() : 'recently';
-        const ref = data.sourceRef ? ' Ã‚Â· ' + data.sourceRef : '';
+        const ref = data.sourceRef ? ' · ' + data.sourceRef : '';
         if (generatedMeta) {
-            const model = data.model ? ' Ã‚Â· model ' + data.model : '';
+            const model = data.model ? ' · model ' + data.model : '';
             const keel = formatKeelPathCounts(data.keelPathCounts);
-            generatedMeta.textContent = data.tcCount + ' test cases Ã‚Â· saved ' + when + ref + model + keel;
+            generatedMeta.textContent = data.tcCount + ' test cases · saved ' + when + ref + model + keel;
         }
         await loadLibraryPickList(projectId);
         syncWorkbookSourceUi();
@@ -849,7 +849,7 @@
             window.keelLoadMobileRunDevices(projectId);
         }
         const baseUrl = (project.baseUrl || '').trim();
-        // For ANDROID, website address is optional Ã¢â‚¬â€ base URL missing should not block the form when mobile is on
+        // For ANDROID, website address is optional — base URL missing should not block the form when mobile is on
         const isAndroid = (project.platform || 'WEB').toUpperCase() === 'ANDROID';
         projectHasBaseUrl = baseUrl.length > 0;
         if (projectHasBaseUrl) {
@@ -871,7 +871,7 @@
         });
         if (!credRes.ok) return;
         const profiles = await credRes.json();
-        credSel.innerHTML = '<option value="">Ã¢â‚¬â€ Select profile Ã¢â‚¬â€</option>';
+        credSel.innerHTML = '<option value="">— Select profile —</option>';
         profiles.forEach(c => {
             const opt = document.createElement('option');
             opt.value = c.profileName;
@@ -1256,11 +1256,11 @@
     }
 
     function renderJob(data) {
-        jobStatusEl.textContent = data.status || 'Ã¢â‚¬â€';
+        jobStatusEl.textContent = data.status || '—';
         const cur = data.progressCurrent || 0;
         const tot = data.progressTotal || 0;
         jobProgressEl.textContent = cur + ' / ' + tot;
-        jobMessageEl.textContent = data.message || 'Ã¢â‚¬â€';
+        jobMessageEl.textContent = data.message || '—';
         jobPassedEl.textContent = data.passedCount != null ? data.passedCount : 0;
         jobTodoEl.textContent = data.todoCount != null ? data.todoCount : 0;
         if (cancelWrap) {
@@ -1283,7 +1283,7 @@
         if (!tr) return;
         const cells = tr.querySelectorAll('td');
         if (cells.length < 3) return;
-        const status = data.status || 'Ã¢â‚¬â€';
+        const status = data.status || '—';
         cells[1].innerHTML = '<span class="' + jobBadgeClass(status) + '">' + escapeHtml(status) + '</span>';
         cells[2].textContent = (data.progressCurrent ?? 0) + ' / ' + (data.progressTotal ?? 0);
         const actions = tr.querySelector('.exec-run-actions');
@@ -1316,15 +1316,15 @@
         document.querySelectorAll('.force-stop-run-btn').forEach(b => buttons.push(b));
         buttons.forEach(b => {
             b.disabled = true;
-            b.textContent = 'StoppingÃ¢â‚¬Â¦';
+            b.textContent = 'Stopping…';
         });
         if (cancelWrap && id === activeJobId) cancelWrap.hidden = false;
         const hint = document.getElementById('cancel-hint');
         if (hint) {
-            hint.textContent = 'Force-stopping Ã¢â‚¬â€ job will show as CANCELLED.';
+            hint.textContent = 'Force-stopping — job will show as CANCELLED.';
         }
         if (jobMessageEl && id === activeJobId) {
-            jobMessageEl.textContent = 'Force-stoppingÃ¢â‚¬Â¦';
+            jobMessageEl.textContent = 'Force-stopping…';
         }
         try {
             const res = await fetch('/api/jobs/' + encodeURIComponent(id) + '/force-stop', {
@@ -1608,7 +1608,7 @@
         detailTr.className = 'execute-detail-row';
         const detailTd = document.createElement('td');
         detailTd.colSpan = 4;
-        detailTd.innerHTML = '<p class="muted">Loading timelineÃ¢â‚¬Â¦</p>';
+        detailTd.innerHTML = '<p class="muted">Loading timeline…</p>';
         detailTr.appendChild(detailTd);
         row.after(detailTr);
 
@@ -1840,7 +1840,7 @@
 </script>
 
 <script th:inline="javascript">
-/* M1-07 execute device diagnostics Ã¢â‚¬â€ shown for ANDROID projects when mobile enabled */
+/* M1-07 execute device diagnostics — shown for ANDROID projects when mobile enabled */
 (function () {
     const root = document.getElementById('execute-root');
     const mobileEnabled = root && root.dataset.mobileEnabled === 'true';
@@ -1903,7 +1903,7 @@
             if (err) err.hidden = true;
             list.innerHTML = '';
             if (select) {
-                select.innerHTML = '<option value="">Ã¢â‚¬â€ Select phone Ã¢â‚¬â€</option>';
+                select.innerHTML = '<option value="">— Select phone —</option>';
             }
             const devices = data.devices || [];
             if (empty) empty.hidden = devices.length > 0;
@@ -1916,7 +1916,7 @@
                 card.appendChild(h);
                 const meta = document.createElement('p');
                 meta.className = 'muted';
-                meta.textContent = [d.serialShort ? ('Device ID ' + d.serialShort) : null, d.model].filter(Boolean).join(' Ã‚Â· ');
+                meta.textContent = [d.serialShort ? ('Device ID ' + d.serialShort) : null, d.model].filter(Boolean).join(' · ');
                 card.appendChild(meta);
                 const row = document.createElement('div');
                 row.className = 'mobile-chip-row';

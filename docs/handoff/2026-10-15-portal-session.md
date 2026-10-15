@@ -28,6 +28,7 @@ Account switches persist on `portal_users.alert_prefs`. A job that newly becomes
 - Generate, Execute, and Automate extra sections start open. Project test-case rows stay collapsed because each row loads its steps.
 - Bug Hunter triage loads `GET /api/jobs?projectId=&kind=HUNT`.
 - Project sections (Summary, Test cases, Packages, Settings) are a pill row in `keel-theme-calm.css`. The open section is the filled pill.
+- Execute punctuation (`—`, `·`, `…`) was stored double-encoded in `execute.html`. The credential dropdown’s first row is the placeholder “— Select profile —”.
 - The users page no longer calls `GET /api/admin/users/approvals-stub` (that path collided with delete-user).
 
 ## Checks

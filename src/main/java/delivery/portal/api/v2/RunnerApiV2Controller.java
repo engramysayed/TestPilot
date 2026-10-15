@@ -40,7 +40,7 @@ import java.util.stream.Stream;
 /**
  * B06: Runner API v2 on the existing 8080 connector (contract: keel-contract runner-api-v2.yaml).
  * Authentication (runner token + HMAC signature, Â±5 min, nonce replay) happens in {@link PrivateRunnerFilter}.
- * Every job-scoped call is fenced by attempt id + cancel generation + fencing token. Cross-tenant job ids â†’ 404.
+ * Every job-scoped call is fenced by attempt id + cancel generation + fencing token. Cross-tenant job ids → 404.
  */
 @RestController
 @RequestMapping(RunnerHeaders.V2_PREFIX)
