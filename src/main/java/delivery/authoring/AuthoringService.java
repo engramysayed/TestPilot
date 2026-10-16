@@ -149,7 +149,9 @@ public class AuthoringService {
             List<DomCandidate> candidates,
             int limit
     ) {
-        int n = limit <= 0 ? 12 : limit;
+        int n = limit <= 0
+                ? CandidateScorer.SHORTLIST_MAX
+                : Math.min(limit, CandidateScorer.SHORTLIST_MAX);
         if (candidates == null || candidates.isEmpty()) {
             return List.of();
         }
@@ -158,13 +160,14 @@ public class AuthoringService {
             if (intent != null && StepIntentBinder.intentRequiresNamedActionControl(intent.text())) {
                 return List.of();
             }
+            // No distinctive-token requirement: still score the full pool.
             pool = candidates;
         }
-        List<DomCandidate> scored = StepIntentBinder.rankedCandidates(intent, pool);
-        if (!scored.isEmpty()) {
-            return scored.stream().limit(n).toList();
+        BindDecision decision = CandidateScorer.decide(CandidateScorer.score(intent, pool));
+        if (decision.kind() == BindDecision.Kind.EMPTY) {
+            return List.of();
         }
-        return pool.stream().limit(n).toList();
+        return decision.shortlist().stream().limit(n).toList();
     }
 
     /**

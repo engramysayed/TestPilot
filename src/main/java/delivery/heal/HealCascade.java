@@ -320,10 +320,11 @@ public class HealCascade {
                             + " (candidates=" + candidates.size() + " tokens=" + tokens + ")");
         }
 
+        int shortlistCap = delivery.authoring.CandidateScorer.SHORTLIST_MAX;
         List<DomCandidate> shortlist = widened
                 ? widenedShortlist(intent, candidates, 16)
                 : authoring.shortlistForIntent(
-                        intent, distinctivePool.isEmpty() ? candidates : distinctivePool, 12);
+                        intent, distinctivePool.isEmpty() ? candidates : distinctivePool, shortlistCap);
         if (widened) {
             LogsManager.info("HEAL_VISION_WIDEN: candidates=" + candidates.size()
                     + " shortlist=" + shortlist.size());
@@ -355,7 +356,16 @@ public class HealCascade {
         boolean answerable = shortlistCanAnswer(intent, shortlist);
         boolean ollamaAllowed = delivery.privacy.ProviderPolicy.fromEnvironment()
                 .allows(delivery.privacy.ProviderPolicy.Kind.OLLAMA);
-        if (tryOllama && answerable && ollamaAllowed) {
+        // CLEAR shortlist (one row): skip Ollama — deterministic named retry / that row.
+        if (tryOllama && answerable && ollamaAllowed && shortlist.size() == 1) {
+            LogsManager.info("HEAL_OLLAMA_SKIPPED: clear shortlist of 1 — deterministic");
+            List<ProvenStep> clearSteps = authoring.stepsPreferringCandidate(
+                    tcId, intent, candidates, shortlist.get(0).id(), widened);
+            if (validHealSteps(intent, candidates, clearSteps, widened, spentSteps)) {
+                LoopGuard.Verdict gv = guardRecord("clear:" + shortlist.get(0).id(), true, 0, se);
+                return stoppedOr(gv, HealResult.success(clearSteps, "retry"));
+            }
+        } else if (tryOllama && answerable && ollamaAllowed && shortlist.size() >= 2) {
             List<ProvenStep> ollamaSteps = authoring.healIntentWithOllama(
                     tcId, intent, candidates, shortlist, pngOrNull, reason, priorSteps, widened);
             if (validHealSteps(intent, candidates, ollamaSteps, widened, spentSteps)) {
