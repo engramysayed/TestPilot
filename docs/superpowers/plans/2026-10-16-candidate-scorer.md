@@ -57,7 +57,7 @@
 - Produces: `MARGIN=12`, `MIN_TOTAL=15`, `SHORTLIST_MAX=5`
 - Consumes: `PreferredHooksStore.current()`, `GeneratedIdDetector.looksGenerated`, `DomCandidateExtractor.isTestHookAttr` / strategy names
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```java
 package delivery.authoring;
@@ -99,13 +99,13 @@ public class CandidateScorerTest {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `mvn -pl keel-portal "-Dtest=CandidateScorerTest" test`
 
 Expected: FAIL compile (`CandidateScorer` does not exist) or assertion fail.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```java
 public record CandidateScore(
@@ -173,13 +173,13 @@ public final class CandidateScorer {
 
 Keep `containsPreferredHook` iterating `PreferredHooksStore.current()`.
 
-- [ ] **Step 4: Run tests and make sure they pass**
+- [x] **Step 4: Run tests and make sure they pass**
 
 Run: `mvn -pl keel-portal "-Dtest=CandidateScorerTest" test`
 
 Expected: Tests run: 4, Failures: 0.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/main/java/delivery/authoring/CandidateScore.java src/main/java/delivery/authoring/CandidateScorer.java src/test/java/delivery/authoring/CandidateScorerTest.java
