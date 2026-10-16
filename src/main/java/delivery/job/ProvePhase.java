@@ -17,6 +17,7 @@ import delivery.authoring.PrecisionCallBudget;
 import delivery.authoring.PrecisionJobConfig;
 import delivery.authoring.RequiredControlFiller;
 import delivery.authoring.DomCandidate;
+import delivery.authoring.BindQualityMetrics;
 import delivery.authoring.PageLocatorCatalog;
 import delivery.authoring.StepIntentBinder;
 import delivery.codegen.PageClusterer;
@@ -93,6 +94,7 @@ public class ProvePhase {
     private final JobProgressTracker progress;
     private DomainLocatorMemory locatorMemory = new DomainLocatorMemory();
     private final PageLocatorCatalog pageCatalog = new PageLocatorCatalog();
+    private final BindQualityMetrics bindQuality = new BindQualityMetrics();
     private Path locatorMemoryFile;
     /** When set (Execute jobs), mirror each draft to durable execute-runs storage after write. */
     private Path mirrorRoot;
@@ -414,6 +416,9 @@ public class ProvePhase {
 
         execution.beginTc(evidenceFolder);
         pageCatalog.clear();
+        bindQuality.bindClear = bindQuality.bindTie = bindQuality.bindEmpty = 0;
+        bindQuality.catalogHit = bindQuality.catalogRebuild = 0;
+        bindQuality.ollamaAsked = bindQuality.visionAsked = bindQuality.healEntered = 0;
         healCascade.setExcelOpenPath(StepIntentBinder.firstOpenPath(
                 tc.preconditions(), tc.steps()));
 
@@ -582,6 +587,7 @@ public class ProvePhase {
         provenAll = stampPageNames(provenAll, url);
         provenAll = ExpectedCoverageEnricher.enrich(tc, provenAll);
         loginSteps = stampLoginNames(loginSteps);
+        flushBindQuality(evidence == null ? "" : evidence.toString());
         String reject = SemanticPassGate.rejectReason(tc, provenAll, url);
         if (reject != null) {
             return new TcDraft(
@@ -752,7 +758,7 @@ public class ProvePhase {
             try {
                 NamedNavigationDiscovery.reveal(driverFactory.get(), intent);
                 String html = ProveWiring.authoringHtml(driverFactory.get(), intent.text(), proveHtmlBudget());
-                List<DomCandidate> live = pageCatalog.ensure(currentUrl(driverFactory), html);
+                List<DomCandidate> live = ensureCatalog(currentUrl(driverFactory), html);
                 List<ProvenStep> autoFillSteps = List.of();
                 if (precisionBindService == null && intent.kind() == StepIntentBinder.IntentKind.CLICK) {
                     List<StepIntentBinder.IntentLine> typeIntents = StepIntentBinder.parseIntents(tc).stream()
@@ -774,7 +780,7 @@ public class ProvePhase {
                         autoFillSteps = fillOutcome.provenSteps();
                         PostActionSettle.afterAction();
                         html = ProveWiring.authoringHtml(driverFactory.get(), intent.text(), proveHtmlBudget());
-                        live = pageCatalog.ensure(currentUrl(driverFactory), html);
+                        live = ensureCatalog(currentUrl(driverFactory), html);
                     }
                 }
 
@@ -1432,6 +1438,29 @@ public class ProvePhase {
         locatorMemory.save(locatorMemoryFile);
     }
 
+    
+    private List<DomCandidate> ensureCatalog(String url, String html) {
+        int before = pageCatalog.generation();
+        List<DomCandidate> live = pageCatalog.ensure(url, html);
+        if (pageCatalog.generation() > before) {
+            bindQuality.catalogRebuild++;
+        } else {
+            bindQuality.catalogHit++;
+        }
+        return live;
+    }
+
+    private void flushBindQuality(String evidenceDir) {
+        LogsManager.info(bindQuality.summaryLine());
+        if (evidenceDir == null || evidenceDir.isBlank()) {
+            return;
+        }
+        try {
+            bindQuality.writeJson(Path.of(evidenceDir).resolve("bind-quality.json"));
+        } catch (Exception e) {
+            LogsManager.info("BIND_QUALITY write failed: " + e.getMessage());
+        }
+    }
     private void rememberSuccessfulLocator(
             ConversionJobRequest request,
             WebDriverFactory driverFactory,

@@ -153,14 +153,20 @@ public final class CandidateScorer {
     private static int intentMatch(StepIntentBinder.IntentLine intent, DomCandidate c) {
         String quoted = StepIntentBinder.quotedVisibleName(intent.text());
         String label = normalizeLabel(c);
-        if (quoted != null && !quoted.isBlank()
-                && label.equals(quoted.trim().toLowerCase(Locale.ROOT))) {
-            return 40;
+        String valueHay = c.value() == null ? "" : c.value().toLowerCase(Locale.ROOT);
+        if (quoted != null && !quoted.isBlank()) {
+            String q = quoted.trim().toLowerCase(Locale.ROOT);
+            String qSlug = q.replace(' ', '-');
+            if (label.equals(q)
+                    || label.contains(q)
+                    || valueHay.contains(q)
+                    || (!qSlug.isBlank() && (label.contains(qSlug) || valueHay.contains(qSlug)))) {
+                return 40;
+            }
         }
         List<String> toks = tokens(intent.text());
         int onLabel = 0;
         int onValue = 0;
-        String valueHay = c.value() == null ? "" : c.value().toLowerCase(Locale.ROOT);
         for (String t : toks) {
             if (label.contains(t)) onLabel++;
             if (valueHay.contains(t)) onValue++;
