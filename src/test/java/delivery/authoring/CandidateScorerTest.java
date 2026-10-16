@@ -88,4 +88,18 @@ public class CandidateScorerTest {
         BindDecision d = CandidateScorer.decide(CandidateScorer.score(intent, cs));
         Assert.assertEquals(d.kind(), BindDecision.Kind.EMPTY);
     }
+
+    @Test
+    public void bindSingle_usesHookNotTextXpath() {
+        List<DomCandidate> cs = List.of(
+                new DomCandidate("c1", "xpath", "//button[normalize-space()='Save']", "button", "Save"),
+                new DomCandidate("c2", "css", "button[data-axis-test-id='save-hook']", "button", "Save")
+        );
+        var intent = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK, "Click Save");
+        StepIntentBinder.BindResult r = StepIntentBinder.bindSingle(intent, "TC", cs, List.of());
+        Assert.assertTrue(r.ok(), r.rejectReason());
+        Assert.assertTrue(r.steps().get(0).locatorValue().contains("save-hook"),
+                r.steps().get(0).locatorValue());
+    }
 }

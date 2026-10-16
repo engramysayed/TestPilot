@@ -17,12 +17,14 @@ import java.util.stream.Collectors;
 
 /**
  * Maps Excel manual wording to intents and binds each intent to one DOM candidate.
- * Site-agnostic: token overlap with live candidates only — no host/product hardcoding.
+ * Site-agnostic: token overlap with live candidates only â€” no host/product hardcoding.
  * Ollama is only for shortlist ties.
  */
 public final class StepIntentBinder {
-    /** Near-tie honesty gate: different controls within this many points → AMBIGUOUS. */
-    static final int NEAR_TIE_SCORE_WINDOW = 1;
+    /** Near-tie honesty gate: different controls within this many points â†’ AMBIGUOUS. */
+    /** @deprecated use {@link CandidateScorer#MARGIN} */
+    @Deprecated
+    static final int NEAR_TIE_SCORE_WINDOW = CandidateScorer.MARGIN;
 
     private static final Pattern AUTH_ENTRY_HREF = Pattern.compile(
             "(?i)(/login|/signin|/sign-in)(/|\\?|#|'|\"|$)|href\\s*=\\s*['\"][^'\"]*(/login|/signin|/sign-in)");
@@ -120,7 +122,7 @@ public final class StepIntentBinder {
         return !isPreludeCredentialKind(intent.kind());
     }
 
-    /** True for "open/go to login page" / visit app URL — handled by job navigate + login prelude. */
+    /** True for "open/go to login page" / visit app URL â€” handled by job navigate + login prelude. */
     public static boolean isNavigationalLoginOrUrl(String lower) {
         if (lower == null || lower.isBlank()) {
             return false;
@@ -138,11 +140,11 @@ public final class StepIntentBinder {
 
     private static final Pattern AT_PATH = Pattern.compile(
             "(?i)\\bat\\s+(https?://\\S+|/[\\w./~-]+)");
-    /** Only when the path is the open target itself — not a slash inside "Add/Remove". */
+    /** Only when the path is the open target itself â€” not a slash inside "Add/Remove". */
     private static final Pattern OPEN_PATH_DIRECT = Pattern.compile(
             "(?i)(?:open|go\\s+to|navigate\\s+to|visit)\\s+(https?://\\S+|/[\\w./~-]+)\\b");
 
-    /** Excel "Open … at /checkboxes" — handled by prove-phase URL navigate, not a DOM click. */
+    /** Excel "Open â€¦ at /checkboxes" â€” handled by prove-phase URL navigate, not a DOM click. */
     public static boolean isOpenPathNavigateIntent(String text) {
         if (text == null || text.isBlank()) {
             return false;
@@ -263,7 +265,7 @@ public final class StepIntentBinder {
             }
         }
 
-        // "Confirm the text X is visible" is a page-phrase check — never score chrome candidates.
+        // "Confirm the text X is visible" is a page-phrase check â€” never score chrome candidates.
         if (assertText != null && !assertText.isBlank()) {
             String xpath = xpathContainsText(assertText);
             boolean ok = new LocatorValidator().validate(
@@ -341,36 +343,52 @@ public final class StepIntentBinder {
             namedActionResolved = true;
         }
 
-        Scored runnerUp = firstDifferentControl(scored, best);
-        if (!namedActionResolved && runnerUp != null
-                && runnerUp.score >= best.score - NEAR_TIE_SCORE_WINDOW) {
-            Scored preferred = scored.stream()
-                    .filter(s -> tieBreak.stream().anyMatch(id -> id.equalsIgnoreCase(s.candidate.id())))
-                    .findFirst()
-                    .orElse(null);
-            if (preferred != null) {
-                best = preferred;
-            } else if (ordinal != null) {
-                // Prefer exact ordinal xpath/css among near-ties
-                Scored ordinalPick = scored.stream()
-                        .filter(s -> matchesOrdinalCandidate(s.candidate, ordinal))
+        // Honesty gate: CandidateScorer.decide on raw scores (before ordinal/submit bumps).
+        if (!namedActionResolved) {
+            List<CandidateScore> rawForDecide = CandidateScorer.score(intent, candidates);
+            BindDecision decision = CandidateScorer.decide(rawForDecide);
+            if (decision.kind() == BindDecision.Kind.TIE) {
+                Scored preferred = scored.stream()
+                        .filter(s -> tieBreak.stream().anyMatch(id -> id.equalsIgnoreCase(s.candidate.id())))
+                        .filter(s -> decision.shortlist().stream().anyMatch(c -> c.id().equals(s.candidate.id())))
                         .findFirst()
                         .orElse(null);
-                if (ordinalPick != null) {
-                    best = ordinalPick;
+                if (preferred != null) {
+                    best = preferred;
+                } else if (ordinal != null) {
+                    Scored ordinalPick = scored.stream()
+                            .filter(s -> matchesOrdinalCandidate(s.candidate, ordinal))
+                            .findFirst()
+                            .orElse(null);
+                    if (ordinalPick != null) {
+                        best = ordinalPick;
+                    } else {
+                        return new BindResult(
+                                List.of(),
+                                "AMBIGUOUS:" + intent.kind() + ":"
+                                        + decision.shortlist().stream().map(DomCandidate::id)
+                                        .collect(Collectors.joining(",")));
+                    }
                 } else {
                     return new BindResult(
                             List.of(),
                             "AMBIGUOUS:" + intent.kind() + ":"
-                                    + scored.stream().limit(5).map(s -> s.candidate.id())
+                                    + decision.shortlist().stream().map(DomCandidate::id)
                                     .collect(Collectors.joining(",")));
                 }
-            } else {
-                return new BindResult(
-                        List.of(),
-                        "AMBIGUOUS:" + intent.kind() + ":"
-                                + scored.stream().limit(5).map(s -> s.candidate.id())
-                                .collect(Collectors.joining(",")));
+            } else if (decision.kind() == BindDecision.Kind.EMPTY && best.score < CandidateScorer.MIN_TOTAL) {
+                return new BindResult(List.of(),
+                        "Weak candidate match for intent " + intent.kind() + ": " + intent.text());
+            } else if (decision.kind() == BindDecision.Kind.CLEAR && decision.winner() != null) {
+                // Prefer scorer winner when present in the filtered scored list
+                DomCandidate w = decision.winner();
+                Scored fromDecide = scored.stream()
+                        .filter(s -> s.candidate.id().equals(w.id()) || describesSameControl(s.candidate, w))
+                        .findFirst()
+                        .orElse(null);
+                if (fromDecide != null) {
+                    best = fromDecide;
+                }
             }
         }
         if (intent.kind() == IntentKind.CLICK && !namedActionResolved
@@ -422,7 +440,7 @@ public final class StepIntentBinder {
                 if (DummyValueInventor.isLoginIdentifierHint(
                         best.candidate.label() + " " + best.candidate.value(), intent.text())
                         || inferInputType(best.candidate).toLowerCase(Locale.ROOT).contains("password")) {
-                    // Masked OTP inputs often use type=password — keep OTP TestData, not login secret.
+                    // Masked OTP inputs often use type=password â€” keep OTP TestData, not login secret.
                     if (!DummyValueInventor.looksLikeOtpHint(
                             best.candidate.value() + " " + best.candidate.label() + " " + intent.text())) {
                         IntentKind loginKind = inferInputType(best.candidate).toLowerCase(Locale.ROOT).contains("password")
@@ -462,7 +480,7 @@ public final class StepIntentBinder {
                 && (lower.contains("enter") || lower.contains("type") || lower.contains("fill"))
                 && (lower.contains("login") || lower.contains("sign in") || lower.contains("password")
                 || looksLikeLoginCredentialLine(lower))) {
-            // username/email fill on login — still TYPE_USER when clearly auth; else TYPE_FIELD
+            // username/email fill on login â€” still TYPE_USER when clearly auth; else TYPE_FIELD
             if (lower.contains("password") || lower.contains("login") || lower.contains("sign in")) {
                 return IntentKind.TYPE_USER;
             }
@@ -488,7 +506,7 @@ public final class StepIntentBinder {
         if (looksLikeAssert(lower) && !looksLikeClickAction(lower)) {
             return IntentKind.ASSERT_VISIBLE;
         }
-        // Generic field fill — any enter/type/fill/select/choose for non-login data
+        // Generic field fill â€” any enter/type/fill/select/choose for non-login data
         if (lower.contains("enter") || lower.contains("type") || lower.contains("fill")
                 || lower.contains("input") || lower.startsWith("select ")
                 || lower.contains("choose") || lower.contains("pick ")
@@ -551,174 +569,53 @@ public final class StepIntentBinder {
 
     private static List<Scored> scoreCandidates(
             IntentLine intent, List<DomCandidate> candidates, OrdinalControl ordinal) {
-        List<String> tokens = tokens(stripInstructionalAsides(intent.text()));
-        String intentLower = intent.text().toLowerCase(Locale.ROOT);
-        List<Scored> scored = new ArrayList<>();
-        for (DomCandidate c : candidates) {
-            if (!DomCandidateExtractor.isBindableStrategy(c.strategy())) {
+        List<CandidateScore> scored = CandidateScorer.score(intent, candidates);
+        List<Scored> out = new ArrayList<>();
+        java.util.HashSet<String> seen = new java.util.HashSet<>();
+        for (CandidateScore s : scored) {
+            if (!DomCandidateExtractor.isBindableStrategy(s.candidate().strategy())) {
                 continue;
             }
-            if (looksLikeRevealOrMaskToggle(c) && isFieldTargetIntent(intent.text())) {
+            if (looksLikeRevealOrMaskToggle(s.candidate()) && isFieldTargetIntent(intent.text())) {
                 continue;
             }
-            if (wantsFormSubmit(intent.text()) && looksLikeNonSubmitNavigation(c)) {
+            if (wantsFormSubmit(intent.text()) && looksLikeNonSubmitNavigation(s.candidate())) {
                 continue;
             }
-            String hay = (c.value() + " " + c.label() + " " + c.tag()).toLowerCase(Locale.ROOT);
-            int score = tokenOverlapScore(tokens, hay);
-            if (wantsFormSubmit(intent.text()) && looksLikeFormSubmitControl(c)) {
-                score += 18 + formSubmitPreference(c);
+            int total = s.total();
+            if (ordinal != null && matchesOrdinalCandidate(s.candidate(), ordinal)) {
+                total += 20;
             }
-            if (intent.kind() == IntentKind.TYPE_FIELD) {
-                if (!isFormControl(c)) {
-                    continue;
-                }
-                if (score <= 0) {
-                    // Soft match: any form control when intent mentions generic "field/box/input"
-                    if (intentLower.contains("field") || intentLower.contains("box")
-                            || intentLower.contains("input") || intentLower.contains("dropdown")
-                            || intentLower.contains("radio") || intentLower.contains("checkbox")) {
-                        score = 1;
-                    } else {
-                        continue;
-                    }
-                } else {
-                    // The field the step names must clear the soft floor that every sibling gets,
-                    // otherwise Day and Month look equally good and the step reads as ambiguous.
-                    score += score * 2;
-                }
-                score += 2; // prefer form controls for TYPE_FIELD
-            } else if (score <= 0 && ordinal == null) {
-                // Soft: landmark "page is shown" / selected dropdown without strong tokens
-                if (intent.kind() == IntentKind.ASSERT_VISIBLE
-                        && (intentLower.contains("shown") || intentLower.contains("visible")
-                        || intentLower.contains("selected") || intentLower.contains("displayed"))) {
-                    if (looksLikeLandmark(hay) || "select".equalsIgnoreCase(c.tag())
-                            || hay.contains("flash") || hay.contains("subheader")
-                            || hay.contains("heading")
-                            || hay.contains("secure") || hay.contains("area")
-                            || "h1".equalsIgnoreCase(c.tag()) || "h2".equalsIgnoreCase(c.tag())
-                            || "h3".equalsIgnoreCase(c.tag()) || "h4".equalsIgnoreCase(c.tag())) {
-                        score = 1;
-                    } else if ("selected".equals(extractStateAssertion(intent.text()))
-                            && ("select".equalsIgnoreCase(c.tag()) || hay.contains("dropdown")
-                            || hay.contains("select"))) {
-                        score = 2;
-                    } else {
-                        continue;
-                    }
-                } else {
-                    continue;
-                }
-            } else if (score <= 0 && ordinal != null && !matchesOrdinalCandidate(c, ordinal)) {
-                continue;
+            if (wantsFormSubmit(intent.text()) && looksLikeFormSubmitControl(s.candidate())) {
+                total += 18 + formSubmitPreference(s.candidate());
             }
-
-            score += DomCandidateExtractor.strategyRank(c.strategy(), c.value()) / 10;
-            // Token hits beat soft landmarks for asserts (e.g. "products" → product-grid)
-            if (intent.kind() == IntentKind.ASSERT_VISIBLE) {
-                int overlap = tokenOverlapScore(tokens, hay);
-                if (overlap > 0) {
-                    score += overlap * 2;
-                }
-            }
-
-            if (ordinal != null) {
-                if (matchesOrdinalCandidate(c, ordinal)) {
-                    score += 20;
-                } else if (isContainerLikely(c, ordinal.type())) {
-                    score -= 15;
-                }
-            }
-
-            // Prefer real controls over containers for clicks; asserts often target div landmarks
-            if (intent.kind() == IntentKind.CLICK || intent.kind() == IntentKind.ASSERT_VISIBLE) {
-                String tag = c.tag() == null ? "" : c.tag().toLowerCase(Locale.ROOT);
-                if ("input".equals(tag) || "button".equals(tag) || "a".equals(tag)
-                        || "select".equals(tag) || "textarea".equals(tag)) {
-                    score += 3;
-                }
-                if (intent.kind() == IntentKind.CLICK
-                        && ("form".equals(tag) || "div".equals(tag) || "section".equals(tag)
-                        || "ul".equals(tag) || "li".equals(tag))) {
-                    score -= 8;
-                }
-            }
-
-            // Named-control clicks: distinctive tokens beat shared action fillers
-            if (intent.kind() == IntentKind.CLICK) {
-                score += distinctiveTokenBoost(tokens, hay);
-            }
-            // "Clicks \"Export\" in the toolbar" names Export. The place words are not
-            // required to appear on the element.
-            if (intent.kind() == IntentKind.CLICK && labelEqualsQuotedName(c, quotedVisibleName(intent.text()))) {
-                score += 40;
-            }
-
-            // Excel names an entity + action verb: prefer controls that carry both
-            if (intent.kind() == IntentKind.CLICK && intentRequiresNamedActionControl(intent.text())) {
-                if (candidateMatchesNamedAction(intent.text(), c, candidates)) {
-                    score += 14;
-                } else if (candidateCarriesDistinctiveTokens(intent.text(), c, candidates)) {
-                    // Same entity name but wrong control type (e.g. title/image vs action)
-                    score -= 16;
-                }
-            }
-
-            if (intent.kind() == IntentKind.ASSERT_VISIBLE) {
-                if (looksLikeLandmark(hay)) {
-                    score += 2;
-                }
-                // Soft boost for heading tags when confirming visible text/landmarks
-                String tag = c.tag() == null ? "" : c.tag().toLowerCase(Locale.ROOT);
-                if (tag.matches("h[1-4]")) {
-                    score += 3;
-                }
-                if (looksLikePrimaryAction(hay)) {
-                    score -= 4;
-                }
-            }
-            if (intent.kind() == IntentKind.CLICK) {
-                // Prefer controls that share the intent's action verb(s)
-                for (String verb : intentActionVerbs(intent.text())) {
-                    if (hay.contains(verb)) {
-                        score += 4;
-                    }
-                }
-                // No mutation verb in Excel → downrank mutation-looking controls (title/link beats "Add …")
-                if (intentActionVerbs(intent.text()).isEmpty()) {
-                    for (String verb : INTENT_ACTION_VERBS) {
-                        if (hayContainsToken(hay, verb)) {
-                            score -= 8;
-                            break;
-                        }
-                    }
-                }
-                // Do not boost bare anchors for Excel "Submit" — buttons must win Sign-up CTAs.
-                if (score > 0 && ("a".equals(c.tag()) || hay.contains("link"))
-                        && !wantsFormSubmit(intent.text())) {
-                    score += 1;
-                }
-                // Images are rarely the click target named in Excel steps
-                if ("img".equals(c.tag())) {
-                    score -= 5;
-                }
-            }
-            if (intent.kind() == IntentKind.ASSERT_VISIBLE
-                    && intentActionVerbs(intent.text()).isEmpty()) {
-                for (String verb : INTENT_ACTION_VERBS) {
-                    if (hayContainsToken(hay, verb)) {
-                        score -= 8;
-                        break;
-                    }
-                }
-            }
-            if (score > 0) {
-                scored.add(new Scored(c, score));
+            out.add(new Scored(s.candidate(), total));
+            if (s.candidate().id() != null) {
+                seen.add(s.candidate().id());
             }
         }
-        scored.sort(Comparator.comparingInt(Scored::score).reversed());
-        return scored;
+        // Submit intents often name "Submit" while the live CTA says "Sign up" — keep form-submit
+        // controls in the scored list even when CandidateScorer found no token overlap.
+        if (wantsFormSubmit(intent.text()) && candidates != null) {
+            for (DomCandidate c : candidates) {
+                if (c == null || (c.id() != null && seen.contains(c.id()))) {
+                    continue;
+                }
+                if (!DomCandidateExtractor.isBindableStrategy(c.strategy())) {
+                    continue;
+                }
+                if (!looksLikeFormSubmitControl(c) || looksLikeNonSubmitNavigation(c)) {
+                    continue;
+                }
+                int total = CandidateScorer.stability(c) + 18 + formSubmitPreference(c) + 10;
+                if (ordinal != null && matchesOrdinalCandidate(c, ordinal)) {
+                    total += 20;
+                }
+                out.add(new Scored(c, total));
+            }
+        }
+        out.sort(Comparator.comparingInt(Scored::score).reversed());
+        return out;
     }
 
     /** Bind username / password / submit-login intents from live candidates (negative login body). */
@@ -889,8 +786,8 @@ public final class StepIntentBinder {
     }
 
     /**
-     * Login/signin hrefs, “already have an account”, and register-path anchors that are not
-     * a form-submit CTA. Site-agnostic path tokens only — not a product host.
+     * Login/signin hrefs, â€œalready have an accountâ€, and register-path anchors that are not
+     * a form-submit CTA. Site-agnostic path tokens only â€” not a product host.
      */
     public static boolean looksLikeNonSubmitNavigation(DomCandidate candidate) {
         if (candidate == null) {
@@ -1070,7 +967,7 @@ public final class StepIntentBinder {
                 || (hay.contains("login") && !hay.contains("signin"));
     }
 
-    /** Unused — login typing uses {@link #resolveLoginTypedValue}. Kept temporarily for binary compat. */
+    /** Unused â€” login typing uses {@link #resolveLoginTypedValue}. Kept temporarily for binary compat. */
     @Deprecated
     private static String extractCredToken(String stepText, boolean user) {
         return user ? "${TARGET_USERNAME}" : "${TARGET_PASSWORD}";
@@ -1115,7 +1012,7 @@ public final class StepIntentBinder {
         if (!typeInLocator) {
             return false;
         }
-        // Match on locator index only — labels can include sibling text and must not decide ordinal.
+        // Match on locator index only â€” labels can include sibling text and must not decide ordinal.
         return v.contains("])[" + n + "]")
                 || v.contains("]:nth-of-type(" + n + ")")
                 || v.contains(":nth-of-type(" + n + ")");
@@ -1371,7 +1268,7 @@ public final class StepIntentBinder {
         String intent = intentText == null ? "" : intentText.toLowerCase(Locale.ROOT);
         if ((intent.contains("choose ") || intent.contains("select ") || intent.contains("pick "))
                 && !"textarea".equals(tag)) {
-            // "choose Gender" / "choose Governorate" — not free-text typing.
+            // "choose Gender" / "choose Governorate" â€” not free-text typing.
             return "select";
         }
         return "type";
@@ -1517,8 +1414,8 @@ public final class StepIntentBinder {
 
     /**
      * Possessives left over after the option value is stripped ("Select Female from the Select
-     * your gender dropdown" → "your gender"). They match nothing useful and must not satisfy
-     * every "Select …" combobox on the page.
+     * your gender dropdown" â†’ "your gender"). They match nothing useful and must not satisfy
+     * every "Select â€¦" combobox on the page.
      */
     private static final java.util.Set<String> FIELD_PRONOUNS = java.util.Set.of(
             "your", "my", "our", "their", "its");
@@ -1856,10 +1753,10 @@ public final class StepIntentBinder {
     }
 
     /**
-     * A field intent names its target ("… in the First name field"), so the control must carry at
+     * A field intent names its target ("â€¦ in the First name field"), so the control must carry at
      * least one of those words. Without this, every field intent on a page of anonymous inputs
      * binds to whichever input scores first and the value lands in the wrong box.
-     * The typed value is excluded — it never appears in a locator.
+     * The typed value is excluded â€” it never appears in a locator.
      * Selected/checked state asserts are different: they target the control just filled, so a
      * select/combobox (or a row that still shows the expected option text) is enough.
      */
@@ -1946,7 +1843,7 @@ public final class StepIntentBinder {
                     || hayContainsToken(hay, "select") || hayContainsToken(hay, "dropdown")
                     || hayContainsToken(hay, "combobox");
         }
-        // checked / unchecked — any checkbox/radio-shaped control
+        // checked / unchecked â€” any checkbox/radio-shaped control
         String tag = candidate.tag() == null ? "" : candidate.tag().toLowerCase(Locale.ROOT);
         return "input".equals(tag) || "checkbox".equals(tag) || "radio".equals(tag)
                 || hayContainsToken(hay, "checkbox") || hayContainsToken(hay, "radio");
@@ -1967,7 +1864,7 @@ public final class StepIntentBinder {
         if (word.matcher(h).find()) {
             return true;
         }
-        // Preserve camelCase boundaries before lowercasing (hubId → hub-id).
+        // Preserve camelCase boundaries before lowercasing (hubId â†’ hub-id).
         String camelBroken = hay
                 .replaceAll("([a-z])([A-Z])", "$1-$2")
                 .replace('_', '-')
@@ -1977,7 +1874,7 @@ public final class StepIntentBinder {
 
     /**
      * Action verbs that imply a control must carry the verb (not only the entity name).
-     * Navigation-style words (open/view/select) are excluded — those often bind to title links.
+     * Navigation-style words (open/view/select) are excluded â€” those often bind to title links.
      * Domain-neutral: no shop or host assumptions.
      */
     private static final java.util.Set<String> INTENT_ACTION_VERBS = java.util.Set.of(
@@ -2008,7 +1905,7 @@ public final class StepIntentBinder {
     }
 
     /**
-     * True when Excel names both an action verb and a distinctive entity — the bound control
+     * True when Excel names both an action verb and a distinctive entity â€” the bound control
      * must carry both (not a title/image that only shares the entity name).
      */
     public static boolean intentRequiresNamedActionControl(String intentText) {
@@ -2036,7 +1933,7 @@ public final class StepIntentBinder {
                 return true;
             }
         }
-        // AccessibleName often falls back to the id for <button>Submit …</button>, so the
+        // AccessibleName often falls back to the id for <button>Submit â€¦</button>, so the
         // verb lives in the contents, not the candidate hay. The tag still names the control.
         return buttonImpliesSubmitVerb(candidate, verbs);
     }
@@ -2085,7 +1982,7 @@ public final class StepIntentBinder {
 
     /**
      * Common Excel/UI filler words stripped when extracting distinctive name tokens.
-     * Domain-neutral: applies to any app (forms, lists, dialogs) — not a shop module.
+     * Domain-neutral: applies to any app (forms, lists, dialogs) â€” not a shop module.
      */
     private static final java.util.Set<String> INTENT_FILLER_TOKENS = java.util.Set.of(
             "check", "checked", "uncheck", "unchecked",
@@ -2182,7 +2079,7 @@ public final class StepIntentBinder {
         return null;
     }
 
-    /** "Confirm the Delete button is no longer shown" → Delete */
+    /** "Confirm the Delete button is no longer shown" â†’ Delete */
     static String extractDisappearedControlName(String intentText) {
         if (intentText == null || intentText.isBlank()) {
             return null;
@@ -2198,7 +2095,7 @@ public final class StepIntentBinder {
         return null;
     }
 
-    /** "Confirm Option 2 is the selected value" → Option 2 */
+    /** "Confirm Option 2 is the selected value" â†’ Option 2 */
     static String extractSelectedValuePhrase(String intentText) {
         if (intentText == null || intentText.isBlank()) {
             return "";
@@ -2243,7 +2140,7 @@ public final class StepIntentBinder {
                     + "[contains(normalize-space(.),'')]";
         }
         String lit = XpathLiterals.quote(text);
-        // Prefer body content — head/title/json-ld match contains() but Selenium getText() is empty.
+        // Prefer body content â€” head/title/json-ld match contains() but Selenium getText() is empty.
         // The trailing predicate keeps the innermost match; every ancestor also contains the text.
         return "//body//*[not(self::script)][not(self::style)][not(self::noscript)]"
                 + "[contains(normalize-space(.)," + lit + ")]"
