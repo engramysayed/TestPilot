@@ -1477,6 +1477,7 @@ public class ProvePhase {
         String pagePath = pathOf(bindingPageUrl);
         locatorMemory.remember(host, pagePath, intent, steps.get(steps.size() - 1));
         saveLocatorMemory();
+        PageLocatorCatalog.commitProvenSteps(pageCatalog, steps);
     }
 
     private static String pathOf(String url) {

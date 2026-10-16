@@ -97,3 +97,9 @@ Generate / Import / case edit / Automate & Execute Excel load run `GenerateQuali
 ```bat
 mvn -q "-Dtest=RecoveryPlanParserTest,HealCascadeTest,FreeInventHealerTest,RequiredControlFiller*Test,StepIntentBinderTest,GenerateAuthoringRulesTest,ProvePhase*Test" test
 ```
+
+## Candidate scorer pack
+
+- Spec: docs/superpowers/specs/2026-10-16-candidate-scorer-design.md
+- Plan: docs/superpowers/plans/2026-10-16-candidate-scorer.md
+- Gate: CandidateScorerFixtureTest + bind-quality.json before live AxisPay Execute

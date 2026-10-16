@@ -92,3 +92,7 @@ Deep-dive targets when stable:
 - `PageAccumulator` / `CodeWriter` — no duplicate page classes per route.
 - Bug Hunt prompts + `tools/cursor-heal/heal.mjs` modes.
 - CI: META-INF.services path, nightly cron once not every minute.
+
+## Candidate scorer (2026-10-16)
+
+P0/P1 locator ranking: scorer shipped. Spec: docs/superpowers/specs/2026-10-16-candidate-scorer-design.md. Plan: docs/superpowers/plans/2026-10-16-candidate-scorer.md. Bind uses CandidateScorer + BindDecision; catalog write-back only after live click; Ollama pick only on TIE (max 5).

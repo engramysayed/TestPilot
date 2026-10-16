@@ -1,5 +1,13 @@
 # Keel changelog
 
+## 2026-10-16 — Candidate scorer pack
+
+- Bind chooses from a scored DOM shortlist (CandidateScorer / BindDecision CLEAR|TIE|EMPTY).
+- Catalog fingerprint ignores class-hash churn; write-back only after a live click (commitAfterProof).
+- Ollama/Cursor pick only on TIE (max 5); ASSERT_VISIBLE still never heals.
+- Fixture gate: CandidateScorerFixtureTest + bind-quality.json.
+
+
 This is the **public story of what shipped**. When you publish, add a dated section here first. Write for everyone: what changed, why it matters, how to use it, and what still does not work.
 
 The **full product** (every surface, not only the last week) is [`docs/PRODUCT.md`](docs/PRODUCT.md).

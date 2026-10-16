@@ -103,4 +103,20 @@ public class PageLocatorCatalogTest {
         catalog.commitAfterProof(visionNew);
         Assert.assertTrue(catalog.candidates().size() > before);
     }
+
+    @Test
+    public void commitProvenSteps_growsCatalogOnlyAfterHelper() {
+        PageLocatorCatalog catalog = new PageLocatorCatalog();
+        catalog.ensure("https://app.test/home", PAGE);
+        int before = catalog.candidates().size();
+        delivery.codegen.ProvenStep step = new delivery.codegen.ProvenStep(
+                "TC", "Page", "elementAction", "click",
+                "css", "button[data-axis-test-id='toast-close']", "",
+                "", "", true, "proven", "");
+        catalog.adoptOrPreferStable(new DomCandidate(
+                "v", "css", "button[data-axis-test-id='toast-close']", "button", "Close"));
+        Assert.assertEquals(catalog.candidates().size(), before);
+        PageLocatorCatalog.commitProvenSteps(catalog, List.of(step));
+        Assert.assertTrue(catalog.candidates().size() > before);
+    }
 }

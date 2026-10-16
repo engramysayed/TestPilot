@@ -446,3 +446,8 @@ Be explicit so a demo does not promise these:
 | `README.md` | Install, stack, security |
 | `docs/superpowers/specs/` | Why a slice was designed that way |
 | `docs/ops/` | How to run Ollama / restart / Windows |
+
+## Locator bind (Execute)
+
+Bind prefers test-id / role+name from a scored shortlist; Ollama only on a close shortlist (TIE up to 5).
+
