@@ -3,6 +3,8 @@ package delivery.authoring;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.util.List;
+
 public class CandidateScorerTest {
 
     @Test
@@ -33,5 +35,57 @@ public class CandidateScorerTest {
         DomCandidate xp = new DomCandidate("c2", "xpath",
                 "//button[normalize-space()='Save']", "button", "Save");
         Assert.assertTrue(CandidateScorer.stability(id) > CandidateScorer.stability(xp));
+    }
+
+    @Test
+    public void quotedNameBeatsSharedActionToken() {
+        var intent = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK, "Clicks \"Support\" in the sidebar");
+        List<DomCandidate> cs = List.of(
+                new DomCandidate("c1", "css", "span[data-axis-test-id='side-nav-support-submenu-button']",
+                        "span", "Support"),
+                new DomCandidate("c2", "css", "a[data-axis-test-id='side-nav-home-link']",
+                        "a", "Home")
+        );
+        BindDecision d = CandidateScorer.decide(CandidateScorer.score(intent, cs));
+        Assert.assertEquals(d.kind(), BindDecision.Kind.CLEAR);
+        Assert.assertTrue(d.winner().value().contains("support"));
+    }
+
+    @Test
+    public void twinSameNameIsTie() {
+        var intent = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK, "Click Settings");
+        List<DomCandidate> cs = List.of(
+                new DomCandidate("c1", "id", "settings-primary", "button", "Settings"),
+                new DomCandidate("c2", "id", "settings-advanced", "button", "Settings")
+        );
+        BindDecision d = CandidateScorer.decide(CandidateScorer.score(intent, cs));
+        Assert.assertEquals(d.kind(), BindDecision.Kind.TIE);
+        Assert.assertEquals(d.shortlist().size(), 2);
+        Assert.assertNull(d.winner());
+    }
+
+    @Test
+    public void locatorTwinsAreClear() {
+        var intent = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK, "Click Save");
+        List<DomCandidate> cs = List.of(
+                new DomCandidate("c1", "css", "#save-btn", "button", "Save"),
+                new DomCandidate("c2", "xpath", "//button[@id='save-btn']", "button", "Save")
+        );
+        BindDecision d = CandidateScorer.decide(CandidateScorer.score(intent, cs));
+        Assert.assertEquals(d.kind(), BindDecision.Kind.CLEAR, d.toString());
+    }
+
+    @Test
+    public void emptyWhenNothingMatches() {
+        var intent = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK, "Click Warp Drive");
+        List<DomCandidate> cs = List.of(
+                new DomCandidate("c1", "id", "cancel", "button", "Cancel")
+        );
+        BindDecision d = CandidateScorer.decide(CandidateScorer.score(intent, cs));
+        Assert.assertEquals(d.kind(), BindDecision.Kind.EMPTY);
     }
 }
