@@ -56,37 +56,31 @@ public final class StepIntentBinder {
 
     public static List<IntentLine> parseIntents(ManualTestCase tc) {
         List<IntentLine> out = new ArrayList<>();
-        String steps = tc == null || tc.steps() == null ? "" : ExcelStepText.normalizeMultiline(tc.steps());
-        String[] stepLines = steps.split("\n", -1);
-        String testDataRaw = tc == null || tc.testData() == null ? "" : tc.testData();
-        String[] dataLines = ExcelStepText.normalizeMultiline(testDataRaw).split("\n", -1);
-        for (int i = 0; i < stepLines.length; i++) {
-            String line = stripStepNumber(stepLines[i]);
-            if (line.isBlank()) {
-                continue;
-            }
-            String data = i < dataLines.length ? dataLines[i].trim() : "";
-            String lower = line.toLowerCase(Locale.ROOT);
-            if (lower.startsWith("post-login") || lower.startsWith("do not ")) {
-                continue;
-            }
-            if (isNavigationalLoginOrUrl(lower)) {
-                continue;
-            }
+        for (StepExpectedPlanner.ActionRow row : StepExpectedPlanner.rows(tc)) {
+            String lower = row.step().toLowerCase(Locale.ROOT);
             IntentKind kind = classify(lower);
-            if (kind != null) {
-                out.add(new IntentLine(kind, line, data));
+            if (kind == null) {
+                continue;
             }
-        }
-        String expected = tc == null || tc.expectedResult() == null ? "" : tc.expectedResult();
-        if (out.stream().noneMatch(i -> i.kind() == IntentKind.ASSERT_VISIBLE)
-                && looksLikeAssert(expected.toLowerCase(Locale.ROOT))) {
-            out.add(new IntentLine(IntentKind.ASSERT_VISIBLE, expected, ""));
+            out.add(new IntentLine(kind, row.step(), row.testData()));
+            if (kind == IntentKind.ASSERT_VISIBLE) {
+                continue;
+            }
+            for (String clause : row.expectedClauses()) {
+                if (!StepExpectedPlanner.looksLikeOutcome(clause)) {
+                    continue;
+                }
+                String assertText = CompoundAssert.normalizeClause(clause);
+                if (assertText == null || assertText.isBlank()) {
+                    continue;
+                }
+                out.add(new IntentLine(IntentKind.ASSERT_VISIBLE, assertText, ""));
+            }
         }
         return out;
     }
 
-    private static String stripStepNumber(String raw) {
+    static String stripStepNumber(String raw) {
         if (raw == null) {
             return "";
         }
@@ -542,7 +536,7 @@ public final class StepIntentBinder {
                 || lower.contains("tap "));
     }
 
-    private static boolean looksLikeAssert(String lower) {
+    static boolean looksLikeAssert(String lower) {
         return lower.contains("confirm") || lower.contains("verify") || lower.contains("shown")
                 || lower.contains("visible") || lower.contains("see ") || lower.contains("displays")
                 || lower.contains("is shown") || lower.contains("are visible");

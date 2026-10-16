@@ -16,6 +16,8 @@ import delivery.authoring.PrecisionBindService;
 import delivery.authoring.PrecisionCallBudget;
 import delivery.authoring.PrecisionJobConfig;
 import delivery.authoring.RequiredControlFiller;
+import delivery.authoring.DomCandidate;
+import delivery.authoring.PageLocatorCatalog;
 import delivery.authoring.StepIntentBinder;
 import delivery.codegen.PageClusterer;
 import delivery.codegen.PageNameNormalizer;
@@ -74,6 +76,11 @@ public class ProvePhase {
     public static final int MAX_RETRIES = 2;
     /** Extra attempts allowed for INFRA-category failures; does not consume {@link #MAX_RETRIES}. */
     public static final int MAX_INFRA_RETRIES = 2;
+
+    /** Asserts fail honestly. Heal is for missing locators on actions, not expected-text misses. */
+    public static boolean mayHeal(StepIntentBinder.IntentLine intent, String reason) {
+        return intent == null || intent.kind() != StepIntentBinder.IntentKind.ASSERT_VISIBLE;
+    }
     /** Infra backoff schedule + sleeper; package-visible for tests (no real 2 s / 5 s waits). */
     long[] infraBackoffMs = RetryBudget.DEFAULT_INFRA_BACKOFF_MS;
     RetryBudget.Sleeper infraSleeper = RetryBudget.Sleeper.REAL;
@@ -85,6 +92,7 @@ public class ProvePhase {
 
     private final JobProgressTracker progress;
     private DomainLocatorMemory locatorMemory = new DomainLocatorMemory();
+    private final PageLocatorCatalog pageCatalog = new PageLocatorCatalog();
     private Path locatorMemoryFile;
     /** When set (Execute jobs), mirror each draft to durable execute-runs storage after write. */
     private Path mirrorRoot;
@@ -405,6 +413,7 @@ public class ProvePhase {
         }
 
         execution.beginTc(evidenceFolder);
+        pageCatalog.clear();
         healCascade.setExcelOpenPath(StepIntentBinder.firstOpenPath(
                 tc.preconditions(), tc.steps()));
 
@@ -743,6 +752,7 @@ public class ProvePhase {
             try {
                 NamedNavigationDiscovery.reveal(driverFactory.get(), intent);
                 String html = ProveWiring.authoringHtml(driverFactory.get(), intent.text(), proveHtmlBudget());
+                List<DomCandidate> live = pageCatalog.ensure(currentUrl(driverFactory), html);
                 List<ProvenStep> autoFillSteps = List.of();
                 if (precisionBindService == null && intent.kind() == StepIntentBinder.IntentKind.CLICK) {
                     List<StepIntentBinder.IntentLine> typeIntents = StepIntentBinder.parseIntents(tc).stream()
@@ -764,6 +774,7 @@ public class ProvePhase {
                         autoFillSteps = fillOutcome.provenSteps();
                         PostActionSettle.afterAction();
                         html = ProveWiring.authoringHtml(driverFactory.get(), intent.text(), proveHtmlBudget());
+                        live = pageCatalog.ensure(currentUrl(driverFactory), html);
                     }
                 }
 
@@ -846,7 +857,7 @@ public class ProvePhase {
                     }
                 } else {
                     stepBatch = authoring.authorIntent(
-                            tc.tcId(), intent, html, healPng, false, provenSoFar, failedThisIntent);
+                            tc.tcId(), intent, html, healPng, false, provenSoFar, failedThisIntent, live);
                 }
                 boolean bindFailed = stepBatch.isEmpty()
                         || stepBatch.stream().anyMatch(s -> !s.validated())
@@ -860,13 +871,14 @@ public class ProvePhase {
                             tc.tcId(), intent, html, healPng, stepBatch, bindFailed,
                             failedThisIntent, authoring,
                             new SeleniumGroundingBrowser(driverFactory.get()),
-                            VisionGroundingConfig.createProvider());
+                            VisionGroundingConfig.createProvider(),
+                            live);
                     if (grounded.isPresent()) {
                         if (refusesSubmitNavigation(intent, grounded.get())) {
                             LogsManager.info("SUBMIT_REFUSE: vision grounded a non-submit navigation for "
                                     + intent.text());
                         } else {
-                            stepBatch = grounded.get();
+                            stepBatch = pageCatalog.stabilizeSteps(grounded.get(), intent);
                             bindFailed = false;
                             healTier = mergeHealTier(healTier, "vision");
                             LogsManager.info("VISION_GROUND: READY intent=" + intent.text());
@@ -874,16 +886,20 @@ public class ProvePhase {
                     }
                 }
                 if (bindFailed) {
+                    lastReason = stepBatch.isEmpty()
+                            ? "No DOM candidate for intent " + intent.kind() + ": " + intent.text()
+                            : stepBatch.stream().filter(s -> !s.validated()).findFirst()
+                            .map(ProvenStep::rationale).orElse("unknown");
+                    if (!mayHeal(intent, lastReason)) {
+                        return StepAttempt.fail(lastReason, autoFillSteps, evidenceDir,
+                                retriesUsed, healTier, lastReason);
+                    }
                     if (!recoveredThisIntent
                             && TargetPageRecovery.tryRecover(driverFactory, baseUrl, tc, intent, html)) {
                         recoveredThisIntent = true;
                         lastReason = "Recovered to Excel open-path; retry bind";
                         continue;
                     }
-                    lastReason = stepBatch.isEmpty()
-                            ? "No DOM candidate for intent " + intent.kind() + ": " + intent.text()
-                            : stepBatch.stream().filter(s -> !s.validated()).findFirst()
-                            .map(ProvenStep::rationale).orElse("unknown");
                     Path shot = writeHealScreenshot(evidence, tc.tcId(), intentIndex, healPng);
                     prepareHealPresence(healCascade, driverFactory);
                     HealResult healed = healCascade.heal(
@@ -935,6 +951,10 @@ public class ProvePhase {
                     lastPartial = partial;
                     evidenceDir = stepOutcome.evidenceDir() == null ? ""
                             : stepOutcome.evidenceDir().toString();
+                    if (!mayHeal(intent, lastReason)) {
+                        return StepAttempt.fail(lastReason, partial, evidenceDir,
+                                retriesUsed, healTier, lastReason);
+                    }
 
                     // Cap: Ollama once + Cursor once. Escalate to Cursor after Ollama execute-fail (D3).
                     if (!ollamaUsed && !cursorUsed) {

@@ -49,49 +49,7 @@ public final class CompoundAssert {
     }
 
     static List<String> splitRawClauses(String intentText) {
-        List<String> parts = new ArrayList<>();
-        if (intentText == null || intentText.isBlank()) {
-            return parts;
-        }
-        String trimmed = intentText.trim();
-        StringBuilder current = new StringBuilder();
-        boolean inDouble = false;
-        boolean inSingle = false;
-        for (int i = 0; i < trimmed.length(); i++) {
-            char c = trimmed.charAt(i);
-            if (c == '"' && !inSingle) {
-                inDouble = !inDouble;
-                current.append(c);
-                continue;
-            }
-            if (c == '\'' && !inDouble) {
-                inSingle = !inSingle;
-                current.append(c);
-                continue;
-            }
-            if (!inDouble && !inSingle && trimmed.regionMatches(true, i, " and ", 0, 5)) {
-                flushClause(parts, current);
-                i += 4;
-                continue;
-            }
-            current.append(c);
-        }
-        flushClause(parts, current);
-        return parts;
-    }
-
-    private static void flushClause(List<String> parts, StringBuilder current) {
-        String s = current.toString().trim();
-        current.setLength(0);
-        if (s.isBlank()) {
-            return;
-        }
-        if (s.toLowerCase(Locale.ROOT).startsWith("and ")) {
-            s = s.substring(4).trim();
-        }
-        if (!s.isBlank()) {
-            parts.add(s);
-        }
+        return ExpectedClauseSplitter.clauses(intentText);
     }
 
     static String normalizeClause(String clause) {

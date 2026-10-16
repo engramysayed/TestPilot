@@ -6,6 +6,12 @@ The **full product** (every surface, not only the last week) is [`docs/PRODUCT.m
 
 Internal design notes stay under `docs/superpowers/`. Engineers can start from `docs/ENGINEERING_HANDOFF.md`.
 
+## 2026-10-16 — Expected after each step, and a page locator catalog
+
+**Surfaces:** **Execute**, **project test-case editor**.
+
+Each click/type is followed by that row’s Expected cell when the cell is not empty. A leftover Expected on a blank “Step action” row folds into the last real step — there is no assert without a step. Numbered lists (`1. 2. 3.`), dash bullets, and outcome `and` split; “expands and sub-menu” stays one check. A failed assert stops; it does not start a 2-minute locator heal. Locators for a page are catalogued once and reused until the URL or the DOM fingerprint changes (navigation or a same-page expand). If bind misses, vision may confirm a catalog row or add a control it saw that the catalog did not. Rebuild the portal jar and Ctrl+F5. Known defect: Excel copy must still match the screen (`Upload Transaction List` vs `Upload Transactions List` still fails the assert, on purpose).
+
 ## 2026-10-16 — Overview chart, run progress, and missing screenshots
 
 **Surfaces:** **Overview**, **Runs**, **Execute results**, **Record**.

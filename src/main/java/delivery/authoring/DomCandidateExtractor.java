@@ -683,7 +683,14 @@ public final class DomCandidateExtractor {
         if (strategy == null) {
             return 0;
         }
-        return switch (strategy.trim().toLowerCase(Locale.ROOT)) {
+        String s = strategy.trim().toLowerCase(Locale.ROOT);
+        String v = value == null ? "" : value.toLowerCase(Locale.ROOT);
+        if (("css".equals(s) || "cssselector".equals(s) || "xpath".equals(s))
+                && (v.contains("data-axis-test-id") || v.contains("data-testid")
+                || v.contains("data-test=") || v.contains("data-qa="))) {
+            return 36;
+        }
+        return switch (s) {
             case "id" -> 40;
             case "data-test", "data-testid", "data-qa", "testid" -> 35;
             case "name" -> 30;

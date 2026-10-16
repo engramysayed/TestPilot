@@ -2376,20 +2376,22 @@
     }
 
     function alignedPreview(steps, testData, expectedResult, callBefore) {
-        const stepLines = splitStepLines(steps);
-        const dataLines = splitKeptLines(testData);
-        const expectedLines = splitStepLines(expectedResult);
-        if (!stepLines.length) {
+        const folded = foldOrphanExpected(
+            splitStepLines(steps),
+            splitKeptLines(testData),
+            splitStepLines(expectedResult)
+        );
+        if (!folded.steps.length) {
             return callBeforePreviewHtml(callBefore) + '<p class="muted">No steps</p>';
         }
-        const rowCount = Math.max(stepLines.length, expectedLines.length, 1);
+        const rowCount = Math.max(folded.steps.length, 1);
         let rows = '';
         for (let i = 0; i < rowCount; i++) {
-            const data = (dataLines[i] || '').trim();
-            const expected = (expectedLines[i] || '').trim();
+            const data = (folded.data[i] || '').trim();
+            const expected = (folded.expected[i] || '').trim();
             rows += '<tr>'
                 + '<td class="lib-step-num">' + (i + 1) + '</td>'
-                + '<td>' + escapeHtml(stepLines[i] || '') + '</td>'
+                + '<td>' + escapeHtml(folded.steps[i] || '') + '</td>'
                 + '<td class="lib-data-cell">'
                 + (data ? escapeHtml(data) : '<span class="lib-data-empty">blank</span>')
                 + '</td>'
@@ -2404,6 +2406,29 @@
             + '<tbody>' + rows + '</tbody></table></div>';
     }
 
+    function foldOrphanExpected(steps, data, expected) {
+        const s = [];
+        const d = [];
+        const e = [];
+        const n = Math.max(steps.length, expected.length, data.length);
+        for (let i = 0; i < n; i++) {
+            const step = (steps[i] || '').trim();
+            const cell = data[i] == null ? '' : data[i];
+            let exp = (expected[i] || '').trim();
+            const placeholder = !step || /^step(\s+action)?$/i.test(step);
+            if (placeholder) {
+                if (exp && e.length) {
+                    e[e.length - 1] = (e[e.length - 1] ? e[e.length - 1].replace(/\s+$/, '') + ' ' : '') + exp;
+                }
+                continue;
+            }
+            s.push(step);
+            d.push(cell);
+            e.push(exp);
+        }
+        return { steps: s, data: d, expected: e };
+    }
+
     function collectAlignFields() {
         const steps = [];
         const data = [];
@@ -2416,12 +2441,13 @@
             data.push(cell.replace(/\r\n/g, '\n').replace(/\r/g, '\n'));
             expected.push(exp.replace(/^\s*\d+\.\s*/, '').trim());
         });
-        const numberedSteps = steps.map(function (s, i) { return (i + 1) + '. ' + s; });
-        const numberedExpected = expected.map(function (s, i) { return (i + 1) + '. ' + s; });
+        const folded = foldOrphanExpected(steps, data, expected);
+        const numberedSteps = folded.steps.map(function (s, i) { return (i + 1) + '. ' + s; });
+        const numberedExpected = folded.expected.map(function (s, i) { return (i + 1) + '. ' + s; });
         document.getElementById('lib-edit-steps').value = numberedSteps.join('\n');
-        document.getElementById('lib-edit-testdata').value = data.join('\n');
+        document.getElementById('lib-edit-testdata').value = folded.data.join('\n');
         document.getElementById('lib-edit-expected').value = numberedExpected.join('\n');
-        return steps.some(function (s) { return s.trim() !== ''; });
+        return folded.steps.some(function (s) { return s.trim() !== ''; });
     }
 
     function addAlignRow(step, data, expected) {
@@ -2455,15 +2481,17 @@
     function renderAlignRows(stepsText, testData, expectedResult) {
         if (!libAlignRows) return;
         libAlignRows.innerHTML = '';
-        const steps = splitStepLines(stepsText);
-        const data = splitKeptLines(testData);
-        const expected = splitStepLines(expectedResult);
-        const count = Math.max(steps.length, expected.length, 1);
+        const folded = foldOrphanExpected(
+            splitStepLines(stepsText),
+            splitKeptLines(testData),
+            splitStepLines(expectedResult)
+        );
+        const count = Math.max(folded.steps.length, 1);
         for (let i = 0; i < count; i++) {
             addAlignRow(
-                steps[i] || '',
-                i < data.length ? data[i] : '',
-                expected[i] || ''
+                folded.steps[i] || '',
+                i < folded.data.length ? folded.data[i] : '',
+                folded.expected[i] || ''
             );
         }
     }

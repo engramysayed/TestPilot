@@ -79,7 +79,22 @@ public class AuthoringService {
             List<ProvenStep> spent,
             List<FailedLocator> failedLocators
     ) throws Exception {
-        List<DomCandidate> candidates = DomCandidateExtractor.extract(slimHtml);
+        return authorIntent(tcId, intent, slimHtml, pngOrNull, allowVisionHeal, spent, failedLocators, null);
+    }
+
+    public List<ProvenStep> authorIntent(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String slimHtml,
+            byte[] pngOrNull,
+            boolean allowVisionHeal,
+            List<ProvenStep> spent,
+            List<FailedLocator> failedLocators,
+            List<DomCandidate> liveCatalog
+    ) throws Exception {
+        List<DomCandidate> candidates = liveCatalog != null && !liveCatalog.isEmpty()
+                ? new ArrayList<>(liveCatalog)
+                : DomCandidateExtractor.extract(slimHtml);
         if (intent != null && StepIntentBinder.spendsMustAvoidPriorFills(intent)) {
             candidates = StepIntentBinder.withoutSpentControls(candidates, spent, slimHtml);
         }

@@ -29,12 +29,30 @@ public final class VisionProveHook {
             AuthoringService authoring,
             GroundingBrowser browser,
             VisionGroundingProvider provider) {
+        return tryLayer15(tcId, intent, html, healPng, stepBatch, bindFailed, failedThisIntent,
+                authoring, browser, provider, null);
+    }
+
+    public static Optional<List<ProvenStep>> tryLayer15(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String html,
+            byte[] healPng,
+            List<ProvenStep> stepBatch,
+            boolean bindFailed,
+            List<FailedLocator> failedThisIntent,
+            AuthoringService authoring,
+            GroundingBrowser browser,
+            VisionGroundingProvider provider,
+            List<DomCandidate> liveCatalog) {
         if (!bindFailed || !VisionGroundingConfig.enabled()
                 || !VisionTriggers.isEligible(intent)
                 || !VisionTriggers.isWeakBind(stepBatch)) {
             return Optional.empty();
         }
-        List<DomCandidate> table = DomCandidateExtractor.extract(html);
+        List<DomCandidate> table = liveCatalog != null && !liveCatalog.isEmpty()
+                ? liveCatalog
+                : DomCandidateExtractor.extract(html);
         table = StepIntentBinder.withoutFailedLocators(table, failedThisIntent);
         VisionGroundingEngine engine = new VisionGroundingEngine();
         List<ProvenStep> grounded = engine.tryGround(
