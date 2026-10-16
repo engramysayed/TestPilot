@@ -136,37 +136,57 @@ Ignore class-hash churn on non-hook nodes: adding `class="css-1abc2de"` to a `di
 ### Heal / Ollama / vision
 
 1. Bind CLEAR → execute. No heal.
-2. Bind TIE → `AMBIGUOUS` with shortlist ids → HealCascade Ollama on **that** shortlist (max 5), not 12.
-3. Bind EMPTY → vision if `VisionTriggers` eligible, else named-retry, else invent (unchanged last hope).
+2. Bind TIE → `AMBIGUOUS` with shortlist ids → HealCascade **pick** on **that** shortlist (max 5), not 12.
+3. Bind EMPTY → vision if `VisionTriggers` eligible, else named-retry, else invent (unchanged last hope). Do **not** send a pick card with a page-sized neighborhood.
 4. ASSERT_VISIBLE never enters HealCascade.
 
 Named-retry after a burned locator stays: try next scored named row **before** paying for Ollama.
 
+#### Pick payload (TIE only)
+
+Ollama and Cursor **pick** share one card. Not `DomCandidateExtractor.formatTable`, not a slim-HTML dump, not Cursor `solve`/`invent`.
+
+| Field | Content |
+|-------|---------|
+| `quotedName` | `StepIntentBinder.quotedVisibleName` (empty if none) |
+| `whyTied` | `TIE margin=<best-runner> best=<id>=<total> runner=<id>=<total> same-label=<label>` |
+| `scoredTable` | ≤5 rows: `id \| strategy \| value \| tag \| label \| total \| stability \| uniqueness \| intentMatch \| roleFit \| labelDistance` |
+| `neighborhood` | Parent + sibling outer HTML of the shortlisted nodes only, truncated to 1500 characters |
+
+Ollama system prompt (exact contract): pick `{"candidateId":"<id>"}` only. Include the scored table. No Thought. No locators. No invent in that call. Invent stays a later `tryInvent` with `mode=invent`.
+
+Cursor on TIE uses `mode=pick` with the same card. Do not call `solve` (solve may write a locator). `acceptWrittenLocator` is not on the TIE pick path.
+
 ### Measurement
 
-`BindQualityMetrics` counters (per job, log one `BIND_QUALITY` line):
+`BindQualityMetrics` counters (per job):
 
 - `bindClear`, `bindTie`, `bindEmpty`
 - `catalogHit` (ensure reused), `catalogRebuild`
 - `ollamaAsked`, `visionAsked`, `healEntered`
-- `falseBind` — reserved; fixture tests set it when the winner locator is not the expected one
+- `falseBind` — fixture-only; production has no oracle
 
-Acceptance is the **fixture suite**, not a live AxisPay run. A later live gate can reuse the same counters from job logs.
+Write both:
 
-## Fixture suite
+1. One log line `BIND_QUALITY clear=.. tie=.. empty=.. catalogHit=.. catalogRebuild=.. ollama=.. vision=.. heal=..`
+2. Job evidence file `bind-quality.json` with those ints (easy to open; no portal page)
 
-Synthetic HTML only. No production hostnames.
+Acceptance is **`CandidateScorerFixtureTest` green**. Do not start a live AxisPay Execute until that class passes.
 
-| Fixture | Intent | Expected winner |
-|---------|--------|-----------------|
-| Sidebar with `data-axis-test-id` Support + 59 other `li` | `Clicks "Support" in the sidebar` | CSS/hook containing `side-nav-support-submenu-button` (or fixture’s equivalent), **CLEAR** |
-| Save with preferred hook + id + testid | `Click Save` | preferred hook CSS, not text xpath |
-| `id="ember1234"` Refresh with aria-label | `Click Refresh` | not `id=ember1234` |
-| Two Delete buttons, same name | `Click Delete` | **TIE** / AMBIGUOUS |
-| Twin Settings (existing) | `Click Settings` | AMBIGUOUS |
-| Class-hash churn on a wrapper | catalog.ensure twice | same generation |
+## Fixture suite (false-bind gate)
 
-Reuse `src/test/resources/fixtures/a2/ranking.html` and add `src/test/resources/locator-fixtures/scorer-sidebar.html` (static Support row, no JS loop).
+Synthetic HTML only. No production hostnames. One page `scorer-sidebar.html` must cover every row. `falseBind` in the test is 1 when the winner is not the expected locator (or CLEAR/TIE kind is wrong).
+
+| Intent | Expected |
+|--------|----------|
+| `Clicks "Support" in the sidebar` | **CLEAR**, value contains `side-nav-support-submenu-button` |
+| `Click Save` | **CLEAR**, preferred hook (`save-hook`) or `data-testid=save`, not text xpath, not `id=btn-save` as first choice |
+| `Click Refresh` | **CLEAR**, not `id=ember1234` |
+| `Click Delete` | **TIE** (two same-name buttons) |
+| `Click Settings` | **TIE** (two Settings buttons) |
+| catalog.ensure twice with hashed class on a wrapper | same generation (Task 5) |
+
+Reuse `src/test/resources/fixtures/a2/ranking.html` only as extra coverage if useful. The gate class does not need Chrome.
 
 ## Tests that must still pass
 
@@ -176,9 +196,14 @@ Reuse `src/test/resources/fixtures/a2/ranking.html` and add `src/test/resources/
 - `GeneratedIdDetectorTest`
 - Preferred-hook extract/bind tests
 
-## Out of pack follow-ups
+## Out of pack (parked)
+
+Do not start these in Tasks 1–9:
 
 - Pixel / ancestor label distance (needs more candidate fields).
 - Slim HTML keeping off-screen nav.
+- iframe / shadow / canvas.
+- Precision `groundRank` neighborhood (same card shape later; its own pack).
 - Wiring `LocatorPipeline` replay into prove.
-- Live AxisPay bind-rate notebook.
+- Live AxisPay Execute spend / bind-rate notebook (only after `CandidateScorerFixtureTest` is green).
+- Portal UI for bind quality.

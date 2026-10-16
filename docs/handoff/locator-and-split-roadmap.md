@@ -34,7 +34,7 @@ Plan: `docs/superpowers/plans/2026-10-16-candidate-scorer.md`.
 - One `CandidateScorer` for bind + heal shortlist (testid / role+name above id and CSS soup).
 - `BindDecision` CLEAR / TIE / EMPTY. Ollama only on TIE (max 5). Vision only if empty or still tied.
 - Catalog fingerprint ignores class-hash churn; write-back only after live click. Asserts still do not heal.
-- Frozen HTML fixtures + `BIND_QUALITY` counters. Portal/codegen out. Not vision-first.
+- Frozen HTML fixtures (`CandidateScorerFixtureTest` gate) + `bind-quality.json`. TIE pick card (scored shortlist, why tied, capped neighborhood). Portal/codegen out. Not vision-first.
 
 ### P1b — Matchers (still open)
 

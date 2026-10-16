@@ -38,7 +38,7 @@ Account switches persist on `portal_users.alert_prefs`. A job that newly becomes
 - Overview chart and recent-run rows (progress bar, Done/Failed/Running, Status/Results buttons). Record no longer has the colleague hint.
 - Execute results look up screenshots in `TC~5Fxx__occ_N`, so step thumbs actually load. A bind miss also shows the heal PNG from the evidence root.
 - `exec_e03990ac7d1c` still missed Support because the 15:50 run used the 01:19 jar, not `c1f70c7`.
-- Next AE pack (not coded yet): `CandidateScorer` + scored shortlist + proof-gated catalog + fixture metrics. Spec `docs/superpowers/specs/2026-10-16-candidate-scorer-design.md`, plan `docs/superpowers/plans/2026-10-16-candidate-scorer.md`.
+- Next AE pack (not coded yet): Tasks 1–9 in `docs/superpowers/plans/2026-10-16-candidate-scorer.md`. Fixture gate + `bind-quality.json` are in 7–8. TIE pick payload is Task 9. Parked: pixel distance, slim-HTML keep-nav, iframe/shadow, Precision groundRank neighborhood.
 - Expected is no longer a trailing fake step. Parse order is action → that row’s expected (if any). Orphan expecteds fold onto the last action. Failed asserts do not enter HealCascade. `PageLocatorCatalog` caches locators until URL or DOM fingerprint changes; vision adopts or prefers the stable catalog locator. `exec_054e431e2d64` failed after two good clicks because Expected `"Upload Transaction List"` is not on screen (`Upload Transactions List`) and then heal ran for 151s — that heal path is closed.
 
 ## Checks

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Bind chooses a locator from a scored DOM shortlist before Ollama or vision, updates the catalog only after a live click proves it, and measures that on frozen HTML fixtures.
+**Goal:** Bind chooses a locator from a scored DOM shortlist before Ollama or vision, updates the catalog only after a live click proves it, measures that in `bind-quality.json` plus the fixture gate, and on a TIE sends a scored pick card (not invent).
 
 **Architecture:** Extract `CandidateScorer` + `BindDecision` from the token-overlap soup in `StepIntentBinder.scoreCandidates`. Copy Playwright-style stability bands from `LocatorRanker` as integers (do not call `LocatorRanker`). Bind, heal shortlist, and catalog preference all call the scorer. Fingerprint ignores class-hash churn; vision may not grow the catalog until execute PASS. Asserts still do not heal.
 
@@ -18,7 +18,7 @@
 - TDD: no production code before a failing TestNG test. Watch it fail.
 - Run tests with `mvn -pl keel-portal "-Dtest=ClassName"` (PowerShell splits unquoted commas).
 - After each task: commit as `rsayed <rsayed@axisapp.com>`, no `Co-authored-by: Cursor` (use `git commit-tree` if `git commit` adds one). Do not push. Do not commit `META-INF/`, `target/`, or the portal DB.
-- Do not start a live Execute/Automate job (credits).
+- Do not start a live Execute/Automate job (credits). `CandidateScorerFixtureTest` is the gate before any AxisPay spend.
 - No Claude / Anthropic models.
 
 ## File map
@@ -28,11 +28,13 @@
 | `delivery.authoring.CandidateScore` | Per-candidate ints: stability, uniqueness, intentMatch, roleFit, labelDistance, total |
 | `delivery.authoring.BindDecision` | `CLEAR` / `TIE` / `EMPTY` + winner + shortlist |
 | `delivery.authoring.CandidateScorer` | `score` + `decide`; constants `MARGIN=12`, `MIN_TOTAL=15`, `SHORTLIST_MAX=5` |
-| `delivery.authoring.BindQualityMetrics` | Job counters + `BIND_QUALITY` log line |
+| `delivery.authoring.BindQualityMetrics` | Job counters + `BIND_QUALITY` log line + `bind-quality.json` |
+| `delivery.authoring.HealPickPayload` | TIE pick card: scored table, whyTied, quotedName, capped neighborhood |
 | `DomCandidateExtractor` | Role+name emit; skip generated-class CSS |
 | `StepIntentBinder` | `scoreCandidates` delegates to scorer; AMBIGUOUS uses `BindDecision` |
 | `AuthoringService.shortlistForIntent` | Top 5 from scorer |
-| `HealCascade` | Ollama only on TIE shortlist (max 5) |
+| `HealCascade` | Ollama/Cursor **pick** only on TIE shortlist (max 5); invent stays a later call |
+| `AuthoringService.healIntentWithOllama` | Scored pick prompt; `candidateId` JSON only; no Thought; no invent |
 | `PageLocatorCatalog` | Fingerprint without nav text / class hash; pending vision; `commitAfterProof` |
 | `ProvePhase` | Commit catalog after execute PASS; increment metrics |
 | Tests under `src/test/java/delivery/authoring/` | One class per task |
@@ -584,19 +586,23 @@ Message: `Ask Ollama only when the shortlist is tied, and cap it at five rows.`
 
 ---
 
-### Task 7: Fixture suite + metrics
+### Task 7: Fixture false-bind gate + metrics
+
+This class is the **gate before any live AxisPay Execute**. Expand until Support, Save, Refresh, Delete twin, and Settings twin all have an expected kind + locator.
 
 **Files:**
 - Create: `src/test/resources/locator-fixtures/scorer-sidebar.html`
 - Create: `src/main/java/delivery/authoring/BindQualityMetrics.java`
 - Create: `src/test/java/delivery/authoring/CandidateScorerFixtureTest.java`
-- Modify: `src/main/java/delivery/job/ProvePhase.java` (increment counters; log `BIND_QUALITY` at end of `proveOne` / job — pick the method that already logs TC outcome)
+- Create: `src/test/java/delivery/authoring/BindQualityMetricsTest.java`
+- Modify: `src/main/java/delivery/job/ProvePhase.java` (increment counters; log line; write `bind-quality.json` — Task 8 also wires catalog commit; either task may add the write if the file is missing)
 - Modify: `src/main/java/delivery/authoring/PageLocatorCatalog.java` (`ensure` already logs rebuild; increment metrics there **or** return whether it rebuilt and let ProvePhase count)
 
 **Interfaces:**
 - `BindQualityMetrics` mutable ints: `bindClear`, `bindTie`, `bindEmpty`, `catalogHit`, `catalogRebuild`, `ollamaAsked`, `visionAsked`, `healEntered`, `falseBind`
 - `void add(BindDecision.Kind kind)`
 - `String summaryLine()` → `BIND_QUALITY clear=.. tie=.. empty=.. catalogHit=.. catalogRebuild=.. ollama=.. vision=.. heal=..`
+- `void writeJson(Path file)` → `{"clear":N,"tie":N,"empty":N,"catalogHit":N,"catalogRebuild":N,"ollama":N,"vision":N,"heal":N}` (omit `falseBind` in production JSON)
 - Thread-confined per prove run (instance on `ProvePhase`, not static)
 
 Fixture HTML (`scorer-sidebar.html`):
@@ -612,6 +618,8 @@ Fixture HTML (`scorer-sidebar.html`):
 <button data-axis-test-id="save-hook" id="btn-save" data-testid="save">Save</button>
 <button id="del-1">Delete</button>
 <button id="del-2">Delete</button>
+<button id="settings-primary">Settings</button>
+<button id="settings-advanced">Settings</button>
 </body></html>
 ```
 
@@ -654,15 +662,28 @@ public void emberId_isNotTheRefreshLocator() {
 
 @Test
 public void twoDeletes_areTied() {
-    String html = Files.readString(Path.of("src/test/resources/locator-fixtures/scorer-sidebar.html"));
-    List<DomCandidate> cs = DomCandidateExtractor.extract(html);
-    var intent = new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, "Click Delete");
-    BindDecision d = CandidateScorer.decide(CandidateScorer.score(intent, cs));
+    BindDecision d = decide("Click Delete");
     Assert.assertEquals(d.kind(), BindDecision.Kind.TIE, d.toString());
+}
+
+@Test
+public void twoSettings_areTied() {
+    BindDecision d = decide("Click Settings");
+    Assert.assertEquals(d.kind(), BindDecision.Kind.TIE, d.toString());
+    Assert.assertTrue(d.shortlist().size() >= 2);
+}
+
+private static BindDecision decide(String step) {
+    String html = readFixture();
+    List<DomCandidate> cs = DomCandidateExtractor.extract(html);
+    var intent = new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, step);
+    return CandidateScorer.decide(CandidateScorer.score(intent, cs));
 }
 ```
 
-Read the HTML via classpath (`getResourceAsStream`) not `Path.of("src/test/...")` so tests work from `keel-portal` cwd.
+Read the HTML via classpath (`getResource("/locator-fixtures/scorer-sidebar.html")`) not `Path.of("src/test/...")` so tests work from `keel-portal` cwd. Helper `readFixture()` wraps that.
+
+Add `BindQualityMetricsTest.writeJson_roundTripsCounts` that writes a temp file and asserts the JSON keys `clear`, `tie`, `empty`, `ollama`, `vision`, `heal`.
 
 - [ ] **Step 2: Run** `mvn -pl keel-portal "-Dtest=CandidateScorerFixtureTest" test`
 
@@ -670,11 +691,15 @@ Expected: FAIL until extractor+scorer+binder agree on the fixture.
 
 - [ ] **Step 3: Implement metrics class; wire ProvePhase**
 
-On bind: `metrics.add(decision.kind())`. On `pageCatalog.ensure`: if generation bumped, `catalogRebuild++` else `catalogHit++`. When HealCascade is entered, `healEntered++`. When Ollama branch runs, `ollamaAsked++`. When `VisionProveHook.tryLayer15` is attempted, `visionAsked++`. After TC, `LogsManager.info(metrics.summaryLine())`.
+On bind: `metrics.add(decision.kind())`. On `pageCatalog.ensure`: if generation bumped, `catalogRebuild++` else `catalogHit++`. When HealCascade is entered, `healEntered++`. When Ollama branch runs, `ollamaAsked++`. When `VisionProveHook.tryLayer15` is attempted, `visionAsked++`. After the job (or TC if that is the only hook), `LogsManager.info(metrics.summaryLine())` and `metrics.writeJson(evidenceDir.resolve("bind-quality.json"))` when `evidenceDir` is non-null.
 
-Do not set `falseBind` in production in this pack (no oracle). Fixture tests compute it by comparing winner to expected substring.
+Do not set `falseBind` in production (no oracle). Fixture tests fail the method when kind or locator is wrong — that *is* the false-bind gate.
 
-- [ ] **Step 4: Run** `mvn -pl keel-portal "-Dtest=CandidateScorerFixtureTest,CandidateScorerTest,NearTieAmbiguousTest,PageLocatorCatalogTest,AssertHealPolicyTest,BindDecisionHealPolicyTest" test`
+- [ ] **Step 4: Run** `mvn -pl keel-portal "-Dtest=CandidateScorerFixtureTest,BindQualityMetricsTest" test`
+
+This pair must stay green before anyone starts a live AxisPay run.
+
+- [ ] **Step 4b: Run the regression set** `mvn -pl keel-portal "-Dtest=CandidateScorerFixtureTest,BindQualityMetricsTest,CandidateScorerTest,NearTieAmbiguousTest,PageLocatorCatalogTest,AssertHealPolicyTest,BindDecisionHealPolicyTest" test`
 
 Expected: PASS.
 
@@ -687,7 +712,7 @@ Message: `Measure bind decisions on a frozen sidebar fixture.`
 ### Task 8: ProvePhase catalog commit after proof + docs
 
 **Files:**
-- Modify: `src/main/java/delivery/job/ProvePhase.java` (after successful `attempt.ok()`, before/with `rememberSuccessfulLocator`, `pageCatalog.commitAfterProof` on each proven step’s locator)
+- Modify: `src/main/java/delivery/job/ProvePhase.java` (after successful `attempt.ok()`, before/with `rememberSuccessfulLocator`, `pageCatalog.commitAfterProof` on each proven step’s locator; call `metrics.writeJson` if Task 7 did not already hook the evidence dir)
 - Modify: vision path that calls `stabilizeSteps` — must not grow catalog (Task 5 already); still rewrite xpath → hook
 - Modify: `docs/handoff/locator-and-split-roadmap.md` (P0/P1 now “scorer shipped / in progress”)
 - Modify: `docs/ENGINEERING_HANDOFF.md` (link spec+plan)
@@ -728,7 +753,150 @@ Message: `Commit catalog rows after a live click, and document the scorer pack.`
 
 ---
 
+### Task 9: TIE pick payload (Ollama trim + Cursor pick v2)
+
+Do this after Tasks 1–6 so `BindDecision` and scored shortlists exist. EMPTY still goes vision, not this card.
+
+**Files:**
+- Create: `src/main/java/delivery/authoring/HealPickPayload.java`
+- Create: `src/test/java/delivery/authoring/HealPickPayloadTest.java`
+- Modify: `src/main/java/delivery/authoring/AuthoringService.java` (`healIntentWithOllama` system + user strings)
+- Modify: `src/main/java/delivery/heal/HealCascade.java` (TIE: `cursor.pickCandidateId`, not `solve`; pass payload; do not `acceptWrittenLocator` on that pick)
+- Modify: `src/main/java/delivery/heal/CursorHealClient.java` (`pickCandidateId` JSON keys `quotedName`, `whyTied`, `scoredShortlist`, `neighborhood`; leave `slimHtmlExcerpt` empty on this path)
+- Modify: `src/test/java/delivery/heal/CursorHealClientTest.java` or add `CursorHealPickPayloadTest` if a test already stubs invoke — only if an existing test asserts request keys; otherwise unit-test `HealPickPayload` JSON shape only
+
+**Interfaces:**
+- Consumes: `BindDecision` (TIE), `List<CandidateScore>`, original HTML, `StepIntentBinder.quotedVisibleName`
+- Produces:
+
+```java
+public record HealPickPayload(
+        String quotedName,
+        String whyTied,
+        String scoredTable,
+        String neighborhood
+) {
+    public static final int NEIGHBORHOOD_MAX = 1500;
+
+    public static HealPickPayload from(
+            StepIntentBinder.IntentLine intent,
+            BindDecision decision,
+            String html);
+
+    public String ollamaSystem();
+    public String ollamaUser(String tcId, String failureReason);
+}
+```
+
+`whyTied` example: `TIE margin=3 best=c1=41 runner=c2=38 same-label=Settings`
+
+`scoredTable` one line per shortlist row, max 5:
+
+`c1 | css | button[data-axis-test-id='save-hook'] | button | Save | total=64 | stability=50 | uniqueness=15 | intentMatch=40 | roleFit=10 | labelDistance=10`
+
+`neighborhood`: Jsoup — for each shortlist locator, find the element, take `parent().outerHtml()` (or the node if no parent), concatenate unique snippets, truncate to `NEIGHBORHOOD_MAX`. Not `ObservationBudget.clip(slimHtml)`.
+
+`ollamaSystem()`:
+
+```
+Pick exactly one candidateId from the scored shortlist.
+Reply with JSON only: {"candidateId":"<id from shortlist>"}.
+Do not invent ids. Do not return locators. Do not write a Thought. Do not invent steps.
+```
+
+- [ ] **Step 1: Failing tests**
+
+```java
+@Test
+public void scoredTableIncludesTotals() {
+    var intent = new StepIntentBinder.IntentLine(
+            StepIntentBinder.IntentKind.CLICK, "Click Settings");
+    List<DomCandidate> cs = List.of(
+            new DomCandidate("c1", "id", "settings-primary", "button", "Settings"),
+            new DomCandidate("c2", "id", "settings-advanced", "button", "Settings")
+    );
+    BindDecision d = CandidateScorer.decide(CandidateScorer.score(intent, cs));
+    HealPickPayload p = HealPickPayload.from(intent, d, "<html></html>");
+    Assert.assertTrue(p.whyTied().startsWith("TIE"), p.whyTied());
+    Assert.assertTrue(p.scoredTable().contains("c1") && p.scoredTable().contains("total="),
+            p.scoredTable());
+    Assert.assertFalse(p.ollamaSystem().toLowerCase().contains("invent"));
+    Assert.assertFalse(p.ollamaSystem().toLowerCase().contains("thought"));
+}
+
+@Test
+public void neighborhoodIsParentNotWholePage() {
+    String html = """
+            <html><body>
+            <nav><span data-axis-test-id="side-nav-support-submenu-button">Support</span>
+            <a data-axis-test-id="side-nav-home-link">Home</a></nav>
+            <main id="huge">""" + "x".repeat(4000) + """
+            </main></body></html>
+            """;
+    var intent = new StepIntentBinder.IntentLine(
+            StepIntentBinder.IntentKind.CLICK, "Clicks \"Support\" in the sidebar");
+    List<DomCandidate> cs = DomCandidateExtractor.extract(html);
+    BindDecision d = CandidateScorer.decide(CandidateScorer.score(intent, cs));
+    HealPickPayload p = HealPickPayload.from(intent, d, html);
+    Assert.assertTrue(p.neighborhood().length() <= HealPickPayload.NEIGHBORHOOD_MAX + 80,
+            String.valueOf(p.neighborhood().length()));
+    Assert.assertFalse(p.neighborhood().contains("x".repeat(200)));
+}
+
+@Test
+public void emptyDecisionHasNoNeighborhoodCard() {
+    var intent = new StepIntentBinder.IntentLine(
+            StepIntentBinder.IntentKind.CLICK, "Click Warp Drive");
+    BindDecision d = CandidateScorer.decide(CandidateScorer.score(intent, List.of(
+            new DomCandidate("c1", "id", "cancel", "button", "Cancel"))));
+    Assert.assertEquals(d.kind(), BindDecision.Kind.EMPTY);
+    HealPickPayload p = HealPickPayload.from(intent, d, "<html><body>lots</body></html>");
+    Assert.assertEquals(p.scoredTable(), "");
+    Assert.assertEquals(p.neighborhood(), "");
+}
+```
+
+- [ ] **Step 2: Run** `mvn -pl keel-portal "-Dtest=HealPickPayloadTest" test`
+
+Expected: FAIL (`HealPickPayload` missing).
+
+- [ ] **Step 3: Implement payload + wire prompts**
+
+`AuthoringService.healIntentWithOllama`: if caller passes a `HealPickPayload`, use `payload.ollamaSystem()` / `ollamaUser`; else build payload from the shortlist scores (re-score via `CandidateScorer.score` filtered to shortlist ids).
+
+`HealCascade` after building the TIE shortlist:
+
+```java
+BindDecision decision = CandidateScorer.decide(CandidateScorer.score(intent, distinctivePool));
+if (decision.kind() == BindDecision.Kind.TIE) {
+    HealPickPayload payload = HealPickPayload.from(intent, decision, slimHtml);
+    // Ollama pick (existing tryOllama gate)
+    // Cursor: cursor.pickCandidateId(..., payload) — not solve
+}
+```
+
+Add `CursorHealClient.pickCandidateId` overload that puts:
+
+- `scoredShortlist` = `payload.scoredTable()`
+- `whyTied` = `payload.whyTied()`
+- `quotedName` = `payload.quotedName()`
+- `neighborhood` = `payload.neighborhood()`
+- `slimHtmlExcerpt` = `""`
+
+Do not run `acceptWrittenLocator` on a successful or failed **pick**. Invent remains `tryInvent` after pick+vision miss.
+
+- [ ] **Step 4: Run** `mvn -pl keel-portal "-Dtest=HealPickPayloadTest,BindDecisionHealPolicyTest,AssertHealPolicyTest,CandidateScorerFixtureTest" test`
+
+Expected: PASS. Existing Ollama tests that look for `Thought` or `formatTable` must be updated to the new system string.
+
+- [ ] **Step 5: Commit**
+
+Message: `Send a scored pick card on a tie, and keep invent off that call.`
+
+---
+
 ## Self-review
+
 
 **Spec coverage**
 
@@ -738,13 +906,15 @@ Message: `Commit catalog rows after a live click, and document the scorer pack.`
 | Scored shortlist top 3–5; Ollama only if close; vision if empty/still tied | 2, 3, 6 |
 | Fingerprint ignores class churn | 5 |
 | Write-back only on proof; asserts do not heal | 5, 6, 8 |
-| Measure bind/catalog/heal on fixtures | 7 |
+| Fixture false-bind gate (Support / Save / Refresh / Delete / Settings) | 7 |
+| `bind-quality.json` + log line | 7, 8 |
+| Cursor/Ollama TIE pick card; no invent on that call | 9 |
 | Portal/codegen out | Global constraints |
-| No Midscene / invent / fatter prompts | Global constraints |
+| No Midscene / invent / fatter prompts | Global constraints + Task 9 |
 | Do not mix in-run catalog with DomainLocatorMemory redeploy survival | Spec + Task 5 |
 
-**Not in this plan (explicit):** slim HTML, iframe/shadow/canvas, live AxisPay credit run, `LocatorPipeline` prove wiring, pixel label distance.
+**Not in this plan (explicit):** pixel/ancestor distance, slim-HTML keep-nav, iframe/shadow/canvas, Precision `groundRank` neighborhood, `LocatorPipeline` prove wiring, live AxisPay Execute, portal bind-quality UI.
 
 **Placeholder scan:** none.
 
-**Type consistency:** `CandidateScore`, `BindDecision`, `CandidateScorer.score/decide/shortlist/stability`, `MARGIN/MIN_TOTAL/SHORTLIST_MAX`, `commitAfterProof`, `BindQualityMetrics` — used with the same names in later tasks.
+**Type consistency:** `CandidateScore`, `BindDecision`, `CandidateScorer.score/decide/shortlist/stability`, `MARGIN/MIN_TOTAL/SHORTLIST_MAX`, `commitAfterProof`, `BindQualityMetrics.writeJson`, `HealPickPayload` — used with the same names in later tasks.
