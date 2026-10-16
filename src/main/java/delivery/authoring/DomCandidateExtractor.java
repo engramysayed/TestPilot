@@ -146,6 +146,16 @@ public final class DomCandidateExtractor {
                 continue;
             }
             String kind = controlKind(el);
+            // Prefer role+name when there is no test hook / stable id already emitted.
+            AttrSelector roleName = roleAndNameSelector(doc, el);
+            if (roleName != null) {
+                String label = labelOf(el, roleName.label());
+                if (roleName.css() != null && !roleName.css().isBlank() && roleName.uniqueCss()) {
+                    seq = put(byKey, seq, "css", roleName.css(), kind, label);
+                }
+                seq = put(byKey, seq, "xpath", roleName.xpath(), kind, label);
+                continue;
+            }
             AttrSelector selector = uniqueAttrSelector(doc, el);
             if (selector != null) {
                 String label = labelOf(el, selector.label());
@@ -350,6 +360,54 @@ public final class DomCandidateExtractor {
      * attribute is tried first, then a pair — a form of four {@code div[role='combobox']} controls
      * needs the pair to tell Day from Year. Positional indexing is the last resort.
      */
+
+    /**
+     * Playwright-style role+name: button[aria-label='Save'] or [role='button'][aria-label='Save'].
+     * Emitted only when unique in the document.
+     */
+    private static AttrSelector roleAndNameSelector(Document doc, Element el) {
+        if (el == null || !el.hasAttr("aria-label")) {
+            return null;
+        }
+        String aria = el.attr("aria-label");
+        if (!usableStable(aria)) {
+            return null;
+        }
+        String tag = el.tagName().toLowerCase(Locale.ROOT);
+        String role = el.attr("role").trim();
+        boolean nativeControl = "button".equals(tag) || "a".equals(tag) || "input".equals(tag)
+                || "summary".equals(tag);
+        if (!nativeControl && role.isBlank()) {
+            return null;
+        }
+        String css;
+        String xpath;
+        if (!role.isBlank()) {
+            if (GENERIC_TAGS.contains(tag) || "div".equals(tag) || "span".equals(tag)) {
+                css = "[role=" + cssQuote(role) + "]" + cssAttrSelector("aria-label", aria);
+                xpath = "//*[@role=" + XpathLiterals.quote(role)
+                        + " and @aria-label=" + XpathLiterals.quote(aria) + "]";
+            } else {
+                css = tag + "[role=" + cssQuote(role) + "]" + cssAttrSelector("aria-label", aria);
+                xpath = "//" + tag + "[@role=" + XpathLiterals.quote(role)
+                        + " and @aria-label=" + XpathLiterals.quote(aria) + "]";
+            }
+        } else {
+            css = tag + cssAttrSelector("aria-label", aria);
+            xpath = "//" + tag + "[@aria-label=" + XpathLiterals.quote(aria) + "]";
+        }
+        if (matchCount(doc, css) != 1) {
+            return null;
+        }
+        return new AttrSelector(css, xpath, aria, true);
+    }
+
+    private static String cssQuote(String value) {
+        if (value.indexOf('\'') >= 0 && value.indexOf('"') < 0) {
+            return "\"" + value + "\"";
+        }
+        return "'" + value.replace("'", "\\'") + "'";
+    }
     private static AttrSelector uniqueAttrSelector(Document doc, Element el) {
         String tag = el.tagName().toLowerCase(Locale.ROOT);
         List<String> attrs = new ArrayList<>();
