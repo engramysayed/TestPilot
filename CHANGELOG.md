@@ -6,6 +6,12 @@ The **full product** (every surface, not only the last week) is [`docs/PRODUCT.m
 
 Internal design notes stay under `docs/superpowers/`. Engineers can start from `docs/ENGINEERING_HANDOFF.md`.
 
+## 2026-10-16 — Smaller run price, clearer history, colored attention
+
+**Surfaces:** **Execute**, **Automate**, **Bug Hunter**, **project Test cases**, **Overview**.
+
+The **This run** price is a compact bar (count × unit on the left, total credits on the right), not a large card. The same bar is on Automate and Bug Hunter. Design mockups on Execute start collapsed, with a teal row you click to open. Version history copy is plain: Current (not “head”), Edited / Recorded / Generated instead of `CASE_EDIT`, and **Restore this version** sits on the same line as the filters. New Record and edit saves store your email as Author; old rows that stored `TC_3` show as —. Failed attention cards are red, blocked ones amber. Rebuild the portal jar and Ctrl+F5. Known defect: history rows saved before this still have a test-id author in the file; only the label is cleaned up.
+
 ## 2026-10-16 — Expected after each step, and a page locator catalog
 
 **Surfaces:** **Execute**, **project test-case editor**.

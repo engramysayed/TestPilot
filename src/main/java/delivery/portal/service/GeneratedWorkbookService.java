@@ -725,7 +725,7 @@ public class GeneratedWorkbookService {
             Map<String, String> fields,
             String baseUrl
     ) throws Exception {
-        return updateCaseFields(projectId, tcId, fields, baseUrl, null);
+        return updateCaseFields(projectId, tcId, fields, baseUrl, null, null);
     }
 
     public Map<String, Object> updateCaseFields(
@@ -734,6 +734,17 @@ public class GeneratedWorkbookService {
             Map<String, String> fields,
             String baseUrl,
             String baseRevision
+    ) throws Exception {
+        return updateCaseFields(projectId, tcId, fields, baseUrl, baseRevision, null);
+    }
+
+    public Map<String, Object> updateCaseFields(
+            String projectId,
+            String tcId,
+            Map<String, String> fields,
+            String baseUrl,
+            String baseRevision,
+            String author
     ) throws Exception {
         if (tcId == null || tcId.isBlank()) {
             throw new IllegalArgumentException("tcId is required");
@@ -781,8 +792,7 @@ public class GeneratedWorkbookService {
             throw GenerateQualityGate.failureException(gateErrors);
         }
 
-        String source = String.valueOf(meta.getOrDefault("source", "GENERATE"));
-        String sourceRef = String.valueOf(meta.getOrDefault("sourceRef", ""));
+        String sourceRef = author != null && !author.isBlank() ? author.trim() : "";
         Object modelObj = meta.get("model");
         String model = modelObj == null ? null : String.valueOf(modelObj);
         if (model != null && model.isBlank()) {
@@ -947,6 +957,18 @@ public class GeneratedWorkbookService {
             String preconditions,
             String baseUrl
     ) throws Exception {
+        return appendRecordedCase(projectId, title, steps, expectedResult, preconditions, baseUrl, "");
+    }
+
+    public synchronized Map<String, Object> appendRecordedCase(
+            String projectId,
+            String title,
+            String steps,
+            String expectedResult,
+            String preconditions,
+            String baseUrl,
+            String author
+    ) throws Exception {
         String name = title == null ? "" : title.trim();
         if (name.isBlank()) {
             throw new IllegalArgumentException("Give the test a short name first.");
@@ -973,7 +995,8 @@ public class GeneratedWorkbookService {
             throw new IllegalArgumentException(String.join(" ", errors));
         }
         existing.add(added);
-        saveFromCases(projectId, existing, "RECORD", tcId);
+        String sourceRef = author != null && !author.isBlank() ? author.trim() : "";
+        saveFromCases(projectId, existing, "RECORD", sourceRef);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("tcId", tcId);
         out.put("title", name);

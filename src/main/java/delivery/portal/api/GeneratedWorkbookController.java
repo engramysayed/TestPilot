@@ -358,7 +358,8 @@ public class GeneratedWorkbookController {
         fields.put("callBefore", body.callBefore());
         try {
             return ResponseEntity.ok(workbooks.updateCaseFields(
-                    projectId, tcId, fields, projectOpt.get().getBaseUrl(), body.baseRevision()));
+                    projectId, tcId, fields, projectOpt.get().getBaseUrl(), body.baseRevision(),
+                    currentUser.requireUser().getEmail()));
         } catch (IllegalStateException e) {
             if ("NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)

@@ -3706,22 +3706,42 @@ body:not(.app-body) .shell {
 .exec-run-actions .button { margin-top: 0; }
 
 .execute-optional {
-    margin: 0.85rem 0;
-    padding: 0.65rem 0.75rem;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: var(--panel-solid);
+    margin: 0.55rem 0;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--teal, #087f78) 35%, var(--line));
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--teal, #087f78) 8%, var(--panel-solid, #fff));
 }
 .execute-optional summary {
     cursor: pointer;
-    font-weight: 600;
-    color: var(--text);
+    list-style: none;
+    font-weight: 650;
+    font-size: 0.86rem;
+    color: var(--teal, #087f78);
+    padding: 0.45rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.execute-optional summary::-webkit-details-marker { display: none; }
+.execute-optional summary::before {
+    content: '▸';
+    font-size: 0.72rem;
+    line-height: 1;
+}
+.execute-optional[open] summary::before { content: '▾'; }
+.execute-optional summary .muted {
+    font-weight: 500;
+    font-size: 0.75rem;
+}
+.execute-optional[open] > :not(summary) {
+    padding: 0 0.75rem 0.65rem;
 }
 .execute-optional .design-ref-form {
-    margin-top: 0.65rem;
+    margin-top: 0.35rem;
     display: grid;
-    grid-template-columns: minmax(0, 8rem) minmax(0, 1fr) auto;
-    gap: 0.65rem;
+    grid-template-columns: minmax(0, 7rem) minmax(0, 1fr) auto;
+    gap: 0.45rem;
     align-items: end;
 }
 .execute-optional .design-ref-form label { margin: 0; }

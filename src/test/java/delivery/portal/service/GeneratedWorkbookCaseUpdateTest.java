@@ -39,9 +39,12 @@ public class GeneratedWorkbookCaseUpdateTest {
         fields.put("testData", "user@test.com");
         fields.put("keelPath", "EXECUTE");
 
-        Map<String, Object> updated = service.updateCaseFields(projectId, "TC_01", fields, "https://example.test");
+        Map<String, Object> updated = service.updateCaseFields(
+                projectId, "TC_01", fields, "https://example.test", null, "editor@example.com");
 
         Assert.assertEquals(updated.get("tcCount"), 1);
+        Assert.assertEquals(updated.get("sourceRef"), "editor@example.com");
+        Assert.assertEquals(updated.get("source"), "CASE_EDIT");
         @SuppressWarnings("unchecked")
         Map<String, Integer> counts = (Map<String, Integer>) updated.get("keelPathCounts");
         Assert.assertEquals(counts.get("EXECUTE"), Integer.valueOf(1));

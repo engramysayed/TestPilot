@@ -38,6 +38,22 @@ public class GeneratedWorkbookRecordedCaseTest {
     }
 
     @Test
+    public void recordedCaseStoresAuthorNotTcId() throws Exception {
+        GeneratedWorkbookService service = service();
+        String projectId = "proj-recorded-author-" + UUID.randomUUID();
+        service.appendRecordedCase(
+                projectId,
+                "Pay with a saved card",
+                "1. Open https://shop.example\n2. Click \"Pay\"",
+                "The order confirmation page shows an order number.",
+                "",
+                "https://shop.example",
+                "ramy@example.com");
+        Assert.assertEquals(service.describe(projectId).orElseThrow().get("sourceRef"), "ramy@example.com");
+        Assert.assertEquals(service.describe(projectId).orElseThrow().get("source"), "RECORD");
+    }
+
+    @Test
     public void blankStepsAreRefused() throws Exception {
         GeneratedWorkbookService service = service();
         try {

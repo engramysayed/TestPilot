@@ -106,7 +106,8 @@ public class RecordingController {
         boolean signIn = body != null && Boolean.TRUE.equals(body.signIn());
         boolean build = body != null && Boolean.TRUE.equals(body.build());
         Map<String, Object> saved = recordings.save(
-                ownerKey(), projectId, sessionId, name, expected, signIn, gate.project.getBaseUrl());
+                ownerKey(), projectId, sessionId, name, expected, signIn, gate.project.getBaseUrl(),
+                currentUser.requireUser().getEmail());
         @SuppressWarnings("unchecked")
         List<RecordingLog.Capture> captures = (List<RecordingLog.Capture>) saved.remove("captures");
         if (build) {

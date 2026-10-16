@@ -739,54 +739,81 @@ html[data-theme="dark"] .project-tabs a.active {
     box-shadow: none;
 }
 
-/* Live credit total. Sits above the start button so the cost is obvious. */
+/* Live credit total. Compact bar above the start button. */
 .credit-quote {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    margin: 1rem 0 0.75rem;
-    padding: 0.9rem 1.05rem;
-    border: 1px solid color-mix(in srgb, var(--teal) 50%, var(--line));
-    border-radius: 14px;
+    gap: 0.75rem 1rem;
+    margin: 0.65rem 0 0.5rem;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--teal) 45%, var(--line));
+    border-radius: 10px;
     background: var(--calm-accent-soft, #e3f3ef);
 }
-.credit-quote-copy { min-width: 0; }
+.credit-quote-copy {
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.15rem 0.55rem;
+}
 .credit-quote-kicker {
     margin: 0;
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--accent-2, var(--teal));
 }
 .credit-quote-detail {
-    margin: 0.2rem 0 0;
+    margin: 0;
     color: var(--text);
-    font-size: 0.98rem;
+    font-size: 0.84rem;
     font-weight: 600;
 }
 .credit-quote-note {
-    margin: 0.15rem 0 0;
+    flex-basis: 100%;
+    margin: 0;
     color: var(--muted);
-    font-size: 0.82rem;
+    font-size: 0.72rem;
 }
-.credit-quote-figure { text-align: right; flex: 0 0 auto; }
+.credit-quote-figure {
+    text-align: right;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+}
 .credit-quote-total {
     margin: 0;
-    font-size: 1.85rem;
+    font-size: 1.15rem;
     font-weight: 700;
     line-height: 1;
     color: var(--accent-2, var(--teal));
     font-variant-numeric: tabular-nums;
 }
 .credit-quote-unit {
-    margin: 0.25rem 0 0;
-    font-size: 0.78rem;
+    margin: 0;
+    font-size: 0.72rem;
     font-weight: 600;
     color: var(--muted);
 }
 html[data-theme="dark"] .credit-quote-total { color: var(--teal); }
+
+#lib-hist-toolbar {
+    align-items: flex-end;
+}
+#lib-hist-toolbar label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin: 0;
+    font-size: 0.78rem;
+}
+#lib-hist-restore {
+    align-self: flex-end;
+}
 
 .dash-chart-panel .chart-wrap--tall {
     min-height: 280px;
@@ -824,19 +851,44 @@ html[data-theme="dark"] .legend-fail { background: #e88c84; }
 
 .overview-page .attention-item {
     align-items: center;
-    padding: 0.85rem 0.9rem;
-    margin: 0.4rem 0;
+    padding: 0.55rem 0.7rem;
+    margin: 0.35rem 0;
     border: 1px solid var(--calm-line, #e8eef2);
-    border-radius: 14px;
+    border-radius: 10px;
     background: var(--calm-card, #fff);
     border-bottom: 1px solid var(--calm-line, #e8eef2);
     border-left: 3px solid var(--calm-accent, #2c8d81);
 }
+.overview-page .attention-item--fail {
+    background: rgba(178, 59, 59, 0.1);
+    border-left-color: #b23b3b !important;
+}
+.overview-page .attention-item--fail .attention-mark {
+    background: rgba(178, 59, 59, 0.2);
+    color: #b23b3b;
+}
 .overview-page .attention-item--warn {
-    border-left-color: var(--amber, #c48a2a);
+    background: rgba(196, 138, 42, 0.12);
+    border-left-color: var(--amber, #c48a2a) !important;
 }
 .overview-page .attention-item--info {
-    border-left-color: #6a8496;
+    background: rgba(44, 110, 143, 0.1);
+    border-left-color: #2c6e8f !important;
+}
+.overview-page .attention-item--ok {
+    background: rgba(47, 125, 79, 0.1);
+}
+html[data-theme="dark"] .overview-page .attention-item--fail {
+    background: rgba(196, 92, 92, 0.16);
+}
+html[data-theme="dark"] .overview-page .attention-item--warn {
+    background: rgba(196, 138, 42, 0.16);
+}
+html[data-theme="dark"] .overview-page .attention-item--info {
+    background: rgba(94, 160, 196, 0.14);
+}
+html[data-theme="dark"] .overview-page .attention-item--ok {
+    background: rgba(94, 196, 184, 0.12);
 }
 
 .run-kind {
@@ -888,9 +940,6 @@ html[data-theme="dark"] .run-kind {
 }
 html[data-theme="dark"] .run-progress-track {
     background: rgba(255, 255, 255, 0.1);
-}
-html[data-theme="dark"] .overview-page .attention-item {
-    background: var(--calm-card);
 }
 .execute-timeline .step-shot,
 .step-timeline .step-shot {

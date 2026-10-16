@@ -45,6 +45,7 @@ Record can also build the ZIP directly from the locators it captured, without a 
 - Counts: active projects, proven pass rate, jobs that need a look, running jobs.
 - Chart: cases per day, proven vs blocked, stacked. Filter by project or date.
 - Recent runs: progress bar, short status, Status and Results buttons.
+- **Needs your attention** cards are tinted: failed red, blocked amber, in-progress blue, design-mismatch green.
 - Recent Automate jobs with links to status.
 
 ---
@@ -81,6 +82,7 @@ After Automate has produced a package:
 ### Test cases tab
 
 - **Generated library**: cases saved from Generate. Refresh, edit fields (including KeelPath), delete selected (cannot delete the last case).
+- **Version history**: every save is kept. Source reads as Edited / Recorded / Generated (not `CASE_EDIT`). Author is the person who saved; old Record rows that stored a test id such as `TC_3` show as —. **Current** is the live version. **Restore this version** writes a new save — history is never rewritten.
 - **Automate proven cases**: last successful conversion IR (what the browser actually proved), not Generate-only drafts.
 
 ---
@@ -232,7 +234,7 @@ Exploratory live hunting from the project library. Goal: **break features** and 
 - **Credential profile** — hunter receives `$TARGET_USERNAME` / `$TARGET_PASSWORD` / `$TARGET_OTP` **tokens only** (never plaintext password in planner prompts or pack text). Choose **Open site only** for hunts without credentials.
 - Multi-select library TCs; optional free-text user story (OTP hints can be parsed from story text).
 - Planner: **Ollama** or **Cursor**.
-- Caps: scenario invent budget, iterations, cycles per iteration, **actions per cycle** (defaults 2 × 8 × 5). Each click or typed value is one step. The credit charge is the number of steps this run may try, times the Bug Hunter unit price. A card above **Start Bug Hunter** shows that total and updates when the caps change. Execute and Automate use the same card for the test cases in the run or the build.
+- Caps: scenario invent budget, iterations, cycles per iteration, **actions per cycle** (defaults 2 × 8 × 5). Each click or typed value is one step. The credit charge is the number of steps this run may try, times the Bug Hunter unit price. A compact bar above **Start Bug Hunter** shows that total and updates when the caps change. Execute and Automate use the same bar for the test cases in the run or the build.
 - **DOM mode**: Auto (structured page map; full slim HTML if the map is thin) · Map only · Full slim.
 - **Use hunt strategies** (default on): happy path → empty fields → boundary → abuse → session → invent.
 
@@ -285,7 +287,8 @@ Run cases on the live site **without** building a customer ZIP.
 - Pick a credential profile when the project has them.
 - Source: **project library** (all or selected `TC_ID`s) and/or upload `.xlsx` / `.csv`.
 - Mix: library ∪ upload; **same `TC_ID` → upload wins**.
-- Optional PNG design mockup per TC (also on project Settings).
+- Optional PNG design mockup per TC (collapsed by default; also on project Settings).
+- A compact **This run** bar shows how many test cases × the Execute unit, and the total credits. Automate and Bug Hunter use the same bar.
 - Optional **Review selected TCs with Cursor before run** (propose only). **Accept & run** uses that CSV **for this job only** — it does not save the library.
 - **Start execute run**. The run price is charged once for each runnable test case. Cancel while running. (Authoring engine: **project Settings**.)
 
@@ -411,7 +414,6 @@ Be explicit so a demo does not promise these:
 | Claude / Anthropic models | Hard ban for this project |
 | LLM Wiki | Parked |
 | Public SaaS billing / multi-tenant cloud | Self-hosted |
-| Version history of the generated library | One current workbook |
 | iframe / canvas / WebGL as first-class actions | Limited / follow-up |
 | Stop-on-first-fail toggle on Execute | Continues past failed TCs |
 | Bug Hunter auto-merge into library | Review pack only; import manually |

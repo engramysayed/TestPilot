@@ -654,10 +654,9 @@
         </section>
 
         <section class="panel" id="lib-history">
-            <h2>Library history</h2>
+            <h2>Version history</h2>
             <p class="panel-intro">
-                Each save is an immutable revision. Open a run’s pinned revision, review added/changed/removed
-                cases, then restore as a <em>new</em> revision (history is never rewritten).
+                Every save is kept. Pick one to see what changed, or restore it as the latest version.
             </p>
             <p id="lib-hist-empty" class="muted" hidden>No revisions yet.</p>
             <p id="lib-hist-err" class="error" hidden></p>
@@ -686,7 +685,7 @@
                         <option>CallBefore</option>
                     </select>
                 </label>
-                <button type="button" class="button ghost" id="lib-hist-restore" disabled>Restore as new revision</button>
+                <button type="button" class="button ghost" id="lib-hist-restore" disabled>Restore this version</button>
             </div>
             <div id="lib-hist-list" class="lib-table-wrap" hidden>
                 <table class="table lib-table">
@@ -2770,6 +2769,31 @@
     });
 
     /* —— Library history —— */
+    function librarySourceLabel(source) {
+        const s = String(source || '').trim();
+        if (!s) return 'Saved';
+        if (s.indexOf('restore:') === 0) return 'Restored';
+        switch (s) {
+            case 'CASE_EDIT': return 'Edited';
+            case 'RECORD': return 'Recorded';
+            case 'GENERATE_BATCH':
+            case 'GENERATE':
+            case 'GENERATE_SYNC': return 'Generated';
+            case 'LIBRARY_UPLOAD':
+            case 'IMPORT': return 'Uploaded';
+            case 'CASE_DELETE': return 'Deleted a case';
+            case 'KEEL_PATH_EDIT': return 'Path changed';
+            case 'HEAL_PATCH': return 'Healed';
+            default: return s;
+        }
+    }
+    function libraryAuthorLabel(author) {
+        const a = String(author || '').trim();
+        if (!a) return '—';
+        if (/^TC[_-]?\d+$/i.test(a)) return '—';
+        if (/^(rev_|genb_|exec_|job-|hunt_|aut_)/i.test(a)) return '—';
+        return a;
+    }
     async function loadLibraryHistory() {
         const empty = document.getElementById('lib-hist-empty');
         const err = document.getElementById('lib-hist-err');
@@ -2809,12 +2833,12 @@
             tr.className = 'lib-hist-row' + (rev.id === libSelectedRevisionId ? ' is-selected' : '');
             tr.setAttribute('data-rev', rev.id);
             const when = rev.createdAt ? String(rev.createdAt).replace('T', ' ').replace(/\.\d+.*/, '') : '';
-            const head = rev.id === libHeadRevisionId ? ' <span class="badge muted lib-badge-head">head</span>' : '';
+            const head = rev.id === libHeadRevisionId ? ' <span class="badge muted lib-badge-head">Current</span>' : '';
             tr.innerHTML =
                 '<td><input type="radio" name="lib-hist-pick" ' + (rev.id === libSelectedRevisionId ? 'checked' : '') + '/></td>' +
                 '<td>' + escapeHtml(when) + '</td>' +
-                '<td>' + escapeHtml(rev.source || '') + '</td>' +
-                '<td>' + escapeHtml(rev.author || '') + '</td>' +
+                '<td>' + escapeHtml(librarySourceLabel(rev.source)) + '</td>' +
+                '<td>' + escapeHtml(libraryAuthorLabel(rev.author)) + '</td>' +
                 '<td class="mono">' + escapeHtml(rev.id) + head + '</td>';
             tr.addEventListener('click', function () {
                 libSelectedRevisionId = rev.id;
@@ -2877,7 +2901,7 @@
             mount.innerHTML = '<p class="muted">No matching changes for this filter.</p>';
             return;
         }
-        let html = '<h3>Review vs parent</h3>';
+        let html = '<h3>What changed</h3>';
         added.forEach(function (id) {
             html += '<div class="lib-diff-case"><h4 class="mono">' + escapeHtml(id) + ' <span class="badge ok">added</span></h4></div>';
         });

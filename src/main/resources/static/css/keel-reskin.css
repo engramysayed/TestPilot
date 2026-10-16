@@ -498,6 +498,10 @@ label.field > span {
     background: rgba(8, 127, 120, 0.12);
     color: var(--teal);
 }
+.overview-page .attention-item--fail .attention-mark {
+    background: rgba(178, 59, 59, 0.18);
+    color: #b23b3b;
+}
 .overview-page .attention-item--warn .attention-mark {
     background: rgba(150, 112, 32, 0.15);
     color: var(--amber);

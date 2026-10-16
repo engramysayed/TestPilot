@@ -116,6 +116,19 @@ public class BrowserRecordingService {
             boolean signIn,
             String baseUrl
     ) throws Exception {
+        return save(ownerKey, projectId, sessionId, name, expected, signIn, baseUrl, "");
+    }
+
+    public Map<String, Object> save(
+            String ownerKey,
+            String projectId,
+            String sessionId,
+            String name,
+            String expected,
+            boolean signIn,
+            String baseUrl,
+            String author
+    ) throws Exception {
         Session session = require(ownerKey, projectId, sessionId);
         List<String> steps;
         synchronized (session) {
@@ -146,7 +159,7 @@ public class BrowserRecordingService {
         }
         String preconditions = signIn ? "Sign in with a project login account before these steps." : "";
         Map<String, Object> saved = new LinkedHashMap<>(workbooks.appendRecordedCase(
-                projectId, title, text, expectedText, preconditions, baseUrl));
+                projectId, title, text, expectedText, preconditions, baseUrl, author));
         saved.put("steps", steps);
         saved.put("locatedCount", RecordingLog.locatedCount(captures));
         saved.put("checkCount", RecordingLog.checkCount(captures));

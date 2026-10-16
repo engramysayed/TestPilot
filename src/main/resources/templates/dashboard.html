@@ -291,7 +291,9 @@
         attentionItems.forEach(function (item) {
             const row = document.createElement('div');
             const severity = item.severity || 'info';
-            const sevClass = severity === 'ok' ? 'ok' : (severity === 'warn' ? 'warn' : 'info');
+            const sevClass = severity === 'ok' ? 'ok'
+                : (severity === 'warn' ? 'warn'
+                    : (severity === 'error' || severity === 'fail' ? 'fail' : 'info'));
             row.className = 'attention-item attention-item--' + sevClass;
             const mark = severity === 'ok' ? '✓' : '!';
             row.innerHTML = '<div class="attention-mark">' + mark + '</div><div>'

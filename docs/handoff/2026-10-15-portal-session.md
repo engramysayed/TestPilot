@@ -29,7 +29,10 @@ Account switches persist on `portal_users.alert_prefs`. A job that newly becomes
 - Bug Hunter triage loads `GET /api/jobs?projectId=&kind=HUNT`.
 - Project sections (Summary, Test cases, Packages, Settings) are a pill row in `keel-theme-calm.css`. The open section is the filled pill.
 - Execute punctuation (`—`, `·`, `…`) was stored double-encoded in `execute.html`. The credential dropdown’s first row is the placeholder “— Select profile —”.
-- Bug Hunter, Execute, and Automate show a `.credit-quote` card above the start button. Hunt quantity is steps. Execute and Automate quantity is the selected runnable cases, or every runnable case when none are picked. An uploaded workbook shows the unit price only.
+- Bug Hunter, Execute, and Automate show a compact `.credit-quote` bar above the start button (not a hero card). Hunt quantity is steps. Execute and Automate quantity is the selected runnable cases, or every runnable case when none are picked. An uploaded workbook shows the unit price only.
+- Execute **Design mockups** starts collapsed, teal, with a short “optional — click to add” hint.
+- Project **Version history**: human source labels, Author hides `TC_*` / job ids, **Current** instead of head, Restore aligned on the filter row. `CASE_EDIT` and `RECORD` now store the signed-in email as `sourceRef`.
+- Overview attention maps `error`/`fail` to a red card (JS no longer drops FAILED to grey `info`).
 - The users page no longer calls `GET /api/admin/users/approvals-stub` (that path collided with delete-user).
 - Execute click of a quoted name accepts that label on any tag, anywhere on the page. Vision keeps a box whose text is exactly the name. Ollama can pick that row because it is now on the candidate list. A longer wrapper is not the target. The portal jar must be rebuilt before a live run sees this.
 - Overview chart and recent-run rows (progress bar, Done/Failed/Running, Status/Results buttons). Record no longer has the colleague hint.
