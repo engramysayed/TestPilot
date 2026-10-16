@@ -91,6 +91,42 @@ public class CursorHealClient {
                 screenshotPathOrNull, List.of());
     }
 
+    /** TIE pick card: scored shortlist + neighborhood; slimHtmlExcerpt stays empty on this path. */
+    public String pickCandidateId(
+            String intentText,
+            String failureReason,
+            delivery.authoring.HealPickPayload payload,
+            Path screenshotPathOrNull,
+            List<String> priorSteps
+    ) {
+        JSONObject req = new JSONObject();
+        req.put("mode", "pick");
+        req.put("intent", intentText == null ? "" : intentText);
+        req.put("failureReason", failureReason == null ? "" : failureReason);
+        req.put("quotedName", payload == null ? "" : nullToEmpty(payload.quotedName()));
+        req.put("whyTied", payload == null ? "" : nullToEmpty(payload.whyTied()));
+        req.put("scoredShortlist", payload == null ? "" : nullToEmpty(payload.scoredTable()));
+        req.put("neighborhood", payload == null ? "" : nullToEmpty(payload.neighborhood()));
+        req.put("shortlist", payload == null ? "" : nullToEmpty(payload.scoredTable()));
+        req.put("slimHtmlExcerpt", "");
+        req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
+        putVisionAttempts(req);
+        if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
+            req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
+        }
+        String raw = invoke(req);
+        String id = parseCandidateId(raw);
+        if (id.isBlank() && !raw.isBlank()) {
+            LogsManager.warn("CURSOR_HEAL_SKIPPED: no candidateId in sidecar output: " + trim(raw, 200));
+        } else if (!id.isBlank()) {
+            LogsManager.info("CURSOR_HEAL: Auto picked candidateId=" + id);
+        }
+        return id;
+    }
+
+    private static String nullToEmpty(String s) {
+        return s == null ? "" : s;
+    }
     public String pickCandidateId(
             String intentText,
             String failureReason,

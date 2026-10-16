@@ -212,32 +212,17 @@ public class AuthoringService {
             return List.of();
         }
         boolean hasImage = pngOrNull != null && pngOrNull.length > 0;
+        BindDecision decision = CandidateScorer.decide(CandidateScorer.score(intent, shortlist));
+        HealPickPayload payload = HealPickPayload.from(intent, decision, "");
         String system = hasImage
                 ? LocatorPolicy.visionHealRules()
-                : """
-                Pick exactly one candidateId from the shortlist that best matches the Excel step intent.
-                Respond with a short Thought, then Action JSON: {"candidateId":"<id from shortlist>"}.
-                Do not invent ids. Do not return locators.
-                """;
-        String user = """
-                TC_ID: %s
-                Intent: %s
-                Failure: %s
-                ## Already completed in this TC
-                %s
-                %s
-                Shortlist:
-                %s
-                %s
-                """.formatted(
-                tcId,
-                intent == null ? "" : intent.text(),
-                failureReason == null ? "" : failureReason,
-                formatPriorSteps(priorStepSummaries),
-                delivery.vision.VisionHealHints.ollamaSection(),
-                DomCandidateExtractor.formatTable(shortlist),
-                hasImage ? "(Screenshot of current page is attached as an image.)" : ""
-        );
+                : payload.ollamaSystem();
+        String user = payload.ollamaUser(tcId, failureReason)
+                + "\n## Already completed in this TC\n"
+                + formatPriorSteps(priorStepSummaries)
+                + "\n"
+                + delivery.vision.VisionHealHints.ollamaSection()
+                + (hasImage ? "\n(Screenshot of current page is attached as an image.)" : "");
         try {
             String raw = hasImage
                     ? llmClient.completeRankingJson(system, user, pngOrNull)
@@ -250,11 +235,7 @@ public class AuthoringService {
         } catch (Exception e) {
             if (hasImage) {
                 try {
-                    String raw = llmClient.completeRankingJson("""
-                            Pick exactly one candidateId from the shortlist that best matches the Excel step intent.
-                            Respond with a short Thought, then Action JSON:
-                            {"candidateId":"<id from shortlist>"}.
-                            """, user);
+                    String raw = llmClient.completeRankingJson(payload.ollamaSystem(), user);
                     String chosenId = parseCandidateId(raw);
                     if (!shortlistContains(shortlist, chosenId)) {
                         return List.of();

@@ -6,7 +6,10 @@ import delivery.routing.ModelRouter;
 import delivery.routing.ObservationBudget;
 import delivery.settle.SettlePolicy;
 import delivery.authoring.PrecisionCallBudget;
+import delivery.authoring.BindDecision;
+import delivery.authoring.CandidateScorer;
 import delivery.authoring.DomCandidate;
+import delivery.authoring.HealPickPayload;
 import delivery.authoring.DomCandidateExtractor;
 import delivery.authoring.StepIntentBinder;
 import delivery.codegen.ProvenStep;
@@ -390,6 +393,42 @@ public class HealCascade {
             solveReason = solveReason
                     + "\nExcel open-path (only allowed navigation target): " + allowedOpenPath;
         }
+        List<DomCandidate> decidePool = distinctivePool.isEmpty() ? candidates : distinctivePool;
+        BindDecision tieDecision = CandidateScorer.decide(CandidateScorer.score(intent, decidePool));
+        boolean tiePick = tieDecision.kind() == BindDecision.Kind.TIE
+                && tieDecision.shortlist() != null
+                && tieDecision.shortlist().size() >= 2;
+
+        if (tiePick) {
+            if (!allowPrecisionCursorCall("pick")) {
+                return HealResult.fail("HEAL_EXHAUSTED: precision call cap exceeded");
+            }
+            LoopGuard.Verdict beforePick = guardBefore("pick");
+            if (beforePick != null && beforePick.stop()) {
+                return HealResult.fail("HEAL_STOPPED: " + beforePick.reason());
+            }
+            HealPickPayload payload = HealPickPayload.from(intent, tieDecision, slimHtml);
+            String chosen = cursor.pickCandidateId(
+                    intent.text(), solveReason, payload, screenshotPathOrNull, priorSteps);
+            if (!chosen.isBlank() && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(chosen))) {
+                List<ProvenStep> cursorSteps =
+                        authoring.stepsPreferringCandidate(tcId, intent, candidates, chosen, widened);
+                if (validHealSteps(intent, candidates, cursorSteps, widened, spentSteps)) {
+                    LogsManager.info("HEAL_CURSOR_PICK: resolved " + tcId + " candidateId=" + chosen);
+                    LoopGuard.Verdict gv = guardRecord("pick:" + chosen, true, 1, se);
+                    return stoppedOr(gv, HealResult.success(cursorSteps, "cursor"));
+                }
+            }
+            guardRecord("pick:miss", false, 1, se);
+            // Invent stays a later call — never acceptWrittenLocator on the TIE pick path.
+            HealResult invented = tryInvent(tcId, intent, slimHtml, pngOrNull, reason, priorSteps,
+                    "post_pick", screenshotPathOrNull, allowInvent);
+            return invented != null
+                    ? invented
+                    : HealResult.fail("HEAL_EXHAUSTED: Cursor pick path exhausted; id="
+                    + chosen + " reason=" + reason);
+        }
+
         if (!allowPrecisionCursorCall("solve")) {
             return HealResult.fail("HEAL_EXHAUSTED: precision call cap exceeded");
         }
@@ -420,8 +459,6 @@ public class HealCascade {
         if (written != null) {
             return written;
         }
-        // Cursor already had the HTML and the screenshot, so a second call would ask the same
-        // question twice. Only fall through when it never answered at all.
         if (!raw.isBlank()) {
             return HealResult.fail("HEAL_EXHAUSTED: Cursor solved nothing usable for "
                     + trim(intent.text(), 60) + "; reason=" + reason);
