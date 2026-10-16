@@ -26,7 +26,17 @@
 - **Slim excerpt** only for Cursor prompts.
 - **PageSerializer** (`delivery/snapshot/`) → candidates with **framePath**, shadow chain, scrollable sidebar items.
 
-### P1 — Matchers
+### P1 — Candidate scorer (next funded pack)
+
+Spec: `docs/superpowers/specs/2026-10-16-candidate-scorer-design.md`.  
+Plan: `docs/superpowers/plans/2026-10-16-candidate-scorer.md`.
+
+- One `CandidateScorer` for bind + heal shortlist (testid / role+name above id and CSS soup).
+- `BindDecision` CLEAR / TIE / EMPTY. Ollama only on TIE (max 5). Vision only if empty or still tied.
+- Catalog fingerprint ignores class-hash churn; write-back only after live click. Asserts still do not heal.
+- Frozen HTML fixtures + `BIND_QUALITY` counters. Portal/codegen out. Not vision-first.
+
+### P1b — Matchers (still open)
 
 - Dedupe text: ignore **hidden** nodes before “ambiguous Support” logic.
 - Accept **sidebar `<li>` / menuitem** for CLICK when intent is nav label.
