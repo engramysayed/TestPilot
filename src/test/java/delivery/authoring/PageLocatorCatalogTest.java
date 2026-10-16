@@ -75,6 +75,32 @@ public class PageLocatorCatalogTest {
                 "v2", "css", "button[data-axis-test-id='toast-close']", "button", "Close");
         DomCandidate chosen = catalog.adoptOrPreferStable(visionNew);
         Assert.assertEquals(chosen.value(), visionNew.value());
+        Assert.assertEquals(catalog.candidates().size(), before, "adopt must not grow until proof");
+        Assert.assertTrue(catalog.pendingCount() >= 1);
+        catalog.commitAfterProof(visionNew);
+        Assert.assertTrue(catalog.candidates().size() > before);
+    }
+
+    @Test
+    public void classHashChurnDoesNotRebuild() {
+        PageLocatorCatalog catalog = new PageLocatorCatalog();
+        catalog.ensure("https://app.test/home", PAGE);
+        int gen = catalog.generation();
+        String churn = PAGE.replace("<h1>Home</h1>", "<h1 class=\"css-xyz99\">Home</h1>");
+        catalog.ensure("https://app.test/home", churn);
+        Assert.assertEquals(catalog.generation(), gen);
+    }
+
+    @Test
+    public void visionDoesNotGrowCatalogUntilProof() {
+        PageLocatorCatalog catalog = new PageLocatorCatalog();
+        catalog.ensure("https://app.test/home", PAGE);
+        int before = catalog.candidates().size();
+        DomCandidate visionNew = new DomCandidate(
+                "v2", "css", "button[data-axis-test-id='toast-close']", "button", "Close");
+        catalog.adoptOrPreferStable(visionNew);
+        Assert.assertEquals(catalog.candidates().size(), before);
+        catalog.commitAfterProof(visionNew);
         Assert.assertTrue(catalog.candidates().size() > before);
     }
 }

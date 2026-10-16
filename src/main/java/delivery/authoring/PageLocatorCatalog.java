@@ -9,20 +9,23 @@ import utils.LogsManager;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Live-page locator catalog. Rebuilds only when the URL or a cheap DOM fingerprint
  * changes (navigation, submenu expand, modal). Bind reads this instead of
- * re-extracting every step. Vision may only pick from it, or add a node it saw
- * that the extractor missed.
+ * re-extracting every step. Vision may only pick from it, or park a node it saw
+ * until a live click proves it ({@link #commitAfterProof}).
  */
 public final class PageLocatorCatalog {
     public static final int MAX = 400;
 
     private String fingerprint = "";
     private List<DomCandidate> candidates = List.of();
+    private final Map<String, DomCandidate> pending = new LinkedHashMap<>();
     private int generation;
 
     public List<DomCandidate> ensure(String url, String html) {
@@ -41,6 +44,7 @@ public final class PageLocatorCatalog {
     public void clear() {
         fingerprint = "";
         candidates = List.of();
+        pending.clear();
         generation = 0;
     }
 
@@ -52,9 +56,14 @@ public final class PageLocatorCatalog {
         return candidates;
     }
 
+    public int pendingCount() {
+        return pending.size();
+    }
+
     /**
      * If vision boxed a control we already catalogued, keep the stable locator.
-     * If it found something new (DOM changed under us, or extractor gap), adopt it.
+     * If it found something new, park it on the pending list — do not grow {@link #candidates}
+     * until {@link #commitAfterProof} after a live click.
      */
     public DomCandidate adoptOrPreferStable(DomCandidate vision) {
         if (vision == null) {
@@ -66,11 +75,50 @@ public final class PageLocatorCatalog {
             LogsManager.info("PAGE_CATALOG vision hit matched " + stable.strategy() + ":" + stable.value());
             return stable;
         }
-        List<DomCandidate> next = new ArrayList<>(candidates);
-        next.add(vision);
-        candidates = List.copyOf(next);
-        LogsManager.info("PAGE_CATALOG vision adopted " + vision.strategy() + ":" + vision.value());
+        String key = vision.key();
+        pending.put(key, vision);
+        LogsManager.info("PAGE_CATALOG vision pending " + vision.strategy() + ":" + vision.value());
         return vision;
+    }
+
+    /**
+     * After execute PASS, append a proven locator to the live catalog if it was pending
+     * or is not already present.
+     */
+    public void commitAfterProof(DomCandidate c) {
+        if (c == null) {
+            return;
+        }
+        String key = c.key();
+        pending.remove(key);
+        DomCandidate existing = findRelated(c);
+        if (existing != null && keysEqual(existing, c)) {
+            return;
+        }
+        for (DomCandidate have : candidates) {
+            if (keysEqual(have, c)) {
+                return;
+            }
+        }
+        List<DomCandidate> next = new ArrayList<>(candidates);
+        next.add(c);
+        candidates = List.copyOf(next);
+        LogsManager.info("PAGE_CATALOG commitAfterProof " + c.strategy() + ":" + c.value());
+    }
+
+    /** Commit proven step locators after a live click (execute PASS). */
+    public static void commitProvenSteps(PageLocatorCatalog catalog, List<ProvenStep> steps) {
+        if (catalog == null || steps == null) {
+            return;
+        }
+        for (ProvenStep step : steps) {
+            if (step == null || step.locatorStrategy() == null || step.locatorValue() == null) {
+                continue;
+            }
+            catalog.commitAfterProof(new DomCandidate(
+                    "p", step.locatorStrategy(), step.locatorValue(), "",
+                    step.rationale() == null ? "" : step.rationale()));
+        }
     }
 
     public List<ProvenStep> stabilizeSteps(List<ProvenStep> steps, StepIntentBinder.IntentLine intent) {
@@ -108,16 +156,29 @@ public final class PageLocatorCatalog {
         for (Element el : doc.getAllElements()) {
             for (Attribute attr : el.attributes()) {
                 if (DomCandidateExtractor.isTestHookAttr(attr.getKey())
-                        && attr.getValue() != null && !attr.getValue().isBlank()) {
+                        && attr.getValue() != null && !attr.getValue().isBlank()
+                        && !GeneratedIdDetector.looksGenerated(attr.getValue())) {
                     hooks.add(attr.getKey().toLowerCase(Locale.ROOT) + "=" + attr.getValue());
                 }
             }
         }
         hooks.sort(String::compareTo);
         int interactive = doc.select(DomCandidateExtractor.INTERACTIVE_QUERY).size();
-        String nav = doc.select("nav, aside, [role=navigation], [class*=sidebar], [class*=side-menu]").text();
+        List<String> navHooks = new ArrayList<>();
+        for (Element el : doc.select("nav, aside, [role=navigation], [class*=sidebar], [class*=side-menu]")) {
+            for (Element node : el.getAllElements()) {
+                for (Attribute attr : node.attributes()) {
+                    if (DomCandidateExtractor.isTestHookAttr(attr.getKey())
+                            && attr.getValue() != null && !attr.getValue().isBlank()
+                            && !GeneratedIdDetector.looksGenerated(attr.getValue())) {
+                        navHooks.add(attr.getKey().toLowerCase(Locale.ROOT) + "=" + attr.getValue());
+                    }
+                }
+            }
+        }
+        navHooks.sort(String::compareTo);
         return (url == null ? "" : url.trim()) + "\n" + interactive + "\n"
-                + String.join("|", hooks) + "\n" + Integer.toHexString(nav.hashCode());
+                + String.join("|", hooks) + "\n" + String.join("|", navHooks);
     }
 
     private DomCandidate findRelated(DomCandidate vision) {
