@@ -32,6 +32,9 @@ Account switches persist on `portal_users.alert_prefs`. A job that newly becomes
 - Bug Hunter, Execute, and Automate show a `.credit-quote` card above the start button. Hunt quantity is steps. Execute and Automate quantity is the selected runnable cases, or every runnable case when none are picked. An uploaded workbook shows the unit price only.
 - The users page no longer calls `GET /api/admin/users/approvals-stub` (that path collided with delete-user).
 - Execute click of a quoted name accepts that label on any tag, anywhere on the page. Vision keeps a box whose text is exactly the name. Ollama can pick that row because it is now on the candidate list. A longer wrapper is not the target. The portal jar must be rebuilt before a live run sees this.
+- Overview chart and recent-run rows (progress bar, Done/Failed/Running, Status/Results buttons). Record no longer has the colleague hint.
+- Execute results look up screenshots in `TC~5Fxx__occ_N`, so step thumbs actually load. A bind miss also shows the heal PNG from the evidence root.
+- `exec_e03990ac7d1c` still missed Support because the 15:50 run used the 01:19 jar, not `c1f70c7`.
 
 ## Checks
 

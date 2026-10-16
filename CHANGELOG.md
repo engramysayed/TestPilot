@@ -6,6 +6,12 @@ The **full product** (every surface, not only the last week) is [`docs/PRODUCT.m
 
 Internal design notes stay under `docs/superpowers/`. Engineers can start from `docs/ENGINEERING_HANDOFF.md`.
 
+## 2026-10-16 — Overview chart, run progress, and missing screenshots
+
+**Surfaces:** **Overview**, **Runs**, **Execute results**, **Record**.
+
+The outcomes chart stacks proven vs blocked with rounder bars. Recent runs show a progress bar, a short status word (Done / Failed / Running), and Status / Results as buttons. Execute results now find screenshots stored under the per-run folder (`TC_01__occ_1`). A blocked bind also shows the heal screenshot. The Record name field no longer says “Describe it like you would to a colleague.” Rebuild and restart the portal; Ctrl+F5.
+
 ## 2026-10-16 — Named labels are clickable
 
 **Surfaces:** **Execute**.

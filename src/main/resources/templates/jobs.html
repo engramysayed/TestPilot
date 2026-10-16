@@ -42,17 +42,24 @@
                     <td class="mono" th:text="${j.projectId}" th:title="${j.projectId}">prj_</td>
                     <td class="clip" th:text="${j.mode}" th:title="${j.mode}">NEW</td>
                     <td>
-                        <span class="badge"
+                        <span class="badge run-status"
                               th:classappend="${j.status == 'COMPLETED'} ? ' badge--pass' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? ' badge--block' : (${j.status == 'FAILED'} ? ' badge--fail' : (${j.status == 'RUNNING' or j.status == 'QUEUED'} ? ' badge--run' : '')))">
                             <span class="spinner spinner--badge" th:if="${j.status == 'RUNNING' or j.status == 'QUEUED'}" aria-hidden="true"></span>
-                            <span th:text="${j.status}">QUEUED</span>
+                            <span th:text="${j.status == 'COMPLETED'} ? 'Done' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? 'Blocked' : (${j.status == 'FAILED'} ? 'Failed' : (${j.status == 'RUNNING'} ? 'Running' : (${j.status == 'QUEUED'} ? 'Queued' : ${j.status}))))">Queued</span>
                         </span>
                     </td>
-                    <td class="mono num" th:text="${j.progressCurrent} + '/' + ${j.progressTotal}">0/0</td>
+                    <td>
+                        <div class="run-progress">
+                            <div class="run-progress-track" aria-hidden="true">
+                                <i th:style="|width: ${j.progressTotal == 0 ? 0 : (j.progressCurrent * 100.0 / j.progressTotal)}%|"></i>
+                            </div>
+                            <span th:text="${j.progressTotal == 0} ? (${j.progressCurrent} + ' done') : (${j.progressCurrent} + ' of ' + ${j.progressTotal})">0 of 0</span>
+                        </div>
+                    </td>
                     <td class="clip" th:text="${j.message}" th:title="${j.message}">—</td>
                     <td class="actions">
-                        <a th:href="${j['statusUrl']}">Status</a>
-                        <a th:if="${j['resultsUrl'] != null}" th:href="${j['resultsUrl']}">Results</a>
+                        <a class="button ghost small" th:href="${j['statusUrl']}">Status</a>
+                        <a class="button small" th:if="${j['resultsUrl'] != null}" th:href="${j['resultsUrl']}">Results</a>
                         <a th:if="${j.status == 'COMPLETED' or j.status == 'COMPLETED_WITH_BLOCK' or (j.jobKind == 'HUNT' and j.status == 'FAILED')}" class="button"
                            th:href="@{/api/jobs/{id}/download(id=${j.jobId})}">Download</a>
                     </td>

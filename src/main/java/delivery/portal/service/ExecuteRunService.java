@@ -103,11 +103,18 @@ public class ExecuteRunService {
         if (job.isEmpty() || job.get().getJobKind() != JobRecord.JobKind.EXECUTE) {
             return Optional.empty();
         }
-        Path file = EvidencePaths.resolve(runRoot(job.get()).resolve("evidence"), tcId).resolve(fileName);
-        if (!Files.isRegularFile(file)) {
-            return Optional.empty();
+        Path evidence = runRoot(job.get()).resolve("evidence");
+        Path file = EvidencePaths.resolve(evidence, tcId).resolve(fileName);
+        if (Files.isRegularFile(file)) {
+            return Optional.of(file);
         }
-        return Optional.of(file);
+        if (fileName.startsWith("heal-")) {
+            Path heal = evidence.resolve(fileName);
+            if (Files.isRegularFile(heal)) {
+                return Optional.of(heal);
+            }
+        }
+        return Optional.empty();
     }
 
     List<TcDraft> readDraftsForJob(String jobId) throws Exception {
@@ -271,6 +278,9 @@ public class ExecuteRunService {
                 fileName = "failure.png";
             }
             row.remove("screenshotUrl");
+            if (fileName == null && "failed".equals(row.get("state"))) {
+                fileName = latestHealShot(jobId, tcId);
+            }
             if (fileName == null) {
                 continue;
             }
@@ -282,6 +292,34 @@ public class ExecuteRunService {
                 row.remove("screenshot");
             }
         }
+    }
+
+    /** Bind misses store heal PNGs on the evidence root, not under the TC folder. */
+    private String latestHealShot(String jobId, String tcId) {
+        Optional<JobRecord> job = store.getJob(jobId);
+        if (job.isEmpty() || tcId == null || tcId.isBlank()) {
+            return null;
+        }
+        Path evidence = runRoot(job.get()).resolve("evidence");
+        if (!Files.isDirectory(evidence)) {
+            return null;
+        }
+        String prefix = "heal-" + tcId + "-";
+        Path best = null;
+        try (var stream = Files.list(evidence)) {
+            for (Path p : stream.toList()) {
+                String name = p.getFileName().toString();
+                if (!Files.isRegularFile(p) || !name.startsWith(prefix) || !name.toLowerCase().endsWith(".png")) {
+                    continue;
+                }
+                if (best == null || Files.getLastModifiedTime(p).toMillis() > Files.getLastModifiedTime(best).toMillis()) {
+                    best = p;
+                }
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        return best == null ? null : best.getFileName().toString();
     }
 
     private String runAtLabel(JobRecord job) {

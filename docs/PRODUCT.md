@@ -42,8 +42,9 @@ Record can also build the ZIP directly from the locators it captured, without a 
 
 ## Dashboard
 
-- Counts: active projects, Automate conversions, Execute runs, running / completed / failed, passed, blocked, pass rate.
-- Charts: results by day, job status, Automate results, Execute runs.
+- Counts: active projects, proven pass rate, jobs that need a look, running jobs.
+- Chart: cases per day, proven vs blocked, stacked. Filter by project or date.
+- Recent runs: progress bar, short status, Status and Results buttons.
 - Recent Automate jobs with links to status.
 
 ---
@@ -300,7 +301,7 @@ Run cases on the live site **without** building a customer ZIP.
 ### Results
 
 - Recent runs for the project; **Results** opens that run’s evidence.
-- Expand a row: step timeline + screenshots.
+- Expand a row: step timeline + screenshots (including the last heal shot when a bind missed).
 - QA column (pass / fail / blocked).
 - **Design** column: live last screen vs uploaded PNG (dash = no reference).
 - Export: bug report JSON, bug report CSV, results Excel + screenshots.

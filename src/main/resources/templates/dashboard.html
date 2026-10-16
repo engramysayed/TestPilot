@@ -65,7 +65,7 @@
     </section>
 
     <div class="grid grid--overview">
-        <section class="panel panel--keel">
+        <section class="panel panel--keel dash-chart-panel">
             <div class="panelhead">
                 <h2>Execution outcomes</h2>
                 <span class="badge badge--pass" th:if="${stats.passedTotal > 0}"
@@ -137,22 +137,32 @@
                 <tr th:each="j : ${stats.recentRuns}"
                     th:attr="data-project=${j.projectId},data-day=${j.day},data-status=${j.status}">
                     <td>
-                        <b th:text="${j.jobKind == 'EXECUTE'} ? 'Execute run' : (${j.jobKind == 'GENERATE_BATCH'} ? 'Generate batch' : 'Automate')">Run</b>
+                        <b th:text="${j.jobKind == 'EXECUTE'} ? 'Execute run' : (${j.jobKind == 'GENERATE_BATCH'} ? 'Generate batch' : (${j.jobKind == 'HUNT'} ? 'Bug Hunter' : 'Automate'))">Run</b>
                         <small class="mono" th:text="${j.jobId}">job</small>
                     </td>
                     <td th:text="${j.projectName}">Project</td>
-                    <td th:text="${j.jobKind == 'EXECUTE'} ? 'Execute' : (${j.jobKind == 'GENERATE_BATCH'} ? 'Generate' : 'Automate')">Automate</td>
                     <td>
-                        <span class="badge"
+                        <span class="run-kind"
+                              th:text="${j.jobKind == 'EXECUTE'} ? 'Execute' : (${j.jobKind == 'GENERATE_BATCH'} ? 'Generate' : (${j.jobKind == 'HUNT'} ? 'Hunt' : 'Automate'))">Execute</span>
+                    </td>
+                    <td>
+                        <span class="badge run-status"
                               th:classappend="${j.status == 'COMPLETED'} ? ' badge--pass' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? ' badge--block' : (${j.status == 'FAILED'} ? ' badge--fail' : (${j.status == 'RUNNING' or j.status == 'QUEUED'} ? ' badge--run' : '')))">
                             <span class="spinner spinner--badge" th:if="${j.status == 'RUNNING' or j.status == 'QUEUED'}" aria-hidden="true"></span>
-                            <span th:text="${j.status}">COMPLETED</span>
+                            <span th:text="${j.status == 'COMPLETED'} ? 'Done' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? 'Blocked' : (${j.status == 'FAILED'} ? 'Failed' : (${j.status == 'RUNNING'} ? 'Running' : (${j.status == 'QUEUED'} ? 'Queued' : ${j.status}))))">Done</span>
                         </span>
                     </td>
-                    <td class="mono num" th:text="${j.progressCurrent} + '/' + ${j.progressTotal}">0/0</td>
+                    <td>
+                        <div class="run-progress">
+                            <div class="run-progress-track" aria-hidden="true">
+                                <i th:style="|width: ${j.progressTotal == 0 ? 0 : (j.progressCurrent * 100.0 / j.progressTotal)}%|"></i>
+                            </div>
+                            <span th:text="${j.progressTotal == 0} ? (${j.progressCurrent} + ' done') : (${j.progressCurrent} + ' of ' + ${j.progressTotal})">0 of 0</span>
+                        </div>
+                    </td>
                     <td class="actions">
-                        <a th:href="${j['statusUrl']}">Status</a>
-                        <a th:if="${j['resultsUrl'] != null}" th:href="${j['resultsUrl']}">Results</a>
+                        <a class="button ghost small" th:href="${j['statusUrl']}">Status</a>
+                        <a class="button small" th:if="${j['resultsUrl'] != null}" th:href="${j['resultsUrl']}">Results</a>
                     </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(stats.recentRuns)}">
@@ -172,6 +182,9 @@
     const chartTodo = /*[[${stats.chartTodo}]]*/ [];
 
     const scoreCtx = document.getElementById('scoreChart');
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const tick = dark ? '#9aa7b5' : '#697b88';
+    const grid = dark ? 'rgba(255,255,255,0.06)' : '#e8eef2';
     const scoreChart = new Chart(scoreCtx, {
         type: 'bar',
         data: {
@@ -180,16 +193,20 @@
                 {
                     label: 'Proven pass',
                     data: chartPassed,
-                    backgroundColor: '#2c8d81',
-                    borderRadius: 3,
-                    maxBarThickness: 14
+                    backgroundColor: dark ? 'rgba(94, 196, 184, 0.92)' : '#2c8d81',
+                    borderRadius: 8,
+                    borderSkipped: false,
+                    maxBarThickness: 28,
+                    stack: 'day'
                 },
                 {
                     label: 'Blocked',
                     data: chartTodo,
-                    backgroundColor: '#d9a9a2',
-                    borderRadius: 3,
-                    maxBarThickness: 14
+                    backgroundColor: dark ? 'rgba(232, 140, 132, 0.9)' : '#c97870',
+                    borderRadius: 8,
+                    borderSkipped: false,
+                    maxBarThickness: 28,
+                    stack: 'day'
                 }
             ]
         },
@@ -198,17 +215,25 @@
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
-                tooltip: { mode: 'index', intersect: false }
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: dark ? '#1c242c' : '#12222c',
+                    padding: 10,
+                    cornerRadius: 10
+                }
             },
             scales: {
                 x: {
-                    ticks: { color: '#697b88', maxRotation: 45 },
-                    grid: { color: '#f1f4f6', drawBorder: false }
+                    stacked: true,
+                    ticks: { color: tick, maxRotation: 0, font: { size: 11 } },
+                    grid: { display: false, drawBorder: false }
                 },
                 y: {
+                    stacked: true,
                     beginAtZero: true,
-                    ticks: { precision: 0, color: '#697b88' },
-                    grid: { color: '#f1f4f6', drawBorder: false }
+                    ticks: { precision: 0, color: tick },
+                    grid: { color: grid, drawBorder: false }
                 }
             }
         }
