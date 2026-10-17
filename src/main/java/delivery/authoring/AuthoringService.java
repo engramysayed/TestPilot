@@ -112,7 +112,8 @@ public class AuthoringService {
         candidates = StepIntentBinder.withoutFailedLocators(candidates, failedLocators);
         BindDecision bindDecision = CandidateScorer.decide(CandidateScorer.score(intent, candidates));
         recordBind(bindDecision.kind());
-        StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(intent, tcId, candidates, List.of());
+        List<String> preferOnTie = StepIntentBinder.preferIdsForSpentFills(intent, candidates, spent);
+        StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(intent, tcId, candidates, preferOnTie);
         if (bound.ok()) {
             return bound.steps();
         }

@@ -449,5 +449,5 @@ Be explicit so a demo does not promise these:
 
 ## Locator bind (Execute)
 
-Bind prefers test-id / role+name from a scored shortlist; Ollama only on a close shortlist (TIE up to 5).
+Bind prefers test-id / role+name from a scored shortlist; Ollama only on a close shortlist (TIE up to 5). After a fill, expected text like “Username is accepted” asserts that same field — it does not stop as a TIE against a same-name label.
 

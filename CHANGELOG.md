@@ -8,6 +8,7 @@
 - Fixture gate: CandidateScorerFixtureTest + bind-quality.json.
 - Review fixes: ProvePhase records bind/ollama/vision/heal into bind-quality.json (flush in finally); Ollama TIE pick gets slimHtml neighborhood; catalog preferStable uses CandidateScorer.stability (testid over raw id).
 - bind-quality.json holds **job totals** across TCs (not last-TC-only). proveOne still clears pageCatalog; it no longer zeros BindQualityMetrics.
+- Execute: “Username is accepted” after a fill binds that field (input over a same-name hint; spent fill wins a TIE). Excel is not rewritten. Asserts still do not heal.
 
 
 This is the **public story of what shipped**. When you publish, add a dated section here first. Write for everyone: what changed, why it matters, how to use it, and what still does not work.

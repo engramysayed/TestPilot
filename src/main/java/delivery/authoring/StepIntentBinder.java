@@ -363,18 +363,15 @@ public final class StepIntentBinder {
                     if (ordinalPick != null) {
                         best = ordinalPick;
                     } else {
-                        return new BindResult(
-                                List.of(),
-                                "AMBIGUOUS:" + intent.kind() + ":"
-                                        + decision.shortlist().stream().map(DomCandidate::id)
-                                        .collect(Collectors.joining(",")));
+                        return ambiguousTie(intent, decision);
                     }
                 } else {
-                    return new BindResult(
-                            List.of(),
-                            "AMBIGUOUS:" + intent.kind() + ":"
-                                    + decision.shortlist().stream().map(DomCandidate::id)
-                                    .collect(Collectors.joining(",")));
+                    Scored fieldPick = uniqueEditableFieldOnTie(intent, decision, scored);
+                    if (fieldPick != null) {
+                        best = fieldPick;
+                    } else {
+                        return ambiguousTie(intent, decision);
+                    }
                 }
             } else if (decision.kind() == BindDecision.Kind.EMPTY && best.score < CandidateScorer.MIN_TOTAL) {
                 return new BindResult(List.of(),
@@ -547,6 +544,85 @@ public final class StepIntentBinder {
             return false;
         }
         return "input".equals(tag) || "textarea".equals(tag);
+    }
+
+    /**
+     * After a fill, Excel expected "{Field} is accepted" is an ASSERT_VISIBLE TIE on the field
+     * plus a same-name hint/label. Prefer the one editable control that still names that field.
+     */
+    private static Scored uniqueEditableFieldOnTie(
+            IntentLine intent, BindDecision decision, List<Scored> scored) {
+        if (intent == null || decision == null || decision.shortlist() == null || scored == null) {
+            return null;
+        }
+        if (intent.kind() != IntentKind.ASSERT_VISIBLE && intent.kind() != IntentKind.TYPE_FIELD) {
+            return null;
+        }
+        List<DomCandidate> fields = decision.shortlist().stream()
+                .filter(StepIntentBinder::looksLikeEditableFieldForAcceptedAssert)
+                .filter(c -> candidateSharesFieldToken(intent.text(), c))
+                .toList();
+        if (fields.size() != 1) {
+            return null;
+        }
+        DomCandidate pick = fields.get(0);
+        return scored.stream()
+                .filter(s -> s.candidate.id().equals(pick.id()) || describesSameControl(s.candidate, pick))
+                .findFirst()
+                .orElse(null);
+    }
+
+    static boolean looksLikeEditableFieldForAcceptedAssert(DomCandidate c) {
+        if (c == null || looksLikeRevealOrMaskToggle(c)) {
+            return false;
+        }
+        String tag = c.tag() == null ? "" : c.tag().toLowerCase(Locale.ROOT);
+        return "input".equals(tag) || "textarea".equals(tag) || "select".equals(tag)
+                || "textbox".equals(tag) || "searchbox".equals(tag) || "combobox".equals(tag);
+    }
+
+    /**
+     * When the previous proven fill still sits in the catalog, a TIE on "{Field} is accepted"
+     * resolves to that same locator.
+     */
+    public static List<String> preferIdsForSpentFills(
+            IntentLine intent, List<DomCandidate> candidates, List<ProvenStep> spent) {
+        if (intent == null || candidates == null || spent == null || spent.isEmpty()) {
+            return List.of();
+        }
+        if (intent.kind() != IntentKind.ASSERT_VISIBLE && intent.kind() != IntentKind.TYPE_FIELD) {
+            return List.of();
+        }
+        for (int i = spent.size() - 1; i >= 0; i--) {
+            ProvenStep step = spent.get(i);
+            if (step == null || step.locatorValue() == null || step.locatorValue().isBlank()) {
+                continue;
+            }
+            String action = step.action() == null ? "" : step.action().toLowerCase(Locale.ROOT);
+            if (!"type".equals(action) && !"fill".equals(action) && !"select".equals(action)
+                    && !"clear".equals(action)) {
+                continue;
+            }
+            for (DomCandidate c : candidates) {
+                if (c == null || c.id() == null) {
+                    continue;
+                }
+                if (c.strategy() != null && c.strategy().equalsIgnoreCase(step.locatorStrategy())
+                        && step.locatorValue().equals(c.value())
+                        && candidateSharesFieldToken(intent.text(), c)) {
+                    return List.of(c.id());
+                }
+            }
+        }
+        return List.of();
+    }
+
+    private static BindResult ambiguousTie(IntentLine intent, BindDecision decision) {
+        return new BindResult(
+                List.of(),
+                "AMBIGUOUS:" + intent.kind() + ":"
+                        + decision.shortlist().stream().map(DomCandidate::id)
+                        .collect(Collectors.joining(",")));
     }
 
     private static boolean looksLikeClickAction(String lower) {

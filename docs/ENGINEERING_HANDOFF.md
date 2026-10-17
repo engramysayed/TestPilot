@@ -105,3 +105,4 @@ mvn -q "-Dtest=RecoveryPlanParserTest,HealCascadeTest,FreeInventHealerTest,Requi
 - Gate: CandidateScorerFixtureTest + bind-quality.json before live AxisPay Execute
 - Wired: bind/ollama/vision/heal counters flush on fail; Ollama TIE neighborhood from slimHtml; preferStable via CandidateScorer.stability
 - bind-quality.json is **job totals** (one BindQualityMetrics per ProvePhase job; proveOne must not zero counters; pageCatalog.clear() stays per TC)
+- ASSERT_VISIBLE “{Field} is accepted”: unique editable field on TIE, or spent fill locator via preferIdsForSpentFills. Click twins stay AMBIGUOUS. FieldAcceptedAssertBindTest.
