@@ -7,6 +7,7 @@ import delivery.routing.ObservationBudget;
 import delivery.settle.SettlePolicy;
 import delivery.authoring.PrecisionCallBudget;
 import delivery.authoring.BindDecision;
+import delivery.authoring.BindQualityMetrics;
 import delivery.authoring.CandidateScorer;
 import delivery.authoring.DomCandidate;
 import delivery.authoring.HealPickPayload;
@@ -53,6 +54,11 @@ public class HealCascade {
     /** A10: per-intent heal loop guard (reset via {@link #beginIntent}). */
     private LoopGuard intentGuard;
     private CursorHealClient.HealSafety lastSafety = CursorHealClient.HealSafety.empty();
+    private BindQualityMetrics bindQuality;
+
+    public void setBindQuality(BindQualityMetrics metrics) {
+        this.bindQuality = metrics;
+    }
 
     public void setPresenceHtml(String html) {
         this.presenceHtml = html == null ? "" : html;
@@ -236,6 +242,9 @@ public class HealCascade {
         if (intent == null) {
             return HealResult.fail("HEAL_EXHAUSTED: missing intent or HTML");
         }
+        if (bindQuality != null) {
+            bindQuality.healEntered++;
+        }
         List<String> priorSteps = priorStepSummaries == null ? List.of() : priorStepSummaries;
         List<ProvenStep> spentSteps = spent == null ? List.of() : spent;
         List<FailedLocator> failedLocators = failed == null ? List.of() : failed;
@@ -370,7 +379,7 @@ public class HealCascade {
             }
         } else if (tryOllama && answerable && ollamaAllowed && shortlist.size() >= 2) {
             List<ProvenStep> ollamaSteps = authoring.healIntentWithOllama(
-                    tcId, intent, candidates, shortlist, pngOrNull, reason, priorSteps, widened);
+                    tcId, intent, candidates, shortlist, pngOrNull, reason, priorSteps, widened, slimHtml);
             if (validHealSteps(intent, candidates, ollamaSteps, widened, spentSteps)) {
                 LogsManager.info("HEAL_OLLAMA: resolved " + tcId + " intent=" + trim(intent.text(), 40));
                 LoopGuard.Verdict gv = guardRecord("ollama", true, 1, se);

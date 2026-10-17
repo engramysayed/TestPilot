@@ -205,6 +205,8 @@ public class ProvePhase {
                         VisionGroundingConfig.createProvider(),
                         () -> new SeleniumGroundingBrowser(driverFactory.get()))
                 : new HealCascade(authoring, new CursorHealClient());
+        authoring.setBindQuality(bindQuality);
+        healCascade.setBindQuality(bindQuality);
         TcExecutionService execution = new TcExecutionService(driverFactory, request);
         AuthoringEngine jobEngine = request == null || request.authoringEngine() == null
                 ? AuthoringEngine.KEEL : request.authoringEngine();
@@ -419,6 +421,8 @@ public class ProvePhase {
         bindQuality.bindClear = bindQuality.bindTie = bindQuality.bindEmpty = 0;
         bindQuality.catalogHit = bindQuality.catalogRebuild = 0;
         bindQuality.ollamaAsked = bindQuality.visionAsked = bindQuality.healEntered = 0;
+        String evidenceDirForFlush = evidence == null ? "" : evidence.toString();
+        try {
         healCascade.setExcelOpenPath(StepIntentBinder.firstOpenPath(
                 tc.preconditions(), tc.steps()));
 
@@ -587,7 +591,6 @@ public class ProvePhase {
         provenAll = stampPageNames(provenAll, url);
         provenAll = ExpectedCoverageEnricher.enrich(tc, provenAll);
         loginSteps = stampLoginNames(loginSteps);
-        flushBindQuality(evidence == null ? "" : evidence.toString());
         String reject = SemanticPassGate.rejectReason(tc, provenAll, url);
         if (reject != null) {
             return new TcDraft(
@@ -603,6 +606,9 @@ public class ProvePhase {
                 -1, "", "", "", 0, url)
                 .withHeal(maxHealTier, healSkipAccum)
                 .withLoginFormUrl(loginFormUrl), execution, evidence);
+        } finally {
+            flushBindQuality(evidenceDirForFlush);
+        }
     }
 
     private TcDraft proveBatchFallback(
@@ -873,6 +879,7 @@ public class ProvePhase {
                 if (bindFailed && !precisionPath && VisionGroundingConfig.enabled()
                         && VisionTriggers.isEligible(intent)
                         && VisionTriggers.isWeakBind(stepBatch)) {
+                    bindQuality.visionAsked++;
                     java.util.Optional<java.util.List<ProvenStep>> grounded = VisionProveHook.tryLayer15(
                             tc.tcId(), intent, html, healPng, stepBatch, bindFailed,
                             failedThisIntent, authoring,

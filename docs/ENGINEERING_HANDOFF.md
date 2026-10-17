@@ -103,3 +103,4 @@ mvn -q "-Dtest=RecoveryPlanParserTest,HealCascadeTest,FreeInventHealerTest,Requi
 - Spec: docs/superpowers/specs/2026-10-16-candidate-scorer-design.md
 - Plan: docs/superpowers/plans/2026-10-16-candidate-scorer.md
 - Gate: CandidateScorerFixtureTest + bind-quality.json before live AxisPay Execute
+- Wired: bind/ollama/vision/heal counters flush on fail; Ollama TIE neighborhood from slimHtml; preferStable via CandidateScorer.stability

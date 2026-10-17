@@ -206,7 +206,7 @@ public final class PageLocatorCatalog {
         String label = norm(related.label());
         return candidates.stream()
                 .filter(c -> keysEqual(c, related) || (!label.isBlank() && label.equals(norm(c.label()))))
-                .max(Comparator.comparingInt(c -> DomCandidateExtractor.strategyRank(c.strategy(), c.value())))
+                .max(Comparator.comparingInt(CandidateScorer::stability))
                 .orElse(related);
     }
 

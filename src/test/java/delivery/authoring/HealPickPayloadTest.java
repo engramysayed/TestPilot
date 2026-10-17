@@ -41,6 +41,9 @@ public class HealPickPayloadTest {
         Assert.assertTrue(p.neighborhood().length() <= HealPickPayload.NEIGHBORHOOD_MAX + 80,
                 String.valueOf(p.neighborhood().length()));
         Assert.assertFalse(p.neighborhood().contains("x".repeat(200)));
+        Assert.assertTrue(p.neighborhood().contains("Support")
+                        || p.neighborhood().contains("side-nav-support"),
+                p.neighborhood());
     }
 
     @Test

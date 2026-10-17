@@ -119,4 +119,25 @@ public class PageLocatorCatalogTest {
         PageLocatorCatalog.commitProvenSteps(catalog, List.of(step));
         Assert.assertTrue(catalog.candidates().size() > before);
     }
+
+    @Test
+    public void adoptOrPreferStable_prefersTestIdOverRawId() {
+        PageLocatorCatalog catalog = new PageLocatorCatalog();
+        String html = """
+                <html><body>
+                <button id="btn-save" data-testid="save">Save</button>
+                </body></html>
+                """;
+        catalog.ensure("https://app.test/form", html);
+        DomCandidate visionById = new DomCandidate("v", "id", "btn-save", "button", "Save");
+        DomCandidate chosen = catalog.adoptOrPreferStable(visionById);
+        Assert.assertFalse(
+                "id".equalsIgnoreCase(chosen.strategy()) && "btn-save".equals(chosen.value()),
+                "preferStable must not keep raw id when testid exists: " + chosen);
+        Assert.assertTrue(
+                "data-testid".equalsIgnoreCase(chosen.strategy())
+                        || chosen.value().contains("data-testid")
+                        || "save".equals(chosen.value()),
+                chosen.toString());
+    }
 }

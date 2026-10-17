@@ -95,4 +95,4 @@ Deep-dive targets when stable:
 
 ## Candidate scorer (2026-10-16)
 
-P0/P1 locator ranking: scorer shipped. Spec: docs/superpowers/specs/2026-10-16-candidate-scorer-design.md. Plan: docs/superpowers/plans/2026-10-16-candidate-scorer.md. Bind uses CandidateScorer + BindDecision; catalog write-back only after live click; Ollama pick only on TIE (max 5).
+P0/P1 locator ranking: scorer shipped. Spec: docs/superpowers/specs/2026-10-16-candidate-scorer-design.md. Plan: docs/superpowers/plans/2026-10-16-candidate-scorer.md. Bind uses CandidateScorer + BindDecision; catalog write-back only after live click; Ollama pick only on TIE (max 5). Review fixes: bind-quality counters wired (finally flush); Ollama gets TIE neighborhood; preferStable uses CandidateScorer.stability.

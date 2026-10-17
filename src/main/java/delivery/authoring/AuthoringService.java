@@ -16,10 +16,21 @@ import java.util.stream.Collectors;
 public class AuthoringService {
     private final LocalLlmClient llmClient;
     private final LocatorValidator validator;
+    private BindQualityMetrics bindQuality;
 
     public AuthoringService(LocalLlmClient llmClient, LocatorValidator validator) {
         this.llmClient = llmClient;
         this.validator = validator;
+    }
+
+    public void setBindQuality(BindQualityMetrics metrics) {
+        this.bindQuality = metrics;
+    }
+
+    private void recordBind(BindDecision.Kind kind) {
+        if (bindQuality != null) {
+            bindQuality.add(kind);
+        }
     }
 
     public List<ProvenStep> author(ManualTestCase tc, String slimHtml, Path screenshotOrNull) throws Exception {
@@ -99,6 +110,8 @@ public class AuthoringService {
             candidates = StepIntentBinder.withoutSpentControls(candidates, spent, slimHtml);
         }
         candidates = StepIntentBinder.withoutFailedLocators(candidates, failedLocators);
+        BindDecision bindDecision = CandidateScorer.decide(CandidateScorer.score(intent, candidates));
+        recordBind(bindDecision.kind());
         StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(intent, tcId, candidates, List.of());
         if (bound.ok()) {
             return bound.steps();
@@ -208,12 +221,31 @@ public class AuthoringService {
             List<String> priorStepSummaries,
             boolean relaxDistinctive
     ) {
+        return healIntentWithOllama(
+                tcId, intent, candidates, shortlist, pngOrNull, failureReason,
+                priorStepSummaries, relaxDistinctive, "");
+    }
+
+    public List<ProvenStep> healIntentWithOllama(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            List<DomCandidate> candidates,
+            List<DomCandidate> shortlist,
+            byte[] pngOrNull,
+            String failureReason,
+            List<String> priorStepSummaries,
+            boolean relaxDistinctive,
+            String slimHtml
+    ) {
+        if (bindQuality != null) {
+            bindQuality.ollamaAsked++;
+        }
         if (shortlist == null || shortlist.isEmpty() || candidates == null || candidates.isEmpty()) {
             return List.of();
         }
         boolean hasImage = pngOrNull != null && pngOrNull.length > 0;
         BindDecision decision = CandidateScorer.decide(CandidateScorer.score(intent, shortlist));
-        HealPickPayload payload = HealPickPayload.from(intent, decision, "");
+        HealPickPayload payload = HealPickPayload.from(intent, decision, slimHtml == null ? "" : slimHtml);
         String system = hasImage
                 ? LocatorPolicy.visionHealRules()
                 : payload.ollamaSystem();

@@ -6,6 +6,7 @@
 - Catalog fingerprint ignores class-hash churn; write-back only after a live click (commitAfterProof).
 - Ollama/Cursor pick only on TIE (max 5); ASSERT_VISIBLE still never heals.
 - Fixture gate: CandidateScorerFixtureTest + bind-quality.json.
+- Review fixes: ProvePhase records bind/ollama/vision/heal into bind-quality.json (flush in finally); Ollama TIE pick gets slimHtml neighborhood; catalog preferStable uses CandidateScorer.stability (testid over raw id).
 
 
 This is the **public story of what shipped**. When you publish, add a dated section here first. Write for everyone: what changed, why it matters, how to use it, and what still does not work.
