@@ -4,6 +4,13 @@
 
 # Keel changelog
 
+## 2026-10-17 - Heal API keys via Settings publish + optional Ollama Bearer
+
+- Automation Engine resolves CURSOR_API_KEY / AGENTROUTER_API_KEY / OLLAMA_API_KEY through ApiKeySource: env then System property (portal LLM Settings publish) then DEV-only LocalApiKeyLoader (api-keys.local.*) last. Never logs secret values.
+- CursorHealClient and AgentRouter invent/final-revise read via ApiKeySource for those three names (other AgentRouter fallbacks unchanged).
+- LocalLlmClient sends Authorization Bearer on Ollama /api/chat when OLLAMA_API_KEY resolves non-blank; blank means local tokenless.
+- Portal UI for keys stays Backend /admin/llm-settings (no AE portal UI). Midscene / split-engine secret fetch deferred.
+
 ## 2026-10-17 - Richer TIE handoff (Ollama + Cursor)
 
 - Both Ollama and Cursor TIE picks share HealPickPayload: whyTied (margin + same-label), scored shortlist (role/tag, label, stability, intentMatch, totals), HTML neighborhood (parent snippets, NEIGHBORHOOD_MAX), optional screenshotPath when evidence already has a file (empty-ok; never invent capture).

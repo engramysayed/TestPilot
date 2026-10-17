@@ -47,4 +47,96 @@ public class LocalLlmClientTest {
         Assert.assertEquals(stats.generatedTokens(), 30L);
         Assert.assertEquals(LocalLlmClient.OllamaTiming.from(new org.json.JSONObject()).loadNs(), -1L);
     }
+
+    @Test
+    public void ollamaAuthorizationHeader_bearerWhenKeySet() {
+        String previous = System.getProperty("OLLAMA_API_KEY");
+        // If ambient env already has OLLAMA_API_KEY, header still non-blank; assert shape only.
+        System.setProperty("OLLAMA_API_KEY", "ollama-unit-test-key");
+        try {
+            String header = LocalLlmClient.ollamaAuthorizationHeader();
+            if (System.getenv("OLLAMA_API_KEY") != null && !System.getenv("OLLAMA_API_KEY").isBlank()) {
+                Assert.assertTrue(header != null && header.startsWith("Bearer "));
+            } else {
+                Assert.assertEquals(header, "Bearer ollama-unit-test-key");
+            }
+        } finally {
+            if (previous == null) {
+                System.clearProperty("OLLAMA_API_KEY");
+            } else {
+                System.setProperty("OLLAMA_API_KEY", previous);
+            }
+        }
+    }
+
+    @Test
+    public void ollamaAuthorizationHeader_absentWhenKeyBlank() {
+        if (System.getenv("OLLAMA_API_KEY") != null && !System.getenv("OLLAMA_API_KEY").isBlank()) {
+            return; // env wins; cannot assert blank in this JVM
+        }
+        String previous = System.getProperty("OLLAMA_API_KEY");
+        System.clearProperty("OLLAMA_API_KEY");
+        try {
+            Assert.assertNull(LocalLlmClient.ollamaAuthorizationHeader());
+        } finally {
+            if (previous == null) {
+                System.clearProperty("OLLAMA_API_KEY");
+            } else {
+                System.setProperty("OLLAMA_API_KEY", previous);
+            }
+        }
+    }
+
+    @Test
+    public void completeChat_sendsBearerWhenKeySet_absentWhenBlank() throws Exception {
+        java.util.concurrent.atomic.AtomicReference<String> seenAuth =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        com.sun.net.httpserver.HttpServer server =
+                com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/api/chat", exchange -> {
+            seenAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            byte[] body = ("{\"message\":{\"content\":\"{\\\"ok\\\":true}\"},\"done_reason\":\"stop\"}")
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        String prevKey = System.getProperty("OLLAMA_API_KEY");
+        String prevAllow = System.getProperty("delivery.provider.allowlist");
+        System.setProperty("delivery.provider.allowlist", "ollama");
+        String base = "http://127.0.0.1:" + server.getAddress().getPort();
+        try {
+            if (System.getenv("OLLAMA_API_KEY") == null || System.getenv("OLLAMA_API_KEY").isBlank()) {
+                System.clearProperty("OLLAMA_API_KEY");
+                LocalLlmClient noKey = new LocalLlmClient(base, "m", java.time.Duration.ofSeconds(5));
+                noKey.completeJson("s", "u");
+                Assert.assertNull(seenAuth.get());
+
+                seenAuth.set(null);
+                System.setProperty("OLLAMA_API_KEY", "ollama-unit-bearer");
+                LocalLlmClient withKey = new LocalLlmClient(base, "m", java.time.Duration.ofSeconds(5));
+                withKey.completeJson("s", "u");
+                Assert.assertEquals(seenAuth.get(), "Bearer ollama-unit-bearer");
+            } else {
+                // Env present: only assert that a Bearer header is sent.
+                LocalLlmClient withEnv = new LocalLlmClient(base, "m", java.time.Duration.ofSeconds(5));
+                withEnv.completeJson("s", "u");
+                Assert.assertTrue(seenAuth.get() != null && seenAuth.get().startsWith("Bearer "));
+            }
+        } finally {
+            if (prevKey == null) {
+                System.clearProperty("OLLAMA_API_KEY");
+            } else {
+                System.setProperty("OLLAMA_API_KEY", prevKey);
+            }
+            if (prevAllow == null) {
+                System.clearProperty("delivery.provider.allowlist");
+            } else {
+                System.setProperty("delivery.provider.allowlist", prevAllow);
+            }
+            server.stop(0);
+        }
+    }
 }

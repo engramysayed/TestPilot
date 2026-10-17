@@ -1,5 +1,6 @@
 package delivery.authoring;
 
+import delivery.heal.ApiKeySource;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -135,10 +136,12 @@ public class LocalLlmClient {
                 : numPredict > 0 ? Math.min(numPredict, outputCap) : outputCap;
         String bodyJson = buildChatRequestBody(model, system, user, forceJson, effectivePredict, pngs);
         if (outputCap != null) bodyJson = new JSONObject(bodyJson).put("think", false).toString();
-        HttpRequest request = HttpRequest.newBuilder()
+        HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/chat"))
                 .timeout(LlmCallDeadline.limit(requestTimeout))
-                .header("Content-Type", "application/json")
+                .header("Content-Type", "application/json");
+        applyOllamaAuth(reqBuilder);
+        HttpRequest request = reqBuilder
                 .POST(HttpRequest.BodyPublishers.ofString(bodyJson, StandardCharsets.UTF_8))
                 .build();
 
@@ -257,6 +260,25 @@ public class LocalLlmClient {
         }
     }
 
+    /**
+     * When {@code OLLAMA_API_KEY} resolves non-blank, set {@code Authorization: Bearer}.
+     * Empty key = local tokenless Ollama.
+     */
+    static void applyOllamaAuth(HttpRequest.Builder builder) {
+        String header = ollamaAuthorizationHeader();
+        if (header != null && !header.isBlank()) {
+            builder.header("Authorization", header);
+        }
+    }
+
+    /** Package-visible for tests — {@code Bearer <key>} or {@code null} when blank. */
+    static String ollamaAuthorizationHeader() {
+        String key = ApiKeySource.resolve(ApiKeySource.OLLAMA_API_KEY);
+        if (key == null || key.isBlank()) {
+            return null;
+        }
+        return "Bearer " + key;
+    }
     private static boolean looksLikeCloudVendor(String url) {
         String lower = url.toLowerCase(Locale.ROOT);
         return lower.contains("googleapis.com")

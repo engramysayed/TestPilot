@@ -16,6 +16,7 @@ This document points engineers at deeper material already in the tree.
 | OutcomeKind confirm-line classify before score (enabled/disabled execute types; nameless skip-echo; toast tokens; OTP/Username/Logout without field/button) | `src/main/java/delivery/authoring/OutcomeKind.java`, `EnabledDisabledAssertBindTest` |
 | End-to-end conversion | `docs/ops/end-to-end-flow.md` |
 | Local Ollama | `docs/ops/ollama-local.md`, `docs/ops/local-live-ollama.md` (if present) |
+| Heal/LLM API keys (env wins then Settings publish props then DEV LocalApiKeyLoader; optional Ollama Bearer) | `delivery.heal.ApiKeySource`, `LocalLlmClient`, Backend `/admin/llm-settings` |
 | Portal restart / Windows | `docs/ops/portal-restart.md`, `docs/ops/windows-vps-setup.md` |
 | Architecture notes | `docs/ops/architecture-audit.md` |
 | Customer TAF template | `customer-framework-template/README.md` |
@@ -91,6 +92,7 @@ Generate / Import / case edit / Automate & Execute Excel load run `GenerateQuali
 - Portal UI name: **Keel**. API header: `X-Keel-Requested-With: Keel`.
 - Store: `delivery-store/<domain>/<projectId>/` (gitignored).
 - Do not commit API keys or `cursor-api-key.local.bat`.
+- Heal API keys: env wins, then System props published by LLM Settings, then DEV-only LocalApiKeyLoader (api-keys.local.*). Do not commit api-keys.local.bat. Ollama Bearer is optional when OLLAMA_API_KEY is set.
 - After Generate/prompt/gate/UI changes: restart portal + hard-refresh.
 
 ## Tests (focused)

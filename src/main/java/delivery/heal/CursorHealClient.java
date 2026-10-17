@@ -61,11 +61,7 @@ public class CursorHealClient {
     }
 
     public static boolean hasApiKey() {
-        String apiKey = System.getenv("CURSOR_API_KEY");
-        if (apiKey == null || apiKey.isBlank()) {
-            apiKey = System.getProperty("CURSOR_API_KEY", "");
-        }
-        return apiKey != null && !apiKey.isBlank();
+        return ApiKeySource.isPresent(ApiKeySource.CURSOR_API_KEY);
     }
 
     /** Sidecar enabled and API key present. */
@@ -465,10 +461,7 @@ public class CursorHealClient {
             return "";
         }
         sanitizeRequest(req);
-        String apiKey = System.getenv("CURSOR_API_KEY");
-        if (apiKey == null || apiKey.isBlank()) {
-            apiKey = System.getProperty("CURSOR_API_KEY", "");
-        }
+        String apiKey = ApiKeySource.resolve(ApiKeySource.CURSOR_API_KEY);
         if (apiKey == null || apiKey.isBlank()) {
             LogsManager.warn("CURSOR_HEAL_SKIPPED: CURSOR_API_KEY not set");
             return "";

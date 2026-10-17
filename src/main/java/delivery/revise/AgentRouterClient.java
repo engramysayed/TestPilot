@@ -1,5 +1,6 @@
 package delivery.revise;
 
+import delivery.heal.ApiKeySource;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -61,7 +62,7 @@ public class AgentRouterClient {
                 "https://agentrouter.org");
         String key = firstNonBlank(
                 System.getProperty("delivery.final-revise.api-key"),
-                System.getenv("AGENTROUTER_API_KEY"),
+                ApiKeySource.resolve(ApiKeySource.AGENTROUTER_API_KEY),
                 System.getenv("ANTHROPIC_AUTH_TOKEN"),
                 System.getenv("ANTHROPIC_API_KEY"),
                 utils.PropertyReader.getProperty("delivery.final-revise.api-key"));
@@ -92,7 +93,7 @@ public class AgentRouterClient {
         String key = firstNonBlank(
                 System.getProperty("delivery.heal.invent.agentrouter.api-key"),
                 utils.PropertyReader.getProperty("delivery.heal.invent.agentrouter.api-key"),
-                System.getenv("AGENTROUTER_API_KEY"),
+                ApiKeySource.resolve(ApiKeySource.AGENTROUTER_API_KEY),
                 System.getenv("ANTHROPIC_AUTH_TOKEN"),
                 System.getenv("ANTHROPIC_API_KEY"),
                 System.getProperty("delivery.final-revise.api-key"),
