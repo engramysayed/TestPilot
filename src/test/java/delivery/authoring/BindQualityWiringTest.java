@@ -17,6 +17,45 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class BindQualityWiringTest {
 
+
+    @Test
+    public void jobTotals_accumulateOnOneMetrics_thenWriteJsonAllNonZero() throws Exception {
+        BindQualityMetrics metrics = new BindQualityMetrics();
+        AuthoringService authoring = newAuthoring();
+        authoring.setBindQuality(metrics);
+        String html = readFixture();
+
+        authoring.authorIntent("TC_01",
+                new StepIntentBinder.IntentLine(
+                        StepIntentBinder.IntentKind.CLICK, "Clicks \"Support\" in the sidebar"),
+                html, null, false);
+        Assert.assertTrue(metrics.bindClear >= 1, "Support should record clear: " + metrics.summaryLine());
+
+        authoring.authorIntent("TC_02",
+                new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, "Click Delete"),
+                html, null, false);
+        Assert.assertTrue(metrics.bindTie >= 1, "Delete should record tie: " + metrics.summaryLine());
+
+        authoring.authorIntent("TC_03",
+                new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, "Click Warp Drive"),
+                html, null, false);
+        Assert.assertTrue(metrics.bindEmpty >= 1, "Warp Drive should record empty: " + metrics.summaryLine());
+
+        Path evidence = Files.createTempDirectory("bind-quality-job");
+        try {
+            metrics.writeJson(evidence.resolve("bind-quality.json"));
+            String json = Files.readString(evidence.resolve("bind-quality.json"));
+            Assert.assertFalse(json.contains("\"clear\":0"), json);
+            Assert.assertFalse(json.contains("\"tie\":0"), json);
+            Assert.assertFalse(json.contains("\"empty\":0"), json);
+            Assert.assertTrue(metrics.bindClear >= 1 && metrics.bindTie >= 1 && metrics.bindEmpty >= 1,
+                    metrics.summaryLine());
+        } finally {
+            Files.deleteIfExists(evidence.resolve("bind-quality.json"));
+            Files.deleteIfExists(evidence);
+        }
+    }
+
     @Test
     public void support_recordsBindClear() throws Exception {
         BindQualityMetrics metrics = new BindQualityMetrics();

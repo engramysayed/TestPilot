@@ -418,9 +418,6 @@ public class ProvePhase {
 
         execution.beginTc(evidenceFolder);
         pageCatalog.clear();
-        bindQuality.bindClear = bindQuality.bindTie = bindQuality.bindEmpty = 0;
-        bindQuality.catalogHit = bindQuality.catalogRebuild = 0;
-        bindQuality.ollamaAsked = bindQuality.visionAsked = bindQuality.healEntered = 0;
         String evidenceDirForFlush = evidence == null ? "" : evidence.toString();
         try {
         healCascade.setExcelOpenPath(StepIntentBinder.firstOpenPath(

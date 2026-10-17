@@ -104,3 +104,4 @@ mvn -q "-Dtest=RecoveryPlanParserTest,HealCascadeTest,FreeInventHealerTest,Requi
 - Plan: docs/superpowers/plans/2026-10-16-candidate-scorer.md
 - Gate: CandidateScorerFixtureTest + bind-quality.json before live AxisPay Execute
 - Wired: bind/ollama/vision/heal counters flush on fail; Ollama TIE neighborhood from slimHtml; preferStable via CandidateScorer.stability
+- bind-quality.json is **job totals** (one BindQualityMetrics per ProvePhase job; proveOne must not zero counters; pageCatalog.clear() stays per TC)
