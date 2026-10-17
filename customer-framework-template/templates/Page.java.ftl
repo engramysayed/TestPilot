@@ -129,6 +129,10 @@ public class ${pageClassName} {
             driver.validation().elementVisable(${assertion.fieldName});
 <#elseif assertion.assertionType == "unchecked">
             driver.validation().elementUnchecked(${assertion.fieldName});
+<#elseif assertion.assertionType == "enabled">
+            driver.validation().elementEnabled(${assertion.fieldName});
+<#elseif assertion.assertionType == "disabled">
+            driver.validation().elementDisabled(${assertion.fieldName});
 <#elseif assertion.assertionType == "notVisible">
             driver.validation().elementNotVisible(${assertion.fieldName});
 <#elseif assertion.assertionType == "captureText">

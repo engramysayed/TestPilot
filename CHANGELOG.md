@@ -1,5 +1,13 @@
 # Keel changelog
 
+## 2026-10-17 — OutcomeKind enabled / nameless / toast
+
+- ENABLED/DISABLED no longer map to visible (false-pass when present but disabled). Real execute types enabled/disabled use isEnabled in prove and generated Page asserts.
+- Nameless/weak UNKNOWN confirm lines skip-echo (css/html + intent:ASSERT_VISIBLE:unknown-echo) instead of CandidateScorer TIE; body textContains only for distinctive tokens (expanded denylist).
+- CONTROL_VISIBLE / FIELD_VISIBLE accept OTP / Username / Logout without requiring the word field/button.
+- Unquoted toast lines (error toast is shown, success message appears) bind textContains on the kind token not a shortlist TIE.
+- Asserts still never heal. Twin Settings clicks stay AMBIGUOUS.
+
 ## 2026-10-16 — Candidate scorer pack
 
 - Outcomes are a checklist: confirm/expected lines are classified before CandidateScorer. Page-shown and "is clicked" no longer TIE the shortlist.

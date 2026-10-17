@@ -13,7 +13,7 @@ This document points engineers at deeper material already in the tree.
 | Record → framework (skip the browser prove pass) | `docs/superpowers/plans/2026-10-15-record-to-framework.md` |
 | 2026-10-15 portal session (Record, alerts, layout, unit prices, owner-only admin, editable price copy, project tabs, Execute punctuation, compact credit bar, named-label clicks, overview restyle, screenshot occ folders, expected-per-step, page locator catalog, history copy, attention colors) | `docs/handoff/2026-10-15-portal-session.md` |
 | Candidate scorer + DOM shortlist (bind before Ollama/vision; proof-gated catalog; fixture metrics) | spec `docs/superpowers/specs/2026-10-16-candidate-scorer-design.md`, plan `docs/superpowers/plans/2026-10-16-candidate-scorer.md` |
-| OutcomeKind confirm-line classify before score | `src/main/java/delivery/authoring/OutcomeKind.java` |
+| OutcomeKind confirm-line classify before score (enabled/disabled execute types; nameless skip-echo; toast tokens; OTP/Username/Logout without field/button) | `src/main/java/delivery/authoring/OutcomeKind.java`, `EnabledDisabledAssertBindTest` |
 | End-to-end conversion | `docs/ops/end-to-end-flow.md` |
 | Local Ollama | `docs/ops/ollama-local.md`, `docs/ops/local-live-ollama.md` (if present) |
 | Portal restart / Windows | `docs/ops/portal-restart.md`, `docs/ops/windows-vps-setup.md` |

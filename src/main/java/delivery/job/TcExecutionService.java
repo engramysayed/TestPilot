@@ -434,6 +434,8 @@ public class TcExecutionService {
                 case "checked" -> selectedState(step, true);
                 case "unchecked" -> selectedState(step, false);
                 case "selected" -> selectedState(step, true);
+                case "enabled" -> enabledState(step, true);
+                case "disabled" -> enabledState(step, false);
                 case "notVisible" -> {
                     if (step.locatorValue() == null || step.locatorValue().isBlank()) {
                         yield "false -> locator required for notVisible";
@@ -498,6 +500,32 @@ public class TcExecutionService {
                     el.getAttribute("aria-label"));
         } catch (TimeoutException e) {
             return "false -> element not found for selected-state assert";
+        }
+    }
+
+    private String enabledState(ProvenStep step, boolean wantEnabled) {
+        if (step.locatorValue() == null || step.locatorValue().isBlank()) {
+            return "false -> locator required for enabled-state assert";
+        }
+        By by = SelectorParser.toBy(normalizeStrategy(step.locatorStrategy()) + ":" + step.locatorValue());
+        try {
+            new WebDriverWait(driverFactory.get(), Duration.ofSeconds(10))
+                    .until(d -> {
+                        ContextSearch.Hit hit = ContextSearch.find(driverFactory, by);
+                        return hit != null && hit.element().isDisplayed();
+                    });
+            ContextSearch.Hit hit = ContextSearch.find(driverFactory, by);
+            if (hit == null) {
+                return "false -> element not found for enabled-state assert";
+            }
+            boolean enabled = hit.element().isEnabled();
+            if (enabled == wantEnabled) {
+                return null;
+            }
+            return "false -> expected " + (wantEnabled ? "enabled" : "disabled")
+                    + " but was " + (enabled ? "enabled" : "disabled");
+        } catch (TimeoutException e) {
+            return "false -> element not found for enabled-state assert";
         }
     }
 

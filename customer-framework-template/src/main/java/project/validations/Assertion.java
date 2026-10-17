@@ -153,6 +153,28 @@ public abstract class  Assertion {
         softTrue(ok, "unchecked");
     }
 
+    public void elementEnabled(By locator) {
+        boolean ok = false;
+        try {
+            WebElement el = element.findElement(locator);
+            ok = el != null && el.isEnabled();
+        } catch (Exception e) {
+            LogsManager.error("soft assert enabled failed: " + e.getMessage());
+        }
+        softTrue(ok, "enabled");
+    }
+
+    public void elementDisabled(By locator) {
+        boolean ok = false;
+        try {
+            WebElement el = element.findElement(locator);
+            ok = el != null && !el.isEnabled();
+        } catch (Exception e) {
+            LogsManager.error("soft assert disabled failed: " + e.getMessage());
+        }
+        softTrue(ok, "disabled");
+    }
+
     public void elementNotVisible(By locator) {
         boolean ok = false;
         try {

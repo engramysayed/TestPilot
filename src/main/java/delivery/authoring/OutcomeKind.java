@@ -35,7 +35,7 @@ public final class OutcomeKind {
     /**
      * @param kind           outcome kind
      * @param assertionType  existing execute type (visible, notVisible, textContains, urlContains,
-     *                       selected, checked, unchecked)
+     *                       selected, checked, unchecked, enabled, disabled)
      * @param expected       optional assertion expected (quote, URL slug, selected value, …)
      * @param namedControl   optional control/field/page name from the line
      */
@@ -54,6 +54,9 @@ public final class OutcomeKind {
             "(?i)\\b(?:confirm|verify)?\\s*(?:the\\s+)?(.+?)\\s+field\\s+is\\s+(?:shown|visible|displayed)\\b");
     private static final Pattern CONTROL_VISIBLE = Pattern.compile(
             "(?i)\\b(?:confirm|verify)?\\s*(?:the\\s+|a\\s+)?(.+?)\\s+(?:button|link|item|section)\\s+is\\s+(?:shown|visible|displayed)\\b");
+    /** Named control/field visible without requiring the word field/button (OTP, Username, Logout). */
+    private static final Pattern NAMED_VISIBLE = Pattern.compile(
+            "(?i)\\b(?:confirm|verify)?\\s*(?:the\\s+|a\\s+)?([A-Za-z][\\w-]{1,40})\\s+is\\s+(?:shown|visible|displayed)\\b");
     private static final Pattern PAGE_SHOWN = Pattern.compile(
             "(?i)\\b(?:the\\s+)?([A-Za-z][\\w\\s-]{0,40}?)\\s+(?:page|screen|view)\\s+is\\s+shown\\b"
                     + "|\\b([A-Za-z][\\w-]{2,40})\\s+is\\s+shown\\b");
@@ -153,11 +156,24 @@ public final class OutcomeKind {
             return new Outcome(Kind.CONTROL_VISIBLE, "visible", "", stripLeadingConfirm(controlVis.group(1)));
         }
 
+        Matcher namedVis = NAMED_VISIBLE.matcher(raw);
+        if (namedVis.find()) {
+            String name = stripLeadingConfirm(namedVis.group(1));
+            if (isNamedVisibleControl(name)) {
+                Kind kind = fieldishName(name) ? Kind.FIELD_VISIBLE : Kind.CONTROL_VISIBLE;
+                return new Outcome(kind, "visible", "", name);
+            }
+        }
+
         if (TOAST.matcher(lower).find()
                 && (lower.contains("shown") || lower.contains("visible") || lower.contains("displayed")
                 || lower.contains("appears") || lower.contains("message"))) {
-            String token = distinctiveToken(raw);
-            return new Outcome(Kind.TOAST, "textContains", token, token);
+            String token = toastToken(raw, lower);
+            if (!token.isBlank()) {
+                return new Outcome(Kind.TOAST, "textContains", token, token);
+            }
+            // Unquoted toast with no body token: alert-role name (not blank textContains TIE).
+            return new Outcome(Kind.CONTROL_VISIBLE, "visible", "", "alert");
         }
 
         if (UPLOAD.matcher(lower).find()
@@ -168,13 +184,11 @@ public final class OutcomeKind {
 
         Matcher enabled = ENABLED.matcher(raw);
         if (enabled.find()) {
-            // TODO: no enabled execute type yet — map to visible on that control for v1
-            return new Outcome(Kind.ENABLED, "visible", "", stripLeadingConfirm(enabled.group(1)));
+            return new Outcome(Kind.ENABLED, "enabled", "", stripLeadingConfirm(enabled.group(1)));
         }
         Matcher disabled = DISABLED.matcher(raw);
         if (disabled.find()) {
-            // TODO: no disabled execute type yet — map to visible on that control for v1
-            return new Outcome(Kind.DISABLED, "visible", "", stripLeadingConfirm(disabled.group(1)));
+            return new Outcome(Kind.DISABLED, "disabled", "", stripLeadingConfirm(disabled.group(1)));
         }
 
         Matcher valueShown = VALUE_SHOWN.matcher(raw);
@@ -202,9 +216,10 @@ public final class OutcomeKind {
         }
 
         String token = distinctiveToken(raw);
-        if (!token.isBlank() && token.length() >= 2) {
+        if (isDistinctiveUnknownToken(token)) {
             return new Outcome(Kind.UNKNOWN, "textContains", token, token);
         }
+        // Nameless / weak UNKNOWN: no textContains token (binder skip-echo; never CandidateScorer TIE).
         return new Outcome(Kind.UNKNOWN, "visible", "", "");
     }
 
@@ -278,5 +293,94 @@ public final class OutcomeKind {
             "have", "has", "should", "must", "see", "show", "shows", "display", "displays",
             "accepted", "filled", "clicked", "expands", "expand", "error", "success", "toast",
             "message", "text", "label", "heading", "keyboard", "enabled", "disabled", "value",
-            "selected", "checked", "unchecked", "upload", "file", "drop", "zone", "browse");
+            "selected", "checked", "unchecked", "upload", "file", "drop", "zone", "browse",
+            "please", "check", "ensure", "appears", "appear", "appeared", "notification", "alert",
+            "banner", "content", "element", "control", "widget", "area", "panel", "dialog",
+            "modal", "window", "app", "form", "row", "column", "table", "list", "option",
+            "options", "status", "state", "result", "results", "info", "warning", "ok", "yes",
+            "no", "true", "false", "null", "data", "user", "users", "name", "names", "title",
+            "description", "something", "anything", "everything", "nothing", "here", "there",
+            "above", "below", "again", "still", "also", "just", "now", "then", "when", "after",
+            "before", "once", "more", "less", "all", "any", "some", "such", "etc", "nav",
+            "header", "footer", "main", "body", "html", "css", "input", "inputs", "checkbox",
+            "radio", "select", "dropdown", "toggle", "switch", "tab", "tabs", "card", "cards",
+            "icon", "image", "img", "span", "div", "can", "will", "been", "being", "does",
+            "did", "done", "get", "got", "set", "put", "out", "off", "on", "up", "down");
+
+    /** Screen/page names - do not treat "Login is shown" as control-visible via NAMED_VISIBLE. */
+    private static final java.util.Set<String> PAGEISH_NAME = java.util.Set.of(
+            "login", "dashboard", "home", "welcome", "settings", "profile", "checkout",
+            "secure", "overview", "summary", "landing", "portal", "console", "admin");
+
+    private static final java.util.Set<String> FIELDISH_NAME = java.util.Set.of(
+            "otp", "username", "password", "email", "phone", "mobile", "code", "pin", "search",
+            "amount", "account", "iban", "card", "cvv", "date", "time", "address", "city",
+            "zip", "postal", "country", "firstname", "lastname", "fullname", "token",
+            "passcode", "passphrase", "secret", "userid", "user_id", "loginid");
+
+    /** Body textContains only when the token is distinctive (not denylisted / not tiny). */
+    static boolean isDistinctiveUnknownToken(String token) {
+        if (token == null) {
+            return false;
+        }
+        String trimmed = token.trim();
+        if (trimmed.length() < 3) {
+            return false;
+        }
+        return !STOP.contains(trimmed.toLowerCase(Locale.ROOT));
+    }
+
+    /**
+     * Unquoted toast/error/success lines: prefer the kind word as textContains token
+     * even though those words are denylisted for nameless UNKNOWN.
+     */
+    static String toastToken(String text, String lower) {
+        if (text == null || text.isBlank()) {
+            return "";
+        }
+        String low = lower != null ? lower : text.toLowerCase(Locale.ROOT);
+        for (String kind : new String[] {"error", "success", "warning", "info"}) {
+            if (Pattern.compile("\\b" + kind + "\\b").matcher(low).find()) {
+                return kind;
+            }
+        }
+        String d = distinctiveToken(text);
+        if (isDistinctiveUnknownToken(d)) {
+            return d;
+        }
+        // Bare "toast is shown" / "notification appears" - still a named toast token, not TIE.
+        for (String kind : new String[] {"toast", "notification", "alert", "banner", "message"}) {
+            if (Pattern.compile("\\b" + kind + "\\b").matcher(low).find()) {
+                return kind;
+            }
+        }
+        return "";
+    }
+
+    /** OTP/Username/Logout-style names only — reject pronouns and stop-words ("it is shown"). */
+    static boolean isNamedVisibleControl(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        String n = name.toLowerCase(Locale.ROOT).trim();
+        if (n.length() < 3) {
+            return false;
+        }
+        if (PAGEISH_NAME.contains(n) || STOP.contains(n)) {
+            return false;
+        }
+        return true;
+    }
+
+    static boolean fieldishName(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        String n = name.toLowerCase(Locale.ROOT).trim();
+        if (FIELDISH_NAME.contains(n)) {
+            return true;
+        }
+        return n.endsWith("field") || n.endsWith("input") || n.endsWith("box")
+                || n.contains("password") || n.contains("username") || n.contains("email");
+    }
 }

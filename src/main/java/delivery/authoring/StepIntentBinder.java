@@ -225,7 +225,8 @@ public final class StepIntentBinder {
                 continue;
             }
             String rationale = step.rationale() == null ? "" : step.rationale();
-            if (rationale.contains(":echo") || rationale.contains(":pageShown")) {
+            if (rationale.contains(":echo") || rationale.contains(":pageShown")
+                    || rationale.contains("unknown-echo")) {
                 continue;
             }
             var validation = new LocatorValidator().validate(new LocatorCandidate(
@@ -2165,12 +2166,12 @@ public final class StepIntentBinder {
             case ACTION_ECHO -> bindActionEchoAssert(tcId);
             case UNKNOWN -> {
                 if (outcome.expected() != null && !outcome.expected().isBlank()
-                        && "textContains".equals(outcome.assertionType())) {
+                        && "textContains".equals(outcome.assertionType())
+                        && OutcomeKind.isDistinctiveUnknownToken(outcome.expected())) {
                     yield bindTextContainsAssert(tcId, outcome.expected());
                 }
-                // No distinctive token: skip without CandidateScorer TIE / AMBIGUOUS.
-                yield new BindResult(List.of(),
-                        "No distinctive outcome token for intent ASSERT_VISIBLE: " + intent.text());
+                // Nameless / weak UNKNOWN: skip-echo (never CandidateScorer TIE).
+                yield bindUnknownEchoAssert(tcId);
             }
             case KEYBOARD -> {
                 // Soft keyboard shown: treat like field-visible when a focused field name is present;
@@ -2180,7 +2181,17 @@ public final class StepIntentBinder {
                 }
                 yield bindActionEchoAssert(tcId);
             }
-            case EXPANDED, UPLOAD, ENABLED, DISABLED, VALUE -> {
+            case ENABLED, DISABLED -> {
+                BindResult named = bindNamedControlVisible(
+                        intent, tcId, candidates, preferOnTie, outcome);
+                if (named != null) {
+                    yield named;
+                }
+                // No unique control: fail-closed (never CandidateScorer TIE, never visible false-pass).
+                yield new BindResult(List.of(),
+                        "No unique control for " + outcome.kind() + " assert: " + intent.text());
+            }
+            case EXPANDED, UPLOAD, VALUE -> {
                 BindResult named = bindNamedControlVisible(
                         intent, tcId, candidates, preferOnTie, outcome);
                 yield named != null ? named : null;
@@ -2219,6 +2230,13 @@ public final class StepIntentBinder {
         return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "assert",
                 "css", "html", "", "visible", "", true,
                 "intent:ASSERT_VISIBLE:echo")), "");
+    }
+
+    /** Nameless/weak UNKNOWN confirm — validated page echo so the batch is not empty and never TIE. */
+    private static BindResult bindUnknownEchoAssert(String tcId) {
+        return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "assert",
+                "css", "html", "", "visible", "", true,
+                "intent:ASSERT_VISIBLE:unknown-echo")), "");
     }
 
     /**

@@ -216,6 +216,10 @@ public final class CodegenNaming {
                 name = "assert_" + token + "_Is_Selected";
             } else if ("unchecked".equalsIgnoreCase(type)) {
                 name = "assert_" + token + "_Is_Unchecked";
+            } else if ("enabled".equalsIgnoreCase(type)) {
+                name = "assert_" + token + "_Is_Enabled";
+            } else if ("disabled".equalsIgnoreCase(type)) {
+                name = "assert_" + token + "_Is_Disabled";
             } else {
                 String cleaned = type.replaceAll("[^A-Za-z0-9]+", "_");
                 name = "assert_" + token + "_" + toPascalSnake(cleaned);

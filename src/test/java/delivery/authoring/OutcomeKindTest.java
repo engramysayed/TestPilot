@@ -21,6 +21,13 @@ public class OutcomeKindTest {
                 {"Dashboard is shown with 'Welcome!'", OutcomeKind.Kind.QUOTED_TEXT},
                 {"The Support section expands and sub-menu items are shown.", OutcomeKind.Kind.EXPANDED},
                 {"Confirm the Logout button is visible", OutcomeKind.Kind.CONTROL_VISIBLE},
+                {"Confirm OTP is visible", OutcomeKind.Kind.FIELD_VISIBLE},
+                {"Confirm Username is visible", OutcomeKind.Kind.FIELD_VISIBLE},
+                {"Confirm Logout is visible", OutcomeKind.Kind.CONTROL_VISIBLE},
+                {"Confirm Submit is enabled", OutcomeKind.Kind.ENABLED},
+                {"Confirm Submit is disabled", OutcomeKind.Kind.DISABLED},
+                {"error toast is shown", OutcomeKind.Kind.TOAST},
+                {"success message appears", OutcomeKind.Kind.TOAST},
                 {"checkbox 1 is unchecked", OutcomeKind.Kind.UNCHECKED},
                 {"Confirm Option 2 is the selected value", OutcomeKind.Kind.SELECTED},
         };
@@ -50,6 +57,19 @@ public class OutcomeKindTest {
         }
         if (expected == OutcomeKind.Kind.UNCHECKED) {
             Assert.assertEquals(o.assertionType(), "unchecked");
+        }
+        if (expected == OutcomeKind.Kind.ENABLED) {
+            Assert.assertEquals(o.assertionType(), "enabled");
+        }
+        if (expected == OutcomeKind.Kind.DISABLED) {
+            Assert.assertEquals(o.assertionType(), "disabled");
+        }
+        if (expected == OutcomeKind.Kind.TOAST) {
+            Assert.assertEquals(o.assertionType(), "textContains");
+            Assert.assertFalse(o.expected().isBlank(), text + " toast token");
+        }
+        if (expected == OutcomeKind.Kind.FIELD_VISIBLE || expected == OutcomeKind.Kind.CONTROL_VISIBLE) {
+            Assert.assertFalse(o.namedControl().isBlank(), text + " namedControl");
         }
     }
 
@@ -95,5 +115,60 @@ public class OutcomeKindTest {
         Assert.assertEquals(r.steps().get(0).assertionType(), "visible");
         Assert.assertTrue(r.steps().get(0).validated());
         Assert.assertTrue(r.steps().get(0).rationale().contains("echo"), r.steps().get(0).rationale());
+    }
+
+    @Test
+    public void enabledMapsToEnabledAssertType_notVisible() {
+        OutcomeKind.Outcome o = OutcomeKind.classify("Confirm the Submit button is enabled");
+        Assert.assertEquals(o.kind(), OutcomeKind.Kind.ENABLED);
+        Assert.assertEquals(o.assertionType(), "enabled");
+        Assert.assertFalse(o.namedControl().isBlank(), o.namedControl());
+    }
+
+    @Test
+    public void namelessUnknown_hasNoTextContainsToken() {
+        OutcomeKind.Outcome o = OutcomeKind.classify("Confirm it is shown");
+        Assert.assertEquals(o.kind(), OutcomeKind.Kind.UNKNOWN);
+        Assert.assertTrue(o.expected().isBlank(), o.expected());
+        Assert.assertEquals(o.assertionType(), "visible");
+    }
+
+    @Test
+    public void distinctiveUnknown_keepsTextContains() {
+        OutcomeKind.Outcome o = OutcomeKind.classify("Confirm WelcomeBannerXYZ is shown");
+        // NAMED_VISIBLE may catch this as CONTROL_VISIBLE; either way not weak UNKNOWN textContains on stop-word.
+        Assert.assertNotEquals(o.kind(), OutcomeKind.Kind.UNKNOWN);
+    }
+
+    @Test
+    public void unquotedErrorToast_bindsTextContainsError_notAmbiguous() {
+        List<DomCandidate> candidates = List.of(
+                new DomCandidate("c1", "id", "submit", "button", "Submit"),
+                new DomCandidate("c2", "id", "cancel", "button", "Cancel")
+        );
+        var intent = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.ASSERT_VISIBLE, "error toast is shown");
+        StepIntentBinder.BindResult r = StepIntentBinder.bindSingle(intent, "TC", candidates, List.of());
+        Assert.assertTrue(r.ok(), r.rejectReason());
+        Assert.assertFalse(r.rejectReason().startsWith("AMBIGUOUS:"), r.rejectReason());
+        Assert.assertEquals(r.steps().get(0).assertionType(), "textContains");
+        Assert.assertEquals(r.steps().get(0).assertionExpected(), "error");
+    }
+
+    @Test
+    public void namelessUnknown_bindsSkipEcho_notAmbiguous() {
+        List<DomCandidate> candidates = List.of(
+                new DomCandidate("c1", "id", "a", "button", "Alpha"),
+                new DomCandidate("c2", "id", "b", "button", "Beta")
+        );
+        var intent = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.ASSERT_VISIBLE, "Confirm it is shown");
+        StepIntentBinder.BindResult r = StepIntentBinder.bindSingle(intent, "TC", candidates, List.of());
+        Assert.assertTrue(r.ok(), r.rejectReason());
+        Assert.assertFalse(r.rejectReason().startsWith("AMBIGUOUS:"), r.rejectReason());
+        Assert.assertEquals(r.steps().get(0).locatorStrategy(), "css");
+        Assert.assertEquals(r.steps().get(0).locatorValue(), "html");
+        Assert.assertTrue(r.steps().get(0).rationale().contains("unknown-echo"),
+                r.steps().get(0).rationale());
     }
 }

@@ -888,7 +888,9 @@ public class HealCascade {
             String assertType = step.assertionType() == null ? "" : step.assertionType().toLowerCase();
             boolean stateAssert = "selected".equals(assertType)
                     || "checked".equals(assertType)
-                    || "unchecked".equals(assertType);
+                    || "unchecked".equals(assertType)
+                    || "enabled".equals(assertType)
+                    || "disabled".equals(assertType);
             if (!stateAssert && StepIntentBinder.isSpentLocator(match, spent)) {
                 LogsManager.info("HEAL_REJECT: field intent " + trim(intent.text(), 40)
                         + " reused a control this TC already filled → " + match.id());
