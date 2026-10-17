@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='LLM & API keys')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1>LLM &amp; API keys</h1>
+            <p class="lede">Install-wide Ollama models and heal API keys for this Keel portal. Only the account owner can change these. Values are stored encrypted on the portal host; environment variables still win when already set.</p>
+        </div>
+    </div>
+    <section class="panel">
+        <p class="ok" id="llm-saved" hidden>Saved. Runtime settings updated for this process.</p>
+        <p class="error" id="llm-error" hidden></p>
+        <form class="llm-settings-form" id="llm-settings-form" onsubmit="return false;">
+            <div class="form-grid" style="display:grid;gap:1rem;max-width:40rem;">
+                <label>Ollama base URL
+                    <input type="url" id="ollamaBaseUrl" name="ollamaBaseUrl" placeholder="http://127.0.0.1:11434" autocomplete="off">
+                </label>
+                <label>Ollama API key <span class="muted">(optional)</span>
+                    <input type="password" id="ollamaApiKey" name="ollamaApiKey" autocomplete="new-password" placeholder="">
+                    <span class="muted" id="ollamaApiKeyHint"></span>
+                </label>
+                <div class="generate-model-row" style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
+                    <label style="flex:1;min-width:12rem;">Chat model
+                        <select id="ollamaChatModel" name="ollamaChatModel">
+                            <option value="">— refresh models —</option>
+                        </select>
+                    </label>
+                    <label style="flex:1;min-width:12rem;">Vision model
+                        <select id="ollamaVisionModel" name="ollamaVisionModel">
+                            <option value="">— refresh models —</option>
+                        </select>
+                    </label>
+                    <button type="button" class="btn" id="btn-refresh-models">Refresh models</button>
+                </div>
+                <label>Cursor API key
+                    <input type="password" id="cursorApiKey" name="cursorApiKey" autocomplete="new-password" placeholder="">
+                    <span class="muted" id="cursorApiKeyHint"></span>
+                </label>
+                <label>AgentRouter API key
+                    <input type="password" id="agentrouterApiKey" name="agentrouterApiKey" autocomplete="new-password" placeholder="">
+                    <span class="muted" id="agentrouterApiKeyHint"></span>
+                </label>
+            </div>
+            <div style="margin-top:1.25rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+                <button class="btn btn-primary" type="button" id="btn-save-llm">Save</button>
+            </div>
+        </form>
+    </section>
+</main>
+</div>
+<script>
+(function () {
+    const HDR = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Keel-Requested-With': 'Keel'
+    };
+    const savedEl = document.getElementById('llm-saved');
+    const errEl = document.getElementById('llm-error');
+    let current = null;
+
+    function showError(msg) {
+        savedEl.hidden = true;
+        errEl.hidden = !msg;
+        errEl.textContent = msg || '';
+    }
+    function showSaved() {
+        errEl.hidden = true;
+        savedEl.hidden = false;
+    }
+    function setSecretHint(field, configured, last4) {
+        const input = document.getElementById(field);
+        const hint = document.getElementById(field + 'Hint');
+        if (!input || !hint) return;
+        if (configured) {
+            input.placeholder = '•••• configured' + (last4 ? ' (…' + last4 + ')' : '');
+            hint.textContent = 'Leave blank to keep the current key.';
+        } else {
+            input.placeholder = 'Not configured';
+            hint.textContent = '';
+        }
+        input.value = '';
+    }
+    function ensureOption(select, value) {
+        if (!value) return;
+        for (const opt of select.options) {
+            if (opt.value === value) return;
+        }
+        const o = document.createElement('option');
+        o.value = value;
+        o.textContent = value;
+        select.appendChild(o);
+    }
+    function fillModels(names, preferredChat, preferredVision) {
+        const chat = document.getElementById('ollamaChatModel');
+        const vision = document.getElementById('ollamaVisionModel');
+        const list = Array.isArray(names) ? names.slice() : [];
+        chat.innerHTML = '';
+        vision.innerHTML = '';
+        const blank = document.createElement('option');
+        blank.value = '';
+        blank.textContent = list.length ? '— select —' : '— refresh models —';
+        chat.appendChild(blank.cloneNode(true));
+        vision.appendChild(blank);
+        for (const name of list) {
+            const a = document.createElement('option');
+            a.value = name;
+            a.textContent = name;
+            chat.appendChild(a);
+            vision.appendChild(a.cloneNode(true));
+        }
+        ensureOption(chat, preferredChat);
+        ensureOption(vision, preferredVision);
+        if (preferredChat) chat.value = preferredChat;
+        if (preferredVision) vision.value = preferredVision;
+    }
+    async function loadSettings() {
+        showError('');
+        const res = await fetch('/api/admin/llm-settings', { credentials: 'same-origin', headers: HDR });
+        if (!res.ok) {
+            showError('Could not load settings (' + res.status + ').');
+            return;
+        }
+        current = await res.json();
+        document.getElementById('ollamaBaseUrl').value = current.ollamaBaseUrl || '';
+        setSecretHint('cursorApiKey', !!current.cursorApiKeyConfigured, current.cursorApiKeyLast4);
+        setSecretHint('agentrouterApiKey', !!current.agentrouterApiKeyConfigured, current.agentrouterApiKeyLast4);
+        setSecretHint('ollamaApiKey', !!current.ollamaApiKeyConfigured, current.ollamaApiKeyLast4);
+        fillModels([], current.ollamaChatModel || '', current.ollamaVisionModel || '');
+        ensureOption(document.getElementById('ollamaChatModel'), current.ollamaChatModel || '');
+        ensureOption(document.getElementById('ollamaVisionModel'), current.ollamaVisionModel || '');
+        if (current.ollamaChatModel) document.getElementById('ollamaChatModel').value = current.ollamaChatModel;
+        if (current.ollamaVisionModel) document.getElementById('ollamaVisionModel').value = current.ollamaVisionModel;
+    }
+    async function refreshModels() {
+        showError('');
+        const baseUrl = document.getElementById('ollamaBaseUrl').value.trim();
+        const q = baseUrl ? ('?baseUrl=' + encodeURIComponent(baseUrl)) : '';
+        const res = await fetch('/api/admin/llm-settings/ollama/models' + q, {
+            credentials: 'same-origin', headers: HDR
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            showError(body.message || ('Ollama models failed (' + res.status + ').'));
+            return;
+        }
+        const chatPref = document.getElementById('ollamaChatModel').value
+            || (current && current.ollamaChatModel) || '';
+        const visionPref = document.getElementById('ollamaVisionModel').value
+            || (current && current.ollamaVisionModel) || '';
+        fillModels(body.models || [], chatPref, visionPref);
+    }
+    async function save() {
+        showError('');
+        const body = {
+            ollamaBaseUrl: document.getElementById('ollamaBaseUrl').value.trim(),
+            ollamaChatModel: document.getElementById('ollamaChatModel').value,
+            ollamaVisionModel: document.getElementById('ollamaVisionModel').value
+        };
+        const cursor = document.getElementById('cursorApiKey').value;
+        const agent = document.getElementById('agentrouterApiKey').value;
+        const ollamaKey = document.getElementById('ollamaApiKey').value;
+        if (cursor && cursor.trim()) body.cursorApiKey = cursor.trim();
+        if (agent && agent.trim()) body.agentrouterApiKey = agent.trim();
+        if (ollamaKey && ollamaKey.trim()) body.ollamaApiKey = ollamaKey.trim();
+        const res = await fetch('/api/admin/llm-settings', {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: HDR,
+            body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            showError(data.message || data.error || ('Save failed (' + res.status + ').'));
+            return;
+        }
+        current = data;
+        setSecretHint('cursorApiKey', !!data.cursorApiKeyConfigured, data.cursorApiKeyLast4);
+        setSecretHint('agentrouterApiKey', !!data.agentrouterApiKeyConfigured, data.agentrouterApiKeyLast4);
+        setSecretHint('ollamaApiKey', !!data.ollamaApiKeyConfigured, data.ollamaApiKeyLast4);
+        showSaved();
+    }
+    document.getElementById('btn-refresh-models').addEventListener('click', function () {
+        refreshModels().catch(function (e) { showError(String(e)); });
+    });
+    document.getElementById('btn-save-llm').addEventListener('click', function () {
+        save().catch(function (e) { showError(String(e)); });
+    });
+    loadSettings().catch(function (e) { showError(String(e)); });
+})();
+</script>
+</body>
+</html>

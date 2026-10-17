@@ -1,3 +1,7 @@
+# CHANGELOG
+
+- OWNER LLM Settings: Cursor/AgentRouter/Ollama keys + live model picker (/admin/llm-settings).
+
 # Keel changelog
 
 ## 2026-10-17 — OutcomeKind enabled / nameless / toast

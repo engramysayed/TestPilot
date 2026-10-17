@@ -1,0 +1,407 @@
+package delivery.portal.service.llm;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import delivery.portal.DeliveryPortalProperties;
+import delivery.portal.security.JobSecretCrypto;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Service;
+import utils.LogsManager;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+/**
+ * Install-wide OWNER LLM / heal settings persisted under {@code delivery-store/llm-settings.json}.
+ * Secrets are encrypted with {@link JobSecretCrypto}; runtime publish uses System properties
+ * (env wins when already set — same semantics as {@code LocalApiKeyLoader}).
+ */
+@Service
+public class LlmSettingsService implements ApplicationRunner {
+    static final String FILE_NAME = "llm-settings.json";
+    static final String DEFAULT_OLLAMA_BASE = "http://127.0.0.1:11434";
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
+
+    private final DeliveryPortalProperties props;
+    private final Path settingsFile;
+    private final HttpClient http;
+    private final Object lock = new Object();
+
+    private volatile StoredSettings stored = StoredSettings.empty();
+
+    @Autowired
+    public LlmSettingsService(DeliveryPortalProperties props) {
+        this(props, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
+    }
+
+    /** Test seam — package-private HttpClient injection. */
+    LlmSettingsService(DeliveryPortalProperties props, HttpClient http) {
+        this.props = Objects.requireNonNull(props, "props");
+        this.http = Objects.requireNonNull(http, "http");
+        String root = props.getStoreRoot() == null || props.getStoreRoot().isBlank()
+                ? "./delivery-store"
+                : props.getStoreRoot().trim();
+        this.settingsFile = Path.of(root).resolve(FILE_NAME).toAbsolutePath().normalize();
+        loadFromDisk();
+        applyToRuntime();
+    }
+
+    @Override
+    public void run(ApplicationArguments args) {
+        loadFromDisk();
+        applyToRuntime();
+    }
+
+    public Map<String, Object> maskedView() {
+        StoredSettings s = snapshot();
+        Map<String, Object> out = new LinkedHashMap<>();
+        putSecretMask(out, "cursorApiKey", s.cursorApiKeyPlain);
+        putSecretMask(out, "agentrouterApiKey", s.agentrouterApiKeyPlain);
+        putSecretMask(out, "ollamaApiKey", s.ollamaApiKeyPlain);
+        out.put("ollamaBaseUrl", blankToDefault(s.ollamaBaseUrl, defaultBaseUrl()));
+        out.put("ollamaChatModel", nullToEmpty(s.ollamaChatModel));
+        out.put("ollamaVisionModel", nullToEmpty(s.ollamaVisionModel));
+        return out;
+    }
+
+    public Map<String, Object> update(UpdateRequest req) {
+        synchronized (lock) {
+            StoredSettings cur = stored;
+            String cursor = cur.cursorApiKeyPlain;
+            String agent = cur.agentrouterApiKeyPlain;
+            String ollamaKey = cur.ollamaApiKeyPlain;
+            if (req != null) {
+                if (req.clearCursorApiKey) {
+                    cursor = "";
+                } else if (req.cursorApiKey != null && !req.cursorApiKey.isBlank()) {
+                    cursor = req.cursorApiKey.trim();
+                }
+                if (req.clearAgentrouterApiKey) {
+                    agent = "";
+                } else if (req.agentrouterApiKey != null && !req.agentrouterApiKey.isBlank()) {
+                    agent = req.agentrouterApiKey.trim();
+                }
+                if (req.clearOllamaApiKey) {
+                    ollamaKey = "";
+                } else if (req.ollamaApiKey != null && !req.ollamaApiKey.isBlank()) {
+                    ollamaKey = req.ollamaApiKey.trim();
+                }
+            }
+            String baseUrl = cur.ollamaBaseUrl;
+            String chat = cur.ollamaChatModel;
+            String vision = cur.ollamaVisionModel;
+            if (req != null) {
+                if (req.ollamaBaseUrl != null) {
+                    baseUrl = req.ollamaBaseUrl.trim();
+                }
+                if (req.ollamaChatModel != null) {
+                    chat = req.ollamaChatModel.trim();
+                }
+                if (req.ollamaVisionModel != null) {
+                    vision = req.ollamaVisionModel.trim();
+                }
+            }
+            StoredSettings next = new StoredSettings(cursor, agent, ollamaKey, baseUrl, chat, vision);
+            writeToDisk(next);
+            stored = next;
+            applyToRuntime();
+            return maskedView();
+        }
+    }
+
+    /**
+     * Calls {@code {baseUrl}/api/tags}. Uses saved base URL unless {@code baseUrlOverride} is non-blank.
+     * Sends Bearer auth when an Ollama API key is configured.
+     */
+    public List<String> listOllamaModels(String baseUrlOverride) throws OllamaUnreachableException {
+        String base = (baseUrlOverride != null && !baseUrlOverride.isBlank())
+                ? baseUrlOverride.trim()
+                : blankToDefault(snapshot().ollamaBaseUrl, defaultBaseUrl());
+        base = trimTrailingSlash(base);
+        String url = base + "/api/tags";
+        try {
+            HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(url))
+                    .timeout(Duration.ofSeconds(8))
+                    .GET();
+            String key = snapshot().ollamaApiKeyPlain;
+            if (key != null && !key.isBlank()) {
+                b.header("Authorization", "Bearer " + key);
+            }
+            HttpResponse<String> res = http.send(b.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (res.statusCode() < 200 || res.statusCode() >= 300) {
+                throw new OllamaUnreachableException("Ollama returned HTTP " + res.statusCode() + " for " + url);
+            }
+            return parseOllamaTagsJson(res.body());
+        } catch (OllamaUnreachableException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new OllamaUnreachableException("Ollama unreachable at " + url + ": " + e.getMessage(), e);
+        }
+    }
+
+    /** Package-visible for unit tests — parses Ollama {@code /api/tags} JSON into model name list. */
+    public static List<String> parseOllamaTagsJson(String body) {
+        if (body == null || body.isBlank()) {
+            return List.of();
+        }
+        try {
+            Map<String, Object> root = MAPPER.readValue(body, MAP_TYPE);
+            Object models = root.get("models");
+            if (!(models instanceof List<?> list)) {
+                return List.of();
+            }
+            List<String> names = new ArrayList<>();
+            for (Object row : list) {
+                if (row instanceof Map<?, ?> m) {
+                    Object name = m.get("name");
+                    if (name != null) {
+                        String n = String.valueOf(name).trim();
+                        if (!n.isEmpty()) {
+                            names.add(n);
+                        }
+                    }
+                }
+            }
+            return names;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid Ollama tags JSON: " + e.getMessage(), e);
+        }
+    }
+
+    public void applyToRuntime() {
+        StoredSettings s = snapshot();
+        publishSecretProp("CURSOR_API_KEY", s.cursorApiKeyPlain);
+        publishSecretProp("AGENTROUTER_API_KEY", s.agentrouterApiKeyPlain);
+        publishSecretProp("OLLAMA_API_KEY", s.ollamaApiKeyPlain);
+
+        String base = blankToDefault(s.ollamaBaseUrl, defaultBaseUrl());
+        if (base != null && !base.isBlank()) {
+            props.setLlmBaseUrl(base);
+            setSysPropIfEnvBlank("delivery.llm-base-url", base);
+        }
+        if (s.ollamaChatModel != null && !s.ollamaChatModel.isBlank()) {
+            props.setLlmModel(s.ollamaChatModel);
+            props.setGenerateModel(s.ollamaChatModel);
+            setSysPropIfEnvBlank("delivery.llm-model", s.ollamaChatModel);
+            setSysPropIfEnvBlank("delivery.generate-model", s.ollamaChatModel);
+        }
+        if (s.ollamaVisionModel != null && !s.ollamaVisionModel.isBlank()) {
+            setSysPropIfEnvBlank("delivery.vision.assert.model", s.ollamaVisionModel);
+            // Also publish grounding model when the vision path is ollama/qwen-oriented.
+            String lower = s.ollamaVisionModel.toLowerCase();
+            if (lower.startsWith("qwen") || lower.contains("vl") || lower.contains("vision")) {
+                setSysPropIfEnvBlank("delivery.vision.grounding.model", s.ollamaVisionModel);
+                setSysPropIfEnvBlank("delivery.vision.model", s.ollamaVisionModel);
+            }
+        }
+    }
+
+    private void loadFromDisk() {
+        synchronized (lock) {
+            if (!Files.isRegularFile(settingsFile)) {
+                stored = defaultsFromProps();
+                return;
+            }
+            try {
+                Map<String, Object> raw = MAPPER.readValue(Files.readString(settingsFile, StandardCharsets.UTF_8), MAP_TYPE);
+                stored = fromFileMap(raw);
+            } catch (Exception e) {
+                LogsManager.warn("Could not load llm-settings.json: " + e.getMessage());
+                stored = defaultsFromProps();
+            }
+        }
+    }
+
+    private void writeToDisk(StoredSettings s) {
+        try {
+            Files.createDirectories(settingsFile.getParent());
+            Map<String, Object> raw = new LinkedHashMap<>();
+            raw.put("cursorApiKeyEnc", encryptIfPresent(s.cursorApiKeyPlain));
+            raw.put("agentrouterApiKeyEnc", encryptIfPresent(s.agentrouterApiKeyPlain));
+            raw.put("ollamaApiKeyEnc", encryptIfPresent(s.ollamaApiKeyPlain));
+            raw.put("ollamaBaseUrl", nullToEmpty(s.ollamaBaseUrl));
+            raw.put("ollamaChatModel", nullToEmpty(s.ollamaChatModel));
+            raw.put("ollamaVisionModel", nullToEmpty(s.ollamaVisionModel));
+            Path tmp = settingsFile.resolveSibling(FILE_NAME + ".tmp");
+            MAPPER.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), raw);
+            try {
+                Files.move(tmp, settingsFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException ex) {
+                Files.move(tmp, settingsFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to write llm-settings.json: " + e.getMessage(), e);
+        }
+    }
+
+    private StoredSettings fromFileMap(Map<String, Object> raw) {
+        if (raw == null) {
+            return defaultsFromProps();
+        }
+        String cursor = decryptEnc(str(raw.get("cursorApiKeyEnc")));
+        String agent = decryptEnc(str(raw.get("agentrouterApiKeyEnc")));
+        String ollamaKey = decryptEnc(str(raw.get("ollamaApiKeyEnc")));
+        String base = str(raw.get("ollamaBaseUrl"));
+        String chat = str(raw.get("ollamaChatModel"));
+        String vision = str(raw.get("ollamaVisionModel"));
+        if (base.isBlank()) {
+            base = defaultBaseUrl();
+        }
+        return new StoredSettings(cursor, agent, ollamaKey, base, chat, vision);
+    }
+
+    private StoredSettings defaultsFromProps() {
+        String base = props.getLlmBaseUrl();
+        if (base == null || base.isBlank()) {
+            base = DEFAULT_OLLAMA_BASE;
+        }
+        String chat = props.getLlmModel();
+        if (chat == null || chat.isBlank()) {
+            chat = props.getGenerateModel();
+        }
+        return new StoredSettings("", "", "", base, nullToEmpty(chat), "");
+    }
+
+    private String defaultBaseUrl() {
+        String b = props.getLlmBaseUrl();
+        return (b == null || b.isBlank()) ? DEFAULT_OLLAMA_BASE : b.trim();
+    }
+
+    private StoredSettings snapshot() {
+        return stored;
+    }
+
+    private static void putSecretMask(Map<String, Object> out, String field, String plain) {
+        boolean configured = plain != null && !plain.isBlank();
+        out.put(field + "Configured", configured);
+        out.put(field + "Last4", configured ? last4(plain) : null);
+    }
+
+    static String last4(String secret) {
+        if (secret == null || secret.isBlank()) {
+            return null;
+        }
+        String t = secret.trim();
+        if (t.length() <= 4) {
+            return t;
+        }
+        return t.substring(t.length() - 4);
+    }
+
+    private static String encryptIfPresent(String plain) {
+        if (plain == null || plain.isBlank()) {
+            return "";
+        }
+        return JobSecretCrypto.encrypt(plain);
+    }
+
+    private static String decryptEnc(String enc) {
+        if (enc == null || enc.isBlank()) {
+            return "";
+        }
+        return JobSecretCrypto.decrypt(enc);
+    }
+
+    /** Env wins: do not overwrite a non-blank getenv; only publish when value is non-blank. */
+    private static void publishSecretProp(String key, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        String env = System.getenv(key);
+        if (env != null && !env.isBlank()) {
+            return;
+        }
+        System.setProperty(key, value);
+    }
+
+    private static void setSysPropIfEnvBlank(String key, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        String env = System.getenv(key);
+        if (env != null && !env.isBlank()) {
+            return;
+        }
+        // Also respect env-style uppercase variants for delivery.* when present as env.
+        String envAlt = System.getenv(key.replace('.', '_').toUpperCase());
+        if (envAlt != null && !envAlt.isBlank()) {
+            return;
+        }
+        System.setProperty(key, value);
+    }
+
+    private static String str(Object o) {
+        return o == null ? "" : String.valueOf(o).trim();
+    }
+
+    private static String nullToEmpty(String s) {
+        return s == null ? "" : s;
+    }
+
+    private static String blankToDefault(String value, String def) {
+        return value == null || value.isBlank() ? def : value.trim();
+    }
+
+    private static String trimTrailingSlash(String url) {
+        if (url == null) {
+            return "";
+        }
+        String u = url.trim();
+        while (u.endsWith("/")) {
+            u = u.substring(0, u.length() - 1);
+        }
+        return u;
+    }
+
+    public record UpdateRequest(
+            String cursorApiKey,
+            String agentrouterApiKey,
+            String ollamaApiKey,
+            String ollamaBaseUrl,
+            String ollamaChatModel,
+            String ollamaVisionModel,
+            boolean clearCursorApiKey,
+            boolean clearAgentrouterApiKey,
+            boolean clearOllamaApiKey
+    ) {
+    }
+
+    public static final class OllamaUnreachableException extends Exception {
+        public OllamaUnreachableException(String message) {
+            super(message);
+        }
+
+        public OllamaUnreachableException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    private record StoredSettings(
+            String cursorApiKeyPlain,
+            String agentrouterApiKeyPlain,
+            String ollamaApiKeyPlain,
+            String ollamaBaseUrl,
+            String ollamaChatModel,
+            String ollamaVisionModel
+    ) {
+        static StoredSettings empty() {
+            return new StoredSettings("", "", "", DEFAULT_OLLAMA_BASE, "", "");
+        }
+    }
+}

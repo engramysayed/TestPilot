@@ -235,6 +235,10 @@
                 <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16 M4 12h16 M4 17h10"/></svg>
                 <span>Roles</span>
             </a>
+            <a href="/admin/llm-settings" th:if="${headAdmin}" th:classappend="${navActive == 'llm-settings'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2 4h4l-3 3 1 5-4-2-4 2 1-5-3-3h4z"/><circle cx="12" cy="18" r="2"/></svg>
+                <span>LLM &amp; API keys</span>
+            </a>
         </th:block>
     </nav>
 

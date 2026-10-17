@@ -1,0 +1,25 @@
+{
+  "models": [
+    {
+      "name": "gemma4:e2b",
+      "model": "gemma4:e2b",
+      "modified_at": "2026-01-01T00:00:00Z",
+      "size": 1,
+      "digest": "abc",
+      "details": { "family": "gemma" }
+    },
+    {
+      "name": "qwen2.5vl:7b",
+      "model": "qwen2.5vl:7b",
+      "modified_at": "2026-01-02T00:00:00Z",
+      "size": 2,
+      "digest": "def",
+      "details": { "family": "qwen" }
+    },
+    {
+      "name": "qwen2.5:latest",
+      "model": "qwen2.5:latest",
+      "size": 3
+    }
+  ]
+}

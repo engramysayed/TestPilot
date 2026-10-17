@@ -152,6 +152,7 @@ public class PortalUiController {
             case "users" -> "Administration";
             case "domains" -> "Domains";
             case "roles" -> "Roles";
+            case "llm-settings" -> "LLM & API keys";
             default -> "Keel";
         };
     }
@@ -504,6 +505,13 @@ public class PortalUiController {
             return "redirect:/dashboard";
         }
         return "admin-roles";
+    }
+
+    @GetMapping("/admin/llm-settings")
+    public String adminLlmSettings(Model model) {
+        requireHeadPage();
+        addNav(model, "llm-settings");
+        return "admin-llm-settings";
     }
 
     @GetMapping("/account")
