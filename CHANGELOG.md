@@ -4,6 +4,13 @@
 
 # Keel changelog
 
+## 2026-10-17 - Richer TIE handoff (Ollama + Cursor)
+
+- Both Ollama and Cursor TIE picks share HealPickPayload: whyTied (margin + same-label), scored shortlist (role/tag, label, stability, intentMatch, totals), HTML neighborhood (parent snippets, NEIGHBORHOOD_MAX), optional screenshotPath when evidence already has a file (empty-ok; never invent capture).
+- DOM grounding only: pick candidateId from the shortlist; no invent / Thought / written locator on the pick path; no Midscene vision-first.
+- Cursor sidecar mode=pick prompt uses quotedName / whyTied / scoredShortlist / neighborhood; slimHtmlExcerpt stays empty on this path.
+
+
 ## 2026-10-17 — OutcomeKind enabled / nameless / toast
 
 - ENABLED/DISABLED no longer map to visible (false-pass when present but disabled). Real execute types enabled/disabled use isEnabled in prove and generated Page asserts.

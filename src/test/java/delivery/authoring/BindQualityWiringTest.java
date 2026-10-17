@@ -154,6 +154,12 @@ public class BindQualityWiringTest {
         Assert.assertTrue(metrics.ollamaAsked >= 1, metrics.summaryLine());
         Assert.assertFalse(capturedSystem.get().toLowerCase().contains("invent"));
         Assert.assertFalse(capturedSystem.get().toLowerCase().contains("thought"));
+        Assert.assertTrue(capturedUser.get().contains("Why tied:")
+                        || capturedUser.get().contains("whyTied"),
+                capturedUser.get());
+        Assert.assertTrue(capturedUser.get().contains("Neighborhood")
+                        || capturedUser.get().contains("neighborhood"),
+                capturedUser.get());
         Assert.assertTrue(capturedUser.get().contains("Support")
                         || capturedUser.get().contains("side-nav-support"),
                 capturedUser.get());

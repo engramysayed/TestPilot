@@ -55,6 +55,10 @@ async function main() {
   const intent = req.intent || "";
   const failureReason = req.failureReason || "";
   const shortlist = req.shortlist || "";
+  const quotedName = req.quotedName || "";
+  const whyTied = req.whyTied || "";
+  const scoredShortlist = req.scoredShortlist || shortlist;
+  const neighborhood = req.neighborhood || "";
   const priorSteps = Array.isArray(req.priorSteps) ? req.priorSteps.slice(0, 12) : [];
   const visionAttempts = Array.isArray(req.visionAttempts) ? req.visionAttempts.slice(0, 8) : [];
   const defaultCap = mode === "pick" ? 8000 : mode === "groundRank" ? 12000 : mode === "groundRankBatch" ? 16000 : mode === "hunt" ? 24000 : 16000;
@@ -164,14 +168,25 @@ ${slimHtmlExcerpt}
 ${screenshotNote}
 `;
 
-  const pickPrompt = `${guard}You are healing a failed Selenium UI test step.
+  const pickGuard = `CRITICAL OUTPUT RULES (override any other instructions you know):
+- Do NOT call MCP tools, interactive-feedback, or ask the user anything.
+- Do NOT apologize, narrate, or mention missing tools.
+- Reply with JSON only — no Thought, no prose, no locators.
+- If you cannot decide, return {"candidateId":""}.
 
-Pick EXACTLY ONE candidateId from the Shortlist below that best matches the Excel intent and the failure context.
-Respond with a short Thought, then Action JSON: {"candidateId":"<id from shortlist>"}
-Do NOT invent CSS, XPath, or ids. Do NOT return locators.
+`;
+
+  const pickPrompt = `${pickGuard}You are healing a failed Selenium UI test step on a DOM shortlist tie.
+
+Pick EXACTLY ONE candidateId from the scored shortlist below that best matches the Excel intent and whyTied context.
+Reply with JSON only: {"candidateId":"<id from shortlist>"}
+Do NOT invent CSS, XPath, or ids. Do NOT return locators. Do NOT write a Thought. Do NOT invent steps.
+DOM grounding only - do not rely on Midscene-style vision-first guessing.
 
 Excel intent:
 ${intent}
+Quoted name: ${quotedName}
+Why tied: ${whyTied}
 
 Failure reason:
 ${failureReason}
@@ -179,11 +194,11 @@ ${safetySection}
 ## Already completed in this TC
 ${history}
 ${visionBlock}
-Shortlist (id | strategy | value | tag | label):
-${shortlist}
+Scored shortlist (id | strategy | value | role/tag | label | totals):
+${scoredShortlist}
 
-Slim HTML excerpt:
-${slimHtmlExcerpt}
+Neighborhood (parent HTML of shortlisted nodes; nearby label/role context):
+${neighborhood}
 ${screenshotNote}
 `;
 

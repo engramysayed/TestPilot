@@ -4,22 +4,38 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
 /**
- * TIE pick card for Ollama / Cursor: scored shortlist only — never invent on this call.
+ * TIE pick card for Ollama and Cursor: scored shortlist + whyTied + neighborhood.
+ * Pick candidateId from the shortlist only — never invent on this call.
+ * screenshotPath is optional (empty-ok); only set when evidence already has a file.
  */
 public record HealPickPayload(
         String quotedName,
         String whyTied,
         String scoredTable,
-        String neighborhood
+        String neighborhood,
+        String screenshotPath
 ) {
     public static final int NEIGHBORHOOD_MAX = 1500;
+
+    public HealPickPayload(
+            String quotedName,
+            String whyTied,
+            String scoredTable,
+            String neighborhood
+    ) {
+        this(quotedName, whyTied, scoredTable, neighborhood, "");
+    }
+
+    public HealPickPayload withScreenshotPath(String path) {
+        String p = path == null ? "" : path.trim();
+        return new HealPickPayload(quotedName, whyTied, scoredTable, neighborhood, p);
+    }
 
     public static HealPickPayload from(
             StepIntentBinder.IntentLine intent,
@@ -28,7 +44,7 @@ public record HealPickPayload(
         String quoted = intent == null ? null : StepIntentBinder.quotedVisibleName(intent.text());
         if (decision == null || decision.kind() == BindDecision.Kind.EMPTY
                 || decision.shortlist() == null || decision.shortlist().isEmpty()) {
-            return new HealPickPayload(quoted == null ? "" : quoted, "", "", "");
+            return new HealPickPayload(quoted == null ? "" : quoted, "", "", "", "");
         }
         List<CandidateScore> scores = decision.scores() == null ? List.of() : decision.scores();
         List<DomCandidate> shortlist = decision.shortlist();
@@ -61,14 +77,16 @@ public record HealPickPayload(
                     .filter(s -> s.candidate().id().equals(c.id()))
                     .findFirst()
                     .orElse(null);
+            String role = c.tag() == null ? "" : c.tag();
+            String label = c.label() == null ? "" : c.label();
             if (score == null) {
                 table.append(c.id()).append(" | ").append(c.strategy()).append(" | ")
-                        .append(c.value()).append(" | ").append(c.tag()).append(" | ")
-                        .append(c.label()).append(" | total=0\n");
+                        .append(c.value()).append(" | ").append(role).append(" | ")
+                        .append(label).append(" | total=0\n");
             } else {
                 table.append(c.id()).append(" | ").append(c.strategy()).append(" | ")
-                        .append(c.value()).append(" | ").append(c.tag()).append(" | ")
-                        .append(c.label())
+                        .append(c.value()).append(" | ").append(role).append(" | ")
+                        .append(label)
                         .append(" | total=").append(score.total())
                         .append(" | stability=").append(score.stability())
                         .append(" | uniqueness=").append(score.uniqueness())
@@ -84,34 +102,39 @@ public record HealPickPayload(
                 quoted == null ? "" : quoted,
                 why,
                 table.toString().trim(),
-                neighborhood);
+                neighborhood,
+                "");
     }
 
     public String ollamaSystem() {
         return """
                 Pick exactly one candidateId from the scored shortlist.
                 Reply with JSON only: {"candidateId":"<id from shortlist>"}.
-                Ids must come from the shortlist only. Do not return locators. JSON only — no prose.
+                Ids must come from the shortlist only. Do not return locators. JSON only - no prose.
                 """;
     }
 
     public String ollamaUser(String tcId, String failureReason) {
+        String shot = screenshotPath == null || screenshotPath.isBlank()
+                ? ""
+                : "\nScreenshot path (optional evidence already on disk): " + screenshotPath + "\n";
         return """
                 TC_ID: %s
                 Quoted name: %s
                 Why tied: %s
                 Failure: %s
-                Scored shortlist:
+                Scored shortlist (id | strategy | value | role/tag | label | totals):
                 %s
-                Neighborhood:
+                Neighborhood (parent HTML of shortlisted nodes; nearby label/role context):
                 %s
-                """.formatted(
+                %s""".formatted(
                 tcId == null ? "" : tcId,
                 quotedName == null ? "" : quotedName,
                 whyTied == null ? "" : whyTied,
                 failureReason == null ? "" : failureReason,
                 scoredTable == null ? "" : scoredTable,
-                neighborhood == null ? "" : neighborhood);
+                neighborhood == null ? "" : neighborhood,
+                shot);
     }
 
     private static String neighborhood(String html, List<DomCandidate> shortlist) {

@@ -18,10 +18,36 @@ public class HealPickPayloadTest {
         BindDecision d = CandidateScorer.decide(CandidateScorer.score(intent, cs));
         HealPickPayload p = HealPickPayload.from(intent, d, "<html></html>");
         Assert.assertTrue(p.whyTied().startsWith("TIE"), p.whyTied());
+        Assert.assertTrue(p.whyTied().contains("same-label=Settings") || p.whyTied().contains("margin="),
+                p.whyTied());
         Assert.assertTrue(p.scoredTable().contains("c1") && p.scoredTable().contains("total="),
                 p.scoredTable());
+        Assert.assertTrue(p.scoredTable().contains("stability=")
+                        && p.scoredTable().contains("intentMatch="),
+                p.scoredTable());
+        Assert.assertEquals(p.screenshotPath(), "");
         Assert.assertFalse(p.ollamaSystem().toLowerCase().contains("invent"));
         Assert.assertFalse(p.ollamaSystem().toLowerCase().contains("thought"));
+        String user = p.ollamaUser("TC_01", "tie");
+        Assert.assertTrue(user.contains("Why tied:"), user);
+        Assert.assertTrue(user.contains("Neighborhood"), user);
+        Assert.assertTrue(user.contains(p.whyTied()), user);
+    }
+
+    @Test
+    public void screenshotPathOptionalEmptyOk() {
+        var intent = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK, "Click Settings");
+        List<DomCandidate> cs = List.of(
+                new DomCandidate("c1", "id", "settings-primary", "button", "Settings"),
+                new DomCandidate("c2", "id", "settings-advanced", "button", "Settings")
+        );
+        BindDecision d = CandidateScorer.decide(CandidateScorer.score(intent, cs));
+        HealPickPayload p = HealPickPayload.from(intent, d, "<html></html>")
+                .withScreenshotPath("D:\\evidence\\tie.png");
+        Assert.assertEquals(p.screenshotPath(), "D:\\evidence\\tie.png");
+        Assert.assertTrue(p.ollamaUser("TC_01", "tie").contains("D:\\evidence\\tie.png"));
+        Assert.assertEquals(p.withScreenshotPath(null).screenshotPath(), "");
     }
 
     @Test

@@ -1,5 +1,8 @@
 package delivery.heal;
 
+import delivery.authoring.HealPickPayload;
+import org.json.JSONObject;
+import java.util.List;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -59,5 +62,27 @@ public class CursorHealClientTest {
             }
             Files.deleteIfExists(script);
         }
+    }
+
+
+    @Test
+    public void buildPickRequest_includesRichTieKeys() {
+        HealPickPayload payload = new HealPickPayload(
+                "Settings",
+                "TIE margin=0 best=c1=50 runner=c2=50 same-label=Settings",
+                "c1 | id | settings-primary | button | Settings | total=50",
+                "<nav>Settings</nav>",
+                "");
+        JSONObject req = CursorHealClient.buildPickRequest(
+                "Click Settings", "tie", payload, null, List.of("prior"));
+        Assert.assertEquals(req.getString("mode"), "pick");
+        Assert.assertEquals(req.getString("quotedName"), "Settings");
+        Assert.assertTrue(req.getString("whyTied").contains("same-label=Settings"));
+        Assert.assertTrue(req.getString("scoredShortlist").contains("c1"));
+        Assert.assertTrue(req.getString("neighborhood").contains("Settings"));
+        Assert.assertEquals(req.getString("slimHtmlExcerpt"), "");
+        Assert.assertEquals(req.getString("screenshotPath"), "");
+        Assert.assertFalse(req.getString("whyTied").isBlank());
+        Assert.assertFalse(req.getString("neighborhood").isBlank());
     }
 }

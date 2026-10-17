@@ -247,9 +247,8 @@ public class AuthoringService {
         boolean hasImage = pngOrNull != null && pngOrNull.length > 0;
         BindDecision decision = CandidateScorer.decide(CandidateScorer.score(intent, shortlist));
         HealPickPayload payload = HealPickPayload.from(intent, decision, slimHtml == null ? "" : slimHtml);
-        String system = hasImage
-                ? LocatorPolicy.visionHealRules()
-                : payload.ollamaSystem();
+        // TIE pick is DOM-grounded: same shortlist-only system for text and vision (no Thought / invent).
+        String system = payload.ollamaSystem();
         String user = payload.ollamaUser(tcId, failureReason)
                 + "\n## Already completed in this TC\n"
                 + formatPriorSteps(priorStepSummaries)

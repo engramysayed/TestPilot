@@ -417,6 +417,9 @@ public class HealCascade {
                 return HealResult.fail("HEAL_STOPPED: " + beforePick.reason());
             }
             HealPickPayload payload = HealPickPayload.from(intent, tieDecision, slimHtml);
+            if (screenshotPathOrNull != null && java.nio.file.Files.isRegularFile(screenshotPathOrNull)) {
+                payload = payload.withScreenshotPath(screenshotPathOrNull.toAbsolutePath().toString());
+            }
             String chosen = cursor.pickCandidateId(
                     intent.text(), solveReason, payload, screenshotPathOrNull, priorSteps);
             if (!chosen.isBlank() && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(chosen))) {

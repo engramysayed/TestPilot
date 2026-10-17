@@ -104,6 +104,6 @@ mvn -q "-Dtest=RecoveryPlanParserTest,HealCascadeTest,FreeInventHealerTest,Requi
 - Spec: docs/superpowers/specs/2026-10-16-candidate-scorer-design.md
 - Plan: docs/superpowers/plans/2026-10-16-candidate-scorer.md
 - Gate: CandidateScorerFixtureTest + bind-quality.json before live AxisPay Execute
-- Wired: bind/ollama/vision/heal counters flush on fail; Ollama TIE neighborhood from slimHtml; preferStable via CandidateScorer.stability
+- Wired: bind/ollama/vision/heal counters flush on fail; both Ollama and Cursor TIE picks get HealPickPayload (whyTied + neighborhood + scored shortlist; screenshotPath optional/empty-ok); DOM grounding, no Midscene vision-first; preferStable via CandidateScorer.stability
 - bind-quality.json is **job totals** (one BindQualityMetrics per ProvePhase job; proveOne must not zero counters; pageCatalog.clear() stays per TC)
 - ASSERT_VISIBLE “{Field} is accepted”: unique editable field on TIE, or spent fill locator via preferIdsForSpentFills. Click twins stay AMBIGUOUS. FieldAcceptedAssertBindTest.

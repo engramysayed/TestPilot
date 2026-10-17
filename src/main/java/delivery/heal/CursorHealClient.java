@@ -91,8 +91,28 @@ public class CursorHealClient {
                 screenshotPathOrNull, List.of());
     }
 
-    /** TIE pick card: scored shortlist + neighborhood; slimHtmlExcerpt stays empty on this path. */
+    /** TIE pick card: scored shortlist + whyTied + neighborhood; slimHtmlExcerpt stays empty on this path. */
     public String pickCandidateId(
+            String intentText,
+            String failureReason,
+            delivery.authoring.HealPickPayload payload,
+            Path screenshotPathOrNull,
+            List<String> priorSteps
+    ) {
+        JSONObject req = buildPickRequest(
+                intentText, failureReason, payload, screenshotPathOrNull, priorSteps);
+        String raw = invoke(req);
+        String id = parseCandidateId(raw);
+        if (id.isBlank() && !raw.isBlank()) {
+            LogsManager.warn("CURSOR_HEAL_SKIPPED: no candidateId in sidecar output: " + trim(raw, 200));
+        } else if (!id.isBlank()) {
+            LogsManager.info("CURSOR_HEAL: Auto picked candidateId=" + id);
+        }
+        return id;
+    }
+
+    /** Package-visible for tests — richer TIE keys always present; screenshotPath empty-ok. */
+    static JSONObject buildPickRequest(
             String intentText,
             String failureReason,
             delivery.authoring.HealPickPayload payload,
@@ -111,17 +131,14 @@ public class CursorHealClient {
         req.put("slimHtmlExcerpt", "");
         req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
         putVisionAttempts(req);
+        String shot = "";
         if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
-            req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
+            shot = screenshotPathOrNull.toAbsolutePath().toString();
+        } else if (payload != null) {
+            shot = nullToEmpty(payload.screenshotPath());
         }
-        String raw = invoke(req);
-        String id = parseCandidateId(raw);
-        if (id.isBlank() && !raw.isBlank()) {
-            LogsManager.warn("CURSOR_HEAL_SKIPPED: no candidateId in sidecar output: " + trim(raw, 200));
-        } else if (!id.isBlank()) {
-            LogsManager.info("CURSOR_HEAL: Auto picked candidateId=" + id);
-        }
-        return id;
+        req.put("screenshotPath", shot);
+        return req;
     }
 
     private static String nullToEmpty(String s) {
