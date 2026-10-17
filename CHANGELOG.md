@@ -2,6 +2,8 @@
 
 ## 2026-10-16 — Candidate scorer pack
 
+- Outcomes are a checklist: confirm/expected lines are classified before CandidateScorer. Page-shown and "is clicked" no longer TIE the shortlist.
+
 - Bind chooses from a scored DOM shortlist (CandidateScorer / BindDecision CLEAR|TIE|EMPTY).
 - Catalog fingerprint ignores class-hash churn; write-back only after a live click (commitAfterProof).
 - Ollama/Cursor pick only on TIE (max 5); ASSERT_VISIBLE still never heals.

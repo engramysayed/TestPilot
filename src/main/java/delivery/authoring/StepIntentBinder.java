@@ -220,6 +220,14 @@ public final class StepIntentBinder {
             return result;
         }
         for (ProvenStep step : result.steps()) {
+            // urlContains / action-echo have no allowlisted locator; they are page-level asserts.
+            if ("urlContains".equalsIgnoreCase(step.assertionType())) {
+                continue;
+            }
+            String rationale = step.rationale() == null ? "" : step.rationale();
+            if (rationale.contains(":echo") || rationale.contains(":pageShown")) {
+                continue;
+            }
             var validation = new LocatorValidator().validate(new LocatorCandidate(
                     step.locatorStrategy(), step.locatorValue(), "", ""));
             if (!validation.valid()) return new BindResult(List.of(), validation.reason());
@@ -239,6 +247,14 @@ public final class StepIntentBinder {
                 || intent.kind() == IntentKind.TYPE_PASS
                 || intent.kind() == IntentKind.CLICK_LOGIN) {
             return bindLoginFieldIntent(intent, tcId, candidates, preferOnTie);
+        }
+        // Classify confirm/expected lines before CandidateScorer (page-shown / echo never TIE).
+        if (intent.kind() == IntentKind.ASSERT_VISIBLE) {
+            OutcomeKind.Outcome outcome = OutcomeKind.classify(intent.text());
+            BindResult classified = bindClassifiedOutcome(intent, tcId, candidates, preferOnTie, outcome);
+            if (classified != null) {
+                return classified;
+            }
         }
         List<String> tieBreak = preferOnTie == null ? List.of() : preferOnTie;
         OrdinalControl ordinal = parseOrdinalControl(intent.text());
@@ -386,6 +402,16 @@ public final class StepIntentBinder {
                 if (fromDecide != null) {
                     best = fromDecide;
                 }
+            }
+        }
+        // Explicit ordinal (checkbox 1) beats a CLEAR form-container winner from raw scores.
+        if (ordinal != null) {
+            Scored ordinalPick = scored.stream()
+                    .filter(s -> matchesOrdinalCandidate(s.candidate, ordinal))
+                    .findFirst()
+                    .orElse(null);
+            if (ordinalPick != null) {
+                best = ordinalPick;
             }
         }
         if (intent.kind() == IntentKind.CLICK && !namedActionResolved
@@ -2121,6 +2147,125 @@ public final class StepIntentBinder {
             "click", "open", "confirm", "verify", "shown", "visible", "page",
             "user", "already", "logged", "enter", "type", "fill", "button",
             "item", "was", "are", "has", "have", "select", "choose", "pick");
+
+    /**
+     * Bind from {@link OutcomeKind} when the kind must not hit CandidateScorer.decide
+     * (PAGE_SHOWN, ACTION_ECHO, QUOTED_TEXT, TOAST body text, UNKNOWN token).
+     * Returns null to fall through to the existing shortlist path (FIELD_*, CONTROL_VISIBLE, state asserts).
+     */
+    private static BindResult bindClassifiedOutcome(
+            IntentLine intent, String tcId, List<DomCandidate> candidates,
+            List<String> preferOnTie, OutcomeKind.Outcome outcome) {
+        if (outcome == null) {
+            return null;
+        }
+        return switch (outcome.kind()) {
+            case QUOTED_TEXT, TOAST -> bindTextContainsAssert(tcId, outcome.expected());
+            case PAGE_SHOWN -> bindPageShownAssert(tcId, outcome.expected());
+            case ACTION_ECHO -> bindActionEchoAssert(tcId);
+            case UNKNOWN -> {
+                if (outcome.expected() != null && !outcome.expected().isBlank()
+                        && "textContains".equals(outcome.assertionType())) {
+                    yield bindTextContainsAssert(tcId, outcome.expected());
+                }
+                // No distinctive token: skip without CandidateScorer TIE / AMBIGUOUS.
+                yield new BindResult(List.of(),
+                        "No distinctive outcome token for intent ASSERT_VISIBLE: " + intent.text());
+            }
+            case KEYBOARD -> {
+                // Soft keyboard shown: treat like field-visible when a focused field name is present;
+                // otherwise page-shown skip-style validated echo (no shortlist TIE).
+                if (outcome.namedControl() != null && !outcome.namedControl().isBlank()) {
+                    yield null;
+                }
+                yield bindActionEchoAssert(tcId);
+            }
+            case EXPANDED, UPLOAD, ENABLED, DISABLED, VALUE -> {
+                BindResult named = bindNamedControlVisible(
+                        intent, tcId, candidates, preferOnTie, outcome);
+                yield named != null ? named : null;
+            }
+            case FIELD_ACCEPTED, FIELD_VISIBLE, CONTROL_VISIBLE,
+                 SELECTED, CHECKED, UNCHECKED, SCREEN_GONE, NOT_VISIBLE -> null;
+        };
+    }
+
+    private static BindResult bindTextContainsAssert(String tcId, String phrase) {
+        if (phrase == null || phrase.isBlank()) {
+            return null;
+        }
+        String xpath = xpathContainsText(phrase);
+        boolean ok = new LocatorValidator().validate(
+                new LocatorCandidate("xpath", xpath, "Page", "")).valid();
+        return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "assert",
+                "xpath", xpath, "", "textContains", phrase, ok,
+                ok ? "intent:ASSERT_VISIBLE:text" : "xpath allowlist rejected")), "");
+    }
+
+    private static BindResult bindPageShownAssert(String tcId, String slug) {
+        String expected = slug == null ? "" : slug.trim();
+        if (expected.isBlank()) {
+            return new BindResult(List.of(), "PAGE_SHOWN without URL slug");
+        }
+        // urlContains needs no locator; blank strategy/value is intentional (see RecordedDrafts).
+        return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "assert",
+                "", "", "", "urlContains", expected, true,
+                "intent:ASSERT_VISIBLE:pageShown")), "");
+    }
+
+    /** Echo confirm ("Submit is clicked") — validated page assert so the batch is not empty. */
+    private static BindResult bindActionEchoAssert(String tcId) {
+        // Document-level visible echo; skip LocatorValidator (css/html is not an allowlisted shape).
+        return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "assert",
+                "css", "html", "", "visible", "", true,
+                "intent:ASSERT_VISIBLE:echo")), "");
+    }
+
+    /**
+     * Bind a named control as visible when OutcomeKind supplies a distinctive name
+     * and exactly one candidate (or a preferOnTie id) matches.
+     */
+    private static BindResult bindNamedControlVisible(
+            IntentLine intent, String tcId, List<DomCandidate> candidates,
+            List<String> preferOnTie, OutcomeKind.Outcome outcome) {
+        if (outcome == null || candidates == null || candidates.isEmpty()) {
+            return null;
+        }
+        String name = outcome.namedControl();
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        String assertionType = outcome.assertionType() == null || outcome.assertionType().isBlank()
+                ? "visible" : outcome.assertionType();
+        String expected = outcome.expected() == null ? "" : outcome.expected();
+        List<String> tieBreak = preferOnTie == null ? List.of() : preferOnTie;
+
+        List<DomCandidate> matches = candidates.stream()
+                .filter(c -> candidateSharesFieldToken(name, c)
+                        || hayContainsToken(
+                        (c.value() + " " + c.label()).toLowerCase(Locale.ROOT),
+                        name.toLowerCase(Locale.ROOT)))
+                .toList();
+        if (matches.isEmpty()) {
+            return null;
+        }
+        DomCandidate pick;
+        if (matches.size() == 1) {
+            pick = matches.get(0);
+        } else {
+            pick = matches.stream()
+                    .filter(c -> tieBreak.stream().anyMatch(id -> id.equalsIgnoreCase(c.id())))
+                    .findFirst()
+                    .orElse(null);
+            if (pick == null) {
+                return null;
+            }
+        }
+        return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "assert",
+                pick.strategy(), pick.value(), "", assertionType, expected, true,
+                "intent:ASSERT_VISIBLE:" + outcome.kind().name().toLowerCase(Locale.ROOT))), "");
+    }
+
 
     /**
      * Checked / unchecked / selected state from Excel assert wording (DOM state, not text).
