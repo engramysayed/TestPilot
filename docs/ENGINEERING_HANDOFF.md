@@ -1,8 +1,8 @@
-# Keel â€” Engineering handoff
+# Keel — Engineering handoff
 
 Product overview and quick start live in the root [`README.md`](../README.md).  
 **Full product feature list:** [`PRODUCT.md`](PRODUCT.md).  
-**Public â€œwhat we shippedâ€ writeup:** [`CHANGELOG.md`](../CHANGELOG.md) â€” add a dated section when you publish.
+**Public “what we shipped” writeup:** [`CHANGELOG.md`](../CHANGELOG.md) — add a dated section when you publish.
 
 This document points engineers at deeper material already in the tree.
 
@@ -10,7 +10,7 @@ This document points engineers at deeper material already in the tree.
 
 | Topic | Where to look |
 |-------|----------------|
-| Record â†’ framework (skip the browser prove pass) | `docs/superpowers/plans/2026-10-15-record-to-framework.md` |
+| Record → framework (skip the browser prove pass) | `docs/superpowers/plans/2026-10-15-record-to-framework.md` |
 | 2026-10-15 portal session (Record, alerts, layout, unit prices, owner-only admin, editable price copy, project tabs, Execute punctuation, compact credit bar, named-label clicks, overview restyle, screenshot occ folders, expected-per-step, page locator catalog, history copy, attention colors) | `docs/handoff/2026-10-15-portal-session.md` |
 | Candidate scorer + DOM shortlist (bind before Ollama/vision; proof-gated catalog; fixture metrics) | spec `docs/superpowers/specs/2026-10-16-candidate-scorer-design.md`, plan `docs/superpowers/plans/2026-10-16-candidate-scorer.md` |
 | OutcomeKind confirm-line classify before score (enabled/disabled execute types; nameless skip-echo; toast tokens; OTP/Username/Logout without field/button) | `src/main/java/delivery/authoring/OutcomeKind.java`, `EnabledDisabledAssertBindTest` |
@@ -40,10 +40,10 @@ Matching plans/tasks/notes sit beside each spec under `docs/superpowers/plans/`.
 
 ## Bug Hunter (summary)
 
-1. Job kind `HUNT` â€” UI `/bug-hunter`, worker `HuntWorker`, pack download via jobs API.
-2. Live loop: page map (B) + slim fallback (A) â†’ Ollama/Cursor planner â†’ grounded actions â†’ journal + coverage.
-3. Phase 2: strategy sequencer (happyâ†’â€¦â†’invent), `HuntOracle` drafts, stop reasons `STUCK` / `COMPLETE` / finish / cycle cap.
-4. **Quality pass 2** â€” preferred-hook `JobLoginService` login; `HuntSecretResolver` token expansion at execute; post-click settle; strategy auto-advance on login block; `HuntBugDedupe` + `HuntBugTriage`; login-feature oracle fix; `restart_browser` via `HuntBrowserSession`.
+1. Job kind `HUNT` — UI `/bug-hunter`, worker `HuntWorker`, pack download via jobs API.
+2. Live loop: page map (B) + slim fallback (A) → Ollama/Cursor planner → grounded actions → journal + coverage.
+3. Phase 2: strategy sequencer (happy→…→invent), `HuntOracle` drafts, stop reasons `STUCK` / `COMPLETE` / finish / cycle cap.
+4. **Quality pass 2** — preferred-hook `JobLoginService` login; `HuntSecretResolver` token expansion at execute; post-click settle; strategy auto-advance on login block; `HuntBugDedupe` + `HuntBugTriage`; login-feature oracle fix; `restart_browser` via `HuntBrowserSession`.
 5. Phase 3 (two-pass DOM neighborhoods) is **out of scope** until AxisPay proves map+slim still too large.
    - Gaps backlog: `docs/superpowers/plans/2026-09-10-bug-hunter-phase12-gaps.md`
    - Deferred Phase 3: `docs/superpowers/plans/2026-09-10-bug-hunter-phase3-twopass-dom.md`
@@ -56,13 +56,13 @@ mvn -q "-Dtest=HuntCoreTest,HuntBugDedupeTest,HuntBugTriageTest,HuntSecretResolv
 ## Precision authoring engine (summary)
 
 1. `AuthoringEngine` enum: `keel` (default) | `precision` on Automate, Execute, and All-in-one pipeline jobs.
-2. **Keel path** â€” unchanged: `StepIntentBinder` â†’ heal cascade on failure.
-3. **Precision path** â€” `PrecisionBindService`: preflight (HTML, API key, server flag) before budget charge â†’ `CursorHealClient.groundRank` â†’ bind or one `solve` (`FreeInventHealer.parseInventResponse` for `steps[]`) â†’ Keel fallback on cap / errors.
-4. **Job-scoped config** â€” `PrecisionJobConfig` on `ConversionJobRequest` (no `System.setProperty` in workers).
-5. **Shared heal budget** â€” `HealCascade.attachPrecisionBudget` so post-fail Cursor heal shares the per-job cap on Precision jobs.
-6. **Telemetry** â€” per-TC `precisionFallback`, call delta, `groundRank`/`solve` in `healTier` merge; `PRECISION_FALLBACK` banner on status page.
-7. **Portal** â€” radio on `/automate`, `/execute`, `/generate` (All in one); `authoringEngine` on job API; `request.json` under `automate-runs/` / `execute-runs/`.
-8. **CLI** â€” `DeliveryCli --authoring-engine keel|precision`.
+2. **Keel path** — unchanged: `StepIntentBinder` → heal cascade on failure.
+3. **Precision path** — `PrecisionBindService`: preflight (HTML, API key, server flag) before budget charge → `CursorHealClient.groundRank` → bind or one `solve` (`FreeInventHealer.parseInventResponse` for `steps[]`) → Keel fallback on cap / errors.
+4. **Job-scoped config** — `PrecisionJobConfig` on `ConversionJobRequest` (no `System.setProperty` in workers).
+5. **Shared heal budget** — `HealCascade.attachPrecisionBudget` so post-fail Cursor heal shares the per-job cap on Precision jobs.
+6. **Telemetry** — per-TC `precisionFallback`, call delta, `groundRank`/`solve` in `healTier` merge; `PRECISION_FALLBACK` banner on status page.
+7. **Portal** — radio on `/automate`, `/execute`, `/generate` (All in one); `authoringEngine` on job API; `request.json` under `automate-runs/` / `execute-runs/`.
+8. **CLI** — `DeliveryCli --authoring-engine keel|precision`.
 
 Key classes: `delivery.authoring.PrecisionBindService`, `PrecisionCallBudget`, `PrecisionJobConfig`, `delivery.job.AuthoringJobRequestFiles`, `ProvePhase.PrecisionJobTracker`.
 
@@ -108,4 +108,4 @@ mvn -q "-Dtest=RecoveryPlanParserTest,HealCascadeTest,FreeInventHealerTest,Requi
 - Gate: CandidateScorerFixtureTest + bind-quality.json before live AxisPay Execute
 - Wired: bind/ollama/vision/heal counters flush on fail; both Ollama and Cursor TIE picks get HealPickPayload (whyTied + neighborhood + scored shortlist; screenshotPath optional/empty-ok); DOM grounding, no Midscene vision-first; preferStable via CandidateScorer.stability
 - bind-quality.json is **job totals** (one BindQualityMetrics per ProvePhase job; proveOne must not zero counters; pageCatalog.clear() stays per TC)
-- ASSERT_VISIBLE â€œ{Field} is acceptedâ€: unique editable field on TIE, or spent fill locator via preferIdsForSpentFills. Click twins stay AMBIGUOUS. FieldAcceptedAssertBindTest.
+- ASSERT_VISIBLE “{Field} is accepted”: unique editable field on TIE, or spent fill locator via preferIdsForSpentFills. Click twins stay AMBIGUOUS. FieldAcceptedAssertBindTest.

@@ -11,7 +11,6 @@
 - Stored Ollama base URL / chat model no longer overwrite in-memory DeliveryPortalProperties when delivery.llm-base-url / DELIVERY_LLM_BASE_URL, delivery.llm-model / DELIVERY_LLM_MODEL, or delivery.generate-model / DELIVERY_GENERATE_MODEL is already set in the environment (same env-wins rule as System properties).
 - Secrets stay masked; never logged.
 
-
 ## 2026-10-17 - Heal API keys via Settings publish + optional Ollama Bearer
 
 - Automation Engine resolves CURSOR_API_KEY / AGENTROUTER_API_KEY / OLLAMA_API_KEY through ApiKeySource: env then System property (portal LLM Settings publish) then DEV-only LocalApiKeyLoader (api-keys.local.*) last. Never logs secret values.
@@ -26,7 +25,7 @@
 - Cursor sidecar mode=pick prompt uses quotedName / whyTied / scoredShortlist / neighborhood; slimHtmlExcerpt stays empty on this path.
 
 
-## 2026-10-17 Ã¢â‚¬â€ OutcomeKind enabled / nameless / toast
+## 2026-10-17 — OutcomeKind enabled / nameless / toast
 
 - ENABLED/DISABLED no longer map to visible (false-pass when present but disabled). Real execute types enabled/disabled use isEnabled in prove and generated Page asserts.
 - Nameless/weak UNKNOWN confirm lines skip-echo (css/html + intent:ASSERT_VISIBLE:unknown-echo) instead of CandidateScorer TIE; body textContains only for distinctive tokens (expanded denylist).
@@ -34,7 +33,7 @@
 - Unquoted toast lines (error toast is shown, success message appears) bind textContains on the kind token not a shortlist TIE.
 - Asserts still never heal. Twin Settings clicks stay AMBIGUOUS.
 
-## 2026-10-16 Ã¢â‚¬â€ Candidate scorer pack
+## 2026-10-16 — Candidate scorer pack
 
 - Outcomes are a checklist: confirm/expected lines are classified before CandidateScorer. Page-shown and "is clicked" no longer TIE the shortlist.
 
@@ -44,7 +43,7 @@
 - Fixture gate: CandidateScorerFixtureTest + bind-quality.json.
 - Review fixes: ProvePhase records bind/ollama/vision/heal into bind-quality.json (flush in finally); Ollama TIE pick gets slimHtml neighborhood; catalog preferStable uses CandidateScorer.stability (testid over raw id).
 - bind-quality.json holds **job totals** across TCs (not last-TC-only). proveOne still clears pageCatalog; it no longer zeros BindQualityMetrics.
-- Execute: Ã¢â‚¬Å“Username is acceptedÃ¢â‚¬Â after a fill binds that field (input over a same-name hint; spent fill wins a TIE). Excel is not rewritten. Asserts still do not heal.
+- Execute: “Username is accepted” after a fill binds that field (input over a same-name hint; spent fill wins a TIE). Excel is not rewritten. Asserts still do not heal.
 
 
 This is the **public story of what shipped**. When you publish, add a dated section here first. Write for everyone: what changed, why it matters, how to use it, and what still does not work.
@@ -53,56 +52,56 @@ The **full product** (every surface, not only the last week) is [`docs/PRODUCT.m
 
 Internal design notes stay under `docs/superpowers/`. Engineers can start from `docs/ENGINEERING_HANDOFF.md`.
 
-## 2026-10-16 Ã¢â‚¬â€ Smaller run price, clearer history, colored attention
+## 2026-10-16 — Smaller run price, clearer history, colored attention
 
 **Surfaces:** **Execute**, **Automate**, **Bug Hunter**, **project Test cases**, **Overview**.
 
-The **This run** price is a compact bar (count Ãƒâ€” unit on the left, total credits on the right), not a large card. The same bar is on Automate and Bug Hunter. Design mockups on Execute start collapsed, with a teal row you click to open. Version history copy is plain: Current (not Ã¢â‚¬Å“headÃ¢â‚¬Â), Edited / Recorded / Generated instead of `CASE_EDIT`, and **Restore this version** sits on the same line as the filters. New Record and edit saves store your email as Author; old rows that stored `TC_3` show as Ã¢â‚¬â€. Failed attention cards are red, blocked ones amber. Rebuild the portal jar and Ctrl+F5. Known defect: history rows saved before this still have a test-id author in the file; only the label is cleaned up.
+The **This run** price is a compact bar (count × unit on the left, total credits on the right), not a large card. The same bar is on Automate and Bug Hunter. Design mockups on Execute start collapsed, with a teal row you click to open. Version history copy is plain: Current (not “head”), Edited / Recorded / Generated instead of `CASE_EDIT`, and **Restore this version** sits on the same line as the filters. New Record and edit saves store your email as Author; old rows that stored `TC_3` show as —. Failed attention cards are red, blocked ones amber. Rebuild the portal jar and Ctrl+F5. Known defect: history rows saved before this still have a test-id author in the file; only the label is cleaned up.
 
-## 2026-10-16 Ã¢â‚¬â€ Expected after each step, and a page locator catalog
+## 2026-10-16 — Expected after each step, and a page locator catalog
 
 **Surfaces:** **Execute**, **project test-case editor**.
 
-Each click/type is followed by that rowÃ¢â‚¬â„¢s Expected cell when the cell is not empty. A leftover Expected on a blank Ã¢â‚¬Å“Step actionÃ¢â‚¬Â row folds into the last real step Ã¢â‚¬â€ there is no assert without a step. Numbered lists (`1. 2. 3.`), dash bullets, and outcome `and` split; Ã¢â‚¬Å“expands and sub-menuÃ¢â‚¬Â stays one check. A failed assert stops; it does not start a 2-minute locator heal. Locators for a page are catalogued once and reused until the URL or the DOM fingerprint changes (navigation or a same-page expand). If bind misses, vision may confirm a catalog row or add a control it saw that the catalog did not. Rebuild the portal jar and Ctrl+F5. Known defect: Excel copy must still match the screen (`Upload Transaction List` vs `Upload Transactions List` still fails the assert, on purpose).
+Each click/type is followed by that row’s Expected cell when the cell is not empty. A leftover Expected on a blank “Step action” row folds into the last real step — there is no assert without a step. Numbered lists (`1. 2. 3.`), dash bullets, and outcome `and` split; “expands and sub-menu” stays one check. A failed assert stops; it does not start a 2-minute locator heal. Locators for a page are catalogued once and reused until the URL or the DOM fingerprint changes (navigation or a same-page expand). If bind misses, vision may confirm a catalog row or add a control it saw that the catalog did not. Rebuild the portal jar and Ctrl+F5. Known defect: Excel copy must still match the screen (`Upload Transaction List` vs `Upload Transactions List` still fails the assert, on purpose).
 
-## 2026-10-16 Ã¢â‚¬â€ Overview chart, run progress, and missing screenshots
+## 2026-10-16 — Overview chart, run progress, and missing screenshots
 
 **Surfaces:** **Overview**, **Runs**, **Execute results**, **Record**.
 
-The outcomes chart stacks proven vs blocked with rounder bars. Recent runs show a progress bar, a short status word (Done / Failed / Running), and Status / Results as buttons. Execute results now find screenshots stored under the per-run folder (`TC_01__occ_1`). A blocked bind also shows the heal screenshot. The Record name field no longer says Ã¢â‚¬Å“Describe it like you would to a colleague.Ã¢â‚¬Â Rebuild and restart the portal; Ctrl+F5.
+The outcomes chart stacks proven vs blocked with rounder bars. Recent runs show a progress bar, a short status word (Done / Failed / Running), and Status / Results as buttons. Execute results now find screenshots stored under the per-run folder (`TC_01__occ_1`). A blocked bind also shows the heal screenshot. The Record name field no longer says “Describe it like you would to a colleague.” Rebuild and restart the portal; Ctrl+F5.
 
-## 2026-10-16 Ã¢â‚¬â€ Named labels are clickable
+## 2026-10-16 — Named labels are clickable
 
 **Surfaces:** **Execute**.
 
 A step such as `Clicks "Support" in the sidebar` can land on a label that is not a button, link, or menu row. The quoted name is enough. The same rule applies in a toolbar, a dialog, a table, or anywhere else on the page. A wrapper whose text is longer than that name is not clicked. Two elements with the same name stay unresolved. Restart the portal from a new build before the next run; the copy that is already running does not have this yet.
 
-## 2026-10-16 Ã¢â‚¬â€ Live credit total
+## 2026-10-16 — Live credit total
 
 **Surfaces:** **Bug Hunter**, **Execute**, **Automate**.
 
 The cost sits in a card above the start button. Bug Hunter updates when iterations, cycles, or actions change. Execute and Automate update when you switch to the project library and change how many test cases are included. A workbook upload shows the price of one test case until the file is read at the start of the job. Hard-refresh if you still see the small grey sentence.
 
-## 2026-10-16 Ã¢â‚¬â€ Dashes and dots on Execute
+## 2026-10-16 — Dashes and dots on Execute
 
 **Surfaces:** **Execute**, and a few labels that used the same broken characters.
 
-A dash (`Ã¢â‚¬â€`) and a middle dot (`Ã‚Â·`) had been saved with the wrong encoding, so the page showed `ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â` and `ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·`. They read as punctuation again. The first row in **Credential profile** is the empty choice Ã¢â‚¬Å“Ã¢â‚¬â€ Select profile Ã¢â‚¬â€Ã¢â‚¬Â. It is not an account. Hard-refresh if the old letters are still on screen.
+A dash (`—`) and a middle dot (`·`) had been saved with the wrong encoding, so the page showed `Ã¢â‚¬â€` and `Ã‚Â·`. They read as punctuation again. The first row in **Credential profile** is the empty choice “— Select profile —”. It is not an account. Hard-refresh if the old letters are still on screen.
 
-## 2026-10-15 Ã¢â‚¬â€ Project section tabs
+## 2026-10-15 — Project section tabs
 
 **Surfaces:** a project page.
 
 Summary, Test cases, Packages, and Settings sit in a short pill row. The open section is the filled pill, in light and in dark. Hard-refresh if the old underline is still on screen.
 
-## 2026-10-15 Ã¢â‚¬â€ Prices per unit, and only the account owner can change them
+## 2026-10-15 — Prices per unit, and only the account owner can change them
 
 **Surfaces:** **Pricing** (`/pricing`), **Prices** (`/admin/pricing`), **Administration**, **Roles**, **Execute**, **Automate**, **Bug Hunter**, **Record**, **Guide**.
 
 ### What you can do
 
 - Open **Pricing** and read the price of one unit for each service. The table cannot be edited.
-- As the account owner, open **Admin Ã¢â€ â€™ Prices** and change the service name, **Charged as**, **What it covers**, and the price of one unit. Saving applies that to every account.
+- As the account owner, open **Admin → Prices** and change the service name, **Charged as**, **What it covers**, and the price of one unit. Saving applies that to every account.
 - A run charges the Execute price once per test case. A framework build charges the Automation price once per test case, including a build from a recording. A manual-only row is not charged.
 - Bug Hunter charges once per step. A step is one click or one thing typed. The hunt page shows how many steps this run may try before you start.
 - Writing test cases stays one price for the whole writing job.
@@ -117,7 +116,7 @@ A flat price treated a one-case run and a large run as the same job. Hiding an a
 1. **Pricing** shows the current unit prices.
 2. The account owner opens **Prices**, edits the name, Charged as, What it covers, and the credits for one unit, and saves.
 3. Start a run, a framework build, or a hunt as usual. Keel multiplies the unit price by the cases or steps in that job.
-4. If 15 was the old price of a whole Bug Hunter run, lower the Bug Hunter unit. The default hunt may try 80 steps (2 Ãƒâ€” 8 Ãƒâ€” 5), so 15 each costs 1,200.
+4. If 15 was the old price of a whole Bug Hunter run, lower the Bug Hunter unit. The default hunt may try 80 steps (2 × 8 × 5), so 15 each costs 1,200.
 
 ### What we did not change
 
@@ -131,7 +130,7 @@ A flat price treated a one-case run and a large run as the same job. Hiding an a
 - A default Bug Hunter at 15 credits per step is expensive until the owner sets a smaller unit.
 - This note is written while those prices can still be edited again.
 
-## 2026-10-15 Ã¢â‚¬â€ Record a test, then build the framework
+## 2026-10-15 — Record a test, then build the framework
 
 **Surfaces:** **Record** (`/record`), **Account** alerts, **Generate**, **Execute**, **Automate**, **Guide**, project cards, roles.
 
@@ -150,7 +149,7 @@ A saved recording was only English steps. Automate had to open the site again to
 ### How to use it
 
 1. Create a project and set its website.
-2. **Record** Ã¢â€ â€™ name the test Ã¢â€ â€™ start Chrome Ã¢â€ â€™ click through the site. Use **Check this** on the text that must be true.
+2. **Record** → name the test → start Chrome → click through the site. Use **Check this** on the text that must be true.
 3. Stop, leave **Build the framework** checked, and save. Watch the job under Runs. The download appears under Code packages.
 4. On **Account**, turn on a channel only after that channel is configured. Saving sends a confirmation first.
 
@@ -183,17 +182,17 @@ A saved recording was only English steps. Automate had to open the site again to
 
 ---
 
-## 2026-09-11 Ã¢â‚¬â€ Bug Hunter quality pass 2
+## 2026-09-11 — Bug Hunter quality pass 2
 
 **Surfaces:** **Bug Hunter** (`/bug-hunter`), shared `JobLoginService` login CSS.
 
 ### What you can do
 
-- Pick a **credential profile** on Bug Hunter Ã¢â‚¬â€ the planner sees `$TARGET_USERNAME` / `$TARGET_PASSWORD` / `$TARGET_OTP` tokens only (password resolved at execute time, never written to prompts or pack files).
+- Pick a **credential profile** on Bug Hunter — the planner sees `$TARGET_USERNAME` / `$TARGET_PASSWORD` / `$TARGET_OTP` tokens only (password resolved at execute time, never written to prompts or pack files).
 - Choose **Open site only** when you do not want auto-login.
 - Benefit from **preferred-hook-aware login** when the project has locator hook attributes configured.
 - Get fewer duplicate bugs: **fingerprint dedupe** plus an optional end-of-hunt **triage** pass (`bug-dedupe.json`, `bug-triage.json`).
-- Hunts auto-**advance strategy** when happy-path is stuck on login; login-feature hunts no longer get false Ã¢â‚¬Å“unexpected redirect to loginÃ¢â‚¬Â oracle noise.
+- Hunts auto-**advance strategy** when happy-path is stuck on login; login-feature hunts no longer get false “unexpected redirect to login” oracle noise.
 - Planner may use **`restart_browser`** (capped) and post-click **settle waits** for more reliable asserts.
 
 ### Why
@@ -209,17 +208,17 @@ Live hunts on Axis-style apps were noisy (dozens of duplicate bug rows) and ofte
 ### Known limits
 
 - End triage adds one planner call; soft-skips on invalid JSON (keeps deduped list).
-- Auto-login success may skip the login page Ã¢â‚¬â€ for login-page testing prefer Open site only or `restart_browser`.
+- Auto-login success may skip the login page — for login-page testing prefer Open site only or `restart_browser`.
 - Phase 3 two-pass DOM neighborhoods still not built.
 
 **Specs:** `docs/superpowers/specs/2026-09-10-bug-hunter-quality-pass2-design.md`.
 
 ---
 
-## 2026-09-11 Ã¢â‚¬â€ Precision authoring engine (Keel vs Cursor)
+## 2026-09-11 — Precision authoring engine (Keel vs Cursor)
 
-**Commit:** `d4927cc` Ã¢â‚¬â€ *feat(authoring): add Precision engine with review fixes and pipeline toggle*  
-**Surfaces:** **Automate**, **Execute**, **Generate Ã¢â€ â€™ All in one**, CLI, job status API.
+**Commit:** `d4927cc` — *feat(authoring): add Precision engine with review fixes and pipeline toggle*  
+**Surfaces:** **Automate**, **Execute**, **Generate → All in one**, CLI, job status API.
 
 ### What you can do
 
@@ -235,8 +234,8 @@ Keel bind + heal is fast and deterministic but can struggle on dense or dynamic 
 ### How to use it
 
 1. Set `CURSOR_API_KEY` and start with `start-portal-with-cursor-heal.bat` (or equivalent env).
-2. On **Automate**, **Execute**, or **Generate Ã¢â€ â€™ All in one**, pick **Precision (Cursor)**.
-3. Watch the job status Ã¢â‚¬â€ if Precision could not bind an intent, the banner explains Keel fallback.
+2. On **Automate**, **Execute**, or **Generate → All in one**, pick **Precision (Cursor)**.
+3. Watch the job status — if Precision could not bind an intent, the banner explains Keel fallback.
 4. Server-wide off switch: `delivery.authoring.precision.enabled=false` (portal warns when Precision is selected).
 
 ### What we did not change
@@ -248,16 +247,16 @@ Keel bind + heal is fast and deterministic but can struggle on dense or dynamic 
 ### Known limits
 
 - ~50 Cursor calls per job by default (`delivery.authoring.precision.max-calls-per-job`).
-- Precision does not replace heal cascade Ã¢â‚¬â€ it improves the **first** bind; failures still flow through Ollama/Cursor invent/recovery (within the shared cap on Precision jobs).
+- Precision does not replace heal cascade — it improves the **first** bind; failures still flow through Ollama/Cursor invent/recovery (within the shared cap on Precision jobs).
 - No Claude / Anthropic models (project rule).
 
 **Specs:** `docs/superpowers/specs/2026-09-11-authoring-precision-engine-design.md`, fix plan `docs/superpowers/plans/2026-09-11-precision-engine-fixes.md`.
 
 ---
 
-## 2026-09-10 Ã¢â‚¬â€ Bug Hunter (exploratory) + quality loop
+## 2026-09-10 — Bug Hunter (exploratory) + quality loop
 
-**Commits:** `793a7a6` Ã¢â‚¬â€ *feat(hunt): ship Bug Hunter with page map, coverage, strategies, oracles* (plus docs follow-up).  
+**Commits:** `793a7a6` — *feat(hunt): ship Bug Hunter with page map, coverage, strategies, oracles* (plus docs follow-up).  
 **Surfaces:** new top-nav **Bug Hunter**, job kind `HUNT`.
 
 ### What you can do
@@ -265,7 +264,7 @@ Keel bind + heal is fast and deterministic but can struggle on dense or dynamic 
 - Start an exploratory hunt from selected library TCs + optional user story (Ollama or Cursor planner).
 - Cap invent scenarios, cycle ceiling, and actions per cycle (default 5; wait defaults to 5s).
 - Choose DOM mode: Auto page map / map only / full slim.
-- Optionally run the strategy playbook (happy Ã¢â€ â€™ empty Ã¢â€ â€™ boundary Ã¢â€ â€™ abuse Ã¢â€ â€™ session Ã¢â€ â€™ invent).
+- Optionally run the strategy playbook (happy → empty → boundary → abuse → session → invent).
 - Download a hunter pack ZIP: bugs, candidate scenarios, per-cycle evidence (prompt/response/screenshot/page map), steps journal, coverage map.
 
 ### Why
@@ -276,7 +275,7 @@ Execute/Automate prove written cases. Bug Hunter **probes** for breakage and inv
 
 1. Set `delivery.dry-run=false` for a live browser hunt (dry-run still produces a stub pack).
 2. Open **Bug Hunter**, pick project + TCs, start.
-3. When the job completes, download the pack from Status / jobs Ã¢â‚¬â€ review bugs and candidates yourself.
+3. When the job completes, download the pack from Status / jobs — review bugs and candidates yourself.
 
 ### What we did not change
 
@@ -285,7 +284,7 @@ Execute/Automate prove written cases. Bug Hunter **probes** for breakage and inv
 
 ### Known limits
 
-- **Phase 3** (two-pass DOM neighborhoods) not built Ã¢â‚¬â€ only if AxisPay still exceeds context after map + slim.
+- **Phase 3** (two-pass DOM neighborhoods) not built — only if AxisPay still exceeds context after map + slim.
 - Oracles: HTTP errors / asserts / alerts; not yet blank-main, unexpected URL, or full `net::ERR_*` promotion.
 - Live AxisPay smoke still a human follow-up after portal restart.
 - Screenshot remains one per cycle at cycle start (not after every action).
@@ -294,17 +293,17 @@ Execute/Automate prove written cases. Bug Hunter **probes** for breakage and inv
 
 ---
 
-## 2026-09-07 Ã¢â‚¬â€ Project library, honest runs, optional Cursor pre-run
+## 2026-09-07 — Project library, honest runs, optional Cursor pre-run
 
-**Commit:** `abc06ce` Ã¢â‚¬â€ *Keep generated TCs editable in the project and stop silent invent/soft-pass.*
+**Commit:** `abc06ce` — *Keep generated TCs editable in the project and stop silent invent/soft-pass.*
 
-This release is for people who generate cases, keep them on a project, then run Execute or Automate without the product inventing data or calling a failed job Ã¢â‚¬Å“done.Ã¢â‚¬Â
+This release is for people who generate cases, keep them on a project, then run Execute or Automate without the product inventing data or calling a failed job “done.”
 
 ### 1. Generated cases stay on the project
 
 **What you can do**
 
-- Open a project Ã¢â€ â€™ **Test cases** Ã¢â€ â€™ **Generated library**.
+- Open a project → **Test cases** → **Generated library**.
 - See the saved generated workbook (`latest.xlsx`).
 - Edit a case (same save path as before).
 - Delete selected cases. Keel will not delete the last remaining case.
@@ -391,7 +390,7 @@ If Cursor is down and the box is checked, uncheck it to run without review.
 
 **Why**
 
-Keel was filling empty cells with faker data (for example a random username). Login then typed those values, failed, and still looked Ã¢â‚¬Å“successfulÃ¢â‚¬Â in some cases.
+Keel was filling empty cells with faker data (for example a random username). Login then typed those values, failed, and still looked “successful” in some cases.
 
 Heal fillers can still invent when they are repairing a live step. That is not the Generate column invent path.
 
@@ -422,7 +421,7 @@ A white page or unresolved host used to finish as completed. That looked like a 
 **What you can do**
 
 - After login, clicks on cart / checkout / etc. are remembered for the **live page**, not as login locators.
-- Auth-only locators (`login-button`, `user-name`, `password`, Ã¢â‚¬Â¦) are rejected for non-login intents.
+- Auth-only locators (`login-button`, `user-name`, `password`, …) are rejected for non-login intents.
 
 **Why**
 
@@ -442,7 +441,7 @@ SPA / slow pages opened a blank white window, the job typed too early, then the 
 
 **What you can do**
 
-- From a recent Execute run, **Results** scrolls to and loads that runÃ¢â‚¬â„¢s evidence.
+- From a recent Execute run, **Results** scrolls to and loads that run’s evidence.
 - Empty or error states say so clearly instead of looking like a dead button.
 
 ---
@@ -470,7 +469,7 @@ SPA / slow pages opened a blank white window, the job typed too early, then the 
 
 These are already on the public history. Details live in older specs under `docs/superpowers/specs/`.
 
-### 2026-09-06 Ã¢â‚¬â€ Generate authoring preflight review
+### 2026-09-06 — Generate authoring preflight review
 
 **Commit:** `fbb1a28`
 
@@ -478,13 +477,13 @@ These are already on the public history. Details live in older specs under `docs
 - Findings + proposed suite; **Accept** saves the workbook, **Discard** leaves it.
 - Banner when the quality gate finds issues; review never starts by itself.
 
-### 2026-09-02 Ã¢â‚¬â€ Heal recovery written back to the workbook
+### 2026-09-02 — Heal recovery written back to the workbook
 
 **Commit:** `93e86c2`
 
 - Successful heal **recovery** can patch the generated workbook (for example leave-empty + blank TestData) so the next run matches what the page needed.
 
-### Portal publish Ã¢â‚¬â€ Generate, Automate, Execute
+### Portal publish — Generate, Automate, Execute
 
 **Commit:** `2fc6832`
 
@@ -496,7 +495,7 @@ These are already on the public history. Details live in older specs under `docs
 
 1. Restart Keel. Hard-refresh Generate, the project page, Execute, and Automate.
 2. Generate a suite. Confirm TestData is blank / placeholder unless you allowed invent.
-3. Open the project Ã¢â€ â€™ **Test cases** Ã¢â€ â€™ **Generated library**. Edit one row. Delete nothing required for the demo except a spare case.
+3. Open the project → **Test cases** → **Generated library**. Edit one row. Delete nothing required for the demo except a spare case.
 4. Execute: select two library IDs, no file. Run.
 5. Execute again: mix a CSV that overrides one `TC_ID`. Confirm the upload row is what ran.
 6. Optional: check Cursor review, read findings, Accept & run. Confirm the library file did **not** change unless you saved it on the project.
