@@ -148,7 +148,9 @@ public class LlmSettingsService implements ApplicationRunner {
             if (res.statusCode() < 200 || res.statusCode() >= 300) {
                 throw new OllamaUnreachableException("Ollama returned HTTP " + res.statusCode() + " for " + url);
             }
-            return parseOllamaTagsJson(res.body());
+            List<String> names = parseOllamaTagsJson(res.body());
+            rememberOllamaCache(names);
+            return names;
         } catch (OllamaUnreachableException e) {
             throw e;
         } catch (Exception e) {
@@ -185,6 +187,51 @@ public class LlmSettingsService implements ApplicationRunner {
         }
     }
 
+
+
+    public record GenerateModelList(List<String> models, String defaultModel, String source, boolean unreachable) {
+    }
+
+    private static final List<String> FALLBACK_GENERATE_MODELS = List.of("gemma4:e2b", "qwen2.5:latest");
+
+    public GenerateModelList listForGenerate(boolean refresh) {
+        List<String> cachedChat = chatModels(cachedOllamaModels());
+        if (!refresh && !cachedChat.isEmpty()) {
+            return new GenerateModelList(cachedChat, pickDefault(cachedChat), "cache", false);
+        }
+        try {
+            List<String> all = listOllamaModels(null);
+            List<String> chat = chatModels(all);
+            if (chat.isEmpty()) {
+                return failForGenerate(cachedChat);
+            }
+            return new GenerateModelList(chat, pickDefault(chat), "live", false);
+        } catch (Exception e) {
+            return failForGenerate(cachedChat);
+        }
+    }
+
+    private GenerateModelList failForGenerate(List<String> cachedChat) {
+        if (cachedChat != null && !cachedChat.isEmpty()) {
+            return new GenerateModelList(cachedChat, pickDefault(cachedChat), "cache", true);
+        }
+        return new GenerateModelList(FALLBACK_GENERATE_MODELS, pickDefault(FALLBACK_GENERATE_MODELS), "fallback", true);
+    }
+
+    private String pickDefault(List<String> chat) {
+        if (chat == null || chat.isEmpty()) {
+            return "";
+        }
+        String gen = props.getGenerateModel();
+        if (gen != null && !gen.isBlank() && chat.contains(gen.trim())) {
+            return gen.trim();
+        }
+        String adminChat = snapshot().ollamaChatModel;
+        if (adminChat != null && !adminChat.isBlank() && chat.contains(adminChat.trim())) {
+            return adminChat.trim();
+        }
+        return chat.get(0);
+    }
 
     public static boolean isVisionModel(String name) {
         if (name == null || name.isBlank()) {
