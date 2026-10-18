@@ -30,7 +30,7 @@ public class GeneratedWorkbookAddCaseTest {
     @Test
     public void addCaseFields_appendsNextId() throws Exception {
         GeneratedWorkbookService service = service();
-        String projectId = "proj-add-case";
+        String projectId = "proj-add-case-" + System.nanoTime();
         service.saveFromCases(projectId, List.of(
                 new ManualTestCase("TC_01", "Login", "", "1. Open login", "1. Shown", "P1", "", "", "", "")
         ), "GENERATE", "unit-test");
@@ -51,7 +51,7 @@ public class GeneratedWorkbookAddCaseTest {
     @Test
     public void addCaseFields_emptyLibrary_createsWorkbook() throws Exception {
         GeneratedWorkbookService service = service();
-        String projectId = "proj-add-empty";
+        String projectId = "proj-add-empty-" + System.nanoTime();
         Map<String, String> fields = new LinkedHashMap<>();
         fields.put("title", "First");
         fields.put("steps", "1. Open home");
