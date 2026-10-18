@@ -184,6 +184,29 @@ public class LlmSettingsService implements ApplicationRunner {
         }
     }
 
+
+    public static boolean isVisionModel(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        String n = name.toLowerCase(java.util.Locale.ROOT);
+        return n.contains("vl") || n.contains("llava") || n.contains("ui-tars") || n.contains("vision");
+    }
+
+    public static List<String> chatModels(List<String> all) {
+        if (all == null || all.isEmpty()) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (String name : all) {
+            if (name == null || name.isBlank() || isVisionModel(name)) {
+                continue;
+            }
+            out.add(name.trim());
+        }
+        return List.copyOf(out);
+    }
+
     public void applyToRuntime() {
         StoredSettings s = snapshot();
         publishSecretProp("CURSOR_API_KEY", s.cursorApiKeyPlain);

@@ -260,4 +260,28 @@ public class LlmSettingsServiceTest {
         Assert.assertEquals(view.get("ollamaChatModel"), "mychat");
         Assert.assertEquals(System.getProperty("CURSOR_API_KEY"), "persist-secret-ZZ99");
     }
+
+    @Test
+    public void chatModels_dropsVisionLikeNames_keepsChat() {
+        List<String> all = LlmSettingsService.parseOllamaTagsJson("""
+                {"models":[
+                  {"name":"gemma4:e2b"},
+                  {"name":"qwen2.5vl:7b"},
+                  {"name":"llava:latest"},
+                  {"name":"ui-tars"},
+                  {"name":"foo-vision:latest"},
+                  {"name":"qwen2.5:latest"}
+                ]}
+                """);
+        Assert.assertEquals(
+                LlmSettingsService.chatModels(all),
+                List.of("gemma4:e2b", "qwen2.5:latest"));
+    }
+
+    @Test
+    public void isVisionModel_nullOrBlank_isFalse() {
+        Assert.assertFalse(LlmSettingsService.isVisionModel(null));
+        Assert.assertFalse(LlmSettingsService.isVisionModel("  "));
+        Assert.assertFalse(LlmSettingsService.isVisionModel("gemma4:e2b"));
+    }
 }
