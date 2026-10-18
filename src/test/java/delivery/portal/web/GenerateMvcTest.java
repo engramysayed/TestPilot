@@ -120,6 +120,16 @@ public class GenerateMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(body.contains("form.append('model', model)"),
                 "bulk generate must send selected model");
         Assert.assertTrue(body.contains("id=\"generate-loading\""), "generate loading panel missing");
+        Assert.assertTrue(body.contains("/api/generate/models?refresh=1")
+                        || body.contains("refresh=1"),
+                "must refresh live tags after cache paint");
+        Assert.assertTrue(body.contains("Loading models from Ollama"),
+                "empty-cache loader copy missing");
+        Assert.assertTrue(body.contains("Updating…"),
+                "cache updating copy missing");
+        Assert.assertTrue(body.contains("Ollama unreachable — using last list.")
+                        || body.contains("Ollama unreachable"),
+                "unreachable copy missing");
     }
 
     @Test

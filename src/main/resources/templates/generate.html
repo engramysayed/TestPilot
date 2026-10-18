@@ -939,18 +939,47 @@ if (location.hash === '#record') location.replace('/record' + location.search);
         const pick = saved && generateModels.indexOf(saved) >= 0 ? saved : defaultGenerateModel;
         generateModelSelect.value = pick;
         generateModelSelect.disabled = false;
+        modelsReady = generateModels.length > 0;
         renderCompareModelB(config);
         renderAuthoringReviewModels();
     }
 
+    let modelsReady = false;
+
     async function loadGenerateModels() {
+        const hint = document.getElementById('generate-model-hint');
+        const setHint = function (txt) { if (hint) hint.textContent = txt; };
+        generateModelSelect.disabled = true;
+        setHint('Loading models from Ollama…');
         try {
-            const res = await fetch('/api/generate/models', {
-                credentials: 'same-origin',
-                headers: API_HEADERS
-            });
-            if (!res.ok) throw new Error('Could not load model list');
-            renderGenerateModels(await res.json());
+            const first = await fetch('/api/generate/models', { credentials: 'same-origin', headers: API_HEADERS });
+            if (!first.ok) throw new Error('Could not load model list');
+            const a = await first.json();
+            renderGenerateModels(a);
+            modelsReady = Array.isArray(a.models) && a.models.length > 0;
+            if (typeof updatePreview === 'function') updatePreview();
+            if (a.source === 'cache') {
+                setHint('Updating…');
+                const second = await fetch('/api/generate/models?refresh=1', {
+                    credentials: 'same-origin', headers: API_HEADERS
+                });
+                if (second.ok) {
+                    const b = await second.json();
+                    if (b.source === 'live' || (Array.isArray(b.models) && b.models.length)) {
+                        renderGenerateModels(b);
+                        modelsReady = Array.isArray(b.models) && b.models.length > 0;
+                        if (typeof updatePreview === 'function') updatePreview();
+                    }
+                    if (b.unreachable) setHint('Ollama unreachable — using last list.');
+                    else setHint('The default works for most projects.');
+                } else {
+                    setHint('Ollama unreachable — using last list.');
+                }
+            } else if (a.unreachable) {
+                setHint('Ollama unreachable — using last list.');
+            } else {
+                setHint('The default works for most projects.');
+            }
         } catch (err) {
             generateModelSelect.innerHTML = '';
             const opt = document.createElement('option');
@@ -959,8 +988,11 @@ if (location.hash === '#record') location.replace('/record' + location.search);
             generateModelSelect.appendChild(opt);
             defaultGenerateModel = 'gemma4:e2b';
             generateModels = ['gemma4:e2b'];
+            modelsReady = true;
             renderCompareModelB({ models: generateModels, defaultModel: defaultGenerateModel });
             renderAuthoringReviewModels();
+            setHint('Ollama unreachable — using last list.');
+            if (typeof updatePreview === 'function') updatePreview();
         }
     }
 
@@ -1043,8 +1075,8 @@ if (location.hash === '#record') location.replace('/record' + location.search);
         copyBtn.disabled = !full;
         if (structuredIntakeOn) composeStoriesFromIntake();
         const hasStories = !!(storiesInput && storiesInput.value.trim());
-        generateBtn.disabled = !projectSel.value || !hasStories;
-        compareBtn.disabled = !projectSel.value || !hasStories
+        generateBtn.disabled = !modelsReady || !projectSel.value || !hasStories;
+        compareBtn.disabled = !modelsReady || !projectSel.value || !hasStories
             || !selectedGenerateModel() || !selectedCompareModelB();
         runPipelineBtn.disabled = !projectSel.value;
         updateBulkControls();
@@ -2266,7 +2298,7 @@ if (location.hash === '#record') location.replace('/record' + location.search);
             setGenerateStatus(err && err.message ? err.message : 'Network error', true);
         } finally {
             showGenerateLoading(false);
-            generateBtn.disabled = !projectSel.value || !storiesInput.value.trim();
+            generateBtn.disabled = !modelsReady || !projectSel.value || !storiesInput.value.trim();
         }
     }
 

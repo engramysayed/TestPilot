@@ -141,21 +141,27 @@
     }
     async function refreshModels() {
         showError('');
-        const baseUrl = document.getElementById('ollamaBaseUrl').value.trim();
-        const q = baseUrl ? ('?baseUrl=' + encodeURIComponent(baseUrl)) : '';
-        const res = await fetch('/api/admin/llm-settings/ollama/models' + q, {
-            credentials: 'same-origin', headers: HDR
-        });
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) {
-            showError(body.message || ('Ollama models failed (' + res.status + ').'));
-            return;
+        const btn = document.getElementById('btn-refresh-models');
+        if (btn) btn.disabled = true;
+        try {
+            const baseUrl = document.getElementById('ollamaBaseUrl').value.trim();
+            const q = baseUrl ? ('?baseUrl=' + encodeURIComponent(baseUrl)) : '';
+            const res = await fetch('/api/admin/llm-settings/ollama/models' + q, {
+                credentials: 'same-origin', headers: HDR
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                showError(body.message || ('Ollama models failed (' + res.status + ').'));
+                return;
+            }
+            const chatPref = document.getElementById('ollamaChatModel').value
+                || (current && current.ollamaChatModel) || '';
+            const visionPref = document.getElementById('ollamaVisionModel').value
+                || (current && current.ollamaVisionModel) || '';
+            fillModels(body.models || [], chatPref, visionPref);
+        } finally {
+            if (btn) btn.disabled = false;
         }
-        const chatPref = document.getElementById('ollamaChatModel').value
-            || (current && current.ollamaChatModel) || '';
-        const visionPref = document.getElementById('ollamaVisionModel').value
-            || (current && current.ollamaVisionModel) || '';
-        fillModels(body.models || [], chatPref, visionPref);
     }
     async function save() {
         showError('');
