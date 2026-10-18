@@ -127,11 +127,106 @@ public class LlmSettingsServiceTest {
     public void clearFlagsWipeSecrets() {
         LlmSettingsService svc = new LlmSettingsService(props);
         svc.update(new UpdateRequest("abc12345", "def67890", "ghi11223", null, null, null, false, false, false));
+        // Confirm publish landed before clear (when ambient env for that key is unset).
+        if (System.getenv("CURSOR_API_KEY") == null || System.getenv("CURSOR_API_KEY").isBlank()) {
+            Assert.assertEquals(System.getProperty("CURSOR_API_KEY"), "abc12345");
+        }
         svc.update(new UpdateRequest(null, null, null, null, null, null, true, true, true));
         Map<String, Object> view = svc.maskedView();
         Assert.assertEquals(view.get("cursorApiKeyConfigured"), Boolean.FALSE);
         Assert.assertEquals(view.get("agentrouterApiKeyConfigured"), Boolean.FALSE);
         Assert.assertEquals(view.get("ollamaApiKeyConfigured"), Boolean.FALSE);
+        // Clear must drop System properties without restart when ambient env is unset
+        // (same skip pattern as ApiKeySourceTest — never assert against ambient secret env).
+        assertSysPropClearedUnlessEnv("CURSOR_API_KEY");
+        assertSysPropClearedUnlessEnv("AGENTROUTER_API_KEY");
+        assertSysPropClearedUnlessEnv("OLLAMA_API_KEY");
+    }
+
+    /**
+     * When ambient getenv for {@code key} is set, skip the System-property assertion
+     * (env wins and publishSecretProp must not touch the property).
+     * Otherwise assert clearProperty left getProperty null/blank.
+     */
+    private static void assertSysPropClearedUnlessEnv(String key) {
+        String env = System.getenv(key);
+        if (env != null && !env.isBlank()) {
+            // skip: ambient env set for this key
+            return;
+        }
+        String prop = System.getProperty(key);
+        Assert.assertTrue(prop == null || prop.isBlank(),
+                key + " System property must be null/blank after clearFlags (got non-blank)");
+    }
+
+    @Test
+    public void envBlank_matchesGetenvReality() {
+        // Documents helper used by applyToRuntime to skip props.set* when env present.
+        Assert.assertEquals(
+                LlmSettingsService.envBlank("delivery.llm-model"),
+                firstNonBlank(System.getenv("delivery.llm-model"), System.getenv("DELIVERY_LLM_MODEL")) == null);
+        Assert.assertEquals(
+                LlmSettingsService.envBlank("delivery.llm-base-url"),
+                firstNonBlank(System.getenv("delivery.llm-base-url"), System.getenv("DELIVERY_LLM_BASE_URL")) == null);
+        Assert.assertEquals(
+                LlmSettingsService.envBlank("delivery.generate-model"),
+                firstNonBlank(System.getenv("delivery.generate-model"), System.getenv("DELIVERY_GENERATE_MODEL")) == null);
+    }
+
+    /**
+     * Env wins for URL/model: when DELIVERY_LLM_MODEL (or delivery.llm-model) is set in the
+     * process environment, applyToRuntime leaves props.llmModel / generateModel unchanged.
+     * When env is blank, stored settings update props (complementary path).
+     * JVM cannot inject getenv; branch on ambient reality (ApiKeySourceTest style).
+     */
+    @Test
+    public void applyToRuntime_envWinsSkipsPropsSetForModel() {
+        String env = firstNonBlank(System.getenv("delivery.llm-model"), System.getenv("DELIVERY_LLM_MODEL"));
+        if (env != null && !env.isBlank()) {
+            // ambient env: apply must not overwrite props with stored settings
+            props.setLlmModel("props-before");
+            props.setGenerateModel("props-before");
+            LlmSettingsService svc = new LlmSettingsService(props);
+            svc.update(new UpdateRequest(null, null, null, null, "stored-model", null, false, false, false));
+            Assert.assertEquals(props.getLlmModel(), "props-before");
+            // generate-model may still update if its own env is blank
+            if (!LlmSettingsService.envBlank("delivery.generate-model")) {
+                Assert.assertEquals(props.getGenerateModel(), "props-before");
+            }
+        } else {
+            // no ambient env: stored model applies to props (documents the complementary path)
+            LlmSettingsService svc = new LlmSettingsService(props);
+            svc.update(new UpdateRequest(null, null, null, null, "from-settings", null, false, false, false));
+            Assert.assertEquals(props.getLlmModel(), "from-settings");
+            if (LlmSettingsService.envBlank("delivery.generate-model")) {
+                Assert.assertEquals(props.getGenerateModel(), "from-settings");
+            }
+        }
+    }
+
+    @Test
+    public void applyToRuntime_envWinsSkipsPropsSetForBaseUrl() {
+        String env = firstNonBlank(System.getenv("delivery.llm-base-url"), System.getenv("DELIVERY_LLM_BASE_URL"));
+        if (env != null && !env.isBlank()) {
+            props.setLlmBaseUrl("http://props-before:11434");
+            LlmSettingsService svc = new LlmSettingsService(props);
+            svc.update(new UpdateRequest(null, null, null, "http://stored:11434", null, null, false, false, false));
+            Assert.assertEquals(props.getLlmBaseUrl(), "http://props-before:11434");
+        } else {
+            LlmSettingsService svc = new LlmSettingsService(props);
+            svc.update(new UpdateRequest(null, null, null, "http://from-settings:11434", null, null, false, false, false));
+            Assert.assertEquals(props.getLlmBaseUrl(), "http://from-settings:11434");
+        }
+    }
+
+    private static String firstNonBlank(String a, String b) {
+        if (a != null && !a.isBlank()) {
+            return a.trim();
+        }
+        if (b != null && !b.isBlank()) {
+            return b.trim();
+        }
+        return null;
     }
 
     @Test

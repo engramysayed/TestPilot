@@ -192,16 +192,24 @@ public class LlmSettingsService implements ApplicationRunner {
 
         String base = blankToDefault(s.ollamaBaseUrl, defaultBaseUrl());
         if (base != null && !base.isBlank()) {
-            props.setLlmBaseUrl(base);
+            // Env wins for in-memory props too (same names as setSysPropIfEnvBlank).
+            if (envBlank("delivery.llm-base-url")) {
+                props.setLlmBaseUrl(base);
+            }
             setSysPropIfEnvBlank("delivery.llm-base-url", base);
         }
         if (s.ollamaChatModel != null && !s.ollamaChatModel.isBlank()) {
-            props.setLlmModel(s.ollamaChatModel);
-            props.setGenerateModel(s.ollamaChatModel);
+            if (envBlank("delivery.llm-model")) {
+                props.setLlmModel(s.ollamaChatModel);
+            }
+            if (envBlank("delivery.generate-model")) {
+                props.setGenerateModel(s.ollamaChatModel);
+            }
             setSysPropIfEnvBlank("delivery.llm-model", s.ollamaChatModel);
             setSysPropIfEnvBlank("delivery.generate-model", s.ollamaChatModel);
         }
         if (s.ollamaVisionModel != null && !s.ollamaVisionModel.isBlank()) {
+            // Vision keys: System props only; setSysPropIfEnvBlank already no-ops when env set.
             setSysPropIfEnvBlank("delivery.vision.assert.model", s.ollamaVisionModel);
             // Also publish grounding model when the vision path is ollama/qwen-oriented.
             String lower = s.ollamaVisionModel.toLowerCase();
@@ -318,29 +326,47 @@ public class LlmSettingsService implements ApplicationRunner {
         return JobSecretCrypto.decrypt(enc);
     }
 
-    /** Env wins: do not overwrite a non-blank getenv; only publish when value is non-blank. */
+    /**
+     * Env wins: do not touch the System property when {@code getenv(key)} is non-blank.
+     * Non-blank stored + blank env -> {@code System.setProperty}.
+     * Blank stored + blank env -> {@code System.clearProperty} so a prior publish drops
+     * without restart (CURSOR_API_KEY / AGENTROUTER_API_KEY / OLLAMA_API_KEY).
+     * Never logs secret values.
+     */
     private static void publishSecretProp(String key, String value) {
-        if (value == null || value.isBlank()) {
-            return;
-        }
         String env = System.getenv(key);
         if (env != null && !env.isBlank()) {
             return;
         }
+        if (value == null || value.isBlank()) {
+            System.clearProperty(key);
+            return;
+        }
         System.setProperty(key, value);
+    }
+
+    /**
+     * True when both {@code getenv(key)} and the env-style uppercase form
+     * ({@code key} with {@code '.' -> '_'} uppercased) are blank or absent.
+     * Package-visible for unit tests.
+     */
+    static boolean envBlank(String key) {
+        if (key == null || key.isBlank()) {
+            return true;
+        }
+        String env = System.getenv(key);
+        if (env != null && !env.isBlank()) {
+            return false;
+        }
+        String envAlt = System.getenv(key.replace('.', '_').toUpperCase());
+        return envAlt == null || envAlt.isBlank();
     }
 
     private static void setSysPropIfEnvBlank(String key, String value) {
         if (value == null || value.isBlank()) {
             return;
         }
-        String env = System.getenv(key);
-        if (env != null && !env.isBlank()) {
-            return;
-        }
-        // Also respect env-style uppercase variants for delivery.* when present as env.
-        String envAlt = System.getenv(key.replace('.', '_').toUpperCase());
-        if (envAlt != null && !envAlt.isBlank()) {
+        if (!envBlank(key)) {
             return;
         }
         System.setProperty(key, value);

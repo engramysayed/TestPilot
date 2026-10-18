@@ -35,6 +35,7 @@ Record can also build the ZIP directly from the locators it captured, without a 
 - **Account → alerts**: Telegram, email, or Slack. Keel sends a message when a run fails or finishes with a block. Turning a channel on sends a confirmation first and does not save the switch if that send fails. The engine dead-man check is separate and stays off.
 - **Pricing** (`/pricing`): a read-only table of each service, the unit it is charged as, and the current credit price. Every signed-in account sees the same numbers.
 - **Admin → Prices**: the account owner sets the service name, Charged as, What it covers, and the price of one unit. Saving applies it to every account. A user whose role is only Admin is refused by the server.
+- **Admin → LLM & API keys** (/admin/llm-settings): OWNER-only (same gate as Prices). Secrets are masked on GET (*Configured / *Last4). Process environment wins over published System properties and in-memory URL/model props. Clearing a key drops the runtime System property without restart. A workspace Admin role is refused by the server like Prices.
 - **Admin → Users**, credit grants, and **Roles** are the same: only the account owner. Hiding the link is not the check.
 - **Admin → Domains**: see stored site folders (projects, locator memory, maps); relocate legacy folders; delete a whole domain (typed confirm). A user with the Admin role can still open Domains.
 
