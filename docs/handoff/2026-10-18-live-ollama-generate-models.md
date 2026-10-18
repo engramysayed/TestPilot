@@ -1,6 +1,6 @@
 # 2026-10-18 — Live Ollama models on Generate
 
-Shipped in the working tree. The 17 Oct portal jar does **not** include this until rebuild + restart + Ctrl+F5.
+Shipped. Portal jar rebuilt **2026-10-18 15:16** and restarted on `http://localhost:8080` (product profile). Hard-refresh Generate (Ctrl+F5) so the browser is not on the old page.
 
 ## What shipped
 
@@ -20,7 +20,7 @@ Shipped in the working tree. The 17 Oct portal jar does **not** include this unt
 ## Known defects
 
 - Tests: 37 run, 0 fail (`GenerateModelListTest`, `GenerateModelServiceTest`, `LlmSettingsServiceTest`, `GenerateConfigApiTest`, `GenerateMvcTest`) via cmd.bat, 2026-10-18 15:12.
-- Live UI not verified: portal jar on disk was still the 17 Oct build; 8080 was not serving this code. Rebuild + restart + Ctrl+F5 before Generate will show live tags.
+- Live API after rebuild: `GET /api/generate/models` and `?refresh=1` returned `source=live`, `unreachable=false`, chat names `gemma4:e2b` and `qwen2.5:latest`. Ollama tags also had `qwen2.5vl:7b`, `qwen2.5vl:3b`, `ui-tars:latest` — those are omitted on Generate (name filter). Open Generate in the logged-in browser and Ctrl+F5 (curl Basic has no session).
 - `isVisionModel` uses substring `vl` (spec). A chat tag that happens to contain those letters would be dropped.
 - Generate fetch failure still paints a single `gemma4:e2b` option so the page is usable.
 
