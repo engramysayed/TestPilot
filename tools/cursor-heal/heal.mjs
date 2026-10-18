@@ -307,6 +307,12 @@ in a finding and still repair authoring issues. Return the FULL suite in cases[]
 TC_id exactly once (you may add new TC_ids for missing coverage only if total stays reasonable).
 Do not invent a large unrelated suite. Preserve existing TC_id values and obey KeelPath rules.
 Do not use tools, edit files, narrate, or wrap the JSON in markdown.
+Quoted phrases are visible-text waits: the string MUST match the screen (Upload Transaction List is not Upload Transactions List).
+Outcome "and" may split extra checks; "expands and sub-menu items are shown" stays one check.
+After a fill, prefer "{Field} is accepted" or "OTP is accepted". Never assert typed digits or password on a masked field (do not keep filled with '245345' as visible text).
+Keep "{Field} is shown", "{Button} is clicked", and page-shown wording.
+Do not invent large extra suites. Preserve tcId and KeelPath.
+Flag leftover Expected with no matching step.
 
 Suite JSON:
 ${req.suite || ""}

@@ -6,6 +6,7 @@ Shipped in repo at HEAD after Tasks 1–7 (`f6abdb5`). Rebuild the portal jar an
 
 - Project **Test cases** tab: **Add test case** opens the existing editor; Keel assigns the next `TC_` id. **Save** writes the project library workbook (empty library OK — first save creates the workbook).
 - **Execute** and **Automate**: optional **Review cases before run** with **Cursor** or **Keel**. Selected cases go out as JSON plus a prompt of Keel authoring rules. **Accept & run** writes edits into the library (version history) and then starts the job. Nothing runs until Accept when review is checked.
+- Whole-branch fix pass: after an Upload review, **Accept & run** starts with `useGenerated=true` and the reviewed `TC_ID`s, never the empty library selection or leftover Excel. A blank reviewed id list is blocked. Apply-review keeps an existing CallBefore when the reviewer omits it, and Cursor heal authoring review now carries the same execute wording rules as the Java prompt.
 - Pre-run review is **not** billed. **Execute** / **Automate** unit prices still apply when the job **starts** (after Accept when review is on).
 - Runtime **OutcomeKind** quote-wins-first is **unchanged** (intentional): quoted strings in Steps/Expected still mean visible text at execute time.
 

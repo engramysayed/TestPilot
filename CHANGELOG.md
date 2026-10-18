@@ -8,6 +8,7 @@
 
 - Project **Test cases** tab: **Add test case** opens the existing editor with the next `TC_` id. **Save** writes the library workbook (an empty library is fine — Keel creates the workbook).
 - **Execute** and **Automate**: optional **Review cases before run** sends the selected cases to **Cursor** or **Keel** with Keel authoring rules. **Accept & run** saves the edited cases into the **library** (version history) and then starts the job. Uncheck review to run the library as-is.
+- **Accept & run** after an Upload review now starts only the reviewed `TC_ID`s, does not ask for the old Excel file again, and keeps existing CallBefore links when the review omits them.
 - Pre-run review is **not** charged. **Execute** and **Automate** still charge their run/framework prices when the job **starts** (after Accept when review is on).
 - Runtime **OutcomeKind** is unchanged: quoted text in Steps/Expected still means visible text at execute time.
 

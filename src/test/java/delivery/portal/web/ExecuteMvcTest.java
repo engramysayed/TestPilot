@@ -138,6 +138,12 @@ public class ExecuteMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(body.contains("/pre-run-authoring-review"), "pre-run review API wiring missing");
         Assert.assertTrue(body.contains("preRunReviewedCsv"), "review must keep raw CSV for display");
         Assert.assertTrue(body.contains("preRunReviewedCases"), "review must keep cases for apply-review");
+        Assert.assertTrue(body.contains("preRunReviewedCases.map(tc => (tc.tcId || '').trim()).filter(Boolean)"),
+                "accepted review start must derive tcIds from reviewed cases");
+        Assert.assertTrue(body.contains("reviewedTcIds.forEach(id => body.append('tcIds', id))"),
+                "accepted review start must submit reviewed tcIds");
+        Assert.assertTrue(body.contains("if (!preRunReviewApproved && !useGenerated"),
+                "accepted review start must skip the excel-required guard");
         Assert.assertTrue(main.contains("id=\"pre-run-review-progress\""), "in-progress bar missing");
         Assert.assertTrue(main.contains("id=\"pre-run-review-result\""), "proposal result must stay hidden until review finishes");
         Assert.assertTrue(main.contains("id=\"pre-run-review-cases\""), "proposed TCs must render as a readable list");

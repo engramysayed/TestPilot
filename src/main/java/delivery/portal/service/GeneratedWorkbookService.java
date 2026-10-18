@@ -835,7 +835,8 @@ public class GeneratedWorkbookService {
             }
             existing = List.of();
         }
-        MergeResult merged = mergeByTcId(existing, reviewed);
+        List<ManualTestCase> reviewedForMerge = keepLibraryCallBeforeWhenReviewOmitsIt(existing, reviewed);
+        MergeResult merged = mergeByTcId(existing, reviewedForMerge);
         List<ManualTestCase> repaired = TcImportRepair.repairCases(merged.cases());
         Set<String> knownIds = new LinkedHashSet<>();
         for (ManualTestCase tc : repaired) {
@@ -843,7 +844,7 @@ public class GeneratedWorkbookService {
                 knownIds.add(tc.tcId().trim());
             }
         }
-        for (ManualTestCase tc : reviewed) {
+        for (ManualTestCase tc : reviewedForMerge) {
             if (tc == null || tc.tcId() == null || tc.tcId().isBlank()) {
                 continue;
             }
@@ -859,6 +860,44 @@ public class GeneratedWorkbookService {
         String sourceRef = author != null && !author.isBlank() ? author.trim() : "";
         saveFromCases(projectId, repaired, "CASE_EDIT", sourceRef, null, null);
         return listCases(projectId);
+    }
+
+    private static List<ManualTestCase> keepLibraryCallBeforeWhenReviewOmitsIt(
+            List<ManualTestCase> existing,
+            List<ManualTestCase> reviewed
+    ) {
+        Map<String, ManualTestCase> existingById = new LinkedHashMap<>();
+        for (ManualTestCase tc : existing == null ? List.<ManualTestCase>of() : existing) {
+            if (tc != null && tc.tcId() != null && !tc.tcId().isBlank()) {
+                existingById.put(tc.tcId().trim(), tc);
+            }
+        }
+        List<ManualTestCase> out = new ArrayList<>();
+        for (ManualTestCase tc : reviewed == null ? List.<ManualTestCase>of() : reviewed) {
+            if (tc == null || tc.tcId() == null || tc.tcId().isBlank()
+                    || (tc.callBefore() != null && !tc.callBefore().isBlank())) {
+                out.add(tc);
+                continue;
+            }
+            ManualTestCase libraryRow = existingById.get(tc.tcId().trim());
+            if (libraryRow == null || libraryRow.callBefore() == null || libraryRow.callBefore().isBlank()) {
+                out.add(tc);
+                continue;
+            }
+            out.add(new ManualTestCase(
+                    tc.tcId(),
+                    tc.title(),
+                    tc.preconditions(),
+                    tc.steps(),
+                    tc.expectedResult(),
+                    tc.priority(),
+                    tc.tags(),
+                    tc.visualAssertion(),
+                    tc.testData(),
+                    tc.keelPath(),
+                    libraryRow.callBefore()));
+        }
+        return List.copyOf(out);
     }
 
     public static ManualTestCase fromRowMap(Map<String, ?> row) {

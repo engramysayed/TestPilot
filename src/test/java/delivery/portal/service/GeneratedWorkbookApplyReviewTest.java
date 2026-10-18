@@ -33,4 +33,26 @@ public class GeneratedWorkbookApplyReviewTest {
                 "TC_01".equals(tc.tcId()) && tc.expectedResult().contains("accepted")));
         Assert.assertTrue(all.stream().anyMatch(tc -> "TC_02".equals(tc.tcId())));
     }
+
+    @Test
+    public void applyReviewedCases_keepsCallBeforeWhenReviewOmitsIt() throws Exception {
+        GeneratedWorkbookService service = service();
+        String projectId = "proj-apply-review-call-before";
+        service.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_01", "A", "", "1. Open a", "1. A is shown", "P1", "", "", "", "", "TC_02"),
+                new ManualTestCase("TC_02", "B", "", "1. Open b", "1. B is shown", "P1", "", "", "", "", "")
+        ), "GENERATE", "unit-test");
+
+        ManualTestCase reviewed = new ManualTestCase("TC_01", "A", "", "1. Open a",
+                "1. A is accepted", "P1", "", "", "", "", "");
+        service.applyReviewedCases(projectId, List.of(reviewed), "editor@example.com", "https://example.test");
+
+        List<ManualTestCase> all = new ExcelTcReader().read(service.requireExcel(projectId));
+        ManualTestCase saved = all.stream()
+                .filter(tc -> "TC_01".equals(tc.tcId()))
+                .findFirst()
+                .orElseThrow();
+        Assert.assertEquals(saved.callBefore(), "TC_02");
+        Assert.assertTrue(saved.expectedResult().contains("accepted"));
+    }
 }

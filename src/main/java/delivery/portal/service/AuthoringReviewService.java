@@ -217,7 +217,8 @@ public class AuthoringReviewService {
                     .put("tags", tc.tags())
                     .put("visualAssertion", tc.visualAssertion())
                     .put("testData", tc.testData())
-                    .put("keelPath", tc.keelPath()));
+                    .put("keelPath", tc.keelPath())
+                    .put("callBefore", tc.callBefore()));
         }
         return new JSONObject()
                 .put("cases", rows)

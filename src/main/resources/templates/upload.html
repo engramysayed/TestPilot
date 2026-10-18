@@ -835,8 +835,16 @@
             err.textContent = 'Select a credential profile';
             return;
         }
-        const useGenerated = hasGeneratedWorkbook && workbookSource() === 'generated';
-        if (useGenerated && generatedWorkbookMeta && selectedLibraryTcIds().length === 0) {
+        const reviewedTcIds = preRunReviewApproved
+            ? preRunReviewedCases.map(tc => (tc.tcId || '').trim()).filter(Boolean)
+            : [];
+        if (preRunReviewApproved && reviewedTcIds.length === 0) {
+            err.hidden = false;
+            err.textContent = 'Accepted review has no test case ids to run.';
+            return;
+        }
+        const useGenerated = preRunReviewApproved || (hasGeneratedWorkbook && workbookSource() === 'generated');
+        if (!preRunReviewApproved && useGenerated && generatedWorkbookMeta && selectedLibraryTcIds().length === 0) {
             const warn = surfaceSoftWarn(
                 'AUTOMATE',
                 generatedWorkbookMeta.tcCount || 0,
@@ -851,14 +859,18 @@
             return;
         }
         const body = new FormData();
-        if (preRunReviewApproved || useGenerated) {
+        if (useGenerated) {
             body.append('useGenerated', 'true');
-            selectedLibraryTcIds().forEach(id => body.append('tcIds', id));
+            if (preRunReviewApproved) {
+                reviewedTcIds.forEach(id => body.append('tcIds', id));
+            } else {
+                selectedLibraryTcIds().forEach(id => body.append('tcIds', id));
+            }
             if (!preRunReviewApproved && form.excel.files && form.excel.files[0]) {
                 body.append('excel', form.excel.files[0]);
             }
         } else {
-            if (!form.excel.files || !form.excel.files[0]) {
+            if (!preRunReviewApproved && !useGenerated && (!form.excel.files || !form.excel.files[0])) {
                 err.hidden = false;
                 err.textContent = 'Select an Excel/CSV file or use the project library';
                 return;

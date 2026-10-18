@@ -54,6 +54,7 @@ public class AuthoringReviewServiceTest {
         Assert.assertTrue(fixture.lastSystem.contains("Keel authoring reviewer"));
         Assert.assertTrue(fixture.lastUser.contains("Empty email is rejected"));
         Assert.assertTrue(fixture.lastUser.contains("Keep fixes minimal"));
+        Assert.assertTrue(fixture.lastUser.contains("\"callBefore\""), "suite JSON must include CallBefore");
     }
 
     @Test

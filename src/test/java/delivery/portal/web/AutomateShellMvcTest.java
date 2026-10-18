@@ -58,6 +58,12 @@ public class AutomateShellMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(body.contains("id=\"pre-run-review\""), "review option missing");
         Assert.assertTrue(body.contains("data-final-revise-enabled=\"false\""));
         assertPreRunReviewSavesLibraryBeforeRun(body);
+        Assert.assertTrue(body.contains("preRunReviewedCases.map(tc => (tc.tcId || '').trim()).filter(Boolean)"),
+                "accepted review start must derive tcIds from reviewed cases");
+        Assert.assertTrue(body.contains("reviewedTcIds.forEach(id => body.append('tcIds', id))"),
+                "accepted review start must submit reviewed tcIds");
+        Assert.assertTrue(body.contains("if (!preRunReviewApproved && !useGenerated"),
+                "accepted review start must skip the excel-required guard");
     }
 
     private static void assertPreRunReviewSavesLibraryBeforeRun(String body) {
