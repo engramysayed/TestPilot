@@ -630,6 +630,7 @@
                     Upload Excel/CSV
                     <input type="file" id="lib-upload-input" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden/>
                 </label>
+                <button type="button" class="button" id="lib-add-btn">Add test case</button>
                 <button type="button" class="button ghost" id="lib-refresh-btn">Refresh</button>
                 <button type="button" class="button danger" id="lib-delete-btn" disabled>Delete selected</button>
             </div>
@@ -2570,6 +2571,30 @@
         libEditPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    function openLibAdd() {
+        libEditingId = null;
+        libEditPanel.hidden = false;
+        document.getElementById('lib-edit-id').textContent = '(new)';
+        document.getElementById('lib-edit-title').value = '';
+        document.getElementById('lib-edit-preconditions').value = '';
+        renderLibCallBeforeChips([]);
+        const libCbSearch = document.getElementById('lib-call-before-search');
+        if (libCbSearch) libCbSearch.value = '';
+        hideLibCallBeforeResults();
+        document.getElementById('lib-edit-priority').value = '';
+        document.getElementById('lib-edit-tags').value = '';
+        document.getElementById('lib-edit-visual').value = '';
+        document.getElementById('lib-edit-keel').value = '';
+        document.getElementById('lib-edit-err').hidden = true;
+        renderAlignRows('', '', '');
+        collectAlignFields();
+        libEditPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.getElementById('lib-add-btn')?.addEventListener('click', () => {
+        openLibAdd();
+    });
+
     document.getElementById('lib-edit-cancel')?.addEventListener('click', () => {
         libEditPanel.hidden = true;
         libEditingId = null;
@@ -2587,7 +2612,7 @@
 
     document.getElementById('lib-edit-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!libEditingId) return;
+        const isNewCase = libEditingId == null;
         const err = document.getElementById('lib-edit-err');
         err.hidden = true;
         if (!collectAlignFields()) {
@@ -2614,9 +2639,12 @@
             callBefore: document.getElementById('lib-edit-call-before').value || '',
             baseRevision: libHeadRevisionId || ''
         };
-        const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
-            + '/generated-workbook/cases/' + encodeURIComponent(libEditingId), {
-            method: 'PUT',
+        const caseUrl = isNewCase
+            ? '/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases'
+            : '/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases/'
+                + encodeURIComponent(libEditingId);
+        const res = await fetch(caseUrl, {
+            method: isNewCase ? 'POST' : 'PUT',
             credentials: 'same-origin',
             headers: { ...API_HEADERS, 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify(body)
