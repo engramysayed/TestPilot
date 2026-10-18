@@ -813,6 +813,88 @@ public class GeneratedWorkbookService {
         return out;
     }
 
+    /**
+     * Appends a new workbook row with the next {@code TC_*} id, runs repair + quality gate,
+     * then re-saves excel/csv/meta. Returns describe-shaped payload with refreshed {@code csv} and {@code row}.
+     */
+    public Map<String, Object> addCaseFields(
+            String projectId,
+            Map<String, String> fields,
+            String baseUrl,
+            String author
+    ) throws Exception {
+        if (fields == null) {
+            throw new IllegalArgumentException("At least one field is required");
+        }
+        List<ManualTestCase> existing;
+        try {
+            existing = new ExcelTcReader().read(requireExcel(projectId));
+        } catch (IllegalStateException e) {
+            if (!"NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
+                throw e;
+            }
+            existing = List.of();
+        }
+        List<String> ids = new ArrayList<>();
+        for (ManualTestCase tc : existing) {
+            ids.add(tc.tcId());
+        }
+        String tcId = nextTcId(ids);
+        ManualTestCase blank = new ManualTestCase(tcId, "", "", "", "", "", "", "", "", "", "");
+        ManualTestCase created = mergeCaseFields(blank, fields);
+        List<ManualTestCase> patched = new ArrayList<>(existing);
+        patched.add(created);
+        List<ManualTestCase> repaired = TcImportRepair.repairCases(patched);
+        List<String> gateErrors = GenerateQualityGate.validate(repaired, baseUrl);
+        if (!gateErrors.isEmpty()) {
+            throw GenerateQualityGate.failureException(gateErrors);
+        }
+        String sourceRef = author != null && !author.isBlank() ? author.trim() : "";
+        saveFromCases(projectId, repaired, "CASE_EDIT", sourceRef, null, null);
+
+        ManualTestCase savedRow = repaired.stream()
+                .filter(tc -> tcId.equals(tc.tcId()))
+                .findFirst()
+                .orElse(created);
+
+        Map<String, Object> out = new LinkedHashMap<>(
+                describe(projectId).orElseThrow(() -> new IllegalStateException("NO_GENERATED_WORKBOOK")));
+        out.put("csv", GeneratedTcCsvParser.toCsv(repaired));
+        out.put("row", toRowMap(savedRow));
+        return out;
+    }
+
+    static String nextTcId(List<String> ids) {
+        int max = 0;
+        int width = 1;
+        boolean any = false;
+        if (ids != null) {
+            Pattern p = Pattern.compile("^TC_(\\d+)$", Pattern.CASE_INSENSITIVE);
+            for (String id : ids) {
+                if (id == null) {
+                    continue;
+                }
+                Matcher m = p.matcher(id.trim());
+                if (!m.matches()) {
+                    continue;
+                }
+                any = true;
+                String digits = m.group(1);
+                int n = Integer.parseInt(digits);
+                if (n > max) {
+                    max = n;
+                }
+                if (digits.length() > width) {
+                    width = digits.length();
+                }
+            }
+        }
+        if (!any) {
+            return "TC_1";
+        }
+        return "TC_" + String.format("%0" + width + "d", max + 1);
+    }
+
     private static ManualTestCase mergeCaseFields(ManualTestCase tc, Map<String, String> fields) {
         String title = fieldOrExisting(fields, "title", tc.title());
         String preconditions = fieldOrExisting(fields, "preconditions", tc.preconditions());
