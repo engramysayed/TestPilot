@@ -117,7 +117,8 @@ public class LlmSettingsService implements ApplicationRunner {
                     vision = req.ollamaVisionModel.trim();
                 }
             }
-            StoredSettings next = new StoredSettings(cursor, agent, ollamaKey, baseUrl, chat, vision);
+            List<String> cache = cur.cachedOllamaModels == null ? List.of() : cur.cachedOllamaModels;
+            StoredSettings next = new StoredSettings(cursor, agent, ollamaKey, baseUrl, chat, vision, cache);
             writeToDisk(next);
             stored = next;
             applyToRuntime();
@@ -207,6 +208,38 @@ public class LlmSettingsService implements ApplicationRunner {
         return List.copyOf(out);
     }
 
+
+    public void rememberOllamaCache(List<String> names) {
+        synchronized (lock) {
+            List<String> cleaned = new ArrayList<>();
+            if (names != null) {
+                for (String name : names) {
+                    if (name == null || name.isBlank()) {
+                        continue;
+                    }
+                    cleaned.add(name.trim());
+                }
+            }
+            List<String> cache = List.copyOf(cleaned);
+            StoredSettings cur = stored;
+            StoredSettings next = new StoredSettings(
+                    cur.cursorApiKeyPlain,
+                    cur.agentrouterApiKeyPlain,
+                    cur.ollamaApiKeyPlain,
+                    cur.ollamaBaseUrl,
+                    cur.ollamaChatModel,
+                    cur.ollamaVisionModel,
+                    cache);
+            writeToDisk(next);
+            stored = next;
+        }
+    }
+
+    public List<String> cachedOllamaModels() {
+        List<String> c = snapshot().cachedOllamaModels;
+        return c == null ? List.of() : c;
+    }
+
     public void applyToRuntime() {
         StoredSettings s = snapshot();
         publishSecretProp("CURSOR_API_KEY", s.cursorApiKeyPlain);
@@ -269,6 +302,7 @@ public class LlmSettingsService implements ApplicationRunner {
             raw.put("ollamaBaseUrl", nullToEmpty(s.ollamaBaseUrl));
             raw.put("ollamaChatModel", nullToEmpty(s.ollamaChatModel));
             raw.put("ollamaVisionModel", nullToEmpty(s.ollamaVisionModel));
+            raw.put("cachedOllamaModels", s.cachedOllamaModels() == null ? List.of() : s.cachedOllamaModels());
             Path tmp = settingsFile.resolveSibling(FILE_NAME + ".tmp");
             MAPPER.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), raw);
             try {
@@ -294,7 +328,25 @@ public class LlmSettingsService implements ApplicationRunner {
         if (base.isBlank()) {
             base = defaultBaseUrl();
         }
-        return new StoredSettings(cursor, agent, ollamaKey, base, chat, vision);
+        List<String> cache = parseCachedModels(raw.get("cachedOllamaModels"));
+        return new StoredSettings(cursor, agent, ollamaKey, base, chat, vision, cache);
+    }
+
+    private static List<String> parseCachedModels(Object raw) {
+        if (!(raw instanceof List<?> list)) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (Object item : list) {
+            if (item == null) {
+                continue;
+            }
+            String n = String.valueOf(item).trim();
+            if (!n.isEmpty()) {
+                out.add(n);
+            }
+        }
+        return List.copyOf(out);
     }
 
     private StoredSettings defaultsFromProps() {
@@ -306,7 +358,7 @@ public class LlmSettingsService implements ApplicationRunner {
         if (chat == null || chat.isBlank()) {
             chat = props.getGenerateModel();
         }
-        return new StoredSettings("", "", "", base, nullToEmpty(chat), "");
+        return new StoredSettings("", "", "", base, nullToEmpty(chat), "", List.of());
     }
 
     private String defaultBaseUrl() {
@@ -447,10 +499,11 @@ public class LlmSettingsService implements ApplicationRunner {
             String ollamaApiKeyPlain,
             String ollamaBaseUrl,
             String ollamaChatModel,
-            String ollamaVisionModel
+            String ollamaVisionModel,
+            List<String> cachedOllamaModels
     ) {
         static StoredSettings empty() {
-            return new StoredSettings("", "", "", DEFAULT_OLLAMA_BASE, "", "");
+            return new StoredSettings("", "", "", DEFAULT_OLLAMA_BASE, "", "", List.of());
         }
     }
 }

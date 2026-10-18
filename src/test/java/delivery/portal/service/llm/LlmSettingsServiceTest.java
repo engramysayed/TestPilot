@@ -284,4 +284,30 @@ public class LlmSettingsServiceTest {
         Assert.assertFalse(LlmSettingsService.isVisionModel("  "));
         Assert.assertFalse(LlmSettingsService.isVisionModel("gemma4:e2b"));
     }
+
+    @Test
+    public void rememberOllamaCache_roundTripsNames_notSecrets() throws Exception {
+        LlmSettingsService svc = new LlmSettingsService(props);
+        svc.update(new UpdateRequest("persist-secret-ZZ99", null, null, null, "mychat", null, false, false, false));
+        svc.rememberOllamaCache(List.of("gemma4:e2b", "qwen2.5vl:7b", "  ", "qwen2.5:latest"));
+        Assert.assertEquals(svc.cachedOllamaModels(), List.of("gemma4:e2b", "qwen2.5vl:7b", "qwen2.5:latest"));
+        String raw = Files.readString(storeRoot.resolve("llm-settings.json"), StandardCharsets.UTF_8);
+        Assert.assertTrue(raw.contains("cachedOllamaModels"));
+        Assert.assertTrue(raw.contains("gemma4:e2b"));
+        Assert.assertFalse(raw.contains("persist-secret-ZZ99"));
+
+        DeliveryPortalProperties props2 = new DeliveryPortalProperties();
+        props2.setStoreRoot(storeRoot.toString());
+        props2.setLlmBaseUrl("http://127.0.0.1:11434");
+        LlmSettingsService reloaded = new LlmSettingsService(props2);
+        Assert.assertEquals(reloaded.cachedOllamaModels(), List.of("gemma4:e2b", "qwen2.5vl:7b", "qwen2.5:latest"));
+    }
+
+    @Test
+    public void updateSecrets_preservesCachedModels() {
+        LlmSettingsService svc = new LlmSettingsService(props);
+        svc.rememberOllamaCache(List.of("gemma4:e2b"));
+        svc.update(new UpdateRequest(null, null, null, null, "other-chat", null, false, false, false));
+        Assert.assertEquals(svc.cachedOllamaModels(), List.of("gemma4:e2b"));
+    }
 }
