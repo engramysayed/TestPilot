@@ -325,6 +325,64 @@ public class GeneratedWorkbookController {
         }
     }
 
+    @PostMapping(value = "/{projectId}/generated-workbook/cases", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> addCase(
+            @PathVariable("projectId") String projectId,
+            @RequestBody UpdateCaseFieldsRequest body
+    ) throws Exception {
+        Long ownerId = currentUser.requireUserId();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
+        if (denied != null) {
+            return denied;
+        }
+        var projectOpt = store.getOwnedProject(projectId, ownerId);
+        if (projectOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        }
+        if (body == null) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_REQUEST", "Request body is required").asMap());
+        }
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("title", body.title());
+        fields.put("preconditions", body.preconditions());
+        fields.put("steps", body.steps());
+        fields.put("expectedResult", body.expectedResult());
+        fields.put("testData", body.testData());
+        fields.put("priority", body.priority());
+        fields.put("tags", body.tags());
+        fields.put("visualAssertion", body.visualAssertion());
+        fields.put("keelPath", body.keelPath());
+        fields.put("callBefore", body.callBefore());
+        try {
+            return ResponseEntity.ok(workbooks.addCaseFields(
+                    projectId, fields, projectOpt.get().getBaseUrl(),
+                    currentUser.requireUser().getEmail()));
+        } catch (IllegalStateException e) {
+            if ("NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ApiError("NO_GENERATED_WORKBOOK", "No generated workbook saved for this project").asMap());
+            }
+            throw e;
+        } catch (IllegalArgumentException e) {
+            ResponseEntity<Map<String, String>> callBefore = CallBeforeApiErrors.badRequestOrNull(e);
+            if (callBefore != null) {
+                return callBefore;
+            }
+            if (GenerateQualityGate.isQualityGateFailure(e)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(QualityGateResponses.fromException(e));
+            }
+            String msg = e.getMessage() == null ? "Invalid case update" : e.getMessage();
+            if (msg.contains("Unknown KeelPath") || msg.startsWith("Unknown tcId")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiError("BAD_REQUEST", msg).asMap());
+            }
+            throw e;
+        }
+    }
+
     @PutMapping(value = "/{projectId}/generated-workbook/cases/{tcId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> updateCase(
             @PathVariable("projectId") String projectId,

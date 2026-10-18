@@ -135,6 +135,55 @@ public class GeneratedWorkbookCaseUpdateApiTest extends AbstractTestNGSpringCont
     }
 
     @Test
+    public void addCase_success() throws Exception {
+        String projectId = createProject();
+        workbooks.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_01", "Login", "", "1. Open login", "1. OK",
+                        "P1", "auth", "", "user@test.com", "AUTOMATE")
+        ), "TEST", "unit");
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/generated-workbook/cases")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Manual","steps":"1. Open home","expectedResult":"1. Home is shown"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.row.tcId").value("TC_02"));
+    }
+
+    @Test
+    public void addCase_callBeforeSelfReject() throws Exception {
+        String projectId = createProject();
+        workbooks.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_01", "Login", "", "1. Open login", "1. OK",
+                        "P1", "", "", "", "AUTOMATE")
+        ), "TEST", "unit");
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/generated-workbook/cases")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "New case",
+                                  "preconditions": "",
+                                  "steps": "1. Do thing",
+                                  "expectedResult": "1. OK",
+                                  "testData": "",
+                                  "priority": "P1",
+                                  "tags": "",
+                                  "visualAssertion": "",
+                                  "keelPath": "AUTOMATE",
+                                  "callBefore": "TC_02"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("CALL_BEFORE_SELF"));
+    }
+
+    @Test
     public void updateCase_qualityGateReject() throws Exception {
         String projectId = createProject();
         workbooks.saveFromCases(projectId, List.of(

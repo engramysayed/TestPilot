@@ -823,7 +823,7 @@ public class GeneratedWorkbookService {
             String baseUrl,
             String author
     ) throws Exception {
-        if (fields == null) {
+        if (fields == null || fields.isEmpty()) {
             throw new IllegalArgumentException("At least one field is required");
         }
         List<ManualTestCase> existing;
@@ -840,6 +840,14 @@ public class GeneratedWorkbookService {
             ids.add(tc.tcId());
         }
         String tcId = nextTcId(ids);
+        Set<String> knownIds = new LinkedHashSet<>();
+        for (ManualTestCase tc : existing) {
+            knownIds.add(tc.tcId().trim());
+        }
+        if (fields.containsKey("callBefore")) {
+            String rawCallBefore = fields.get("callBefore");
+            CallBefore.validateRefs(rawCallBefore == null ? "" : rawCallBefore, tcId, knownIds);
+        }
         ManualTestCase blank = new ManualTestCase(tcId, "", "", "", "", "", "", "", "", "", "");
         ManualTestCase created = mergeCaseFields(blank, fields);
         List<ManualTestCase> patched = new ArrayList<>(existing);
