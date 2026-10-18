@@ -145,19 +145,32 @@
 
             <label class="check">
                 <input type="checkbox" id="pre-run-review"/>
-                Review with Cursor before run (propose only)
+                Review cases before run
             </label>
-            <p class="muted generate-option-hint">Findings only — nothing runs until you accept.</p>
+            <p class="muted generate-option-hint" id="pre-run-review-hint" hidden>
+                Findings first. Accept saves the library and starts this run.
+            </p>
+            <div class="pre-run-review-config" id="pre-run-review-config" hidden>
+                <span class="muted">Reviewer</span>
+                <label class="check">
+                    <input type="radio" name="pre-run-review-provider" value="keel" id="pre-run-review-provider-keel"/>
+                    Keel
+                </label>
+                <label class="check">
+                    <input type="radio" name="pre-run-review-provider" value="cursor" id="pre-run-review-provider-cursor"/>
+                    Cursor
+                </label>
+            </div>
 
             <section class="panel" id="pre-run-review-panel" hidden
                      data-endpoint="/pre-run-authoring-review">
-                <h3>Cursor pre-run review</h3>
+                <h3>Pre-run review</h3>
                 <p id="pre-run-review-status" class="generate-status" role="status" aria-live="polite"></p>
                 <div id="pre-run-review-progress" class="pre-run-progress" hidden>
                     <div class="progress-track progress-track--indeterminate" aria-hidden="true">
                         <div class="progress-fill progress-fill--indeterminate"></div>
                     </div>
-                    <p class="muted generate-option-hint">Cursor is still reviewing…</p>
+                    <p class="muted generate-option-hint" id="pre-run-review-progress-label">Review in progress…</p>
                 </div>
                 <div id="pre-run-review-result" hidden>
                     <ul id="pre-run-review-findings" class="review-findings"></ul>
@@ -397,8 +410,41 @@
     const preRunReviewProgress = document.getElementById('pre-run-review-progress');
     const preRunReviewResult = document.getElementById('pre-run-review-result');
     const preRunReviewCases = document.getElementById('pre-run-review-cases');
+    const preRunReviewHint = document.getElementById('pre-run-review-hint');
+    const preRunReviewConfig = document.getElementById('pre-run-review-config');
+    const preRunReviewProgressLabel = document.getElementById('pre-run-review-progress-label');
+    const PRE_RUN_REVIEW_PROVIDER_KEY = 'keel.preRunReview.provider';
     let preRunReviewedCsv = null;
+    let preRunReviewedCases = [];
     let preRunReviewApproved = false;
+
+    function selectedPreRunReviewProvider() {
+        const radio = document.querySelector('input[name="pre-run-review-provider"]:checked');
+        return radio ? radio.value : 'keel';
+    }
+
+    function preRunReviewProviderLabel() {
+        return selectedPreRunReviewProvider() === 'cursor' ? 'Cursor' : 'Keel';
+    }
+
+    function initPreRunReviewProviderRadios() {
+        const saved = sessionStorage.getItem(PRE_RUN_REVIEW_PROVIDER_KEY) || 'keel';
+        document.querySelectorAll('input[name="pre-run-review-provider"]').forEach(function (radio) {
+            radio.checked = radio.value === saved;
+            radio.addEventListener('change', function () {
+                if (radio.checked) {
+                    sessionStorage.setItem(PRE_RUN_REVIEW_PROVIDER_KEY, radio.value);
+                }
+            });
+        });
+    }
+    initPreRunReviewProviderRadios();
+
+    function syncPreRunReviewOptionVisibility() {
+        const on = preRunReview && preRunReview.checked;
+        if (preRunReviewHint) preRunReviewHint.hidden = !on;
+        if (preRunReviewConfig) preRunReviewConfig.hidden = !on;
+    }
     let hasGeneratedWorkbook = false;
     let generatedWorkbookMeta = null;
 
@@ -409,6 +455,7 @@
             preRunReviewResult.hidden = true;
             preRunReviewAccept.disabled = true;
             preRunReviewedCsv = null;
+            preRunReviewedCases = [];
             preRunReviewApproved = false;
             preRunReviewFindings.innerHTML = '';
             preRunReviewErrors.innerHTML = '';
@@ -455,6 +502,7 @@
 
     function clearPreRunReview() {
         preRunReviewedCsv = null;
+        preRunReviewedCases = [];
         preRunReviewApproved = false;
         preRunReviewPanel.hidden = true;
         preRunReviewPanel.setAttribute('aria-busy', 'false');
@@ -470,6 +518,8 @@
 
     function buildPreRunReviewInput(useGenerated) {
         const body = new FormData();
+        const provider = selectedPreRunReviewProvider();
+        body.append('provider', provider);
         if (useGenerated) {
             body.append('useGenerated', 'true');
             selectedLibraryTcIds().forEach(id => body.append('tcIds', id));
@@ -484,7 +534,11 @@
         clearPreRunReview();
         preRunReviewPanel.hidden = false;
         setPreRunReviewBusy(true);
-        preRunReviewStatus.textContent = 'Cursor is reviewing the exact selected suite…';
+        const reviewer = preRunReviewProviderLabel();
+        preRunReviewStatus.textContent = reviewer + ' is reviewing the exact selected suite…';
+        if (preRunReviewProgressLabel) {
+            preRunReviewProgressLabel.textContent = reviewer + ' is reviewing…';
+        }
         submitBtn.disabled = true;
         try {
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
@@ -516,33 +570,61 @@
                 preRunReviewErrors.appendChild(li);
             });
             preRunReviewedCsv = data.csv || null;
+            preRunReviewedCases = data.cases || [];
             preRunReviewCsv.textContent = preRunReviewedCsv || '';
-            renderProposedCases(data.cases);
-            preRunReviewAccept.disabled = !data.previewOk || !preRunReviewedCsv;
+            renderProposedCases(preRunReviewedCases);
+            preRunReviewAccept.disabled = !data.previewOk || !preRunReviewedCases.length;
             preRunReviewStatus.textContent = data.previewOk
-                ? 'Review complete. Inspect the proposal, then accept to start the run.'
+                ? 'Review complete. Inspect the cases, then accept to save the library and start the run.'
                 : 'Review found blocking quality-gate errors. The run has not started.';
             preRunReviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } catch (error) {
             setPreRunReviewBusy(false);
-            preRunReviewStatus.textContent = 'Network error while asking Cursor to review.';
+            preRunReviewStatus.textContent = 'Network error while running pre-run review.';
         } finally {
             submitBtn.disabled = false;
         }
     }
 
-    preRunReviewAccept.addEventListener('click', () => {
-        if (!preRunReviewedCsv) return;
-        preRunReviewApproved = true;
-        executeForm.requestSubmit();
+    preRunReviewAccept.addEventListener('click', async () => {
+        if (!preRunReviewedCases.length) return;
+        const projectId = projectSel.value;
+        if (!projectId) return;
+        preRunReviewAccept.disabled = true;
+        preRunReviewStatus.textContent = 'Saving reviewed cases to the library…';
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
+                + '/generated-workbook/apply-review', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({}, API_HEADERS, { 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ cases: preRunReviewedCases })
+            });
+            let data = {};
+            try { data = await res.json(); } catch (ignore) { /* show generic error */ }
+            if (!res.ok) {
+                preRunReviewStatus.textContent = data.message || 'Could not save reviewed cases to the library.';
+                preRunReviewAccept.disabled = false;
+                return;
+            }
+            if (excelInput) excelInput.value = '';
+            preRunReviewApproved = true;
+            executeForm.requestSubmit();
+        } catch (error) {
+            preRunReviewStatus.textContent = 'Network error while saving reviewed cases to the library.';
+            preRunReviewAccept.disabled = false;
+        }
     });
     document.getElementById('pre-run-review-cancel').addEventListener('click', () => {
         preRunReview.checked = false;
+        syncPreRunReviewOptionVisibility();
         clearPreRunReview();
     });
     preRunReview.addEventListener('change', () => {
+        syncPreRunReviewOptionVisibility();
         if (!preRunReview.checked) clearPreRunReview();
     });
+    syncPreRunReviewOptionVisibility();
     executeForm.addEventListener('change', (event) => {
         if (event.target !== preRunReview && preRunReviewedCsv) {
             clearPreRunReview();
@@ -1853,10 +1935,7 @@
         }
         submitBtn.disabled = true;
         const body = new FormData();
-        if (preRunReviewedCsv && preRunReviewApproved) {
-            body.append('excel', new Blob([preRunReviewedCsv], { type: 'text/csv;charset=utf-8' }),
-                'cursor-reviewed.csv');
-        } else if (useGenerated) {
+        if (preRunReviewApproved || useGenerated) {
             body.append('useGenerated', 'true');
             selectedLibraryTcIds().forEach(id => body.append('tcIds', id));
         }

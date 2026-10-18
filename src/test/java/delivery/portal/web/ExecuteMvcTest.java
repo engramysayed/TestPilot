@@ -117,19 +117,31 @@ public class ExecuteMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(body.contains("workspace-launcher"), "execute must offer workspace launcher");
     }
 
+    private static void assertPreRunReviewSavesLibraryBeforeRun(String body) {
+        Assert.assertTrue(body.contains("Review cases before run"));
+        Assert.assertTrue(body.contains("id=\"pre-run-review-provider-keel\"")
+                || body.contains("value=\"keel\""));
+        Assert.assertTrue(body.contains("/generated-workbook/apply-review")
+                || body.contains("apply-review"));
+        Assert.assertFalse(body.contains("propose only"));
+    }
+
     @Test
-    public void execute_hasOptionalProposeOnlyCursorPreRunReview() throws Exception {
+    public void execute_hasPreRunReviewBeforeRun() throws Exception {
         String body = fetchExecuteBody();
         String main = mainShell(body);
 
+        assertPreRunReviewSavesLibraryBeforeRun(body);
         Assert.assertTrue(main.contains("id=\"pre-run-review\""), "review option missing");
         Assert.assertTrue(main.contains("id=\"pre-run-review-panel\""), "review proposal panel missing");
         Assert.assertTrue(main.contains("Accept &amp; run"), "explicit acceptance control missing");
         Assert.assertTrue(body.contains("/pre-run-authoring-review"), "pre-run review API wiring missing");
-        Assert.assertTrue(body.contains("preRunReviewedCsv"), "accepted proposal must become run input");
+        Assert.assertTrue(body.contains("preRunReviewedCsv"), "review must keep raw CSV for display");
+        Assert.assertTrue(body.contains("preRunReviewedCases"), "review must keep cases for apply-review");
         Assert.assertTrue(main.contains("id=\"pre-run-review-progress\""), "in-progress bar missing");
         Assert.assertTrue(main.contains("id=\"pre-run-review-result\""), "proposal result must stay hidden until review finishes");
         Assert.assertTrue(main.contains("id=\"pre-run-review-cases\""), "proposed TCs must render as a readable list");
-        Assert.assertTrue(body.contains("pre-run-review-progress"), "progress element must be toggled while Cursor reviews");
+        Assert.assertTrue(body.contains("pre-run-review-progress"), "progress element must be toggled while review runs");
+        Assert.assertFalse(body.contains("cursor-reviewed.csv"), "accepted review must not upload CSV blob on start");
     }
 }
