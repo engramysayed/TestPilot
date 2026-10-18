@@ -17,6 +17,7 @@ This document points engineers at deeper material already in the tree.
 | End-to-end conversion | `docs/ops/end-to-end-flow.md` |
 | Local Ollama | `docs/ops/ollama-local.md`, `docs/ops/local-live-ollama.md` (if present) |
 | Heal/LLM API keys (env wins then Settings publish props then DEV LocalApiKeyLoader; clear drops System props; env wins for URL/model props; optional Ollama Bearer) | `delivery.heal.ApiKeySource`, `LocalLlmClient`, Backend `/admin/llm-settings` |
+| Live Ollama models on Generate (spec; not built yet) | `docs/superpowers/specs/2026-10-18-live-ollama-generate-models-design.md` |
 | Portal restart / Windows | `docs/ops/portal-restart.md`, `docs/ops/windows-vps-setup.md` |
 | Architecture notes | `docs/ops/architecture-audit.md` |
 | Customer TAF template | `customer-framework-template/README.md` |
