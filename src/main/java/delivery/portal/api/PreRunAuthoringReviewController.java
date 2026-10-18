@@ -3,6 +3,7 @@ package delivery.portal.api;
 import delivery.excel.ExcelTcReader;
 import delivery.excel.GenerateQualityGate;
 import delivery.excel.ManualTestCase;
+import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.AuthoringReviewService;
 import delivery.portal.service.GeneratedWorkbookService;
@@ -23,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -37,17 +39,20 @@ public class PreRunAuthoringReviewController {
     private final GeneratedWorkbookService workbooks;
     private final AuthoringReviewService reviews;
     private final CurrentUserService currentUser;
+    private final DeliveryPortalProperties props;
 
     public PreRunAuthoringReviewController(
             PortalStore store,
             GeneratedWorkbookService workbooks,
             AuthoringReviewService reviews,
-            CurrentUserService currentUser
+            CurrentUserService currentUser,
+            DeliveryPortalProperties props
     ) {
         this.store = store;
         this.workbooks = workbooks;
         this.reviews = reviews;
         this.currentUser = currentUser;
+        this.props = props;
     }
 
     @PostMapping(
@@ -58,7 +63,9 @@ public class PreRunAuthoringReviewController {
             @PathVariable("projectId") String projectId,
             @RequestParam(value = "excel", required = false) MultipartFile excel,
             @RequestParam(value = "useGenerated", required = false, defaultValue = "false") String useGenerated,
-            @RequestParam(value = "tcIds", required = false) List<String> tcIds
+            @RequestParam(value = "tcIds", required = false) List<String> tcIds,
+            @RequestParam(value = "provider", required = false) String provider,
+            @RequestParam(value = "model", required = false) String model
     ) {
         Long ownerId = currentUser.requireUserId();
         ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
@@ -76,9 +83,18 @@ public class PreRunAuthoringReviewController {
             materialized = JobWorkbookResolver.resolve(
                     workbooks, projectId, useLibrary, tcIds, excel);
             List<ManualTestCase> cases = new ExcelTcReader(true).read(materialized);
-            log.info("PRE_RUN_REVIEW_START project={} provider=cursor cases={}", projectId, cases.size());
+            String providerNorm = normalizeProvider(provider);
+            String modelNorm = model == null ? "" : model.trim();
+            if ((providerNorm.equals("keel") || providerNorm.equals("ollama")) && modelNorm.isEmpty()) {
+                modelNorm = props.getGenerateModel() == null ? "" : props.getGenerateModel().trim();
+            }
+            if (providerNorm.equals("cursor")) {
+                modelNorm = "";
+            }
+            log.info("PRE_RUN_REVIEW_START project={} provider={} cases={}",
+                    projectId, providerNorm, cases.size());
             Map<String, Object> result = reviews.reviewCases(
-                    projectId, ownerId, cases, "cursor", "", "", "");
+                    projectId, ownerId, cases, providerNorm, modelNorm, "", "");
             log.info("PRE_RUN_REVIEW_COMPLETE project={} cases={} previewOk={} findings={}",
                     projectId,
                     result.get("tcCount"),
@@ -117,6 +133,13 @@ public class PreRunAuthoringReviewController {
                 }
             }
         }
+    }
+
+    static String normalizeProvider(String providerParam) {
+        if (providerParam == null || providerParam.isBlank()) {
+            return "keel";
+        }
+        return providerParam.trim().toLowerCase(Locale.ROOT);
     }
 
     private static boolean isTruthy(String value) {
