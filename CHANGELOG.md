@@ -4,6 +4,13 @@
 
 # Keel changelog
 
+## 2026-10-18 - Add test case and review cases before run
+
+- Project **Test cases** tab: **Add test case** opens the existing editor with the next `TC_` id. **Save** writes the library workbook (an empty library is fine — Keel creates the workbook).
+- **Execute** and **Automate**: optional **Review cases before run** sends the selected cases to **Cursor** or **Keel** with Keel authoring rules. **Accept & run** saves the edited cases into the **library** (version history) and then starts the job. Uncheck review to run the library as-is.
+- Pre-run review is **not** charged. **Execute** and **Automate** still charge their run/framework prices when the job **starts** (after Accept when review is on).
+- Runtime **OutcomeKind** is unchanged: quoted text in Steps/Expected still means visible text at execute time.
+
 ## 2026-10-18 - Generate AI model list follows live Ollama
 
 - Generate → AI model, Compare two, and Review list chat models from Ollama `/api/tags` (same URL/token as Admin LLM Settings). Vision-like names (`vl`, `llava`, `ui-tars`, `vision`) are omitted.

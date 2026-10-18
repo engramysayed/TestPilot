@@ -82,6 +82,7 @@ After Automate has produced a package:
 
 ### Test cases tab
 
+- **Add test case** opens the same editor as an existing row. Keel assigns the next `TC_` id. **Save** writes the project library workbook. An empty library is OK — the first save creates the workbook.
 - **Generated library**: cases saved from Generate. Refresh, edit fields (including KeelPath), delete selected (cannot delete the last case).
 - **Version history**: every save is kept. Source reads as Edited / Recorded / Generated (not `CASE_EDIT`). Author is the person who saved; old Record rows that stored a test id such as `TC_3` show as —. **Current** is the live version. **Restore this version** writes a new save — history is never rewritten.
 - **Automate proven cases**: last successful conversion IR (what the browser actually proved), not Generate-only drafts.
@@ -290,7 +291,7 @@ Run cases on the live site **without** building a customer ZIP.
 - Mix: library ∪ upload; **same `TC_ID` → upload wins**.
 - Optional PNG design mockup per TC (collapsed by default; also on project Settings).
 - A compact **This run** bar shows how many test cases × the Execute unit, and the total credits. Automate and Bug Hunter use the same bar.
-- Optional **Review selected TCs with Cursor before run** (propose only). **Accept & run** uses that CSV **for this job only** — it does not save the library.
+- Optional **Review cases before run** (Cursor or Keel). Cases go out as JSON plus Keel authoring rules (quotes mean visible text at runtime, `and` splits, masked OTP wording, and similar). **Accept & run** saves the edited cases into the **library** (version history) and then starts the run. Uncheck review to run the library as-is. Pre-run review is not charged; the Execute run price still applies when the run starts.
 - **Start execute run**. The run price is charged once for each runnable test case. Cancel while running. (Authoring engine: **project Settings**.)
 
 ### While it runs
@@ -331,7 +332,7 @@ Turn the workbook into a **downloadable Java Selenium TestNG** package.
 - **NEW** — full conversion for all eligible cases.
 - **UPDATE** — only TCs whose Steps/ExpectedResult changed; needs a prior NEW (`UPDATE_WITHOUT_FRAMEWORK` if none).
 - **Client delivery** checkbox — extra final-revise audit before download (off unless the server has `delivery.final-revise.enabled=true` and `AGENTROUTER_API_KEY`). You can still download; the job may be marked as needing review.
-- Optional Cursor **pre-run review** (same propose-only rule as Execute).
+- Optional **Review cases before run** (Cursor or Keel), same library-save **Accept & run** behavior and quote rules as Execute. Pre-run review is not charged; the framework price still applies per runnable test case when the job starts.
 - KeelPath guard: cannot start Automate if there are no runnable rows (everything except `MANUAL`). The framework price is charged once for each runnable test case, not once for the package. (Authoring engine: **project Settings**.)
 
 ### What the job does (in order)
@@ -411,7 +412,6 @@ Be explicit so a demo does not promise these:
 | Captcha, passkeys, 2FA obstacles | Not an obstacle-solving agent |
 | Silent TestData faker on Generate | Only if you allow inventing |
 | Auto Cursor review before every run | Checkbox is opt-in |
-| Pre-run Accept writing the library | Use Generate Accept or project edit |
 | Claude / Anthropic models | Hard ban for this project |
 | LLM Wiki | Parked |
 | Public SaaS billing / multi-tenant cloud | Self-hosted |

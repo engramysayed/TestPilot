@@ -1,7 +1,7 @@
 # Add library TC + pre-run authoring review (Cursor or Keel)
 
 **Date:** 2026-10-18  
-**Status:** Approved; plan ready  
+**Status:** Implemented  
 **Plan:** `docs/superpowers/plans/2026-10-18-library-add-and-prerun-review.md`  
 **Surfaces:** project Test cases tab; Execute; Automate
 
