@@ -38,7 +38,7 @@ public class TcGenerateServiceSaveComparedGateTest {
                 enabledProps(),
                 stubStore(facebookProject()),
                 workbooks,
-                new GenerateModelService(new DeliveryPortalProperties()),
+                GenerateModelService.forTests(),
                 tcImport);
     }
 

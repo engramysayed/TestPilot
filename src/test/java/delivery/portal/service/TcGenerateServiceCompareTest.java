@@ -112,7 +112,7 @@ public class TcGenerateServiceCompareTest {
                     new DeliveryPortalProperties(),
                     null,
                     new TrackingWorkbooks(saveCalls),
-                    new GenerateModelService(new DeliveryPortalProperties()),
+                    GenerateModelService.forTests(),
                     null);
             this.saveCalls = saveCalls;
         }

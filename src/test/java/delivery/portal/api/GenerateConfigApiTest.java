@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "delivery.dry-run=true",
         "delivery.generate-model=gemma4:e2b",
         "delivery.generate-models=gemma4:e2b,qwen2.5:latest",
+        "delivery.llm-base-url=http://127.0.0.1:9",
         "delivery.store-root=./target/test-delivery-store-generatemodelsapi",
         "delivery.work-dir=./target/test-delivery-work-generatemodelsapi"
 })
@@ -38,6 +39,8 @@ public class GenerateConfigApiTest extends AbstractTestNGSpringContextTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.defaultModel").value("gemma4:e2b"))
                 .andExpect(jsonPath("$.models[0]").value("gemma4:e2b"))
-                .andExpect(jsonPath("$.models[1]").value("qwen2.5:latest"));
+                .andExpect(jsonPath("$.models[1]").value("qwen2.5:latest"))
+                .andExpect(jsonPath("$.source").value("fallback"))
+                .andExpect(jsonPath("$.unreachable").value(true));
     }
 }
