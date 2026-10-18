@@ -38,6 +38,12 @@ public class AuthoringReviewService {
             authoring issues. cases[] must include every input TC_id exactly once (extra TC_ids only for
             missing coverage). Do not invent large unrelated suites. Preserve TC_id values and obey
             KeelPath rules.
+            Quoted phrases are visible-text waits: the string MUST match the screen (Upload Transaction List is not Upload Transactions List).
+            Outcome "and" may split extra checks; "expands and sub-menu items are shown" stays one check.
+            After a fill, prefer "{Field} is accepted" or "OTP is accepted". Never assert typed digits or password on a masked field (do not keep filled with '245345' as visible text).
+            Keep "{Field} is shown", "{Button} is clicked", and page-shown wording.
+            Do not invent large extra suites. Preserve tcId and KeelPath.
+            Flag leftover Expected with no matching step.
             """;
 
     private final PortalStore store;
@@ -105,21 +111,24 @@ public class AuthoringReviewService {
         }
 
         String providerNorm = provider == null ? "" : provider.trim().toLowerCase(Locale.ROOT);
-        if (!providerNorm.equals("cursor") && !providerNorm.equals("ollama")) {
-            throw new IllegalArgumentException("provider must be cursor or ollama");
+        if (!providerNorm.equals("cursor")
+                && !providerNorm.equals("ollama")
+                && !providerNorm.equals("keel")) {
+            throw new IllegalArgumentException("provider must be cursor, ollama, or keel");
         }
         String modelNorm = model == null ? "" : model.trim();
-        if (providerNorm.equals("ollama") && modelNorm.isEmpty()) {
+        if ((providerNorm.equals("ollama") || providerNorm.equals("keel")) && modelNorm.isEmpty()) {
             throw new IllegalArgumentException("Ollama model must be specified");
         }
         if (providerNorm.equals("cursor")) {
             modelNorm = "";
         }
 
+        String llmProvider = providerNorm.equals("keel") ? "ollama" : providerNorm;
         String userPayload = toSuiteJson(current, stories, requirementsNotes).toString(2);
-        String raw = llm.complete(providerNorm, modelNorm, SYSTEM_PROMPT, userPayload);
+        String raw = llm.complete(llmProvider, modelNorm, SYSTEM_PROMPT, userPayload);
         if (raw == null || raw.isBlank()) {
-            throw new IllegalStateException(providerNorm + " returned empty review");
+            throw new IllegalStateException(llmProvider + " returned empty review");
         }
 
         AuthoringReviewParser.ParseResult parsed = AuthoringReviewParser.parse(raw);

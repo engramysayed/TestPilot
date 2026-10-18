@@ -64,8 +64,26 @@ public class AuthoringReviewServiceTest {
                 IllegalArgumentException.class,
                 () -> fixture.service.review(PROJECT_ID, OWNER_ID, "openai", "", "", ""));
 
-        Assert.assertEquals(error.getMessage(), "provider must be cursor or ollama");
+        Assert.assertEquals(error.getMessage(), "provider must be cursor, ollama, or keel");
         Assert.assertEquals(fixture.calls, 0);
+    }
+
+    @Test
+    public void review_keel_usesOllamaPort() throws Exception {
+        Fixture fixture = fixture(List.of(originalCase()), validReviewJson());
+        Map<String, Object> result = fixture.service.review(
+                PROJECT_ID, OWNER_ID, "keel", "gemma4:e2b", "", "");
+        Assert.assertEquals(fixture.lastProvider, "ollama");
+        Assert.assertEquals(result.get("provider"), "keel");
+    }
+
+    @Test
+    public void review_systemPrompt_teachesExecuteRules() throws Exception {
+        Fixture fixture = fixture(List.of(originalCase()), validReviewJson());
+        fixture.service.review(PROJECT_ID, OWNER_ID, "ollama", "gemma4:e2b", "", "");
+        Assert.assertTrue(fixture.lastSystem.contains("OTP is accepted"));
+        Assert.assertTrue(fixture.lastSystem.contains("visible-text"));
+        Assert.assertTrue(fixture.lastSystem.toLowerCase().contains("masked"));
     }
 
     @Test
