@@ -1,7 +1,7 @@
 # Live Ollama models on Generate (no hardcoded list)
 
 **Date:** 2026-10-18  
-**Status:** Approved; plan ready  
+**Status:** Implemented (working tree; jar rebuild still required for live portal)  
 **Plan:** `docs/superpowers/plans/2026-10-18-live-ollama-generate-models.md`
 
 ## Problem

@@ -31,7 +31,7 @@ Record can also build the ZIP directly from the locators it captured, without a 
 - Sign in with email and password (`/login`).
 - **Request access** from the login page. An admin approves; the requester gets a set-password invite.
 - **Account**: change password, change email.
-- **Account → vision**: choose the model that looks at the screen (UI-TARS by default, or Qwen vision). This does not choose the model that writes test cases. Writing uses Gemma (`gemma4:e2b`), chosen on Generate.
+- **Account → vision**: choose the model that looks at the screen (UI-TARS by default, or Qwen vision). This does not choose the model that writes test cases. Writing uses the chat model chosen on Generate (live Ollama chat tags; vision names omitted).
 - **Account → alerts**: Telegram, email, or Slack. Keel sends a message when a run fails or finishes with a block. Turning a channel on sends a confirmation first and does not save the switch if that send fails. The engine dead-man check is separate and stays off.
 - **Pricing** (`/pricing`): a read-only table of each service, the unit it is charged as, and the current credit price. Every signed-in account sees the same numbers.
 - **Admin → Prices**: the account owner sets the service name, Charged as, What it covers, and the price of one unit. Saving applies it to every account. A user whose role is only Admin is refused by the server.
@@ -95,7 +95,7 @@ Turn stories or AI output into a Keel workbook stored on the project (`generated
 ### From stories (Ollama)
 
 - Paste user stories / acceptance criteria.
-- Pick the Ollama model.
+- Pick the Ollama **AI model**. The list comes from live Ollama chat tags (vision-like names such as `vl` / `llava` / `ui-tars` / `vision` are omitted). Admin → LLM & API keys Save sets the install default. If Ollama is down, the last list is used.
 - **Generate** — background job + status page (avoids browser timeouts).
 - **Second pass** — slower: generate, then ask the model to fix mistakes and add only gaps vs the stories. Keel also auto-repairs known empty-field TestData mistakes when this is off.
 - **TestData inventing is off unless you say it is OK** in the stories. Unknown values stay blank or `<PLACEHOLDER>`. Login fields use `${TARGET_USERNAME}` / `${TARGET_PASSWORD}`, not faker names.
@@ -377,7 +377,7 @@ Design: `docs/superpowers/specs/2026-09-11-authoring-precision-engine-design.md`
 
 ## Vision (optional)
 
-The Account page chooses the vision model only: UI-TARS by default, or Qwen vision. It does not change the Generate writer (Gemma). The server still needs that vision model in Ollama (`delivery.vision.provider=qwen` is the Qwen fallback).
+The Account page chooses the vision model only: UI-TARS by default, or Qwen vision. It does not change the Generate writer (live Ollama chat models on Generate). The server still needs that vision model in Ollama (`delivery.vision.provider=qwen` is the Qwen fallback).
 
 - Help find a control when DOM bind is weak (grounding).
 - **VisualAssertion** column: after steps succeed, one VLM check (PASS / FAIL / UNCERTAIN) + evidence.

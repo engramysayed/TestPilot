@@ -4,6 +4,12 @@
 
 # Keel changelog
 
+## 2026-10-18 - Generate AI model list follows live Ollama
+
+- Generate → AI model, Compare two, and Review list chat models from Ollama `/api/tags` (same URL/token as Admin LLM Settings). Vision-like names (`vl`, `llava`, `ui-tars`, `vision`) are omitted.
+- Last full tag list is saved as `cachedOllamaModels` in `llm-settings.json`. No cache yet: loader until Ollama answers. Cache present: show it, then “Updating…”. Ollama down: last list plus a short unreachable note.
+- Admin Save still sets the install default. Account → Vision stays UI-TARS vs Qwen. Pull a new chat model and it appears after refresh — no code edit.
+
 ## 2026-10-18 - LLM Settings clear drops System props; env wins for URL/model
 
 - Clearing Cursor / AgentRouter / Ollama keys in Admin LLM settings now clears the matching runtime System property when process env is unset, so the key drops without a portal restart.

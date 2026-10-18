@@ -1,5 +1,7 @@
 # Live Ollama Generate models Implementation Plan
 
+**Status:** Implemented 2026-10-18 (working tree). Portal jar rebuild still required.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Generate lists chat models from live Ollama (same tags as Admin LLM Settings), remembers the last full tag list on disk, and never needs a code edit when you `ollama pull`.
