@@ -19,8 +19,8 @@ Shipped in the working tree. The 17 Oct portal jar does **not** include this unt
 
 ## Known defects
 
-- Tests for this pack were not re-run in the implement session because CrowdStrike blocks Cursor PowerShell temp scripts on this PC. Re-run: `mvn "-Dmaven.compiler.release=21" "-Dtest=GenerateModelListTest,GenerateModelServiceTest,LlmSettingsServiceTest,GenerateConfigApiTest,GenerateMvcTest" test`
-- Live UI not verified: portal jar on disk was still the 17 Oct build; 8080 was not serving this code.
+- Tests: 37 run, 0 fail (`GenerateModelListTest`, `GenerateModelServiceTest`, `LlmSettingsServiceTest`, `GenerateConfigApiTest`, `GenerateMvcTest`) via cmd.bat, 2026-10-18 15:12.
+- Live UI not verified: portal jar on disk was still the 17 Oct build; 8080 was not serving this code. Rebuild + restart + Ctrl+F5 before Generate will show live tags.
 - `isVisionModel` uses substring `vl` (spec). A chat tag that happens to contain those letters would be dropped.
 - Generate fetch failure still paints a single `gemma4:e2b` option so the page is usable.
 
