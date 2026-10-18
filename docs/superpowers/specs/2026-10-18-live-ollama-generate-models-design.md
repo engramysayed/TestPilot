@@ -1,8 +1,8 @@
 # Live Ollama models on Generate (no hardcoded list)
 
 **Date:** 2026-10-18  
-**Status:** Approved in chat; waiting for spec review before the implementation plan  
-**Plan:** (none yet)
+**Status:** Approved; plan ready  
+**Plan:** `docs/superpowers/plans/2026-10-18-live-ollama-generate-models.md`
 
 ## Problem
 
