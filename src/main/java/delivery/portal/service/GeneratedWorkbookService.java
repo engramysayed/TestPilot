@@ -814,6 +814,89 @@ public class GeneratedWorkbookService {
     }
 
     /**
+     * Merges pre-run reviewed cases into the library by {@code tcId} (replace or append),
+     * keeps unmentioned library rows, runs repair + quality gate, then re-saves.
+     */
+    public Map<String, Object> applyReviewedCases(
+            String projectId,
+            List<ManualTestCase> reviewed,
+            String author,
+            String baseUrl
+    ) throws Exception {
+        if (reviewed == null || reviewed.isEmpty()) {
+            throw new IllegalArgumentException("cases is required");
+        }
+        List<ManualTestCase> existing;
+        try {
+            existing = readCases(projectId);
+        } catch (IllegalStateException e) {
+            if (!"NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
+                throw e;
+            }
+            existing = List.of();
+        }
+        MergeResult merged = mergeByTcId(existing, reviewed);
+        List<ManualTestCase> repaired = TcImportRepair.repairCases(merged.cases());
+        Set<String> knownIds = new LinkedHashSet<>();
+        for (ManualTestCase tc : repaired) {
+            if (tc != null && tc.tcId() != null && !tc.tcId().isBlank()) {
+                knownIds.add(tc.tcId().trim());
+            }
+        }
+        for (ManualTestCase tc : reviewed) {
+            if (tc == null || tc.tcId() == null || tc.tcId().isBlank()) {
+                continue;
+            }
+            String callBefore = tc.callBefore();
+            if (callBefore != null && !callBefore.isBlank()) {
+                CallBefore.validateRefs(callBefore, tc.tcId().trim(), knownIds);
+            }
+        }
+        List<String> gateErrors = GenerateQualityGate.validate(repaired, baseUrl);
+        if (!gateErrors.isEmpty()) {
+            throw GenerateQualityGate.failureException(gateErrors);
+        }
+        String sourceRef = author != null && !author.isBlank() ? author.trim() : "";
+        saveFromCases(projectId, repaired, "CASE_EDIT", sourceRef, null, null);
+        return listCases(projectId);
+    }
+
+    public static ManualTestCase fromRowMap(Map<String, ?> row) {
+        if (row == null) {
+            throw new IllegalArgumentException("case row is required");
+        }
+        String tcId = stringField(row, "tcId");
+        if (tcId.isBlank()) {
+            throw new IllegalArgumentException("tcId is required");
+        }
+        String keelPath = "";
+        if (row.containsKey("keelPath")) {
+            String rawPath = stringField(row, "keelPath");
+            if (rawPath != null && !rawPath.isBlank()) {
+                keelPath = KeelPath.parse(rawPath).name();
+            }
+        }
+        return new ManualTestCase(
+                tcId,
+                stringField(row, "title"),
+                stringField(row, "preconditions"),
+                stringField(row, "steps"),
+                stringField(row, "expectedResult"),
+                stringField(row, "priority"),
+                stringField(row, "tags"),
+                stringField(row, "visualAssertion"),
+                stringField(row, "testData"),
+                keelPath,
+                stringField(row, "callBefore")
+        );
+    }
+
+    private static String stringField(Map<String, ?> row, String key) {
+        Object value = row.get(key);
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    /**
      * Appends a new workbook row with the next {@code TC_*} id, runs repair + quality gate,
      * then re-saves excel/csv/meta. Returns describe-shaped payload with refreshed {@code csv} and {@code row}.
      */

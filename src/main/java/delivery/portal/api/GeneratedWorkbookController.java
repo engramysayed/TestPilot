@@ -2,6 +2,7 @@ package delivery.portal.api;
 
 import delivery.excel.GenerateQualityGate;
 import delivery.excel.InvalidExcelTemplateException;
+import delivery.excel.ManualTestCase;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.PortalStore;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +62,24 @@ public class GeneratedWorkbookController {
             String callBefore,
             String baseRevision
     ) {
+    }
+
+    public record ApplyReviewCaseRow(
+            String tcId,
+            String title,
+            String preconditions,
+            String steps,
+            String expectedResult,
+            String priority,
+            String tags,
+            String visualAssertion,
+            String testData,
+            String keelPath,
+            String callBefore
+    ) {
+    }
+
+    public record ApplyReviewRequest(List<ApplyReviewCaseRow> cases) {
     }
 
     @GetMapping("/{projectId}/generated-workbook")
@@ -322,6 +342,79 @@ public class GeneratedWorkbookController {
             return ResponseEntity.badRequest()
                     .body(new ApiError("BAD_REQUEST",
                             e.getMessage() == null ? "Invalid upload" : e.getMessage()).asMap());
+        }
+    }
+
+    @PostMapping(value = "/{projectId}/generated-workbook/apply-review", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> applyReview(
+            @PathVariable("projectId") String projectId,
+            @RequestBody ApplyReviewRequest body
+    ) throws Exception {
+        Long ownerId = currentUser.requireUserId();
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, ownerId);
+        if (denied != null) {
+            return denied;
+        }
+        var projectOpt = store.getOwnedProject(projectId, ownerId);
+        if (projectOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
+        }
+        if (body == null || body.cases() == null || body.cases().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_REQUEST", "cases field is required").asMap());
+        }
+        List<ManualTestCase> reviewed = new ArrayList<>();
+        for (ApplyReviewCaseRow row : body.cases()) {
+            if (row == null) {
+                continue;
+            }
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("tcId", row.tcId());
+            map.put("title", row.title());
+            map.put("preconditions", row.preconditions());
+            map.put("steps", row.steps());
+            map.put("expectedResult", row.expectedResult());
+            map.put("priority", row.priority());
+            map.put("tags", row.tags());
+            map.put("visualAssertion", row.visualAssertion());
+            map.put("testData", row.testData());
+            map.put("keelPath", row.keelPath());
+            map.put("callBefore", row.callBefore());
+            reviewed.add(GeneratedWorkbookService.fromRowMap(map));
+        }
+        if (reviewed.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_REQUEST", "cases field is required").asMap());
+        }
+        try {
+            return ResponseEntity.ok(workbooks.applyReviewedCases(
+                    projectId, reviewed, currentUser.requireUser().getEmail(), projectOpt.get().getBaseUrl()));
+        } catch (IllegalStateException e) {
+            if ("NO_GENERATED_WORKBOOK".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ApiError("NO_GENERATED_WORKBOOK", "No generated workbook saved for this project").asMap());
+            }
+            throw e;
+        } catch (IllegalArgumentException e) {
+            ResponseEntity<Map<String, String>> callBefore = CallBeforeApiErrors.badRequestOrNull(e);
+            if (callBefore != null) {
+                return callBefore;
+            }
+            if (GenerateQualityGate.isQualityGateFailure(e)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(QualityGateResponses.fromException(e));
+            }
+            String msg = e.getMessage() == null ? "Invalid case update" : e.getMessage();
+            if (msg.contains("Unknown KeelPath") || msg.startsWith("Unknown tcId")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiError("BAD_REQUEST", msg).asMap());
+            }
+            if (msg.contains("tcId is required") || msg.contains("cases is required")) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiError("BAD_REQUEST", msg).asMap());
+            }
+            throw e;
         }
     }
 

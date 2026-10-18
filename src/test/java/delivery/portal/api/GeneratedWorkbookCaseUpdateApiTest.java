@@ -135,6 +135,43 @@ public class GeneratedWorkbookCaseUpdateApiTest extends AbstractTestNGSpringCont
     }
 
     @Test
+    public void applyReview_upsertsAndKeepsSibling() throws Exception {
+        String projectId = createProject();
+        workbooks.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_01", "A", "", "1. Open a", "1. A is shown", "P1", "", "", "", ""),
+                new ManualTestCase("TC_02", "B", "", "1. Open b", "1. B is shown", "P1", "", "", "", "")
+        ), "TEST", "unit");
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/generated-workbook/apply-review")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "cases": [
+                                    {
+                                      "tcId": "TC_01",
+                                      "title": "A",
+                                      "preconditions": "",
+                                      "steps": "1. Open a",
+                                      "expectedResult": "1. A is accepted",
+                                      "priority": "P1",
+                                      "tags": "",
+                                      "visualAssertion": "",
+                                      "testData": "",
+                                      "keelPath": "",
+                                      "callBefore": ""
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tcCount").value(2))
+                .andExpect(jsonPath("$.cases[0].expectedResult").value("1. A is accepted"))
+                .andExpect(jsonPath("$.cases[1].tcId").value("TC_02"));
+    }
+
+    @Test
     public void addCase_success() throws Exception {
         String projectId = createProject();
         workbooks.saveFromCases(projectId, List.of(
