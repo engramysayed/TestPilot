@@ -16,6 +16,7 @@ import delivery.snapshot.PageModel;
 import delivery.snapshot.PageSerializer;
 import delivery.snapshot.RankedLocators;
 import delivery.snapshot.SnapshotCandidate;
+import delivery.store.PreferredHooksStore;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -165,6 +166,8 @@ public final class ProveWiring {
     static double currentScore(ProvenStep s) {
         String st = s.locatorStrategy() == null ? "" : s.locatorStrategy().toLowerCase(Locale.ROOT);
         String v = s.locatorValue() == null ? "" : s.locatorValue();
+        if (PreferredHooksStore.matches(v, PreferredHooksStore.current())) return LocatorRanker.TEST_ID;
+        if (v.contains("data-axis-test-id")) return LocatorRanker.TEST_ID;
         if (v.matches("(?s).*\\[(data-testid|data-test|data-qa|data-cy)=.*")) return LocatorRanker.TEST_ID;
         if (st.equals("id")) return v.matches(".*\\d{3,}.*") ? LocatorRanker.CSS_ID_DYNAMIC : LocatorRanker.CSS_ID;
         if (st.equals("name")) return LocatorRanker.LABEL;

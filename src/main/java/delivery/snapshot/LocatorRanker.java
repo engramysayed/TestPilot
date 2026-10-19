@@ -1,9 +1,11 @@
 package delivery.snapshot;
 
+import delivery.store.PreferredHooksStore;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -33,10 +35,22 @@ public final class LocatorRanker {
     public static final double CSS_CLASS = 0.40;
     public static final double POSITION = 0.20;
 
-    static final List<String> TEST_ID_ATTRS = List.of("data-testid", "data-test", "data-qa", "data-cy");
+    private static final List<String> BUILTIN_TEST_ID_ATTRS = List.of("data-testid", "data-test", "data-qa", "data-cy");
     private static final Set<String> NATIVE_ROLE_TAGS = Set.of("button", "a", "input", "select", "textarea", "summary");
 
     private LocatorRanker() {
+    }
+
+    /** Site preferred hooks plus standard test-id attributes, deduped lowercase. */
+    static List<String> testIdAttrs() {
+        LinkedHashSet<String> out = new LinkedHashSet<>();
+        for (String hook : PreferredHooksStore.current()) {
+            if (hook != null && !hook.isBlank()) {
+                out.add(hook.toLowerCase(Locale.ROOT));
+            }
+        }
+        out.addAll(BUILTIN_TEST_ID_ATTRS);
+        return List.copyOf(out);
     }
 
     /** Unverified candidates, best first (deduplicated by target string). */
@@ -46,7 +60,7 @@ public final class LocatorRanker {
         Map<String, String> a = c.attrs();
         for (String attr : preferredAttrs == null ? List.<String>of() : preferredAttrs)
             if (has(a, attr)) add(out, c, attrCss(tag, attr, a.get(attr)), PREFERRED_HOOK, "hook:" + attr);
-        for (String attr : TEST_ID_ATTRS)
+        for (String attr : testIdAttrs())
             if (has(a, attr)) add(out, c, attrCss(tag, attr, a.get(attr)), TEST_ID, "testid:" + attr);
         if (has(a, "aria-label")) {
             String lbl = a.get("aria-label");
