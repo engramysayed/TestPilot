@@ -80,26 +80,48 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
             }
             if (!el) return null;
             const attrs = (arguments[2] || []).concat(['data-testid','data-test','data-qa','data-cy']);
-            function uniqueHookOn(node) {
+            function looksGenerated(value) {
+              if (!value) return false;
+              const v = (value + '').trim();
+              if (!v) return false;
+              const lower = v.toLowerCase();
+              if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(v)) return true;
+              if (/\\d{6,}/.test(v)) return true;
+              const shapes = [
+                /^_+r_+[0-9a-z]*_*$/, /^:+r[0-9a-z]*:+$/,
+                /^(ember|ext-gen|ext-comp|yui_|gwt-uid|isc_)[\\w-]*\\d+[\\w-]*$/,
+                /^(mui|radix|headlessui|downshift|react-select|react-aria)[-_].*/,
+                /^(svelte|sc|css|jss|emotion)-[0-9a-z]{5,}$/,
+                /^(js|jsc|mount|u)_[0-9a-z]{1,4}(_[0-9a-z]{1,4})*$/, /^ng-?\\w*-?\\d+$/
+              ];
+              for (const re of shapes) { if (re.test(lower)) return true; }
+              let longest = '';
+              const words = v.match(/[a-zA-Z]+/g);
+              if (words) for (const w of words) { if (w.length > longest.length) longest = w; }
+              if (longest.length < 3) return true;
+              if (longest.length >= 5 && !/[aeiouy]/i.test(longest)) return true;
+              const compact = v.replace(/[^0-9a-zA-Z]/g, '');
+              if (/^[0-9a-fA-F]{8,}$/.test(compact)) return true;
+              const digits = (compact.match(/\\d/g) || []).length;
+              return digits > compact.length - digits;
+            }
+            function isTrustworthyIdentifier(value) {
+              return value && (value + '').trim() && (value + '').length < 120 && !looksGenerated(value);
+            }
+            const hookKeys = new Map();
+            function collectHooks(node) {
               for (const a of attrs) {
                 const value = node.getAttribute(a);
-                if (!value) continue;
+                if (!value || !isTrustworthyIdentifier(value)) continue;
                 const sel = node.tagName.toLowerCase() + '[' + a + '="' + CSS.escape(value) + '"]';
-                if (document.querySelectorAll(sel).length === 1) return { attr: a, value: value, node: node };
+                if (document.querySelectorAll(sel).length !== 1) continue;
+                const key = a + '=' + value;
+                if (!hookKeys.has(key)) hookKeys.set(key, { attr: a, value: value, node: node });
               }
-              return null;
             }
-            let hook = uniqueHookOn(el);
-            if (!hook) {
-              const descendantKeys = new Map();
-              for (const desc of el.querySelectorAll('*')) {
-                const h = uniqueHookOn(desc);
-                if (!h) continue;
-                const key = h.attr + '=' + h.value;
-                if (!descendantKeys.has(key)) descendantKeys.set(key, h);
-              }
-              if (descendantKeys.size === 1) hook = descendantKeys.values().next().value;
-            }
+            collectHooks(el);
+            for (const desc of el.querySelectorAll('*')) collectHooks(desc);
+            let hook = hookKeys.size === 1 ? hookKeys.values().next().value : null;
             if (hook) el = hook.node;
             const preferredAttribute = hook ? hook.attr : '';
             const preferredValue = hook ? hook.value : '';
