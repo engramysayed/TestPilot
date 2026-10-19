@@ -4,6 +4,10 @@
 
 # Keel changelog
 
+## 2026-10-19 - Spec: admin review batch size + browser type
+
+- Approved design (not implemented): Owner sets review TCs per batch and Chrome / Chrome headless / Edge on Admin → LLM & API keys. Suites of 6+ cases split into those batches; combined preview after the last batch. Spec: `docs/superpowers/specs/2026-10-19-admin-review-batch-and-browser-design.md`.
+
 ## 2026-10-19 - Guide: review, leftover quotes, preferred hooks
 
 - The Guide Execute / Automate / Expected sections now describe Review cases before run, Accept saving the library, leftover Expected quotes (filler words stay outside quotes), and inner preferred hooks on named clicks.
