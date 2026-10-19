@@ -4,6 +4,12 @@
 
 # Keel changelog
 
+## 2026-10-19 - Spec: nested preferred hook + leftover Expected quoting
+
+- Approved design (not implemented): after a named click binds a wrapper row, use an inner unique preferred hook (`data-axis-test-id`) when the CSS matches one node; otherwise keep xpath. Vision uses the same site hook list, including a unique child.
+- Review will quote leftover Expected after stripping filler words (`area`, `button`, `label`, `title`, …). Execute will rewrite to the live heading only when exactly one heading/card title matches; asserts still never heal.
+- Spec: `docs/superpowers/specs/2026-10-19-nested-hook-and-quote-heading-design.md`. Plan not written yet.
+
 ## 2026-10-18 - Add test case and review cases before run
 
 - Project **Test cases** tab: **Add test case** opens the existing editor with the next `TC_` id. **Save** writes the library workbook (an empty library is fine — Keel creates the workbook).

@@ -4,6 +4,7 @@ These files capture the **Grok Bot “Keel team”** workstream (Oct 2026) so yo
 
 | Document | Use when |
 |----------|----------|
+| [2026-10-19-nested-hook-and-quote-heading.md](2026-10-19-nested-hook-and-quote-heading.md) | Spec: look inside named row for unique preferred hook; vision site hooks; quote leftover Expected from unique live heading |
 | [2026-10-15-portal-session.md](2026-10-15-portal-session.md) | **Start here for the current portal** — Record, unit prices, editable price copy, owner-only admin, account alerts, layout |
 | [grok-maestro-handoff-2026-10-14.md](grok-maestro-handoff-2026-10-14.md) | Earlier timeline — what landed locally, what did not, priorities |
 | [per-bot-status.md](per-bot-status.md) | Who (Codegen, Frontend, Backend, Automation, QA) did what |
