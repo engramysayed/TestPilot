@@ -1,6 +1,8 @@
 # 2026-10-19 — Nested preferred hook + leftover Expected quoting
 
-**Status:** Spec approved in chat. Not implemented. Plan not written yet.
+**Status:** Spec + plan approved. Not implemented.
+
+Plan: `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md`
 
 ## What was decided
 
