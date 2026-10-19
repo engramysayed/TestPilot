@@ -4,6 +4,10 @@
 
 # Keel changelog
 
+## 2026-10-19 - Guide: review, leftover quotes, preferred hooks
+
+- The Guide Execute / Automate / Expected sections now describe Review cases before run, Accept saving the library, leftover Expected quotes (filler words stay outside quotes), and inner preferred hooks on named clicks.
+
 ## 2026-10-19 - rebuild-portal.cmd
 
 - Repo-root `rebuild-portal.cmd` packages `keel-portal\target\keel-portal-1.0-SNAPSHOT.jar` (skip tests). It does not start the portal. After it finishes, run `start-portal.cmd` then Ctrl+F5.

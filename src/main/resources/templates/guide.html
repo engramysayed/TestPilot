@@ -72,7 +72,7 @@
                 <div class="guide-callouts">
                     <div class="callout ok">
                         <strong>Prerequisite</strong>
-                        <p>Create a <a href="/projects">project</a>, set the website URL under Settings, and add a login account when cases need sign-in. Generate, Record, Execute, Automate, and Bug Hunter are in the sidebar.</p>
+                        <p>Create a <a href="/projects">project</a>, set the website URL under Settings, add a login account when cases need sign-in, and (optional) preferred locator attributes such as <code>data-axis-test-id</code>. Generate, Record, Execute, Automate, and Bug Hunter are in the sidebar.</p>
                     </div>
                     <div class="callout warn">
                         <strong>Credits</strong>
@@ -200,7 +200,7 @@
                     <span class="guide-num">04</span>
                     <div>
                         <h2>Execute</h2>
-                        <p class="panel-intro">On <a href="/execute">Run tests</a>, Keel runs cases in a real browser. Every step can produce a screenshot. Open <a href="/runs">Run history</a> and Evidence for results.</p>
+                        <p class="panel-intro">On <a href="/execute">Run tests</a>, Keel runs cases in a real browser. You can review the selected cases first; Accept saves them to the library, then the run starts. Every step can produce a screenshot. Open <a href="/runs">Run history</a> and Evidence for results.</p>
                     </div>
                 </header>
                 <div class="decision-row">
@@ -222,6 +222,12 @@
                         <p>Pass/fail per case. Open Evidence for step screenshots and verdicts.</p>
                     </article>
                 </div>
+                <ol class="guide-howto">
+                    <li>Open Run tests, pick the project, and select the cases (or upload a workbook).</li>
+                    <li>Optional: check <strong>Review cases before run</strong> (Cursor or Keel). Inspect the proposed cases. Filler words such as <code>list</code>, <code>area</code>, and <code>visible</code> stay outside quotes — leftover Expected becomes <code>'Upload Transactions'</code>, not <code>'Upload Transactions list area'</code>. The live heading (for example <code>'Upload Transactions List'</code>) is applied later during the run when that heading is unique on screen.</li>
+                    <li><strong>Accept &amp; run</strong> saves those cases into the project library, then starts the run. Uncheck review to run the library as-is. Review is not charged; the run price still applies when the run starts.</li>
+                    <li>Quoted clicks use on-screen names. When a click lands on a menu row, Keel uses an inner preferred hook from project Settings if that hook is unique in the page; otherwise it keeps the row xpath.</li>
+                </ol>
                 <div class="guide-callouts">
                     <div class="callout warn">
                         <strong>Prerequisite</strong>
@@ -241,6 +247,7 @@
                 <ol class="guide-howto">
                     <li>Open Build code and choose the project.</li>
                     <li>Provide the test-case workbook (or use cases already on the project).</li>
+                    <li>Optional: the same <strong>Review cases before run</strong> as Execute — leftover Expected quotes, then <strong>Accept &amp; run</strong> saves the library and starts the framework job.</li>
                     <li>Start conversion. Watch progress on Status / the sidebar job chip.</li>
                     <li>When finished, download from <a href="/packages">Code packages</a>.</li>
                 </ol>
@@ -583,6 +590,7 @@
                 <ul class="guide-points">
                     <li>Align numbering with Steps (<code>1. … 2. …</code> or <code>After step 4: …</code>).</li>
                     <li>Quote exact UI text for messages, headings, and toasts.</li>
+                    <li>Leftover wording such as “the Upload Transactions list area is visible” is quoted as <code>'Upload Transactions'</code> in review. Words like list, area, and visible stay outside the quotes. Execute may then wait on the live heading when exactly one heading matches.</li>
                 </ul>
             </section>
 
