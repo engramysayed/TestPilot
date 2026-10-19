@@ -8,6 +8,23 @@ import org.testng.annotations.Test;
 import java.util.List;
 
 public class NestedPreferredHookBindTest {
+    /** Forces named-action multi-match: both carry Add verb + quoted label; hook vs li are not locator twins. */
+    private static List<DomCandidate> hookAndLiNamedActionCandidates() {
+        return List.of(
+                new DomCandidate("c2", "xpath",
+                        "//li[@data-action='add'][normalize-space(.)='Bill Payment Settlement']",
+                        "li", "Bill Payment Settlement"),
+                new DomCandidate("c1", "css",
+                        "a[data-axis-test-id='add-side-nav-bill-payment-settlement-link']",
+                        "a", "Bill Payment Settlement"));
+    }
+
+    private static StepIntentBinder.IntentLine addBillPaymentSettlementIntent() {
+        return new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK,
+                "Add the 'Bill Payment Settlement' item in the Support sub-menu.");
+    }
+
     private static final String HTML = """
             <html><body><aside class="sidebar">
             <li role="menuitem">
@@ -16,6 +33,23 @@ public class NestedPreferredHookBindTest {
             </li>
             </aside></body></html>
             """;
+
+    @Test
+    public void bindSingle_namedActionHookAndLi_pickNamedClearsAmbiguous() {
+        var intent = addBillPaymentSettlementIntent();
+        List<DomCandidate> cs = hookAndLiNamedActionCandidates();
+        Assert.assertTrue(StepIntentBinder.intentRequiresNamedActionControl(intent.text()));
+        List<DomCandidate> namedMatches = cs.stream()
+                .filter(c -> StepIntentBinder.candidateMatchesNamedAction(intent.text(), c, cs))
+                .toList();
+        Assert.assertEquals(namedMatches.size(), 2, "fixture must hit multiple named controls");
+        Assert.assertTrue(NestedPreferredHook.pickNamed(namedMatches).isPresent());
+
+        StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(intent, "TC_3", cs, List.of());
+        Assert.assertTrue(bound.ok(), bound.rejectReason());
+        Assert.assertFalse(bound.rejectReason().contains("AMBIGUOUS"));
+        Assert.assertTrue(bound.steps().get(0).locatorValue().contains("data-axis-test-id"));
+    }
 
     @Test
     public void bindSingle_sameNameHookAndLi_picksHook() {
