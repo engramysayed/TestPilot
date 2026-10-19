@@ -115,7 +115,11 @@ public class AuthoringService {
         List<String> preferOnTie = StepIntentBinder.preferIdsForSpentFills(intent, candidates, spent);
         StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(intent, tcId, candidates, preferOnTie);
         if (bound.ok()) {
-            return bound.steps();
+            List<ProvenStep> steps = bound.steps();
+            if (slimHtml != null && !slimHtml.isBlank()) {
+                steps = NestedPreferredHook.rewrite(steps, slimHtml);
+            }
+            return steps;
         }
         String reason = bound.rejectReason() == null ? "" : bound.rejectReason();
         if (reason.isBlank()) {

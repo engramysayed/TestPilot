@@ -353,7 +353,12 @@ public final class StepIntentBinder {
                     .filter(c -> candidateMatchesNamedAction(intent.text(), c, candidates)).toList();
             if (matches.stream().anyMatch(c -> !locatorTwins(c, matched, candidates))) {
                 DomCandidate preferredMatch = matches.stream().filter(c -> tieBreak.contains(c.id())).findFirst().orElse(null);
-                if (preferredMatch == null) return new BindResult(List.of(), "AMBIGUOUS:" + intent.kind() + ":multiple named controls");
+                if (preferredMatch == null) {
+                    preferredMatch = NestedPreferredHook.pickNamed(matches).orElse(null);
+                }
+                if (preferredMatch == null) {
+                    return new BindResult(List.of(), "AMBIGUOUS:" + intent.kind() + ":multiple named controls");
+                }
                 match = preferredMatch;
             }
             best = new Scored(match, Math.max(best.score, 50));
