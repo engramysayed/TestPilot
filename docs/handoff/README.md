@@ -4,6 +4,7 @@ These files capture the **Grok Bot “Keel team”** workstream (Oct 2026) so yo
 
 | Document | Use when |
 |----------|----------|
+| [2026-10-19-authoring-verb-aliases.md](2026-10-19-authoring-verb-aliases.md) | Spec: read-only built-in verbs + Owner aliases (click/type/assert/ignore) |
 | [2026-10-19-scoped-nested-hook.md](2026-10-19-scoped-nested-hook.md) | Shipped: unique menu row with a cloned inner hook uses a scoped inner-hook locator |
 | [2026-10-19-admin-review-batch-and-browser.md](2026-10-19-admin-review-batch-and-browser.md) | Shipped: Owner review TCs per batch + Chrome/Chrome headless/Edge |
 | [2026-10-19-nested-hook-and-quote-heading.md](2026-10-19-nested-hook-and-quote-heading.md) | Shipped: inner unique preferred hook on named bind; review leftover Expected quotes; Execute unique live heading wait |
