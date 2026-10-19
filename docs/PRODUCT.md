@@ -398,6 +398,7 @@ Start scripts:
 - `start-keel.cmd` — portal, engine, and Ollama/Appium if they are down
 - `start-portal.cmd` — portal only
 - `start-engine.cmd` — engine only (`KEEL_RUNNER_TOKEN` in `api-keys.local.bat`)
+- `rebuild-portal.cmd` — package `keel-portal\target\keel-portal-1.0-SNAPSHOT.jar` (skip tests). Does not start the portal; run `start-portal.cmd` then Ctrl+F5.
 
 ---
 

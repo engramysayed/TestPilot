@@ -253,6 +253,7 @@ mobile-codegen/             Android screen and test writer
 customer-framework-template/  Web Selenium/TestNG core inside every web ZIP
 customer-mobile-framework-template/  Android template inside a mobile ZIP
 start-keel.cmd              Portal + engine, and Ollama/Appium if they are down
+rebuild-portal.cmd          Package the portal fat jar (skip tests; does not start)
 tools/cursor-heal/          Cursor Auto heal (+ hunt) sidecar
 docs/                       Specs, plans, and ops guides
 ```
@@ -264,7 +265,7 @@ Engineering depth (flows, quality gates, historical workstream notes): [`docs/EN
 ## Where things stand (2026-10-15)
 
 - **Web portal.** Quiet teal theme, dark by default. The Runs table and top bar stay on one row (`keel-layout.css`, commit `0bbee58` on `keel/main`).
-- **Start path.** `start-keel.cmd`, `start-portal.cmd`, and `start-engine.cmd`. The older `start-portal.bat` launcher is gone.
+- **Start path.** `start-keel.cmd`, `start-portal.cmd`, and `start-engine.cmd`. Package the portal jar with `rebuild-portal.cmd` (does not start). The older `start-portal.bat` launcher is gone.
 - **Android.** Native execute and ZIP generation code is in the tree (M0–M4). WebView, vision, and Precision rules have unit tests only (M5). No phone or emulator acceptance run has been done (M6). Do not treat mobile as ready for a device test. Limits: [`docs/ops/mobile-operator-limits.md`](docs/ops/mobile-operator-limits.md).
 
 ---

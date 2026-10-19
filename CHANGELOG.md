@@ -4,6 +4,10 @@
 
 # Keel changelog
 
+## 2026-10-19 - rebuild-portal.cmd
+
+- Repo-root `rebuild-portal.cmd` packages `keel-portal\target\keel-portal-1.0-SNAPSHOT.jar` (skip tests). It does not start the portal. After it finishes, run `start-portal.cmd` then Ctrl+F5.
+
 ## 2026-10-19 - Nested hook and quote heading follow-up
 
 - **Execute asserts:** the live heading upgrade now runs on the text Execute actually binds. A leftover that became `Confirm the Upload Transactions list area is visible.` or `Confirm the text "Upload Transactions" is visible` can still become `'Upload Transactions List'` when that heading is the only match. Each part of a compound expected check is upgraded the same way before it is bound. Asserts still never heal, and Execute still does not write the library.

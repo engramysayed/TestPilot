@@ -8,7 +8,13 @@ After any change under `src/main/java/delivery/**` that should affect live jobs.
 
 ## Steps (Windows)
 
-`start-portal.cmd` stops a previous Keel `java.exe` on port 8080, waits briefly, then starts the portal. It does not kill other programs on that port.
+Package the fat jar first when Java or resources changed (this does **not** start the portal):
+
+```bat
+rebuild-portal.cmd
+```
+
+`start-portal.cmd` stops a previous Keel `java.exe` on port 8080, waits briefly, then starts the portal from `keel-portal\target\keel-portal-1.0-SNAPSHOT.jar` when that jar is a Spring Boot executable. It does not kill other programs on that port.
 
 ```bat
 start-portal.cmd

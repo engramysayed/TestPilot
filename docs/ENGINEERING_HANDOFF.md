@@ -20,7 +20,7 @@ This document points engineers at deeper material already in the tree.
 | Live Ollama models on Generate (chat tags + disk cache; Account vision radios unchanged) | `docs/handoff/2026-10-18-live-ollama-generate-models.md`, spec `docs/superpowers/specs/2026-10-18-live-ollama-generate-models-design.md` |
 | Add library TC + pre-run review (Cursor or Keel; Accept saves library then starts reviewed ids; review not charged) | `docs/handoff/2026-10-18-library-add-and-prerun-review.md`, spec `docs/superpowers/specs/2026-10-18-library-add-and-prerun-review-design.md`, plan `docs/superpowers/plans/2026-10-18-library-add-and-prerun-review.md` |
 | Nested preferred hook + leftover Expected quoting (inner unique hook on named bind and on remembered click/type/clear/select; review leftover quotes, dash rows, and quoted fillers; Execute unique live heading wait including the bound Confirm wrapper; vision keeps the hit node’s own hook; OutcomeKind unchanged) | `docs/handoff/2026-10-19-nested-hook-and-quote-heading.md`, spec `docs/superpowers/specs/2026-10-19-nested-hook-and-quote-heading-design.md`, plan `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md` |
-| Portal restart / Windows | `docs/ops/portal-restart.md`, `docs/ops/windows-vps-setup.md` |
+| Portal restart / Windows | `rebuild-portal.cmd` (package jar, skip tests, does not start), then `start-portal.cmd`; `docs/ops/portal-restart.md`, `docs/ops/windows-vps-setup.md` |
 | Architecture notes | `docs/ops/architecture-audit.md` |
 | Customer TAF template | `customer-framework-template/README.md` |
 

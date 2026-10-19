@@ -25,7 +25,7 @@ Leftover Expected that names a heading without quotes is `ASSERT_VISIBLE`, not a
 - Writing the library from Execute (runtime quote correction is for that run only).
 - Sending screenshots into pre-run review.
 - Review “learning” quotes as free LLM reasoning.
-- Admin review-batch size, remaining-cap counter, `rebuild-portal.cmd` (separate unwritten spec).
+- Admin review-batch size, remaining-cap counter (separate unwritten spec). `rebuild-portal.cmd` is in the repo root (package only).
 - Midscene, Claude/Anthropic, charging review, `api-keys.local.bat`.
 
 ## Nested preferred hook
