@@ -69,17 +69,28 @@ public class NestedPreferredHookBindTest {
     }
 
     @Test
-    public void authorIntent_xpathOnly_rewritesInnerHook() throws Exception {
+    public void authorIntent_boundLiXpath_rewritesToInnerHookCss() throws Exception {
         AuthoringService authoring = new AuthoringService(null, new LocatorValidator());
         var intent = new StepIntentBinder.IntentLine(
                 StepIntentBinder.IntentKind.CLICK,
                 "Click the 'Bill Payment Settlement' in the Support sub-menu.");
+        List<DomCandidate> liOnlyCatalog = List.of(
+                new DomCandidate("li1", "xpath",
+                        "//li[contains(normalize-space(.),'Bill Payment Settlement')]",
+                        "li", "Bill Payment Settlement"));
         try (var ignored = PreferredHooksStore.activate(List.of("data-axis-test-id"))) {
+            StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(
+                    intent, "TC_3", liOnlyCatalog, List.of());
+            Assert.assertTrue(bound.ok(), bound.rejectReason());
+            Assert.assertEquals(bound.steps().get(0).locatorStrategy(), "xpath",
+                    "bind must keep li xpath before authorIntent rewrite");
+
             List<ProvenStep> steps = authoring.authorIntent(
-                    "TC_3", intent, HTML, null, false, List.of(), List.of(), null);
+                    "TC_3", intent, HTML, null, false, List.of(), List.of(), liOnlyCatalog);
             Assert.assertFalse(steps.isEmpty());
             Assert.assertTrue(steps.get(0).validated());
             Assert.assertEquals(steps.get(0).locatorStrategy(), "css");
+            Assert.assertTrue(steps.get(0).locatorValue().contains("data-axis-test-id"));
             Assert.assertTrue(steps.get(0).locatorValue().contains("side-nav-bill-payment-settlement-link"));
         }
     }
