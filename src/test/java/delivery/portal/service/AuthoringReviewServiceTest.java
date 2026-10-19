@@ -172,6 +172,22 @@ public class AuthoringReviewServiceTest {
     }
 
     @Test
+    public void reviewCases_quotesLeftoverExpectedAfterRepair() throws Exception {
+        String projectId = "review-quote-" + System.nanoTime();
+        ManualTestCase tc = billPaymentSettlementCase();
+        Fixture fixture = fixture(projectId, List.of(tc), reviewJson(List.of(tc)));
+        Map<String, Object> result = fixture.service.reviewCases(
+                projectId, OWNER_ID, List.of(tc), "ollama", "gemma4:e2b", "", "");
+        List<?> cases = (List<?>) result.get("cases");
+        String expected = String.valueOf(((Map<?, ?>) cases.get(0)).get("expectedResult"));
+        Assert.assertTrue(expected.contains("'Upload Transactions'"), expected);
+        Assert.assertFalse(expected.toLowerCase().contains("'upload transactions list area'"), expected);
+        Assert.assertTrue(expected.contains("'Bill Payment Settlement'"), expected);
+        String csv = String.valueOf(result.get("csv"));
+        Assert.assertTrue(csv.contains("'Upload Transactions'"), csv);
+    }
+
+    @Test
     public void reviewCases_reviewsProspectiveRunSuite_withoutReadingSavedWorkbook() throws Exception {
         Fixture fixture = fixture(List.of(originalCase()), validReviewJson());
         ManualTestCase prospective = new ManualTestCase(
@@ -190,11 +206,16 @@ public class AuthoringReviewServiceTest {
     }
 
     private static Fixture fixture(List<ManualTestCase> cases, String response) throws Exception {
+        return fixture(PROJECT_ID, cases, response);
+    }
+
+    private static Fixture fixture(String projectId, List<ManualTestCase> cases, String response)
+            throws Exception {
         Path root = Files.createTempDirectory("authoring-review-service");
         DeliveryPortalProperties props = new DeliveryPortalProperties();
         props.setStoreRoot(root.toString());
         GeneratedWorkbookService workbooks = new GeneratedWorkbookService(props);
-        workbooks.saveFromCases(PROJECT_ID, cases, "TEST", "fixture");
+        workbooks.saveFromCases(projectId, cases, "TEST", "fixture");
 
         Fixture fixture = new Fixture(workbooks);
         AuthoringReviewService.ReviewLlmPort port = (provider, model, system, user) -> {
@@ -205,20 +226,24 @@ public class AuthoringReviewServiceTest {
             fixture.lastUser = user;
             return response;
         };
-        fixture.service = new AuthoringReviewService(props, store(), workbooks, port);
+        fixture.service = new AuthoringReviewService(props, store(projectId), workbooks, port);
         return fixture;
     }
 
     private static PortalStore store() {
+        return store(PROJECT_ID);
+    }
+
+    private static PortalStore store(String projectId) {
         ProjectEntity project = new ProjectEntity();
-        project.setProjectId(PROJECT_ID);
+        project.setProjectId(projectId);
         project.setOwnerUserId(OWNER_ID);
         project.setName("Review project");
         project.setBaseUrl("https://example.test");
         ProjectRepository projects = mock(ProjectRepository.class);
         JobRepository jobs = mock(JobRepository.class);
-        when(projects.findByProjectId(PROJECT_ID)).thenReturn(Optional.of(project));
-        when(jobs.findByProjectId(PROJECT_ID)).thenReturn(List.of());
+        when(projects.findByProjectId(projectId)).thenReturn(Optional.of(project));
+        when(jobs.findByProjectId(projectId)).thenReturn(List.of());
         return new PortalStore(new DeliveryPortalProperties(), projects, jobs);
     }
 
@@ -228,6 +253,16 @@ public class AuthoringReviewServiceTest {
                 "1. Enter in the Email field\n2. Click Submit",
                 "1. Email remains empty\n2. Message 'Email is required' is shown",
                 "P1", "negative", "", "somebody@example.test\n", "EXECUTE");
+    }
+
+    private static ManualTestCase billPaymentSettlementCase() {
+        return new ManualTestCase(
+                "TC_3",
+                "Verify Bill Payment Settlement",
+                "",
+                "1. Click the 'Support' in the sidebar.\n2. Click the 'Bill Payment Settlement' in the Support sub-menu.",
+                "1. The Support section expands and sub-menu items are shown.\n2. The Bill Payment Settlement page is displayed with the title 'Bill Payment Settlement' and the Upload Transactions list area is visible.",
+                "P1", "", "", "", "EXECUTE");
     }
 
     private static ManualTestCase simpleCase(String tcId) {

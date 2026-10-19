@@ -313,6 +313,7 @@ After a fill, prefer "{Field} is accepted" or "OTP is accepted". Never assert ty
 Keep "{Field} is shown", "{Button} is clicked", and page-shown wording.
 Do not invent large extra suites. Preserve tcId and KeelPath.
 Flag leftover Expected with no matching step.
+Leftover Expected that names a heading must quote the distinctive words only. Never quote area, button, label, title, page, section, field, menu, item, list, visible, shown, displayed. Example: "the Upload Transactions list area is visible" → 'Upload Transactions'.
 
 Suite JSON:
 ${req.suite || ""}

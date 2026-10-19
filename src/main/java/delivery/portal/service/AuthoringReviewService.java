@@ -1,5 +1,6 @@
 package delivery.portal.service;
 
+import delivery.authoring.LeftoverExpectedQuoter;
 import delivery.authoring.LocalLlmClient;
 import delivery.excel.AuthoringReviewParser;
 import delivery.excel.ExcelTcReader;
@@ -44,6 +45,7 @@ public class AuthoringReviewService {
             Keep "{Field} is shown", "{Button} is clicked", and page-shown wording.
             Do not invent large extra suites. Preserve tcId and KeelPath.
             Flag leftover Expected with no matching step.
+            Leftover Expected that names a heading must quote the distinctive words only. Never quote area, button, label, title, page, section, field, menu, item, list, visible, shown, displayed. Example: "the Upload Transactions list area is visible" → 'Upload Transactions'.
             """;
 
     private final PortalStore store;
@@ -134,6 +136,11 @@ public class AuthoringReviewService {
         AuthoringReviewParser.ParseResult parsed = AuthoringReviewParser.parse(raw);
         validateReturnedSuite(current, parsed.cases());
         List<ManualTestCase> repaired = TcImportRepair.repairCases(parsed.cases());
+        List<ManualTestCase> quoted = new ArrayList<>();
+        for (ManualTestCase tc : repaired) {
+            quoted.add(LeftoverExpectedQuoter.quoteCase(tc));
+        }
+        repaired = quoted;
         List<String> gateErrors = GenerateQualityGate.validate(repaired, project.getBaseUrl());
 
         Map<String, Object> out = new LinkedHashMap<>();
