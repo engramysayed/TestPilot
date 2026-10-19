@@ -9,9 +9,14 @@
 - Named click/type/clear/select: if the unique menu row contains one preferred hook that also exists elsewhere (Ant popup copy), Keel now clicks that inner hook scoped under the row (`//li[…]//a[@data-axis-test-id='…']`) instead of keeping the row xpath. Document-unique hooks still become CSS. Two different hooks inside one row still keep xpath. Twin Settings stay unresolved.
 - Rebuild the portal jar and Ctrl+F5 after pulling. Spec: `docs/superpowers/specs/2026-10-19-scoped-nested-hook-design.md`.
 
+## 2026-10-19 - Admin review batch size + browser type
+
+- Owner **Admin → LLM & API keys**: **Review cases per batch** (1–50, default 50) and **Browser** (Chrome, Chrome headless, Edge). Selecting more than 5 cases splits review into those batches (20 with 7 → 7+7+6). Combined preview after the last batch; Accept waits until every batch succeeded. Env still wins for `BROWSER_TYPE` / `BROWSER_HEADLESS`. Next job that opens a window uses the saved browser.
+- Rebuild the portal jar and Ctrl+F5 after pulling. Spec: `docs/superpowers/specs/2026-10-19-admin-review-batch-and-browser-design.md`.
+
 ## 2026-10-19 - Spec: admin review batch size + browser type
 
-- Approved design (not implemented): Owner sets review TCs per batch and Chrome / Chrome headless / Edge on Admin → LLM & API keys. Suites of 6+ cases split into those batches; combined preview after the last batch. Spec: `docs/superpowers/specs/2026-10-19-admin-review-batch-and-browser-design.md`.
+- Approved design (now implemented): Owner sets review TCs per batch and Chrome / Chrome headless / Edge on Admin → LLM & API keys. Spec: `docs/superpowers/specs/2026-10-19-admin-review-batch-and-browser-design.md`.
 
 ## 2026-10-19 - Guide: review, leftover quotes, preferred hooks
 

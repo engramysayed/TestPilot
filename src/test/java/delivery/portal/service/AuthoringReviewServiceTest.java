@@ -111,10 +111,54 @@ public class AuthoringReviewServiceTest {
 
         IllegalArgumentException error = Assert.expectThrows(
                 IllegalArgumentException.class,
-                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "cursor", "", "", ""));
+                () -> fixture.service.reviewCases(
+                        PROJECT_ID, OWNER_ID, cases, "cursor", "", "", ""));
 
         Assert.assertEquals(error.getMessage(), "Suite exceeds 50 cases");
         Assert.assertEquals(fixture.calls, 0);
+    }
+
+    @Test
+    public void reviewCases_postedTwentyWhenNIs7_refused() throws Exception {
+        List<ManualTestCase> cases = new ArrayList<>();
+        for (int i = 1; i <= 20; i++) {
+            cases.add(simpleCase(String.format("TC_%02d", i)));
+        }
+        Fixture fixture = fixture(cases, reviewJson(cases), 7);
+        IllegalArgumentException error = Assert.expectThrows(
+                IllegalArgumentException.class,
+                () -> fixture.service.reviewCases(
+                        PROJECT_ID, OWNER_ID, cases, "cursor", "", "", ""));
+        Assert.assertEquals(error.getMessage(), "Suite exceeds 7 cases");
+        Assert.assertEquals(fixture.calls, 0);
+    }
+
+    @Test
+    public void reviewCases_fiveWhenNIs2_allowed() throws Exception {
+        List<ManualTestCase> cases = new ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            cases.add(simpleCase(String.format("TC_%02d", i)));
+        }
+        Fixture fixture = fixture(cases, reviewJson(cases), 2);
+        Map<String, Object> result = fixture.service.reviewCases(
+                PROJECT_ID, OWNER_ID, cases, "cursor", "", "", "");
+        Assert.assertEquals(result.get("tcCount"), 5);
+        Assert.assertEquals(fixture.calls, 1);
+    }
+
+    @Test
+    public void review_eightWhenNIs7_twoLlmCalls() throws Exception {
+        List<ManualTestCase> cases = new ArrayList<>();
+        for (int i = 1; i <= 8; i++) {
+            cases.add(simpleCase(String.format("TC_%02d", i)));
+        }
+        Fixture fixture = fixture(cases, reviewJson(List.of(simpleCase("TC_01"))), 7);
+        // each batch is reviewed with the same stub JSON (TC_01 only) → fail closed on missing ids
+        IllegalArgumentException error = Assert.expectThrows(
+                IllegalArgumentException.class,
+                () -> fixture.service.review(PROJECT_ID, OWNER_ID, "cursor", "", "", ""));
+        Assert.assertTrue(error.getMessage().contains("missing input tcId"), error.getMessage());
+        Assert.assertEquals(fixture.calls, 1, "fail closed on first batch that cannot round-trip");
     }
 
     @Test
@@ -206,10 +250,21 @@ public class AuthoringReviewServiceTest {
     }
 
     private static Fixture fixture(List<ManualTestCase> cases, String response) throws Exception {
-        return fixture(PROJECT_ID, cases, response);
+        return fixture(PROJECT_ID, cases, response, ReviewBatchPolicy.DEFAULT_N);
+    }
+
+    private static Fixture fixture(List<ManualTestCase> cases, String response, int batchN)
+            throws Exception {
+        return fixture(PROJECT_ID, cases, response, batchN);
     }
 
     private static Fixture fixture(String projectId, List<ManualTestCase> cases, String response)
+            throws Exception {
+        return fixture(projectId, cases, response, ReviewBatchPolicy.DEFAULT_N);
+    }
+
+    private static Fixture fixture(
+            String projectId, List<ManualTestCase> cases, String response, int batchN)
             throws Exception {
         Path root = Files.createTempDirectory("authoring-review-service");
         DeliveryPortalProperties props = new DeliveryPortalProperties();
@@ -226,7 +281,8 @@ public class AuthoringReviewServiceTest {
             fixture.lastUser = user;
             return response;
         };
-        fixture.service = new AuthoringReviewService(props, store(projectId), workbooks, port);
+        fixture.service = new AuthoringReviewService(
+                props, store(projectId), workbooks, port, batchN);
         return fixture;
     }
 

@@ -23,6 +23,8 @@ public class LlmSettingsServiceTest {
     private String prevGenModel;
     private String prevBase;
     private String prevVision;
+    private String prevBrowserType;
+    private String prevBrowserHeadless;
 
     @BeforeMethod
     public void setUp() throws Exception {
@@ -39,6 +41,8 @@ public class LlmSettingsServiceTest {
         prevGenModel = System.getProperty("delivery.generate-model");
         prevBase = System.getProperty("delivery.llm-base-url");
         prevVision = System.getProperty("delivery.vision.assert.model");
+        prevBrowserType = System.getProperty("BROWSER_TYPE");
+        prevBrowserHeadless = System.getProperty("BROWSER_HEADLESS");
         System.clearProperty("CURSOR_API_KEY");
         System.clearProperty("AGENTROUTER_API_KEY");
         System.clearProperty("OLLAMA_API_KEY");
@@ -46,6 +50,8 @@ public class LlmSettingsServiceTest {
         System.clearProperty("delivery.generate-model");
         System.clearProperty("delivery.llm-base-url");
         System.clearProperty("delivery.vision.assert.model");
+        System.clearProperty("BROWSER_TYPE");
+        System.clearProperty("BROWSER_HEADLESS");
     }
 
     @AfterMethod
@@ -57,6 +63,8 @@ public class LlmSettingsServiceTest {
         restore("delivery.generate-model", prevGenModel);
         restore("delivery.llm-base-url", prevBase);
         restore("delivery.vision.assert.model", prevVision);
+        restore("BROWSER_TYPE", prevBrowserType);
+        restore("BROWSER_HEADLESS", prevBrowserHeadless);
     }
 
     private static void restore(String key, String prev) {
@@ -309,5 +317,20 @@ public class LlmSettingsServiceTest {
         svc.rememberOllamaCache(List.of("gemma4:e2b"));
         svc.update(new UpdateRequest(null, null, null, null, "other-chat", null, false, false, false));
         Assert.assertEquals(svc.cachedOllamaModels(), List.of("gemma4:e2b"));
+    }
+
+    @Test
+    public void saveReviewBatchAndChromeHeadless_publishesWhenEnvBlank() {
+        LlmSettingsService svc = new LlmSettingsService(props);
+        svc.update(new UpdateRequest(
+                null, null, null, null, null, null,
+                false, false, false, 7, "chromeheadless"));
+        Map<String, Object> view = svc.maskedView();
+        Assert.assertEquals(view.get("reviewCasesPerBatch"), 7);
+        Assert.assertEquals(view.get("browser"), "chromeheadless");
+        Assert.assertEquals(svc.reviewCasesPerBatch(), 7);
+        Assert.assertEquals(svc.browserChoice(), "chromeheadless");
+        Assert.assertEquals(System.getProperty("BROWSER_TYPE"), "CHROME");
+        Assert.assertEquals(System.getProperty("BROWSER_HEADLESS"), "true");
     }
 }

@@ -47,6 +47,18 @@
                     <input type="password" id="agentrouterApiKey" name="agentrouterApiKey" autocomplete="new-password" placeholder="">
                     <span class="muted" id="agentrouterApiKeyHint"></span>
                 </label>
+                <label>Review cases per batch
+                    <input type="number" id="reviewCasesPerBatch" name="reviewCasesPerBatch" min="1" max="50" value="50">
+                    <span class="muted">When more than 5 cases are selected, review splits into batches of this size (1–50). Default 50.</span>
+                </label>
+                <label>Browser
+                    <select id="browser" name="browser">
+                        <option value="edge">Edge</option>
+                        <option value="chrome">Chrome</option>
+                        <option value="chromeheadless">Chrome headless</option>
+                    </select>
+                    <span class="muted">Next Execute / Automate / Record / Bug Hunter window. Environment variables still win if already set.</span>
+                </label>
             </div>
             <div style="margin-top:1.25rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
                 <button class="btn btn-primary" type="button" id="btn-save-llm">Save</button>
@@ -138,6 +150,10 @@
         ensureOption(document.getElementById('ollamaVisionModel'), current.ollamaVisionModel || '');
         if (current.ollamaChatModel) document.getElementById('ollamaChatModel').value = current.ollamaChatModel;
         if (current.ollamaVisionModel) document.getElementById('ollamaVisionModel').value = current.ollamaVisionModel;
+        const batch = document.getElementById('reviewCasesPerBatch');
+        if (batch) batch.value = current.reviewCasesPerBatch || 50;
+        const browser = document.getElementById('browser');
+        if (browser) browser.value = current.browser || 'edge';
     }
     async function refreshModels() {
         showError('');
@@ -168,7 +184,9 @@
         const body = {
             ollamaBaseUrl: document.getElementById('ollamaBaseUrl').value.trim(),
             ollamaChatModel: document.getElementById('ollamaChatModel').value,
-            ollamaVisionModel: document.getElementById('ollamaVisionModel').value
+            ollamaVisionModel: document.getElementById('ollamaVisionModel').value,
+            reviewCasesPerBatch: parseInt(document.getElementById('reviewCasesPerBatch').value, 10) || 50,
+            browser: document.getElementById('browser').value
         };
         const cursor = document.getElementById('cursorApiKey').value;
         const agent = document.getElementById('agentrouterApiKey').value;

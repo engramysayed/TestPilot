@@ -77,6 +77,8 @@ public class LlmSettingsService implements ApplicationRunner {
         out.put("ollamaBaseUrl", blankToDefault(s.ollamaBaseUrl, defaultBaseUrl()));
         out.put("ollamaChatModel", nullToEmpty(s.ollamaChatModel));
         out.put("ollamaVisionModel", nullToEmpty(s.ollamaVisionModel));
+        out.put("reviewCasesPerBatch", s.reviewCasesPerBatch);
+        out.put("browser", s.browser);
         return out;
     }
 
@@ -106,6 +108,8 @@ public class LlmSettingsService implements ApplicationRunner {
             String baseUrl = cur.ollamaBaseUrl;
             String chat = cur.ollamaChatModel;
             String vision = cur.ollamaVisionModel;
+            int batch = cur.reviewCasesPerBatch;
+            String browser = cur.browser;
             if (req != null) {
                 if (req.ollamaBaseUrl != null) {
                     baseUrl = req.ollamaBaseUrl.trim();
@@ -116,9 +120,16 @@ public class LlmSettingsService implements ApplicationRunner {
                 if (req.ollamaVisionModel != null) {
                     vision = req.ollamaVisionModel.trim();
                 }
+                if (req.reviewCasesPerBatch != null) {
+                    batch = delivery.portal.service.ReviewBatchPolicy.clampN(req.reviewCasesPerBatch);
+                }
+                if (req.browser != null && !req.browser.isBlank()) {
+                    browser = normalizeBrowser(req.browser);
+                }
             }
             List<String> cache = cur.cachedOllamaModels == null ? List.of() : cur.cachedOllamaModels;
-            StoredSettings next = new StoredSettings(cursor, agent, ollamaKey, baseUrl, chat, vision, cache);
+            StoredSettings next = new StoredSettings(
+                    cursor, agent, ollamaKey, baseUrl, chat, vision, cache, batch, browser);
             writeToDisk(next);
             stored = next;
             applyToRuntime();
@@ -276,7 +287,9 @@ public class LlmSettingsService implements ApplicationRunner {
                     cur.ollamaBaseUrl,
                     cur.ollamaChatModel,
                     cur.ollamaVisionModel,
-                    cache);
+                    cache,
+                    cur.reviewCasesPerBatch,
+                    cur.browser);
             writeToDisk(next);
             stored = next;
         }
@@ -321,6 +334,15 @@ public class LlmSettingsService implements ApplicationRunner {
                 setSysPropIfEnvBlank("delivery.vision.model", s.ollamaVisionModel);
             }
         }
+        publishBrowser(s.browser);
+    }
+
+    public int reviewCasesPerBatch() {
+        return delivery.portal.service.ReviewBatchPolicy.clampN(snapshot().reviewCasesPerBatch);
+    }
+
+    public String browserChoice() {
+        return normalizeBrowser(snapshot().browser);
     }
 
     private void loadFromDisk() {
@@ -350,6 +372,8 @@ public class LlmSettingsService implements ApplicationRunner {
             raw.put("ollamaChatModel", nullToEmpty(s.ollamaChatModel));
             raw.put("ollamaVisionModel", nullToEmpty(s.ollamaVisionModel));
             raw.put("cachedOllamaModels", s.cachedOllamaModels() == null ? List.of() : s.cachedOllamaModels());
+            raw.put("reviewCasesPerBatch", s.reviewCasesPerBatch);
+            raw.put("browser", nullToEmpty(s.browser));
             Path tmp = settingsFile.resolveSibling(FILE_NAME + ".tmp");
             MAPPER.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), raw);
             try {
@@ -376,7 +400,9 @@ public class LlmSettingsService implements ApplicationRunner {
             base = defaultBaseUrl();
         }
         List<String> cache = parseCachedModels(raw.get("cachedOllamaModels"));
-        return new StoredSettings(cursor, agent, ollamaKey, base, chat, vision, cache);
+        int batch = parseBatch(raw.get("reviewCasesPerBatch"));
+        String browser = normalizeBrowser(str(raw.get("browser")));
+        return new StoredSettings(cursor, agent, ollamaKey, base, chat, vision, cache, batch, browser);
     }
 
     private static List<String> parseCachedModels(Object raw) {
@@ -405,7 +431,8 @@ public class LlmSettingsService implements ApplicationRunner {
         if (chat == null || chat.isBlank()) {
             chat = props.getGenerateModel();
         }
-        return new StoredSettings("", "", "", base, nullToEmpty(chat), "", List.of());
+        return new StoredSettings("", "", "", base, nullToEmpty(chat), "", List.of(),
+                delivery.portal.service.ReviewBatchPolicy.DEFAULT_N, "edge");
     }
 
     private String defaultBaseUrl() {
@@ -526,8 +553,24 @@ public class LlmSettingsService implements ApplicationRunner {
             String ollamaVisionModel,
             boolean clearCursorApiKey,
             boolean clearAgentrouterApiKey,
-            boolean clearOllamaApiKey
+            boolean clearOllamaApiKey,
+            Integer reviewCasesPerBatch,
+            String browser
     ) {
+        public UpdateRequest(
+                String cursorApiKey,
+                String agentrouterApiKey,
+                String ollamaApiKey,
+                String ollamaBaseUrl,
+                String ollamaChatModel,
+                String ollamaVisionModel,
+                boolean clearCursorApiKey,
+                boolean clearAgentrouterApiKey,
+                boolean clearOllamaApiKey) {
+            this(cursorApiKey, agentrouterApiKey, ollamaApiKey, ollamaBaseUrl, ollamaChatModel,
+                    ollamaVisionModel, clearCursorApiKey, clearAgentrouterApiKey, clearOllamaApiKey,
+                    null, null);
+        }
     }
 
     public static final class OllamaUnreachableException extends Exception {
@@ -547,10 +590,56 @@ public class LlmSettingsService implements ApplicationRunner {
             String ollamaBaseUrl,
             String ollamaChatModel,
             String ollamaVisionModel,
-            List<String> cachedOllamaModels
+            List<String> cachedOllamaModels,
+            int reviewCasesPerBatch,
+            String browser
     ) {
         static StoredSettings empty() {
-            return new StoredSettings("", "", "", DEFAULT_OLLAMA_BASE, "", "", List.of());
+            return new StoredSettings("", "", "", DEFAULT_OLLAMA_BASE, "", "", List.of(),
+                    delivery.portal.service.ReviewBatchPolicy.DEFAULT_N, "edge");
         }
+    }
+
+    static String normalizeBrowser(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "edge";
+        }
+        String t = raw.trim().toLowerCase(java.util.Locale.ROOT).replace("-", "").replace("_", "");
+        if (t.equals("chrome")) {
+            return "chrome";
+        }
+        if (t.equals("chromeheadless")) {
+            return "chromeheadless";
+        }
+        return "edge";
+    }
+
+    private static int parseBatch(Object raw) {
+        if (raw instanceof Number n) {
+            return delivery.portal.service.ReviewBatchPolicy.clampN(n.intValue());
+        }
+        if (raw instanceof String s && !s.isBlank()) {
+            try {
+                return delivery.portal.service.ReviewBatchPolicy.clampN(Integer.parseInt(s.trim()));
+            } catch (NumberFormatException ignored) {
+                return delivery.portal.service.ReviewBatchPolicy.DEFAULT_N;
+            }
+        }
+        return delivery.portal.service.ReviewBatchPolicy.DEFAULT_N;
+    }
+
+    private static void publishBrowser(String browser) {
+        String choice = normalizeBrowser(browser);
+        String type = "EDGE";
+        String headless = "false";
+        if (choice.equals("chrome")) {
+            type = "CHROME";
+            headless = "false";
+        } else if (choice.equals("chromeheadless")) {
+            type = "CHROME";
+            headless = "true";
+        }
+        setSysPropIfEnvBlank("BROWSER_TYPE", type);
+        setSysPropIfEnvBlank("BROWSER_HEADLESS", headless);
     }
 }

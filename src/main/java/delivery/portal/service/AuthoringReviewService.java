@@ -11,6 +11,7 @@ import delivery.excel.TcImportRepair;
 import delivery.heal.CursorHealClient;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.ProjectRecord;
+import delivery.portal.service.llm.LlmSettingsService;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +29,7 @@ import java.util.Set;
 
 @Service
 public class AuthoringReviewService {
-    public static final int MAX_CASES = 50;
+    public static final int MAX_CASES = ReviewBatchPolicy.ABSOLUTE_MAX;
 
     private static final String SYSTEM_PROMPT = """
             You are Keel authoring reviewer. Given suite JSON plus optional stories and requirements notes,
@@ -51,6 +52,8 @@ public class AuthoringReviewService {
     private final PortalStore store;
     private final GeneratedWorkbookService workbooks;
     private final ReviewLlmPort llm;
+    private final LlmSettingsService llmSettings;
+    private final int configuredBatch;
 
     @FunctionalInterface
     public interface ReviewLlmPort {
@@ -61,9 +64,10 @@ public class AuthoringReviewService {
     public AuthoringReviewService(
             DeliveryPortalProperties props,
             PortalStore store,
-            GeneratedWorkbookService workbooks
+            GeneratedWorkbookService workbooks,
+            LlmSettingsService llmSettings
     ) {
-        this(props, store, workbooks, defaultPort(props));
+        this(props, store, workbooks, defaultPort(props), llmSettings, ReviewBatchPolicy.DEFAULT_N);
     }
 
     AuthoringReviewService(
@@ -72,9 +76,32 @@ public class AuthoringReviewService {
             GeneratedWorkbookService workbooks,
             ReviewLlmPort llm
     ) {
+        this(props, store, workbooks, llm, null, ReviewBatchPolicy.DEFAULT_N);
+    }
+
+    AuthoringReviewService(
+            DeliveryPortalProperties props,
+            PortalStore store,
+            GeneratedWorkbookService workbooks,
+            ReviewLlmPort llm,
+            int configuredBatch
+    ) {
+        this(props, store, workbooks, llm, null, configuredBatch);
+    }
+
+    private AuthoringReviewService(
+            DeliveryPortalProperties props,
+            PortalStore store,
+            GeneratedWorkbookService workbooks,
+            ReviewLlmPort llm,
+            LlmSettingsService llmSettings,
+            int configuredBatch
+    ) {
         this.store = store;
         this.workbooks = workbooks;
         this.llm = llm;
+        this.llmSettings = llmSettings;
+        this.configuredBatch = ReviewBatchPolicy.clampN(configuredBatch);
     }
 
     public Map<String, Object> review(
@@ -86,8 +113,71 @@ public class AuthoringReviewService {
             String stories
     ) throws Exception {
         List<ManualTestCase> current = new ExcelTcReader().read(workbooks.requireExcel(projectId));
-        return reviewCases(
-                projectId, ownerUserId, current, provider, model, requirementsNotes, stories);
+        int n = configuredN();
+        List<List<ManualTestCase>> batches = ReviewBatchPolicy.chunks(current, n);
+        if (batches.size() <= 1) {
+            return reviewCases(
+                    projectId, ownerUserId, current, provider, model, requirementsNotes, stories);
+        }
+        List<Map<String, Object>> allCases = new ArrayList<>();
+        List<Map<String, Object>> allFindings = new ArrayList<>();
+        List<String> gateErrors = new ArrayList<>();
+        StringBuilder coverage = new StringBuilder();
+        String csv = "";
+        boolean previewOk = true;
+        String providerOut = provider;
+        String modelOut = model;
+        for (List<ManualTestCase> batch : batches) {
+            Map<String, Object> part = reviewCases(
+                    projectId, ownerUserId, batch, provider, model, requirementsNotes, stories);
+            providerOut = String.valueOf(part.getOrDefault("provider", providerOut));
+            modelOut = String.valueOf(part.getOrDefault("model", modelOut));
+            Object cases = part.get("cases");
+            if (cases instanceof List<?> list) {
+                for (Object row : list) {
+                    if (row instanceof Map<?, ?> map) {
+                        allCases.add(new LinkedHashMap<>((Map<String, Object>) (Map<?, ?>) map));
+                    }
+                }
+            }
+            Object findings = part.get("findings");
+            if (findings instanceof List<?> list) {
+                for (Object row : list) {
+                    if (row instanceof Map<?, ?> map) {
+                        allFindings.add(new LinkedHashMap<>((Map<String, Object>) (Map<?, ?>) map));
+                    }
+                }
+            }
+            Object gates = part.get("gateErrors");
+            if (gates instanceof List<?> list) {
+                for (Object row : list) {
+                    if (row != null) {
+                        gateErrors.add(String.valueOf(row));
+                    }
+                }
+            }
+            Object notes = part.get("coverageNotes");
+            if (notes != null && !String.valueOf(notes).isBlank()) {
+                if (coverage.length() > 0) {
+                    coverage.append('\n');
+                }
+                coverage.append(notes);
+            }
+            String partCsv = part.get("csv") == null ? "" : String.valueOf(part.get("csv"));
+            csv = mergeCsv(csv, partCsv);
+            previewOk &= Boolean.TRUE.equals(part.get("previewOk"));
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("provider", providerOut);
+        out.put("model", modelOut);
+        out.put("findings", allFindings);
+        out.put("cases", allCases);
+        out.put("csv", csv);
+        out.put("coverageNotes", coverage.toString());
+        out.put("gateErrors", gateErrors);
+        out.put("tcCount", allCases.size());
+        out.put("previewOk", previewOk && gateErrors.isEmpty());
+        return out;
     }
 
     /**
@@ -108,8 +198,9 @@ public class AuthoringReviewService {
         if (current == null || current.isEmpty()) {
             throw new IllegalArgumentException("No test cases to review");
         }
-        if (current.size() > MAX_CASES) {
-            throw new IllegalArgumentException("Suite exceeds " + MAX_CASES + " cases");
+        int cap = ReviewBatchPolicy.capForPostedCount(current.size(), configuredN());
+        if (ReviewBatchPolicy.exceedsCap(current.size(), configuredN())) {
+            throw new IllegalArgumentException("Suite exceeds " + cap + " cases");
         }
 
         String providerNorm = provider == null ? "" : provider.trim().toLowerCase(Locale.ROOT);
@@ -205,6 +296,27 @@ public class AuthoringReviewService {
                     Duration.ofSeconds(Math.max(30, props.getGenerateTimeoutSeconds()) + 30L));
             return ollama.completeChat(system, user, true);
         };
+    }
+
+    private int configuredN() {
+        if (llmSettings != null) {
+            return llmSettings.reviewCasesPerBatch();
+        }
+        return configuredBatch;
+    }
+
+    static String mergeCsv(String existing, String next) {
+        if (next == null || next.isBlank()) {
+            return existing == null ? "" : existing;
+        }
+        if (existing == null || existing.isBlank()) {
+            return next;
+        }
+        int nl = next.indexOf('\n');
+        if (nl < 0 || nl + 1 >= next.length()) {
+            return existing;
+        }
+        return existing + next.substring(nl);
     }
 
     private static JSONObject toSuiteJson(

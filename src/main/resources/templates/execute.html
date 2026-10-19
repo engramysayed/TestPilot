@@ -163,7 +163,8 @@
             </div>
 
             <section class="panel" id="pre-run-review-panel" hidden
-                     data-endpoint="/pre-run-authoring-review">
+                     data-endpoint="/pre-run-authoring-review"
+                     th:attr="data-review-batch-size=${reviewCasesPerBatch}">
                 <h3>Pre-run review</h3>
                 <p id="pre-run-review-status" class="generate-status" role="status" aria-live="polite"></p>
                 <div id="pre-run-review-progress" class="pre-run-progress" hidden>
@@ -516,13 +517,34 @@
         preRunReviewAccept.disabled = true;
     }
 
-    function buildPreRunReviewInput(useGenerated) {
+    function reviewBatchSize() {
+        const n = parseInt((preRunReviewPanel && preRunReviewPanel.dataset.reviewBatchSize) || '50', 10);
+        return (n >= 1 && n <= 50) ? n : 50;
+    }
+
+    function chunkReviewIds(ids, n) {
+        const list = ids || [];
+        if (list.length <= 5) return [list];
+        const out = [];
+        for (let i = 0; i < list.length; i += n) out.push(list.slice(i, i + n));
+        return out;
+    }
+
+    function mergeReviewCsv(existing, next) {
+        if (!next) return existing || null;
+        if (!existing) return next;
+        const nl = next.indexOf('\n');
+        if (nl < 0 || nl + 1 >= next.length) return existing;
+        return existing + next.substring(nl);
+    }
+
+    function buildPreRunReviewInput(useGenerated, idChunk) {
         const body = new FormData();
         const provider = selectedPreRunReviewProvider();
         body.append('provider', provider);
         if (useGenerated) {
             body.append('useGenerated', 'true');
-            selectedLibraryTcIds().forEach(id => body.append('tcIds', id));
+            (idChunk || selectedLibraryTcIds()).forEach(id => body.append('tcIds', id));
         }
         if (excelInput.files && excelInput.files[0]) {
             body.append('excel', excelInput.files[0]);
@@ -541,40 +563,56 @@
         }
         submitBtn.disabled = true;
         try {
-            const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
-                + '/pre-run-authoring-review', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: API_HEADERS,
-                body: buildPreRunReviewInput(useGenerated)
-            });
-            let data = {};
-            try { data = await res.json(); } catch (ignore) { /* show generic error */ }
-            if (!res.ok) {
-                setPreRunReviewBusy(false);
-                preRunReviewStatus.textContent =
-                    (data.error || 'REVIEW_FAILED') + ': ' + (data.message || 'Cursor review failed');
-                return;
+            const ids = useGenerated ? selectedLibraryTcIds() : [];
+            const batches = useGenerated ? chunkReviewIds(ids, reviewBatchSize()) : [null];
+            let previewOk = true;
+            for (let i = 0; i < batches.length; i++) {
+                preRunReviewStatus.textContent = batches.length > 1
+                    ? ('Reviewing batch ' + (i + 1) + ' of ' + batches.length)
+                    : (reviewer + ' is reviewing the exact selected suite…');
+                if (preRunReviewProgressLabel) {
+                    preRunReviewProgressLabel.textContent = batches.length > 1
+                        ? ('Reviewing batch ' + (i + 1) + ' of ' + batches.length)
+                        : (reviewer + ' is reviewing…');
+                }
+                const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
+                    + '/pre-run-authoring-review', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: API_HEADERS,
+                    body: buildPreRunReviewInput(useGenerated, batches[i])
+                });
+                let data = {};
+                try { data = await res.json(); } catch (ignore) { /* show generic error */ }
+                if (!res.ok) {
+                    setPreRunReviewBusy(false);
+                    preRunReviewAccept.disabled = true;
+                    preRunReviewStatus.textContent =
+                        (data.error || 'REVIEW_FAILED') + ': batch ' + (i + 1) + ' of '
+                        + batches.length + ' — ' + (data.message || 'Cursor review failed');
+                    return;
+                }
+                (data.findings || []).forEach(finding => {
+                    const li = document.createElement('li');
+                    li.textContent = '[' + (finding.severity || 'info') + '] '
+                        + (finding.tcId ? finding.tcId + ': ' : '') + (finding.message || '');
+                    preRunReviewFindings.appendChild(li);
+                });
+                (data.gateErrors || []).forEach(message => {
+                    const li = document.createElement('li');
+                    li.textContent = message;
+                    preRunReviewErrors.appendChild(li);
+                });
+                preRunReviewedCsv = mergeReviewCsv(preRunReviewedCsv, data.csv || null);
+                preRunReviewedCases = preRunReviewedCases.concat(data.cases || []);
+                previewOk = previewOk && !!data.previewOk;
             }
             setPreRunReviewBusy(false);
             preRunReviewResult.hidden = false;
-            (data.findings || []).forEach(finding => {
-                const li = document.createElement('li');
-                li.textContent = '[' + (finding.severity || 'info') + '] '
-                    + (finding.tcId ? finding.tcId + ': ' : '') + (finding.message || '');
-                preRunReviewFindings.appendChild(li);
-            });
-            (data.gateErrors || []).forEach(message => {
-                const li = document.createElement('li');
-                li.textContent = message;
-                preRunReviewErrors.appendChild(li);
-            });
-            preRunReviewedCsv = data.csv || null;
-            preRunReviewedCases = data.cases || [];
             preRunReviewCsv.textContent = preRunReviewedCsv || '';
             renderProposedCases(preRunReviewedCases);
-            preRunReviewAccept.disabled = !data.previewOk || !preRunReviewedCases.length;
-            preRunReviewStatus.textContent = data.previewOk
+            preRunReviewAccept.disabled = !previewOk || !preRunReviewedCases.length;
+            preRunReviewStatus.textContent = previewOk
                 ? 'Review complete. Inspect the cases, then accept to save the library and start the run.'
                 : 'Review found blocking quality-gate errors. The run has not started.';
             preRunReviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });

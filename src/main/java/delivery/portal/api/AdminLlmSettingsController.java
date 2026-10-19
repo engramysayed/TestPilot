@@ -53,7 +53,9 @@ public class AdminLlmSettingsController {
                         body.ollamaVisionModel,
                         Boolean.TRUE.equals(body.clearCursorApiKey),
                         Boolean.TRUE.equals(body.clearAgentrouterApiKey),
-                        Boolean.TRUE.equals(body.clearOllamaApiKey));
+                        Boolean.TRUE.equals(body.clearOllamaApiKey),
+                        body.reviewCasesPerBatch,
+                        body.browser);
         return settings.update(req);
     }
 
@@ -89,5 +91,7 @@ public class AdminLlmSettingsController {
         public Boolean clearCursorApiKey;
         public Boolean clearAgentrouterApiKey;
         public Boolean clearOllamaApiKey;
+        public Integer reviewCasesPerBatch;
+        public String browser;
     }
 }

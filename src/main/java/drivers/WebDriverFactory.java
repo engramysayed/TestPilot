@@ -10,16 +10,27 @@ import utils.Config.AppConfigProvider;
 
 public class WebDriverFactory {
 
-    public final static String browser = AppConfigProvider.get().browserType();
     private static ThreadLocal<WebDriver> driverThreadLocal = new ThreadLocal<>();
 
     public WebDriverFactory() {
-        Browser browserType= Browser.valueOf(browser.toUpperCase());
+        startDriver("Starting");
+    }
+
+    private static String liveBrowserType() {
+        String raw = AppConfigProvider.get().browserType();
+        if (raw == null || raw.isBlank()) {
+            return "EDGE";
+        }
+        return raw.trim().toUpperCase(java.util.Locale.ROOT);
+    }
+
+    private void startDriver(String verb) {
+        Browser browserType = Browser.valueOf(liveBrowserType());
         AbstractDriver abstractDriver = browserType.getDriverFactory();
-        LogsManager.info("Starting Driver for Browser Type: " + browserType);
+        LogsManager.info(verb + " Driver for Browser Type: " + browserType);
         WebDriver raw = abstractDriver.createDriver();
         delivery.job.ProveWiring.onDriverCreated(raw); // A2 closed-shadow hook when serializer=v2 (no-op by default)
-        WebDriver driver= ThreadGuard.protect(raw);
+        WebDriver driver = ThreadGuard.protect(raw);
         driverThreadLocal.set(driver);
     }
 
@@ -38,13 +49,7 @@ public class WebDriverFactory {
     /** Tear down and create a fresh browser — clears in-memory app session state. */
     public void restart() {
         quit();
-        Browser browserType = Browser.valueOf(browser.toUpperCase());
-        AbstractDriver abstractDriver = browserType.getDriverFactory();
-        LogsManager.info("Restarting Driver for Browser Type: " + browserType);
-        WebDriver raw = abstractDriver.createDriver();
-        delivery.job.ProveWiring.onDriverCreated(raw);
-        WebDriver driver = ThreadGuard.protect(raw);
-        driverThreadLocal.set(driver);
+        startDriver("Restarting");
     }
 
     public ElementsHandler element(){

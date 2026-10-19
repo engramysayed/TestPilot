@@ -3,12 +3,11 @@ package utils.Config;
 import org.aeonbits.owner.ConfigFactory;
 
 public final class AppConfigProvider {
-    private static final AppConfig CONFIG = ConfigFactory.create(AppConfig.class);
-
     private AppConfigProvider() {
     }
 
+    /** Fresh read of system properties so Admin Save applies to the next driver. */
     public static AppConfig get() {
-        return CONFIG;
+        return ConfigFactory.create(AppConfig.class);
     }
 }

@@ -16,6 +16,7 @@ import delivery.portal.service.credits.CreditService;
 import delivery.portal.roles.ApprovalStatus;
 import delivery.portal.roles.RolesService;
 import delivery.portal.service.credits.ServicePriceService;
+import delivery.portal.service.llm.LlmSettingsService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.server.ResponseStatusException;
@@ -46,13 +47,15 @@ public class PortalUiController {
     private final CreditService creditService;
     private final RolesService roles;
     private final ServicePriceService prices;
+    private final LlmSettingsService llmSettings;
 
     public PortalUiController(DashboardService dashboard, CurrentUserService currentUser,
                               PortalStore store, InviteService invites,
                               DeliveryPortalProperties portalProperties,
                               JobLinkEnricher jobLinks, WorkspacePackageService workspacePackages,
                               MobileProperties mobileProperties, CreditService creditService,
-                              RolesService roles, ServicePriceService prices) {
+                              RolesService roles, ServicePriceService prices,
+                              LlmSettingsService llmSettings) {
         this.dashboard = dashboard;
         this.currentUser = currentUser;
         this.store = store;
@@ -64,6 +67,7 @@ public class PortalUiController {
         this.creditService = creditService;
         this.roles = roles;
         this.prices = prices;
+        this.llmSettings = llmSettings;
     }
 
     private void addNav(Model model, String navActive) {
@@ -73,6 +77,7 @@ public class PortalUiController {
         model.addAttribute("isAdmin", user.getRole() == PortalUser.Role.ADMIN);
         model.addAttribute("headAdmin", roles.isHeadAdmin(user));
         model.addAttribute("navActive", navActive);
+        model.addAttribute("reviewCasesPerBatch", llmSettings.reviewCasesPerBatch());
         model.addAttribute("userInitials", initialsFromEmail(email));
         model.addAttribute("workspaceTitle", workspaceTitleFromEmail(email));
         model.addAttribute("workspaceSubtitle", user.getRole() == PortalUser.Role.ADMIN

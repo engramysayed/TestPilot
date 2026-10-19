@@ -1,8 +1,8 @@
 # Admin review batch size + browser type
 
 **Date:** 2026-10-19  
-**Status:** Approved for planning  
-**Plan:** not written yet. Implementation plan follows after this spec is accepted.
+**Status:** Implemented (rebuild jar + Ctrl+F5 to pick up)  
+**Plan:** `docs/superpowers/plans/2026-10-19-admin-review-batch-and-browser.md`
 
 ## Problem
 
