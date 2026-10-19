@@ -4,11 +4,12 @@
 
 # Keel changelog
 
-## 2026-10-19 - Spec: nested preferred hook + leftover Expected quoting
+## 2026-10-19 - Nested preferred hook + leftover Expected quoting
 
-- Approved design (not implemented): after a named click binds a wrapper row, use an inner unique preferred hook (`data-axis-test-id`) when the CSS matches one node; otherwise keep xpath. Vision uses the same site hook list, including a unique child.
-- Review will quote leftover Expected after stripping filler words (`area`, `button`, `label`, `title`, …). Execute will rewrite to the live heading only when exactly one heading/card title matches; asserts still never heal.
-- Spec: `docs/superpowers/specs/2026-10-19-nested-hook-and-quote-heading-design.md`. Plan: `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md`. Not implemented yet.
+- **Execute bind:** after a named click or type binds a wrapper row (for example an Ant Design `li`), Keel looks inside that node. When **exactly one** site preferred hook from project Settings matches one node in the whole document (for example `a[data-axis-test-id='…']`), the step uses that CSS; zero or two-or-more hooks keep the xpath. Twin Settings buttons stay AMBIGUOUS. Vision grounding uses the same preferred-hook list, including a unique child.
+- **Review cases:** a deterministic pass after Cursor or Keel review strips filler words from leftover Expected (`area`, `button`, `label`, `title`, `page`, `section`, `field`, `menu`, `item`, `list`, `visible`, `shown`, `displayed`) and quotes the distinctive name (for example `the Upload Transactions list area is visible` → `'Upload Transactions'`). **Accept & run** still saves the library. **OutcomeKind** is unchanged: quoted text in Steps/Expected still means visible text at runtime.
+- **Execute asserts:** before binding a leftover Expected check, when the clause is already quoted (or was quoted in review), Keel may wait on the **live** page title when **exactly one** visible heading or card title contains those tokens (for example `'Upload Transactions List'`). Zero or two-or-more matches leave the clause unchanged. Asserts still never heal; Execute does not write the library.
+- Rebuild the portal jar and Ctrl+F5 after pulling. Spec: `docs/superpowers/specs/2026-10-19-nested-hook-and-quote-heading-design.md`. Plan: `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md`. Handoff: `docs/handoff/2026-10-19-nested-hook-and-quote-heading.md`.
 
 ## 2026-10-18 - Add test case and review cases before run
 

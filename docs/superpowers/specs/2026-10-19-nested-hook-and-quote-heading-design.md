@@ -1,8 +1,9 @@
 # Nested preferred hook + leftover Expected quoting
 
 **Date:** 2026-10-19  
-**Status:** Approved for planning  
+**Status:** Implemented (portal authoring + Execute; rebuild jar + Ctrl+F5 to pick up)  
 **Plan:** `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md`  
+**Handoff:** `docs/handoff/2026-10-19-nested-hook-and-quote-heading.md`  
 **Live miss:** Execute `exec_e0d85b6abce0` TC_3 — click Bill Payment Settlement used `//li[normalize-space(.)='Bill Payment Settlement']` while the inner link had `data-axis-test-id="side-nav-bill-payment-settlement-link"`; leftover Expected `the Upload Transactions list area is visible` became `AMBIGUOUS:ASSERT_VISIBLE` though the card heading **Upload Transactions List** was on screen.
 
 ## Problem
