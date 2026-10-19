@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 /** Quotes distinctive leftover names in Expected Result after stripping filler words. */
 public final class LeftoverExpectedQuoter {
     private static final Pattern QUOTED = Pattern.compile("'([^']*)'|\"([^\"]*)\"");
-    private static final Pattern NUMBERED_PREFIX = Pattern.compile("^(\\s*\\d+[.)]\\s+)(.*)$");
+    private static final Pattern NUMBERED_LIST = Pattern.compile("(?m)(?:^|\\n)\\s*\\d+[.)]\\s+");
 
     private LeftoverExpectedQuoter() {
     }
@@ -41,23 +41,26 @@ public final class LeftoverExpectedQuoter {
     }
 
     private static String rewriteExpected(String expected, String steps, String title) {
-        String[] lines = expected.split("\n", -1);
-        StringBuilder out = new StringBuilder();
-        for (int i = 0; i < lines.length; i++) {
-            if (i > 0) {
-                out.append('\n');
+        List<String> rowBodies = ExpectedClauseSplitter.rows(expected);
+        if (rowBodies.isEmpty()) {
+            return expected;
+        }
+        boolean numbered = NUMBERED_LIST.matcher(expected).find();
+        List<String> rewritten = new ArrayList<>();
+        for (String body : rowBodies) {
+            rewritten.add(rewriteRow(body, steps, title));
+        }
+        if (numbered) {
+            StringBuilder out = new StringBuilder();
+            for (int i = 0; i < rewritten.size(); i++) {
+                if (i > 0) {
+                    out.append('\n');
+                }
+                out.append(i + 1).append(". ").append(rewritten.get(i));
             }
-            out.append(rewriteLine(lines[i], steps, title));
+            return out.toString();
         }
-        return out.toString();
-    }
-
-    private static String rewriteLine(String line, String steps, String title) {
-        Matcher numbered = NUMBERED_PREFIX.matcher(line);
-        if (numbered.matches()) {
-            return numbered.group(1) + rewriteRow(numbered.group(2), steps, title);
-        }
-        return rewriteRow(line, steps, title);
+        return String.join("\n", rewritten);
     }
 
     private static String rewriteRow(String row, String steps, String title) {
