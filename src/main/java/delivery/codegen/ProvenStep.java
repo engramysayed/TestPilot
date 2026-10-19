@@ -150,6 +150,13 @@ public record ProvenStep(
                 assertionType, assertionExpected, validated, rationale, screenshotRelPath, candidates, dropCandidates, sideEffects, secret);
     }
 
+    public ProvenStep withLocator(String strategy, String value) {
+        return new ProvenStep(
+                tcId, pageName, actionType, action, strategy, value, value(),
+                assertionType, assertionExpected, validated, rationale, screenshotRelPath,
+                locatorCandidates, dropCandidates, sideEffects, secret);
+    }
+
     /** Convenience ctor used by binder/codegen (no screenshot yet). */
     public ProvenStep(
             String tcId,
