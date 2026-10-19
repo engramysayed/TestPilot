@@ -32,7 +32,8 @@ Plan: `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md`
 - Headings outside the supported selectors (`h1`–`h3`, role=heading, common card-title classes) are not upgraded (zero matches).
 - Asserts never heal; Execute does not persist runtime quote fixes to the library.
 - Twin Settings (or any duplicate same-name controls) stay AMBIGUOUS.
-- Admin review-batch size and remaining-cap counter remain a separate unwritten spec. `rebuild-portal.cmd` is in the repo root (package only; it does not start the portal).
+- Admin review-batch size and browser type remain spec-only. `rebuild-portal.cmd` is in the repo root (package only; it does not start the portal).
+- **Follow-up shipped:** a second copy of the inner hook **outside** the unique row now becomes a scoped inner-hook locator. See `docs/handoff/2026-10-19-scoped-nested-hook.md`.
 
 ## Spec
 

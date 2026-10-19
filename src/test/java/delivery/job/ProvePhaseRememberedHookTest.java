@@ -30,4 +30,23 @@ public class ProvePhaseRememberedHookTest {
             Assert.assertTrue(out.rationale().startsWith("memory:"), out.rationale());
         }
     }
+
+    @Test
+    public void rememberedWrapperXpath_duplicateOutside_rewritesToScopedHook() {
+        String html = HTML.replace("</aside>",
+                "<a data-axis-test-id=\"side-nav-bill-payment-settlement-link\">copy</a></aside>");
+        ProvenStep remembered = new ProvenStep(
+                "TC_3", "Page", "elementAction", "click",
+                "xpath", "//li[normalize-space(.)='Bill Payment Settlement']",
+                "", "", "", true,
+                "memory:CLICK|click the 'bill payment settlement' in the support sub-menu.");
+        try (var ignored = PreferredHooksStore.activate(List.of("data-axis-test-id"))) {
+            ProvenStep out = ProvePhase.rewriteRememberedLocator(remembered, html);
+            Assert.assertEquals(out.locatorStrategy(), "xpath");
+            Assert.assertEquals(out.locatorValue(),
+                    "//li[normalize-space(.)='Bill Payment Settlement']"
+                            + "//a[@data-axis-test-id='side-nav-bill-payment-settlement-link']");
+            Assert.assertTrue(out.rationale().startsWith("memory:"), out.rationale());
+        }
+    }
 }

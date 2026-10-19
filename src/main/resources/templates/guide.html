@@ -226,7 +226,7 @@
                     <li>Open Run tests, pick the project, and select the cases (or upload a workbook).</li>
                     <li>Optional: check <strong>Review cases before run</strong> (Cursor or Keel). Inspect the proposed cases. Filler words such as <code>list</code>, <code>area</code>, and <code>visible</code> stay outside quotes — leftover Expected becomes <code>'Upload Transactions'</code>, not <code>'Upload Transactions list area'</code>. The live heading (for example <code>'Upload Transactions List'</code>) is applied later during the run when that heading is unique on screen.</li>
                     <li><strong>Accept &amp; run</strong> saves those cases into the project library, then starts the run. Uncheck review to run the library as-is. Review is not charged; the run price still applies when the run starts.</li>
-                    <li>Quoted clicks use on-screen names. When a click lands on a menu row, Keel uses an inner preferred hook from project Settings if that hook is unique in the page; otherwise it keeps the row xpath.</li>
+                    <li>Quoted clicks use on-screen names. When a click lands on a menu row, Keel uses an inner preferred hook from project Settings if that hook is unique in the page. If the row is unique but the hook was cloned elsewhere (open submenu), it still clicks that inner hook under the row. Otherwise it keeps the row xpath.</li>
                 </ol>
                 <div class="guide-callouts">
                     <div class="callout warn">

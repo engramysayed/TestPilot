@@ -32,9 +32,31 @@ public class NestedPreferredHookTest {
     }
 
     @Test
-    public void rewrite_duplicateHook_keepsXpath() {
+    public void rewrite_duplicateHookOutsideRow_becomesScopedXpath() {
         String html = ROW.replace("</aside>",
                 "<a data-axis-test-id=\"side-nav-bill-payment-settlement-link\">copy</a></aside>");
+        ProvenStep xpath = new ProvenStep("TC_3", "P", "elementAction", "click",
+                "xpath", "//li[normalize-space(.)='Bill Payment Settlement']",
+                "", "", "", true, "intent:CLICK");
+        try (var ignored = PreferredHooksStore.activate(List.of("data-axis-test-id"))) {
+            ProvenStep out = NestedPreferredHook.rewrite(xpath, html);
+            Assert.assertEquals(out.locatorStrategy(), "xpath");
+            Assert.assertEquals(out.locatorValue(),
+                    "//li[normalize-space(.)='Bill Payment Settlement']"
+                            + "//a[@data-axis-test-id='side-nav-bill-payment-settlement-link']");
+        }
+    }
+
+    @Test
+    public void rewrite_twoHooksInsideRow_keepsXpath() {
+        String html = """
+                <html><body><aside class="sidebar">
+                <li role="menuitem">
+                  <a data-axis-test-id="side-nav-bill-payment-settlement-link">Bill Payment Settlement</a>
+                  <button data-axis-test-id="other-hook">x</button>
+                </li>
+                </aside></body></html>
+                """;
         ProvenStep xpath = new ProvenStep("TC_3", "P", "elementAction", "click",
                 "xpath", "//li[normalize-space(.)='Bill Payment Settlement']",
                 "", "", "", true, "intent:CLICK");

@@ -7,11 +7,12 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Attribute;
 
-import java.util.LinkedHashSet;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * When a bound locator resolves to a wrapper, prefer a unique inner test-hook on that subtree.
@@ -43,7 +44,7 @@ public final class NestedPreferredHook {
         }
         Element root = matches.get(0);
         List<String> preferred = PreferredHooksStore.current();
-        Set<String> cssCandidates = new LinkedHashSet<>();
+        Map<String, HookPick> first = new LinkedHashMap<>();
         for (Element el : root.getAllElements()) {
             for (Attribute attr : el.attributes()) {
                 String name = attr.getKey();
@@ -55,13 +56,42 @@ public final class NestedPreferredHook {
                     continue;
                 }
                 String css = el.tagName() + cssAttrSelector(name, value);
-                if (doc.select(css).size() == 1) {
-                    cssCandidates.add(css);
-                }
+                first.putIfAbsent(css, new HookPick(
+                        css,
+                        el.tagName() + xpathAttrSelector(name, value),
+                        el.tagName(),
+                        name,
+                        value,
+                        el));
             }
         }
-        if (cssCandidates.size() == 1) {
-            return step.withLocator("css", cssCandidates.iterator().next());
+        List<HookPick> wrapperUnique = new ArrayList<>();
+        for (HookPick pick : first.values()) {
+            int inWrapper = 0;
+            for (Element n : root.getAllElements()) {
+                if (n.tagName().equalsIgnoreCase(pick.tag) && n.attr(pick.attr).equals(pick.value)) {
+                    inWrapper++;
+                }
+            }
+            if (inWrapper == 1) {
+                wrapperUnique.add(pick);
+            }
+        }
+        if (wrapperUnique.size() != 1) {
+            return step;
+        }
+        HookPick pick = wrapperUnique.get(0);
+        if (doc.select(pick.css).size() == 1) {
+            return step.withLocator("css", pick.css);
+        }
+        if (pick.node == root) {
+            return step;
+        }
+        String strategy = scopedStrategy(step);
+        String scoped = scopedLocator(step, pick);
+        List<Element> scopedMatches = HtmlLocatorPresence.matchingElements(strategy, scoped, doc);
+        if (scopedMatches.size() == 1) {
+            return step.withLocator(strategy, scoped);
         }
         return step;
     }
@@ -128,12 +158,54 @@ public final class NestedPreferredHook {
     }
 
     private static String cssAttrSelector(String attr, String value) {
+        return "[" + attr + "=" + quoted(value) + "]";
+    }
+
+    private static String xpathAttrSelector(String attr, String value) {
+        return "[@" + attr + "=" + quoted(value) + "]";
+    }
+
+    private static String quoted(String value) {
         if (value.indexOf('\'') >= 0 && value.indexOf('"') < 0) {
-            return "[" + attr + "=\"" + value + "\"]";
+            return "\"" + value + "\"";
         }
         if (value.indexOf('"') >= 0) {
-            return "[" + attr + "='" + value.replace("'", "\\'") + "']";
+            return "'" + value.replace("'", "\\'") + "'";
         }
-        return "[" + attr + "='" + value + "']";
+        return "'" + value + "'";
+    }
+
+    private static String scopedStrategy(ProvenStep step) {
+        String strategy = step.locatorStrategy() == null ? "" : step.locatorStrategy().trim().toLowerCase(Locale.ROOT);
+        if (strategy.equals("css") || strategy.equals("cssselector")) {
+            return "css";
+        }
+        return "xpath";
+    }
+
+    private static String scopedLocator(ProvenStep step, HookPick pick) {
+        String base = step.locatorValue() == null ? "" : step.locatorValue().trim();
+        if ("css".equals(scopedStrategy(step))) {
+            return base + " " + pick.css;
+        }
+        return base + "//" + pick.xpathStep;
+    }
+
+    private static final class HookPick {
+        private final String css;
+        private final String xpathStep;
+        private final String tag;
+        private final String attr;
+        private final String value;
+        private final Element node;
+
+        private HookPick(String css, String xpathStep, String tag, String attr, String value, Element node) {
+            this.css = css;
+            this.xpathStep = xpathStep;
+            this.tag = tag;
+            this.attr = attr;
+            this.value = value;
+            this.node = node;
+        }
     }
 }

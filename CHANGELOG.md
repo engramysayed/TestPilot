@@ -4,6 +4,11 @@
 
 # Keel changelog
 
+## 2026-10-19 - Scoped inner hook when a submenu clones the link
+
+- Named click/type/clear/select: if the unique menu row contains one preferred hook that also exists elsewhere (Ant popup copy), Keel now clicks that inner hook scoped under the row (`//li[…]//a[@data-axis-test-id='…']`) instead of keeping the row xpath. Document-unique hooks still become CSS. Two different hooks inside one row still keep xpath. Twin Settings stay unresolved.
+- Rebuild the portal jar and Ctrl+F5 after pulling. Spec: `docs/superpowers/specs/2026-10-19-scoped-nested-hook-design.md`.
+
 ## 2026-10-19 - Spec: admin review batch size + browser type
 
 - Approved design (not implemented): Owner sets review TCs per batch and Chrome / Chrome headless / Edge on Admin → LLM & API keys. Suites of 6+ cases split into those batches; combined preview after the last batch. Spec: `docs/superpowers/specs/2026-10-19-admin-review-batch-and-browser-design.md`.
