@@ -79,18 +79,44 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
               }
             }
             if (!el) return null;
-            const preferred = (arguments[2] || []).find(a => {
-              const value = el.getAttribute(a);
-              return value && document.querySelectorAll(el.tagName.toLowerCase()+'['+a+'="'+CSS.escape(value)+'"]').length === 1;
-            });
+            const attrs = (arguments[2] || []).concat(['data-testid','data-test','data-qa','data-cy']);
+            function uniqueHookOn(node) {
+              for (const a of attrs) {
+                const value = node.getAttribute(a);
+                if (!value) continue;
+                const sel = node.tagName.toLowerCase() + '[' + a + '="' + CSS.escape(value) + '"]';
+                if (document.querySelectorAll(sel).length === 1) return { attr: a, value: value, node: node };
+              }
+              return null;
+            }
+            let hook = uniqueHookOn(el);
+            if (!hook) {
+              const descendantKeys = new Map();
+              for (const desc of el.querySelectorAll('*')) {
+                const h = uniqueHookOn(desc);
+                if (!h) continue;
+                const key = h.attr + '=' + h.value;
+                if (!descendantKeys.has(key)) descendantKeys.set(key, h);
+              }
+              if (descendantKeys.size === 1) hook = descendantKeys.values().next().value;
+            }
+            if (hook) el = hook.node;
+            const preferredAttribute = hook ? hook.attr : '';
+            const preferredValue = hook ? hook.value : '';
+            const dataTest = el.getAttribute('data-testid') || el.getAttribute('data-test')
+                || el.getAttribute('data-qa') || el.getAttribute('data-axis-test-id') || '';
+            let dataTestAttribute = 'data-qa';
+            if (el.hasAttribute('data-testid')) dataTestAttribute = 'data-testid';
+            else if (el.hasAttribute('data-test')) dataTestAttribute = 'data-test';
+            else if (el.hasAttribute('data-qa')) dataTestAttribute = 'data-qa';
+            else if (el.hasAttribute('data-axis-test-id')) dataTestAttribute = 'data-axis-test-id';
             return {
-              preferredAttribute: preferred || '',
-              preferredValue: preferred ? el.getAttribute(preferred) : '',
+              preferredAttribute: preferredAttribute,
+              preferredValue: preferredValue,
               tag: el.tagName.toLowerCase(),
               id: el.id || '',
               name: el.getAttribute('name') || '',
-              dataTest: el.getAttribute('data-testid') || el.getAttribute('data-test')
-                  || el.getAttribute('data-qa') || '',
+              dataTest: dataTest,
               ariaLabel: el.getAttribute('aria-label') || '',
               role: (el.getAttribute('role') || (el.tagName.toLowerCase() === 'input' && ['submit','button','reset','image'].includes(el.type) ? 'button' : '')).toLowerCase(),
               displayed: isDisplayed(el),
@@ -98,7 +124,7 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
               outerFingerprint: fingerprint(el),
               visibleText: ((el.innerText || el.textContent || '') + '').trim().slice(0, 80)
               , element: el,
-              dataTestAttribute: el.hasAttribute('data-testid') ? 'data-testid' : el.hasAttribute('data-test') ? 'data-test' : 'data-qa'
+              dataTestAttribute: dataTestAttribute
             };
             """;
 

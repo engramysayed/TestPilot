@@ -19,6 +19,7 @@ import delivery.authoring.RequiredControlFiller;
 import delivery.authoring.DomCandidate;
 import delivery.authoring.BindQualityMetrics;
 import delivery.authoring.PageLocatorCatalog;
+import delivery.authoring.NestedPreferredHook;
 import delivery.authoring.StepIntentBinder;
 import delivery.codegen.PageClusterer;
 import delivery.codegen.PageNameNormalizer;
@@ -889,6 +890,7 @@ public class ProvePhase {
                                     + intent.text());
                         } else {
                             stepBatch = pageCatalog.stabilizeSteps(grounded.get(), intent);
+                            stepBatch = NestedPreferredHook.rewrite(stepBatch, html);
                             bindFailed = false;
                             healTier = mergeHealTier(healTier, "vision");
                             LogsManager.info("VISION_GROUND: READY intent=" + intent.text());

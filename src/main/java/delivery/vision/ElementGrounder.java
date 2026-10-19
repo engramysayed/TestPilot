@@ -124,7 +124,7 @@ public final class ElementGrounder {
         return false;
     }
 
-    private static Optional<LocatorCandidate> buildLocator(GroundedNode node) {
+    static Optional<LocatorCandidate> buildLocator(GroundedNode node) {
         if (!safe(node.preferredAttribute()).isBlank() && !safe(node.preferredValue()).isBlank()) {
             return Optional.of(new LocatorCandidate("css", preferredCss(node), safe(node.tag()), ""));
         }
