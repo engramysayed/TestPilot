@@ -8,6 +8,7 @@ import delivery.authoring.AuthoringEngine;
 import delivery.authoring.AuthoringService;
 import delivery.authoring.DummyValueInventor;
 import delivery.authoring.LocalLlmClient;
+import delivery.authoring.LiveHeadingQuote;
 import delivery.authoring.LocatorValidator;
 import delivery.authoring.LoginStepDetector;
 import delivery.authoring.PrecisionBatchBindOutcome;
@@ -785,6 +786,14 @@ public class ProvePhase {
                         PostActionSettle.afterAction();
                         html = ProveWiring.authoringHtml(driverFactory.get(), intent.text(), proveHtmlBudget());
                         live = ensureCatalog(currentUrl(driverFactory), html);
+                    }
+                }
+
+                if (intent.kind() == StepIntentBinder.IntentKind.ASSERT_VISIBLE) {
+                    String rewritten = LiveHeadingQuote.maybeRewrite(intent.text(), html);
+                    if (!rewritten.equals(intent.text())) {
+                        intent = new StepIntentBinder.IntentLine(
+                                StepIntentBinder.IntentKind.ASSERT_VISIBLE, rewritten, intent.testData());
                     }
                 }
 
