@@ -67,6 +67,32 @@ public class NestedHookVisionGrounderTest {
     }
 
     @Test
+    public void elementFromPoint_ownHookWinsWhenChildAlsoHasOne() {
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless=new", "--window-size=1000,700");
+        WebDriver driver = new ChromeDriver(options);
+        try (var ignored = PreferredHooksStore.activate(List.of("data-testid"))) {
+            driver.get("data:text/html,"
+                    + "<button id=\"btn\" data-testid=\"own-hook\" "
+                    + "style=\"position:absolute;left:10px;top:10px;width:180px;height:80px;padding:0\">"
+                    + "<span data-testid=\"child-hook\" "
+                    + "style=\"position:absolute;left:0;bottom:0;width:40px;height:16px\">Go</span>"
+                    + "</button>");
+            WebElement btn = driver.findElement(By.id("btn"));
+            var rect = btn.getRect();
+            double x = rect.x + 8;
+            double y = rect.y + 8;
+            GroundedNode node = new SeleniumGroundingBrowser(driver).elementFromPoint(x, y);
+            Assert.assertNotNull(node);
+            Assert.assertEquals(node.tag(), "button");
+            Assert.assertEquals(node.preferredAttribute(), "data-testid");
+            Assert.assertEquals(node.preferredValue(), "own-hook");
+        } finally {
+            driver.quit();
+        }
+    }
+
+    @Test
     public void elementFromPoint_twoUniqueHooksOnNode_leavesPreferredEmpty() {
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--headless=new", "--window-size=1000,700");

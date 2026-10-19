@@ -5,6 +5,7 @@ import delivery.excel.ManualTestCase;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -13,6 +14,7 @@ import java.util.regex.Pattern;
 public final class LeftoverExpectedQuoter {
     private static final Pattern QUOTED = Pattern.compile("'([^']*)'|\"([^\"]*)\"");
     private static final Pattern NUMBERED_LIST = Pattern.compile("(?m)(?:^|\\n)\\s*\\d+[.)]\\s+");
+    private static final Pattern DASH_MARKER = Pattern.compile("(?m)^\\s*([-–—•*])\\s+");
 
     private LeftoverExpectedQuoter() {
     }
@@ -46,6 +48,7 @@ public final class LeftoverExpectedQuoter {
             return expected;
         }
         boolean numbered = NUMBERED_LIST.matcher(expected).find();
+        String dash = numbered ? null : leadingDash(expected);
         List<String> rewritten = new ArrayList<>();
         for (String body : rowBodies) {
             rewritten.add(rewriteRow(body, steps, title));
@@ -60,7 +63,22 @@ public final class LeftoverExpectedQuoter {
             }
             return out.toString();
         }
+        if (dash != null) {
+            StringBuilder out = new StringBuilder();
+            for (int i = 0; i < rewritten.size(); i++) {
+                if (i > 0) {
+                    out.append('\n');
+                }
+                out.append(dash).append(' ').append(rewritten.get(i));
+            }
+            return out.toString();
+        }
         return String.join("\n", rewritten);
+    }
+
+    private static String leadingDash(String expected) {
+        Matcher marker = DASH_MARKER.matcher(expected);
+        return marker.find() ? marker.group(1) : null;
     }
 
     private static String rewriteRow(String row, String steps, String title) {
@@ -94,9 +112,64 @@ public final class LeftoverExpectedQuoter {
                 }
                 return String.join(" and ", parts);
             }
-            return clause;
+            return filterQuotedFillers(clause, steps, title);
         }
         return quoteUnquotedPortion(clause, steps, title);
+    }
+
+    /**
+     * A quoted span that still contains filler words is the model's invention.
+     * Replace it with the filler-stripped display, or the Steps quote when that quote is clean.
+     */
+    private static String filterQuotedFillers(String clause, String steps, String title) {
+        Matcher quoted = QUOTED.matcher(clause);
+        StringBuilder out = new StringBuilder();
+        int last = 0;
+        while (quoted.find()) {
+            out.append(clause, last, quoted.start());
+            String inner = quoted.group(1) != null ? quoted.group(1) : quoted.group(2);
+            out.append(replacementForQuotedSpan(quoted.group(0), inner, steps, title));
+            last = quoted.end();
+        }
+        out.append(clause.substring(last));
+        return out.toString();
+    }
+
+    private static String replacementForQuotedSpan(
+            String original, String inner, String steps, String title) {
+        if (inner == null || !spanHasFiller(inner)) {
+            return original;
+        }
+        List<String> toks = ExpectedQuoteFilter.tokens(inner);
+        String display = ExpectedQuoteFilter.remainderDisplay(inner);
+        if (!ExpectedQuoteFilter.distinctive(toks, display)) {
+            return original;
+        }
+        String reuse = findReusedQuote(toks, steps, title);
+        if (reuse != null && !quotedSpanHasFiller(reuse)) {
+            return reuse;
+        }
+        return "'" + display + "'";
+    }
+
+    private static boolean quotedSpanHasFiller(String quoted) {
+        Matcher matcher = QUOTED.matcher(quoted);
+        if (!matcher.find()) {
+            return spanHasFiller(quoted);
+        }
+        String inner = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+        return inner != null && spanHasFiller(inner);
+    }
+
+    private static boolean spanHasFiller(String inner) {
+        List<String> raw = new ArrayList<>();
+        ExpectedQuoteFilter.scanWords(inner, raw::add);
+        for (String word : raw) {
+            if (ExpectedQuoteFilter.FILLERS.contains(word.toLowerCase(Locale.ROOT))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean hasQuotedPhrase(String text) {

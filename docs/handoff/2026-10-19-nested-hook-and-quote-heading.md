@@ -1,6 +1,6 @@
 # 2026-10-19 — Nested preferred hook + leftover Expected quoting
 
-**Status:** Implemented (Tasks 1–7 on main). Rebuild the portal jar and Ctrl+F5 before trusting a server already on `:8080`.
+**Status:** Implemented (Tasks 1–7 on main), plus the 2026-10-19 post-review fix wave. Rebuild the portal jar and Ctrl+F5 before trusting a server already on `:8080`.
 
 Plan: `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md`
 
@@ -17,6 +17,13 @@ Plan: `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md`
 2. Configure preferred hooks under project **Settings** (e.g. `data-axis-test-id`).
 3. Optional **Review cases before run** on Execute or Automate — check leftover Expected rows; Accept saves quotes into the library, then the run starts.
 4. On Execute, an unquoted leftover such as `the Upload Transactions list area is visible`, or a shorter quote such as `'Upload Transactions'`, may become a wait on `'Upload Transactions List'` only when that heading is unique on screen.
+
+## Follow-up (same day)
+
+- Execute strips the Confirm / `Confirm the text "…" is visible` wrapper before matching a live heading, including each clause of a compound expected check.
+- A remembered click, type, clear, or select xpath is rewritten with `NestedPreferredHook` against live HTML before execute (single step and precision batch).
+- Vision keeps the hit node’s own unique hook when a child also has one.
+- Review writes dash markers back onto Expected rows and replaces an already-quoted filler phrase. Distinctive filler-free quotes stay.
 
 ## Known defects
 

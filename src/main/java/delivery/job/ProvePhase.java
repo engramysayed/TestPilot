@@ -821,7 +821,8 @@ public class ProvePhase {
                     remembered = Optional.empty();
                 }
                 if (remembered.isPresent()) {
-                    ProvenStep ready = withInventedValue(remembered.get(), intent);
+                    ProvenStep ready = rewriteRememberedLocator(
+                            withInventedValue(remembered.get(), intent), html);
                     if (refusesSubmitNavigation(intent, List.of(ready))) {
                         locatorMemory.forget(memoryHost, pagePath, intent);
                         LogsManager.info("SUBMIT_REFUSE: dropped remembered non-submit click for "
@@ -1675,8 +1676,9 @@ public class ProvePhase {
             JobCancelSupport.checkCancelled(cancelCheck);
             String html = HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), proveHtmlBudget());
             byte[] healPng = execution.capturePngBytes();
+            String rewrittenClause = LiveHeadingQuote.maybeRewrite(clause, html);
             StepIntentBinder.IntentLine sub = new StepIntentBinder.IntentLine(
-                    StepIntentBinder.IntentKind.ASSERT_VISIBLE, clause, intent.testData());
+                    StepIntentBinder.IntentKind.ASSERT_VISIBLE, rewrittenClause, intent.testData());
             List<ProvenStep> steps;
             try {
                 steps = authoring.authorIntent(
@@ -1733,6 +1735,23 @@ public class ProvePhase {
                 driverFactory, intent.text());
     }
 
+    /** Nested-hook upgrade for a locator recalled before authorIntent. */
+    static ProvenStep rewriteRememberedLocator(ProvenStep remembered, String liveHtml) {
+        if (remembered == null) {
+            return null;
+        }
+        return NestedPreferredHook.rewrite(remembered, liveHtml);
+    }
+
+    private String rememberedLiveHtml(WebDriverFactory driverFactory) {
+        try {
+            return HtmlSlimmer.slim(PageSnapshot.html(driverFactory.get()), proveHtmlBudget());
+        } catch (RuntimeException e) {
+            LogsManager.info("LOCATOR_MEMORY: nested-hook rewrite skipped — " + e.getMessage());
+            return "";
+        }
+    }
+
     private boolean mayUseLocatorMemory() {
         return precisionBindService == null || precisionReuseLocatorMemory;
     }
@@ -1753,6 +1772,7 @@ public class ProvePhase {
             memoryHost = hostOf(baseUrl);
         }
         String pagePath = pathOf(currentUrl(driverFactory));
+        String liveHtml = rememberedLiveHtml(driverFactory);
         List<ProvenStep> allSteps = new ArrayList<>();
         List<List<ProvenStep>> perIntent = new ArrayList<>();
         for (int i = 0; i < batchSlice.size(); i++) {
@@ -1775,7 +1795,8 @@ public class ProvePhase {
                 if (!perIntent.isEmpty()) break;
                 return null;
             }
-            ProvenStep ready = withInventedValue(remembered.get(), intent);
+            ProvenStep ready = rewriteRememberedLocator(
+                    withInventedValue(remembered.get(), intent), liveHtml);
             if (refusesSubmitNavigation(intent, List.of(ready))) {
                 logLocatorMemorySkip("precision batch — remembered click is not a submit control for "
                         + trim(intent.text(), 80) + " (falling back to Cursor batch)");

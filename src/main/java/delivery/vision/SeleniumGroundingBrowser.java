@@ -108,20 +108,26 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
             function isTrustworthyIdentifier(value) {
               return value && (value + '').trim() && (value + '').length < 120 && !looksGenerated(value);
             }
-            const hookKeys = new Map();
-            function collectHooks(node) {
+            function collectHooks(map, node) {
               for (const a of attrs) {
                 const value = node.getAttribute(a);
                 if (!value || !isTrustworthyIdentifier(value)) continue;
                 const sel = node.tagName.toLowerCase() + '[' + a + '="' + CSS.escape(value) + '"]';
                 if (document.querySelectorAll(sel).length !== 1) continue;
                 const key = a + '=' + value;
-                if (!hookKeys.has(key)) hookKeys.set(key, { attr: a, value: value, node: node });
+                if (!map.has(key)) map.set(key, { attr: a, value: value, node: node });
               }
             }
-            collectHooks(el);
-            for (const desc of el.querySelectorAll('*')) collectHooks(desc);
-            let hook = hookKeys.size === 1 ? hookKeys.values().next().value : null;
+            const ownKeys = new Map();
+            collectHooks(ownKeys, el);
+            let hook = null;
+            if (ownKeys.size === 1) {
+              hook = ownKeys.values().next().value;
+            } else if (ownKeys.size === 0) {
+              const descKeys = new Map();
+              for (const desc of el.querySelectorAll('*')) collectHooks(descKeys, desc);
+              if (descKeys.size === 1) hook = descKeys.values().next().value;
+            }
             if (hook) el = hook.node;
             const preferredAttribute = hook ? hook.attr : '';
             const preferredValue = hook ? hook.value : '';

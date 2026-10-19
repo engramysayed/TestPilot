@@ -4,6 +4,13 @@
 
 # Keel changelog
 
+## 2026-10-19 - Nested hook and quote heading follow-up
+
+- **Execute asserts:** the live heading upgrade now runs on the text Execute actually binds. A leftover that became `Confirm the Upload Transactions list area is visible.` or `Confirm the text "Upload Transactions" is visible` can still become `'Upload Transactions List'` when that heading is the only match. Each part of a compound expected check is upgraded the same way before it is bound. Asserts still never heal, and Execute still does not write the library.
+- **Remembered locators:** a saved click, type, clear, or select xpath is checked against the live page before it runs. One unique preferred hook inside that wrapper becomes CSS; otherwise the saved xpath is used.
+- **Vision:** when the pointed-at node has exactly one document-unique preferred hook, that node and hook are kept even if a child also has a hook. Children are searched only when the pointed-at node has none, and only when those children yield exactly one hook.
+- **Review cases:** dash bullets stay dash bullets after the leftover-quote pass (numbered rows were already numbered again). A quote the model already wrote that still contains a filler word, such as `'Upload Transactions list area'`, is replaced with the filtered name or the quote already used in Steps. A distinctive quote with no filler, such as `'Bill Payment Settlement'`, is left as written.
+
 ## 2026-10-19 - Nested preferred hook + leftover Expected quoting
 
 - **Execute bind:** after a named click or type binds a wrapper row (for example an Ant Design `li`), Keel looks inside that node. When **exactly one** site preferred hook from project Settings matches one node in the whole document (for example `a[data-axis-test-id='…']`), the step uses that CSS; zero or two-or-more hooks keep the xpath. Twin Settings buttons stay AMBIGUOUS. Vision grounding uses the same preferred-hook list, including a unique child.
