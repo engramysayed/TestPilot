@@ -16,7 +16,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.testng.AbstractTestNGSpringContextTests;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import delivery.authoring.AuthoringVerbAliases;
 import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -47,6 +49,11 @@ public class AdminLlmSettingsApiTest extends AbstractTestNGSpringContextTests {
     @Autowired private LlmSettingsService llmSettings;
 
     private PortalUser member;
+
+    @AfterMethod
+    public void restoreVerbAliases() {
+        AuthoringVerbAliases.publish(AuthoringVerbAliases.seed());
+    }
 
     @BeforeMethod
     public void ensureMember() {
@@ -87,6 +94,32 @@ public class AdminLlmSettingsApiTest extends AbstractTestNGSpringContextTests {
         mockMvc.perform(get("/api/admin/llm-settings/ollama/models")
                         .with(httpBasic("member-llm@testpilot.local", "MemberPass1!")))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/admin/llm-settings")
+                        .with(httpBasic("member-llm@testpilot.local", "MemberPass1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"authoringVerbAliases\":[{\"word\":\"ensure\",\"treatAs\":\"assert\"}]}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void ownerPutTapAliasRejected_ensurePersists() throws Exception {
+        mockMvc.perform(put("/api/admin/llm-settings")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"authoringVerbAliases\":[{\"word\":\"tap\",\"treatAs\":\"click\"}]}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(put("/api/admin/llm-settings")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"authoringVerbAliases\":[{\"word\":\"ensure\",\"treatAs\":\"ignore\"}]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authoringVerbAliases[0].word").value("ensure"))
+                .andExpect(jsonPath("$.authoringVerbAliases[0].treatAs").value("ignore"))
+                .andExpect(jsonPath("$.builtInVerbs[0].word").value("click"));
     }
 
     @Test

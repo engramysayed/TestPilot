@@ -1,8 +1,8 @@
 # Authoring verb aliases (Owner list)
 
 **Date:** 2026-10-19  
-**Status:** Approved for planning  
-**Plan:** not written yet. Implementation plan follows after this spec is accepted.  
+**Status:** Implemented  
+**Plan:** `docs/superpowers/plans/2026-10-19-authoring-verb-aliases.md`  
 **Handoff:** `docs/handoff/2026-10-19-authoring-verb-aliases.md`
 
 ## Problem

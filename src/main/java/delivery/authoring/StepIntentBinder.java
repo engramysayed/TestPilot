@@ -551,7 +551,7 @@ public final class StepIntentBinder {
                 || lower.contains("add ") || lower.contains("press ") || lower.contains("tap ")) {
             return IntentKind.CLICK;
         }
-        return null;
+        return AuthoringVerbAliases.classify(lower);
     }
 
     private static boolean looksLikeLoginCredentialLine(String lower) {
@@ -663,9 +663,12 @@ public final class StepIntentBinder {
     }
 
     static boolean looksLikeAssert(String lower) {
-        return lower.contains("confirm") || lower.contains("verify") || lower.contains("shown")
+        if (lower.contains("confirm") || lower.contains("verify") || lower.contains("shown")
                 || lower.contains("visible") || lower.contains("see ") || lower.contains("displays")
-                || lower.contains("is shown") || lower.contains("are visible");
+                || lower.contains("is shown") || lower.contains("are visible")) {
+            return true;
+        }
+        return AuthoringVerbAliases.looksLikeAssert(lower);
     }
 
     private record Scored(DomCandidate candidate, int score) {

@@ -60,6 +60,23 @@
                     <span class="muted">Next Execute / Automate / Record / Bug Hunter window. Environment variables still win if already set.</span>
                 </label>
             </div>
+            <div class="authoring-verbs" style="margin-top:1.75rem;max-width:46rem;">
+                <h2 style="font-size:1.05rem;margin:0 0 0.35rem;">Authoring verbs</h2>
+                <p class="muted">Built-in words Keel already treats as click, type, assert, or skip. These cannot be edited. Add aliases below so extra Excel words (Observe, Ensure, …) use the same kinds.</p>
+                <h3 style="font-size:0.95rem;margin:1rem 0 0.35rem;">Built-in (read-only)</h3>
+                <table class="table" id="builtin-verbs-table">
+                    <thead><tr><th>Word</th><th>Treat as</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <p class="muted" id="code-only-verbs" style="margin-top:0.5rem;"></p>
+                <h3 style="font-size:0.95rem;margin:1.25rem 0 0.35rem;">Owner aliases</h3>
+                <p class="muted">One word, letters only (3–40). Treat as Click, Type, Assert visible, or Ignore. Built-in words cannot be remapped. Max 50.</p>
+                <table class="table" id="alias-verbs-table">
+                    <thead><tr><th>Word</th><th>Treat as</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <button type="button" class="btn" id="btn-add-alias" style="margin-top:0.5rem;">Add alias</button>
+            </div>
             <div style="margin-top:1.25rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
                 <button class="btn btn-primary" type="button" id="btn-save-llm">Save</button>
             </div>
@@ -133,6 +150,93 @@
         if (preferredChat) chat.value = preferredChat;
         if (preferredVision) vision.value = preferredVision;
     }
+    function treatLabel(v) {
+        if (v === 'click') return 'Click';
+        if (v === 'type') return 'Type';
+        if (v === 'assert') return 'Assert visible';
+        if (v === 'ignore') return 'Ignore';
+        return v || '';
+    }
+    function fillBuiltIns(rows, codeOnly) {
+        const body = document.querySelector('#builtin-verbs-table tbody');
+        if (!body) return;
+        body.innerHTML = '';
+        for (const row of (rows || [])) {
+            const tr = document.createElement('tr');
+            const w = document.createElement('td');
+            w.textContent = row.word || '';
+            const t = document.createElement('td');
+            t.textContent = treatLabel(row.treatAs);
+            tr.appendChild(w);
+            tr.appendChild(t);
+            body.appendChild(tr);
+        }
+        const code = document.getElementById('code-only-verbs');
+        if (code) {
+            const list = Array.isArray(codeOnly) ? codeOnly : [];
+            code.textContent = list.length
+                ? ('Code-only specials (not remappable): ' + list.join('; ') + '.')
+                : '';
+        }
+    }
+    function aliasRow(word, treatAs) {
+        const tr = document.createElement('tr');
+        const wTd = document.createElement('td');
+        const wIn = document.createElement('input');
+        wIn.type = 'text';
+        wIn.className = 'alias-word';
+        wIn.maxLength = 40;
+        wIn.value = word || '';
+        wIn.placeholder = 'observe';
+        wIn.autocomplete = 'off';
+        wTd.appendChild(wIn);
+        const tTd = document.createElement('td');
+        const sel = document.createElement('select');
+        sel.className = 'alias-treat';
+        [['click', 'Click'], ['type', 'Type'], ['assert', 'Assert visible'], ['ignore', 'Ignore']].forEach(function (opt) {
+            const o = document.createElement('option');
+            o.value = opt[0];
+            o.textContent = opt[1];
+            sel.appendChild(o);
+        });
+        sel.value = treatAs || 'assert';
+        tTd.appendChild(sel);
+        const dTd = document.createElement('td');
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'btn';
+        del.textContent = 'Remove';
+        del.addEventListener('click', function () { tr.remove(); });
+        dTd.appendChild(del);
+        tr.appendChild(wTd);
+        tr.appendChild(tTd);
+        tr.appendChild(dTd);
+        return tr;
+    }
+    function fillAliases(rows) {
+        const body = document.querySelector('#alias-verbs-table tbody');
+        if (!body) return;
+        body.innerHTML = '';
+        const list = Array.isArray(rows) ? rows : [];
+        if (!list.length) {
+            body.appendChild(aliasRow('', 'assert'));
+            return;
+        }
+        for (const row of list) {
+            body.appendChild(aliasRow(row.word || '', row.treatAs || 'assert'));
+        }
+    }
+    function collectAliases() {
+        const rows = document.querySelectorAll('#alias-verbs-table tbody tr');
+        const out = [];
+        for (const tr of rows) {
+            const word = (tr.querySelector('.alias-word') || {}).value || '';
+            const treatAs = (tr.querySelector('.alias-treat') || {}).value || '';
+            if (!word.trim()) continue;
+            out.push({ word: word.trim(), treatAs: treatAs });
+        }
+        return out;
+    }
     async function loadSettings() {
         showError('');
         const res = await fetch('/api/admin/llm-settings', { credentials: 'same-origin', headers: HDR });
@@ -154,6 +258,8 @@
         if (batch) batch.value = current.reviewCasesPerBatch || 50;
         const browser = document.getElementById('browser');
         if (browser) browser.value = current.browser || 'edge';
+        fillBuiltIns(current.builtInVerbs, current.codeOnlyVerbs);
+        fillAliases(current.authoringVerbAliases);
     }
     async function refreshModels() {
         showError('');
@@ -186,7 +292,8 @@
             ollamaChatModel: document.getElementById('ollamaChatModel').value,
             ollamaVisionModel: document.getElementById('ollamaVisionModel').value,
             reviewCasesPerBatch: parseInt(document.getElementById('reviewCasesPerBatch').value, 10) || 50,
-            browser: document.getElementById('browser').value
+            browser: document.getElementById('browser').value,
+            authoringVerbAliases: collectAliases()
         };
         const cursor = document.getElementById('cursorApiKey').value;
         const agent = document.getElementById('agentrouterApiKey').value;
@@ -209,6 +316,8 @@
         setSecretHint('cursorApiKey', !!data.cursorApiKeyConfigured, data.cursorApiKeyLast4);
         setSecretHint('agentrouterApiKey', !!data.agentrouterApiKeyConfigured, data.agentrouterApiKeyLast4);
         setSecretHint('ollamaApiKey', !!data.ollamaApiKeyConfigured, data.ollamaApiKeyLast4);
+        fillBuiltIns(data.builtInVerbs, data.codeOnlyVerbs);
+        fillAliases(data.authoringVerbAliases);
         showSaved();
     }
     document.getElementById('btn-refresh-models').addEventListener('click', function () {
@@ -216,6 +325,10 @@
     });
     document.getElementById('btn-save-llm').addEventListener('click', function () {
         save().catch(function (e) { showError(String(e)); });
+    });
+    document.getElementById('btn-add-alias').addEventListener('click', function () {
+        const body = document.querySelector('#alias-verbs-table tbody');
+        if (body) body.appendChild(aliasRow('', 'assert'));
     });
     loadSettings().catch(function (e) { showError(String(e)); });
 })();

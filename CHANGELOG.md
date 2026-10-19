@@ -4,6 +4,11 @@
 
 # Keel changelog
 
+## 2026-10-19 - Authoring verb aliases
+
+- Owner **Admin → LLM & API keys** now lists built-in click / type / assert / skip words (read-only) and lets you add aliases onto those same kinds (Click, Type, Assert visible, Ignore). Default seed: `observe` → assert, so Observe steps wait for visible instead of being skipped. Built-in words cannot be remapped. Max 50 aliases. Save applies to the next Execute / Automate / Generate review / Record bind without a JVM restart after this jar is running.
+- Rebuild the portal jar and Ctrl+F5 after pulling. Spec: `docs/superpowers/specs/2026-10-19-authoring-verb-aliases-design.md`.
+
 ## 2026-10-19 - Scoped inner hook when a submenu clones the link
 
 - Named click/type/clear/select: if the unique menu row contains one preferred hook that also exists elsewhere (Ant popup copy), Keel now clicks that inner hook scoped under the row (`//li[…]//a[@data-axis-test-id='…']`) instead of keeping the row xpath. Document-unique hooks still become CSS. Two different hooks inside one row still keep xpath. Twin Settings stay unresolved.

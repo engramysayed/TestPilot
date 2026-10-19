@@ -1,5 +1,6 @@
 package delivery.portal.service.llm;
 
+import delivery.authoring.AuthoringVerbAliases;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.service.llm.LlmSettingsService.UpdateRequest;
 import org.testng.Assert;
@@ -25,6 +26,7 @@ public class LlmSettingsServiceTest {
     private String prevVision;
     private String prevBrowserType;
     private String prevBrowserHeadless;
+    private List<AuthoringVerbAliases.Alias> prevAliases;
 
     @BeforeMethod
     public void setUp() throws Exception {
@@ -43,6 +45,7 @@ public class LlmSettingsServiceTest {
         prevVision = System.getProperty("delivery.vision.assert.model");
         prevBrowserType = System.getProperty("BROWSER_TYPE");
         prevBrowserHeadless = System.getProperty("BROWSER_HEADLESS");
+        prevAliases = AuthoringVerbAliases.processSnapshot();
         System.clearProperty("CURSOR_API_KEY");
         System.clearProperty("AGENTROUTER_API_KEY");
         System.clearProperty("OLLAMA_API_KEY");
@@ -65,6 +68,7 @@ public class LlmSettingsServiceTest {
         restore("delivery.vision.assert.model", prevVision);
         restore("BROWSER_TYPE", prevBrowserType);
         restore("BROWSER_HEADLESS", prevBrowserHeadless);
+        AuthoringVerbAliases.publish(prevAliases);
     }
 
     private static void restore(String key, String prev) {
@@ -332,5 +336,87 @@ public class LlmSettingsServiceTest {
         Assert.assertEquals(svc.browserChoice(), "chromeheadless");
         Assert.assertEquals(System.getProperty("BROWSER_TYPE"), "CHROME");
         Assert.assertEquals(System.getProperty("BROWSER_HEADLESS"), "true");
+    }
+
+    @Test
+    public void missingFile_seedsObserveAssert() {
+        LlmSettingsService svc = new LlmSettingsService(props);
+        Map<String, Object> view = svc.maskedView();
+        Assert.assertEquals(view.get("authoringVerbAliases"),
+                AuthoringVerbAliases.toMaps(AuthoringVerbAliases.seed()));
+        Assert.assertEquals(view.get("builtInVerbs"), AuthoringVerbAliases.builtInMaps());
+        Assert.assertEquals(
+                AuthoringVerbAliases.classify("observe the rates module is displayed"),
+                delivery.authoring.StepIntentBinder.IntentKind.ASSERT_VISIBLE);
+    }
+
+    @Test
+    public void saveAliases_persistReloadPublishAndOmitKeeps() {
+        LlmSettingsService svc = new LlmSettingsService(props);
+        svc.update(new UpdateRequest(
+                null, null, null, null, null, null,
+                false, false, false, null, null,
+                List.of(new AuthoringVerbAliases.Alias("ensure", "ignore"))));
+        Map<String, Object> view = svc.maskedView();
+        Assert.assertEquals(view.get("authoringVerbAliases"),
+                List.of(Map.of("word", "ensure", "treatAs", "ignore")));
+        Assert.assertNull(AuthoringVerbAliases.classify("ensure the page loaded"));
+        String raw = readSettings();
+        Assert.assertTrue(raw.contains("ensure"));
+        Assert.assertFalse(raw.contains("persist-secret"));
+
+        svc.update(new UpdateRequest(null, null, null, null, "other-chat", null, false, false, false));
+        Assert.assertEquals(svc.maskedView().get("authoringVerbAliases"),
+                List.of(Map.of("word", "ensure", "treatAs", "ignore")));
+
+        DeliveryPortalProperties props2 = new DeliveryPortalProperties();
+        props2.setStoreRoot(storeRoot.toString());
+        LlmSettingsService reloaded = new LlmSettingsService(props2);
+        Assert.assertEquals(reloaded.maskedView().get("authoringVerbAliases"),
+                List.of(Map.of("word", "ensure", "treatAs", "ignore")));
+    }
+
+    @Test
+    public void emptyAliases_clearsSeed() {
+        LlmSettingsService svc = new LlmSettingsService(props);
+        svc.update(new UpdateRequest(
+                null, null, null, null, null, null,
+                false, false, false, null, null, List.of()));
+        Assert.assertEquals(svc.maskedView().get("authoringVerbAliases"), List.of());
+        Assert.assertNull(AuthoringVerbAliases.classify("observe the rates module is displayed"));
+    }
+
+    @Test
+    public void tapAlias_rejectedOnSave() {
+        LlmSettingsService svc = new LlmSettingsService(props);
+        try {
+            svc.update(new UpdateRequest(
+                    null, null, null, null, null, null,
+                    false, false, false, null, null,
+                    List.of(new AuthoringVerbAliases.Alias("tap", "click"))));
+            Assert.fail("expected collision");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage().toLowerCase().contains("tap"), e.getMessage());
+        }
+    }
+
+    @Test
+    public void rememberOllamaCache_preservesAliases() {
+        LlmSettingsService svc = new LlmSettingsService(props);
+        svc.update(new UpdateRequest(
+                null, null, null, null, null, null,
+                false, false, false, null, null,
+                List.of(new AuthoringVerbAliases.Alias("ensure", "click"))));
+        svc.rememberOllamaCache(List.of("gemma4:e2b"));
+        Assert.assertEquals(svc.maskedView().get("authoringVerbAliases"),
+                List.of(Map.of("word", "ensure", "treatAs", "click")));
+    }
+
+    private String readSettings() {
+        try {
+            return Files.readString(storeRoot.resolve("llm-settings.json"), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
     }
 }

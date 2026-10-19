@@ -227,6 +227,7 @@
                     <li>Optional: check <strong>Review cases before run</strong> (Cursor or Keel). More than 5 selected cases split into batches (Owner sets the size on Admin → LLM &amp; API keys; default 50). Inspect the combined proposed cases after the last batch. Filler words such as <code>list</code>, <code>area</code>, and <code>visible</code> stay outside quotes — leftover Expected becomes <code>'Upload Transactions'</code>, not <code>'Upload Transactions list area'</code>. The live heading (for example <code>'Upload Transactions List'</code>) is applied later during the run when that heading is unique on screen.</li>
                     <li><strong>Accept &amp; run</strong> saves those cases into the project library, then starts the run. Uncheck review to run the library as-is. Review is not charged; the run price still applies when the run starts.</li>
                     <li>Quoted clicks use on-screen names. When a click lands on a menu row, Keel uses an inner preferred hook from project Settings if that hook is unique in the page. If the row is unique but the hook was cloned elsewhere (open submenu), it still clicks that inner hook under the row. Otherwise it keeps the row xpath.</li>
+                    <li>Excel verbs Keel does not already treat as click / type / assert are skipped unless the Owner adds them on Admin → LLM &amp; API keys (Authoring verbs). Built-in words stay read-only. Default: <code>observe</code> is treated as assert.</li>
                 </ol>
                 <div class="guide-callouts">
                     <div class="callout warn">
@@ -456,7 +457,7 @@
                 <ul class="guide-points">
                     <li><strong>TC_ID</strong> — unique per row (e.g. <code>TC_01</code>)</li>
                     <li><strong>Title</strong> — short case name</li>
-                    <li><strong>Steps</strong> — numbered user actions (exact UI labels)</li>
+                    <li><strong>Steps</strong> — numbered user actions (exact UI labels). Start with a verb Keel knows (click, enter, confirm, …) or an Owner alias from Admin → LLM &amp; API keys. <code>Observe</code> is seeded as assert.</li>
                     <li><strong>ExpectedResult</strong> — observable outcomes (prefer one per step)</li>
                     <li><strong>Preconditions</strong> — login need, role, starting context</li>
                     <li><strong>Priority / Tags</strong> — e.g. <code>P1</code>, <code>smoke,login</code></li>

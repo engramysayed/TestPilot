@@ -55,7 +55,8 @@ public class AdminLlmSettingsController {
                         Boolean.TRUE.equals(body.clearAgentrouterApiKey),
                         Boolean.TRUE.equals(body.clearOllamaApiKey),
                         body.reviewCasesPerBatch,
-                        body.browser);
+                        body.browser,
+                        aliasesFrom(body.authoringVerbAliases));
         return settings.update(req);
     }
 
@@ -93,5 +94,14 @@ public class AdminLlmSettingsController {
         public Boolean clearOllamaApiKey;
         public Integer reviewCasesPerBatch;
         public String browser;
+        public List<Map<String, String>> authoringVerbAliases;
+    }
+
+    private static List<delivery.authoring.AuthoringVerbAliases.Alias> aliasesFrom(
+            List<Map<String, String>> raw) {
+        if (raw == null) {
+            return null;
+        }
+        return delivery.authoring.AuthoringVerbAliases.fromRaw(raw);
     }
 }

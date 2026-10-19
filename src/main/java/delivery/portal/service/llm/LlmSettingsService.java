@@ -2,6 +2,7 @@ package delivery.portal.service.llm;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import delivery.authoring.AuthoringVerbAliases;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.security.JobSecretCrypto;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,6 +80,9 @@ public class LlmSettingsService implements ApplicationRunner {
         out.put("ollamaVisionModel", nullToEmpty(s.ollamaVisionModel));
         out.put("reviewCasesPerBatch", s.reviewCasesPerBatch);
         out.put("browser", s.browser);
+        out.put("authoringVerbAliases", AuthoringVerbAliases.toMaps(s.authoringVerbAliases));
+        out.put("builtInVerbs", AuthoringVerbAliases.builtInMaps());
+        out.put("codeOnlyVerbs", AuthoringVerbAliases.codeOnlySpecials());
         return out;
     }
 
@@ -110,6 +114,7 @@ public class LlmSettingsService implements ApplicationRunner {
             String vision = cur.ollamaVisionModel;
             int batch = cur.reviewCasesPerBatch;
             String browser = cur.browser;
+            List<AuthoringVerbAliases.Alias> aliases = cur.authoringVerbAliases;
             if (req != null) {
                 if (req.ollamaBaseUrl != null) {
                     baseUrl = req.ollamaBaseUrl.trim();
@@ -126,10 +131,13 @@ public class LlmSettingsService implements ApplicationRunner {
                 if (req.browser != null && !req.browser.isBlank()) {
                     browser = normalizeBrowser(req.browser);
                 }
+                if (req.authoringVerbAliases != null) {
+                    aliases = AuthoringVerbAliases.normalize(req.authoringVerbAliases);
+                }
             }
             List<String> cache = cur.cachedOllamaModels == null ? List.of() : cur.cachedOllamaModels;
             StoredSettings next = new StoredSettings(
-                    cursor, agent, ollamaKey, baseUrl, chat, vision, cache, batch, browser);
+                    cursor, agent, ollamaKey, baseUrl, chat, vision, cache, batch, browser, aliases);
             writeToDisk(next);
             stored = next;
             applyToRuntime();
@@ -289,7 +297,8 @@ public class LlmSettingsService implements ApplicationRunner {
                     cur.ollamaVisionModel,
                     cache,
                     cur.reviewCasesPerBatch,
-                    cur.browser);
+                    cur.browser,
+                    cur.authoringVerbAliases);
             writeToDisk(next);
             stored = next;
         }
@@ -335,6 +344,7 @@ public class LlmSettingsService implements ApplicationRunner {
             }
         }
         publishBrowser(s.browser);
+        AuthoringVerbAliases.publish(s.authoringVerbAliases);
     }
 
     public int reviewCasesPerBatch() {
@@ -374,6 +384,7 @@ public class LlmSettingsService implements ApplicationRunner {
             raw.put("cachedOllamaModels", s.cachedOllamaModels() == null ? List.of() : s.cachedOllamaModels());
             raw.put("reviewCasesPerBatch", s.reviewCasesPerBatch);
             raw.put("browser", nullToEmpty(s.browser));
+            raw.put("authoringVerbAliases", AuthoringVerbAliases.toMaps(s.authoringVerbAliases));
             Path tmp = settingsFile.resolveSibling(FILE_NAME + ".tmp");
             MAPPER.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), raw);
             try {
@@ -402,7 +413,24 @@ public class LlmSettingsService implements ApplicationRunner {
         List<String> cache = parseCachedModels(raw.get("cachedOllamaModels"));
         int batch = parseBatch(raw.get("reviewCasesPerBatch"));
         String browser = normalizeBrowser(str(raw.get("browser")));
-        return new StoredSettings(cursor, agent, ollamaKey, base, chat, vision, cache, batch, browser);
+        List<AuthoringVerbAliases.Alias> aliases = parseAliases(raw);
+        return new StoredSettings(cursor, agent, ollamaKey, base, chat, vision, cache, batch, browser, aliases);
+    }
+
+    private static List<AuthoringVerbAliases.Alias> parseAliases(Map<String, Object> raw) {
+        if (raw == null || !raw.containsKey("authoringVerbAliases")) {
+            return AuthoringVerbAliases.seed();
+        }
+        Object value = raw.get("authoringVerbAliases");
+        if (value == null) {
+            return AuthoringVerbAliases.seed();
+        }
+        try {
+            return AuthoringVerbAliases.fromRaw(value);
+        } catch (IllegalArgumentException e) {
+            LogsManager.warn("Ignoring invalid authoringVerbAliases: " + e.getMessage());
+            return AuthoringVerbAliases.seed();
+        }
     }
 
     private static List<String> parseCachedModels(Object raw) {
@@ -432,7 +460,7 @@ public class LlmSettingsService implements ApplicationRunner {
             chat = props.getGenerateModel();
         }
         return new StoredSettings("", "", "", base, nullToEmpty(chat), "", List.of(),
-                delivery.portal.service.ReviewBatchPolicy.DEFAULT_N, "edge");
+                delivery.portal.service.ReviewBatchPolicy.DEFAULT_N, "edge", AuthoringVerbAliases.seed());
     }
 
     private String defaultBaseUrl() {
@@ -555,7 +583,8 @@ public class LlmSettingsService implements ApplicationRunner {
             boolean clearAgentrouterApiKey,
             boolean clearOllamaApiKey,
             Integer reviewCasesPerBatch,
-            String browser
+            String browser,
+            List<AuthoringVerbAliases.Alias> authoringVerbAliases
     ) {
         public UpdateRequest(
                 String cursorApiKey,
@@ -569,7 +598,24 @@ public class LlmSettingsService implements ApplicationRunner {
                 boolean clearOllamaApiKey) {
             this(cursorApiKey, agentrouterApiKey, ollamaApiKey, ollamaBaseUrl, ollamaChatModel,
                     ollamaVisionModel, clearCursorApiKey, clearAgentrouterApiKey, clearOllamaApiKey,
-                    null, null);
+                    null, null, null);
+        }
+
+        public UpdateRequest(
+                String cursorApiKey,
+                String agentrouterApiKey,
+                String ollamaApiKey,
+                String ollamaBaseUrl,
+                String ollamaChatModel,
+                String ollamaVisionModel,
+                boolean clearCursorApiKey,
+                boolean clearAgentrouterApiKey,
+                boolean clearOllamaApiKey,
+                Integer reviewCasesPerBatch,
+                String browser) {
+            this(cursorApiKey, agentrouterApiKey, ollamaApiKey, ollamaBaseUrl, ollamaChatModel,
+                    ollamaVisionModel, clearCursorApiKey, clearAgentrouterApiKey, clearOllamaApiKey,
+                    reviewCasesPerBatch, browser, null);
         }
     }
 
@@ -592,11 +638,12 @@ public class LlmSettingsService implements ApplicationRunner {
             String ollamaVisionModel,
             List<String> cachedOllamaModels,
             int reviewCasesPerBatch,
-            String browser
+            String browser,
+            List<AuthoringVerbAliases.Alias> authoringVerbAliases
     ) {
         static StoredSettings empty() {
             return new StoredSettings("", "", "", DEFAULT_OLLAMA_BASE, "", "", List.of(),
-                    delivery.portal.service.ReviewBatchPolicy.DEFAULT_N, "edge");
+                    delivery.portal.service.ReviewBatchPolicy.DEFAULT_N, "edge", AuthoringVerbAliases.seed());
         }
     }
 
