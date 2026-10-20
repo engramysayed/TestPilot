@@ -2,6 +2,8 @@ package delivery.portal.model;
 
 import delivery.authoring.AuthoringEngine;
 
+import java.util.Locale;
+
 public class ProjectRecord {
     private final String projectId;
     private final String name;
@@ -20,6 +22,8 @@ public class ProjectRecord {
     private String tenantId = "";
     /** WEB | ANDROID; immutable after create. */
     private String platform = "WEB";
+    /** Optional generated test-data key prefix (e.g. sit). */
+    private String testDataEnv = "";
 
     public ProjectRecord(String projectId, String name, Long ownerUserId, int latestVersion) {
         this.projectId = projectId;
@@ -74,5 +78,9 @@ public class ProjectRecord {
     public String getPlatform() { return platform == null || platform.isBlank() ? "WEB" : platform; }
     public void setPlatform(String platform) {
         this.platform = platform == null || platform.isBlank() ? "WEB" : platform.trim().toUpperCase();
+    }
+    public String getTestDataEnv() { return testDataEnv == null ? "" : testDataEnv; }
+    public void setTestDataEnv(String testDataEnv) {
+        this.testDataEnv = testDataEnv == null ? "" : testDataEnv.trim().toLowerCase(Locale.ROOT);
     }
 }

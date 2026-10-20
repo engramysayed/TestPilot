@@ -4,6 +4,7 @@ These files capture the **Grok Bot “Keel team”** workstream (Oct 2026) so yo
 
 | Document | Use when |
 |----------|----------|
+| [2026-10-20-codegen-ux-emit.md](2026-10-20-codegen-ux-emit.md) | Shipped: cleaner Automate ZIP emit, title *Test classes, optional test data env prefix on login placeholders |
 | [2026-10-20-list-row-first-and-treat-as.md](2026-10-20-list-row-first-and-treat-as.md) | Shipped: first matching grid row click; Treat as clear/select/drag/hover/double/right |
 | [2026-10-19-authoring-verb-aliases.md](2026-10-19-authoring-verb-aliases.md) | Shipped: read-only built-in verbs + Owner aliases (click/type/assert/ignore); seed observe→assert |
 | [2026-10-19-scoped-nested-hook.md](2026-10-19-scoped-nested-hook.md) | Shipped: unique menu row with a cloned inner hook uses a scoped inner-hook locator |

@@ -60,8 +60,13 @@ public class FacebookIrCodegenIdentityTest {
         Assert.assertFalse(actions.contains("select_Combobox_4"), actions);
         Assert.assertFalse(actions.contains("select_Gender_Select"), actions);
 
+        TcDraft reg02 = drafts.stream()
+                .filter(d -> "TC_FB_REG_02".equals(d.tcId()))
+                .findFirst()
+                .orElseThrow();
+        String test02File = CodegenNaming.testClassName(reg02.tcId(), reg02.title(), true) + ".java";
         String test02 = Files.readString(
-                FRAMEWORK.resolve("src/test/java/project/tests/generated/TC_FB_REG_02.java"));
+                FRAMEWORK.resolve("src/test/java/project/tests/generated").resolve(test02File));
         Assert.assertTrue(test02.contains("type_First_Name"), test02);
         Assert.assertTrue(test02.contains("type_Surname"), test02);
         Assert.assertFalse(test02.contains("type_Type("), test02);

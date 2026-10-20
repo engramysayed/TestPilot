@@ -136,8 +136,9 @@ public class GeneratedZipReplayBenchmarkTest {
         Files.writeString(EVIDENCE.resolve("new-mvn.log"), newRun.log, StandardCharsets.UTF_8);
         Assert.assertEquals(newRun.exitCode, 0, "NEW mvn clean test expected 0:\n" + tail(newRun.log));
         assertDownloadedCounts(replay, newRun, happyIds().size(), "NEW");
+        Map<String, String> titles = titleByTcId(cases);
         for (String id : happyIds()) {
-            Assert.assertEquals(statusOf(newRun.statuses, id), "PASS",
+            Assert.assertEquals(statusOf(newRun.statuses, id, titles.get(id)), "PASS",
                     id + " expected PASS, got " + newRun.statuses + "\n" + tail(newRun.log));
         }
         assertCanaryAbsent(replay, "NEW");
@@ -164,7 +165,7 @@ public class GeneratedZipReplayBenchmarkTest {
 
         Path replay = unzip(versionB.zipFile(), workRoot.resolve("replay-update"));
         Assert.assertTrue(Files.isRegularFile(
-                replay.resolve("src/test/java/project/tests/generated/TC_UPD_SAVE.java")));
+                replay.resolve("src/test/java/project/tests/generated/Save_After_Update_Test.java")));
         prepareReplay(replay);
         updateRun = mvnCleanTest(replay);
         Files.writeString(EVIDENCE.resolve("update-mvn.log"), updateRun.log, StandardCharsets.UTF_8);
@@ -172,8 +173,9 @@ public class GeneratedZipReplayBenchmarkTest {
         List<String> ids = new ArrayList<>(happyIds());
         ids.add("TC_UPD_SAVE");
         assertDownloadedCounts(replay, updateRun, ids.size(), "UPDATE");
+        Map<String, String> updateTitles = titleByTcId(cases);
         for (String id : ids) {
-            Assert.assertEquals(statusOf(updateRun.statuses, id), "PASS",
+            Assert.assertEquals(statusOf(updateRun.statuses, id, updateTitles.get(id)), "PASS",
                     id + " expected PASS, got " + updateRun.statuses + "\n" + tail(updateRun.log));
         }
         assertCanaryAbsent(replay, "UPDATE");
@@ -195,9 +197,9 @@ public class GeneratedZipReplayBenchmarkTest {
 
         Path replay = unzip(emitted.zipFile(), workRoot.resolve("replay-fail"));
         String leaf = Files.readString(
-                replay.resolve("src/test/java/project/tests/generated/TC_FAIL_SETUP_LEAF.java"));
+                replay.resolve("src/test/java/project/tests/generated/Leaf_After_Bad_Setup_Test.java"));
         Assert.assertTrue(leaf.contains("click_Body_Probe_Button") || leaf.contains("body-probe"), leaf);
-        Assert.assertTrue(leaf.contains("@AfterMethod(alwaysRun = true)"), leaf);
+        Assert.assertFalse(leaf.contains("@AfterMethod"), "lifecycle stays in BaseTest:\n" + leaf);
         prepareReplay(replay);
         failRun = mvnCleanTest(replay);
         Files.writeString(EVIDENCE.resolve("fail-mvn.log"), failRun.log, StandardCharsets.UTF_8);
@@ -205,16 +207,27 @@ public class GeneratedZipReplayBenchmarkTest {
         assertNoInternalSelfTests(replay);
         Assert.assertEquals(countGeneratedTests(replay), failIds().size(),
                 "FAIL downloaded test count must match generated cases");
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_CLICK"), "FAIL", failRun.statuses.toString());
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_ABSENCE"), "FAIL", failRun.statuses.toString());
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_EXPECT"), "FAIL", failRun.statuses.toString());
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_TYPE"), "FAIL", failRun.statuses.toString());
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_SELECT"), "FAIL", failRun.statuses.toString());
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_SETUP_BAD"), "FAIL", failRun.statuses.toString());
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_SETUP_LEAF"), "SKIP",
+        Map<String, String> failTitles = titleByTcId(cases);
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_CLICK", failTitles.get("TC_FAIL_CLICK")),
+                "FAIL", failRun.statuses.toString());
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_ABSENCE", failTitles.get("TC_FAIL_ABSENCE")),
+                "FAIL", failRun.statuses.toString());
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_EXPECT", failTitles.get("TC_FAIL_EXPECT")),
+                "FAIL", failRun.statuses.toString());
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_TYPE", failTitles.get("TC_FAIL_TYPE")),
+                "FAIL", failRun.statuses.toString());
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_SELECT", failTitles.get("TC_FAIL_SELECT")),
+                "FAIL", failRun.statuses.toString());
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_SETUP_BAD", failTitles.get("TC_SETUP_BAD")),
+                "FAIL", failRun.statuses.toString());
+        String leafClass = CodegenNaming.testClassName(
+                "TC_FAIL_SETUP_LEAF", failTitles.get("TC_FAIL_SETUP_LEAF"), true);
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_SETUP_LEAF", failTitles.get("TC_FAIL_SETUP_LEAF")),
+                "SKIP",
                 "leaf @Test body is skipped after configuration failure, not a failed test method: "
                         + failRun.statuses + " config=" + failRun.configFailures + "\n" + tail(failRun.log));
-        Assert.assertTrue(failRun.configFailures.containsKey("TC_FAIL_SETUP_LEAF"),
+        Assert.assertTrue(failRun.configFailures.containsKey(leafClass)
+                        || failRun.configFailures.containsKey("TC_FAIL_SETUP_LEAF"),
                 "leaf configuration failure must be recorded separately: " + failRun.configFailures);
         Assert.assertFalse(bodyProbeHit.get(), "leaf body click must not run after setup failure");
         Assert.assertTrue(countQuitMarkers(replay) > 0,
@@ -488,9 +501,12 @@ public class GeneratedZipReplayBenchmarkTest {
         Assert.assertTrue(data.contains("changed@example.invalid"), data);
         Assert.assertTrue(data.contains("TC_SETUP.login."), data);
         Assert.assertTrue(data.contains("TC_SETUP.body."), data);
-        String setup = Files.readString(project.resolve("src/test/java/project/tests/generated/TC_SETUP.java"));
-        String elide = Files.readString(project.resolve("src/test/java/project/tests/generated/TC_LEAF_ELIDE.java"));
-        String full = Files.readString(project.resolve("src/test/java/project/tests/generated/TC_LEAF_FULL.java"));
+        String setup = Files.readString(project.resolve(
+                "src/test/java/project/tests/generated/Setup_Login_Then_Change_Email_Test.java"));
+        String elide = Files.readString(project.resolve(
+                "src/test/java/project/tests/generated/Leaf_With_Own_Login_Test.java"));
+        String full = Files.readString(project.resolve(
+                "src/test/java/project/tests/generated/Leaf_Inlines_Setup_Login_Test.java"));
         Assert.assertTrue(setup.contains("TC_SETUP.login."), setup);
         Assert.assertTrue(setup.contains("TC_SETUP.body."), setup);
         Assert.assertTrue(elide.contains("TC_SETUP.body."), elide);
@@ -506,23 +522,24 @@ public class GeneratedZipReplayBenchmarkTest {
             Assert.assertTrue(actions >= 2, "colliding page names must emit more than one Actions class");
         }
         Assert.assertTrue(Files.isRegularFile(
-                project.resolve("src/test/java/project/tests/generated/TC_A_B.java")));
+                project.resolve("src/test/java/project/tests/generated/Distinct_Id_A_B_Test.java")));
         Assert.assertTrue(Files.isRegularFile(
-                project.resolve("src/test/java/project/tests/generated/TC_A__B.java")));
+                project.resolve("src/test/java/project/tests/generated/TC_A__BTest.java")),
+                "TC_A__B falls back to tc id when title class name collides with TC_A_B");
         String data = Files.readString(
                 project.resolve("src/test/resources/test-data/delivery-testdata.properties"),
                 StandardCharsets.UTF_8);
         Assert.assertTrue(data.contains("مرحبا café"), data);
         Assert.assertTrue(data.contains(CANARY), data);
         String canaryTest = Files.readString(
-                project.resolve("src/test/java/project/tests/generated/TC_CANARY.java"));
+                project.resolve("src/test/java/project/tests/generated/Password_Canary_Test.java"));
         Assert.assertFalse(canaryTest.contains(CANARY), canaryTest);
         String ready = Files.readString(
-                project.resolve("src/test/java/project/tests/generated/TC_READY.java"));
+                project.resolve("src/test/java/project/tests/generated/Fixture_Heading_Test.java"));
         Assert.assertTrue(ready.contains(CANARY_ASSERT),
                 "assertion expected is inlined in generated tests:\n" + ready);
         String unicode = Files.readString(
-                project.resolve("src/test/java/project/tests/generated/TC_UNICODE.java"));
+                project.resolve("src/test/java/project/tests/generated/Unicode_Testdata_Test.java"));
         Assert.assertFalse(unicode.contains("مرحبا café"), unicode);
     }
 
@@ -847,7 +864,23 @@ public class GeneratedZipReplayBenchmarkTest {
         }
     }
 
-    private static String statusOf(Map<String, String> statuses, String tcId) {
+    private static Map<String, String> titleByTcId(List<ManualTestCase> cases) {
+        Map<String, String> out = new LinkedHashMap<>();
+        for (ManualTestCase row : cases) {
+            out.put(row.tcId(), row.title());
+        }
+        return out;
+    }
+
+    private static String statusOf(Map<String, String> statuses, String tcId, String title) {
+        String titleClass = CodegenNaming.testClassName(tcId, title == null ? "" : title, true);
+        if (statuses.containsKey(titleClass)) {
+            return statuses.get(titleClass);
+        }
+        String idClass = CodegenNaming.testClassName(tcId, "", true);
+        if (statuses.containsKey(idClass)) {
+            return statuses.get(idClass);
+        }
         if (statuses.containsKey(tcId)) {
             return statuses.get(tcId);
         }

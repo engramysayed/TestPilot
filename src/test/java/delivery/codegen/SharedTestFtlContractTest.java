@@ -25,7 +25,7 @@ public class SharedTestFtlContractTest {
         Assert.assertTrue(todo.contains("<#include \"test-call-site.ftl\">"), todo);
         // requiredProperty / Secrets live once in the shared call-site include
         String call = Files.readString(CALL);
-        Assert.assertTrue(call.contains("requiredProperty"), call);
+        Assert.assertTrue(call.contains("PropertyReader.getProperty"), call);
         Assert.assertTrue(call.contains("Secrets.property"), call);
         Assert.assertFalse(gen.contains("private static String requiredProperty"), gen);
         Assert.assertFalse(todo.contains("private static String requiredProperty"), todo);

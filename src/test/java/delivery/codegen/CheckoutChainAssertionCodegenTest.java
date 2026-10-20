@@ -25,8 +25,8 @@ public class CheckoutChainAssertionCodegenTest {
                 "", null, false, List.of())
                 .withSetup(List.of(confirmation));
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome));
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_ORD_01.java"));
-        Assert.assertTrue(test.contains("assert_Body_Text_Contains(\"Order KLA-\")"), test);
+        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Order_On_Account_Test.java"));
+        Assert.assertTrue(test.contains("Text_Contains(\"Order KLA-\")"), test);
         Assert.assertFalse(test.contains("_Capture()"), test);
         Assert.assertFalse(test.contains("Equals_Captured"), test);
     }
@@ -40,7 +40,7 @@ public class CheckoutChainAssertionCodegenTest {
         new CodeWriter(TEMPLATES).write(dir, List.of(new TcOutcome(
                 "TC_SES_01", "Session expiry overlay", TcStatus.PASSED,
                 List.of(expire, overlay), "", null, false, List.of())));
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_SES_01.java"));
+        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Session_Expiry_Overlay_Test.java"));
         Assert.assertTrue(test.contains("Session expired — sign in again"), test);
         Assert.assertFalse(test.contains("Signed_Out"), test);
         Assert.assertFalse(test.contains("authenticatedIdentityGone"), test);
@@ -59,7 +59,7 @@ public class CheckoutChainAssertionCodegenTest {
         new CodeWriter(TEMPLATES).write(dir, List.of(new TcOutcome(
                 "TC_ORD_01", "Order on account", TcStatus.PASSED,
                 List.of(capture, click, compare), "", null, false, List.of())));
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_ORD_01.java"));
+        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Order_On_Account_Test.java"));
         String order = Files.readString(dir.resolve("src/main/java/project/pages/Order.java"));
         String account = Files.readString(dir.resolve("src/main/java/project/pages/Account.java"));
         String locators = Files.readString(dir.resolve("src/main/java/project/pages/Order.java"));

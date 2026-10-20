@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -376,6 +377,18 @@ public class PortalStore {
         }
         if (patch.precisionReuseLocatorMemory() != null) {
             entity.setPrecisionReuseLocatorMemory(patch.precisionReuseLocatorMemory());
+        }
+        if (patch.testDataEnv() != null) {
+            String env = patch.testDataEnv().trim().toLowerCase(Locale.ROOT);
+            entity.setTestDataEnv(env.isBlank() ? null : env.replaceAll("[^a-z0-9_-]", ""));
+            try {
+                delivery.codegen.CodegenEnvHint.write(
+                        filesystemStoreFor(projectId).projectRoot(projectId),
+                        entity.getTestDataEnv() == null ? "" : entity.getTestDataEnv());
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(PortalStore.class)
+                        .warn("Could not persist test-data env hint for {}: {}", projectId, e.getMessage());
+            }
         }
         projectRepository.save(entity);
         return Optional.of(toRecord(entity));
@@ -1079,6 +1092,7 @@ public class PortalStore {
         rec.setPrecisionReuseLocatorMemory(Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()));
         rec.setTenantId(e.getTenantId() == null ? "" : e.getTenantId());
         rec.setPlatform(ProjectPlatform.parse(e.getPlatform()).name());
+        rec.setTestDataEnv(e.getTestDataEnv() == null ? "" : e.getTestDataEnv());
         rec.setArchived(e.isArchived());
         if (e.getArchivedAt() != null) {
             rec.setArchivedAt(e.getArchivedAt().toString());

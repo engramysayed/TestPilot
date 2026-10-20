@@ -3,6 +3,7 @@ package project.tests.generated;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import project.tests.BaseTest;
+import project.utils.dataReader.PropertyReader;
 <#if readOnly!false>
 import project.utils.retry.KeelReadOnly;
 import project.utils.retry.KeelRetryAnalyzer;
@@ -12,6 +13,10 @@ import project.pages.${cls};
 </#list>
 
 public class ${className} extends BaseTest {
+
+<#list pageFields as p>
+    private ${p.className} ${p.varName};
+</#list>
 
 <#include "test-before-method.ftl">
 <#if readOnly!false>
@@ -24,8 +29,8 @@ public class ${className} extends BaseTest {
 <#if chronCalls?size == 0>
         org.testng.Assert.fail("No proven steps generated for ${tcId?j_string}");
 <#else>
-<#list pageVars as p>
-        ${p.className} ${p.varName} = new ${p.className}(driver);
+<#list pageFields as p>
+        ${p.varName} = new ${p.className}(driver);
 </#list>
 <#list chronCalls as call>
 <#include "test-call-site.ftl">

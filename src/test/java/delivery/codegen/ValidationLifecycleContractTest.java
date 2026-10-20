@@ -62,8 +62,8 @@ public class ValidationLifecycleContractTest {
         String todo = Files.readString(TODO_TEST);
         String callSite = Files.readString(Path.of(
                 "customer-framework-template/templates/test-call-site.ftl"));
-        // Call sites use requiredProperty via shared include (inherited from BaseTest)
-        Assert.assertTrue(callSite.contains("requiredProperty"), callSite);
+        // Call sites load test data via PropertyReader (BaseTest still has requiredProperty for env)
+        Assert.assertTrue(callSite.contains("PropertyReader.getProperty"), callSite);
         Assert.assertTrue(generated.contains("test-call-site.ftl"), generated);
         Assert.assertTrue(todo.contains("test-call-site.ftl"), todo);
         Assert.assertFalse(generated.contains("nullToEmpty"), generated);

@@ -28,23 +28,25 @@ final class CodegenDataKeys {
     private final Map<String, String> valuesByKey = new LinkedHashMap<>();
     private final PageAccumulator pages;
     private final String forcedKey;
+    private final String testDataEnvPrefix;
 
-    private CodegenDataKeys(PageAccumulator pages) {
-        this(pages, null);
-    }
-
-    private CodegenDataKeys(PageAccumulator pages, String forcedKey) {
+    private CodegenDataKeys(PageAccumulator pages, String forcedKey, String testDataEnvPrefix) {
         this.pages = pages;
         this.forcedKey = forcedKey;
+        this.testDataEnvPrefix = testDataEnvPrefix == null ? "" : testDataEnvPrefix.trim();
     }
 
     /** Test hook: every typed/select step resolves to {@code key} so conflict reject can be proven. */
     static CodegenDataKeys forcingKey(PageAccumulator pages, String key) {
-        return new CodegenDataKeys(pages == null ? new PageAccumulator() : pages, key);
+        return new CodegenDataKeys(pages == null ? new PageAccumulator() : pages, key, "");
     }
 
     static CodegenDataKeys assign(List<TcOutcome> outcomes, PageAccumulator pages) {
-        CodegenDataKeys keys = new CodegenDataKeys(pages == null ? new PageAccumulator() : pages);
+        return assign(outcomes, pages, "");
+    }
+
+    static CodegenDataKeys assign(List<TcOutcome> outcomes, PageAccumulator pages, String testDataEnvPrefix) {
+        CodegenDataKeys keys = new CodegenDataKeys(pages == null ? new PageAccumulator() : pages, null, testDataEnvPrefix);
         if (outcomes == null) {
             return keys;
         }
@@ -74,8 +76,13 @@ final class CodegenDataKeys {
 
     private String keyFor0(String fallbackTcId, String emitPhase, ProvenStep step) {
         String value = step.value() == null ? "" : step.value();
-        String special = CodeWriter.specialPropKey(value);
+        String special = SemanticTestDataKeys.mapPlaceholder(value, testDataEnvPrefix);
         if (special != null) {
+            assertValueCompatible(special, value);
+            valuesByKey.putIfAbsent(special, value);
+            if (allocatingSecret) {
+                secretKeys.add(special);
+            }
             return special;
         }
         if (value.isBlank()) {

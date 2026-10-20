@@ -114,7 +114,7 @@ public class KeelSecretFlagTest {
         Assert.assertTrue(java.contains("\"typeSecret\"") && java.contains("SettledActions.type"), java);
         Assert.assertTrue(java.contains("Secrets.register(value)"), java);
         Assert.assertTrue(java.contains("SettledActions.type") && java.contains("\"type\""), "non-secret type keeps the type rule");
-        Assert.assertTrue(java.contains("requiredProperty(\"TC_S.body."), java);
+        Assert.assertTrue(java.contains("PropertyReader.getProperty(\"TC_S.body."), java);
         Assert.assertTrue(java.contains("Secrets.property(\"TC_S.body."), "secret read from the secret store / env");
 
         Path data = out.resolve("src/test/resources/test-data");

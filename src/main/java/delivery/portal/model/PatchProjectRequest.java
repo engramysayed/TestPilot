@@ -7,13 +7,14 @@ public record PatchProjectRequest(
         String preferredHooks,
         String authoringEngine,
         Integer precisionMaxCallsPerJob,
-        Boolean precisionReuseLocatorMemory
+        Boolean precisionReuseLocatorMemory,
+        String testDataEnv
 ) {
     public PatchProjectRequest(String name, String baseUrl, Boolean archived) {
-        this(name, baseUrl, archived, null, null, null, null);
+        this(name, baseUrl, archived, null, null, null, null, null);
     }
 
     public PatchProjectRequest(String name, String baseUrl, Boolean archived, String preferredHooks) {
-        this(name, baseUrl, archived, preferredHooks, null, null, null);
+        this(name, baseUrl, archived, preferredHooks, null, null, null, null);
     }
 }

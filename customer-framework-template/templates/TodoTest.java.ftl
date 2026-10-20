@@ -3,6 +3,7 @@ package project.tests.todo;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import project.tests.BaseTest;
+import project.utils.dataReader.PropertyReader;
 <#list pageImports as cls>
 import project.pages.${cls};
 </#list>
@@ -12,11 +13,15 @@ import project.pages.${cls};
  */
 public class ${className} extends BaseTest {
 
+<#list pageFields as p>
+    private ${p.className} ${p.varName};
+</#list>
+
 <#include "test-before-method.ftl">
     @Test(description = "${testDescription?j_string}", enabled = false)
     public void ${methodName}() {
-<#list pageVars as p>
-        ${p.className} ${p.varName} = new ${p.className}(driver);
+<#list pageFields as p>
+        ${p.varName} = new ${p.className}(driver);
 </#list>
 <#list chronCalls as call>
 <#include "test-call-site.ftl">

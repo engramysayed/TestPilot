@@ -84,7 +84,7 @@ public class DryRunConversionService {
         }
 
         CodegenOptions codegenOpts = new CodegenOptions(
-                request.codegenOllamaNaming(), request.localLlmBaseUrl(), request.localLlmModel());
+                request.codegenOllamaNaming(), request.localLlmBaseUrl(), request.localLlmModel(), "");
         new CodeWriter(request.templateRoot().resolve("templates"), codegenOpts).write(projectDir, outcomes);
         DomainCatalogWriter.write(projectDir, outcomes);
         packager.writeScoreReport(projectDir, outcomes);

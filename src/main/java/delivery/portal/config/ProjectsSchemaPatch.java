@@ -28,6 +28,7 @@ public class ProjectsSchemaPatch implements ApplicationRunner {
         addColumnQuietly("tenant_id", "VARCHAR(40)");
         addColumnQuietly("precision_reuse_locator_memory", "BOOLEAN DEFAULT FALSE");
         addColumnQuietly("platform", "VARCHAR(16) DEFAULT 'WEB'");
+        addColumnQuietly("test_data_env", "VARCHAR(32)");
         try {
             jdbc.update("UPDATE projects SET platform = 'WEB' WHERE platform IS NULL OR TRIM(platform) = ''");
         } catch (Exception e) {

@@ -37,17 +37,17 @@ public final class TestMethodNaming {
         if (words.length == 0) {
             return fallback(tcId);
         }
-        int n = Math.min(5, words.length);
+        int n = words.length;
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < n; i++) {
-            if (i > 0) {
+            if (sb.length() > 0) {
                 sb.append('_');
             }
             String w = words[i].toLowerCase(Locale.ROOT);
             if (w.isEmpty()) {
                 continue;
             }
-            if (i == 0) {
+            if (sb.isEmpty()) {
                 sb.append(Character.toUpperCase(w.charAt(0)));
                 if (w.length() > 1) {
                     sb.append(w.substring(1));
@@ -55,11 +55,15 @@ public final class TestMethodNaming {
             } else {
                 sb.append(w);
             }
+            if (sb.length() > 100) {
+                break;
+            }
         }
         if (sb.isEmpty()) {
             return fallback(tcId);
         }
-        return CodegenNaming.sanitizeJavaIdentifier(sb.toString(), fallback(tcId));
+        String raw = sb.length() > 100 ? sb.substring(0, 100) : sb.toString();
+        return CodegenNaming.sanitizeJavaIdentifier(raw, fallback(tcId));
     }
 
     static String parseOllamaResponse(String raw) {
@@ -75,7 +79,7 @@ public final class TestMethodNaming {
         if (parts.length == 0) {
             return null;
         }
-        if (parts.length > 5) {
+        if (parts.length > 11) {
             return null;
         }
         int n = parts.length;

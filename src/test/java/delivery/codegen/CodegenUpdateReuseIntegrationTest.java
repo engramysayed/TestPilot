@@ -92,21 +92,21 @@ public class CodegenUpdateReuseIntegrationTest {
         Path updateProject = updateWork.resolve("project");
 
         Assert.assertEquals(statusOf(updateDrafts, "TC_KEEP"), TcDraftStatus.REUSED);
-        String keep = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/TC_KEEP.java"));
+        String keep = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/Keep_Save_Test.java"));
         Assert.assertTrue(keep.contains("click_Save_Button") || keep.contains("save"), keep);
 
-        String change = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/TC_CHANGE.java"));
+        String change = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/Change_Target_Test.java"));
         Assert.assertTrue(change.contains("click_Second_Button") || change.contains("second"), change);
         Assert.assertFalse(change.contains("click_First_Button"), change);
 
-        Assert.assertFalse(Files.exists(updateProject.resolve("src/test/java/project/tests/generated/TC_FALL.java")),
+        Assert.assertFalse(Files.exists(updateProject.resolve("src/test/java/project/tests/generated/Fall_To_Todo_Test.java")),
                 "PASS→TODO must delete the generated class");
         Assert.assertTrue(Files.isRegularFile(
-                updateProject.resolve("src/test/java/project/tests/todo/TC_FALLTodo.java")));
+                updateProject.resolve("src/test/java/project/tests/todo/Fall_To_Todo_TestTodo.java")));
 
-        String setup = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/TC_SETUP.java"));
+        String setup = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/Setup_Click_Test.java"));
         Assert.assertTrue(setup.contains("click_Save_Button") || setup.contains("save"), setup);
-        String leaf = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/TC_LEAF.java"));
+        String leaf = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/Leaf_After_Setup_Test.java"));
         Assert.assertTrue(leaf.contains("click_First_Button") || leaf.contains("first"), leaf);
 
         String data = Files.readString(
@@ -114,7 +114,7 @@ public class CodegenUpdateReuseIntegrationTest {
         Assert.assertTrue(data.contains("first@example.invalid"), data);
         Assert.assertTrue(data.contains("third@example.invalid"), data);
         Assert.assertFalse(data.contains("second@example.invalid"), data);
-        String edit = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/TC_EDIT.java"));
+        String edit = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/Repeated_Email_Edits_Test.java"));
         Assert.assertTrue(edit.contains(".1"), edit);
         Assert.assertTrue(edit.contains(".2"), edit);
 

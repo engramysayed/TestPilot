@@ -5,10 +5,10 @@ import org.testng.annotations.Test;
 
 public class TestMethodNamingTest {
     @Test
-    public void trimsToFiveWords() {
+    public void usesFullTitleUpToLengthCap() {
         Assert.assertEquals(
                 TestMethodNaming.deterministic("Confirm the operation user is created successfully", "TC_06"),
-                "Confirm_the_operation_user_is");
+                "Confirm_the_operation_user_is_created_successfully");
     }
 
     @Test
@@ -26,7 +26,8 @@ public class TestMethodNamingTest {
     }
 
     @Test
-    public void rejectsTooManyWords() {
-        Assert.assertNull(TestMethodNaming.parseOllamaResponse("one_two_three_four_five_six"));
+    public void rejectsTooManyWordsFromOllama() {
+        Assert.assertNull(TestMethodNaming.parseOllamaResponse(
+                "one_two_three_four_five_six_seven_eight_nine_ten_eleven_twelve"));
     }
 }

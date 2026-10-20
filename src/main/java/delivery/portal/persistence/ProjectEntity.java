@@ -54,6 +54,10 @@ public class ProjectEntity {
     @Column(name = "platform", length = 16)
     private String platform = "WEB";
 
+    /** Optional prefix for generated test-data keys (e.g. sit → sit_username). */
+    @Column(name = "test_data_env", length = 32)
+    private String testDataEnv;
+
     public Long getId() { return id; }
     public String getProjectId() { return projectId; }
     public void setProjectId(String projectId) { this.projectId = projectId; }
@@ -84,4 +88,7 @@ public class ProjectEntity {
 
     public String getPlatform() { return platform; }
     public void setPlatform(String platform) { this.platform = platform; }
+
+    public String getTestDataEnv() { return testDataEnv; }
+    public void setTestDataEnv(String testDataEnv) { this.testDataEnv = testDataEnv; }
 }

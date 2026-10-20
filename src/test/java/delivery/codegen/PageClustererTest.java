@@ -130,7 +130,7 @@ public class PageClustererTest {
                 "//body//*[not(self::script)][contains(normalize-space(.),'Logged In Successfully')]",
                 "", "textContains", "Logged In Successfully", true, "intent");
         String method = CodegenNaming.assertMethodName(step);
-        Assert.assertEquals(method, "assert_Body_Text_Contains");
+        Assert.assertEquals(method, "assert_Logged_In_Successfully_Text_Contains");
         Assert.assertFalse(method.contains("script"));
         String field = CodegenNaming.locatorFieldName(step);
         Assert.assertTrue(field.endsWith("_Locator"), field);

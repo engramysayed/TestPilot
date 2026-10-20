@@ -6,6 +6,7 @@ import delivery.excel.ManualTestCase;
 import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStore;
 import delivery.ir.TcIdentity;
+import delivery.codegen.CodegenEnvHint;
 import delivery.packager.FrameworkPackager;
 import delivery.store.ProjectStore;
 import org.json.JSONObject;
@@ -80,6 +81,7 @@ public class ConversionJobRunner {
         String workFolder;
         Path work = JobWorkLayout.create(request);
         workFolder = work.getFileName().toString();
+        CodegenEnvHint.write(work, CodegenEnvHint.read(projectRoot));
         Path projectDir = work.resolve("project");
         FrameworkPackager packager = new FrameworkPackager();
         packager.copyTemplate(request.templateRoot(), projectDir);

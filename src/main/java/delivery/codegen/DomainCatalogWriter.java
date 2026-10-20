@@ -71,7 +71,7 @@ public final class DomainCatalogWriter {
         } else {
             for (TcOutcome o : list) {
                 boolean passed = o.status() == TcStatus.PASSED;
-                String className = CodegenNaming.testClassName(o.tcId(), passed);
+                String className = CodegenNaming.testClassName(o.tcId(), o.title(), passed);
                 String flow = pagesUsed(o);
                 String title = o.title() == null || o.title().isBlank() ? flow : o.title() + " — " + flow;
                 md.append("| `").append(className).append("` | `").append(o.tcId()).append("` | ")

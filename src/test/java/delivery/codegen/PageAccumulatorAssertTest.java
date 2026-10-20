@@ -12,9 +12,9 @@ public class PageAccumulatorAssertTest {
     }
 
     @Test
-    public void bodyXpathUsesBodyText() {
+    public void bodyXpathKeepsLocatorField() {
         ProvenStep step = new ProvenStep("TC", "Home", "assert", "assert",
                 "xpath", "//body", "", "textContains", "Welcome", true, "ok");
-        Assert.assertTrue(PageAccumulator.isBodyTextAssertForTest(step));
+        Assert.assertFalse(PageAccumulator.isBodyTextAssertForTest(step));
     }
 }

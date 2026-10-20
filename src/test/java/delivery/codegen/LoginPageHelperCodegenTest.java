@@ -27,7 +27,7 @@ public class LoginPageHelperCodegenTest {
         String page = Files.readString(temp.resolve("src/main/java/project/pages/LoginPage.java"));
         Assert.assertTrue(page.contains("public void login(String username, String password)"), page);
         Assert.assertTrue(page.contains("type_User(username)") || page.contains("type_"), page);
-        String test = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_L.java"));
+        String test = Files.readString(temp.resolve("src/test/java/project/tests/generated/Login_Flow_Test.java"));
         Assert.assertTrue(test.contains(".login("), test);
         Assert.assertFalse(test.contains("type_User(") && test.contains("click_Submit"),
                 "login chron should collapse to login():\n" + test);

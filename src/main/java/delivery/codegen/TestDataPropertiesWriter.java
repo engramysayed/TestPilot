@@ -93,10 +93,13 @@ public final class TestDataPropertiesWriter {
             }
             String value = step.value() == null ? "" : step.value();
             String key = keys.keyFor(tcId, phase, step);
-            if (key.isBlank() || "TARGET_USERNAME".equals(key) || "TARGET_PASSWORD".equals(key)) {
+            if (key.isBlank()) {
                 continue;
             }
             if (value.startsWith("${")) {
+                if (!step.secret()) {
+                    props.putIfAbsent(key, "");
+                }
                 continue;
             }
             Map<String, String> target = step.secret() ? secrets : props;

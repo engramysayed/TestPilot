@@ -360,18 +360,18 @@ public class PageAccumulator {
             return true;
         }
         String strat = step.locatorStrategy() == null ? "" : step.locatorStrategy().toLowerCase(Locale.ROOT);
+        if ("xpath".equals(strat)) {
+            String compact = loc.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+            if ("//body".equals(compact) || "/html/body".equals(compact)) {
+                return false;
+            }
+        }
         if ("id".equals(strat) || "name".equals(strat)) {
             return false;
         }
         String lower = loc.toLowerCase(Locale.ROOT);
         if (lower.contains("data-axis-test-id") || lower.contains("data-test") || lower.contains("data-qa")) {
             return false;
-        }
-        if (lower.contains("//body") || lower.contains("normalize-space(.)")) {
-            return true;
-        }
-        if ("xpath".equals(strat) && loc.length() > 120) {
-            return true;
         }
         return false;
     }

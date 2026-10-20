@@ -25,7 +25,7 @@ public class TestDataPropertiesWriterTest {
         Assert.assertTrue(Files.isRegularFile(props), "missing " + props);
         String propText = Files.readString(props);
         Assert.assertTrue(propText.contains("Merna"), propText);
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_X.java"));
+        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Checkout_Test.java"));
         Assert.assertFalse(test.contains("\"Merna\""), test);
         Assert.assertTrue(test.contains("PropertyReader.getProperty"), test);
     }
@@ -60,12 +60,10 @@ public class TestDataPropertiesWriterTest {
     }
 
     @Test
-    public void bodyTextAssertDoesNotCreateLocatorField() {
+    public void bodyTextAssertWithoutLocatorUsesBodyPath() {
         PageAccumulator acc = new PageAccumulator();
         acc.add(new ProvenStep("TC", "Inventory", "elementAction", "assert",
-                "xpath",
-                "//body//*[contains(normalize-space(.),'Products')]",
-                "", "textContains", "Products", true, "x"));
+                "", "", "", "textContains", "Products", true, "x"));
         PageAccumulator.PageModel page = acc.pages().get("Inventory");
         Assert.assertEquals(page.fields().size(), 0, String.valueOf(page.fields()));
         Assert.assertEquals(page.assertions().size(), 1);

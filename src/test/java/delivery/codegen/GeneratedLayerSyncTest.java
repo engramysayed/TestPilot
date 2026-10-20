@@ -33,8 +33,8 @@ public class GeneratedLayerSyncTest {
         String page = Files.readString(root.resolve("src/main/java/project/pages/Checkout.java"));
         Assert.assertTrue(page.contains("type_First_Name"), page);
         Assert.assertTrue(page.contains("type_Last_Name"), page);
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/TC_A.java")));
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/TC_B.java")));
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/A_Test.java")));
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/B_Test.java")));
         String data = Files.readString(root.resolve("src/test/resources/test-data/delivery-testdata.properties"));
         Assert.assertTrue(data.contains("TC_A."), data);
         Assert.assertTrue(data.contains("TC_B."), data);
@@ -51,8 +51,8 @@ public class GeneratedLayerSyncTest {
         writer.write(root, List.of(a, b));
         writer.write(root, List.of(b));
 
-        Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/TC_A.java")));
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/TC_B.java")));
+        Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/A_Test.java")));
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/B_Test.java")));
         String page = Files.readString(root.resolve("src/main/java/project/pages/Checkout.java"));
         Assert.assertFalse(page.contains("type_First_Name"), page);
         Assert.assertTrue(page.contains("type_Last_Name"), page);
@@ -71,7 +71,7 @@ public class GeneratedLayerSyncTest {
         writer.write(root, List.of(new TcOutcome(
                 "TC_B", "B", TcStatus.TODO, List.of(), "blocked", null, false, List.of())));
 
-        Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/TC_B.java")));
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/todo/TC_BTodo.java")));
+        Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/B_Test.java")));
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/todo/B_TestTodo.java")));
     }
 }

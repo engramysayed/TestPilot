@@ -50,10 +50,80 @@ public final class CodegenNaming {
     private CodegenNaming() {
     }
 
-    /** Passed → {@code TC_01}; partial/todo → {@code TC_06Todo} (no {@code Test} suffix). */
-    public static String testClassName(String tcId, boolean passed) {
-        String base = tcIdToClassName(tcId);
+    /** Title-based {@code BulkChargeBackTest}; partial → {@code …Todo}. Falls back to tc id when title blank. */
+    public static String testClassName(String tcId, String title, boolean passed) {
+        String base = testClassBase(title, tcId);
         return passed ? base : base + "Todo";
+    }
+
+    /** @deprecated use {@link #testClassName(String, String, boolean)} */
+    @Deprecated
+    public static String testClassName(String tcId, boolean passed) {
+        return testClassName(tcId, "", passed);
+    }
+
+    static String testClassBase(String title, String tcId) {
+        String fromTitle = titleToTestClassStem(title);
+        if (fromTitle != null && !fromTitle.isBlank()) {
+            return sanitizeJavaIdentifier(fromTitle, fallbackTestClass(tcId));
+        }
+        return fallbackTestClass(tcId);
+    }
+
+    private static String fallbackTestClass(String tcId) {
+        String base = tcIdToClassName(tcId);
+        if (base.endsWith("Test")) {
+            return base;
+        }
+        return base + "Test";
+    }
+
+    /** PascalCase stem + {@code Test} suffix, max ~80 chars. */
+    static String titleToTestClassStem(String title) {
+        if (title == null || title.isBlank()) {
+            return "";
+        }
+        String[] words = title.trim().split("\\s+");
+        StringBuilder sb = new StringBuilder();
+        for (String w : words) {
+            if (w.isBlank()) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append('_');
+            }
+            sb.append(titleWordToClassPart(w));
+            if (sb.length() > 72) {
+                break;
+            }
+        }
+        if (sb.isEmpty()) {
+            return "";
+        }
+        return sb + "_Test";
+    }
+
+    /** One title token; keeps {@code A__B} distinct from {@code A_B}. */
+    private static String titleWordToClassPart(String word) {
+        String cleaned = word.replaceAll("[^A-Za-z0-9_]", "");
+        if (cleaned.isBlank()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean capNext = true;
+        for (int i = 0; i < cleaned.length(); i++) {
+            char c = cleaned.charAt(i);
+            if (c == '_') {
+                sb.append(c);
+                capNext = true;
+            } else if (capNext) {
+                sb.append(Character.toUpperCase(Character.toLowerCase(c)));
+                capNext = false;
+            } else {
+                sb.append(Character.toLowerCase(c));
+            }
+        }
+        return sb.toString();
     }
 
     public static String tcIdToClassName(String tcId) {
@@ -203,8 +273,6 @@ public final class CodegenNaming {
             name = "assert_" + toPascalSnake(semanticToken(step)) + "_Equals_Captured";
         } else if ("signedOut".equalsIgnoreCase(type)) {
             name = "assert_" + toPascalSnake(semanticToken(step)) + "_Signed_Out";
-        } else if ("textContains".equalsIgnoreCase(type) && isBodyTextToken(step)) {
-            name = "assert_Body_Text_Contains";
         } else {
             String token = toPascalSnake(semanticToken(step));
             if ("textContains".equalsIgnoreCase(type)) {

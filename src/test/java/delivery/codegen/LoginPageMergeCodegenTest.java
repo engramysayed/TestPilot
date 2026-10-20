@@ -23,7 +23,7 @@ public class LoginPageMergeCodegenTest {
         ProvenStep bodyUser = new ProvenStep("TC2", "Login", "elementAction", "type",
                 "id", "username", "u", "", "", true, "ok");
         ProvenStep bodyPass = new ProvenStep("TC2", "Login", "elementAction", "type",
-                "id", "password", "bad", "", "", true, "ok");
+                "id", "bad-credential", "bad", "", "", true, "ok");
         ProvenStep bodyClick = new ProvenStep("TC2", "Login", "elementAction", "click",
                 "id", "login", "", "", "", true, "ok");
         List<ProvenStep> login = List.of(preludeUser, preludePass, preludeClick).stream()

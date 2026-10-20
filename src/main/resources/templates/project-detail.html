@@ -89,6 +89,10 @@
                 <label>Base URL
                     <input type="url" name="baseUrl" id="settings-base-url" placeholder="https://app.example.com"/>
                 </label>
+                <label>Test data env <span class="muted">(optional)</span>
+                    <input type="text" name="testDataEnv" id="settings-test-data-env" placeholder="sit" maxlength="32" pattern="[a-z0-9_-]*"/>
+                </label>
+                <p class="muted">When set, generated frameworks use keys like <code>sit_username</code> in <code>delivery-testdata.properties</code>. Leave blank for <code>username</code>, <code>password</code>, <code>otp</code> without a prefix.</p>
                 <label>Preferred test hooks
                     <input type="text" name="preferredHooks" id="settings-preferred-hooks"
                            placeholder="data-axis-test-id"/>
@@ -946,6 +950,8 @@
         const p = await res.json();
         document.getElementById('settings-name').value = p.name || '';
         document.getElementById('settings-base-url').value = p.baseUrl || '';
+        const testDataEnv = document.getElementById('settings-test-data-env');
+        if (testDataEnv) testDataEnv.value = p.testDataEnv || '';
         const hooks = document.getElementById('settings-preferred-hooks');
         if (hooks) hooks.value = p.preferredHooks || '';
         const enginePanel = document.getElementById('settings-authoring-engine');
@@ -1496,6 +1502,7 @@
             name: e.target.name.value.trim(),
             baseUrl: e.target.baseUrl.value.trim(),
             preferredHooks: e.target.preferredHooks.value.trim(),
+            testDataEnv: e.target.testDataEnv ? e.target.testDataEnv.value.trim().toLowerCase() : '',
             authoringEngine: engineChoice ? engineChoice.value : 'keel'
         };
         if (maxRaw) {

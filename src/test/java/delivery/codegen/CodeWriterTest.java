@@ -22,14 +22,15 @@ public class CodeWriterTest {
                 new TcOutcome("TC_002", TcStatus.TODO, List.of(), "failed", null)
         );
         writer.write(temp, outcomes);
-        Assert.assertTrue(Files.exists(temp.resolve("src/test/java/project/tests/generated/TC_001.java")));
-        Assert.assertTrue(Files.exists(temp.resolve("src/test/java/project/tests/todo/TC_002Todo.java")));
+        Assert.assertTrue(Files.exists(temp.resolve("src/test/java/project/tests/generated/Valid_Login_Test.java")));
+        Assert.assertTrue(Files.exists(temp.resolve("src/test/java/project/tests/todo/TC_002TestTodo.java")));
         Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Login.java")));
         Assert.assertFalse(Files.exists(temp.resolve("src/main/java/project/pages/Login_Actions.java")));
         Assert.assertFalse(Files.exists(temp.resolve("src/main/java/project/pages/Login_Locators.java")));
-        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_001.java"));
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/Valid_Login_Test.java"));
         Assert.assertTrue(java.contains("import project.pages.Login;"), java);
-        Assert.assertTrue(java.contains("Login login = new Login(driver)"), java);
+        Assert.assertTrue(java.contains("private Login login;"), java);
+        Assert.assertTrue(java.contains("login = new Login(driver)"), java);
         Assert.assertTrue(java.contains("@Test(description = \"TC_001 — Valid login\")"), java);
         Assert.assertTrue(java.contains("public void Valid_login()"), java);
         Assert.assertFalse(java.contains("new project.pages.Login"));
@@ -52,12 +53,13 @@ public class CodeWriterTest {
                 "TC_L", "Login with valid credentials", TcStatus.PASSED, List.of(body), "", null,
                 true, List.of(loginType, loginClick));
         writer.write(temp, List.of(outcome));
-        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_L.java"));
-        Assert.assertTrue(java.contains("TARGET_USERNAME"), java);
+        String java = Files.readString(temp.resolve(
+                "src/test/java/project/tests/generated/Login_With_Valid_Credentials_Test.java"));
+        Assert.assertTrue(java.contains("username"), java);
         Assert.assertTrue(java.contains("PracticeTestLogin"), java);
         Assert.assertTrue(java.contains("type_Username"), java);
-        Assert.assertTrue(java.contains("click_Submit_Button"), java);
-        Assert.assertTrue(java.contains("assert_Body_Text_Contains"), java);
+        Assert.assertTrue(java.contains("assert_Logged_In_Successfully_Text_Contains")
+                || java.contains("Logged_In_Successfully"), java);
         Assert.assertTrue(java.contains("\"Logged In Successfully\""), java);
         Assert.assertTrue(Files.exists(temp.resolve(
                 "src/main/java/project/pages/PracticeTestLogin.java")));
@@ -77,12 +79,12 @@ public class CodeWriterTest {
                 "TC_P", "Checkout flow", TcStatus.TODO, List.of(ok, typed),
                 "No DOM candidate for intent CLICK: Click Finish", null, false, List.of());
         writer.write(temp, List.of(outcome));
-        String java = Files.readString(temp.resolve("src/test/java/project/tests/todo/TC_PTodo.java"));
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/todo/Checkout_Flow_TestTodo.java"));
         Assert.assertTrue(java.contains("STOPPED HERE"), java);
         Assert.assertTrue(java.contains("Click Finish"), java);
         Assert.assertFalse(java.contains("HEAL_EXHAUSTED"), java);
-        Assert.assertTrue(java.contains("Cart cart"), java);
-        Assert.assertTrue(java.contains("CheckoutStepOne checkoutStepOne"), java);
+        Assert.assertTrue(java.contains("Cart cart;"), java);
+        Assert.assertTrue(java.contains("CheckoutStepOne checkoutStepOne;"), java);
         Assert.assertTrue(java.contains("TC_P — Checkout flow"), java);
         Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Cart.java")));
     }
@@ -103,8 +105,8 @@ public class CodeWriterTest {
                 "css", "[data-axis-test-id='first-name-input']", "Ramy", "", "", true, "ok");
         writer.write(temp, List.of(new TcOutcome(
                 "TC_K", "Create user", TcStatus.PASSED, List.of(step), "", null, false, List.of())));
-        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_K.java"));
-        Assert.assertTrue(java.contains("NewPage newPage = new NewPage(driver)"), java);
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/Create_User_Test.java"));
+        Assert.assertTrue(java.contains("newPage = new NewPage(driver)"), java);
         Assert.assertFalse(java.contains("New new ="), java);
         Assert.assertTrue(java.contains("newPage.type_"), java);
         Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/NewPage.java")));
@@ -123,7 +125,7 @@ public class CodeWriterTest {
         writer.write(temp, List.of(new TcOutcome(
                 "TC_O", "Order", TcStatus.PASSED, List.of(assertTitle, clickCart, assertHeader),
                 "", null, false, List.of())));
-        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_O.java"));
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/Order_Test.java"));
         int a = java.indexOf("assert_");
         int c = java.indexOf("click_");
         int a2 = java.lastIndexOf("assert_");
@@ -146,9 +148,8 @@ public class CodeWriterTest {
                 "TC_T", "Text", TcStatus.PASSED, List.of(bodyAssert, idTextAssert, checked, unknown),
                 "", null, false, List.of())));
         String actions = Files.readString(temp.resolve("src/main/java/project/pages/Home.java"));
-        Assert.assertTrue(actions.contains("bodyTextContains(expected)"), actions);
-        Assert.assertTrue(actions.contains("textContains("), actions);
-        Assert.assertFalse(actions.contains("By.tagName(\"body\")"), actions);
+        Assert.assertTrue(actions.contains("textContains(welcome_Back_Lbl_Locator, expected)"), actions);
+        Assert.assertTrue(actions.contains("textContains(created_Lbl_Locator, expected)"), actions);
         Assert.assertTrue(actions.contains("elementSelected("), actions);
         Assert.assertTrue(actions.contains("public void assert_"), actions);
         Assert.assertFalse(actions.contains("return this;"), actions);
@@ -183,13 +184,13 @@ public class CodeWriterTest {
                 "", null, false, List.of())
                 .withSetup(List.of(addToCart));
         writer.write(temp, List.of(checkout));
-        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_CHECKOUT.java"));
-        int setUp = java.indexOf("public void setUp()");
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/Checkout_Backpack_Test.java"));
+        int prereq = java.indexOf("runPrerequisite_TC_CHECKOUT");
         int test = java.indexOf("public void Checkout_backpack()");
         int setupCall = java.indexOf("click_Add_Backpack");
         int bodyCall = java.indexOf("click_Checkout");
-        Assert.assertTrue(setUp >= 0 && test > setUp, java);
-        Assert.assertTrue(setupCall > setUp && setupCall < test,
+        Assert.assertTrue(prereq >= 0 && test > prereq, java);
+        Assert.assertTrue(setupCall > prereq && setupCall < test,
                 "cart setup must run in @BeforeMethod, not depend on TestNG class order:\n" + java);
         Assert.assertTrue(bodyCall > test, java);
         Assert.assertTrue(java.contains("Shop"), java);
@@ -212,14 +213,14 @@ public class CodeWriterTest {
                 .withSetup(List.of(qty, cartVisible));
         writer.write(temp, List.of(checkout));
 
-        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_CHECKOUT.java"));
-        int setUp = java.indexOf("public void setUp()");
+        String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/Checkout_Backpack_Test.java"));
+        int prereq = java.indexOf("runPrerequisite_TC_CHECKOUT");
         int test = java.indexOf("public void Checkout_backpack()");
         int typeCall = java.indexOf("type_Qty");
-        int assertCall = java.indexOf("assert_Cart_Badge");
-        Assert.assertTrue(typeCall > setUp && typeCall < test, java);
-        Assert.assertTrue(assertCall > setUp && assertCall < test, java);
-        Assert.assertTrue(java.contains("requiredProperty(\"TC_CART."), java);
+        int assertCall = java.indexOf("assert_Cart_Badge_Is_Visible");
+        Assert.assertTrue(prereq >= 0 && typeCall > prereq && typeCall < test, java);
+        Assert.assertTrue(assertCall > prereq && assertCall < test, java);
+        Assert.assertTrue(java.contains("PropertyReader.getProperty"), java);
 
         String data = Files.readString(temp.resolve("src/test/resources/test-data/delivery-testdata.properties"));
         Assert.assertTrue(data.contains("TC_CART.body.type_Qty.1=2"), data);

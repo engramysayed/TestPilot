@@ -81,7 +81,7 @@ public class KeelCodegenV2Test {
         Assert.assertTrue(loc.contains("\"css=#lane-done >> point=50,10@200x400\""), loc);
         Assert.assertTrue(act.contains("SettledActions.click"), act);
         Assert.assertTrue(act.contains("SettledActions.drag"), act);
-        Assert.assertTrue(act.contains("driver.element().click("), act);   // plain text target keeps normal click
+        Assert.assertFalse(act.contains("driver.element().click("), act);
         Path classes = Files.createTempDirectory("codegen-v2-classes");
         CustomerTemplateCompiler.compile(classes, pages.resolve("Board.java")).close();
         Assert.assertTrue(Files.exists(classes.resolve("project/utils/locators/KeelActions.class")));

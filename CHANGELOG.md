@@ -4,6 +4,13 @@
 
 # Keel changelog
 
+## 2026-10-20 - Codegen UX (cleaner Automate ZIP)
+
+- **Emit:** echo/html-only and `:pageShown` noise no longer appear in generated Java; login steps collapse to `login(...)` when possible; text asserts keep real locators instead of whole-page shortcuts where the IR had a locator.
+- **Tests:** class names from the TC title (`Valid_Login_Test.java`); methods use the full title; class-level page fields; prerequisites in `@BeforeMethod` via a private helper with local page vars.
+- **Test data:** generated calls use `PropertyReader.getProperty` / secrets sidecar. Login placeholders map to **`username` / `password`** (and OTP-style TARGET keys similarly) by default. Set optional **Test data env** on Project → Settings (e.g. `sit`) to prefix keys as **`sit_username`**, **`sit_password`**, etc. Other fields keep TC-scoped keys like `TC_01.body.type_Email.1`.
+- Rebuild jar, restart, Ctrl+F5; re-run Automate to regenerate the ZIP. Spec: `docs/superpowers/specs/2026-10-20-codegen-ux-emit-design.md`.
+
 ## 2026-10-20 - List-row-first click + extra Treat as kinds
 
 - **List / grid clicks:** when a step names a shared cell (e.g. `with Pending edit status` or `"Pending Edit"`), Keel binds the **first** visible matching table/grid row and clicks that row’s name link (not the status badge). Quote a person when it matters: `Click on "Omar Nabil"`. Two **Login** buttons on the same page (not in a grid) stay unresolved.

@@ -20,9 +20,9 @@ public class CodegenEmitGateTest {
                 "TC_D", "dump", TcStatus.PASSED, List.of(dump), "", null, false, List.of())));
         Assert.assertFalse(Files.exists(root.resolve("src/main/java/project/pages/Page.java")),
                 "must not emit dump Page class");
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/todo/TC_DTodo.java")),
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/todo/Dump_TestTodo.java")),
                 "dump TC must demote to TODO test");
-        Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/TC_D.java")),
+        Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/Dump_Test.java")),
                 "dump TC must not stay in generated/");
     }
 
@@ -61,8 +61,8 @@ public class CodegenEmitGateTest {
                 .writeVerified(root, prepared.outcomes(), prepared.pages());
         Assert.assertFalse(Files.exists(root.resolve("src/main/java/project/pages/Page.java")));
         Assert.assertTrue(Files.exists(root.resolve("src/main/java/project/pages/InventoryPage.java")));
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/todo/TC_BADTodo.java")));
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/TC_OK.java")));
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/todo/Bad_TestTodo.java")));
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/Ok_Test.java")));
     }
 
     @Test

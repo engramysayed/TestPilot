@@ -68,6 +68,7 @@ A project is one target app.
 - Set **base URL** (required before Execute or Automate).
 - **Authoring engine**: **Keel** (default) or **Precision — higher accuracy on complex UIs, Higher Cost**; optional per-project **max Cursor calls per job** (blank = server default).
 - **Credential profiles**: named logins (username + write-only password). Used as `${TARGET_USERNAME}` / `${TARGET_PASSWORD}` at run time.
+- **Test data env** (optional): short tag such as `sit`. When set, Automate maps login placeholders in the ZIP to `{env}_username`, `{env}_password`, and similar in `delivery-testdata.properties`. When blank, those keys are `username`, `password`, `otp` with **no** env prefix.
 - **Design mockups**: optional PNG per `TC_ID` (e.g. Figma export). Execute compares that image to the live last screen. This is **not** a live Figma integration.
 - Archive (hide) or permanently delete the project and its files.
 
@@ -340,7 +341,7 @@ Turn the workbook into a **downloadable Java Selenium TestNG** package.
 1. **Prove** — bind each Excel step to the live DOM.
 2. **Heal** if bind fails: DOM candidates → Ollama shortlist → optional Cursor invent → structured **recovery** plan (validate on page, run, evidence, retry the same step).
 3. Successful recovery may **patch the generated workbook** (e.g. leave-empty + blank TestData) so the next run matches the page.
-4. **IR** (proven drafts) → optional revise → **Emit** page objects + tests.
+4. **IR** (proven drafts) → optional revise → **Emit** page objects + tests (title-based `*Test` classes, filtered echo/html noise, collapsed login helpers, semantic login keys only for TARGET placeholders).
 5. Package the **customer-framework-template** into a ZIP.
 
 ### Jobs & status

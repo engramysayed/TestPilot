@@ -70,6 +70,9 @@ public final class LoginPageHelper {
         List<Map<String, Object>> typed = new ArrayList<>();
         Map<String, Object> click = null;
         for (Map<String, Object> c : loginChron) {
+            if ("assert".equals(String.valueOf(c.get("kind")))) {
+                continue;
+            }
             if (!"action".equals(c.get("kind"))) {
                 return null;
             }
@@ -123,5 +126,48 @@ public final class LoginPageHelper {
         login.put("passSecret", passCall.get("secret"));
         login.put("passValue", passCall.get("value"));
         return List.of(login);
+    }
+
+    /** Replaces the first type+type+click login block (asserts between allowed) with {@code login(...)}. */
+    public static List<Map<String, Object>> collapseLeadingLogin(
+            List<Map<String, Object>> chron, PageAccumulator pages) {
+        if (chron == null || chron.isEmpty() || pages == null) {
+            return chron;
+        }
+        List<Map<String, Object>> actions = new ArrayList<>();
+        int endIndex = -1;
+        for (int i = 0; i < chron.size(); i++) {
+            Map<String, Object> c = chron.get(i);
+            String kind = String.valueOf(c.get("kind"));
+            if ("assert".equals(kind)) {
+                continue;
+            }
+            if (!"action".equals(kind)) {
+                break;
+            }
+            actions.add(c);
+            endIndex = i;
+            List<Map<String, Object>> collapsed = collapseLoginCalls(actions, pages);
+            if (collapsed != null) {
+                int firstAction = -1;
+                for (int j = 0; j < chron.size(); j++) {
+                    if ("action".equals(String.valueOf(chron.get(j).get("kind")))) {
+                        firstAction = j;
+                        break;
+                    }
+                }
+                List<Map<String, Object>> out = new ArrayList<>();
+                if (firstAction > 0) {
+                    out.addAll(chron.subList(0, firstAction));
+                }
+                out.addAll(collapsed);
+                out.addAll(chron.subList(endIndex + 1, chron.size()));
+                return out;
+            }
+            if (actions.size() > 4) {
+                break;
+            }
+        }
+        return chron;
     }
 }

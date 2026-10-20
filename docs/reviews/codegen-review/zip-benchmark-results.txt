@@ -1,6 +1,9 @@
 Codegen ZIP replay benchmark (working-tree evidence)
 UPDATE pipeline=fixture-IR regenerate + EmitPhase overlay; NOT ReuseEligibility.authorIds/copyForReuse
-baseUrl=http://127.0.0.1:8846
-NEW sha256=null
-UPDATE sha256=null
-FAIL sha256=null
+baseUrl=http://127.0.0.1:6914
+NEW sha256=edb3b8ae0ee93496a08ba8805f07742fd1afacddd51526b14607abac015469e9
+UPDATE sha256=c06c0626b40ae7fccf2f6409cd09af2f67a3d91f75358f16e2985a64f43744dd
+FAIL sha256=9a05887b4ce6851d941ea97d370e4b9149e7d17a3b6d06bfdcfac56ec1a7829e
+NEW mvn exit=0 statuses={Fixture_Heading_Test=PASS, Leaf_Inlines_Setup_Login_Test=PASS, Unicode_Testdata_Test=PASS, Similar_Control_Names_Test=PASS, Repeated_Email_Edits_Test=PASS, Colliding_Page_Names_Test=PASS, Setup_Login_Then_Change_Email_Test=PASS, TC_A__BTest=PASS, Password_Canary_Test=PASS, Leaf_With_Own_Login_Test=PASS, Hidden_Flash_Is_Absent_Test=PASS, Select_Size_Test=PASS, Distinct_Id_A_B_Test=PASS}
+UPDATE mvn exit=0 statuses={Fixture_Heading_Test=PASS, Leaf_Inlines_Setup_Login_Test=PASS, Unicode_Testdata_Test=PASS, Similar_Control_Names_Test=PASS, Repeated_Email_Edits_Test=PASS, Colliding_Page_Names_Test=PASS, Setup_Login_Then_Change_Email_Test=PASS, TC_A__BTest=PASS, Password_Canary_Test=PASS, Leaf_With_Own_Login_Test=PASS, Hidden_Flash_Is_Absent_Test=PASS, Select_Size_Test=PASS, Save_After_Update_Test=PASS, Distinct_Id_A_B_Test=PASS}
+FAIL mvn exit=1 testMethods={Missing_Select_Target_Test=FAIL, Mixed_Visibility_Absence_Test=FAIL, Missing_Click_Test=FAIL, Missing_Type_Target_Test=FAIL, Bad_Setup_Click_Test=FAIL, Leaf_After_Bad_Setup_Test=SKIP, Missing_Assertion_Expected_Test=FAIL} configFailures={Leaf_After_Bad_Setup_Test=setUp=FAIL}
