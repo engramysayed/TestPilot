@@ -66,14 +66,46 @@
                 <h3 style="font-size:0.95rem;margin:1rem 0 0.35rem;">Built-in (read-only)</h3>
                 <table class="table" id="builtin-verbs-table">
                     <thead><tr><th>Word</th><th>Treat as</th></tr></thead>
-                    <tbody></tbody>
+                    <tbody>
+                        <tr th:each="row : ${builtInVerbs}">
+                            <td th:text="${row['word']}">click</td>
+                            <td th:text="${row['treatAs'] == 'assert' ? 'Assert visible' : (row['treatAs'] == 'ignore' ? 'Ignore' : (row['treatAs'] == 'type' ? 'Type' : 'Click'))}">Click</td>
+                        </tr>
+                    </tbody>
                 </table>
-                <p class="muted" id="code-only-verbs" style="margin-top:0.5rem;"></p>
+                <p class="muted" id="code-only-verbs" style="margin-top:0.5rem;"
+                   th:if="${codeOnlyVerbsText}"
+                   th:text="${'Code-only specials (not remappable): ' + codeOnlyVerbsText + '.'}"></p>
                 <h3 style="font-size:0.95rem;margin:1.25rem 0 0.35rem;">Owner aliases</h3>
                 <p class="muted">One word, letters only (3–40). Treat as Click, Type, Assert visible, or Ignore. Built-in words cannot be remapped. Max 50.</p>
                 <table class="table" id="alias-verbs-table">
                     <thead><tr><th>Word</th><th>Treat as</th><th></th></tr></thead>
-                    <tbody></tbody>
+                    <tbody>
+                        <tr th:each="row : ${authoringVerbAliases}">
+                            <td><input type="text" class="alias-word" maxlength="40" autocomplete="off" placeholder="observe" th:value="${row['word']}"></td>
+                            <td>
+                                <select class="alias-treat">
+                                    <option value="click" th:selected="${row['treatAs'] == 'click'}">Click</option>
+                                    <option value="type" th:selected="${row['treatAs'] == 'type'}">Type</option>
+                                    <option value="assert" th:selected="${row['treatAs'] == 'assert'}">Assert visible</option>
+                                    <option value="ignore" th:selected="${row['treatAs'] == 'ignore'}">Ignore</option>
+                                </select>
+                            </td>
+                            <td><button type="button" class="btn alias-remove">Remove</button></td>
+                        </tr>
+                        <tr th:if="${authoringVerbAliases == null or #lists.isEmpty(authoringVerbAliases)}">
+                            <td><input type="text" class="alias-word" maxlength="40" autocomplete="off" placeholder="observe"></td>
+                            <td>
+                                <select class="alias-treat">
+                                    <option value="click">Click</option>
+                                    <option value="type">Type</option>
+                                    <option value="assert" selected>Assert visible</option>
+                                    <option value="ignore">Ignore</option>
+                                </select>
+                            </td>
+                            <td><button type="button" class="btn alias-remove">Remove</button></td>
+                        </tr>
+                    </tbody>
                 </table>
                 <button type="button" class="btn" id="btn-add-alias" style="margin-top:0.5rem;">Add alias</button>
             </div>
@@ -160,8 +192,9 @@
     function fillBuiltIns(rows, codeOnly) {
         const body = document.querySelector('#builtin-verbs-table tbody');
         if (!body) return;
+        if (!Array.isArray(rows) || !rows.length) return;
         body.innerHTML = '';
-        for (const row of (rows || [])) {
+        for (const row of rows) {
             const tr = document.createElement('tr');
             const w = document.createElement('td');
             w.textContent = row.word || '';
@@ -204,7 +237,7 @@
         const dTd = document.createElement('td');
         const del = document.createElement('button');
         del.type = 'button';
-        del.className = 'btn';
+        del.className = 'btn alias-remove';
         del.textContent = 'Remove';
         del.addEventListener('click', function () { tr.remove(); });
         dTd.appendChild(del);
@@ -216,13 +249,13 @@
     function fillAliases(rows) {
         const body = document.querySelector('#alias-verbs-table tbody');
         if (!body) return;
+        if (!Array.isArray(rows)) return;
         body.innerHTML = '';
-        const list = Array.isArray(rows) ? rows : [];
-        if (!list.length) {
+        if (!rows.length) {
             body.appendChild(aliasRow('', 'assert'));
             return;
         }
-        for (const row of list) {
+        for (const row of rows) {
             body.appendChild(aliasRow(row.word || '', row.treatAs || 'assert'));
         }
     }
@@ -249,7 +282,7 @@
         setSecretHint('cursorApiKey', !!current.cursorApiKeyConfigured, current.cursorApiKeyLast4);
         setSecretHint('agentrouterApiKey', !!current.agentrouterApiKeyConfigured, current.agentrouterApiKeyLast4);
         setSecretHint('ollamaApiKey', !!current.ollamaApiKeyConfigured, current.ollamaApiKeyLast4);
-        fillModels([], current.ollamaChatModel || '', current.ollamaVisionModel || '');
+        fillModels(current.cachedOllamaModels || [], current.ollamaChatModel || '', current.ollamaVisionModel || '');
         ensureOption(document.getElementById('ollamaChatModel'), current.ollamaChatModel || '');
         ensureOption(document.getElementById('ollamaVisionModel'), current.ollamaVisionModel || '');
         if (current.ollamaChatModel) document.getElementById('ollamaChatModel').value = current.ollamaChatModel;
@@ -261,8 +294,8 @@
         fillBuiltIns(current.builtInVerbs, current.codeOnlyVerbs);
         fillAliases(current.authoringVerbAliases);
     }
-    async function refreshModels() {
-        showError('');
+    async function refreshModels(quiet) {
+        if (!quiet) showError('');
         const btn = document.getElementById('btn-refresh-models');
         if (btn) btn.disabled = true;
         try {
@@ -273,7 +306,7 @@
             });
             const body = await res.json().catch(() => ({}));
             if (!res.ok) {
-                showError(body.message || ('Ollama models failed (' + res.status + ').'));
+                if (!quiet) showError(body.message || ('Ollama models failed (' + res.status + ').'));
                 return;
             }
             const chatPref = document.getElementById('ollamaChatModel').value
@@ -330,7 +363,19 @@
         const body = document.querySelector('#alias-verbs-table tbody');
         if (body) body.appendChild(aliasRow('', 'assert'));
     });
-    loadSettings().catch(function (e) { showError(String(e)); });
+    const aliasTable = document.getElementById('alias-verbs-table');
+    if (aliasTable) {
+        aliasTable.addEventListener('click', function (e) {
+            const btn = e.target && e.target.closest ? e.target.closest('.alias-remove') : null;
+            if (btn) {
+                const tr = btn.closest('tr');
+                if (tr) tr.remove();
+            }
+        });
+    }
+    loadSettings()
+        .then(function () { return refreshModels(true); })
+        .catch(function (e) { showError(String(e)); });
 })();
 </script>
 </body>

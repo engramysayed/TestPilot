@@ -165,6 +165,18 @@ public class AdminLlmSettingsApiTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    public void ownerGetIncludesBuiltInVerbs() throws Exception {
+        mockMvc.perform(get("/api/admin/llm-settings")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.builtInVerbs").isArray())
+                .andExpect(jsonPath("$.builtInVerbs[0].word").value("click"))
+                .andExpect(jsonPath("$.builtInVerbs[0].treatAs").value("click"))
+                .andExpect(jsonPath("$.authoringVerbAliases").isArray())
+                .andExpect(jsonPath("$.cachedOllamaModels").isArray());
+    }
+
+    @Test
     public void ollamaModelsUnreachableFailsSoftWith502() throws Exception {
         mockMvc.perform(get("/api/admin/llm-settings/ollama/models")
                         .param("baseUrl", "http://127.0.0.1:9")

@@ -25,4 +25,4 @@ Plan: `docs/superpowers/plans/2026-10-19-authoring-verb-aliases.md`
 
 - Aliases do not teach “click any grid row with this status.” Quote a unique on-screen name, or the step stays AMBIGUOUS.
 - `"Pending Edit"` is an exact label match, not a status filter.
-- Live Admin UI was not exercised in the browser this pass (login wall / jar not restarted here). API tests cover GET/PUT, tap collision, member 403.
+- 2026-10-20: first paint of Authoring verbs was empty (JS-only tables; chat/vision stayed on “refresh models”). Built-ins + seed alias now render server-side; GET includes `cachedOllamaModels` and the page fills then refreshes quietly. Rebuild jar + restart + Ctrl+F5.

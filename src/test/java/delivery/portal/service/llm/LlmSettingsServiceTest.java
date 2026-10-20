@@ -345,6 +345,7 @@ public class LlmSettingsServiceTest {
         Assert.assertEquals(view.get("authoringVerbAliases"),
                 AuthoringVerbAliases.toMaps(AuthoringVerbAliases.seed()));
         Assert.assertEquals(view.get("builtInVerbs"), AuthoringVerbAliases.builtInMaps());
+        Assert.assertEquals(view.get("cachedOllamaModels"), List.of());
         Assert.assertEquals(
                 AuthoringVerbAliases.classify("observe the rates module is displayed"),
                 delivery.authoring.StepIntentBinder.IntentKind.ASSERT_VISIBLE);

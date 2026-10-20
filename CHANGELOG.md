@@ -4,6 +4,10 @@
 
 # Keel changelog
 
+## 2026-10-20 - Admin LLM page paints verbs and cached models
+
+- **Admin → LLM & API keys** now renders the read-only built-in verb table and the seeded `observe` alias in the HTML (so the block is not an empty header). Chat/vision dropdowns fill from the last saved Ollama tag cache, then refresh quietly. Click **Refresh models** if the list is still stale.
+
 ## 2026-10-20 - Guide: authoring verbs
 
 - The Guide now has **Verbs Keel understands**: built-in click / type / assert / skip words, how the Owner adds aliases on Admin → LLM &amp; API keys, seeded `observe` → assert, and that aliases are not a status filter. Execute, Automate, Account, and the Steps column point at that section.

@@ -83,6 +83,7 @@ public class LlmSettingsService implements ApplicationRunner {
         out.put("authoringVerbAliases", AuthoringVerbAliases.toMaps(s.authoringVerbAliases));
         out.put("builtInVerbs", AuthoringVerbAliases.builtInMaps());
         out.put("codeOnlyVerbs", AuthoringVerbAliases.codeOnlySpecials());
+        out.put("cachedOllamaModels", s.cachedOllamaModels() == null ? List.of() : s.cachedOllamaModels());
         return out;
     }
 

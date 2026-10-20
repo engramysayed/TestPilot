@@ -516,6 +516,21 @@ public class PortalUiController {
     public String adminLlmSettings(Model model) {
         requireHeadPage();
         addNav(model, "llm-settings");
+        Map<String, Object> view = llmSettings.maskedView();
+        model.addAttribute("builtInVerbs", view.get("builtInVerbs"));
+        model.addAttribute("authoringVerbAliases", view.get("authoringVerbAliases"));
+        Object codeOnly = view.get("codeOnlyVerbs");
+        if (codeOnly instanceof List<?> list && !list.isEmpty()) {
+            List<String> bits = new ArrayList<>();
+            for (Object item : list) {
+                if (item != null && !String.valueOf(item).isBlank()) {
+                    bits.add(String.valueOf(item).trim());
+                }
+            }
+            if (!bits.isEmpty()) {
+                model.addAttribute("codeOnlyVerbsText", String.join("; ", bits));
+            }
+        }
         return "admin-llm-settings";
     }
 
