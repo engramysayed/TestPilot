@@ -4,6 +4,10 @@
 
 # Keel changelog
 
+## 2026-10-20 - Guide: authoring verbs
+
+- The Guide now has **Verbs Keel understands**: built-in click / type / assert / skip words, how the Owner adds aliases on Admin → LLM &amp; API keys, seeded `observe` → assert, and that aliases are not a status filter. Execute, Automate, Account, and the Steps column point at that section.
+
 ## 2026-10-19 - Authoring verb aliases
 
 - Owner **Admin → LLM & API keys** now lists built-in click / type / assert / skip words (read-only) and lets you add aliases onto those same kinds (Click, Type, Assert visible, Ignore). Default seed: `observe` → assert, so Observe steps wait for visible instead of being skipped. Built-in words cannot be remapped. Max 50 aliases. Save applies to the next Execute / Automate / Generate review / Record bind without a JVM restart after this jar is running.

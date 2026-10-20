@@ -19,6 +19,7 @@ Plan: `docs/superpowers/plans/2026-10-19-authoring-verb-aliases.md`
 2. Owner opens **Admin → LLM & API keys**, **Authoring verbs**.
 3. Built-ins stay as listed. Add e.g. `ensure` → Assert visible, or change/delete `observe`. Save.
 4. Next Execute / Automate / Generate review / Record bind uses the list (no extra JVM restart after Save on a live process).
+5. Guide **Verbs Keel understands** (`/guide#verbs`) documents built-ins, aliases, the observe seed, and the status-filter limit.
 
 ## Known defects
 

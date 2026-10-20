@@ -44,6 +44,7 @@
             <a href="#format">·· Excel format</a>
             <a href="#login">·· Login</a>
             <a href="#steps">·· Steps</a>
+            <a href="#verbs">·· Verbs</a>
             <a href="#expected">·· Expected</a>
             <a href="#testdata">·· Test data</a>
             <a href="#visual">·· Visual</a>
@@ -248,7 +249,7 @@
                 <ol class="guide-howto">
                     <li>Open Build code and choose the project.</li>
                     <li>Provide the test-case workbook (or use cases already on the project).</li>
-                    <li>Optional: the same <strong>Review cases before run</strong> as Execute — leftover Expected quotes, then <strong>Accept &amp; run</strong> saves the library and starts the framework job.</li>
+                    <li>Optional: the same <strong>Review cases before run</strong> as Execute — leftover Expected quotes, then <strong>Accept &amp; run</strong> saves the library and starts the framework job. Step verbs follow the same <a href="#verbs">Authoring verbs</a> list as Execute.</li>
                     <li>Start conversion. Watch progress on Status / the sidebar job chip.</li>
                     <li>When finished, download from <a href="/packages">Code packages</a>.</li>
                 </ol>
@@ -369,6 +370,7 @@
                     <li><strong>Alerts</strong> are saved on the account. Keel sends a message when a run fails or finishes with a block. Turning a channel on sends a confirmation first, and the setting is kept only if that message goes out.</li>
                     <li>Telegram and email send only after this Keel computer has a bot token or a mail server configured. Slack uses the incoming webhook you paste.</li>
                     <li>A project’s Usage and budget is a cap on that project. It is not the same as the account credit balance in the top bar.</li>
+                    <li>The account <strong>owner</strong> sets install-wide LLM keys, review batch size, browser, and <a href="#verbs">Authoring verbs</a> on <a href="/admin/llm-settings">Admin → LLM &amp; API keys</a>. Members cannot change that page.</li>
                 </ul>
             </section>
 
@@ -563,9 +565,41 @@
                 <ul class="guide-points">
                     <li>Use visible labels: button text, field label, menu item, message copy.</li>
                     <li>Include navigation when needed: <code>Open the … page at /path</code>.</li>
-                    <li>Confirmations: <code>Confirm the text … is visible</code>.</li>
+                    <li>Confirmations: <code>Confirm the text … is visible</code>. <code>Observe … is displayed</code> is treated as assert by default (see <a href="#verbs">Verbs</a>).</li>
                     <li>Do <strong>not</strong> embed dummy names like <code>Test</code> / <code>User</code> in Enter lines — use <a href="#testdata">TestData</a>.</li>
                 </ul>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="verbs" data-guide-section="verbs">
+                <header class="guide-section-head">
+                    <span class="guide-num">03</span>
+                    <div>
+                        <h2>Verbs Keel understands</h2>
+                        <p class="panel-intro">A step runs only when Keel classifies its verb as click, type, assert, or skip. Unknown verbs are skipped. The Owner can add extra words onto those same four kinds — not new kinds.</p>
+                    </div>
+                </header>
+                <ul class="guide-points">
+                    <li><strong>Click</strong> — <code>click</code>, <code>press</code>, <code>tap</code>, <code>open</code>, <code>go to</code>, <code>add</code> (as in “add the …”).</li>
+                    <li><strong>Type</strong> — <code>enter</code>, <code>type</code>, <code>fill</code>, <code>input</code>, <code>select</code> (line starts with select), <code>choose</code>, <code>pick</code>, leave/keep empty, leave blank, do not fill, skip the field.</li>
+                    <li><strong>Assert visible</strong> — <code>confirm</code>, <code>verify</code>, <code>shown</code>, <code>visible</code>, <code>see</code>, <code>displays</code>, is shown, are visible.</li>
+                    <li><strong>Skip the line</strong> — <code>post-login…</code>, <code>do not …</code> at the start of a step.</li>
+                    <li>Login / password / “click the login button” stay in code. They are listed on Admin as code-only specials and cannot be remapped.</li>
+                </ul>
+                <ol class="guide-howto">
+                    <li>The account owner opens <a href="/admin/llm-settings">Admin → LLM &amp; API keys</a> and the <strong>Authoring verbs</strong> block (same Owner-only page as review batch size and browser).</li>
+                    <li>Built-in words are a read-only table. Add an alias: one word (letters only, 3–40), then treat as Click, Type, Assert visible, or Ignore. Save. Max 50 aliases.</li>
+                    <li>The next Execute, Automate, Generate review, or Record bind uses the list. Save on a running portal does not need another restart.</li>
+                </ol>
+                <div class="guide-callouts">
+                    <div class="callout ok">
+                        <strong>Default</strong>
+                        <p>Install seeds <code>observe</code> → Assert visible, so <code>Observe the Agent User Details page is displayed</code> waits for that page instead of skipping the line. The Owner may change or delete that alias. Built-in words such as <code>tap</code> cannot be remapped.</p>
+                    </div>
+                    <div class="callout warn">
+                        <strong>Not a status filter</strong>
+                        <p>Aliases do not mean “click any grid row with this status.” Quote a unique on-screen name. <code>"Pending Edit"</code> is an exact label match, not a filter. Several matching rows stay ambiguous.</p>
+                    </div>
+                </div>
             </section>
 
             <section class="panel guide-section guide-reveal" id="expected" data-guide-section="expected">

@@ -195,7 +195,7 @@ The number on the page is the price of one unit. Keel multiplies it when the job
 
 - Excel columns and which are required / recommended / optional.
 - Login & credentials (preconditions vs run config).
-- How to write exact steps (not vague shorthand).
+- How to write exact steps (not vague shorthand). Verbs Keel already treats as click / type / assert, plus Owner aliases on Admin → LLM & API keys (seeded `observe` → assert).
 - Expected results (one observable outcome per step).
 - Test data line-alignment (step *n* ↔ TestData line *n*).
 - Visual assertion column (text only).
