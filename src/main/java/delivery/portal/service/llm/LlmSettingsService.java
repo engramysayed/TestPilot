@@ -119,6 +119,9 @@ public class LlmSettingsService implements ApplicationRunner {
             if (req != null) {
                 if (req.ollamaBaseUrl != null) {
                     baseUrl = req.ollamaBaseUrl.trim();
+                    if (baseUrl.isBlank()) {
+                        baseUrl = defaultBaseUrl();
+                    }
                 }
                 if (req.ollamaChatModel != null) {
                     chat = req.ollamaChatModel.trim();

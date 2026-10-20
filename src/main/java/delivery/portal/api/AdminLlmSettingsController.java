@@ -70,6 +70,15 @@ public class AdminLlmSettingsController {
             out.put("models", models);
             return ResponseEntity.ok(out);
         } catch (OllamaUnreachableException e) {
+            List<String> cached = settings.cachedOllamaModels();
+            if (cached != null && !cached.isEmpty()) {
+                Map<String, Object> out = new LinkedHashMap<>();
+                out.put("models", cached);
+                out.put("source", "cache");
+                out.put("unreachable", true);
+                out.put("message", e.getMessage() == null ? "Ollama unreachable" : e.getMessage());
+                return ResponseEntity.ok(out);
+            }
             Map<String, Object> err = new LinkedHashMap<>();
             err.put("error", "OLLAMA_UNREACHABLE");
             err.put("message", e.getMessage() == null ? "Ollama unreachable" : e.getMessage());

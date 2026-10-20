@@ -20,7 +20,9 @@
         <form class="llm-settings-form" id="llm-settings-form" onsubmit="return false;">
             <div class="form-grid" style="display:grid;gap:1rem;max-width:40rem;">
                 <label>Ollama base URL
-                    <input type="url" id="ollamaBaseUrl" name="ollamaBaseUrl" placeholder="http://127.0.0.1:11434" autocomplete="off">
+                    <input type="url" id="ollamaBaseUrl" name="ollamaBaseUrl"
+                           placeholder="http://127.0.0.1:11434" autocomplete="off"
+                           th:value="${ollamaBaseUrl ?: 'http://127.0.0.1:11434'}">
                 </label>
                 <label>Ollama API key <span class="muted">(optional)</span>
                     <input type="password" id="ollamaApiKey" name="ollamaApiKey" autocomplete="new-password" placeholder="">
@@ -29,16 +31,21 @@
                 <div class="generate-model-row" style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
                     <label style="flex:1;min-width:12rem;">Chat model
                         <select id="ollamaChatModel" name="ollamaChatModel">
-                            <option value="">— refresh models —</option>
+                            <option value="">— loading models —</option>
+                            <option th:each="name : ${cachedOllamaModels}" th:value="${name}" th:text="${name}"
+                                    th:selected="${name == ollamaChatModel}"></option>
                         </select>
                     </label>
                     <label style="flex:1;min-width:12rem;">Vision model
                         <select id="ollamaVisionModel" name="ollamaVisionModel">
-                            <option value="">— refresh models —</option>
+                            <option value="">— loading models —</option>
+                            <option th:each="name : ${cachedOllamaModels}" th:value="${name}" th:text="${name}"
+                                    th:selected="${name == ollamaVisionModel}"></option>
                         </select>
                     </label>
                     <button type="button" class="btn" id="btn-refresh-models">Refresh models</button>
                 </div>
+                <p class="muted" id="llm-models-hint">Loads from Ollama at the base URL. If this still says loading, click Refresh models.</p>
                 <label>Cursor API key
                     <input type="password" id="cursorApiKey" name="cursorApiKey" autocomplete="new-password" placeholder="">
                     <span class="muted" id="cursorApiKeyHint"></span>
@@ -68,8 +75,13 @@
                     <thead><tr><th>Word</th><th>Treat as</th></tr></thead>
                     <tbody>
                         <tr th:each="row : ${builtInVerbs}">
-                            <td th:text="${row['word']}">click</td>
-                            <td th:text="${row['treatAs'] == 'assert' ? 'Assert visible' : (row['treatAs'] == 'ignore' ? 'Ignore' : (row['treatAs'] == 'type' ? 'Type' : 'Click'))}">Click</td>
+                            <td th:text="${row.word}">click</td>
+                            <td th:switch="${row.treatAs}">
+                                <span th:case="'assert'">Assert visible</span>
+                                <span th:case="'ignore'">Ignore</span>
+                                <span th:case="'type'">Type</span>
+                                <span th:case="*">Click</span>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -82,18 +94,18 @@
                     <thead><tr><th>Word</th><th>Treat as</th><th></th></tr></thead>
                     <tbody>
                         <tr th:each="row : ${authoringVerbAliases}">
-                            <td><input type="text" class="alias-word" maxlength="40" autocomplete="off" placeholder="observe" th:value="${row['word']}"></td>
+                            <td><input type="text" class="alias-word" maxlength="40" autocomplete="off" placeholder="observe" th:value="${row.word}"></td>
                             <td>
                                 <select class="alias-treat">
-                                    <option value="click" th:selected="${row['treatAs'] == 'click'}">Click</option>
-                                    <option value="type" th:selected="${row['treatAs'] == 'type'}">Type</option>
-                                    <option value="assert" th:selected="${row['treatAs'] == 'assert'}">Assert visible</option>
-                                    <option value="ignore" th:selected="${row['treatAs'] == 'ignore'}">Ignore</option>
+                                    <option value="click" th:selected="${row.treatAs == 'click'}">Click</option>
+                                    <option value="type" th:selected="${row.treatAs == 'type'}">Type</option>
+                                    <option value="assert" th:selected="${row.treatAs == 'assert'}">Assert visible</option>
+                                    <option value="ignore" th:selected="${row.treatAs == 'ignore'}">Ignore</option>
                                 </select>
                             </td>
                             <td><button type="button" class="btn alias-remove">Remove</button></td>
                         </tr>
-                        <tr th:if="${authoringVerbAliases == null or #lists.isEmpty(authoringVerbAliases)}">
+                        <tr th:if="${#lists.isEmpty(authoringVerbAliases)}">
                             <td><input type="text" class="alias-word" maxlength="40" autocomplete="off" placeholder="observe"></td>
                             <td>
                                 <select class="alias-treat">
@@ -116,8 +128,9 @@
     </section>
 </main>
 </div>
-<script>
+<script th:inline="none">
 (function () {
+    const DEFAULT_OLLAMA = 'http://127.0.0.1:11434';
     const HDR = {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -135,6 +148,15 @@
     function showSaved() {
         errEl.hidden = true;
         savedEl.hidden = false;
+    }
+    function ollamaUrlFromField() {
+        const el = document.getElementById('ollamaBaseUrl');
+        const v = el && el.value ? el.value.trim() : '';
+        return v || DEFAULT_OLLAMA;
+    }
+    function setOllamaUrl(v) {
+        const el = document.getElementById('ollamaBaseUrl');
+        if (el) el.value = (v && String(v).trim()) || DEFAULT_OLLAMA;
     }
     function setSecretHint(field, configured, last4) {
         const input = document.getElementById(field);
@@ -167,7 +189,7 @@
         vision.innerHTML = '';
         const blank = document.createElement('option');
         blank.value = '';
-        blank.textContent = list.length ? '— select —' : '— refresh models —';
+        blank.textContent = list.length ? '— select —' : '— no models yet —';
         chat.appendChild(blank.cloneNode(true));
         vision.appendChild(blank);
         for (const name of list) {
@@ -226,10 +248,15 @@
         const tTd = document.createElement('td');
         const sel = document.createElement('select');
         sel.className = 'alias-treat';
-        [['click', 'Click'], ['type', 'Type'], ['assert', 'Assert visible'], ['ignore', 'Ignore']].forEach(function (opt) {
+        [
+            { value: 'click', label: 'Click' },
+            { value: 'type', label: 'Type' },
+            { value: 'assert', label: 'Assert visible' },
+            { value: 'ignore', label: 'Ignore' }
+        ].forEach(function (opt) {
             const o = document.createElement('option');
-            o.value = opt[0];
-            o.textContent = opt[1];
+            o.value = opt.value;
+            o.textContent = opt.label;
             sel.appendChild(o);
         });
         sel.value = treatAs || 'assert';
@@ -278,7 +305,7 @@
             return;
         }
         current = await res.json();
-        document.getElementById('ollamaBaseUrl').value = current.ollamaBaseUrl || '';
+        setOllamaUrl(current.ollamaBaseUrl);
         setSecretHint('cursorApiKey', !!current.cursorApiKeyConfigured, current.cursorApiKeyLast4);
         setSecretHint('agentrouterApiKey', !!current.agentrouterApiKeyConfigured, current.agentrouterApiKeyLast4);
         setSecretHint('ollamaApiKey', !!current.ollamaApiKeyConfigured, current.ollamaApiKeyLast4);
@@ -295,18 +322,23 @@
         fillAliases(current.authoringVerbAliases);
     }
     async function refreshModels(quiet) {
+        const hint = document.getElementById('llm-models-hint');
         if (!quiet) showError('');
+        if (hint && !quiet) hint.textContent = 'Loading models from Ollama…';
         const btn = document.getElementById('btn-refresh-models');
         if (btn) btn.disabled = true;
         try {
-            const baseUrl = document.getElementById('ollamaBaseUrl').value.trim();
-            const q = baseUrl ? ('?baseUrl=' + encodeURIComponent(baseUrl)) : '';
+            const baseUrl = ollamaUrlFromField();
+            setOllamaUrl(baseUrl);
+            const q = '?baseUrl=' + encodeURIComponent(baseUrl);
             const res = await fetch('/api/admin/llm-settings/ollama/models' + q, {
                 credentials: 'same-origin', headers: HDR
             });
             const body = await res.json().catch(() => ({}));
             if (!res.ok) {
-                if (!quiet) showError(body.message || ('Ollama models failed (' + res.status + ').'));
+                const msg = body.message || ('Ollama models failed (' + res.status + ').');
+                if (!quiet) showError(msg);
+                if (hint) hint.textContent = msg;
                 return;
             }
             const chatPref = document.getElementById('ollamaChatModel').value
@@ -314,6 +346,13 @@
             const visionPref = document.getElementById('ollamaVisionModel').value
                 || (current && current.ollamaVisionModel) || '';
             fillModels(body.models || [], chatPref, visionPref);
+            if (hint) {
+                hint.textContent = body.unreachable
+                    ? 'Ollama unreachable — showing last list.'
+                    : ((body.models && body.models.length)
+                        ? 'Loaded from Ollama at the base URL.'
+                        : 'Ollama returned no models. Pull a chat model, then Refresh models.');
+            }
         } finally {
             if (btn) btn.disabled = false;
         }
@@ -321,7 +360,7 @@
     async function save() {
         showError('');
         const body = {
-            ollamaBaseUrl: document.getElementById('ollamaBaseUrl').value.trim(),
+            ollamaBaseUrl: ollamaUrlFromField(),
             ollamaChatModel: document.getElementById('ollamaChatModel').value,
             ollamaVisionModel: document.getElementById('ollamaVisionModel').value,
             reviewCasesPerBatch: parseInt(document.getElementById('reviewCasesPerBatch').value, 10) || 50,
@@ -374,7 +413,7 @@
         });
     }
     loadSettings()
-        .then(function () { return refreshModels(true); })
+        .then(function () { return refreshModels(false); })
         .catch(function (e) { showError(String(e)); });
 })();
 </script>

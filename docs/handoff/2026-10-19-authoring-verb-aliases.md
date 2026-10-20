@@ -26,3 +26,4 @@ Plan: `docs/superpowers/plans/2026-10-19-authoring-verb-aliases.md`
 - Aliases do not teach “click any grid row with this status.” Quote a unique on-screen name, or the step stays AMBIGUOUS.
 - `"Pending Edit"` is an exact label match, not a status filter.
 - 2026-10-20: first paint of Authoring verbs was empty (JS-only tables; chat/vision stayed on “refresh models”). Built-ins + seed alias now render server-side; GET includes `cachedOllamaModels` and the page fills then refreshes quietly. Rebuild jar + restart + Ctrl+F5.
+- 2026-10-20 follow-up: the page itself aborted (`ERR_INCOMPLETE_CHUNKED_ENCODING`) because Thymeleaf parsed `[[` in the alias-row script. Script is `th:inline="none"` and no longer uses `[[`. Ollama URL is a real default value. Chat/Vision fetch live tags on open; cache is returned as 200 if Ollama is down. Rebuild jar + restart + Ctrl+F5. Live browser not verified (login wall); `AdminLlmSettingsPageTest` renders the full HTML.

@@ -22,6 +22,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
@@ -173,15 +174,29 @@ public class AdminLlmSettingsApiTest extends AbstractTestNGSpringContextTests {
                 .andExpect(jsonPath("$.builtInVerbs[0].word").value("click"))
                 .andExpect(jsonPath("$.builtInVerbs[0].treatAs").value("click"))
                 .andExpect(jsonPath("$.authoringVerbAliases").isArray())
-                .andExpect(jsonPath("$.cachedOllamaModels").isArray());
+                .andExpect(jsonPath("$.cachedOllamaModels").isArray())
+                .andExpect(jsonPath("$.ollamaBaseUrl").value("http://127.0.0.1:11434"));
     }
 
     @Test
     public void ollamaModelsUnreachableFailsSoftWith502() throws Exception {
+        llmSettings.rememberOllamaCache(List.of());
         mockMvc.perform(get("/api/admin/llm-settings/ollama/models")
                         .param("baseUrl", "http://127.0.0.1:9")
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.error").value("OLLAMA_UNREACHABLE"));
+    }
+
+    @Test
+    public void ollamaModelsUnreachable_returnsCachedList() throws Exception {
+        llmSettings.rememberOllamaCache(List.of("gemma4:e2b", "qwen2.5:latest"));
+        mockMvc.perform(get("/api/admin/llm-settings/ollama/models")
+                        .param("baseUrl", "http://127.0.0.1:9")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unreachable").value(true))
+                .andExpect(jsonPath("$.models[0]").value("gemma4:e2b"))
+                .andExpect(jsonPath("$.models[1]").value("qwen2.5:latest"));
     }
 }

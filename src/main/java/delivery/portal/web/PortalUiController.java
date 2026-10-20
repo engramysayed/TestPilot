@@ -517,8 +517,12 @@ public class PortalUiController {
         requireHeadPage();
         addNav(model, "llm-settings");
         Map<String, Object> view = llmSettings.maskedView();
-        model.addAttribute("builtInVerbs", view.get("builtInVerbs"));
-        model.addAttribute("authoringVerbAliases", view.get("authoringVerbAliases"));
+        model.addAttribute("builtInVerbs", listAttr(view.get("builtInVerbs")));
+        model.addAttribute("authoringVerbAliases", listAttr(view.get("authoringVerbAliases")));
+        model.addAttribute("cachedOllamaModels", listAttr(view.get("cachedOllamaModels")));
+        model.addAttribute("ollamaChatModel", view.get("ollamaChatModel"));
+        model.addAttribute("ollamaVisionModel", view.get("ollamaVisionModel"));
+        model.addAttribute("ollamaBaseUrl", view.get("ollamaBaseUrl"));
         Object codeOnly = view.get("codeOnlyVerbs");
         if (codeOnly instanceof List<?> list && !list.isEmpty()) {
             List<String> bits = new ArrayList<>();
@@ -544,5 +548,9 @@ public class PortalUiController {
         if (!roles.isHeadAdmin(currentUser.requireUser())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the account owner can open this page.");
         }
+    }
+
+    private static List<?> listAttr(Object raw) {
+        return raw instanceof List<?> list ? list : List.of();
     }
 }

@@ -346,9 +346,17 @@ public class LlmSettingsServiceTest {
                 AuthoringVerbAliases.toMaps(AuthoringVerbAliases.seed()));
         Assert.assertEquals(view.get("builtInVerbs"), AuthoringVerbAliases.builtInMaps());
         Assert.assertEquals(view.get("cachedOllamaModels"), List.of());
+        Assert.assertEquals(view.get("ollamaBaseUrl"), "http://127.0.0.1:11434");
         Assert.assertEquals(
                 AuthoringVerbAliases.classify("observe the rates module is displayed"),
                 delivery.authoring.StepIntentBinder.IntentKind.ASSERT_VISIBLE);
+    }
+
+    @Test
+    public void blankBaseUrlOnUpdate_stillShowsDefault() {
+        LlmSettingsService svc = new LlmSettingsService(props);
+        svc.update(new UpdateRequest(null, null, null, "  ", null, null, false, false, false));
+        Assert.assertEquals(svc.maskedView().get("ollamaBaseUrl"), "http://127.0.0.1:11434");
     }
 
     @Test

@@ -4,6 +4,10 @@
 
 # Keel changelog
 
+## 2026-10-20 - Admin LLM page actually loads
+
+- Opening **Admin → LLM & API keys** no longer dies with `ERR_INCOMPLETE_CHUNKED_ENCODING`. Thymeleaf was treating `[[` in the page script as an expression, so the HTML never finished and Chat/Vision stayed on “refresh models.” The Ollama URL is now a real default (`http://127.0.0.1:11434`), not only a placeholder; Chat/Vision load from live Ollama (or the last cache if Ollama blips). Rebuild jar, restart, Ctrl+F5.
+
 ## 2026-10-20 - Admin LLM page paints verbs and cached models
 
 - **Admin → LLM & API keys** now renders the read-only built-in verb table and the seeded `observe` alias in the HTML (so the block is not an empty header). Chat/vision dropdowns fill from the last saved Ollama tag cache, then refresh quietly. Click **Refresh models** if the list is still stale.
