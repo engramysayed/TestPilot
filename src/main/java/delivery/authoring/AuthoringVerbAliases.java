@@ -10,13 +10,16 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Owner aliases for {@link StepIntentBinder#classify}: extra words onto click / type / assert / ignore.
+ * Owner aliases for {@link StepIntentBinder#classify}: extra words onto click / type / select / clear /
+ * assert / ignore / drag / drop / hover / doubleclick / rightclick.
  * Built-in classify tokens stay read-only.
  */
 public final class AuthoringVerbAliases {
     public static final int MAX = 50;
     private static final Pattern WORD = Pattern.compile("^[a-z]{3,40}$");
-    private static final Set<String> TREAT_AS = Set.of("click", "type", "assert", "ignore");
+    private static final Set<String> TREAT_AS = Set.of(
+            "click", "type", "select", "clear", "assert", "ignore",
+            "drag", "drop", "hover", "doubleclick", "rightclick");
     private static final Set<String> BUILTIN_WORDS = builtinWordSet();
 
     private static volatile List<Alias> PROCESS = seed();
@@ -54,6 +57,12 @@ public final class AuthoringVerbAliases {
         out.add(new Builtin("leave blank", "type"));
         out.add(new Builtin("do not fill", "type"));
         out.add(new Builtin("skip the field", "type"));
+        out.add(new Builtin("clear the field", "clear"));
+        out.add(new Builtin("drag", "drag"));
+        out.add(new Builtin("drop", "drag"));
+        out.add(new Builtin("hover", "hover"));
+        out.add(new Builtin("double click", "doubleclick"));
+        out.add(new Builtin("right click", "rightclick"));
         out.add(new Builtin("confirm", "assert"));
         out.add(new Builtin("verify", "assert"));
         out.add(new Builtin("shown", "assert"));
@@ -101,7 +110,8 @@ public final class AuthoringVerbAliases {
                         "Alias word must be 3–40 letters (got '" + (row.word() == null ? "" : row.word()) + "')");
             }
             if (!TREAT_AS.contains(treat)) {
-                throw new IllegalArgumentException("treatAs must be click, type, assert, or ignore");
+                throw new IllegalArgumentException(
+                        "treatAs must be click, type, select, clear, assert, ignore, drag, drop, hover, doubleclick, or rightclick");
             }
             if (isBuiltinWord(word)) {
                 throw new IllegalArgumentException("'" + word + "' is a built-in verb and cannot be aliased");
@@ -188,7 +198,11 @@ public final class AuthoringVerbAliases {
             return switch (alias.treatAs()) {
                 case "assert" -> StepIntentBinder.IntentKind.ASSERT_VISIBLE;
                 case "click" -> StepIntentBinder.IntentKind.CLICK;
-                case "type" -> StepIntentBinder.IntentKind.TYPE_FIELD;
+                case "type", "select", "clear" -> StepIntentBinder.IntentKind.TYPE_FIELD;
+                case "drag", "drop" -> StepIntentBinder.IntentKind.DRAG;
+                case "hover" -> StepIntentBinder.IntentKind.HOVER;
+                case "doubleclick" -> StepIntentBinder.IntentKind.DOUBLE_CLICK;
+                case "rightclick" -> StepIntentBinder.IntentKind.RIGHT_CLICK;
                 default -> null;
             };
         }
@@ -257,7 +271,7 @@ public final class AuthoringVerbAliases {
                 "click", "press", "tap", "open", "add",
                 "enter", "type", "fill", "input", "select", "choose", "pick",
                 "confirm", "verify", "shown", "visible", "see", "displays",
-                "submit")) {
+                "submit", "drag", "drop", "hover")) {
             out.add(w);
         }
         return Set.copyOf(out);

@@ -330,6 +330,42 @@ public class ElementsHandler {
         }
     }
 
+    public String hover(By locator) {
+        try {
+            scrollToElement(locator);
+            waitHandler.waitForElementToBeVisible(locator);
+            new Actions(driver).moveToElement(findElement(locator)).pause(150).perform();
+            return "true";
+        } catch (Exception e) {
+            LogsManager.error("Failed to hover element: " + locator + " " + e);
+            return "false -> Failed to hover element: " + locator + " " + e;
+        }
+    }
+
+    public String doubleClick(By locator) {
+        try {
+            scrollToElement(locator);
+            waitHandler.waitForElementToBeVisible(locator);
+            new Actions(driver).doubleClick(findElement(locator)).perform();
+            return "true";
+        } catch (Exception e) {
+            LogsManager.error("Failed to double-click element: " + locator + " " + e);
+            return "false -> Failed to double-click element: " + locator + " " + e;
+        }
+    }
+
+    public String rightClick(By locator) {
+        try {
+            scrollToElement(locator);
+            waitHandler.waitForElementToBeVisible(locator);
+            new Actions(driver).contextClick(findElement(locator)).perform();
+            return "true";
+        } catch (Exception e) {
+            LogsManager.error("Failed to right-click element: " + locator + " " + e);
+            return "false -> Failed to right-click element: " + locator + " " + e;
+        }
+    }
+
     public String type(By locator, String text) {
         try {
             waitHandler.waitForElementToBeVisible(locator);

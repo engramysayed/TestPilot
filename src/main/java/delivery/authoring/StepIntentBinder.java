@@ -33,7 +33,8 @@ public final class StepIntentBinder {
             "(?i)(/reg|/register)(/|\\?|#|'|\"|$)|href\\s*=\\s*['\"][^'\"]*(/reg|/register)(/|\\?|#|'|\"|$)");
 
     public enum IntentKind {
-        TYPE_USER, TYPE_PASS, CLICK_LOGIN, TYPE_FIELD, ASSERT_VISIBLE, CLICK
+        TYPE_USER, TYPE_PASS, CLICK_LOGIN, TYPE_FIELD, ASSERT_VISIBLE, CLICK,
+        DRAG, HOVER, DOUBLE_CLICK, RIGHT_CLICK
     }
 
     public record IntentLine(IntentKind kind, String text, String testData) {
@@ -181,6 +182,11 @@ public final class StepIntentBinder {
     }
 
     public static BindResult bind(ManualTestCase tc, List<DomCandidate> candidates, List<String> preferOnTie) {
+        return bind(tc, candidates, preferOnTie, null);
+    }
+
+    public static BindResult bind(ManualTestCase tc, List<DomCandidate> candidates, List<String> preferOnTie,
+                                  String slimHtml) {
         List<IntentLine> intents = parseIntents(tc);
         if (intents.isEmpty()) {
             return new BindResult(List.of(), "No actionable intents parsed from Excel steps");
@@ -189,7 +195,7 @@ public final class StepIntentBinder {
         String tcId = tc.tcId();
         List<String> tieBreak = preferOnTie == null ? List.of() : preferOnTie;
         for (IntentLine intent : intents) {
-            BindResult one = bindSingle(intent, tcId, candidates, tieBreak);
+            BindResult one = bindSingle(intent, tcId, candidates, tieBreak, slimHtml);
             if (!one.ok()) {
                 return one;
             }
@@ -214,7 +220,12 @@ public final class StepIntentBinder {
 
     public static BindResult bindSingle(IntentLine intent, String tcId, List<DomCandidate> candidates,
                                         List<String> preferOnTie) {
-        BindResult result = bindSingleInternal(intent, tcId, candidates, preferOnTie);
+        return bindSingle(intent, tcId, candidates, preferOnTie, null);
+    }
+
+    public static BindResult bindSingle(IntentLine intent, String tcId, List<DomCandidate> candidates,
+                                        List<String> preferOnTie, String slimHtml) {
+        BindResult result = bindSingleInternal(intent, tcId, candidates, preferOnTie, slimHtml);
         if (!result.ok()) return result;
         if (intent != null && ExplicitAssertionOps.isExplicit(intent.text())) {
             return result;
@@ -237,7 +248,7 @@ public final class StepIntentBinder {
     }
 
     private static BindResult bindSingleInternal(IntentLine intent, String tcId, List<DomCandidate> candidates,
-                                        List<String> preferOnTie) {
+                                        List<String> preferOnTie, String slimHtml) {
         if (intent == null) {
             return new BindResult(List.of(), "Null intent");
         }
@@ -248,6 +259,17 @@ public final class StepIntentBinder {
                 || intent.kind() == IntentKind.TYPE_PASS
                 || intent.kind() == IntentKind.CLICK_LOGIN) {
             return bindLoginFieldIntent(intent, tcId, candidates, preferOnTie);
+        }
+        if (intent.kind() == IntentKind.CLICK) {
+            java.util.Optional<DomCandidate> rowPick = ListRowFirstBind.pick(intent, candidates, slimHtml);
+            if (rowPick.isPresent()) {
+                DomCandidate c = rowPick.get();
+                return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "click",
+                        c.strategy(), c.value(), "", "", "", true, "intent:CLICK:listRowFirst")), "");
+            }
+        }
+        if (intent.kind() == IntentKind.DRAG) {
+            return bindDragIntent(intent, tcId, candidates);
         }
         // Classify confirm/expected lines before CandidateScorer (page-shown / echo never TIE).
         if (intent.kind() == IntentKind.ASSERT_VISIBLE) {
@@ -484,9 +506,52 @@ public final class StepIntentBinder {
                     value, "", "", true, intentRationale(intent))), "");
         }
 
-        return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", "click",
+        return new BindResult(List.of(new ProvenStep(tcId, "Page", "elementAction", provenAction(intent.kind()),
                 best.candidate.strategy(), best.candidate.value(),
                 "", "", "", true, intentRationale(intent))), "");
+    }
+
+    private static String provenAction(IntentKind kind) {
+        if (kind == IntentKind.HOVER) {
+            return "hover";
+        }
+        if (kind == IntentKind.DOUBLE_CLICK) {
+            return "doubleClick";
+        }
+        if (kind == IntentKind.RIGHT_CLICK) {
+            return "rightClick";
+        }
+        return "click";
+    }
+
+    private static final Pattern DRAG_PARTS = Pattern.compile(
+            "(?i)(?:drag|drop)\\s+(?:the\\s+)?(.+?)\\s+(?:onto|on to|to|on)\\s+(?:the\\s+)?(.+)$");
+
+    private static BindResult bindDragIntent(IntentLine intent, String tcId, List<DomCandidate> candidates) {
+        Matcher m = DRAG_PARTS.matcher(intent.text() == null ? "" : intent.text().trim());
+        if (!m.find()) {
+            return new BindResult(List.of(), "DRAG needs 'drag X onto Y' or 'drop X on Y': " + intent.text());
+        }
+        String sourcePhrase = stripDragTail(m.group(1));
+        String targetPhrase = stripDragTail(m.group(2));
+        DomCandidate src = bestTokenMatch(sourcePhrase, candidates);
+        DomCandidate dst = bestTokenMatch(targetPhrase, candidates);
+        if (src == null || dst == null || src.id().equals(dst.id())) {
+            return new BindResult(List.of(),
+                    "No two DOM candidates for drag " + sourcePhrase + " -> " + targetPhrase);
+        }
+        String dropSel = (dst.strategy() == null ? "css" : dst.strategy()) + ":" + dst.value();
+        ProvenStep step = new ProvenStep(tcId, "Page", "elementAction", "drag",
+                src.strategy(), src.value(), dropSel, "", "", true, "intent:DRAG")
+                .withDropCandidates(List.of(new delivery.codegen.LocatorCandidate(dst.strategy(), dst.value(), 1)));
+        return new BindResult(List.of(step), "");
+    }
+
+    private static String stripDragTail(String phrase) {
+        if (phrase == null) {
+            return "";
+        }
+        return phrase.trim().replaceAll("(?i)\\s+(column|lane|area|region|panel|list|field)$", "").trim();
     }
 
     public static BindResult bindPreferring(ManualTestCase tc, List<DomCandidate> candidates,
@@ -534,6 +599,21 @@ public final class StepIntentBinder {
         }
         if (looksLikeAssert(lower) && !looksLikeClickAction(lower)) {
             return IntentKind.ASSERT_VISIBLE;
+        }
+        if (lower.contains("double click") || lower.contains("double-click") || lower.contains("doubleclick")) {
+            return IntentKind.DOUBLE_CLICK;
+        }
+        if (lower.contains("right click") || lower.contains("right-click") || lower.contains("context click")) {
+            return IntentKind.RIGHT_CLICK;
+        }
+        if (lower.startsWith("hover") || lower.contains("hover over")) {
+            return IntentKind.HOVER;
+        }
+        if (lower.startsWith("drag ") || lower.startsWith("drop ")) {
+            return IntentKind.DRAG;
+        }
+        if (lower.contains("clear the") && lower.contains("field") && !looksLikeClickAction(lower)) {
+            return IntentKind.TYPE_FIELD;
         }
         // Generic field fill â€” any enter/type/fill/select/choose for non-login data
         if (lower.contains("enter") || lower.contains("type") || lower.contains("fill")
@@ -1352,7 +1432,13 @@ public final class StepIntentBinder {
         if (lower.contains("do not fill") || lower.contains("don't fill") || lower.contains("dont fill")) {
             return true;
         }
-        return lower.contains("skip the") && lower.contains("field");
+        if (lower.contains("skip the") && lower.contains("field")) {
+            return true;
+        }
+        if (lower.contains("clear the") && lower.contains("field")) {
+            return true;
+        }
+        return AuthoringVerbAliases.matchesTreatAs(lower, "clear");
     }
 
     private static String resolveFieldAction(DomCandidate c) {
@@ -1364,6 +1450,9 @@ public final class StepIntentBinder {
      * aimed at dropdown-shaped controls (including Ant Design inputs that refuse sendKeys).
      */
     static String resolveFieldAction(DomCandidate c, String intentText) {
+        if (intentText != null && AuthoringVerbAliases.matchesTreatAs(intentText.toLowerCase(Locale.ROOT), "select")) {
+            return "select";
+        }
         String tag = c.tag() == null ? "" : c.tag().toLowerCase(Locale.ROOT);
         String hay = (c.value() + " " + c.label()).toLowerCase(Locale.ROOT);
         if ("select".equals(tag) || "combobox".equals(tag) || "listbox".equals(tag)
@@ -2067,7 +2156,10 @@ public final class StepIntentBinder {
         if (intent == null || candidates == null || candidates.isEmpty()) {
             return candidates == null ? List.of() : candidates;
         }
-        if (intent.kind() != IntentKind.CLICK) {
+        if (intent.kind() != IntentKind.CLICK
+                && intent.kind() != IntentKind.HOVER
+                && intent.kind() != IntentKind.DOUBLE_CLICK
+                && intent.kind() != IntentKind.RIGHT_CLICK) {
             return candidates;
         }
         List<String> distinctive = discriminatingTokens(intent.text(), candidates);

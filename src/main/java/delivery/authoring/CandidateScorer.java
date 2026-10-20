@@ -178,7 +178,11 @@ public final class CandidateScorer {
         String tag = c.tag() == null ? "" : c.tag().toLowerCase(Locale.ROOT);
         String value = c.value() == null ? "" : c.value().toLowerCase(Locale.ROOT);
         boolean clickish = intent.kind() == StepIntentBinder.IntentKind.CLICK
-                || intent.kind() == StepIntentBinder.IntentKind.CLICK_LOGIN;
+                || intent.kind() == StepIntentBinder.IntentKind.CLICK_LOGIN
+                || intent.kind() == StepIntentBinder.IntentKind.HOVER
+                || intent.kind() == StepIntentBinder.IntentKind.DOUBLE_CLICK
+                || intent.kind() == StepIntentBinder.IntentKind.RIGHT_CLICK
+                || intent.kind() == StepIntentBinder.IntentKind.DRAG;
         boolean typeish = intent.kind() == StepIntentBinder.IntentKind.TYPE_FIELD
                 || intent.kind() == StepIntentBinder.IntentKind.TYPE_USER
                 || intent.kind() == StepIntentBinder.IntentKind.TYPE_PASS;

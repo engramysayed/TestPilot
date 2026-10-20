@@ -141,7 +141,11 @@ public final class NestedPreferredHook {
         return "click".equalsIgnoreCase(action)
                 || "type".equalsIgnoreCase(action)
                 || "clear".equalsIgnoreCase(action)
-                || "select".equalsIgnoreCase(action);
+                || "select".equalsIgnoreCase(action)
+                || "hover".equalsIgnoreCase(action)
+                || "doubleclick".equalsIgnoreCase(action)
+                || "rightclick".equalsIgnoreCase(action)
+                || "drag".equalsIgnoreCase(action);
     }
 
     private static boolean isHookAttribute(String name, List<String> preferred) {

@@ -87,9 +87,10 @@ public final class VisionPromptTemplate {
             return "UNKNOWN";
         }
         return switch (intent.kind()) {
-            case CLICK, CLICK_LOGIN -> "CLICK";
+            case CLICK, CLICK_LOGIN, HOVER, DOUBLE_CLICK, RIGHT_CLICK -> "CLICK";
             case TYPE_USER, TYPE_PASS, TYPE_FIELD -> "INPUT";
             case ASSERT_VISIBLE -> "FIND_TEXT";
+            case DRAG -> "DRAG";
         };
     }
 }

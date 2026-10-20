@@ -365,9 +365,13 @@ public class FreeInventHealer {
 
     private static boolean actionMatches(StepIntentBinder.IntentKind kind, String action) {
         return switch (kind) {
-            case TYPE_USER, TYPE_PASS, TYPE_FIELD -> "type".equals(action);
+            case TYPE_USER, TYPE_PASS, TYPE_FIELD -> "type".equals(action) || "clear".equals(action) || "select".equals(action);
             case ASSERT_VISIBLE -> "assert".equals(action);
             case CLICK_LOGIN, CLICK -> "click".equals(action);
+            case HOVER -> "hover".equals(action);
+            case DOUBLE_CLICK -> "doubleclick".equalsIgnoreCase(action);
+            case RIGHT_CLICK -> "rightclick".equalsIgnoreCase(action);
+            case DRAG -> "drag".equals(action);
         };
     }
 

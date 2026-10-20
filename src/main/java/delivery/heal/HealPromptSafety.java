@@ -38,6 +38,10 @@ public final class HealPromptSafety {
             case ASSERT_VISIBLE -> SettlePolicy.Action.ASSERT;
             case TYPE_USER, TYPE_PASS, TYPE_FIELD -> SettlePolicy.Action.TYPE;
             case CLICK_LOGIN, CLICK -> SettlePolicy.Action.CLICK;
+            case HOVER -> SettlePolicy.Action.HOVER;
+            case DOUBLE_CLICK -> SettlePolicy.Action.DOUBLE_CLICK;
+            case RIGHT_CLICK -> SettlePolicy.Action.RIGHT_CLICK;
+            case DRAG -> SettlePolicy.Action.DRAG;
         };
         return SideEffectClassifier.classify(SettlePolicy.builtin(), a, null);
     }

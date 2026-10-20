@@ -4,6 +4,12 @@
 
 # Keel changelog
 
+## 2026-10-20 - List-row-first click + extra Treat as kinds
+
+- **List / grid clicks:** when a step names a shared cell (e.g. `with Pending edit status` or `"Pending Edit"`), Keel binds the **first** visible matching table/grid row and clicks that row’s name link (not the status badge). Quote a person when it matters: `Click on "Omar Nabil"`. Two **Login** buttons on the same page (not in a grid) stay unresolved.
+- **Treat as:** Owner aliases and built-ins now include **Select**, **Clear**, **Drag**, **Drop**, **Hover**, **Double-click**, and **Right-click** where Execute can run them (`clear`, `select`, `drag`, `hover`, `doubleClick`, `rightClick`). Clear-the-field steps emit `clear`; drag steps need `drag X onto Y`. File upload / drag-and-drop upload stays unsupported.
+- Guide `/guide#verbs` and Admin → LLM & API keys dropdowns updated. Rebuild jar, restart, Ctrl+F5. Spec: `docs/superpowers/specs/2026-10-20-list-row-first-and-treat-as-design.md`.
+
 ## 2026-10-20 - Admin LLM page actually loads
 
 - Opening **Admin → LLM & API keys** no longer dies with `ERR_INCOMPLETE_CHUNKED_ENCODING`. Thymeleaf was treating `[[` in the page script as an expression, so the HTML never finished and Chat/Vision stayed on “refresh models.” The Ollama URL is now a real default (`http://127.0.0.1:11434`), not only a placeholder; Chat/Vision load from live Ollama (or the last cache if Ollama blips). Rebuild jar, restart, Ctrl+F5.

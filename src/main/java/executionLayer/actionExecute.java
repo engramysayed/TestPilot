@@ -46,11 +46,14 @@ public class actionExecute {
             case "type" -> driver.element().type(locator, value);
             case "clear" -> driver.element().clear(locator);
             case "select" -> driver.element().selectFromDD(locator, value);
+            case "hover" -> driver.element().hover(locator);
+            case "doubleClick" -> driver.element().doubleClick(locator);
+            case "rightClick" -> driver.element().rightClick(locator);
+            case "drag", "dragDrop" -> driver.element().dragDrop(locator, SelectorParser.toBy(value));
             case "getText" -> driver.element().getText(locator);
             case "getAttr" -> driver.element().getAttributeValue(locator, value);
             case "scroll" -> driver.element().scrollToElement(locator);
             case "upload" -> driver.element().uploadFile(locator, value);
-            case "dragDrop" -> driver.element().dragDrop(locator, SelectorParser.toBy(value));
             default -> null;
         };
     }

@@ -36,7 +36,7 @@ public class AuthoringService {
     public List<ProvenStep> author(ManualTestCase tc, String slimHtml, Path screenshotOrNull) throws Exception {
         byte[] png = readPng(screenshotOrNull);
         List<DomCandidate> candidates = DomCandidateExtractor.extract(slimHtml);
-        StepIntentBinder.BindResult bound = StepIntentBinder.bind(tc, candidates);
+        StepIntentBinder.BindResult bound = StepIntentBinder.bind(tc, candidates, List.of(), slimHtml);
         if (bound.ok()) {
             return bound.steps();
         }
@@ -113,7 +113,8 @@ public class AuthoringService {
         BindDecision bindDecision = CandidateScorer.decide(CandidateScorer.score(intent, candidates));
         recordBind(bindDecision.kind());
         List<String> preferOnTie = StepIntentBinder.preferIdsForSpentFills(intent, candidates, spent);
-        StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(intent, tcId, candidates, preferOnTie);
+        StepIntentBinder.BindResult bound = StepIntentBinder.bindSingle(
+                intent, tcId, candidates, preferOnTie, slimHtml);
         if (bound.ok()) {
             List<ProvenStep> steps = bound.steps();
             if (slimHtml != null && !slimHtml.isBlank()) {

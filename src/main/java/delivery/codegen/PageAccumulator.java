@@ -335,7 +335,11 @@ public class PageAccumulator {
         return "click".equalsIgnoreCase(action)
                 || "drag".equalsIgnoreCase(action)
                 || "type".equalsIgnoreCase(action)
-                || "select".equalsIgnoreCase(action);
+                || "select".equalsIgnoreCase(action)
+                || "clear".equalsIgnoreCase(action)
+                || "hover".equalsIgnoreCase(action)
+                || "doubleclick".equalsIgnoreCase(action)
+                || "rightclick".equalsIgnoreCase(action);
     }
 
     private static boolean hasAssertion(ProvenStep step) {

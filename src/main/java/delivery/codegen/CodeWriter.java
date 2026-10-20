@@ -219,7 +219,8 @@ public class CodeWriter {
             String action = step.action() == null ? "" : step.action().toLowerCase(Locale.ROOT);
             boolean isAssert = step.assertionType() != null && !step.assertionType().isBlank();
             boolean isAction = "click".equals(action) || "type".equals(action) || "select".equals(action)
-                    || "drag".equals(action);
+                    || "drag".equals(action) || "clear".equals(action) || "hover".equals(action)
+                    || "doubleclick".equals(action) || "rightclick".equals(action);
             if (!isAssert && !isAction) {
                 continue;
             }

@@ -121,6 +121,15 @@ public class AdminLlmSettingsApiTest extends AbstractTestNGSpringContextTests {
                 .andExpect(jsonPath("$.authoringVerbAliases[0].word").value("ensure"))
                 .andExpect(jsonPath("$.authoringVerbAliases[0].treatAs").value("ignore"))
                 .andExpect(jsonPath("$.builtInVerbs[0].word").value("click"));
+
+        mockMvc.perform(put("/api/admin/llm-settings")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"authoringVerbAliases\":[{\"word\":\"wipe\",\"treatAs\":\"clear\"}]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authoringVerbAliases[0].word").value("wipe"))
+                .andExpect(jsonPath("$.authoringVerbAliases[0].treatAs").value("clear"));
     }
 
     @Test

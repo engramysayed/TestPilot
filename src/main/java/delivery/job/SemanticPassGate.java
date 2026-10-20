@@ -99,7 +99,8 @@ public final class SemanticPassGate {
                 yield null;
             }
             case "TYPE_FIELD" -> {
-                if (!("type".equals(action) || "select".equals(action) || "click".equals(action))) {
+                if (!("type".equals(action) || "select".equals(action) || "click".equals(action)
+                        || "clear".equals(action))) {
                     yield "Semantic PASS rejected: TYPE_FIELD bound to action=" + action;
                 }
                 yield null;
