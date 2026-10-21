@@ -38,7 +38,7 @@
                 </thead>
                 <tbody>
                 <tr th:each="p : ${packages}"
-                    th:attr="data-project-id=${p.projectId},data-path=${p.path},data-can-operate=${p.canOperate},data-job-running=${p.jobRunning}">
+                    th:attr="data-project-id=${p.projectId},data-path=${p.path},data-can-operate=${p.canOperate},data-can-delete-package=${p.canDeletePackage},data-job-running=${p.jobRunning}">
                     <td>
                         <span th:text="${p.projectName}">Project</span>
                         <br/><code class="mono muted" th:text="${p.projectId}">prj_</code>
@@ -118,10 +118,10 @@
     });
 
     document.querySelectorAll('#packages-table tbody tr').forEach(row => {
-        const canOperate = row.getAttribute('data-can-operate') === 'true';
+        const canDelete = row.getAttribute('data-can-delete-package') === 'true';
         const running = row.getAttribute('data-job-running') === 'true';
         const btn = row.querySelector('.pkg-delete-btn');
-        if (btn && canOperate) {
+        if (btn && canDelete) {
             btn.hidden = false;
             btn.disabled = running;
             btn.title = running ? 'Wait for the running job to finish' : '';

@@ -156,6 +156,15 @@ public class ProjectStore {
         Files.writeString(root.resolve("last-job.json"), job.toString(2), StandardCharsets.UTF_8);
     }
 
+    /** Removes live {@code framework/} only; version ZIPs and IR stay. */
+    public void deleteLiveFramework(String projectId) throws Exception {
+        if (projectId == null || projectId.isBlank()) {
+            throw new IllegalArgumentException("projectId is required");
+        }
+        Path framework = projectRoot(projectId).resolve("framework");
+        deleteRecursive(framework);
+    }
+
     /** Removes framework, versions, IR, locator map — entire project directory. */
     public void deleteProject(String projectId) throws Exception {
         if (projectId == null || projectId.isBlank()) {

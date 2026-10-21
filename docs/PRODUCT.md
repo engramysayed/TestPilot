@@ -79,7 +79,7 @@ After Automate has produced a package:
 - Browse **packages** (version ZIPs).
 - Browse generated **page** classes and **tests** (generated vs todo).
 - Preview Java source in the portal.
-- Delete artifacts when no job is running.
+- **Delete version ZIPs** when no job is running (any project member). **Delete the live framework** or individual generated page/test files requires workspace **Owner** or **Admin** — use **Delete current framework** on the Automation tab, or Delete on a file row. Archived ZIPs and prove IR are kept when you delete only the live framework; run Automate again to rebuild.
 
 ### Test cases tab
 

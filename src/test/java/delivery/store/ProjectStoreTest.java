@@ -25,6 +25,22 @@ public class ProjectStoreTest {
     }
 
     @Test
+    public void deleteLiveFrameworkKeepsVersionZip() throws Exception {
+        Path root = Files.createTempDirectory("store-fw-del");
+        ProjectStore store = new ProjectStore(root);
+        Path framework = Files.createTempDirectory("fw-live");
+        Files.writeString(framework.resolve("README.md"), "x");
+        Path zip = Files.createTempFile("pkg-live", ".zip");
+        Files.writeString(zip, "zip");
+        store.saveVersion("prj_fw", framework, zip);
+        Assert.assertTrue(store.hasFramework("prj_fw"));
+        Assert.assertTrue(Files.exists(root.resolve("prj_fw/versions/v1.zip")));
+        store.deleteLiveFramework("prj_fw");
+        Assert.assertFalse(store.hasFramework("prj_fw"));
+        Assert.assertTrue(Files.exists(root.resolve("prj_fw/versions/v1.zip")));
+    }
+
+    @Test
     public void deleteProjectRemovesDirectory() throws Exception {
         Path root = Files.createTempDirectory("store-del");
         ProjectStore store = new ProjectStore(root);

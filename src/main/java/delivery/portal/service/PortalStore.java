@@ -992,6 +992,15 @@ public class PortalStore {
         return filesystemStoreFor(projectId).hasFramework(projectId);
     }
 
+    /** Any user who can open the project may delete archived {@code versions/vN.zip} files. */
+    public boolean canDeleteVersionPackages(String projectId, Long userId) {
+        return getOwnedProject(projectId, userId).isPresent();
+    }
+
+    public void deleteLiveFramework(String projectId) throws Exception {
+        filesystemStoreFor(projectId).deleteLiveFramework(projectId);
+    }
+
     private JobRecord hydrate(JobEntity e) {
         Path excel = (e.getExcelPath() == null || e.getExcelPath().isBlank())
                 ? Path.of(".")

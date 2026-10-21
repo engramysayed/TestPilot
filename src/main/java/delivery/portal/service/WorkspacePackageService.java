@@ -48,6 +48,7 @@ public class WorkspacePackageService {
                     row.put("sizeBytes", pkg.get("sizeBytes"));
                     row.put("workspaceRole", store.workspaceRole(projectId, ownerUserId));
                     row.put("canOperate", store.canOperate(projectId, ownerUserId));
+                    row.put("canDeletePackage", store.canDeleteVersionPackages(projectId, ownerUserId));
                     row.put("jobRunning", store.hasRunningJob(projectId));
                     rows.add(row);
                 }

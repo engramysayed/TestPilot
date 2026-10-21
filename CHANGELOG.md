@@ -4,6 +4,12 @@
 
 # Keel changelog
 
+## 2026-10-21 - Portal: delete version ZIPs and live framework
+
+- **Automation tab:** workspace **Members** (anyone with project access) can delete **version ZIPs** (`versions/vN.zip`) when no job is running. **Owner/Admin** can delete individual page/test files under the live framework, and use **Delete current framework** to remove the whole live `framework/` tree (version ZIPs and prove IR stay).
+- **Packages** workspace page: Delete on a version ZIP uses the same member rule.
+- API: `DELETE /api/projects/{id}/artifacts?path=…` (ZIP vs framework file permissions); `DELETE /api/projects/{id}/framework` (operable only). Rebuild jar, restart, Ctrl+F5.
+
 ## 2026-10-20 - Codegen naming: page under test (not Excel title)
 
 - **Page + test class names** come from the **screen under test** (IR `pageName`, usually URL path leaf such as `/login` → `Login_Page.java` and `Login_Test.java`). Excel titles like “Valid login” and words such as valid/invalid are **not** used for class names.

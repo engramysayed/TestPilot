@@ -147,9 +147,14 @@ public class ProjectController {
         map.put("lastModified", p.getLastModified());
         map.put("lastModifiedLabel", p.getLastModifiedLabel());
         try {
-            map.put("workspaceRole", store.workspaceRole(p.getProjectId(), currentUser.requireUserId()));
+            Long uid = currentUser.requireUserId();
+            map.put("workspaceRole", store.workspaceRole(p.getProjectId(), uid));
+            map.put("canOperate", store.canOperate(p.getProjectId(), uid));
+            map.put("canDeletePackages", store.canDeleteVersionPackages(p.getProjectId(), uid));
         } catch (RuntimeException ignored) {
             map.put("workspaceRole", "");
+            map.put("canOperate", false);
+            map.put("canDeletePackages", false);
         }
         map.putAll(summary.cardMetrics(p.getProjectId()));
         return map;
@@ -309,8 +314,18 @@ public class ProjectController {
     public ResponseEntity<?> deleteArtifact(
             @PathVariable("projectId") String projectId,
             @RequestParam("path") String path) {
-        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
-                store, projectId, currentUser.requireUserId());
+        Long uid = currentUser.requireUserId();
+        String normalized;
+        try {
+            normalized = artifacts.validateRelativePath(path);
+        } catch (ProjectArtifactService.BadPathException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("BAD_PATH", e.getMessage()).asMap());
+        }
+        boolean versionZip = normalized.matches("versions/v\\d+\\.zip");
+        ResponseEntity<?> denied = versionZip
+                ? ProjectAccess.denyUnlessReadable(store, projectId, uid)
+                : ProjectAccess.denyUnlessOperable(store, projectId, uid);
         if (denied != null) {
             return denied;
         }
@@ -347,6 +362,30 @@ public class ProjectController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiError("INTERNAL_ERROR",
                             e.getMessage() == null ? "Failed to load summary" : e.getMessage()).asMap());
+        }
+    }
+
+    @DeleteMapping("/{projectId}/framework")
+    public ResponseEntity<?> deleteLiveFramework(@PathVariable("projectId") String projectId) {
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
+                store, projectId, currentUser.requireUserId());
+        if (denied != null) {
+            return denied;
+        }
+        if (store.hasRunningJob(projectId)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiError("JOB_RUNNING", "Wait for job to finish").asMap());
+        }
+        try {
+            store.deleteLiveFramework(projectId);
+            return ResponseEntity.ok(Map.of(
+                    "projectId", projectId,
+                    "deleted", true,
+                    "hasStoredFramework", store.hasStoredFramework(projectId)));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiError("FRAMEWORK_DELETE_FAILED",
+                            e.getMessage() == null ? "Could not delete framework" : e.getMessage()).asMap());
         }
     }
 

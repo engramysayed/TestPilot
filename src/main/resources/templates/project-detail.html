@@ -558,10 +558,15 @@
     <!-- Automation tab -->
     <section id="tab-automation" class="tab-panel" th:classappend="${activeTab != 'automation'} ? ' hidden' : ''">
         <p id="auto-running-hint" class="hint hidden">A job is running for this project — artifact delete is disabled until it finishes.</p>
+        <p id="auto-delete-hint" class="hint hidden">You can delete old <strong>version ZIPs</strong>. Deleting the live <strong>current framework</strong> or individual page/test files requires workspace <strong>Owner</strong> or <strong>Admin</strong>.</p>
         <p id="auto-err" class="error" hidden></p>
         <div id="auto-viewing-banner" class="auto-source-banner" role="status" aria-live="polite">
             Showing: <strong>Current framework</strong>
             <span class="muted"> — latest conversion on disk</span>
+        </div>
+        <div id="auto-framework-actions" class="actions hidden" style="margin: 0.5rem 0 1rem;">
+            <button type="button" class="button danger" id="delete-framework-btn" disabled>Delete current framework</button>
+            <span class="muted">Removes live page objects and generated tests on disk. Version ZIPs and prove IR stay.</span>
         </div>
         <div class="auto-layout">
             <div class="auto-tree">
@@ -848,6 +853,19 @@
     </div>
 </div>
 
+<!-- Live framework delete modal -->
+<div id="frameworkDeleteModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+        <h3>Delete current framework?</h3>
+        <p class="muted">This removes the live <code>framework/</code> folder (pages and generated tests). Archived version ZIPs and prove IR are kept. Run Automate again to rebuild. This cannot be undone.</p>
+        <p id="framework-delete-err" class="error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="frameworkDeleteCancel">Cancel</button>
+            <button type="button" class="button danger" id="frameworkDeleteConfirm">Delete framework</button>
+        </div>
+    </div>
+</div>
+
 <!-- Artifact delete modal -->
 <div id="artifactDeleteModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <div class="modal-card">
@@ -898,6 +916,9 @@
     const projectId = root.getAttribute('data-project-id');
     const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
     let settingsRole = '';
+    let projectCanOperate = false;
+    let projectCanDeletePackages = false;
+    let projectHasFramework = false;
     const activeTab = /*[[${activeTab}]]*/ 'summary';
     let jobRunning = false;
     let jobPollTimer = null;
@@ -977,11 +998,17 @@
         if (archiveBtn) archiveBtn.hidden = !!p.archived;
         loadWorkspaceCollaboration(p.workspaceRole || '');
         settingsRole = p.workspaceRole || '';
+        projectCanOperate = p.canOperate === true;
+        projectCanDeletePackages = p.canDeletePackages === true;
+        projectHasFramework = p.hasStoredFramework === true;
+        const deleteHint = document.getElementById('auto-delete-hint');
+        if (deleteHint) deleteHint.hidden = projectCanDeletePackages && projectCanOperate;
+        updateFrameworkDeleteUi();
         document.querySelectorAll('.artifact-delete-btn').forEach(btn => {
-            btn.hidden = !canOperateRole(settingsRole);
+            btn.hidden = true;
         });
         const irClearBtn = document.getElementById('ir-clear-btn');
-        if (irClearBtn && !canOperateRole(settingsRole)) irClearBtn.hidden = true;
+        if (irClearBtn && !projectCanOperate) irClearBtn.hidden = true;
         loadEnvironments(settingsRole);
         loadUsage(settingsRole);
         loadWebhook(settingsRole);
@@ -1814,6 +1841,15 @@
         return String(path || '').replace(/^versions\//, '').replace(/\.zip$/, '') || 'package';
     }
 
+    function updateFrameworkDeleteUi() {
+        const row = document.getElementById('auto-framework-actions');
+        const btn = document.getElementById('delete-framework-btn');
+        if (!row || !btn) return;
+        const show = projectCanOperate && !viewingPackage && projectHasFramework;
+        row.hidden = !show;
+        btn.disabled = jobRunning || !show;
+    }
+
     function updateViewingBanner() {
         const banner = document.getElementById('auto-viewing-banner');
         const pagesIntro = document.getElementById('auto-pages-intro');
@@ -1825,6 +1861,7 @@
                 + '<span class="muted"> — latest conversion on disk</span>';
             if (pagesIntro) pagesIntro.textContent = 'From current framework.';
             if (testsIntro) testsIntro.textContent = 'From current framework.';
+            updateFrameworkDeleteUi();
             return;
         }
         const label = packageLabel(viewingPackage);
@@ -1839,7 +1876,43 @@
             clearPreview();
             loadArtifacts();
         });
+        updateFrameworkDeleteUi();
     }
+
+    document.getElementById('delete-framework-btn')?.addEventListener('click', () => {
+        document.getElementById('framework-delete-err')?.classList.add('hidden');
+        openModal('frameworkDeleteModal');
+    });
+    document.getElementById('frameworkDeleteCancel')?.addEventListener('click', () => closeModal('frameworkDeleteModal'));
+    document.getElementById('frameworkDeleteModal')?.addEventListener('click', e => {
+        if (e.target.id === 'frameworkDeleteModal') closeModal('frameworkDeleteModal');
+    });
+    document.getElementById('frameworkDeleteConfirm')?.addEventListener('click', async () => {
+        const btn = document.getElementById('frameworkDeleteConfirm');
+        const errEl = document.getElementById('framework-delete-err');
+        btn.disabled = true;
+        const res = await fetch(apiUrl('/framework'), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        btn.disabled = false;
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            if (errEl) {
+                errEl.textContent = (data && data.message) || 'Delete failed';
+                errEl.classList.remove('hidden');
+            }
+            return;
+        }
+        projectHasFramework = data.hasStoredFramework === true;
+        closeModal('frameworkDeleteModal');
+        viewingPackage = null;
+        clearPreview();
+        await loadArtifacts();
+        updateFrameworkDeleteUi();
+    });
 
     function clearPreview() {
         const pathEl = document.getElementById('auto-preview-path');
@@ -1889,11 +1962,13 @@
             dl.href = apiUrl('/artifacts/download?path=' + encodeURIComponent(item.path));
             actions.appendChild(dl);
         }
-        if ((!viewingPackage || isZip) && canOperateRole(settingsRole)) {
+        const canDel = isZip ? projectCanDeletePackages : projectCanOperate;
+        if ((!viewingPackage || isZip) && canDel) {
             const delBtn = document.createElement('button');
             delBtn.type = 'button';
             delBtn.className = 'danger artifact-delete-btn';
             delBtn.textContent = 'Delete';
+            delBtn.hidden = false;
             delBtn.disabled = jobRunning;
             delBtn.addEventListener('click', () => openArtifactDelete(item.path, item.label || item.path));
             actions.appendChild(delBtn);
@@ -2017,6 +2092,7 @@
         document.querySelectorAll('.artifact-delete-btn').forEach(btn => {
             btn.disabled = running;
         });
+        updateFrameworkDeleteUi();
     }
 
     async function pollJobs() {
@@ -2081,7 +2157,7 @@
         }
         emptyEl.hidden = tcs.length > 0;
         const irClear = document.getElementById('ir-clear-btn');
-        if (irClear) irClear.hidden = tcs.length === 0 || !canOperateRole(settingsRole);
+        if (irClear) irClear.hidden = tcs.length === 0 || !projectCanOperate;
         listEl.innerHTML = '';
         tcs.forEach(tc => {
             const item = document.createElement('details');
