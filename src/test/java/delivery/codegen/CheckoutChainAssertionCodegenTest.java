@@ -25,7 +25,8 @@ public class CheckoutChainAssertionCodegenTest {
                 "", null, false, List.of())
                 .withSetup(List.of(confirmation));
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome));
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Order_On_Account_Test.java"));
+        String test = Files.readString(dir.resolve(
+                "src/test/java/project/tests/generated/" + CodegenPaths.testClassFile(outcome, true)));
         Assert.assertTrue(test.contains("Text_Contains(\"Order KLA-\")"), test);
         Assert.assertFalse(test.contains("_Capture()"), test);
         Assert.assertFalse(test.contains("Equals_Captured"), test);
@@ -37,10 +38,12 @@ public class CheckoutChainAssertionCodegenTest {
         ProvenStep expire = new ProvenStep("TC_SES_01", "Account", "elementAction", "click",
                 "id", "expire-session", "", "", "", true, "intent:CLICK");
         ProvenStep overlay = bodyText("TC_SES_01", "Account", "Session expired — sign in again");
-        new CodeWriter(TEMPLATES).write(dir, List.of(new TcOutcome(
+        TcOutcome outcome = new TcOutcome(
                 "TC_SES_01", "Session expiry overlay", TcStatus.PASSED,
-                List.of(expire, overlay), "", null, false, List.of())));
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Session_Expiry_Overlay_Test.java"));
+                List.of(expire, overlay), "", null, false, List.of());
+        new CodeWriter(TEMPLATES).write(dir, List.of(outcome));
+        String test = Files.readString(dir.resolve(
+                "src/test/java/project/tests/generated/" + CodegenPaths.testClassFile(outcome, true)));
         Assert.assertTrue(test.contains("Session expired — sign in again"), test);
         Assert.assertFalse(test.contains("Signed_Out"), test);
         Assert.assertFalse(test.contains("authenticatedIdentityGone"), test);
@@ -56,18 +59,20 @@ public class CheckoutChainAssertionCodegenTest {
         ProvenStep compare = new ProvenStep("TC_ORD_01", "Account", "elementAction", "assert",
                 "css", "#order-list li", "orderId", "capturedEquals", "exactText", true,
                 "intent:COMPARE_CAPTURED");
-        new CodeWriter(TEMPLATES).write(dir, List.of(new TcOutcome(
+        TcOutcome outcome = new TcOutcome(
                 "TC_ORD_01", "Order on account", TcStatus.PASSED,
-                List.of(capture, click, compare), "", null, false, List.of())));
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Order_On_Account_Test.java"));
-        String order = Files.readString(dir.resolve("src/main/java/project/pages/Order.java"));
-        String account = Files.readString(dir.resolve("src/main/java/project/pages/Account.java"));
-        String locators = Files.readString(dir.resolve("src/main/java/project/pages/Order.java"));
+                List.of(capture, click, compare), "", null, false, List.of());
+        new CodeWriter(TEMPLATES).write(dir, List.of(outcome));
+        String test = Files.readString(dir.resolve(
+                "src/test/java/project/tests/generated/" + CodegenPaths.testClassFile(outcome, true)));
+        String order = Files.readString(dir.resolve("src/main/java/project/pages/Order_Page.java"));
+        String account = Files.readString(dir.resolve("src/main/java/project/pages/Account_Page.java"));
+        String locators = Files.readString(dir.resolve("src/main/java/project/pages/Order_Page.java"));
         Assert.assertFalse((test + order + account).contains("KLA-1001"), test);
         Assert.assertTrue(locators.contains("order-id") || locators.contains("order_id"), locators);
         Assert.assertTrue(order.contains("captureFrom("), order);
         Assert.assertTrue(account.contains("compareCapturedExact("), account);
-        String accountLocators = Files.readString(dir.resolve("src/main/java/project/pages/Account.java"));
+        String accountLocators = Files.readString(dir.resolve("src/main/java/project/pages/Account_Page.java"));
         Assert.assertTrue(accountLocators.contains("#order-list li"), accountLocators);
         Assert.assertTrue(test.contains("Capture()"), test);
         Assert.assertTrue(test.contains("Equals_Captured()"), test);
@@ -84,11 +89,11 @@ public class CheckoutChainAssertionCodegenTest {
         new CodeWriter(TEMPLATES).write(dir, List.of(new TcOutcome(
                 "TC_SES_01", "Session expiry overlay", TcStatus.PASSED,
                 List.of(overlay, header, accountEmail), "", null, false, List.of())));
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Account.java"));
+        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Account_Page.java"));
         Assert.assertTrue(actions.contains("signedOut("), actions);
         Assert.assertTrue(actions.contains("empty") || actions.contains("Not signed in"), actions);
         Assert.assertFalse(actions.contains("authenticatedIdentityGone()"), actions);
-        String locators = Files.readString(dir.resolve("src/main/java/project/pages/Account.java"));
+        String locators = Files.readString(dir.resolve("src/main/java/project/pages/Account_Page.java"));
         Assert.assertTrue(locators.contains("session-email"), locators);
         Assert.assertTrue(locators.contains("account-email"), locators);
     }

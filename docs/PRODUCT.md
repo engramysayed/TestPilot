@@ -341,7 +341,7 @@ Turn the workbook into a **downloadable Java Selenium TestNG** package.
 1. **Prove** — bind each Excel step to the live DOM.
 2. **Heal** if bind fails: DOM candidates → Ollama shortlist → optional Cursor invent → structured **recovery** plan (validate on page, run, evidence, retry the same step).
 3. Successful recovery may **patch the generated workbook** (e.g. leave-empty + blank TestData) so the next run matches the page.
-4. **IR** (proven drafts) → optional revise → **Emit** page objects + tests (title-based `*Test` classes, filtered echo/html noise, collapsed login helpers, semantic login keys only for TARGET placeholders).
+4. **IR** (proven drafts) → optional revise → **Emit** page objects + tests (page-under-test names: `/login` → `Login_Page` + `Login_Test`; several Excel cases on the same screen merge into one test class with multiple `@Test` methods; filtered echo/html noise, collapsed login helpers, semantic login keys only for TARGET placeholders).
 5. Package the **customer-framework-template** into a ZIP.
 
 ### Jobs & status

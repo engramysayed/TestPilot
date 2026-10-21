@@ -60,8 +60,8 @@ public class CodegenNamingTest {
     public void pageStemEscapesJavaKeywords() {
         Assert.assertEquals(CodegenNaming.pageStem("New"), "NewPage");
         Assert.assertEquals(CodegenNaming.pageStem("class"), "ClassPage");
-        Assert.assertEquals(CodegenNaming.pageClassName("New"), "NewPage");
-        Assert.assertEquals(CodegenNaming.pageClassName("New"), "NewPage");
+        Assert.assertEquals(CodegenNaming.pageClassName("New"), "New_Page");
+        Assert.assertEquals(CodegenNaming.pageClassName("NewPage"), "New_Page");
     }
 
     @Test
@@ -93,15 +93,17 @@ public class CodegenNamingTest {
     public void validTcIdsArePreservedExactly() {
         Assert.assertEquals(CodegenNaming.testClassName("TC_01", "", true), "TC_01Test");
         Assert.assertEquals(CodegenNaming.testClassName("TC_06", "", false), "TC_06TestTodo");
-        Assert.assertEquals(CodegenNaming.testClassName("TC_01", "Valid login", true), "Valid_Login_Test");
+        Assert.assertEquals(CodegenNaming.testClassName("TC_01", "LoginPage", true), "Login_Test");
+        Assert.assertEquals(CodegenNaming.testClassName("TC_01", "Inventory", true), "Inventory_Test");
         Assert.assertEquals(CodegenNaming.tcIdToClassName("TC_A_B"), "TC_A_B");
         Assert.assertEquals(CodegenNaming.tcIdToClassName("TC_A__B"), "TC_A__B");
     }
 
     @Test
-    public void pageStemKeepsLoginPage() {
-        Assert.assertEquals(CodegenNaming.pageStem("LoginPage"), "LoginPage");
-        Assert.assertEquals(CodegenNaming.pageClassName("LoginPage"), "LoginPage");
+    public void pageClassUsesPageSuffixFromPathTitle() {
+        Assert.assertEquals(CodegenNaming.pageTitleStem("LoginPage"), "Login");
+        Assert.assertEquals(CodegenNaming.pageClassName("LoginPage"), "Login_Page");
+        Assert.assertEquals(CodegenNaming.pageClassNameFromStem("Inventory"), "Inventory_Page");
     }
 
     @Test

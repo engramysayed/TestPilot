@@ -92,13 +92,14 @@ public class PageAccumulator {
     private PageModel pageFor(ProvenStep step) {
         String key = pageKey(step);
         return pages.computeIfAbsent(key, name -> {
-            String stem = CodegenNaming.allocateUnique(usedStems, CodegenNaming.pageStem(name));
-            return PageModel.withStem(stem);
+            String titleStem = CodegenNaming.pageTitleStem(name);
+            String uniqueStem = CodegenNaming.allocateUnique(usedStems, titleStem);
+            return PageModel.withStem(uniqueStem);
         });
     }
 
     static String pageKey(ProvenStep step) {
-        return step.pageName() == null || step.pageName().isBlank() ? "Page" : step.pageName();
+        return step.pageName() == null || step.pageName().isBlank() ? "Page" : step.pageName().trim();
     }
 
     private String allocateField(PageModel page, ProvenStep step) {
@@ -531,17 +532,18 @@ public class PageAccumulator {
         private final Map<String, String> actionByIdentity = new LinkedHashMap<>();
         private final Map<String, String> assertByIdentity = new LinkedHashMap<>();
 
-        private PageModel(String stem) {
+        private PageModel(String stem, String pageClassName) {
             this.stem = stem;
-            this.pageClassName = stem;
+            this.pageClassName = pageClassName;
         }
 
         public static PageModel fromPageName(String pageName) {
-            return withStem(CodegenNaming.pageStem(pageName));
+            String stem = CodegenNaming.pageTitleStem(pageName);
+            return withStem(stem);
         }
 
         public static PageModel withStem(String stem) {
-            return new PageModel(stem);
+            return new PageModel(stem, CodegenNaming.pageClassNameFromStem(stem));
         }
 
         /** Single page class name (same as {@link #pageClassName()}). */

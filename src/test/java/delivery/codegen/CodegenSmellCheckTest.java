@@ -70,7 +70,7 @@ public class CodegenSmellCheckTest {
                 writer.writeVerified(root, List.of(), acc);
             });
 
-            Path actions = root.resolve("src/main/java/project/pages/Reg.java");
+            Path actions = root.resolve("src/main/java/project/pages/Reg_Page.java");
             Assert.assertFalse(Files.exists(actions), "must not write page file after smell fail");
         } finally {
             deleteTree(root);
@@ -84,7 +84,7 @@ public class CodegenSmellCheckTest {
             CodeWriter writer = new CodeWriter(Path.of("customer-framework-template/templates"));
             writer.write(root, List.of());
             Assert.assertFalse(Files.exists(
-                    root.resolve("src/main/java/project/pages/Reg.java")));
+                    root.resolve("src/main/java/project/pages/Reg_Page.java")));
         } finally {
             deleteTree(root);
         }

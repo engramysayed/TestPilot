@@ -76,8 +76,8 @@ public class KeelCodegenTest {
         new CodeWriter(Path.of("customer-framework-template/templates")).write(out, List.of(
                 new TcOutcome("TC_K", "Pay", TcStatus.PASSED, List.of(cssOnly, legacy, keelClick(), closed), "", null, false, List.of())));
         Path pages = out.resolve("src/main/java/project/pages");
-        String loc = Files.readString(pages.resolve("Checkout.java"));
-        String act = Files.readString(pages.resolve("Checkout.java"));
+        String loc = Files.readString(pages.resolve("Checkout_Page.java"));
+        String act = Files.readString(pages.resolve("Checkout_Page.java"));
         Assert.assertTrue(loc.contains("By.cssSelector(\"button#continue\")"), loc);
         Assert.assertTrue(loc.contains("By.id(\"email\")"), loc);
         Assert.assertTrue(loc.contains("import project.utils.locators.KeelBy;"), loc);
@@ -92,7 +92,7 @@ public class KeelCodegenTest {
         Assert.assertTrue(settled.contains("SmartWait.untilActionable"), settled);
         Assert.assertTrue(settled.contains("KeelLocate.reset"), settled);
         Path classes = Files.createTempDirectory("codegen-keel-classes");
-        CustomerTemplateCompiler.compile(classes, pages.resolve("Checkout.java")).close();
+        CustomerTemplateCompiler.compile(classes, pages.resolve("Checkout_Page.java")).close();
         Assert.assertTrue(Files.exists(classes.resolve("project/utils/locators/KeelLocate.class")));
     }
 }

@@ -9,6 +9,7 @@ import delivery.ir.TcDraftStore;
 import delivery.job.ConversionJobRequest;
 import delivery.job.ConversionJobResult;
 import delivery.job.EmitPhase;
+import delivery.job.TcOutcome;
 import delivery.job.JobProgressTracker;
 import delivery.job.OccurrenceIdentity;
 import delivery.job.ReuseEligibility;
@@ -90,23 +91,43 @@ public class CodegenUpdateReuseIntegrationTest {
 
         emit("UPDATE", updateWork, updated, updateDrafts, storeRoot, baseUrl);
         Path updateProject = updateWork.resolve("project");
+        List<TcOutcome> emittedOutcomes = updateDrafts.stream().map(EmitPhase::toOutcome).toList();
+        Map<String, String> testFiles = CodegenPaths.testClassFilesInEmitOrder(emittedOutcomes);
 
         Assert.assertEquals(statusOf(updateDrafts, "TC_KEEP"), TcDraftStatus.REUSED);
-        String keep = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/Keep_Save_Test.java"));
+        Path generatedDir = updateProject.resolve("src/test/java/project/tests/generated");
+        String keep = generatedTestSource(generatedDir, "TC_KEEP");
         Assert.assertTrue(keep.contains("click_Save_Button") || keep.contains("save"), keep);
 
-        String change = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/Change_Target_Test.java"));
+        String change = generatedTestSource(generatedDir, "TC_CHANGE");
         Assert.assertTrue(change.contains("click_Second_Button") || change.contains("second"), change);
         Assert.assertFalse(change.contains("click_First_Button"), change);
 
-        Assert.assertFalse(Files.exists(updateProject.resolve("src/test/java/project/tests/generated/Fall_To_Todo_Test.java")),
+        String fallTodo = CodegenPaths.testClassFile(
+                EmitPhase.toOutcome(updateDrafts.stream().filter(d -> "TC_FALL".equals(d.tcId())).findFirst().orElseThrow()),
+                false);
+        Assert.assertFalse(Files.exists(updateProject.resolve(
+                "src/test/java/project/tests/generated/TC_FALLTest.java")),
                 "PASS→TODO must delete the generated class");
+        try (var files = Files.list(generatedDir)) {
+            boolean stillPassed = files.filter(p -> p.toString().endsWith(".java"))
+                    .anyMatch(p -> {
+                        try {
+                            return Files.readString(p).contains("\"TC_FALL —");
+                        } catch (Exception e) {
+                            return false;
+                        }
+                    });
+            Assert.assertFalse(stillPassed, "TC_FALL must not remain under generated/");
+        }
         Assert.assertTrue(Files.isRegularFile(
-                updateProject.resolve("src/test/java/project/tests/todo/Fall_To_Todo_TestTodo.java")));
+                updateProject.resolve("src/test/java/project/tests/todo/" + fallTodo)));
 
-        String setup = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/Setup_Click_Test.java"));
+        String setup = Files.readString(updateProject.resolve(
+                "src/test/java/project/tests/generated/" + testFiles.get("TC_SETUP")));
         Assert.assertTrue(setup.contains("click_Save_Button") || setup.contains("save"), setup);
-        String leaf = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/Leaf_After_Setup_Test.java"));
+        String leaf = Files.readString(updateProject.resolve(
+                "src/test/java/project/tests/generated/" + testFiles.get("TC_LEAF")));
         Assert.assertTrue(leaf.contains("click_First_Button") || leaf.contains("first"), leaf);
 
         String data = Files.readString(
@@ -114,7 +135,8 @@ public class CodegenUpdateReuseIntegrationTest {
         Assert.assertTrue(data.contains("first@example.invalid"), data);
         Assert.assertTrue(data.contains("third@example.invalid"), data);
         Assert.assertFalse(data.contains("second@example.invalid"), data);
-        String edit = Files.readString(updateProject.resolve("src/test/java/project/tests/generated/Repeated_Email_Edits_Test.java"));
+        String edit = Files.readString(updateProject.resolve(
+                "src/test/java/project/tests/generated/" + testFiles.get("TC_EDIT")));
         Assert.assertTrue(edit.contains(".1"), edit);
         Assert.assertTrue(edit.contains(".2"), edit);
 
@@ -252,5 +274,17 @@ public class CodegenUpdateReuseIntegrationTest {
                 .map(TcDraft::status)
                 .findFirst()
                 .orElseThrow();
+    }
+
+    private static String generatedTestSource(Path generatedDir, String tcId) throws Exception {
+        try (var files = Files.list(generatedDir)) {
+            for (Path file : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                String source = Files.readString(file);
+                if (source.contains("\"" + tcId + " —") || source.contains("description = \"" + tcId + " —")) {
+                    return source;
+                }
+            }
+        }
+        throw new AssertionError("no generated test for " + tcId + " under " + generatedDir);
     }
 }

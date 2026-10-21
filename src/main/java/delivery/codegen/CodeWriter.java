@@ -14,10 +14,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class CodeWriter {
     private final Path templateDir;
@@ -91,7 +93,6 @@ public class CodeWriter {
         java.util.Set<String> keepGenerated = new java.util.HashSet<>();
         java.util.Set<String> keepTodo = new java.util.HashSet<>();
         java.util.Set<String> usedPageFiles = new java.util.HashSet<>();
-        java.util.Set<String> usedTestFiles = new java.util.HashSet<>();
 
         Template pageTpl = cfg.getTemplate("Page.java.ftl");
         for (Map.Entry<String, PageAccumulator.PageModel> e : pages.pages().entrySet()) {
@@ -125,48 +126,53 @@ public class CodeWriter {
         List<TcOutcome> safeOutcomes = outcomes == null ? List.of() : outcomes;
         String envPrefix = namingOptions.testDataEnvPrefix();
         CodegenDataKeys keys = CodegenDataKeys.assign(safeOutcomes, pages, envPrefix);
+
+        LinkedHashMap<String, List<TcOutcome>> groups = new LinkedHashMap<>();
         for (TcOutcome outcome : safeOutcomes) {
             boolean passed = outcome.status() == TcStatus.PASSED;
-            String className = resolveTestClassName(usedTestFiles, outcome, passed);
-            String methodName = TestMethodNaming.resolve(
-                    outcome.title(), outcome.tcId(), namingClient, namingOptions.ollamaNaming());
-            List<Map<String, Object>> loginChron = outcome.needsLoginBeforeMethod()
-                    ? buildChronologicalCalls(outcome.tcId(), outcome.loginSteps(), pages, keys,
-                    CodegenDataKeys.PHASE_LOGIN)
-                    : List.of();
-            loginChron = LoginPageHelper.collapseLeadingLogin(loginChron, pages);
-            List<Map<String, Object>> setupChron =
-                    buildChronologicalCalls(outcome.tcId(), outcome.setupSteps(), pages, keys,
-                            CodegenDataKeys.PHASE_SETUP);
-            setupChron = LoginPageHelper.collapseLeadingLogin(setupChron, pages);
-            List<Map<String, Object>> chronCalls =
-                    buildChronologicalCalls(outcome.tcId(), outcome.provenSteps(), pages, keys,
-                            CodegenDataKeys.PHASE_BODY);
-            chronCalls = LoginPageHelper.collapseLeadingLogin(chronCalls, pages);
-            List<Map<String, Object>> beforeCalls = new ArrayList<>();
-            beforeCalls.addAll(loginChron);
-            beforeCalls.addAll(setupChron);
+            groups.computeIfAbsent(CodegenTestClasses.groupKey(outcome, passed), k -> new ArrayList<>())
+                    .add(outcome);
+        }
+
+        for (Map.Entry<String, List<TcOutcome>> group : groups.entrySet()) {
+            List<TcOutcome> members = group.getValue();
+            TcOutcome first = members.get(0);
+            boolean passed = first.status() == TcStatus.PASSED;
+            String className = CodegenTestClasses.classNameFor(first, passed);
+            Set<String> usedMethodNames = new HashSet<>();
+            List<Map<String, Object>> testMethods = new ArrayList<>();
+            List<Map<String, Object>> unionPageFields = new ArrayList<>();
+            Map<String, Map<String, Object>> unionPageFieldIndex = new LinkedHashMap<>();
+            List<String> unionImports = new ArrayList<>();
+            Map<String, Boolean> importSet = new LinkedHashMap<>();
+
+            boolean mergedClass = members.size() > 1;
+            for (TcOutcome outcome : members) {
+                Map<String, Object> tm = buildTestMethodModel(
+                        outcome, pages, keys, usedMethodNames, mergedClass);
+                testMethods.add(tm);
+                for (Map<String, Object> pv : pageVarsFor(
+                        castCalls(tm.get("chronCalls")),
+                        castCalls(tm.get("beforeCalls")))) {
+                    unionPageFieldIndex.putIfAbsent(String.valueOf(pv.get("className")), pv);
+                }
+                for (String imp : pageImportsFor(
+                        castCalls(tm.get("chronCalls")), castCalls(tm.get("beforeCalls")))) {
+                    importSet.putIfAbsent(imp, true);
+                }
+            }
+            unionPageFields.addAll(unionPageFieldIndex.values());
+            unionImports.addAll(importSet.keySet());
+
+            boolean anyReadOnly = testMethods.stream()
+                    .anyMatch(tm -> Boolean.TRUE.equals(tm.get("readOnly")));
             Map<String, Object> model = new HashMapModel();
             model.put("className", className);
-            model.put("tcId", outcome.tcId());
-            model.put("title", outcome.title() == null ? "" : outcome.title());
-            model.put("testDescription", testDescription(outcome.tcId(), outcome.title()));
-            model.put("reason", CodegenTodoReason.summarize(outcome.failureReason(), 120));
-            model.put("methodName", methodName);
-            model.put("steps", outcome.provenSteps());
-            model.put("chronCalls", chronCalls);
-            List<Map<String, Object>> allPageVars = pageVarsFor(chronCalls, beforeCalls);
-            model.put("pageFields", allPageVars);
-            model.put("pageVars", pageVarsFor(chronCalls));
-            model.put("loginChronCalls", loginChron);
-            model.put("setupChronCalls", setupChron);
-            model.put("beforeCalls", beforeCalls);
-            model.put("beforePageVars", pageVarsFor(beforeCalls));
-            model.put("pageImports", pageImportsFor(chronCalls, beforeCalls));
-            model.put("prerequisiteMethod", beforeCalls.isEmpty() ? "" : "runPrerequisite_" + sanitizeMethod(outcome.tcId()));
-            model.put("needsLoginBeforeMethod", outcome.needsLoginBeforeMethod());
-            model.put("reviewComments", List.of());
-            model.put("readOnly", isReadOnlyCase(chronCalls, setupChron));
+            model.put("pageFields", unionPageFields);
+            model.put("pageImports", unionImports);
+            model.put("testMethods", testMethods);
+            model.put("anyReadOnly", anyReadOnly);
+
             String testFile = className + ".java";
             Path out = (passed ? generatedDir : todoDir).resolve(testFile);
             Template tpl = passed ? genTpl : todoTpl;
@@ -178,11 +184,6 @@ public class CodeWriter {
             } else {
                 keepTodo.add(testFile);
             }
-        }
-        if (keepGenerated.size() + keepTodo.size() != safeOutcomes.size()) {
-            throw new IllegalStateException(
-                    "emitted " + (keepGenerated.size() + keepTodo.size())
-                            + " test classes for " + safeOutcomes.size() + " cases");
         }
 
         TestDataPropertiesWriter.write(projectRoot, safeOutcomes, pages, keys);
@@ -205,6 +206,79 @@ public class CodeWriter {
         java.util.function.Predicate<Map<String, Object>> assertOnly = c -> "assert".equals(c.get("kind"))
                 || ("action".equals(c.get("kind")) && ProvenStep.SIDE_EFFECTS_NONE.equals(c.get("sideEffects")));
         return body.stream().allMatch(assertOnly) && (setup == null || setup.stream().allMatch(assertOnly));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> castCalls(Object o) {
+        if (o instanceof List<?> list) {
+            return (List<Map<String, Object>>) list;
+        }
+        return List.of();
+    }
+
+    private Map<String, Object> buildTestMethodModel(
+            TcOutcome outcome,
+            PageAccumulator pages,
+            CodegenDataKeys keys,
+            Set<String> usedMethodNames,
+            boolean mergedClass) {
+        String primaryPage = PageUnderTest.primaryPageName(outcome);
+        String baseMethod = TestMethodNaming.resolveFromPage(
+                primaryPage, outcome.tcId(), namingClient, namingOptions.ollamaNaming());
+        String stem = mergedClass
+                ? baseMethod + "_" + sanitizeMethod(outcome.tcId())
+                : baseMethod;
+        String methodName = allocateMethodName(usedMethodNames, stem, outcome.tcId());
+
+        List<Map<String, Object>> loginChron = outcome.needsLoginBeforeMethod()
+                ? buildChronologicalCalls(outcome.tcId(), outcome.loginSteps(), pages, keys,
+                CodegenDataKeys.PHASE_LOGIN)
+                : List.of();
+        loginChron = LoginPageHelper.collapseLeadingLogin(loginChron, pages);
+        List<Map<String, Object>> setupChron =
+                buildChronologicalCalls(outcome.tcId(), outcome.setupSteps(), pages, keys,
+                        CodegenDataKeys.PHASE_SETUP);
+        setupChron = LoginPageHelper.collapseLeadingLogin(setupChron, pages);
+        List<Map<String, Object>> chronCalls =
+                buildChronologicalCalls(outcome.tcId(), outcome.provenSteps(), pages, keys,
+                        CodegenDataKeys.PHASE_BODY);
+        chronCalls = LoginPageHelper.collapseLeadingLogin(chronCalls, pages);
+        List<Map<String, Object>> beforeCalls = new ArrayList<>();
+        beforeCalls.addAll(loginChron);
+        beforeCalls.addAll(setupChron);
+
+        Map<String, Object> tm = new LinkedHashMap<>();
+        tm.put("tcId", outcome.tcId());
+        tm.put("testDescription", testDescription(outcome.tcId(), outcome.title()));
+        tm.put("reason", CodegenTodoReason.summarize(outcome.failureReason(), 120));
+        tm.put("methodName", methodName);
+        tm.put("chronCalls", chronCalls);
+        tm.put("pageFields", pageVarsFor(chronCalls, beforeCalls));
+        tm.put("beforeCalls", beforeCalls);
+        tm.put("beforePageVars", pageVarsFor(beforeCalls));
+        tm.put("needsLoginBeforeMethod", outcome.needsLoginBeforeMethod());
+        tm.put("prerequisiteMethod", beforeCalls.isEmpty()
+                ? "" : "runPrerequisite_" + sanitizeMethod(outcome.tcId()));
+        tm.put("reviewComments", List.of());
+        tm.put("readOnly", isReadOnlyCase(chronCalls, setupChron));
+        return tm;
+    }
+
+    static String allocateMethodName(Set<String> used, String base, String tcId) {
+        String candidate = base == null || base.isBlank() ? "runCase" : base;
+        if (used.add(candidate)) {
+            return candidate;
+        }
+        String suffix = sanitizeMethod(tcId);
+        candidate = base + "_" + suffix;
+        if (used.add(candidate)) {
+            return candidate;
+        }
+        int i = 2;
+        while (!used.add(base + "_" + i)) {
+            i++;
+        }
+        return base + "_" + i;
     }
 
     static String testDescription(String tcId, String title) {
@@ -364,19 +438,6 @@ public class CodeWriter {
 
     static String propKeyFor(String tcId, String methodName, String value) {
         return CodegenDataKeys.assign(List.of(), new PageAccumulator()).next(tcId, methodName, value);
-    }
-
-    private static String resolveTestClassName(
-            java.util.Set<String> usedTestFiles, TcOutcome outcome, boolean passed) {
-        String fromTitle = CodegenNaming.testClassName(outcome.tcId(), outcome.title(), passed);
-        String testFile = fromTitle + ".java";
-        String lower = testFile.toLowerCase(Locale.ROOT);
-        if (usedTestFiles.contains(lower)) {
-            fromTitle = CodegenNaming.testClassName(outcome.tcId(), "", passed);
-            testFile = fromTitle + ".java";
-        }
-        registerFile(usedTestFiles, testFile, "test class", outcome.tcId());
-        return fromTitle;
     }
 
     private static void registerFile(java.util.Set<String> usedLower, String fileName, String kind, String source) {

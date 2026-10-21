@@ -6,7 +6,9 @@ import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStatus;
 import delivery.job.ConversionJobRequest;
 import delivery.job.ConversionJobResult;
+import delivery.job.CallBeforeSetup;
 import delivery.job.EmitPhase;
+import delivery.job.TcOutcome;
 import delivery.job.JobProgressTracker;
 import delivery.job.OccurrenceIdentity;
 import delivery.packager.FrameworkPackager;
@@ -127,8 +129,8 @@ public class GeneratedZipReplayBenchmarkTest {
         Files.writeString(EVIDENCE.resolve("new.sha256"), versionASha256 + "\n", StandardCharsets.UTF_8);
 
         Path project = workRoot.resolve("new/project");
-        assertPrerequisiteKeys(project);
-        assertCoverageSource(project);
+        assertPrerequisiteKeys(project, happyDrafts(workRoot.resolve("new")), happyCases());
+        assertCoverageSource(project, happyDrafts(workRoot.resolve("new")), happyCases());
 
         Path replay = unzip(versionA.zipFile(), workRoot.resolve("replay-new"));
         prepareReplay(replay);
@@ -136,9 +138,9 @@ public class GeneratedZipReplayBenchmarkTest {
         Files.writeString(EVIDENCE.resolve("new-mvn.log"), newRun.log, StandardCharsets.UTF_8);
         Assert.assertEquals(newRun.exitCode, 0, "NEW mvn clean test expected 0:\n" + tail(newRun.log));
         assertDownloadedCounts(replay, newRun, happyIds().size(), "NEW");
-        Map<String, String> titles = titleByTcId(cases);
+        Map<String, String> primaryPages = primaryPageByTcId(happyDrafts(workRoot.resolve("new")));
         for (String id : happyIds()) {
-            Assert.assertEquals(statusOf(newRun.statuses, id, titles.get(id)), "PASS",
+            Assert.assertEquals(statusOf(newRun.statuses, id, primaryPages.get(id)), "PASS",
                     id + " expected PASS, got " + newRun.statuses + "\n" + tail(newRun.log));
         }
         assertCanaryAbsent(replay, "NEW");
@@ -164,8 +166,11 @@ public class GeneratedZipReplayBenchmarkTest {
         Assert.assertNotEquals(versionBSha256, versionASha256, "UPDATE zip must differ from NEW");
 
         Path replay = unzip(versionB.zipFile(), workRoot.resolve("replay-update"));
+        Map<String, String> updateFiles = testFilesForDrafts(
+                updateDrafts(workRoot.resolve("update")), updateCases());
         Assert.assertTrue(Files.isRegularFile(
-                replay.resolve("src/test/java/project/tests/generated/Save_After_Update_Test.java")));
+                replay.resolve("src/test/java/project/tests/generated/"
+                        + updateFiles.get("TC_UPD_SAVE"))));
         prepareReplay(replay);
         updateRun = mvnCleanTest(replay);
         Files.writeString(EVIDENCE.resolve("update-mvn.log"), updateRun.log, StandardCharsets.UTF_8);
@@ -173,16 +178,17 @@ public class GeneratedZipReplayBenchmarkTest {
         List<String> ids = new ArrayList<>(happyIds());
         ids.add("TC_UPD_SAVE");
         assertDownloadedCounts(replay, updateRun, ids.size(), "UPDATE");
-        Map<String, String> updateTitles = titleByTcId(cases);
+        Map<String, String> updatePages = primaryPageByTcId(updateDrafts(workRoot.resolve("update")));
         for (String id : ids) {
-            Assert.assertEquals(statusOf(updateRun.statuses, id, updateTitles.get(id)), "PASS",
+            Assert.assertEquals(statusOf(updateRun.statuses, id, updatePages.get(id)), "PASS",
                     id + " expected PASS, got " + updateRun.statuses + "\n" + tail(updateRun.log));
         }
         assertCanaryAbsent(replay, "UPDATE");
         recordCanaryRemainder(replay, updateRun.log, EVIDENCE.resolve("update-canary-remainder.txt"));
         assertAllureReporting(replay, EVIDENCE.resolve("update-allure-steps.json"),
                 AllureExpect.passedType(), AllureExpect.passedSelect(), AllureExpect.passedAssert());
-        assertPrerequisiteKeys(workRoot.resolve("update/project"));
+        assertPrerequisiteKeys(workRoot.resolve("update/project"),
+                updateDrafts(workRoot.resolve("update")), updateCases());
     }
 
     @Test(dependsOnMethods = "newDownloadExtractAndMvnCleanTest")
@@ -196,8 +202,7 @@ public class GeneratedZipReplayBenchmarkTest {
         Files.writeString(EVIDENCE.resolve("fail.sha256"), failSha256 + "\n", StandardCharsets.UTF_8);
 
         Path replay = unzip(emitted.zipFile(), workRoot.resolve("replay-fail"));
-        String leaf = Files.readString(
-                replay.resolve("src/test/java/project/tests/generated/Leaf_After_Bad_Setup_Test.java"));
+        String leaf = readGeneratedTestSource(replay, "TC_FAIL_SETUP_LEAF");
         Assert.assertTrue(leaf.contains("click_Body_Probe_Button") || leaf.contains("body-probe"), leaf);
         Assert.assertFalse(leaf.contains("@AfterMethod"), "lifecycle stays in BaseTest:\n" + leaf);
         prepareReplay(replay);
@@ -207,28 +212,23 @@ public class GeneratedZipReplayBenchmarkTest {
         assertNoInternalSelfTests(replay);
         Assert.assertEquals(countGeneratedTests(replay), failIds().size(),
                 "FAIL downloaded test count must match generated cases");
-        Map<String, String> failTitles = titleByTcId(cases);
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_CLICK", failTitles.get("TC_FAIL_CLICK")),
+        Map<String, String> failPages = primaryPageByTcId(failDrafts(workRoot.resolve("fail")));
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_CLICK", failPages.get("TC_FAIL_CLICK")),
                 "FAIL", failRun.statuses.toString());
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_ABSENCE", failTitles.get("TC_FAIL_ABSENCE")),
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_ABSENCE", failPages.get("TC_FAIL_ABSENCE")),
                 "FAIL", failRun.statuses.toString());
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_EXPECT", failTitles.get("TC_FAIL_EXPECT")),
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_EXPECT", failPages.get("TC_FAIL_EXPECT")),
                 "FAIL", failRun.statuses.toString());
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_TYPE", failTitles.get("TC_FAIL_TYPE")),
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_TYPE", failPages.get("TC_FAIL_TYPE")),
                 "FAIL", failRun.statuses.toString());
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_SELECT", failTitles.get("TC_FAIL_SELECT")),
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_SELECT", failPages.get("TC_FAIL_SELECT")),
                 "FAIL", failRun.statuses.toString());
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_SETUP_BAD", failTitles.get("TC_SETUP_BAD")),
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_SETUP_BAD", failPages.get("TC_SETUP_BAD")),
                 "FAIL", failRun.statuses.toString());
-        String leafClass = CodegenNaming.testClassName(
-                "TC_FAIL_SETUP_LEAF", failTitles.get("TC_FAIL_SETUP_LEAF"), true);
-        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_SETUP_LEAF", failTitles.get("TC_FAIL_SETUP_LEAF")),
-                "SKIP",
-                "leaf @Test body is skipped after configuration failure, not a failed test method: "
+        Assert.assertEquals(statusOf(failRun.statuses, "TC_FAIL_SETUP_LEAF", failPages.get("TC_FAIL_SETUP_LEAF")),
+                "FAIL",
+                "leaf must not pass when prerequisite setup fails: "
                         + failRun.statuses + " config=" + failRun.configFailures + "\n" + tail(failRun.log));
-        Assert.assertTrue(failRun.configFailures.containsKey(leafClass)
-                        || failRun.configFailures.containsKey("TC_FAIL_SETUP_LEAF"),
-                "leaf configuration failure must be recorded separately: " + failRun.configFailures);
         Assert.assertFalse(bodyProbeHit.get(), "leaf body click must not run after setup failure");
         Assert.assertTrue(countQuitMarkers(replay) > 0,
                 "browsers must still quit after failures, markers=" + countQuitMarkers(replay));
@@ -494,52 +494,119 @@ public class GeneratedZipReplayBenchmarkTest {
                 "xpath", "//body", "", "textContains", expected, true, "intent:ASSERT");
     }
 
-    private static void assertPrerequisiteKeys(Path project) throws Exception {
+    private static Map<String, String> testFilesForDrafts(
+            List<TcDraft> drafts, List<ManualTestCase> cases) {
+        List<TcOutcome> outcomes = new ArrayList<>();
+        for (TcDraft d : drafts) {
+            outcomes.add(EmitPhase.toOutcome(d).withSetup(CallBeforeSetup.stepsFor(d, drafts, cases)));
+        }
+        return CodegenPaths.testClassFilesInEmitOrder(outcomes);
+    }
+
+    private static void assertPrerequisiteKeys(
+            Path project, List<TcDraft> drafts, List<ManualTestCase> cases) throws Exception {
         Path props = project.resolve("src/test/resources/test-data/delivery-testdata.properties");
         String data = Files.readString(props, StandardCharsets.UTF_8);
         Assert.assertTrue(data.contains("login@example.invalid"), data);
         Assert.assertTrue(data.contains("changed@example.invalid"), data);
         Assert.assertTrue(data.contains("TC_SETUP.login."), data);
         Assert.assertTrue(data.contains("TC_SETUP.body."), data);
-        String setup = Files.readString(project.resolve(
-                "src/test/java/project/tests/generated/Setup_Login_Then_Change_Email_Test.java"));
-        String elide = Files.readString(project.resolve(
-                "src/test/java/project/tests/generated/Leaf_With_Own_Login_Test.java"));
-        String full = Files.readString(project.resolve(
-                "src/test/java/project/tests/generated/Leaf_Inlines_Setup_Login_Test.java"));
-        Assert.assertTrue(setup.contains("TC_SETUP.login."), setup);
+        String loginTestClass = readGeneratedTestClassContaining(project, "TC_SETUP");
+        String setup = readGeneratedTestSource(project, "TC_SETUP");
+        String elide = readGeneratedTestSource(project, "TC_LEAF_ELIDE");
+        String full = readGeneratedTestSource(project, "TC_LEAF_FULL");
+        Assert.assertTrue(loginTestClass.contains("TC_SETUP.login."), loginTestClass);
         Assert.assertTrue(setup.contains("TC_SETUP.body."), setup);
-        Assert.assertTrue(elide.contains("TC_SETUP.body."), elide);
+        String elideClass = readGeneratedTestClassContaining(project, "TC_LEAF_ELIDE");
+        String fullClass = readGeneratedTestClassContaining(project, "TC_LEAF_FULL");
+        Assert.assertTrue(elideClass.contains("TC_SETUP.body."), elideClass);
         Assert.assertFalse(elide.contains("TC_SETUP.login."), elide);
-        Assert.assertTrue(full.contains("TC_SETUP.login."), full);
-        Assert.assertTrue(full.contains("TC_SETUP.body."), full);
+        Assert.assertTrue(fullClass.contains("TC_SETUP.login."), fullClass);
+        Assert.assertTrue(fullClass.contains("TC_SETUP.body."), fullClass);
     }
 
-    private static void assertCoverageSource(Path project) throws Exception {
+    private static String readGeneratedTestClassContaining(Path project, String tcId) throws Exception {
+        Path gen = project.resolve("src/test/java/project/tests/generated");
+        String needle = "@Test(description = \"" + tcId;
+        try (var list = Files.list(gen)) {
+            for (Path file : list.filter(p -> p.getFileName().toString().endsWith(".java")).toList()) {
+                String src = Files.readString(file, StandardCharsets.UTF_8);
+                if (src.contains(needle)) {
+                    return src;
+                }
+            }
+        }
+        throw new AssertionError("No generated test for " + tcId + " under " + gen);
+    }
+
+    /** Locate emitted test source by tc id (stable when page-based class names collide). */
+    private static String readGeneratedTestSource(Path project, String tcId) throws Exception {
+        Path gen = project.resolve("src/test/java/project/tests/generated");
+        String needle = "@Test(description = \"" + tcId;
+        try (var list = Files.list(gen)) {
+            for (Path file : list.filter(p -> p.getFileName().toString().endsWith(".java")).toList()) {
+                String src = Files.readString(file, StandardCharsets.UTF_8);
+                if (src.contains(needle)) {
+                    return extractTestMethod(src, needle);
+                }
+            }
+        }
+        throw new AssertionError("No generated test for " + tcId + " under " + gen);
+    }
+
+    /** One {@code @Test} block when several cases share a merged class file. */
+    static String extractTestMethod(String src, String testDescriptionPrefix) {
+        int start = src.indexOf(testDescriptionPrefix);
+        if (start < 0) {
+            return src;
+        }
+        int method = src.indexOf("public void ", start);
+        if (method < 0) {
+            return src.substring(start);
+        }
+        int brace = src.indexOf('{', method);
+        if (brace < 0) {
+            return src.substring(start);
+        }
+        int depth = 0;
+        for (int i = brace; i < src.length(); i++) {
+            char c = src.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return src.substring(start, i + 1);
+                }
+            }
+        }
+        return src.substring(start);
+    }
+
+    private static void assertCoverageSource(
+            Path project, List<TcDraft> drafts, List<ManualTestCase> cases) throws Exception {
+        Map<String, String> testFiles = testFilesForDrafts(drafts, cases);
         Path pages = project.resolve("src/main/java/project/pages");
         try (var list = Files.list(pages)) {
             long actions = list.filter(p -> p.getFileName().toString().endsWith(".java")).count();
-            Assert.assertTrue(actions >= 2, "colliding page names must emit more than one Actions class");
+            Assert.assertTrue(actions >= 2, "colliding page names must emit more than one page class");
         }
-        Assert.assertTrue(Files.isRegularFile(
-                project.resolve("src/test/java/project/tests/generated/Distinct_Id_A_B_Test.java")));
-        Assert.assertTrue(Files.isRegularFile(
-                project.resolve("src/test/java/project/tests/generated/TC_A__BTest.java")),
-                "TC_A__B falls back to tc id when title class name collides with TC_A_B");
+        readGeneratedTestSource(project, "TC_A_B");
+        readGeneratedTestSource(project, "TC_A__B");
+        Assert.assertEquals(
+                testFiles.get("TC_A_B"), testFiles.get("TC_A__B"),
+                "same page stem merges into one test class");
         String data = Files.readString(
                 project.resolve("src/test/resources/test-data/delivery-testdata.properties"),
                 StandardCharsets.UTF_8);
         Assert.assertTrue(data.contains("مرحبا café"), data);
         Assert.assertTrue(data.contains(CANARY), data);
-        String canaryTest = Files.readString(
-                project.resolve("src/test/java/project/tests/generated/Password_Canary_Test.java"));
+        String canaryTest = readGeneratedTestSource(project, "TC_CANARY");
         Assert.assertFalse(canaryTest.contains(CANARY), canaryTest);
-        String ready = Files.readString(
-                project.resolve("src/test/java/project/tests/generated/Fixture_Heading_Test.java"));
+        String ready = readGeneratedTestSource(project, "TC_READY");
         Assert.assertTrue(ready.contains(CANARY_ASSERT),
                 "assertion expected is inlined in generated tests:\n" + ready);
-        String unicode = Files.readString(
-                project.resolve("src/test/java/project/tests/generated/Unicode_Testdata_Test.java"));
+        String unicode = readGeneratedTestSource(project, "TC_UNICODE");
         Assert.assertFalse(unicode.contains("مرحبا café"), unicode);
     }
 
@@ -567,7 +634,7 @@ public class GeneratedZipReplayBenchmarkTest {
         assertNoInternalSelfTests(replay);
         int generated = countGeneratedTests(replay);
         Assert.assertEquals(generated, expectedCases,
-                label + " generated test files must match cases, found " + generated);
+                label + " generated @Test methods must match cases, found " + generated);
         Assert.assertEquals(run.statuses.size(), expectedCases,
                 label + " Surefire case count must match generated cases: " + run.statuses);
         int testsRun = parseTestsRun(run.log);
@@ -588,9 +655,18 @@ public class GeneratedZipReplayBenchmarkTest {
         if (!Files.isDirectory(generated)) {
             return 0;
         }
+        int methods = 0;
         try (var list = Files.list(generated)) {
-            return (int) list.filter(p -> p.getFileName().toString().endsWith(".java")).count();
+            for (Path file : list.filter(p -> p.getFileName().toString().endsWith(".java")).toList()) {
+                String src = Files.readString(file, StandardCharsets.UTF_8);
+                int idx = 0;
+                while ((idx = src.indexOf("@Test", idx)) >= 0) {
+                    methods++;
+                    idx += 5;
+                }
+            }
         }
+        return methods;
     }
 
     private static int parseTestsRun(String log) {
@@ -772,7 +848,14 @@ public class GeneratedZipReplayBenchmarkTest {
             String name = attr(attrs, "name");
             String status = attr(attrs, "status");
             boolean config = "true".equalsIgnoreCase(attr(attrs, "is-config"));
-            String tcId = simpleName(currentClass);
+            String desc = attr(attrs, "description");
+            String tcId = tcIdFromTestDescription(desc);
+            if (tcId.isBlank()) {
+                tcId = tcIdFromMethodName(name);
+            }
+            if (tcId.isBlank()) {
+                tcId = simpleName(currentClass);
+            }
             if (tcId.isBlank() || status.isBlank()) {
                 continue;
             }
@@ -795,6 +878,34 @@ public class GeneratedZipReplayBenchmarkTest {
     private static String simpleName(String className) {
         int dot = className.lastIndexOf('.');
         return dot < 0 ? className : className.substring(dot + 1);
+    }
+
+    static String tcIdFromTestDescription(String description) {
+        if (description == null || description.isBlank()) {
+            return "";
+        }
+        String d = description.trim();
+        int em = d.indexOf(" — ");
+        if (em > 0) {
+            return d.substring(0, em).trim();
+        }
+        int en = d.indexOf(" - ");
+        if (en > 0) {
+            return d.substring(0, en).trim();
+        }
+        if (d.startsWith("TC_")) {
+            int sp = d.indexOf(' ');
+            return sp > 0 ? d.substring(0, sp).trim() : d;
+        }
+        return "";
+    }
+
+    static String tcIdFromMethodName(String methodName) {
+        if (methodName == null || methodName.isBlank()) {
+            return "";
+        }
+        Matcher m = Pattern.compile("_(TC_[A-Za-z0-9_]+)$").matcher(methodName.trim());
+        return m.find() ? m.group(1) : "";
     }
 
     private static String normalizeNgStatus(String status) {
@@ -848,7 +959,11 @@ public class GeneratedZipReplayBenchmarkTest {
                         }
                     } else {
                         sawTestCase = true;
-                        statuses.put(tcId, status);
+                        String key = tcIdFromMethodName(caseName);
+                        if (key.isBlank()) {
+                            key = tcId;
+                        }
+                        statuses.put(key, status);
                     }
                 }
                 if (!sawTestCase && !statuses.containsKey(tcId) && xml.contains("<testcase")) {
@@ -864,22 +979,22 @@ public class GeneratedZipReplayBenchmarkTest {
         }
     }
 
-    private static Map<String, String> titleByTcId(List<ManualTestCase> cases) {
+    private static Map<String, String> primaryPageByTcId(List<TcDraft> drafts) {
         Map<String, String> out = new LinkedHashMap<>();
-        for (ManualTestCase row : cases) {
-            out.put(row.tcId(), row.title());
+        for (TcDraft draft : drafts) {
+            out.put(draft.tcId(), PageUnderTest.primaryPageName(EmitPhase.toOutcome(draft)));
         }
         return out;
     }
 
-    private static String statusOf(Map<String, String> statuses, String tcId, String title) {
-        String titleClass = CodegenNaming.testClassName(tcId, title == null ? "" : title, true);
-        if (statuses.containsKey(titleClass)) {
-            return statuses.get(titleClass);
-        }
+    private static String statusOf(Map<String, String> statuses, String tcId, String primaryPage) {
         String idClass = CodegenNaming.testClassName(tcId, "", true);
         if (statuses.containsKey(idClass)) {
             return statuses.get(idClass);
+        }
+        String pageClass = CodegenNaming.testClassName(tcId, primaryPage == null ? "" : primaryPage, true);
+        if (statuses.containsKey(pageClass)) {
+            return statuses.get(pageClass);
         }
         if (statuses.containsKey(tcId)) {
             return statuses.get(tcId);

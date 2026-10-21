@@ -37,11 +37,11 @@ public class LoginPageMergeCodegenTest {
                 new TcOutcome("TC2", "bad", TcStatus.TODO, body, "x", null, false, List.of())
         ));
         Assert.assertTrue(Files.exists(temp.resolve(
-                "src/main/java/project/pages/FormAuthentication.java")));
-        Assert.assertFalse(Files.exists(temp.resolve("src/main/java/project/pages/Login.java")));
-        Assert.assertFalse(Files.exists(temp.resolve("src/main/java/project/pages/LoginForm.java")));
+                "src/main/java/project/pages/FormAuthentication_Page.java")));
+        Assert.assertFalse(Files.exists(temp.resolve("src/main/java/project/pages/Login_Page.java")));
+        Assert.assertFalse(Files.exists(temp.resolve("src/main/java/project/pages/LoginForm_Page.java")));
         String loc = Files.readString(temp.resolve(
-                "src/main/java/project/pages/FormAuthentication.java"));
+                "src/main/java/project/pages/FormAuthentication_Page.java"));
         Assert.assertTrue(loc.contains("button[type='submit']"), loc);
         Assert.assertTrue(loc.contains("By.id(\"login\")"), loc);
         Assert.assertTrue(loc.contains("By.id(\"username\")"), loc);

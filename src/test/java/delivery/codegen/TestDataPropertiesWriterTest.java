@@ -25,7 +25,8 @@ public class TestDataPropertiesWriterTest {
         Assert.assertTrue(Files.isRegularFile(props), "missing " + props);
         String propText = Files.readString(props);
         Assert.assertTrue(propText.contains("Merna"), propText);
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Checkout_Test.java"));
+        String test = Files.readString(dir.resolve(
+                "src/test/java/project/tests/generated/" + CodegenPaths.testClassFile(outcome, true)));
         Assert.assertFalse(test.contains("\"Merna\""), test);
         Assert.assertTrue(test.contains("PropertyReader.getProperty"), test);
     }

@@ -53,12 +53,12 @@ public class RevisePhaseTest {
         Assert.assertTrue(Files.exists(notes));
         String md = Files.readString(notes);
         Assert.assertTrue(md.contains("TC1"));
-        String todo = Files.readString(temp.resolve("src/test/java/project/tests/todo/TC1Todo.java"));
+        String todo = Files.readString(temp.resolve("src/test/java/project/tests/todo/Cart_TestTodo.java"));
         Assert.assertTrue(todo.contains("// REVIEW:"));
     }
 
     @Test
-    public void annotatesTitleDerivedPassedMethodNotRunCase() throws Exception {
+    public void annotatesPageStemPassedMethodNotRunCase() throws Exception {
         Path temp = Files.createTempDirectory("revise-title");
         Path templates = Path.of("customer-framework-template/templates");
         ProvenStep one = new ProvenStep(
@@ -67,8 +67,8 @@ public class RevisePhaseTest {
         new CodeWriter(templates).write(temp, List.of(new TcOutcome(
                 "TC_REV", TcStatus.PASSED, List.of(one), "", null)
                 .withTitle("Visible heading after save")));
-        String generated = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_REV.java"));
-        String method = delivery.codegen.TestMethodNaming.deterministic("Visible heading after save", "TC_REV");
+        String generated = Files.readString(temp.resolve("src/test/java/project/tests/generated/Home_Test.java"));
+        String method = delivery.codegen.TestMethodNaming.deterministicFromPage("Home", "TC_REV");
         Assert.assertTrue(generated.contains("public void " + method + "("), generated);
         Assert.assertFalse(generated.contains("public void runCase()"), generated);
 
@@ -81,11 +81,11 @@ public class RevisePhaseTest {
                 TcDraftStatus.PASSED, List.of(one), List.of(), false,
                 -1, "", "", "", 0, "https://x/");
         new RevisePhase().revise(temp, List.of(draft), List.of(tc));
-        String annotated = Files.readString(temp.resolve("src/test/java/project/tests/generated/TC_REV.java"));
+        String annotated = Files.readString(temp.resolve("src/test/java/project/tests/generated/Home_Test.java"));
         Assert.assertTrue(annotated.contains("// REVIEW:"), annotated);
         int methodAt = annotated.indexOf("public void " + method + "(");
         int reviewAt = annotated.indexOf("// REVIEW:");
         Assert.assertTrue(methodAt >= 0 && reviewAt > methodAt,
-                "REVIEW notes must land in the title-derived test method, not runCase():\n" + annotated);
+                "REVIEW notes must land in the page-stem test method, not runCase():\n" + annotated);
     }
 }

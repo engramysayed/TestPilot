@@ -21,13 +21,14 @@ public class LoginPageHelperCodegenTest {
                 "id", "submit", "", "", "", true, "ok");
         ProvenStep body = new ProvenStep("TC_L", "Inventory", "elementAction", "click",
                 "id", "item", "", "", "", true, "ok");
-        new CodeWriter(Path.of("customer-framework-template/templates")).write(temp, List.of(
-                new TcOutcome("TC_L", "Login flow", TcStatus.PASSED, List.of(body), "", null, true,
-                        List.of(user, pass, submit), List.of())));
-        String page = Files.readString(temp.resolve("src/main/java/project/pages/LoginPage.java"));
+        TcOutcome outcome = new TcOutcome("TC_L", "Login flow", TcStatus.PASSED, List.of(body), "", null, true,
+                List.of(user, pass, submit), List.of());
+        new CodeWriter(Path.of("customer-framework-template/templates")).write(temp, List.of(outcome));
+        String page = Files.readString(temp.resolve("src/main/java/project/pages/Login_Page.java"));
         Assert.assertTrue(page.contains("public void login(String username, String password)"), page);
         Assert.assertTrue(page.contains("type_User(username)") || page.contains("type_"), page);
-        String test = Files.readString(temp.resolve("src/test/java/project/tests/generated/Login_Flow_Test.java"));
+        String test = Files.readString(temp.resolve(
+                "src/test/java/project/tests/generated/" + CodegenPaths.testClassFile(outcome, true)));
         Assert.assertTrue(test.contains(".login("), test);
         Assert.assertFalse(test.contains("type_User(") && test.contains("click_Submit"),
                 "login chron should collapse to login():\n" + test);

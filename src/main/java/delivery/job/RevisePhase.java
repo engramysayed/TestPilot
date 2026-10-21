@@ -2,8 +2,8 @@ package delivery.job;
 
 import delivery.authoring.LoginStepDetector;
 import delivery.authoring.StepIntentBinder;
-import delivery.codegen.CodegenNaming;
-import delivery.codegen.CodeWriter;
+import delivery.codegen.CodegenTestClasses;
+import delivery.codegen.PageUnderTest;
 import delivery.codegen.ProvenStep;
 import delivery.codegen.TestMethodNaming;
 import delivery.excel.ManualTestCase;
@@ -71,6 +71,11 @@ public class RevisePhase {
             throws Exception {
         Map<String, ManualTestCase> byId = allCases.stream()
                 .collect(Collectors.toMap(ManualTestCase::tcId, tc -> tc, (a, b) -> a));
+        List<TcOutcome> emitOutcomes = new ArrayList<>();
+        for (TcDraft d : drafts) {
+            emitOutcomes.add(EmitPhase.toOutcome(d).withSetup(CallBeforeSetup.stepsFor(d, drafts, allCases)));
+        }
+        Map<String, String> testFiles = CodegenTestClasses.fileNameByTcId(emitOutcomes);
         List<String> notes = new ArrayList<>();
 
         for (TcDraft d : drafts) {
@@ -87,7 +92,7 @@ public class RevisePhase {
                 notes.add("- " + issue);
             }
             notes.add("");
-            annotateTestFile(projectDir, d, issues);
+            annotateTestFile(projectDir, d, issues, testFiles.get(d.tcId()), drafts, allCases);
         }
 
         Path docs = projectDir.resolve("docs");
@@ -144,12 +149,20 @@ public class RevisePhase {
         return issues;
     }
 
-    private static void annotateTestFile(Path projectDir, TcDraft d, List<String> issues) throws Exception {
+    private static void annotateTestFile(
+            Path projectDir,
+            TcDraft d,
+            List<String> issues,
+            String testFileName,
+            List<TcDraft> drafts,
+            List<ManualTestCase> cases) throws Exception {
+        if (testFileName == null || testFileName.isBlank()) {
+            return;
+        }
         boolean passed = d.status() == TcDraftStatus.PASSED || d.status() == TcDraftStatus.REUSED;
-        String className = CodegenNaming.testClassName(d.tcId(), passed);
         Path file = projectDir.resolve(passed
-                ? "src/test/java/project/tests/generated/" + className + ".java"
-                : "src/test/java/project/tests/todo/" + className + ".java");
+                ? "src/test/java/project/tests/generated/" + testFileName
+                : "src/test/java/project/tests/todo/" + testFileName);
         if (!Files.exists(file)) {
             return;
         }
@@ -163,7 +176,7 @@ public class RevisePhase {
         if (idx >= 0) {
             src = src.substring(0, idx) + inject + src.substring(idx);
         } else {
-            int brace = testMethodOpeningBrace(src, d);
+            int brace = testMethodOpeningBrace(src, d, drafts, cases);
             if (brace < 0) {
                 return;
             }
@@ -172,10 +185,24 @@ public class RevisePhase {
         Files.writeString(file, src, StandardCharsets.UTF_8);
     }
 
-    /** Package-visible for tests: locate the title-derived {@code @Test} method body. */
-    static int testMethodOpeningBrace(String src, TcDraft d) {
+    /** Package-visible for tests: locate the page-stem {@code @Test} method body. */
+    static int testMethodOpeningBrace(
+            String src, TcDraft d, List<TcDraft> drafts, List<ManualTestCase> cases) {
         if (src == null || src.isBlank()) {
             return -1;
+        }
+        if (d != null && d.tcId() != null && !d.tcId().isBlank()) {
+            String needle = "@Test(description = \"" + d.tcId().trim();
+            int byTc = src.indexOf(needle);
+            if (byTc >= 0) {
+                int method = src.indexOf("public void ", byTc);
+                if (method >= 0) {
+                    int brace = src.indexOf('{', method);
+                    if (brace >= 0) {
+                        return brace;
+                    }
+                }
+            }
         }
         int testAnn = src.indexOf("@Test");
         if (testAnn >= 0) {
@@ -187,8 +214,16 @@ public class RevisePhase {
                 }
             }
         }
-        String named = TestMethodNaming.resolve(
-                d == null ? "" : d.title(), d == null ? "" : d.tcId(), null, false);
+        String page = "Page";
+        if (d != null) {
+            TcOutcome o = EmitPhase.toOutcome(d);
+            if (drafts != null && cases != null) {
+                o = o.withSetup(CallBeforeSetup.stepsFor(d, drafts, cases));
+            }
+            page = PageUnderTest.primaryPageName(o);
+        }
+        String named = TestMethodNaming.resolveFromPage(
+                page, d == null ? "" : d.tcId(), null, false);
         int namedAt = src.indexOf("public void " + named + "(");
         if (namedAt >= 0) {
             int brace = src.indexOf('{', namedAt);

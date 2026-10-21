@@ -16,10 +16,10 @@ public class PageClustererTest {
     }
 
     @Test
-    public void loginPathUsesLoginPage() {
+    public void loginPathUsesLoginStem() {
         Assert.assertEquals(
                 PageClusterer.pageNameFromUrl("https://example.com/practice-test-login/"),
-                "LoginPage");
+                "Login");
     }
 
     @Test
@@ -82,8 +82,8 @@ public class PageClustererTest {
                 -1, "", "", "", 0,
                 "https://practicetestautomation.com/practice-test-login/");
         TcDraft out = PageClusterer.reclusterDraft(draft);
-        Assert.assertEquals(out.loginSteps().get(0).pageName(), "LoginPage");
-        Assert.assertEquals(out.provenSteps().get(0).pageName(), "LoginPage");
+        Assert.assertEquals(out.loginSteps().get(0).pageName(), "Login");
+        Assert.assertEquals(out.provenSteps().get(0).pageName(), "Login");
     }
 
     @Test
@@ -98,8 +98,8 @@ public class PageClustererTest {
                 -1, "", "", "", 0,
                 "https://practicetestautomation.com/practice-test-login/");
         TcDraft out = PageClusterer.reclusterDraft(draft);
-        Assert.assertEquals(out.loginSteps().get(0).pageName(), "LoginPage");
-        Assert.assertEquals(out.provenSteps().get(0).pageName(), "LoginPage");
+        Assert.assertEquals(out.loginSteps().get(0).pageName(), "Login");
+        Assert.assertEquals(out.provenSteps().get(0).pageName(), "Login");
     }
 
     @Test

@@ -51,7 +51,7 @@ public class FacebookIrCodegenIdentityTest {
             Files.copy(TEMPLATE_README, FRAMEWORK.resolve("README.md"), StandardCopyOption.REPLACE_EXISTING);
         }
 
-        String actions = Files.readString(FRAMEWORK.resolve("src/main/java/project/pages/Reg.java"));
+        String actions = Files.readString(FRAMEWORK.resolve("src/main/java/project/pages/Reg_Page.java"));
         Assert.assertFalse(actions.contains("type_Type"), "Reg must not collapse type fields");
         Assert.assertTrue(actions.contains("type_First_Name"), actions);
         Assert.assertTrue(actions.contains("type_Surname"), actions);
@@ -64,7 +64,7 @@ public class FacebookIrCodegenIdentityTest {
                 .filter(d -> "TC_FB_REG_02".equals(d.tcId()))
                 .findFirst()
                 .orElseThrow();
-        String test02File = CodegenNaming.testClassName(reg02.tcId(), reg02.title(), true) + ".java";
+        String test02File = CodegenPaths.testClassFilesInEmitOrder(outcomes).get(reg02.tcId());
         String test02 = Files.readString(
                 FRAMEWORK.resolve("src/test/java/project/tests/generated").resolve(test02File));
         Assert.assertTrue(test02.contains("type_First_Name"), test02);

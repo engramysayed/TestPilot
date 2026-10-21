@@ -16,13 +16,14 @@ public final class TestMethodNaming {
     private TestMethodNaming() {
     }
 
-    public static String resolve(String title, String tcId, LocalLlmClient client, boolean ollamaEnabled) {
-        String deterministic = deterministic(title, tcId);
+    public static String resolveFromPage(
+            String pageName, String tcId, LocalLlmClient client, boolean ollamaEnabled) {
+        String deterministic = deterministicFromPage(pageName, tcId);
         if (!ollamaEnabled || client == null) {
             return deterministic;
         }
         try {
-            String user = "Title: " + (title == null ? "" : title.trim())
+            String user = "Page: " + (pageName == null ? "" : pageName.trim())
                     + "\nFallback: " + deterministic;
             String raw = client.completeChat(OLLAMA_SYSTEM, user, false);
             String polished = parseOllamaResponse(raw);
@@ -30,6 +31,22 @@ public final class TestMethodNaming {
         } catch (Exception ignored) {
             return deterministic;
         }
+    }
+
+    /** @deprecated Excel titles are not used for method names. */
+    @Deprecated
+    public static String resolve(String title, String tcId, LocalLlmClient client, boolean ollamaEnabled) {
+        return resolveFromPage(title, tcId, client, ollamaEnabled);
+    }
+
+    public static String deterministicFromPage(String pageName, String tcId) {
+        String stem = CodegenNaming.pageTitleStem(pageName);
+        if (stem == null || stem.isBlank() || "Page".equals(stem)) {
+            return fallback(tcId);
+        }
+        String raw = stem.substring(0, 1).toLowerCase(Locale.ROOT)
+                + (stem.length() > 1 ? stem.substring(1) : "");
+        return CodegenNaming.sanitizeJavaIdentifier(raw, fallback(tcId));
     }
 
     public static String deterministic(String title, String tcId) {

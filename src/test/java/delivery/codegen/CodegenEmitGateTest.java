@@ -18,11 +18,11 @@ public class CodegenEmitGateTest {
         CodeWriter writer = new CodeWriter(Path.of("customer-framework-template/templates"));
         writer.write(root, List.of(new TcOutcome(
                 "TC_D", "dump", TcStatus.PASSED, List.of(dump), "", null, false, List.of())));
-        Assert.assertFalse(Files.exists(root.resolve("src/main/java/project/pages/Page.java")),
+        Assert.assertFalse(Files.exists(root.resolve("src/main/java/project/pages/Page_Page.java")),
                 "must not emit dump Page class");
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/todo/Dump_TestTodo.java")),
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/todo/TC_DTestTodo.java")),
                 "dump TC must demote to TODO test");
-        Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/Dump_Test.java")),
+        Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/TC_DTest.java")),
                 "dump TC must not stay in generated/");
     }
 
@@ -59,10 +59,10 @@ public class CodegenEmitGateTest {
 
         new CodeWriter(Path.of("customer-framework-template/templates"))
                 .writeVerified(root, prepared.outcomes(), prepared.pages());
-        Assert.assertFalse(Files.exists(root.resolve("src/main/java/project/pages/Page.java")));
-        Assert.assertTrue(Files.exists(root.resolve("src/main/java/project/pages/InventoryPage.java")));
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/todo/Bad_TestTodo.java")));
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/Ok_Test.java")));
+        Assert.assertFalse(Files.exists(root.resolve("src/main/java/project/pages/Page_Page.java")));
+        Assert.assertTrue(Files.exists(root.resolve("src/main/java/project/pages/Inventory_Page.java")));
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/todo/TC_BADTestTodo.java")));
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/Inventory_Test.java")));
     }
 
     @Test

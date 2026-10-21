@@ -4,7 +4,9 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import project.tests.BaseTest;
 import project.utils.dataReader.PropertyReader;
-<#if readOnly!false>
+<#assign multi = (testMethods?size > 1)>
+<#assign first = testMethods[0]>
+<#if anyReadOnly!false>
 import project.utils.retry.KeelReadOnly;
 import project.utils.retry.KeelRetryAnalyzer;
 </#if>
@@ -18,28 +20,59 @@ public class ${className} extends BaseTest {
     private ${p.className} ${p.varName};
 </#list>
 
-<#include "test-before-method.ftl">
-<#if readOnly!false>
-    @KeelReadOnly
-    @Test(description = "${testDescription?j_string}", groups = {KeelReadOnly.GROUP}, retryAnalyzer = KeelRetryAnalyzer.class)
-<#else>
-    @Test(description = "${testDescription?j_string}")
+<#list testMethods as tm>
+<#if tm.beforeCalls?size gt 0>
+    private void ${tm.prerequisiteMethod}() {
+<#list tm.beforePageVars as p>
+        ${p.className} ${p.varName} = new ${p.className}(driver);
+</#list>
+<#list tm.beforeCalls as call>
+<#include "test-call-site.ftl">
+</#list>
+    }
+
 </#if>
-    public void ${methodName}() {
-<#if chronCalls?size == 0>
-        org.testng.Assert.fail("No proven steps generated for ${tcId?j_string}");
+</#list>
+<#if !multi && ((first.needsLoginBeforeMethod!false) || (first.beforeCalls?size gt 0))>
+    @BeforeMethod
+    @Override
+    public void setUp() {
+        super.setUp();
+        ${first.prerequisiteMethod}();
+        project.validations.Validation.assertAll();
+    }
+
+</#if>
+<#list testMethods as tm>
+<#if tm.readOnly!false>
+    @KeelReadOnly
+    @Test(description = "${tm.testDescription?j_string}", groups = {KeelReadOnly.GROUP}, retryAnalyzer = KeelRetryAnalyzer.class)
 <#else>
-<#list pageFields as p>
+    @Test(description = "${tm.testDescription?j_string}")
+</#if>
+    public void ${tm.methodName}() {
+<#if multi && (tm.beforeCalls?size gt 0)>
+        ${tm.prerequisiteMethod}();
+</#if>
+<#if tm.chronCalls?size == 0>
+        org.testng.Assert.fail("No proven steps generated for ${tm.tcId?j_string}");
+<#else>
+<#list tm.pageFields as p>
         ${p.varName} = new ${p.className}(driver);
 </#list>
-<#list chronCalls as call>
+<#list tm.chronCalls as call>
 <#include "test-call-site.ftl">
 </#list>
 </#if>
-<#if reviewComments??>
-<#list reviewComments as note>
+<#if tm.reviewComments??>
+<#list tm.reviewComments as note>
         // REVIEW: ${note?j_string}
 </#list>
 </#if>
+<#if multi>
+        project.validations.Validation.assertAll();
+</#if>
     }
+
+</#list>
 }

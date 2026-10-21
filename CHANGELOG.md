@@ -4,10 +4,20 @@
 
 # Keel changelog
 
+## 2026-10-20 - Codegen naming: page under test (not Excel title)
+
+- **Page + test class names** come from the **screen under test** (IR `pageName`, usually URL path leaf such as `/login` → `Login_Page.java` and `Login_Test.java`). Excel titles like “Valid login” and words such as valid/invalid are **not** used for class names.
+- **Test methods** use a short stem from that page (e.g. `login()`), with `@Test(description = "TC_ID — title")` keeping the Excel title for humans.
+- When two cases share the same page stem, the second test class falls back to `TC_IDTest` (same rule as before, but keyed on page stem instead of title).
+- **Revise phase** annotates the correct generated file (`Home_Test.java`, not `TC_REV.java`) using the same collision rules as emit.
+- **Merge by page stem:** multiple Excel cases on the same screen (e.g. valid/invalid login) emit **one** `Login_Test.java` with several `@Test` methods; duplicate method names get a `TC_ID` suffix.
+- **Primary page:** body steps prefer the **last non-login** screen (destination page), not login-heavy step counts.
+- Re-run Automate **NEW** or **UPDATE** to regenerate the ZIP. Spec/handoff updated under `2026-10-20-codegen-ux-emit`.
+
 ## 2026-10-20 - Codegen UX (cleaner Automate ZIP)
 
 - **Emit:** echo/html-only and `:pageShown` noise no longer appear in generated Java; login steps collapse to `login(...)` when possible; text asserts keep real locators instead of whole-page shortcuts where the IR had a locator.
-- **Tests:** class names from the TC title (`Valid_Login_Test.java`); methods use the full title; class-level page fields; prerequisites in `@BeforeMethod` via a private helper with local page vars.
+- **Tests:** page-under-test class names (`Login_Test.java`, `Login_Page.java`); class-level page fields; prerequisites in `@BeforeMethod` via a private helper with local page vars.
 - **Test data:** generated calls use `PropertyReader.getProperty` / secrets sidecar. Login placeholders map to **`username` / `password`** (and OTP-style TARGET keys similarly) by default. Set optional **Test data env** on Project → Settings (e.g. `sit`) to prefix keys as **`sit_username`**, **`sit_password`**, etc. Other fields keep TC-scoped keys like `TC_01.body.type_Email.1`.
 - Rebuild jar, restart, Ctrl+F5; re-run Automate to regenerate the ZIP. Spec: `docs/superpowers/specs/2026-10-20-codegen-ux-emit-design.md`.
 

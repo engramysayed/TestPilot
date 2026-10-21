@@ -50,9 +50,29 @@ public final class CodegenNaming {
     private CodegenNaming() {
     }
 
-    /** Title-based {@code BulkChargeBackTest}; partial → {@code …Todo}. Falls back to tc id when title blank. */
-    public static String testClassName(String tcId, String title, boolean passed) {
+    /**
+     * Generated test class from the page under test, e.g. {@code Login_Test}.
+     * Excel titles (valid/invalid/…) are ignored. Falls back to {@code TC_01Test} when page is unknown.
+     */
+    public static String testClassName(String tcId, String pageName, boolean passed) {
+        return testClassNameFromPageStem(pageTitleStem(pageName), tcId, passed);
+    }
+
+    /** @deprecated Excel title is not used for class names; pass {@link #primaryPageName} via page name. */
+    @Deprecated
+    public static String testClassNameFromTitle(String tcId, String title, boolean passed) {
         String base = testClassBase(title, tcId);
+        return passed ? base : base + "Todo";
+    }
+
+    public static String testClassNameFromPageStem(String pageStem, String tcId, boolean passed) {
+        String stem = pageStem == null || pageStem.isBlank() ? "Page" : pageStem.trim();
+        String base;
+        if ("Page".equals(stem)) {
+            base = fallbackTestClass(tcId);
+        } else {
+            base = sanitizeJavaIdentifier(stem + "_Test", fallbackTestClass(tcId));
+        }
         return passed ? base : base + "Todo";
     }
 
@@ -145,6 +165,20 @@ public final class CodegenNaming {
         return sanitizeJavaIdentifier(cleaned, "Tc");
     }
 
+    /**
+     * URL/path-style page title stem ({@code Login} from {@code LoginPage} or {@code /login}).
+     */
+    public static String pageTitleStem(String pageName) {
+        String stem = pageStem(pageName);
+        if (stem.endsWith("Page") && stem.length() > 4 && !"Page".equals(stem)) {
+            String trimmed = stem.substring(0, stem.length() - 4);
+            if (!trimmed.isEmpty() && Character.isUpperCase(trimmed.charAt(0))) {
+                return trimmed;
+            }
+        }
+        return stem;
+    }
+
     /** Stem for Locators/Actions class pair (no Page/Locators/Actions suffix). */
     public static String pageStem(String pageName) {
         String raw = pageName == null || pageName.isBlank() ? "Page" : pageName.trim();
@@ -171,12 +205,14 @@ public final class CodegenNaming {
         return stem;
     }
 
-    /**
-     * Single page class name (one class per stem). E.g. {@code InventoryPage}, {@code Cart}, {@code NewPage}.
-     * Replaces the former {@code Stem_Locators} / {@code Stem_Actions} pair.
-     */
+    /** Generated page class, e.g. {@code Login_Page}, {@code Inventory_Page}. */
     public static String pageClassName(String pageName) {
-        return pageStem(pageName);
+        return pageClassNameFromStem(pageTitleStem(pageName));
+    }
+
+    public static String pageClassNameFromStem(String uniqueStem) {
+        String stem = uniqueStem == null || uniqueStem.isBlank() ? "Page" : uniqueStem.trim();
+        return sanitizeJavaIdentifier(stem + "_Page", "Page_Page");
     }
 
     /** @deprecated use {@link #pageClassName(String)} — dual Locators/Actions emit is removed. */
@@ -200,6 +236,14 @@ public final class CodegenNaming {
             return "page";
         }
         String base = pageClass.trim();
+        if (base.endsWith("_Page")) {
+            base = base.substring(0, base.length() - "_Page".length());
+            String name = Character.toLowerCase(base.charAt(0)) + base.substring(1) + "Page";
+            if (JAVA_KEYWORDS.contains(name)) {
+                return name + "Var";
+            }
+            return isValidJavaIdentifier(name) ? name : sanitizeJavaIdentifier(name, "page");
+        }
         if (base.endsWith("_Actions")) {
             base = base.substring(0, base.length() - "_Actions".length());
         } else if (base.endsWith("_Locators")) {

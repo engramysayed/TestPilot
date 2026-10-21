@@ -28,7 +28,7 @@ public final class PageClusterer {
             }
             List<String> segments = meaningfulPathSegments(path);
             if (isLoginPath(path, segments)) {
-                return "LoginPage";
+                return "Login";
             }
             if (segments.size() >= 2) {
                 String leafSeg = segments.get(segments.size() - 1).toLowerCase(Locale.ROOT);

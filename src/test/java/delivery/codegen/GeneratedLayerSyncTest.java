@@ -8,6 +8,7 @@ import org.testng.annotations.Test;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 /** F04 / P1-03: the generated layer is rewritten from the full IR set, not incrementally patched. */
 public class GeneratedLayerSyncTest {
@@ -30,11 +31,12 @@ public class GeneratedLayerSyncTest {
         writer.write(root, List.of(a));
         writer.write(root, List.of(a, b));
 
-        String page = Files.readString(root.resolve("src/main/java/project/pages/Checkout.java"));
+        String page = Files.readString(root.resolve("src/main/java/project/pages/Checkout_Page.java"));
         Assert.assertTrue(page.contains("type_First_Name"), page);
         Assert.assertTrue(page.contains("type_Last_Name"), page);
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/A_Test.java")));
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/B_Test.java")));
+        Map<String, String> files = CodegenPaths.testClassFilesInEmitOrder(List.of(a, b));
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/" + files.get("TC_A"))));
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/" + files.get("TC_B"))));
         String data = Files.readString(root.resolve("src/test/resources/test-data/delivery-testdata.properties"));
         Assert.assertTrue(data.contains("TC_A."), data);
         Assert.assertTrue(data.contains("TC_B."), data);
@@ -51,9 +53,9 @@ public class GeneratedLayerSyncTest {
         writer.write(root, List.of(a, b));
         writer.write(root, List.of(b));
 
-        Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/A_Test.java")));
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/B_Test.java")));
-        String page = Files.readString(root.resolve("src/main/java/project/pages/Checkout.java"));
+        Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/TC_ATest.java")));
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/generated/Checkout_Test.java")));
+        String page = Files.readString(root.resolve("src/main/java/project/pages/Checkout_Page.java"));
         Assert.assertFalse(page.contains("type_First_Name"), page);
         Assert.assertTrue(page.contains("type_Last_Name"), page);
         String data = Files.readString(root.resolve("src/test/resources/test-data/delivery-testdata.properties"));
@@ -71,7 +73,7 @@ public class GeneratedLayerSyncTest {
         writer.write(root, List.of(new TcOutcome(
                 "TC_B", "B", TcStatus.TODO, List.of(), "blocked", null, false, List.of())));
 
-        Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/B_Test.java")));
-        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/todo/B_TestTodo.java")));
+        Assert.assertFalse(Files.exists(root.resolve("src/test/java/project/tests/generated/Checkout_Test.java")));
+        Assert.assertTrue(Files.exists(root.resolve("src/test/java/project/tests/todo/TC_BTestTodo.java")));
     }
 }

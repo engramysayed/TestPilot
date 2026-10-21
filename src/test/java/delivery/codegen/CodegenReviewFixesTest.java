@@ -32,7 +32,7 @@ public class CodegenReviewFixesTest {
         String data = Files.readString(dir.resolve("src/test/resources/test-data/delivery-testdata.properties"));
         Assert.assertTrue(data.contains("first@example.invalid"), data);
         Assert.assertTrue(data.contains("second@example.invalid"), data);
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_EDITTest.java"));
+        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Profile_Test.java"));
         Assert.assertTrue(test.contains(".1"), test);
         Assert.assertTrue(test.contains(".2"), test);
         Assert.assertFalse(test.contains("\"first@example.invalid\""), test);
@@ -48,16 +48,15 @@ public class CodegenReviewFixesTest {
         Assert.assertTrue(TcIdentity.isValid("TC_A__B"));
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_A_B", a), outcome("TC_A__B", b)));
         Path generated = dir.resolve("src/test/java/project/tests/generated");
-        Assert.assertTrue(Files.isRegularFile(generated.resolve("TC_A_BTest.java")));
-        Assert.assertTrue(Files.isRegularFile(generated.resolve("TC_A__BTest.java")));
+        Assert.assertTrue(Files.isRegularFile(generated.resolve("PageOne_Test.java")));
         try (var list = Files.list(generated)) {
-            Assert.assertEquals(list.filter(p -> p.getFileName().toString().endsWith(".java")).count(), 2L);
+            Assert.assertEquals(list.filter(p -> p.getFileName().toString().endsWith(".java")).count(), 1L);
         }
-        String first = Files.readString(generated.resolve("TC_A_BTest.java"));
-        String second = Files.readString(generated.resolve("TC_A__BTest.java"));
-        Assert.assertTrue(first.contains("click_One_Button") || first.contains("one"), first);
-        Assert.assertTrue(second.contains("click_Two_Button") || second.contains("two"), second);
-        Assert.assertFalse(first.contains("click_Two_Button"), first);
+        String merged = Files.readString(generated.resolve("PageOne_Test.java"));
+        Assert.assertTrue(merged.contains("click_One_Button") || merged.contains("one"), merged);
+        Assert.assertTrue(merged.contains("click_Two_Button") || merged.contains("two"), merged);
+        Assert.assertTrue(merged.contains("TC_A_B"), merged);
+        Assert.assertTrue(merged.contains("TC_A__B"), merged);
     }
 
     @Test
@@ -72,10 +71,10 @@ public class CodegenReviewFixesTest {
         Assert.assertEquals(acc.pages().get("Cart").assertions().size(), 1,
                 "same control + selected must share one parameterized assertion");
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_ASSERT", france, germany)));
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_ASSERTTest.java"));
+        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Cart_Test.java"));
         Assert.assertTrue(test.contains("\"France\""), test);
         Assert.assertTrue(test.contains("\"Germany\""), test);
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart.java"));
+        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart_Page.java"));
         Assert.assertTrue(actions.contains("assert_Country_Is_Selected(String expected)"), actions);
         Assert.assertTrue(actions.contains("elementSelected("), actions);
     }
@@ -105,9 +104,9 @@ public class CodegenReviewFixesTest {
         Assert.assertEquals(acc.pages().get("Cart").fields().size(), 2, String.valueOf(acc.pages().get("Cart").fields()));
         Assert.assertEquals(acc.pages().get("Cart").methods().size(), 2, String.valueOf(acc.pages().get("Cart").methods()));
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_SUBMIT", promo, submit)));
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_SUBMITTest.java"));
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart.java"));
-        String locators = Files.readString(dir.resolve("src/main/java/project/pages/Cart.java"));
+        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Cart_Test.java"));
+        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart_Page.java"));
+        String locators = Files.readString(dir.resolve("src/main/java/project/pages/Cart_Page.java"));
         Assert.assertTrue(test.contains("click_Promo_Button"), test);
         Assert.assertTrue(actions.contains("public void click_Promo_Button"), actions);
         Assert.assertTrue(locators.contains("button[type='submit']"), locators);
@@ -156,7 +155,7 @@ public class CodegenReviewFixesTest {
         }
         Assert.assertTrue(combined.contains("click_First_Button"), combined);
         Assert.assertTrue(combined.contains("click_Second_Button"), combined);
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_PAGESTest.java"));
+        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/OrderDetails_Test.java"));
         Assert.assertTrue(test.contains("click_First_Button"), test);
         Assert.assertTrue(test.contains("click_Second_Button"), test);
     }
@@ -166,7 +165,7 @@ public class CodegenReviewFixesTest {
         Path dir = Files.createTempDirectory("cg-allure-hide");
         ProvenStep secret = step("TC_CANARY", "Profile", "type", "id", "secret", "CANARY_PW_zipreplay_7f2c9a");
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_CANARY", secret)));
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Profile.java"));
+        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Profile_Page.java"));
         Assert.assertTrue(actions.contains("public void type_Secret(String value)"), actions);
         Assert.assertTrue(actions.contains("AllureSteps.run(\"type_Secret\""), actions);
         Assert.assertTrue(actions.contains("driver.element().type"), actions);
@@ -181,7 +180,7 @@ public class CodegenReviewFixesTest {
         ProvenStep heading = new ProvenStep("TC_READY", "Home", "elementAction", "assert",
                 "id", "status", "", "textContains", "CANARY_ASSERT_zipreplay_7f2c9a", true, "");
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_READY", heading)));
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Home.java"));
+        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Home_Page.java"));
         Assert.assertTrue(actions.contains("public void assert_Status_Text_Contains(String expected)")
                         || actions.contains("(String expected)"),
                 actions);
@@ -189,7 +188,7 @@ public class CodegenReviewFixesTest {
         Assert.assertTrue(actions.contains("driver.validation()"), actions);
         Assert.assertFalse(actions.contains("private void step_"), actions);
         Assert.assertFalse(actions.contains("@Param"), actions);
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_READYTest.java"));
+        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Home_Test.java"));
         Assert.assertTrue(test.contains("CANARY_ASSERT_zipreplay_7f2c9a"),
                 "assertion expected remains in generated test source:\n" + test);
     }
@@ -238,8 +237,8 @@ public class CodegenReviewFixesTest {
         Assert.assertEquals(data.getProperty(bodyKey), "changed@example.invalid");
         Assert.assertEquals(data.getProperty(leafKey), "leaf@example.invalid");
 
-        String setupTest = Files.readString(dir.resolve("src/test/java/project/tests/generated/Setup_Test.java"));
-        String leafTest = Files.readString(dir.resolve("src/test/java/project/tests/generated/Leaf_Test.java"));
+        String setupTest = Files.readString(dir.resolve("src/test/java/project/tests/generated/Login_Test.java"));
+        String leafTest = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_LEAFTest.java"));
         Assert.assertTrue(setupTest.contains(loginKey), setupTest);
         Assert.assertTrue(setupTest.contains(bodyKey), setupTest);
         Assert.assertTrue(leafTest.contains(leafKey), leafTest);
@@ -263,7 +262,7 @@ public class CodegenReviewFixesTest {
         Properties data = loadProps(dir);
         Assert.assertEquals(data.getProperty(findKey(data, "login@example.invalid")), "login@example.invalid");
         Assert.assertEquals(data.getProperty(findKey(data, "changed@example.invalid")), "changed@example.invalid");
-        String leafTest = Files.readString(dir.resolve("src/test/java/project/tests/generated/Leaf_Test.java"));
+        String leafTest = Files.readString(dir.resolve("src/test/java/project/tests/generated/Home_Test.java"));
         Assert.assertTrue(leafTest.contains(findKey(data, "login@example.invalid")), leafTest);
         Assert.assertTrue(leafTest.contains(findKey(data, "changed@example.invalid")), leafTest);
     }
@@ -274,10 +273,10 @@ public class CodegenReviewFixesTest {
         ProvenStep body = new ProvenStep("TC_BODY", "Cart", "elementAction", "assert",
                 "", "", "", "textContains", "Saved", true, "");
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_BODY", body)));
-        Assert.assertTrue(Files.exists(dir.resolve("src/main/java/project/pages/Cart.java")));
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/TC_BODYTest.java"));
+        Assert.assertTrue(Files.exists(dir.resolve("src/main/java/project/pages/Cart_Page.java")));
+        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Cart_Test.java"));
         Assert.assertTrue(test.contains("assert_"), test);
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart.java"));
+        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart_Page.java"));
         Assert.assertTrue(actions.contains("bodyTextContains"), actions);
         Assert.assertTrue(test.contains("\"Saved\"") || actions.contains("Saved"), test + "\n" + actions);
     }
