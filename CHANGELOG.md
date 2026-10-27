@@ -1,8 +1,10 @@
 # CHANGELOG
 
-- OWNER LLM Settings: Cursor/AgentRouter/Ollama keys + live model picker (/admin/llm-settings).
-
 # Keel changelog
+
+## 2026-10-27 - Repo hygiene
+
+- Ignore accidental root `META-INF/` (jar extract) and local `patches/` scratch; handoff notes tied to commit hashes.
 
 ## 2026-10-21 - Portal: delete version ZIPs and live framework
 

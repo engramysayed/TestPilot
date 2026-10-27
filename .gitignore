@@ -45,4 +45,6 @@ docs/design/keel-preview/signoff-screenshots/
 
 # Local scratch (never commit)
 tmp/
+META-INF/
+patches/
 

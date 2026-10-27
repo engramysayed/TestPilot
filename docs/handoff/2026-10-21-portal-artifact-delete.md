@@ -1,5 +1,7 @@
 # Portal artifact delete (2026-10-21)
 
+**Commits:** portal delete `7eb71ed`; codegen page-under-test merge `b46c012` on `main`.
+
 ## Shipped
 
 - Members with project access can delete `versions/vN.zip` via Automation tab or **Packages** page (`canDeletePackages` / `canDeletePackage`).
