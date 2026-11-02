@@ -1,7 +1,7 @@
 # Hunt Knowledge Pack guidance (AE) — 2026-11-02
 
 **Status:** LIVE-APPLIED HTTP swap — prod `KnowledgePackReader` bean is `HttpKnowledgePackReader.local(KnowledgePackService)` (same-process call to the store behind GET `/api/projects/{projectId}/knowledge-packs[/{packId}]`). No second FS pack store. Missing pack ids still skip (log + continue).
-**Tip:** `f8358f3` (feat(hunt): wire KnowledgePackReader to HTTP/local KnowledgePackService). Base was `cfa220e` (Backend ingest) + AE `b422366`.
+**Tip:** `0f4f1af` (feat(hunt): wire KnowledgePackReader to HTTP/local KnowledgePackService). Base was `cfa220e` (Backend ingest) + AE `b422366`.
 **Backup:** local branch `backup/hunt-http-reader-20261102` at `cfa220e` (no push).
 
 **HTTP swap (2026-11-02):**
