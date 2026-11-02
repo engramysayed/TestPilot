@@ -175,6 +175,48 @@ public abstract class  Assertion {
         softTrue(ok, "disabled");
     }
 
+    /** Assert-from-element: compare the element's value / input value. */
+    public void elementValue(By locator, String expected) {
+        boolean ok = false;
+        String actual = "";
+        try {
+            WebElement el = element.findElement(locator);
+            if (el != null) {
+                actual = el.getAttribute("value");
+                if (actual == null || actual.isBlank()) {
+                    actual = el.getText();
+                }
+                ok = expected == null ? actual == null : expected.equals(actual);
+            }
+        } catch (WebDriverException | RuntimeException e) {
+            LogsManager.error("soft assert elementValue failed: " + e.getMessage());
+        }
+        if (!ok) {
+            LogsManager.error("soft assert elementValue failed. expected='" + expected + "' actual='" + actual + "'");
+        }
+        softTrue(ok, "elementValue '" + expected + "'");
+    }
+
+    /** Assert-from-element: exact visible text. */
+    public void elementTextEquals(By locator, String expected) {
+        boolean ok = false;
+        String actual = "";
+        try {
+            WebElement el = element.findElement(locator);
+            if (el != null) {
+                actual = el.getText() == null ? "" : el.getText();
+                ok = expected == null ? actual.isEmpty() : expected.equals(actual);
+            }
+        } catch (WebDriverException | RuntimeException e) {
+            LogsManager.error("soft assert elementTextEquals failed: " + e.getMessage());
+        }
+        if (!ok) {
+            LogsManager.error("soft assert elementTextEquals failed. expected='" + expected
+                    + "' actual='" + actual + "'");
+        }
+        softTrue(ok, "elementTextEquals '" + expected + "'");
+    }
+
     public void elementNotVisible(By locator) {
         boolean ok = false;
         try {
@@ -224,6 +266,82 @@ public abstract class  Assertion {
             LogsManager.error("compareCapturedExact query failed: " + e.getMessage());
             softTrue(false, "unavailable browser state: " + e.getClass().getSimpleName());
         }
+    }
+
+    /** Trimmed ARIA role assert — expects the element's {@code role} attribute. */
+    public void elementAriaRole(By locator, String expectedRole) {
+        boolean ok = false;
+        String actual = "";
+        try {
+            wait.waitForElementToBeVisible(locator);
+            actual = element.findElement(locator).getAttribute("role");
+            ok = actual != null && expectedRole != null
+                    && actual.trim().equalsIgnoreCase(expectedRole.trim());
+        } catch (WebDriverException e) {
+            LogsManager.error("soft assert elementAriaRole failed: " + e.getMessage());
+            softTrue(false, "elementAriaRole query failed");
+            return;
+        }
+        if (!ok) {
+            LogsManager.error("soft assert elementAriaRole failed. expected='" + expectedRole
+                    + "' actual='" + actual + "'");
+        }
+        softTrue(ok, "elementAriaRole '" + expectedRole + "'");
+    }
+
+    /** Trimmed ARIA accessible-name assert — {@code aria-label} (or name attr fallback). */
+    public void elementAriaLabel(By locator, String expectedLabel) {
+        boolean ok = false;
+        String actual = "";
+        try {
+            wait.waitForElementToBeVisible(locator);
+            var el = element.findElement(locator);
+            actual = el.getAttribute("aria-label");
+            if (actual == null || actual.isBlank()) {
+                actual = el.getAttribute("name");
+            }
+            ok = actual != null && expectedLabel != null
+                    && actual.trim().equalsIgnoreCase(expectedLabel.trim());
+        } catch (WebDriverException e) {
+            LogsManager.error("soft assert elementAriaLabel failed: " + e.getMessage());
+            softTrue(false, "elementAriaLabel query failed");
+            return;
+        }
+        if (!ok) {
+            LogsManager.error("soft assert elementAriaLabel failed. expected='" + expectedLabel
+                    + "' actual='" + actual + "'");
+        }
+        softTrue(ok, "elementAriaLabel '" + expectedLabel + "'");
+    }
+
+    /**
+     * Trimmed region / landmark assert — element is displayed and carries the expected
+     * landmark role (banner/main/navigation/…) or matching {@code aria-label}.
+     */
+    public void elementRegion(By locator, String expectedRegion) {
+        boolean ok = false;
+        String actual = "";
+        try {
+            wait.waitForElementToBeVisible(locator);
+            var el = element.findElement(locator);
+            String role = el.getAttribute("role");
+            String label = el.getAttribute("aria-label");
+            actual = (role == null ? "" : role) + "/" + (label == null ? "" : label);
+            String want = expectedRegion == null ? "" : expectedRegion.trim();
+            ok = el.isDisplayed() && !want.isEmpty()
+                    && ((role != null && role.equalsIgnoreCase(want))
+                    || (label != null && label.equalsIgnoreCase(want))
+                    || actual.toLowerCase().contains(want.toLowerCase()));
+        } catch (WebDriverException e) {
+            LogsManager.error("soft assert elementRegion failed: " + e.getMessage());
+            softTrue(false, "elementRegion query failed");
+            return;
+        }
+        if (!ok) {
+            LogsManager.error("soft assert elementRegion failed. expected='" + expectedRegion
+                    + "' actual='" + actual + "'");
+        }
+        softTrue(ok, "elementRegion '" + expectedRegion + "'");
     }
 
     public void signedOut(By locator, String expected) {

@@ -19,6 +19,10 @@ public class PageAccumulator {
     }
 
     public void add(ProvenStep step) {
+        if (step == null) {
+            return;
+        }
+        step = EmitStepNormalizer.apply(step);
         if (isBodyTextAssert(step)) {
             PageModel page = pageFor(step);
             allocateAssertion(page, step, null);
@@ -38,6 +42,47 @@ public class PageAccumulator {
         if (hasAssertion(step)) {
             allocateAssertion(page, step, field);
         }
+    }
+
+    /**
+     * W3: cache a validated NL->By on the existing page class (never invents a second class).
+     */
+    public void addNlCachedField(String pageName, NlLocatorCache.CachedBy cached) {
+        if (cached == null || cached.value() == null || cached.value().isBlank()) {
+            return;
+        }
+        ProvenStep probe = new ProvenStep(
+                "TC_NL",
+                pageName == null || pageName.isBlank() ? "Page" : pageName,
+                "elementAction",
+                "click",
+                cached.strategy(),
+                cached.value(),
+                "",
+                "",
+                "",
+                true,
+                "nl-cache:" + cached.nlPhrase());
+        PageModel page = pageFor(probe);
+        String base = cached.fieldName() == null || cached.fieldName().isBlank()
+                ? NlLocatorCache.fieldNameFor(cached.nlPhrase())
+                : cached.fieldName();
+        String field = uniqueFieldName(page, base);
+        page.fieldNames().add(field);
+        page.fields().add(new FieldModel(
+                field,
+                cached.strategy(),
+                cached.value(),
+                List.of(),
+                "",
+                false,
+                List.of(),
+                cached.nlPhrase()));
+    }
+
+    /** W3: merge trimmed DOM-diff assert suggestions into the named page. */
+    public void addDomDiffSuggestions(String tcId, String pageName, List<DomDiffAssertSuggestor.DiffHint> hints) {
+        DomDiffAssertSuggestor.apply(this, tcId, pageName, hints);
     }
 
     public Map<String, PageModel> pages() {
@@ -93,18 +138,37 @@ public class PageAccumulator {
         String key = pageKey(step);
         return pages.computeIfAbsent(key, name -> {
             String titleStem = CodegenNaming.pageTitleStem(name);
+            // Distinct page identities that share a stem still get unique stems (Order-Details
+            // vs OrderDetails → OrderDetails + OrderDetails_2). Login aliases share one key.
             String uniqueStem = CodegenNaming.allocateUnique(usedStems, titleStem);
             return PageModel.withStem(uniqueStem);
         });
     }
 
+    /**
+     * Merge identity for re-generate: Login / LoginPage / LoginForm / TargetLogin collapse
+     * onto one page key so emit never writes {@code Login_Page2}. Other names keep their
+     * raw key (colliding stems still get allocateUnique suffixes).
+     */
     static String pageKey(ProvenStep step) {
-        return step.pageName() == null || step.pageName().isBlank() ? "Page" : step.pageName().trim();
+        String raw = step.pageName() == null || step.pageName().isBlank() ? "Page" : step.pageName().trim();
+        if ("Login".equalsIgnoreCase(raw)
+                || "LoginForm".equalsIgnoreCase(raw)
+                || "LoginPage".equalsIgnoreCase(raw)
+                || "TargetLogin".equals(raw)) {
+            return "Login";
+        }
+        return raw;
     }
 
     private String allocateField(PageModel page, ProvenStep step) {
+        step = EmitStepNormalizer.apply(step);
         String strategy = normalizeByStrategy(step.locatorStrategy());
         String locatorValue = normalizeLocatorValue(step.locatorStrategy(), step.locatorValue());
+        String rowRef = rowFactoryRef(page, step, strategy, locatorValue);
+        if (rowRef != null) {
+            return rowRef;
+        }
         List<String> ranked = rankedFor(step);
         if (ranked.isEmpty() && LocatorCandidate.KEEL.equalsIgnoreCase(
                 step.locatorStrategy() == null ? "" : step.locatorStrategy().trim())) {
@@ -117,17 +181,34 @@ public class PageAccumulator {
             locatorValue = LocatorCandidate.terminalCss(ranked.get(0));
             ranked = List.of();
         }
+        MultiLocatorBag.Bag bag = MultiLocatorBag.build(
+                step.locatorStrategy(), step.locatorValue(), step.locatorCandidates(),
+                delivery.store.PreferredHooksStore.current());
+        // Keep proven/ladder primary for the field; bag fallbacks are plain By companions (W3).
+        if (bag.primary() != null && bag.primary().value() != null && !bag.primary().value().isBlank()) {
+            strategy = normalizeByStrategy(bag.primary().strategy());
+            locatorValue = normalizeLocatorValue(bag.primary().strategy(), bag.primary().value());
+            ProvenStep primaryStep = step.withLocator(bag.primary().strategy(), bag.primary().value())
+                    .withLocatorCandidates(step.locatorCandidates());
+            ranked = rankedFor(primaryStep);
+            if (ranked.size() == 1 && LocatorCandidate.isPlainCss(ranked.get(0))) {
+                strategy = "cssSelector";
+                locatorValue = LocatorCandidate.terminalCss(ranked.get(0));
+                ranked = List.of();
+            }
+        }
         String existing = findFieldForLocator(page, strategy, locatorValue, ranked);
         if (existing != null) {
             return existing;
         }
         String field = uniqueFieldName(page, CodegenNaming.locatorFieldName(step));
         page.fieldNames().add(field);
+        List<MultiLocatorBag.Entry> bagFalls = bag.fallbacks();
         if (ranked.isEmpty()) {
-            page.fields().add(new FieldModel(field, strategy, locatorValue));
+            page.fields().add(new FieldModel(field, strategy, locatorValue, List.of(), "", false, bagFalls, ""));
         } else {
             page.fields().add(new FieldModel(field, strategy, locatorValue, ranked,
-                    LocatorCandidate.keelByExpression(field, ranked)));
+                    LocatorCandidate.keelByExpression(field, ranked), false, bagFalls, ""));
         }
         return field;
     }
@@ -143,6 +224,12 @@ public class PageAccumulator {
         boolean keel = LocatorCandidate.KEEL.equalsIgnoreCase(
                 step.locatorStrategy() == null ? "" : step.locatorStrategy().trim());
         if (step.locatorCandidates().isEmpty() && !keel) {
+            return List.of();
+        }
+        // Preferred-hook-first only: with no active hooks, keep the proven primary as a plain By
+        // (do not let the candidate ladder promote a css/id fallback over it).
+        List<String> hooks = delivery.store.PreferredHooksStore.current();
+        if (!keel && (hooks == null || hooks.isEmpty())) {
             return List.of();
         }
         return LocatorCandidate.rankedTargets(step.locatorStrategy(), step.locatorValue(), step.locatorCandidates());
@@ -289,7 +376,57 @@ public class PageAccumulator {
         return "textContains".equalsIgnoreCase(type)
                 || "urlContains".equalsIgnoreCase(type)
                 || "selected".equalsIgnoreCase(type)
-                || "checked".equalsIgnoreCase(type);
+                || "checked".equalsIgnoreCase(type)
+                || "value".equalsIgnoreCase(type)
+                || "valueEquals".equalsIgnoreCase(type)
+                || "textEquals".equalsIgnoreCase(type)
+                || "ariaRole".equalsIgnoreCase(type)
+                || "ariaLabel".equalsIgnoreCase(type)
+                || "region".equalsIgnoreCase(type);
+    }
+
+    /**
+     * List/row selector → shared {@code By} factory. Returns the call expression
+     * ({@code productRow("Sauce Labs Backpack")}) or null when the locator stays a static field.
+     */
+    private String rowFactoryRef(PageModel page, ProvenStep step, String strategy, String locatorValue) {
+        RowLocator row = RowLocator.parse(pageKey(step), strategy, locatorValue);
+        if (row == null) {
+            return null;
+        }
+        String arg = row.literal();
+        if (row.placeholder()) {
+            arg = firstNonBlank(step.value(), step.assertionExpected());
+            if (arg.isBlank()) {
+                return null;
+            }
+        }
+        String factory = ensureRowFactory(page, row);
+        return factory + "(" + LocatorCandidate.javaString(arg) + ")";
+    }
+
+    private static String ensureRowFactory(PageModel page, RowLocator row) {
+        String existing = page.rowFactory(row.key());
+        if (existing != null) {
+            return existing;
+        }
+        java.util.Set<String> used = new java.util.LinkedHashSet<>();
+        used.addAll(page.fieldNames());
+        used.addAll(page.methodNames());
+        used.addAll(page.assertNames());
+        String name = CodegenNaming.allocateUnique(used, row.factoryBase());
+        page.fieldNames().add(name);
+        page.methodNames().add(name);
+        page.rememberRowFactory(row.key(), name);
+        page.fields().add(new FieldModel(name, row.strategy(), row.expr(), List.of(), "", true));
+        return name;
+    }
+
+    private static String firstNonBlank(String a, String b) {
+        if (a != null && !a.isBlank()) {
+            return a;
+        }
+        return b == null ? "" : b.trim();
     }
 
     private static String slotOf(ProvenStep step) {
@@ -423,19 +560,50 @@ public class PageAccumulator {
      * @param smartExpr  Java {@code KeelBy.of(...)} expression emitted for keel fields
      */
     public record FieldModel(String name, String strategy, String value,
-                             List<String> candidates, String smartExpr) {
+                             List<String> candidates, String smartExpr, boolean parameterized,
+                             List<MultiLocatorBag.Entry> bag, String nlPhrase) {
         public FieldModel(String name, String strategy, String value) {
-            this(name, strategy, value, List.of(), "");
+            this(name, strategy, value, List.of(), "", false, List.of(), "");
+        }
+
+        public FieldModel(String name, String strategy, String value,
+                          List<String> candidates, String smartExpr) {
+            this(name, strategy, value, candidates, smartExpr, false, List.of(), "");
+        }
+
+        public FieldModel(String name, String strategy, String value,
+                          List<String> candidates, String smartExpr, boolean parameterized) {
+            this(name, strategy, value, candidates, smartExpr, parameterized, List.of(), "");
         }
 
         public FieldModel {
             candidates = candidates == null ? List.of() : List.copyOf(candidates);
             smartExpr = smartExpr == null ? "" : smartExpr;
+            bag = bag == null ? List.of() : List.copyOf(bag);
+            nlPhrase = nlPhrase == null ? "" : nlPhrase;
         }
 
         /** FreeMarker: {@code field.smart}. */
         public boolean smart() {
             return !candidates.isEmpty();
+        }
+
+        /** W3 multi-locator bag fallbacks (plain By companions). */
+        public boolean hasBag() {
+            return bag != null && !bag.isEmpty();
+        }
+
+        public boolean isBag() {
+            return hasBag();
+        }
+
+        /** NL-cached validated By (W3). */
+        public boolean nlCached() {
+            return nlPhrase != null && !nlPhrase.isBlank();
+        }
+
+        public boolean isNlCached() {
+            return nlCached();
         }
 
         /** Any target with a v2 provider=/point= modifier: actions click at an offset. */
@@ -454,6 +622,11 @@ public class PageAccumulator {
 
         public boolean isSmart() {
             return smart();
+        }
+
+        /** FreeMarker: {@code field.parameterized}. Repeating row/list {@code By} factory. */
+        public boolean isParameterized() {
+            return parameterized;
         }
     }
 
@@ -531,10 +704,14 @@ public class PageAccumulator {
         private final Set<String> assertNames = new LinkedHashSet<>();
         private final Map<String, String> actionByIdentity = new LinkedHashMap<>();
         private final Map<String, String> assertByIdentity = new LinkedHashMap<>();
+        private final Map<String, String> rowFactories = new LinkedHashMap<>();
 
         private PageModel(String stem, String pageClassName) {
             this.stem = stem;
             this.pageClassName = pageClassName;
+            // Template always emits isLoaded(); keep action/assert names off that method.
+            methodNames.add("isLoaded");
+            fieldNames.add("isLoaded");
         }
 
         public static PageModel fromPageName(String pageName) {
@@ -581,6 +758,56 @@ public class PageAccumulator {
 
         public List<AssertionModel> assertions() {
             return assertions;
+        }
+
+        String rowFactory(String patternKey) {
+            return rowFactories.get(patternKey);
+        }
+
+        void rememberRowFactory(String patternKey, String methodName) {
+            rowFactories.put(patternKey, methodName);
+        }
+
+        /**
+         * Field used by {@code isLoaded()}: preferred hook, then id, test id, name, then any static field.
+         */
+        public String loadedMarkerRef() {
+            FieldModel best = null;
+            int bestScore = -1;
+            List<String> hooks = delivery.store.PreferredHooksStore.current();
+            for (FieldModel f : fields) {
+                if (f.parameterized()) {
+                    continue;
+                }
+                int score = markerScore(f, hooks);
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = f;
+                }
+            }
+            return best == null ? "" : best.name();
+        }
+
+        private static int markerScore(FieldModel f, List<String> hooks) {
+            String value = f.value() == null ? "" : f.value();
+            String strategy = f.strategy() == null ? "" : f.strategy();
+            String smart = f.smartExpr() == null ? "" : f.smartExpr();
+            if (delivery.store.PreferredHooksStore.matches(value, hooks)
+                    || delivery.store.PreferredHooksStore.matches(strategy, hooks)
+                    || delivery.store.PreferredHooksStore.matches(smart, hooks)) {
+                return 100;
+            }
+            if ("id".equals(strategy)) {
+                return 80;
+            }
+            String low = (value + " " + smart).toLowerCase(java.util.Locale.ROOT);
+            if (low.contains("data-testid") || low.contains("data-test=") || low.contains("data-qa=")) {
+                return 70;
+            }
+            if ("name".equals(strategy)) {
+                return 60;
+            }
+            return 10;
         }
 
         Set<String> fieldNames() {

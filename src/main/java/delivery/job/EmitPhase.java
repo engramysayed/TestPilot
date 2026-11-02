@@ -17,6 +17,7 @@ import delivery.revise.AgentRouterClient;
 import delivery.revise.FinalRevisePhase;
 import delivery.revise.FinalReviseResult;
 import delivery.store.LocatorMapBuilder;
+import delivery.store.PreferredHooksStore;
 import delivery.store.LocatorMapStore;
 import delivery.store.ProjectStore;
 import delivery.store.TcDiffService;
@@ -122,11 +123,16 @@ public class EmitPhase {
         String testDataEnv = CodegenEnvHint.read(workDir);
         CodegenOptions codegenOpts = new CodegenOptions(
                 request.codegenOllamaNaming(), request.localLlmBaseUrl(), request.localLlmModel(), testDataEnv);
-        // Demote dump/blank Page stems to TODO; smell-gate remaining; no dump Page class in ZIP.
-        CodegenEmitGate.Prepared prepared = CodegenEmitGate.prepare(outcomes);
-        outcomes = new ArrayList<>(prepared.outcomes());
-        new CodeWriter(request.templateRoot().resolve("templates"), codegenOpts).write(projectDir, outcomes);
-        DomainCatalogWriter.write(projectDir, outcomes);
+        // Preferred portal hooks win at Automate emit (not only DomCandidateExtractor rank).
+        java.util.List<String> preferredHooks = PreferredHooksStore.load(
+                request.storeRoot(), request.tenantId(), request.baseUrl());
+        try (PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks)) {
+            // Demote dump/blank Page stems to TODO; smell-gate remaining; no dump Page class in ZIP.
+            CodegenEmitGate.Prepared prepared = CodegenEmitGate.prepare(outcomes);
+            outcomes = new ArrayList<>(prepared.outcomes());
+            new CodeWriter(request.templateRoot().resolve("templates"), codegenOpts).write(projectDir, outcomes);
+            DomainCatalogWriter.write(projectDir, outcomes);
+        }
 
         FrameworkPackager packager = new FrameworkPackager();
         packager.writeScoreReport(projectDir, outcomes);

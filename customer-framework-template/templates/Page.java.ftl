@@ -20,7 +20,7 @@ import project.utils.locators.SettledActions;
 </#if>
 
 /**
- * Generated page for ${stem} (locators + actions + assertions in one class).
+ * Generated page for ${stem} (fields + actions + assertions + isLoaded in one class).
  */
 public class ${pageClassName} {
 <#if maxContract gt 1>
@@ -37,11 +37,31 @@ public class ${pageClassName} {
     }
 
 <#list fields as field>
-<#if field.smart>
+<#if field.parameterized>
+    /** Parameterized row/list locator factory. */
+    protected By ${field.name}(String name) {
+        return By.${field.strategy}(${field.value});
+    }
+<#elseif field.smart>
     /** Keel targets (contract v${field.contract}), main first then fallbacks. */
     protected final By ${field.name} = ${field.smartExpr};
+<#if field.bag?has_content>
+<#list field.bag as fb>
+    /** Multi-locator bag fallback ${fb_index+1} for ${field.name}. */
+    protected final By ${field.name}_fb${fb_index+1} = By.${fb.strategy}("${fb.value?j_string}");
+</#list>
+</#if>
+<#elseif field.nlCached>
+    /** NL-cached validated By: ${field.nlPhrase?j_string} */
+    protected final By ${field.name} = By.${field.strategy}("${field.value?j_string}");
 <#else>
     protected final By ${field.name} = By.${field.strategy}("${field.value?j_string}");
+<#if field.bag?has_content>
+<#list field.bag as fb>
+    /** Multi-locator bag fallback ${fb_index+1} for ${field.name}. */
+    protected final By ${field.name}_fb${fb_index+1} = By.${fb.strategy}("${fb.value?j_string}");
+</#list>
+</#if>
 </#if>
 </#list>
 
@@ -82,6 +102,17 @@ public class ${pageClassName} {
 </#if>
 
 </#list>
+<#if loadedMarker?has_content>
+    /** True when a stable page marker is visible (preferred hook / id / test id). */
+    public boolean isLoaded() {
+        try {
+            return driver.element().findElement(${loadedMarker}).isDisplayed();
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+</#if>
 <#if loginHelper??>
     /** Preferred login API: type credentials then submit. */
     public void login(String username, String password) {
@@ -108,6 +139,16 @@ public class ${pageClassName} {
             driver.validation().urlContains(expected);
 <#elseif assertion.assertionType == "checked" || assertion.assertionType == "selected">
             driver.validation().elementSelected(${assertion.fieldName}, expected);
+<#elseif assertion.assertionType == "value" || assertion.assertionType == "valueEquals">
+            driver.validation().elementValue(${assertion.fieldName}, expected);
+<#elseif assertion.assertionType == "textEquals">
+            driver.validation().elementTextEquals(${assertion.fieldName}, expected);
+<#elseif assertion.assertionType == "ariaRole">
+            driver.validation().elementAriaRole(${assertion.fieldName}, expected);
+<#elseif assertion.assertionType == "ariaLabel">
+            driver.validation().elementAriaLabel(${assertion.fieldName}, expected);
+<#elseif assertion.assertionType == "region">
+            driver.validation().elementRegion(${assertion.fieldName}, expected);
 <#else>
             LogsManager.error("unsupported assertionType: ${assertion.assertionType}");
             driver.validation().softTrue(false, "unsupported assertionType: ${assertion.assertionType}");

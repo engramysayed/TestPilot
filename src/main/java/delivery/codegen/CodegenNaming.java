@@ -332,6 +332,10 @@ public final class CodegenNaming {
                 name = "assert_" + token + "_Is_Enabled";
             } else if ("disabled".equalsIgnoreCase(type)) {
                 name = "assert_" + token + "_Is_Disabled";
+            } else if ("value".equalsIgnoreCase(type) || "valueEquals".equalsIgnoreCase(type)) {
+                name = "assert_" + token + "_Value";
+            } else if ("textEquals".equalsIgnoreCase(type)) {
+                name = "assert_" + token + "_Text_Equals";
             } else {
                 String cleaned = type.replaceAll("[^A-Za-z0-9]+", "_");
                 name = "assert_" + token + "_" + toPascalSnake(cleaned);
@@ -367,7 +371,9 @@ public final class CodegenNaming {
             }
         }
         if (("textContains".equalsIgnoreCase(assertType) || "visible".equalsIgnoreCase(assertType)
-                || "notVisible".equalsIgnoreCase(assertType))
+                || "notVisible".equalsIgnoreCase(assertType)
+                || "value".equalsIgnoreCase(assertType) || "valueEquals".equalsIgnoreCase(assertType)
+                || "textEquals".equalsIgnoreCase(assertType))
                 && !expected.isBlank()
                 && expected.length() <= 80) {
             String fromExpected = acceptToken(expected);
@@ -400,6 +406,10 @@ public final class CodegenNaming {
             String aria = acceptToken(extractAriaLabel(locator));
             if (aria != null) {
                 return aria;
+            }
+            String hook = acceptToken(extractPreferredHookValue(locator));
+            if (hook != null) {
+                return hook;
             }
         }
         String rationale = step.rationale() == null ? "" : step.rationale();
@@ -543,6 +553,24 @@ public final class CodegenNaming {
     }
 
     /** aria-label is a separate extractor (after label phrase) per semanticToken order; not merged into extractAttrValue. */
+    /** Value of a project preferred-hook attribute when that list is active for this emit. */
+    static String extractPreferredHookValue(String locator) {
+        if (locator == null || locator.isBlank()) {
+            return null;
+        }
+        for (String hook : delivery.store.PreferredHooksStore.current()) {
+            if (hook == null || hook.isBlank()) {
+                continue;
+            }
+            Matcher m = Pattern.compile(
+                    "(?i)" + Pattern.quote(hook) + "\\s*=\\s*['\"]([^'\"]+)['\"]").matcher(locator);
+            if (m.find() && m.group(1) != null && !m.group(1).isBlank()) {
+                return m.group(1);
+            }
+        }
+        return null;
+    }
+
     private static String extractAriaLabel(String locator) {
         Matcher m = ARIA_LABEL_SQ.matcher(locator);
         if (m.find()) {

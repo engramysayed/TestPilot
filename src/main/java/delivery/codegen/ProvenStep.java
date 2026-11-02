@@ -157,6 +157,14 @@ public record ProvenStep(
                 locatorCandidates, dropCandidates, sideEffects, secret);
     }
 
+    /** Same step with a different assertion type (emit alias, same expected and locator). */
+    public ProvenStep withAssertionType(String type) {
+        return new ProvenStep(
+                tcId, pageName, actionType, action, locatorStrategy, locatorValue, value,
+                type, assertionExpected, validated, rationale, screenshotRelPath,
+                locatorCandidates, dropCandidates, sideEffects, secret);
+    }
+
     /** Convenience ctor used by binder/codegen (no screenshot yet). */
     public ProvenStep(
             String tcId,

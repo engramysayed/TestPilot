@@ -47,8 +47,17 @@ public class CodeWriter {
     }
 
     public void write(Path projectRoot, List<TcOutcome> outcomes) throws Exception {
-        List<TcOutcome> emitOutcomes = filterForEmit(outcomes);
+        write(projectRoot, outcomes, List.of());
+    }
+
+    /** W3: emit pages/tests and attach NL-cached validated By fields onto existing page classes. */
+    public void write(Path projectRoot, List<TcOutcome> outcomes, List<NlLocatorCache.CachedBy> nlCached)
+            throws Exception {
+        List<TcOutcome> emitOutcomes = EmitStepNormalizer.applyOutcomes(filterForEmit(outcomes));
         CodegenEmitGate.Prepared prepared = CodegenEmitGate.prepare(emitOutcomes);
+        if (nlCached != null && !nlCached.isEmpty()) {
+            NlLocatorCache.apply(prepared.pages(), nlCached);
+        }
         writeVerified(projectRoot, prepared.outcomes(), prepared.pages());
     }
 
@@ -61,7 +70,7 @@ public class CodeWriter {
 
     public static PageAccumulator accumulate(List<TcOutcome> outcomes) {
         PageAccumulator pages = new PageAccumulator();
-        List<TcOutcome> emitOutcomes = filterForEmit(outcomes);
+        List<TcOutcome> emitOutcomes = EmitStepNormalizer.applyOutcomes(filterForEmit(outcomes));
         if (emitOutcomes.isEmpty()) {
             return pages;
         }
@@ -107,6 +116,7 @@ public class CodeWriter {
             model.put("fields", page.fields());
             model.put("methods", page.methods());
             model.put("assertions", page.assertions());
+            model.put("loadedMarker", page.loadedMarkerRef());
             var loginHelper = LoginPageHelper.detect(page);
             if (loginHelper != null) {
                 model.put("loginHelper", loginHelper);
