@@ -106,7 +106,7 @@ if (location.hash === '#record') location.replace('/record' + location.search);
                 <summary>More — paste free-text story instead</summary>
                 <p class="field-hint">Use this if you already have a full story blob. It is merged with the fields above when you Generate.</p>
                 <label for="intake-freetext">Free-text story
-                    <textarea id="intake-freetext" rows="6" placeholder="Optional free-text fallback…"></textarea>
+                    <textarea id="intake-freetext" rows="6" placeholder="Optional free-text backup notes…"></textarea>
                 </label>
             </details>
 
@@ -214,7 +214,7 @@ if (location.hash === '#record') location.replace('/record' + location.search);
                 <table class="table generate-table" id="preview-table">
                     <thead>
                     <tr>
-                        <th>TC ID</th>
+                        <th>Case ID</th>
                         <th>Title</th>
                         <th>KeelPath</th>
                         <th>Priority</th>
@@ -439,7 +439,7 @@ if (location.hash === '#record') location.replace('/record' + location.search);
         <h3 id="tc-edit-title">Edit test case</h3>
         <p id="tc-edit-error" class="error hidden" role="alert"></p>
         <form id="tc-edit-form" class="tc-edit-form" onsubmit="return false;">
-            <label>TC ID
+            <label>Case ID
                 <input type="text" id="tc-edit-id" class="mono" readonly aria-readonly="true"/>
             </label>
             <label>Title
@@ -492,7 +492,7 @@ if (location.hash === '#record') location.replace('/record' + location.search);
                     <input type="text" id="tc-edit-tags"/>
                 </label>
             </div>
-            <label>Visual assertion
+            <label>Visual check (how the screen should look)
                 <input type="text" id="tc-edit-visual"/>
             </label>
             <label>How to test

@@ -2,6 +2,14 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Pricing')}"></th:block>
+    <style>
+        .pricing-include { display: grid; gap: 0.75rem; margin: 0 0 1.25rem; }
+        .pricing-include-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+        .pricing-include-card { border: 1px solid var(--border, #d8dee4); border-radius: 10px; padding: 0.85rem 1rem; background: var(--panel-bg, transparent); }
+        .pricing-include-card strong { display: block; margin-bottom: 0.35rem; }
+        .pricing-include-card p { margin: 0; font-size: 0.92rem; color: var(--muted, #57606a); }
+        .pricing-note { margin-top: 0.85rem; font-size: 0.92rem; color: var(--muted, #57606a); }
+    </style>
 </head>
 <body class="app-body">
 <aside th:replace="~{fragments :: sidebar}"></aside>
@@ -11,10 +19,36 @@
     <div class="page-title">
         <div>
             <h1>Pricing</h1>
-            <p class="lede">The price of one unit. A job multiplies it by how many units it includes. The same prices apply to every account.</p>
+            <p class="lede">Credit unit costs for each service. A job multiplies <strong>Credits each</strong> by how many units it includes. These are credits, not dollars. The account Owner edits them on Admin → Prices. The same credit prices apply to every account.</p>
         </div>
     </div>
+
     <section class="panel">
+        <h2>What uses which credits</h2>
+        <p class="panel-intro">New product surfaces map onto the credit services below. Add-on rows such as Visual Diff, Suites / Monitor, and Heal Review appear in the live table like the core services.</p>
+        <div class="pricing-include pricing-include-grid">
+            <div class="pricing-include-card">
+                <strong>Generate</strong>
+                <p>Classic Write test cases, Generate from knowledge, and Plain-English writing jobs. One writing-job price unless a separate GFK row is seeded on Admin → Prices.</p>
+            </div>
+            <div class="pricing-include-card">
+                <strong>Execute</strong>
+                <p>Run tests, Evidence heal Accept/Reject + flaky tags, visual prove/compare/approve, and suite / schedule / monitor runs (per case).</p>
+            </div>
+            <div class="pricing-include-card">
+                <strong>Automate</strong>
+                <p>Build code / packages — including stronger multi-way finds and remembered plain-language locators. Charged per test case in the build.</p>
+            </div>
+            <div class="pricing-include-card">
+                <strong>Bug Hunter</strong>
+                <p>Exploration steps. Still charged per allowed action. Confirming a finding never auto-merges cases into your library.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Credit prices</h2>
+        <p class="panel-intro">Live table from Admin → Prices. <strong>Credits each</strong> is the billed unit cost. Owner edits credits for every row (core and add-ons) on Admin → Prices.</p>
         <table class="table">
             <thead>
             <tr>
@@ -33,6 +67,11 @@
             </tr>
             </tbody>
         </table>
+        <p class="pricing-note">
+            Credit amounts are credit units, not dollars. There is no dollar pricing on this page.
+            Confirmed add-on codes such as <code>VISUAL_DIFF</code>, <code>SUITES_MONITOR</code>, and <code>HEAL_REVIEW</code> appear as normal rows alongside Generate / Execute / Automate / Hunt.
+            The account Owner can change any row's credits on Admin → Prices.
+        </p>
     </section>
 </main>
 </div>

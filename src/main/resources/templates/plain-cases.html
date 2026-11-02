@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Plain-English cases')}"></th:block>
+</head>
+<body class="app-body">
+<link rel="stylesheet" th:href="@{/css/keel-portal-enhancements.css}"/>
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1>Plain-English cases</h1>
+            <p class="lede">
+                Author short test steps in plain English (one action or expectation per line).
+                No Java required. Cases run through the same <strong>Execute</strong> runner.
+                This page is separate from classic <a href="/generate">Generate</a> and
+                <a href="/generate-from-knowledge">From knowledge</a>.
+            </p>
+        </div>
+    </div>
+
+    <section class="panel workspace-launcher" id="workspace-launcher">
+        <p class="guide-kicker">Workspace</p>
+        <h2>Choose a project</h2>
+        <p class="panel-intro">Plain-English cases are scoped to the project you pin here.</p>
+        <label>Project
+            <select id="launcher-project-select">
+                <option value="">- Loading projects -</option>
+            </select>
+        </label>
+        <p id="launcher-err" class="error" hidden></p>
+        <p id="launcher-no-projects" class="muted" hidden>
+            No projects yet - <a href="/projects">create one</a> first.
+        </p>
+        <p style="margin-top:0.75rem">
+            <button type="button" class="button" id="launcher-continue">Continue</button>
+        </p>
+    </section>
+
+    <div id="workspace-config" hidden>
+        <section class="panel workspace-pinned">
+            <p class="muted" style="margin:0">
+                Project: <strong id="pinned-project-name">-</strong>
+                <button type="button" class="button ghost" id="change-project" style="margin-left:0.5rem">Change</button>
+            </p>
+            <select id="project-select" hidden aria-hidden="true">
+                <option value="">- Loading projects -</option>
+            </select>
+            <p id="project-err" class="error" hidden></p>
+            <p id="no-projects" class="muted" hidden>
+                No projects yet -
+                <a href="/projects">create one</a> first.
+            </p>
+        </section>
+
+        <section class="panel" id="case-editor-panel">
+            <h2>Case steps</h2>
+            <p class="panel-intro">
+                Write one short step per line. Examples: <code>click Login</code>, <code>expect Welcome</code>.
+            </p>
+            <label>Case title (optional)
+                <input type="text" id="case-title" maxlength="200" placeholder="e.g. Login happy path"/>
+            </label>
+            <label style="display:block;margin-top:0.75rem">Steps
+                <textarea id="case-lines" rows="12" style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
+                          placeholder="click Login&#10;expect Welcome&#10;click Profile&#10;expect Settings"></textarea>
+            </label>
+            <p class="field-hint muted" style="margin-top:0.35rem">
+                Tip: keep verbs short. Authors do not write Java here.
+            </p>
+            <div class="generate-actions" style="margin-top:0.85rem">
+                <button type="button" class="button" id="save-case" disabled>Save / Add to project library</button>
+                <button type="button" class="button" id="run-execute" disabled style="margin-left:0.5rem">Run in Execute</button>
+                <a class="button ghost" id="open-execute" href="/execute" style="margin-left:0.5rem">Open Execute</a>
+                <span id="save-status" class="muted" role="status"></span>
+            </div>
+            <p id="run-status" class="muted" style="margin-top:0.5rem" role="status"></p>
+            <p id="api-wait-note" class="muted" hidden style="margin-top:0.5rem">
+                Waiting on Backend plain-cases API. Local preview below stays available.
+            </p>
+        </section>
+
+        <section class="panel" id="library-panel">
+            <h2>Saved cases</h2>
+            <p id="library-empty" class="muted">No saved cases for this project yet.</p>
+            <ul id="library-list" class="mono" style="margin:0;padding-left:1.25rem;list-style:disc" hidden></ul>
+            <p id="library-meta" class="muted" style="margin-top:0.5rem"></p>
+        </section>
+
+        <section class="panel" id="preview-panel">
+            <h2>Local preview</h2>
+            <p id="preview-empty" class="muted">Steps you type appear here as a line list (not saved until Backend accepts POST).</p>
+            <ol id="preview-list" class="mono" style="margin:0;padding-left:1.25rem" hidden></ol>
+            <p id="preview-meta" class="muted" style="margin-top:0.5rem"></p>
+        </section>
+    </div>
+</main>
+</div>
+
+<script>
+(function () {
+    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+    const STORAGE_KEY = 'keel.plainCasesProjectId';
+    const LAST_CASE_KEY = 'keel.plainCasesLastCaseId';
+    const initialProjectId = /*[[${projectId}]]*/ '';
+
+    const LIST_PATH = '/plain-cases';
+    const CREATE_PATH = '/plain-cases';
+
+    const workspaceLauncher = document.getElementById('workspace-launcher');
+    const workspaceConfig = document.getElementById('workspace-config');
+    const launcherSel = document.getElementById('launcher-project-select');
+    const launcherContinue = document.getElementById('launcher-continue');
+    const launcherErr = document.getElementById('launcher-err');
+    const launcherNoProjects = document.getElementById('launcher-no-projects');
+    const projectSel = document.getElementById('project-select');
+    const projectErr = document.getElementById('project-err');
+    const noProjects = document.getElementById('no-projects');
+    const pinnedName = document.getElementById('pinned-project-name');
+    const changeProjectBtn = document.getElementById('change-project');
+    const caseTitle = document.getElementById('case-title');
+    const caseLines = document.getElementById('case-lines');
+    const saveBtn = document.getElementById('save-case');
+    const runBtn = document.getElementById('run-execute');
+    const saveStatus = document.getElementById('save-status');
+    const runStatus = document.getElementById('run-status');
+    const apiWaitNote = document.getElementById('api-wait-note');
+    const openExecute = document.getElementById('open-execute');
+    const previewEmpty = document.getElementById('preview-empty');
+    const previewList = document.getElementById('preview-list');
+    const previewMeta = document.getElementById('preview-meta');
+    const libraryEmpty = document.getElementById('library-empty');
+    const libraryList = document.getElementById('library-list');
+    const libraryMeta = document.getElementById('library-meta');
+
+    let projects = [];
+    let apiAvailable = false;
+    let saveInFlight = false;
+    let runInFlight = false;
+    let lastCaseId = null;
+    let selectedCaseId = null;
+    let libraryCases = [];
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function parseLines(raw) {
+        return String(raw || '')
+            .split(/\r?\n/)
+            .map(function (l) { return l.trim(); })
+            .filter(function (l) { return l.length > 0; });
+    }
+
+    function caseIdOf(row) {
+        if (!row) return null;
+        return row.caseId || row.plainCaseId || row.id || null;
+    }
+
+    function showWorkspaceLauncher() {
+        if (workspaceLauncher) workspaceLauncher.hidden = false;
+        if (workspaceConfig) workspaceConfig.hidden = true;
+        updateSaveEnabled();
+        updateRunEnabled();
+    }
+
+    function updateOpenExecute(projectId) {
+        if (!openExecute) return;
+        if (projectId) {
+            openExecute.href = '/execute?projectId=' + encodeURIComponent(projectId);
+        } else {
+            openExecute.href = '/execute';
+        }
+    }
+
+    function pinWorkspaceProject(projectId, projectList) {
+        projectSel.value = projectId;
+        if (launcherSel) launcherSel.value = projectId;
+        const proj = (projectList || []).find(function (p) { return p.projectId === projectId; });
+        if (pinnedName) {
+            if (proj) {
+                pinnedName.textContent = (proj.name || proj.projectId) + ' (' + proj.projectId + ')';
+            } else if (launcherSel && launcherSel.selectedIndex >= 0) {
+                pinnedName.textContent = launcherSel.options[launcherSel.selectedIndex].textContent;
+            } else {
+                pinnedName.textContent = projectId;
+            }
+        }
+        if (workspaceLauncher) workspaceLauncher.hidden = true;
+        if (workspaceConfig) workspaceConfig.hidden = false;
+        sessionStorage.setItem(STORAGE_KEY, projectId);
+        updateOpenExecute(projectId);
+        lastCaseId = sessionStorage.getItem(LAST_CASE_KEY + '.' + projectId) || null;
+        selectedCaseId = lastCaseId;
+        apiAvailable = false;
+        if (apiWaitNote) apiWaitNote.hidden = true;
+        if (saveStatus) saveStatus.textContent = '';
+        if (runStatus) runStatus.textContent = '';
+        loadLibrary(projectId);
+        refreshPreview();
+        updateSaveEnabled();
+        updateRunEnabled();
+    }
+
+    function updateSaveEnabled() {
+        const projectId = projectSel && projectSel.value;
+        const lines = parseLines(caseLines && caseLines.value);
+        if (saveInFlight) {
+            saveBtn.disabled = true;
+            return;
+        }
+        saveBtn.disabled = !(projectId && lines.length >= 1);
+    }
+
+    function updateRunEnabled() {
+        if (!runBtn) return;
+        const projectId = projectSel && projectSel.value;
+        const caseId = selectedCaseId || lastCaseId;
+        runBtn.disabled = !!(runInFlight || !projectId || !caseId || !apiAvailable);
+    }
+
+    function refreshPreview() {
+        const lines = parseLines(caseLines && caseLines.value);
+        const title = (caseTitle && caseTitle.value || '').trim();
+        if (!lines.length) {
+            previewEmpty.hidden = false;
+            previewList.hidden = true;
+            previewList.innerHTML = '';
+            previewMeta.textContent = '';
+            return;
+        }
+        previewEmpty.hidden = true;
+        previewList.hidden = false;
+        previewList.innerHTML = lines.map(function (l) {
+            return '<li>' + escapeHtml(l) + '</li>';
+        }).join('');
+        const bits = [];
+        if (title) bits.push('Title: ' + title);
+        bits.push(lines.length + (lines.length === 1 ? ' step' : ' steps'));
+        previewMeta.textContent = bits.join(' | ');
+    }
+
+    function renderLibrary() {
+        if (!libraryList || !libraryEmpty) return;
+        if (!libraryCases.length) {
+            libraryEmpty.hidden = false;
+            libraryList.hidden = true;
+            libraryList.innerHTML = '';
+            if (libraryMeta) libraryMeta.textContent = apiAvailable ? 'Library empty.' : '';
+            return;
+        }
+        libraryEmpty.hidden = true;
+        libraryList.hidden = false;
+        libraryList.innerHTML = libraryCases.map(function (row) {
+            const id = caseIdOf(row) || '';
+            const title = (row.title || '').trim() || '(untitled)';
+            const n = Array.isArray(row.lines) ? row.lines.length : 0;
+            const active = id && id === (selectedCaseId || lastCaseId);
+            return '<li style="margin:0.35rem 0">'
+                + '<button type="button" class="button ghost" data-case-id="' + escapeHtml(id) + '"'
+                + ' style="padding:0.15rem 0.4rem' + (active ? ';font-weight:600' : '') + '">'
+                + escapeHtml(title) + '</button>'
+                + ' <span class="muted">' + escapeHtml(id) + ' | ' + n + (n === 1 ? ' step' : ' steps') + '</span>'
+                + '</li>';
+        }).join('');
+        if (libraryMeta) {
+            libraryMeta.textContent = libraryCases.length + (libraryCases.length === 1 ? ' saved case' : ' saved cases')
+                + (selectedCaseId || lastCaseId ? ' | selected ' + (selectedCaseId || lastCaseId) : '');
+        }
+        Array.prototype.forEach.call(libraryList.querySelectorAll('[data-case-id]'), function (btn) {
+            btn.addEventListener('click', function () {
+                const id = btn.getAttribute('data-case-id');
+                selectLibraryCase(id);
+            });
+        });
+    }
+
+    function selectLibraryCase(caseId) {
+        if (!caseId) return;
+        selectedCaseId = caseId;
+        lastCaseId = caseId;
+        const projectId = projectSel && projectSel.value;
+        if (projectId) sessionStorage.setItem(LAST_CASE_KEY + '.' + projectId, caseId);
+        const row = libraryCases.find(function (c) { return caseIdOf(c) === caseId; });
+        if (row) {
+            if (caseTitle) caseTitle.value = row.title || '';
+            if (caseLines) {
+                const lines = Array.isArray(row.lines) ? row.lines : [];
+                caseLines.value = lines.join('\n');
+            }
+            refreshPreview();
+            updateSaveEnabled();
+        }
+        renderLibrary();
+        updateRunEnabled();
+        if (runStatus) runStatus.textContent = '';
+        if (saveStatus) saveStatus.textContent = 'Selected ' + caseId;
+    }
+
+    async function readErrorMessage(res) {
+        try {
+            const text = await res.text();
+            if (!text) return '';
+            try {
+                const body = JSON.parse(text);
+                if (body && (body.message || body.error || body.detail)) {
+                    return String(body.message || body.error || body.detail);
+                }
+            } catch (_) { /* plain text */ }
+            return text.length > 300 ? (text.slice(0, 300) + '...') : text;
+        } catch (_) {
+            return '';
+        }
+    }
+
+    async function loadLibrary(projectId) {
+        if (!projectId) return;
+        libraryCases = [];
+        renderLibrary();
+        try {
+            const res = await fetch(
+                '/api/projects/' + encodeURIComponent(projectId) + LIST_PATH,
+                { credentials: 'same-origin', headers: API_HEADERS }
+            );
+            if (res.status === 404 || res.status === 501) {
+                apiAvailable = false;
+                if (apiWaitNote) apiWaitNote.hidden = false;
+                if (libraryMeta) libraryMeta.textContent = 'Library API not available yet.';
+                updateRunEnabled();
+                return;
+            }
+            if (!res.ok) {
+                apiAvailable = false;
+                if (apiWaitNote) apiWaitNote.hidden = false;
+                if (libraryMeta) libraryMeta.textContent = 'Could not load library (HTTP ' + res.status + ').';
+                updateRunEnabled();
+                return;
+            }
+            apiAvailable = true;
+            if (apiWaitNote) apiWaitNote.hidden = true;
+            const data = await res.json().catch(function () { return []; });
+            libraryCases = Array.isArray(data) ? data : [];
+            if (!selectedCaseId && libraryCases.length) {
+                selectedCaseId = caseIdOf(libraryCases[0]);
+                lastCaseId = selectedCaseId;
+            }
+            renderLibrary();
+            updateRunEnabled();
+        } catch (_) {
+            apiAvailable = false;
+            if (apiWaitNote) apiWaitNote.hidden = false;
+            if (libraryMeta) libraryMeta.textContent = 'Could not load library.';
+            updateRunEnabled();
+        }
+    }
+
+    async function saveCase() {
+        const projectId = projectSel.value;
+        const lines = parseLines(caseLines.value);
+        const title = (caseTitle.value || '').trim();
+        if (!projectId) {
+            saveStatus.textContent = 'Select a project first.';
+            return;
+        }
+        if (!lines.length) {
+            saveStatus.textContent = 'Add at least one step line.';
+            return;
+        }
+        const body = { lines: lines };
+        if (title) body.title = title;
+
+        saveInFlight = true;
+        updateSaveEnabled();
+        saveStatus.textContent = 'Saving...';
+        if (apiWaitNote) apiWaitNote.hidden = true;
+
+        try {
+            const res = await fetch(
+                '/api/projects/' + encodeURIComponent(projectId) + CREATE_PATH,
+                {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                    body: JSON.stringify(body)
+                }
+            );
+            if (res.status === 404 || res.status === 501) {
+                apiAvailable = false;
+                saveStatus.textContent = 'Waiting on Backend plain-cases API';
+                if (apiWaitNote) apiWaitNote.hidden = false;
+                refreshPreview();
+                updateRunEnabled();
+                return;
+            }
+            if (!res.ok) {
+                const msg = await readErrorMessage(res);
+                saveStatus.textContent = msg || ('Save failed (HTTP ' + res.status + ')');
+                refreshPreview();
+                return;
+            }
+            apiAvailable = true;
+            if (apiWaitNote) apiWaitNote.hidden = true;
+            let data = null;
+            try { data = await res.json(); } catch (_) { data = null; }
+            const id = caseIdOf(data);
+            if (id) {
+                lastCaseId = id;
+                selectedCaseId = id;
+                sessionStorage.setItem(LAST_CASE_KEY + '.' + projectId, id);
+                saveStatus.textContent = 'Saved (' + id + ').';
+            } else {
+                saveStatus.textContent = 'Saved.';
+            }
+            refreshPreview();
+            await loadLibrary(projectId);
+            updateRunEnabled();
+        } catch (err) {
+            saveStatus.textContent = 'Waiting on Backend plain-cases API';
+            if (apiWaitNote) apiWaitNote.hidden = false;
+            refreshPreview();
+            updateRunEnabled();
+        } finally {
+            saveInFlight = false;
+            updateSaveEnabled();
+        }
+    }
+
+    async function runSelectedCase() {
+        const projectId = projectSel && projectSel.value;
+        const caseId = selectedCaseId || lastCaseId;
+        if (!projectId || !caseId) {
+            if (runStatus) runStatus.textContent = 'Save or select a case first.';
+            return;
+        }
+        runInFlight = true;
+        updateRunEnabled();
+        if (runStatus) runStatus.textContent = 'Starting execute...';
+
+        try {
+            const res = await fetch(
+                '/api/projects/' + encodeURIComponent(projectId)
+                    + '/plain-cases/' + encodeURIComponent(caseId) + '/execute',
+                {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                    body: '{}'
+                }
+            );
+            if (res.status === 404 || res.status === 501) {
+                if (runStatus) {
+                    runStatus.innerHTML = 'Execute API not available yet. '
+                        + '<a href="/execute?projectId=' + encodeURIComponent(projectId) + '">Open Execute</a>';
+                }
+                return;
+            }
+            if (res.status !== 202 && !res.ok) {
+                const msg = await readErrorMessage(res);
+                if (runStatus) runStatus.textContent = msg || ('Execute failed (HTTP ' + res.status + ')');
+                return;
+            }
+            let data = null;
+            try { data = await res.json(); } catch (_) { data = null; }
+            const jobId = data && data.jobId;
+            if (jobId) {
+                if (runStatus) {
+                    runStatus.innerHTML = 'Queued job <code>' + escapeHtml(jobId) + '</code>. '
+                        + '<a href="/status?jobId=' + encodeURIComponent(jobId) + '">View status</a>'
+                        + ' | <a href="/execute?projectId=' + encodeURIComponent(projectId) + '">Open Execute / runs</a>';
+                }
+            } else {
+                if (runStatus) {
+                    runStatus.innerHTML = 'Execute accepted (HTTP ' + res.status + '). '
+                        + '<a href="/execute?projectId=' + encodeURIComponent(projectId) + '">Open Execute</a>';
+                }
+            }
+        } catch (err) {
+            if (runStatus) runStatus.textContent = 'Execute request failed.';
+        } finally {
+            runInFlight = false;
+            updateRunEnabled();
+        }
+    }
+
+    async function loadProjects() {
+        if (projectErr) projectErr.hidden = true;
+        const res = await fetch('/api/projects', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            if (projectErr) {
+                projectErr.hidden = false;
+                projectErr.textContent = 'Could not load projects.';
+            }
+            return;
+        }
+        projects = await res.json();
+        projectSel.innerHTML = '';
+        if (launcherSel) launcherSel.innerHTML = '';
+        if (!projects.length) {
+            if (noProjects) noProjects.hidden = false;
+            if (launcherNoProjects) launcherNoProjects.hidden = false;
+            showWorkspaceLauncher();
+            return;
+        }
+        if (noProjects) noProjects.hidden = true;
+        if (launcherNoProjects) launcherNoProjects.hidden = true;
+        projects.forEach(function (p) {
+            const label = (p.name || p.projectId) + ' (' + p.projectId + ')';
+            const opt = document.createElement('option');
+            opt.value = p.projectId;
+            opt.textContent = label;
+            projectSel.appendChild(opt);
+            if (launcherSel) {
+                const lopt = document.createElement('option');
+                lopt.value = p.projectId;
+                lopt.textContent = label;
+                launcherSel.appendChild(lopt);
+            }
+        });
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlProjectId = urlParams.get('projectId');
+        const urlProject = (urlProjectId && projects.some(function (p) { return p.projectId === urlProjectId; }))
+            ? urlProjectId
+            : ((initialProjectId && projects.some(function (p) { return p.projectId === initialProjectId; }))
+                ? initialProjectId : null);
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const match = saved && projects.some(function (p) { return p.projectId === saved; });
+        const pinned = urlProject || (match ? saved : null);
+        if (pinned) {
+            pinWorkspaceProject(pinned, projects);
+        } else {
+            showWorkspaceLauncher();
+        }
+    }
+
+    launcherContinue && launcherContinue.addEventListener('click', function () {
+        if (launcherErr) launcherErr.hidden = true;
+        const projectId = launcherSel ? launcherSel.value : '';
+        if (!projectId) {
+            if (launcherErr) {
+                launcherErr.hidden = false;
+                launcherErr.textContent = 'Select a project to continue.';
+            }
+            return;
+        }
+        pinWorkspaceProject(projectId, projects);
+    });
+
+    changeProjectBtn && changeProjectBtn.addEventListener('click', function () {
+        showWorkspaceLauncher();
+    });
+
+    caseLines && caseLines.addEventListener('input', function () {
+        refreshPreview();
+        updateSaveEnabled();
+    });
+    caseTitle && caseTitle.addEventListener('input', function () {
+        refreshPreview();
+    });
+
+    saveBtn && saveBtn.addEventListener('click', function () {
+        if (saveInFlight) return;
+        saveCase();
+    });
+    runBtn && runBtn.addEventListener('click', function () {
+        if (runInFlight) return;
+        runSelectedCase();
+    });
+
+    loadProjects().catch(function () {
+        if (projectErr) {
+            projectErr.hidden = false;
+            projectErr.textContent = 'Could not load projects.';
+        }
+    });
+})();
+</script>
+</body>
+</html>

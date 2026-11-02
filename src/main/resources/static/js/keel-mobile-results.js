@@ -30,22 +30,22 @@
     const PROOF_LABELS = {
         NONE: 'No proof',
         HIERARCHY: 'Screen hierarchy',
-        ASSERTION: 'Assertion',
+        ASSERTION: 'Check',
         VISION: 'Vision',
         PRECISION: 'Precision',
-        USER_LOCATOR: 'Your locator',
+        USER_LOCATOR: 'Your find-on-page',
         SETUP_ONLY: 'Setup only'
     };
     const PROVIDER_LABELS = {
         KEEL: 'Keel',
         PRECISION: 'Precision',
         VISION: 'Vision',
-        USER: 'Your locator',
+        USER: 'Your find-on-page',
         MEMORY: 'Memory',
         NONE: 'None'
     };
     const ORIGIN_LABELS = {
-        USER: 'Your locator',
+        USER: 'Your find-on-page',
         HIERARCHY: 'Screen hierarchy',
         PRECISION: 'Precision',
         MEMORY: 'Memory'
@@ -127,7 +127,7 @@
         html += '</p>';
         const locs = c.locatorEvidence || [];
         if (locs.length) {
-            html += '<h4>Locator evidence</h4><ul class="mobile-locator-list">';
+            html += '<h4>How we found it</h4><ul class="mobile-locator-list">';
             locs.forEach(function (L) {
                 const req = labelMap(ORIGIN_LABELS, L.requestedOrigin, L.requestedOrigin);
                 const sel = labelMap(ORIGIN_LABELS, L.selectedOrigin, L.selectedOrigin);

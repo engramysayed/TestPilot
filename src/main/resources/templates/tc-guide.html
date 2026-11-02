@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <th:block th:replace="~{fragments :: pageHead(title='TC guide')}"></th:block>
+    <th:block th:replace="~{fragments :: pageHead(title='Case guide')}"></th:block>
 </head>
 <body class="app-body">
 <aside th:replace="~{fragments :: sidebar}"></aside>
@@ -32,7 +32,7 @@
             <a href="#steps">3. Writing steps</a>
             <a href="#expected">4. Expected results</a>
             <a href="#testdata">5. Test data</a>
-            <a href="#visual">6. Visual assertion</a>
+            <a href="#visual">6. Visual check</a>
             <a href="#complete">7. Complete cases</a>
             <a href="#unsupported">8. Not supported</a>
             <a href="#ai">9. AI rewrite &rarr; CSV</a>
@@ -284,7 +284,7 @@ Bennett
                 <header class="guide-section-head">
                     <span class="guide-num">06</span>
                     <div>
-                        <h2>Visual assertion</h2>
+                        <h2>Visual check</h2>
                         <p class="panel-intro">Optional. Describes what the screen should look like after the case’s steps pass.</p>
                     </div>
                 </header>
@@ -355,7 +355,7 @@ Bennett
                     <li>Copy the AI's <strong>CSV only</strong> into Excel (or save as <code>.xlsx</code>).</li>
                     <li>Spot-check a few rows, then paste them on <a href="/generate">Write test cases</a> (Import into project) or upload the file on your project's Test cases tab.</li>
                 </ol>
-                <p class="guide-howto-note">Large suites: repeat per batch and append rows in Excel. Do not paste the whole workbook at once.</p>
+                <p class="guide-howto-note">Large test packs: repeat per batch and append rows in Excel. Do not paste the whole workbook at once.</p>
                 <p class="guide-howto-note">
                     <a href="/prompts/keel-manual-tcs-template.csv" download>Download CSV template</a>
                     for the exact column layout (same headers the AI prompt uses).

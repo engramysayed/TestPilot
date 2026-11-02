@@ -143,7 +143,10 @@ public class PortalUiController {
             case "dashboard" -> "Overview";
             case "projects" -> "Projects";
             case "generate" -> "Write test cases";
+            case "generate-from-knowledge" -> "Generate from knowledge";
             case "record" -> "Record a test";
+            case "plain-cases" -> "Plain-English cases";
+            case "suites" -> "Suites";
             case "execute" -> "Run tests";
             case "automate" -> "Build code";
             case "bug-hunter" -> "Bug Hunter";
@@ -258,11 +261,34 @@ public class PortalUiController {
         return "generate";
     }
 
+    @GetMapping("/generate-from-knowledge")
+    public String generateFromKnowledge(@RequestParam(value = "projectId", required = false) String projectId,
+                                        Model model) {
+        addNav(model, "generate-from-knowledge");
+        model.addAttribute("projectId", projectId == null ? "" : projectId);
+        return "generate-from-knowledge";
+    }
+
     @GetMapping("/record")
     public String record(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
         addNav(model, "record");
         model.addAttribute("projectId", projectId == null ? "" : projectId);
         return "record";
+    }
+
+
+    @GetMapping("/plain-cases")
+    public String plainCases(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
+        addNav(model, "plain-cases");
+        model.addAttribute("projectId", projectId == null ? "" : projectId);
+        return "plain-cases";
+    }
+
+    @GetMapping("/suites")
+    public String suites(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
+        addNav(model, "suites");
+        model.addAttribute("projectId", projectId == null ? "" : projectId);
+        return "suites";
     }
 
     @GetMapping("/execute")

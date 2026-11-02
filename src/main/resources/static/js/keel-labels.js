@@ -5,7 +5,7 @@
         COMPLETED: 'Done', COMPLETED_WITH_BLOCK: 'Needs attention',
         FAILED: 'Needs attention', CANCELLED: 'Stopped', BLOCKED: "Couldn't complete", TODO: "Couldn't complete",
         PASS: 'Passed', PASSED: 'Passed', FAIL: 'Needs attention', PARTIAL: 'Partly passed',
-        HEALED: 'Fixed itself', FIXED: 'Fixed itself', FLAKY: 'Flaky',
+        HEALED: 'Fixed broken steps', FIXED: 'Fixed broken steps', FLAKY: 'Sometimes fails',
         INFRA_ERROR: "Keel's side", CONFIG_ERROR: 'Setup problem', LEGACY_PASSED: 'Legacy', REUSED: 'Reused'
     };
     var PATH = {

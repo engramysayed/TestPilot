@@ -87,11 +87,11 @@
             </div>
         </fieldset>
 
-        <label>DOM mode
+        <label>Page scan mode
             <select id="dom-mode">
                 <option value="auto" selected>Auto (map + slim when thin)</option>
                 <option value="map">Map only</option>
-                <option value="slim">Full slim DOM</option>
+                <option value="slim">Full slim page scan</option>
             </select>
             <span class="field-hint">What the AI can see about the current page.</span>
         </label>
@@ -135,7 +135,7 @@
 
         <div class="hunt-library tc-multiselect" id="hunt-library-panel">
             <span class="tc-ms-label">Library cases</span>
-            <p class="field-hint">Pick cases that match the feature you want explored. They guide the hunt — they are not a full automated suite run.</p>
+            <p class="field-hint">Pick cases that match the feature you want explored. They guide the hunt — they are not a full automated test-pack run.</p>
             <p id="lib-empty" class="muted" hidden>No test cases yet — generate or upload some on Generate first.</p>
             <div class="tc-ms" id="hunt-tc-ms" hidden>
                 <button type="button" class="tc-ms-trigger" id="hunt-tc-ms-trigger"

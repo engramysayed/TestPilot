@@ -566,7 +566,7 @@
         </div>
         <div id="auto-framework-actions" class="actions hidden" style="margin: 0.5rem 0 1rem;">
             <button type="button" class="button danger" id="delete-framework-btn" disabled>Delete current framework</button>
-            <span class="muted">Removes live page objects and generated tests on disk. Version ZIPs and prove IR stay.</span>
+            <span class="muted">Removes live page objects and generated tests on disk. Version ZIPs and proven-case drafts stay.</span>
         </div>
         <div class="auto-layout">
             <div class="auto-tree">
@@ -602,9 +602,9 @@
         </div>
 
         <section class="panel">
-            <h2>Last Automate prove results</h2>
+            <h2>Last Automate prove results (step checks)</h2>
             <p class="panel-intro">
-                Pass / fail / partial from the <strong>last Automate run</strong> that wrote prove drafts under
+                Pass / fail / partial from the <strong>last Automate run</strong> that wrote proven-case drafts under
                 <code class="mono">ir/</code>. This is not the editable library (that lives under Test cases).
                 Deleting an Automate job or ZIP does <em>not</em> remove these drafts.
                 <span id="run-at-label"></span>
@@ -612,7 +612,7 @@
             <div class="actions lib-toolbar">
                 <button type="button" class="button ghost" id="ir-clear-btn" hidden>Clear leftover proven cases</button>
             </div>
-            <p id="empty" class="muted" hidden>Nothing stored — run Automate so proven cases appear here.</p>
+            <p id="empty" class="muted" hidden>Nothing stored yet — run Automate so proven cases appear here.</p>
             <p id="err" class="error" hidden></p>
             <div id="tc-list" class="tc-accordion"></div>
         </section>
@@ -689,7 +689,7 @@
                         <option>Preconditions</option>
                         <option>Priority</option>
                         <option>Tags</option>
-                        <option>VisualAssertion</option>
+                        <option>Visual check (VisualAssertion)</option>
                         <option>TestData</option>
                         <option>KeelPath</option>
                         <option>CallBefore</option>
@@ -747,7 +747,7 @@
                 <textarea id="lib-edit-expected" hidden></textarea>
                 <label>Priority <input type="text" id="lib-edit-priority"/></label>
                 <label>Tags <input type="text" id="lib-edit-tags"/></label>
-                <label>Visual assertion <input type="text" id="lib-edit-visual"/></label>
+                <label>Visual check <input type="text" id="lib-edit-visual"/></label>
                 <label>KeelPath
                     <select id="lib-edit-keel">
                         <option value="">(blank)</option>
@@ -857,7 +857,7 @@
 <div id="frameworkDeleteModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <div class="modal-card">
         <h3>Delete current framework?</h3>
-        <p class="muted">This removes the live <code>framework/</code> folder (pages and generated tests). Archived version ZIPs and prove IR are kept. Run Automate again to rebuild. This cannot be undone.</p>
+        <p class="muted">This removes the live <code>framework/</code> folder (pages and generated tests). Archived version ZIPs and proven-case drafts are kept. Run Automate again to rebuild. This cannot be undone.</p>
         <p id="framework-delete-err" class="error hidden"></p>
         <div class="modal-actions">
             <button type="button" class="button ghost" id="frameworkDeleteCancel">Cancel</button>
@@ -869,7 +869,7 @@
 <!-- Artifact delete modal -->
 <div id="artifactDeleteModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <div class="modal-card">
-        <h3>Delete artifact?</h3>
+        <h3>Delete file?</h3>
         <p class="muted" id="artifact-delete-body">This cannot be undone.</p>
         <p id="artifact-delete-err" class="error hidden"></p>
         <div class="modal-actions">
@@ -1997,7 +1997,7 @@
         try { data = await res.json(); } catch (e) { /* ignore */ }
         if (!res.ok) {
             err.hidden = false;
-            err.textContent = (data && data.message) || 'Failed to load artifacts';
+            err.textContent = (data && data.message) || 'Failed to load files';
             return;
         }
         viewingPackage = data.viewingPackage || null;

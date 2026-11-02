@@ -42,7 +42,7 @@
     var label = document.querySelector('[data-features-label]');
     if (label) label.hidden = !anyVisible;
     var path = location.pathname || '';
-    var featurePaths = { '/generate': 'feature.generate', '/record': 'feature.generate', '/execute': 'feature.execute', '/automate': 'feature.automate', '/bug-hunter': 'feature.hunt' };
+    var featurePaths = { '/generate': 'feature.generate', '/generate-from-knowledge': 'feature.generate', '/record': 'feature.generate', '/plain-cases': 'feature.execute', '/suites': 'feature.execute', '/execute': 'feature.execute', '/automate': 'feature.automate', '/bug-hunter': 'feature.hunt' };
     var need = featurePaths[path];
     if (need && (!approved || !hasPerm(perms, need))) {
       var main = document.querySelector('main.shell');

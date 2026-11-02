@@ -18,6 +18,9 @@
         <div class="actions">
             <a class="button ghost" th:href="@{/status(jobId=${jobId})}">Live status</a>
             <a class="button" th:href="@{/execute(jobId=${jobId}, tcId=${tcId})}">Open on Execute</a>
+            <a class="button ghost" id="visual-diffs-exec-link"
+               th:href="@{/execute(projectId=${projectId})}"
+               href="/execute#visual-diffs-panel">Screenshot diffs</a>
         </div>
     </div>
 
@@ -28,11 +31,15 @@
             </select>
         </label>
         <p id="tc-meta" class="muted"></p>
+        <p id="tc-flaky-row" class="tc-flaky-row" hidden>
+            <button type="button" class="button ghost flaky-chip" id="flaky-toggle" aria-pressed="false">Sometimes fails</button>
+            <span id="flaky-msg" class="muted"></span>
+        </p>
     </section>
 
     <section class="panel" id="ir-block" hidden>
-        <h2>Explicit assertion (IR)</h2>
-        <p class="panel-intro">Capture, compare, and signed-out metadata recorded during prove.</p>
+        <h2>Explicit check <span class="muted">(run details)</span></h2>
+        <p class="panel-intro">Capture, compare, and signed-out details recorded while proving the steps.</p>
         <dl class="status" id="ir-details"></dl>
     </section>
 
@@ -42,12 +49,30 @@
             <button type="button" class="button ghost evidence-tab" data-tab="capture">Capture / compare</button>
             <button type="button" class="button ghost evidence-tab" data-tab="signed-out">Signed-out</button>
             <button type="button" class="button ghost evidence-tab" data-tab="timeline">Full timeline</button>
+            <button type="button" class="button ghost evidence-tab" data-tab="failure-replay">What happened</button>
         </div>
         <div id="tab-failure" class="evidence-tab-panel"></div>
         <div id="tab-capture" class="evidence-tab-panel" hidden></div>
         <div id="tab-signed-out" class="evidence-tab-panel" hidden></div>
         <div id="tab-timeline" class="evidence-tab-panel" hidden></div>
+        <div id="tab-failure-replay" class="evidence-tab-panel" hidden>
+            <p class="panel-intro">Screen, network, and console events around the failure, in time order.</p>
+            <ol id="failure-replay-list" class="failure-replay-timeline"></ol>
+            <p id="failure-replay-empty" class="muted" hidden>No failure timeline events yet.</p>
+            <p id="failure-replay-waiting" class="muted" hidden>Waiting on failure timeline / fix-suggestion APIs.</p>
+            <p id="failure-replay-err" class="error" hidden></p>
+        </div>
         <p id="evidence-err" class="error" hidden></p>
+    </section>
+
+    <section class="panel" id="heal-proposals-panel">
+        <h2>Fix suggestions <span class="muted">(heal)</span></h2>
+        <p class="panel-intro">Review suggestions for how we find controls and how to fix broken steps. <strong>Accept</strong> updates existing generated Java only (does not silently rewrite a whole new page class).</p>
+        <div id="heal-proposals-list" class="heal-proposals-list"></div>
+        <p id="heal-proposals-empty" class="muted" hidden>No fix suggestions yet.</p>
+        <p id="heal-proposals-waiting" class="muted" hidden>Waiting on failure timeline / fix-suggestion APIs.</p>
+        <p id="heal-proposals-msg" class="muted" hidden></p>
+        <p id="heal-proposals-err" class="error" hidden></p>
     </section>
 
     <section class="panel" id="run-compare-panel">
@@ -63,10 +88,10 @@
         <pre id="compare-result" class="mono" hidden></pre>
         <p id="intermittency-verdict" class="muted">—</p>
         <p>
-            <label>Failure class
+            <label>Failure type
                 <select id="failure-class">
-                    <option value="ASSERTION">ASSERTION</option>
-                    <option value="LOCATOR">LOCATOR</option>
+                    <option value="ASSERTION">Check</option>
+                    <option value="LOCATOR">How we find it</option>
                     <option value="PROVIDER">PROVIDER</option>
                     <option value="INFRASTRUCTURE">INFRASTRUCTURE</option>
                 </select>
@@ -89,6 +114,114 @@
     </section>
 </main>
 </div>
+<style>
+/* Phase 2 failure-replay + heal (scoped) */
+.tc-flaky-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+.flaky-chip[aria-pressed="true"] {
+  background: rgba(14, 116, 144, 0.12);
+  border-color: #0e7490;
+  color: #0e7490;
+  font-weight: 600;
+}
+.failure-replay-timeline {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+.failure-replay-timeline > li {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(4.5rem, auto) 1fr;
+  gap: 0.5rem 0.75rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  align-items: start;
+}
+.failure-replay-t {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+.failure-replay-lane {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(14, 116, 144, 0.1);
+  color: #0e7490;
+  width: fit-content;
+}
+.failure-replay-lane.lane-network {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+}
+.failure-replay-lane.lane-console {
+  background: rgba(180, 83, 9, 0.12);
+  color: #b45309;
+}
+.failure-replay-body {
+  min-width: 0;
+}
+.failure-replay-body .muted {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+}
+.failure-replay-shot {
+  margin-top: 0.4rem;
+}
+.failure-replay-shot img {
+  max-width: min(100%, 420px);
+  border-radius: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+}
+.heal-proposals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+.heal-proposal-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.7);
+}
+.heal-proposal-main {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.heal-proposal-main .title {
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+.heal-proposal-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+.heal-proposal-actions .button.danger-ghost {
+  color: #b91c1c;
+  border-color: rgba(185, 28, 28, 0.35);
+}
+@media (max-width: 720px) {
+  .failure-replay-timeline > li {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+}
+</style>
 <script>
 (function () {
     const root = document.getElementById('evidence-root');
@@ -98,6 +231,8 @@
     const API_HEADERS = { 'X-Keel-Requested-With': 'Keel', 'Accept': 'application/json' };
     const tcSelect = document.getElementById('tc-select');
     const errEl = document.getElementById('evidence-err');
+    let currentTcId = '';
+    let currentFlaky = false;
 
     function escapeHtml(s) {
         return String(s == null ? '' : s)
@@ -154,7 +289,7 @@
         const dl = document.getElementById('ir-details');
         const rows = [];
         if (data.visualAssertStatus) {
-            rows.push(['Visual assert', data.visualAssertStatus]);
+            rows.push(['Visual check', data.visualAssertStatus]);
         }
         if (data.designCompareStatus) {
             rows.push(['Design compare', data.designCompareStatus]);
@@ -210,7 +345,7 @@
             captureHtml += '</div>';
         }
         if (!captureHtml) {
-            captureHtml = '<p class="muted">No capture or compare artifacts for this case.</p>';
+            captureHtml = '<p class="muted">No capture or compare files for this case.</p>';
         }
         capture.innerHTML = captureHtml;
 
@@ -218,14 +353,611 @@
         if (signedSteps.length) {
             signedOut.innerHTML = renderTimeline(signedSteps);
         } else {
-            signedOut.innerHTML = '<p class="muted">No signed-out assertion steps recorded for this case.</p>';
+            signedOut.innerHTML = '<p class="muted">No signed-out check steps recorded for this case.</p>';
         }
 
         timeline.innerHTML = renderTimeline(data.timeline || []);
     }
 
+    function failuresApiBase(tcId) {
+        return '/api/execute-runs/' + encodeURIComponent(jobId)
+            + '/failures/' + encodeURIComponent(tcId);
+    }
+
+    function projectHealBase() {
+        return '/api/projects/' + encodeURIComponent(projectId) + '/heal-proposals';
+    }
+
+    function projectFlakyBase() {
+        return '/api/projects/' + encodeURIComponent(projectId) + '/flaky-tags';
+    }
+
+    function sortReplayEvents(merged) {
+        merged.sort(function (a, b) {
+            const ta = a.t != null ? a.t : (a.ts != null ? a.ts : (a.ms != null ? a.ms : (a.stepIndex != null ? a.stepIndex : 0)));
+            const tb = b.t != null ? b.t : (b.ts != null ? b.ts : (b.ms != null ? b.ms : (b.stepIndex != null ? b.stepIndex : 0)));
+            return Number(ta) - Number(tb);
+        });
+        return merged;
+    }
+
+    function normalizeReplayEvents(data) {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        const direct = data.events || data.timeline || data.items;
+        if (Array.isArray(direct)) return direct;
+        const merged = [];
+        function pushLane(arr, lane) {
+            (arr || []).forEach(function (ev) {
+                const copy = Object.assign({}, ev);
+                if (!copy.lane) copy.lane = lane;
+                merged.push(copy);
+            });
+        }
+        if (data.screen || data.network || data.console) {
+            pushLane(data.screen, 'screen');
+            pushLane(data.network, 'network');
+            pushLane(data.console, 'console');
+        }
+        return sortReplayEvents(merged);
+    }
+
+    function extractFailureSteps(data) {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        const arr = data.failures || data.steps || data.items || data.results;
+        if (Array.isArray(arr)) return arr;
+        if (data.stepIndex != null || data.hasScreen != null || data.hasNetwork != null || data.hasConsole != null) {
+            return [data];
+        }
+        return [];
+    }
+
+    function networkEntriesFromBlob(blob) {
+        if (!blob) return [];
+        if (Array.isArray(blob)) return blob;
+        return blob.entries || blob.events || blob.items || blob.log || [];
+    }
+
+    function consoleEntriesFromBlob(blob) {
+        if (!blob) return [];
+        if (Array.isArray(blob)) return blob;
+        return blob.messages || blob.events || blob.items || blob.log || [];
+    }
+
+    async function fetchJsonFlexible(url) {
+        const res = await fetch(url, { credentials: 'same-origin', headers: API_HEADERS });
+        if (res.status === 404 || res.status === 501) {
+            return { stub: true, status: res.status };
+        }
+        if (!res.ok) {
+            return { error: true, status: res.status };
+        }
+        const data = await res.json().catch(function () { return {}; });
+        return { data: data, status: res.status };
+    }
+
+    async function buildReplayFromFailureSteps(tcId, steps) {
+        const events = [];
+        const base = failuresApiBase(tcId);
+        for (let i = 0; i < steps.length; i++) {
+            const step = steps[i] || {};
+            const stepIndex = step.stepIndex != null ? step.stepIndex : (step.index != null ? step.index : i);
+            const tLabel = step.failedAt || step.t || ('step ' + stepIndex);
+            const reason = step.reason || step.message || step.failureReason || '';
+            const hasScreen = step.hasScreen === true || !!step.screen || !!step.screenshotUrl || !!step.screenUrl;
+            const hasNetwork = step.hasNetwork === true || !!step.network;
+            const hasConsole = step.hasConsole === true || !!step.console;
+            const screenPath = base + '/' + encodeURIComponent(stepIndex) + '/screen';
+            const networkPath = base + '/' + encodeURIComponent(stepIndex) + '/network';
+            const consolePath = base + '/' + encodeURIComponent(stepIndex) + '/console';
+
+            if (hasScreen || step.hasScreen !== false) {
+                // Prefer explicit hasScreen; if flags absent but meta-only, still try screen URL when Backend said hasScreen
+                if (step.hasScreen === true || step.screenshotUrl || step.screenUrl || step.screen) {
+                    events.push({
+                        t: tLabel,
+                        lane: 'screen',
+                        label: reason || ('Failure screen @ step ' + stepIndex),
+                        message: reason,
+                        stepIndex: stepIndex,
+                        screenshotUrl: step.screenshotUrl || step.screenUrl || screenPath
+                    });
+                } else if (step.hasScreen == null && step.hasNetwork == null && step.hasConsole == null
+                    && !step.network && !step.console && !step.events) {
+                    // Meta-only without flags: offer screen URL as best-effort (img onerror hides)
+                    events.push({
+                        t: tLabel,
+                        lane: 'screen',
+                        label: reason || ('Failure @ step ' + stepIndex),
+                        message: reason,
+                        stepIndex: stepIndex,
+                        screenshotUrl: screenPath
+                    });
+                }
+            }
+
+            let netBlob = step.network;
+            if (!netBlob && (hasNetwork || step.hasNetwork === true)) {
+                const net = await fetchJsonFlexible(networkPath);
+                if (net.stub) {
+                    // leave empty; overall stub handled by caller if primary 404
+                } else if (!net.error) {
+                    netBlob = net.data;
+                }
+            }
+            networkEntriesFromBlob(netBlob).forEach(function (entry, idx) {
+                events.push({
+                    t: entry.t || entry.startedDateTime || entry.timestamp || tLabel,
+                    ts: entry.ts,
+                    ms: entry.time != null ? entry.time : entry.ms,
+                    lane: 'network',
+                    method: entry.method || (entry.request && entry.request.method) || 'GET',
+                    url: entry.url || (entry.request && entry.request.url) || entry.name || '',
+                    status: entry.status != null ? entry.status
+                        : (entry.response && entry.response.status),
+                    message: entry.message || '',
+                    stepIndex: stepIndex
+                });
+            });
+
+            let conBlob = step.console;
+            if (!conBlob && (hasConsole || step.hasConsole === true)) {
+                const con = await fetchJsonFlexible(consolePath);
+                if (!con.stub && !con.error) conBlob = con.data;
+            }
+            consoleEntriesFromBlob(conBlob).forEach(function (entry) {
+                events.push({
+                    t: entry.t || entry.timestamp || tLabel,
+                    ts: entry.ts,
+                    lane: 'console',
+                    level: entry.level || entry.type || 'log',
+                    message: entry.message || entry.text || entry.label || '',
+                    label: entry.label || '',
+                    stepIndex: stepIndex
+                });
+            });
+
+            // Nested events already shaped
+            if (Array.isArray(step.events)) {
+                step.events.forEach(function (ev) {
+                    const copy = Object.assign({ stepIndex: stepIndex }, ev);
+                    if (!copy.lane) copy.lane = ev.type || 'screen';
+                    if (copy.lane === 'screen' && !copy.screenshotUrl && !copy.screenUrl) {
+                        copy.screenshotUrl = screenPath;
+                    }
+                    events.push(copy);
+                });
+            }
+        }
+        return sortReplayEvents(events);
+    }
+
+    function formatReplayTime(ev) {
+        if (ev.t != null) return String(ev.t);
+        if (ev.ts != null) return String(ev.ts);
+        if (ev.ms != null) return String(ev.ms) + ' ms';
+        if (ev.stepIndex != null) return 'step ' + ev.stepIndex;
+        return '—';
+    }
+
+    function renderFailureReplayEvents(events) {
+        const list = document.getElementById('failure-replay-list');
+        const empty = document.getElementById('failure-replay-empty');
+        const waiting = document.getElementById('failure-replay-waiting');
+        const err = document.getElementById('failure-replay-err');
+        if (waiting) waiting.hidden = true;
+        if (err) err.hidden = true;
+        if (!list) return;
+        list.innerHTML = '';
+        if (!events || !events.length) {
+            if (empty) empty.hidden = false;
+            return;
+        }
+        if (empty) empty.hidden = true;
+        events.forEach(function (ev) {
+            const lane = String(ev.lane || ev.type || 'screen').toLowerCase();
+            const li = document.createElement('li');
+            let body = '';
+            if (lane === 'network') {
+                body += '<div><span class="mono">' + escapeHtml(ev.method || 'GET') + '</span> '
+                    + escapeHtml(ev.url || ev.label || '') + '</div>';
+                const bits = [];
+                if (ev.status != null) bits.push('status ' + ev.status);
+                if (ev.ms != null) bits.push(ev.ms + ' ms');
+                if (ev.message) bits.push(ev.message);
+                if (bits.length) body += '<p class="muted">' + escapeHtml(bits.join(' · ')) + '</p>';
+            } else if (lane === 'console') {
+                body += '<div><strong>' + escapeHtml(ev.level || 'log') + '</strong> '
+                    + escapeHtml(ev.message || ev.label || '') + '</div>';
+            } else {
+                body += '<div>' + escapeHtml(ev.label || ev.message || 'Screenshot') + '</div>';
+                const screenSrc = ev.screenshotUrl || ev.screenUrl;
+                if (screenSrc) {
+                    body += '<div class="failure-replay-shot"><img src="' + escapeHtml(screenSrc)
+                        + '" alt="Failure timeline screenshot" loading="lazy"/></div>';
+                } else if (ev.message) {
+                    body += '<p class="muted">' + escapeHtml(ev.message) + '</p>';
+                }
+            }
+            li.innerHTML = '<span class="failure-replay-t">' + escapeHtml(formatReplayTime(ev)) + '</span>'
+                + '<span class="failure-replay-lane lane-' + escapeHtml(lane) + '">' + escapeHtml(lane) + '</span>'
+                + '<div class="failure-replay-body">' + body + '</div>';
+            list.appendChild(li);
+        });
+    }
+
+    function resetFailureReplayUi(mode) {
+        const list = document.getElementById('failure-replay-list');
+        const empty = document.getElementById('failure-replay-empty');
+        const waiting = document.getElementById('failure-replay-waiting');
+        const err = document.getElementById('failure-replay-err');
+        if (list) list.innerHTML = '';
+        if (empty) empty.hidden = true;
+        if (waiting) waiting.hidden = mode !== 'waiting';
+        if (err) {
+            err.hidden = mode !== 'error';
+            if (mode !== 'error') err.textContent = '';
+        }
+    }
+
+    async function loadFailureReplay(tcId) {
+        resetFailureReplayUi(null);
+        if (!jobId || !tcId) {
+            resetFailureReplayUi('waiting');
+            return;
+        }
+        try {
+            const primary = await fetchJsonFlexible(failuresApiBase(tcId));
+            if (primary.stub) {
+                resetFailureReplayUi('waiting');
+                return;
+            }
+            if (primary.error) {
+                const err = document.getElementById('failure-replay-err');
+                if (err) {
+                    err.hidden = false;
+                    err.textContent = 'Could not load failure timeline (' + primary.status + ').';
+                }
+                return;
+            }
+            const data = primary.data || {};
+            let events = normalizeReplayEvents(data);
+            if (!events.length) {
+                const steps = extractFailureSteps(data);
+                if (steps.length) {
+                    events = await buildReplayFromFailureSteps(tcId, steps);
+                }
+            } else {
+                // Ensure screen lanes without URL get contract /screen path when stepIndex known
+                events = events.map(function (ev) {
+                    const copy = Object.assign({}, ev);
+                    if ((String(copy.lane || '').toLowerCase() === 'screen' || copy.screenshotUrl || copy.screenUrl)
+                        && !copy.screenshotUrl && !copy.screenUrl && copy.stepIndex != null) {
+                        copy.screenshotUrl = failuresApiBase(tcId) + '/'
+                            + encodeURIComponent(copy.stepIndex) + '/screen';
+                        if (!copy.lane) copy.lane = 'screen';
+                    }
+                    return copy;
+                });
+            }
+            renderFailureReplayEvents(events);
+        } catch (e) {
+            resetFailureReplayUi('waiting');
+        }
+    }
+
+    function normalizeProposals(data) {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        return data.proposals || data.items || data.results || [];
+    }
+
+    function proposalSummary(p) {
+        return p.summary || p.reason || p.label
+            || ((p.locatorBefore && p.locatorAfter)
+                ? ((p.locatorBefore.strategy || '') + '=' + (p.locatorBefore.value || '')
+                    + ' → ' + (p.locatorAfter.strategy || '') + '=' + (p.locatorAfter.value || ''))
+                : (p.proposalId || p.id || 'Proposal'));
+    }
+
+    function proposalTarget(p) {
+        if (p.target) return String(p.target);
+        const parts = [];
+        if (p.pageClass) parts.push(p.pageClass);
+        if (p.method || p.targetMethod) parts.push(p.method || p.targetMethod);
+        if (p.tier) parts.push('tier ' + p.tier);
+        if (p.stepIndex != null) parts.push('step ' + p.stepIndex);
+        if (p.status && p.status !== 'pending') parts.push(p.status);
+        return parts.join(' · ');
+    }
+
+    function resetHealUi(mode, waitingText) {
+        const list = document.getElementById('heal-proposals-list');
+        const empty = document.getElementById('heal-proposals-empty');
+        const waiting = document.getElementById('heal-proposals-waiting');
+        const msg = document.getElementById('heal-proposals-msg');
+        const err = document.getElementById('heal-proposals-err');
+        if (list && mode !== 'keep-msg') list.innerHTML = '';
+        if (empty) empty.hidden = true;
+        if (waiting) {
+            waiting.hidden = mode !== 'waiting';
+            if (mode === 'waiting' && waitingText) waiting.textContent = waitingText;
+            else if (mode === 'waiting') waiting.textContent = 'Waiting on failure timeline / fix-suggestion APIs.';
+        }
+        if (msg && mode !== 'keep-msg') msg.hidden = true;
+        if (err) {
+            err.hidden = mode !== 'error';
+            if (mode !== 'error') err.textContent = '';
+        }
+    }
+
+    function renderHealProposals(proposals) {
+        const list = document.getElementById('heal-proposals-list');
+        const empty = document.getElementById('heal-proposals-empty');
+        const waiting = document.getElementById('heal-proposals-waiting');
+        if (waiting) waiting.hidden = true;
+        if (!list) return;
+        list.innerHTML = '';
+        if (!proposals || !proposals.length) {
+            if (empty) empty.hidden = false;
+            return;
+        }
+        if (empty) empty.hidden = true;
+        proposals.forEach(function (p) {
+            const id = p.proposalId || p.id;
+            const row = document.createElement('div');
+            row.className = 'heal-proposal-row';
+            row.setAttribute('data-proposal-id', id || '');
+            let detail = '';
+            if (p.detail) detail += '<p class="muted">' + escapeHtml(p.detail) + '</p>';
+            else if (p.reason && p.reason !== proposalSummary(p)) {
+                detail += '<p class="muted">' + escapeHtml(p.reason) + '</p>';
+            }
+            const target = proposalTarget(p);
+            if (target) detail += '<p class="muted mono">' + escapeHtml(target) + '</p>';
+            if (p.confidence != null) {
+                const conf = (typeof p.confidence === 'number' && p.confidence <= 1)
+                    ? Math.round(p.confidence * 100) + '%'
+                    : String(p.confidence);
+                detail += '<p class="muted">Confidence: ' + escapeHtml(conf) + '</p>';
+            }
+            row.innerHTML = '<div class="heal-proposal-main"><p class="title">'
+                + escapeHtml(proposalSummary(p)) + '</p>' + detail + '</div>'
+                + '<div class="heal-proposal-actions">'
+                + '<button type="button" class="button heal-accept-btn"'
+                + (id ? '' : ' disabled') + '>Accept fix</button>'
+                + '<button type="button" class="button ghost danger-ghost heal-reject-btn"'
+                + (id ? '' : ' disabled') + '>Reject</button></div>';
+            const acceptBtn = row.querySelector('.heal-accept-btn');
+            const rejectBtn = row.querySelector('.heal-reject-btn');
+            if (acceptBtn && id) {
+                acceptBtn.addEventListener('click', function () { decideHeal(id, 'accept'); });
+            }
+            if (rejectBtn && id) {
+                rejectBtn.addEventListener('click', function () { decideHeal(id, 'reject'); });
+            }
+            list.appendChild(row);
+        });
+    }
+
+    async function loadHealProposals(tcId) {
+        resetHealUi(null);
+        if (!projectId) {
+            resetHealUi('waiting', 'Select a project / open Evidence from a run with project');
+            return;
+        }
+        if (!jobId || !tcId) {
+            resetHealUi('waiting');
+            return;
+        }
+        try {
+            const res = await fetch(projectHealBase() + '?status=pending', {
+                credentials: 'same-origin', headers: API_HEADERS
+            });
+            if (res.status === 404 || res.status === 501) {
+                resetHealUi('waiting');
+                return;
+            }
+            if (!res.ok) {
+                const err = document.getElementById('heal-proposals-err');
+                if (err) {
+                    err.hidden = false;
+                    err.textContent = 'Could not load fix suggestions (' + res.status + ').';
+                }
+                return;
+            }
+            const data = await res.json().catch(function () { return {}; });
+            let proposals = normalizeProposals(data);
+            proposals = proposals.filter(function (p) {
+                const pJob = p.jobId != null ? String(p.jobId) : '';
+                const pTc = p.tcId != null ? String(p.tcId) : '';
+                if (pJob && pJob !== String(jobId)) return false;
+                if (pTc && pTc !== String(tcId)) return false;
+                const st = String(p.status || 'pending').toLowerCase();
+                return !st || st === 'pending';
+            });
+            renderHealProposals(proposals);
+        } catch (e) {
+            resetHealUi('waiting');
+        }
+    }
+
+    async function decideHeal(proposalId, action) {
+        const msg = document.getElementById('heal-proposals-msg');
+        const err = document.getElementById('heal-proposals-err');
+        if (msg) msg.hidden = true;
+        if (err) err.hidden = true;
+        if (!projectId) {
+            if (err) {
+                err.hidden = false;
+                err.textContent = 'Select a project / open Evidence from a run with project';
+            }
+            return;
+        }
+        if (!proposalId) return;
+        const path = projectHealBase() + '/' + encodeURIComponent(proposalId) + '/' + action;
+        try {
+            const res = await fetch(path, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: action === 'reject' ? JSON.stringify({ reason: '' }) : JSON.stringify({})
+            });
+            const data = await res.json().catch(function () { return {}; });
+            if (res.status === 404 || res.status === 501) {
+                if (err) {
+                    err.hidden = false;
+                    err.textContent = 'Waiting on failure timeline / fix-suggestion APIs.';
+                }
+                return;
+            }
+            if (!res.ok) {
+                if (err) {
+                    err.hidden = false;
+                    err.textContent = data.message || ('Fix suggestion ' + action + ' failed (' + res.status + ').');
+                }
+                return;
+            }
+            if (msg) {
+                msg.hidden = false;
+                msg.textContent = action === 'accept'
+                    ? 'Accepted — applied to existing generated Java only (fix broken steps).'
+                    : 'Rejected fix suggestion.';
+            }
+            await loadHealProposals(currentTcId);
+        } catch (e) {
+            if (err) {
+                err.hidden = false;
+                err.textContent = 'Waiting on failure timeline / fix-suggestion APIs.';
+            }
+        }
+    }
+
+    let currentFlakyTagId = null;
+
+    function syncFlakyChip(flaky, tagId) {
+        currentFlaky = !!flaky;
+        currentFlakyTagId = tagId || null;
+        const row = document.getElementById('tc-flaky-row');
+        const btn = document.getElementById('flaky-toggle');
+        const msg = document.getElementById('flaky-msg');
+        if (row) row.hidden = !currentTcId;
+        if (btn) {
+            btn.setAttribute('aria-pressed', currentFlaky ? 'true' : 'false');
+            btn.textContent = currentFlaky ? 'Sometimes fails' : 'Mark as sometimes fails';
+            btn.disabled = !projectId;
+        }
+        if (msg) {
+            if (!projectId) msg.textContent = 'Select a project / open Evidence from a run with project';
+            else msg.textContent = currentFlaky ? 'Tagged as sometimes fails.' : '';
+        }
+    }
+
+    function normalizeFlakyTags(data) {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        return data.tags || data.items || data.results || data.flakyTags || [];
+    }
+
+    function isActiveFlakyTag(tag) {
+        if (!tag) return false;
+        if (tag.clearedAt) return false;
+        const t = String(tag.tag || 'flaky').toLowerCase();
+        return !t || t === 'flaky';
+    }
+
+    async function loadFlakyForTc(tcId) {
+        if (!projectId || !tcId) {
+            syncFlakyChip(false, null);
+            return;
+        }
+        try {
+            const res = await fetch(projectFlakyBase(), {
+                credentials: 'same-origin', headers: API_HEADERS
+            });
+            if (res.status === 404 || res.status === 501) {
+                const msg = document.getElementById('flaky-msg');
+                syncFlakyChip(false, null);
+                if (msg) msg.textContent = 'Waiting on Backend sometimes-fails tagging API.';
+                return;
+            }
+            if (!res.ok) {
+                syncFlakyChip(false, null);
+                return;
+            }
+            const data = await res.json().catch(function () { return []; });
+            const tags = normalizeFlakyTags(data).filter(function (tag) {
+                return String(tag.tcId || '') === String(tcId) && isActiveFlakyTag(tag);
+            });
+            const hit = tags[0];
+            syncFlakyChip(!!hit, hit ? (hit.tagId || hit.id) : null);
+        } catch (e) {
+            const msg = document.getElementById('flaky-msg');
+            syncFlakyChip(false, null);
+            if (msg) msg.textContent = 'Waiting on Backend sometimes-fails tagging API.';
+        }
+    }
+
+    async function setFlaky(next) {
+        const msg = document.getElementById('flaky-msg');
+        if (!currentTcId) return;
+        if (!projectId) {
+            if (msg) msg.textContent = 'Select a project / open Evidence from a run with project';
+            return;
+        }
+        try {
+            if (next) {
+                const res = await fetch(projectFlakyBase(), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                    body: JSON.stringify({
+                        tcId: currentTcId,
+                        sourceJobId: jobId || null,
+                        signal: 'manual',
+                        reason: 'Marked flaky from Evidence'
+                    })
+                });
+                if (res.status === 404 || res.status === 501) {
+                    if (msg) msg.textContent = 'Waiting on Backend sometimes-fails tagging API.';
+                    return;
+                }
+                if (!res.ok) {
+                    if (msg) msg.textContent = 'Could not update sometimes-fails tag (' + res.status + ').';
+                    return;
+                }
+            } else {
+                if (!currentFlakyTagId) {
+                    await loadFlakyForTc(currentTcId);
+                    if (!currentFlakyTagId) {
+                        syncFlakyChip(false, null);
+                        return;
+                    }
+                }
+                const res = await fetch(projectFlakyBase() + '/' + encodeURIComponent(currentFlakyTagId), {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: API_HEADERS
+                });
+                if (res.status === 404 || res.status === 501) {
+                    if (msg) msg.textContent = 'Waiting on Backend sometimes-fails tagging API.';
+                    return;
+                }
+                if (!res.ok) {
+                    if (msg) msg.textContent = 'Could not clear sometimes-fails tag (' + res.status + ').';
+                    return;
+                }
+            }
+            await loadFlakyForTc(currentTcId);
+        } catch (e) {
+            if (msg) msg.textContent = 'Waiting on Backend sometimes-fails tagging API.';
+        }
+    }
+
     async function loadTcDetail(tcId) {
         errEl.hidden = true;
+        currentTcId = tcId || '';
         const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId)
             + '/tcs/' + encodeURIComponent(tcId), {
             credentials: 'same-origin', headers: API_HEADERS
@@ -234,12 +966,18 @@
         if (!res.ok) {
             errEl.hidden = false;
             errEl.textContent = data.message || 'Could not load case evidence';
+            resetFailureReplayUi('waiting');
+            resetHealUi('waiting');
+            syncFlakyChip(false, null);
             return;
         }
         document.getElementById('tc-meta').textContent = (data.title || tcId)
             + ' · ' + (data.qaStatus || '—') + ' · run at ' + (data.runAtLabel || '—');
         renderIrBlock(data);
         renderTabs(data, jobId, tcId);
+        loadFailureReplay(tcId);
+        loadHealProposals(tcId);
+        loadFlakyForTc(tcId);
         const url = new URL(window.location.href);
         url.searchParams.set('tcId', tcId);
         history.replaceState(null, '', url.pathname + url.search);
@@ -268,6 +1006,10 @@
 
     tcSelect.addEventListener('change', () => {
         if (tcSelect.value) loadTcDetail(tcSelect.value);
+    });
+
+    document.getElementById('flaky-toggle')?.addEventListener('click', () => {
+        setFlaky(!currentFlaky);
     });
 
     document.querySelectorAll('.evidence-tab').forEach(btn => {
@@ -316,7 +1058,7 @@
                 sel.appendChild(opt);
             });
             document.getElementById('intermittency-verdict').textContent =
-                'Intermittency: ' + (inter.verdict || '—')
+                'Stability: ' + (inter.verdict || '—')
                 + ' (sample ' + (inter.sampleSize || 0) + ', min ' + (inter.minSample || 3) + ')';
         } catch (e) {
             triageLoaded = false;
@@ -385,6 +1127,11 @@
         msg.textContent = 'Saved ' + data.failureClass
             + (data.failureClassUserCorrected ? ' (corrected from ' + data.failureClassSuggested + ')' : '');
     });
+
+    const vdLink = document.getElementById('visual-diffs-exec-link');
+    if (vdLink && projectId) {
+        vdLink.href = '/execute?projectId=' + encodeURIComponent(projectId) + '#visual-diffs-panel';
+    }
 
     loadTcList();
     loadTriage();

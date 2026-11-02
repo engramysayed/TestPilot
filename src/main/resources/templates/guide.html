@@ -13,15 +13,16 @@
             <p class="eyebrow">Help</p>
             <h1>Guide</h1>
             <p class="lede">
-                Everything you need to use Keel without a walkthrough — Generate, Record, Run tests, Build code,
-                Bug Hunter, credits, alerts, roles, mobile, quality gate, and how to author test cases.
+                How to use Keel day to day — write cases, generate from knowledge, run tests, review evidence,
+                compare screens, schedule suites, build code packages, hunt bugs, and manage credits.
+                Owner sets credit prices on Admin → Prices.
             </p>
         </div>
         <div class="actions guide-hero-actions">
             <a class="button" href="/projects">Add test cases to a project</a>
             <a class="button ghost" href="#generate">Start with Generate</a>
             <a class="button ghost" href="#record">Record</a>
-            <a class="button ghost" href="#tc-authoring">TC authoring</a>
+            <a class="button ghost" href="#tc-authoring">Case authoring</a>
         </div>
     </header>
 
@@ -30,9 +31,14 @@
             <p class="guide-toc-title">On this page</p>
             <a href="#overview">Overview</a>
             <a href="#generate">Generate</a>
+            <a href="#generate-from-knowledge">Generate from knowledge</a>
+            <a href="#plain-cases">Plain-English cases</a>
             <a href="#record">Record</a>
             <a href="#quality-gate">Quality gate</a>
             <a href="#execute">Execute</a>
+            <a href="#evidence">Evidence</a>
+            <a href="#visual-diffs">Visual diffs</a>
+            <a href="#suites">Suites</a>
             <a href="#automate">Automate</a>
             <a href="#packages">Packages</a>
             <a href="#hunt">Bug Hunt</a>
@@ -40,7 +46,7 @@
             <a href="#roles">Roles</a>
             <a href="#account">Account</a>
             <a href="#mobile">Mobile</a>
-            <a href="#tc-authoring">TC authoring</a>
+            <a href="#tc-authoring">Case authoring</a>
             <a href="#format">·· Excel format</a>
             <a href="#login">·· Login</a>
             <a href="#steps">·· Steps</a>
@@ -60,24 +66,29 @@
                     <span class="guide-num">00</span>
                     <div>
                         <h2>Overview</h2>
-                        <p class="panel-intro">Keel turns stories and spreadsheets into live browser evidence and downloadable automation code.</p>
+                        <p class="panel-intro">Keel turns stories, knowledge packs, and spreadsheets into live browser evidence, visual proofs, scheduled suites, and downloadable automation code.</p>
                     </div>
                 </header>
                 <div class="product-guide-cards">
                     <a class="product-guide-card" href="#generate"><strong>Write test cases</strong><span>Stories → quality gate → import</span></a>
-                    <a class="product-guide-card" href="#record"><strong>Record and automate</strong><span>Click in Chrome → save the test → build the code</span></a>
+                    <a class="product-guide-card" href="#generate-from-knowledge"><strong>From knowledge</strong><span>Packs → draft cases</span></a>
+                    <a class="product-guide-card" href="#plain-cases"><strong>Plain-English cases</strong><span>Everyday wording → library</span></a>
+                    <a class="product-guide-card" href="#record"><strong>Record and automate</strong><span>Click in Chrome → save → build</span></a>
                     <a class="product-guide-card" href="#execute"><strong>Run tests</strong><span>Live browser + screenshots</span></a>
-                    <a class="product-guide-card" href="#automate"><strong>Build code</strong><span>Workbook → framework ZIP</span></a>
+                    <a class="product-guide-card" href="#evidence"><strong>Evidence</strong><span>Heal Accept/Reject + flaky tags</span></a>
+                    <a class="product-guide-card" href="#visual-diffs"><strong>Visual diffs</strong><span>Prove / compare / approve</span></a>
+                    <a class="product-guide-card" href="#suites"><strong>Suites</strong><span>Tags, schedules, monitor</span></a>
+                    <a class="product-guide-card" href="#automate"><strong>Build code</strong><span>Workbook → stronger framework ZIP</span></a>
                     <a class="product-guide-card" href="#hunt"><strong>Bug Hunter</strong><span>Explore — never auto-merges</span></a>
                 </div>
                 <div class="guide-callouts">
                     <div class="callout ok">
                         <strong>Prerequisite</strong>
-                        <p>Create a <a href="/projects">project</a>, set the website URL under Settings, add a login account when cases need sign-in, and (optional) preferred locator attributes such as <code>data-axis-test-id</code>. Generate, Record, Execute, Automate, and Bug Hunter are in the sidebar.</p>
+                        <p>Create a <a href="/projects">project</a>, set the website URL under Settings, add a login account when cases need sign-in, and (optional) preferred how-we-find-it attributes (locators) such as <code>data-axis-test-id</code>. Features live in the sidebar: Generate, From knowledge, Plain cases, Record, Suites, Execute, Automate, Bug Hunter, and more.</p>
                     </div>
                     <div class="callout warn">
                         <strong>Credits</strong>
-                        <p>Jobs may debit credits when credits are enabled. Ask an admin to grant balance after approval — there is no free trial.</p>
+                        <p>Jobs debit <strong>credits</strong> (not dollars). Open <a href="/pricing">Pricing</a> for Credits each. The account Owner edits those unit costs on Admin → Prices and grants balance after approval — there is no free trial.</p>
                     </div>
                 </div>
             </section>
@@ -114,6 +125,52 @@
                     <div class="callout ok">
                         <strong>Tip</strong>
                         <p>You can also paste CSV/JSON from an external AI under Import into project, or upload a spreadsheet on the project’s Test cases tab.</p>
+                    </div>
+                    <div class="callout warn">
+                        <strong>Credits</strong>
+                        <p>Classic Generate uses the <strong>Generate</strong> credit price (one writing job). See <a href="/pricing">Pricing</a>.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="generate-from-knowledge" data-guide-section="generate-from-knowledge">
+                <header class="guide-section-head">
+                    <span class="guide-num">01b</span>
+                    <div>
+                        <h2>Generate from knowledge</h2>
+                        <p class="panel-intro">On <a href="/generate-from-knowledge">From knowledge</a>, you pick knowledge packs on the project and Keel drafts cases from that material. This is separate from classic <a href="#generate">Generate</a> (stories and free text).</p>
+                    </div>
+                </header>
+                <ol class="guide-howto">
+                    <li>Open From knowledge and choose your project.</li>
+                    <li>Select one or more knowledge packs, set a batch size, then start the run.</li>
+                    <li>Review the drafted cases, then import into the library when you are ready.</li>
+                </ol>
+                <div class="guide-callouts">
+                    <div class="callout ok">
+                        <strong>Credits</strong>
+                        <p>Usually billed under <strong>Generate</strong> credits (same writing family). If Admin → Prices shows a separate GFK row, that row is Owner-editable on Admin → Prices like other credit services.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="plain-cases" data-guide-section="plain-cases">
+                <header class="guide-section-head">
+                    <span class="guide-num">01c</span>
+                    <div>
+                        <h2>Plain-English cases</h2>
+                        <p class="panel-intro">On <a href="/plain-cases">Plain cases</a>, write steps in everyday English. Keel helps turn them into library cases you can run and automate.</p>
+                    </div>
+                </header>
+                <ol class="guide-howto">
+                    <li>Open Plain cases, pick the project, and describe what the visitor does.</li>
+                    <li>Review the proposed cases, then save them into the project library.</li>
+                    <li>Run them from <a href="#execute">Execute</a> or fold them into a <a href="#suites">suite</a>.</li>
+                </ol>
+                <div class="guide-callouts">
+                    <div class="callout ok">
+                        <strong>Credits</strong>
+                        <p>Writing stays under <strong>Generate</strong> credits when billed as a writing job. Running those cases later uses <strong>Execute</strong> credits.</p>
                     </div>
                 </div>
             </section>
@@ -220,7 +277,7 @@
                     <article class="decision-card accent">
                         <span class="decision-label">Review</span>
                         <h3>Results &amp; evidence</h3>
-                        <p>Pass/fail per case. Open Evidence for step screenshots and verdicts.</p>
+                        <p>Pass/fail per case. Open Evidence for step screenshots and results.</p>
                     </article>
                 </div>
                 <ol class="guide-howto">
@@ -228,12 +285,80 @@
                     <li>Optional: check <strong>Review cases before run</strong> (Cursor or Keel). More than 5 selected cases split into batches (Owner sets the size on Admin → LLM &amp; API keys; default 50). Inspect the combined proposed cases after the last batch. Filler words such as <code>list</code>, <code>area</code>, and <code>visible</code> stay outside quotes — leftover Expected becomes <code>'Upload Transactions'</code>, not <code>'Upload Transactions list area'</code>. The live heading (for example <code>'Upload Transactions List'</code>) is applied later during the run when that heading is unique on screen.</li>
                     <li><strong>Accept &amp; run</strong> saves those cases into the project library, then starts the run. Uncheck review to run the library as-is. Review is not charged; the run price still applies when the run starts.</li>
                     <li>Quoted clicks use on-screen names. When a click lands on a menu row, Keel uses an inner preferred hook from project Settings if that hook is unique in the page. If the row is unique but the hook was cloned elsewhere (open submenu), it still clicks that inner hook under the row. Otherwise it keeps the row xpath.</li>
-                    <li>Excel verbs Keel does not already treat as click / type / assert are skipped unless the Owner adds them on Admin → LLM &amp; API keys (Authoring verbs). Built-in words stay read-only. Default: <code>observe</code> is treated as assert.</li>
+                    <li>Excel verbs Keel does not already treat as click / type / check are skipped unless the Owner adds them on Admin → LLM &amp; API keys (Authoring verbs). Built-in words stay read-only. Default: <code>observe</code> is treated as assert.</li>
                 </ol>
                 <div class="guide-callouts">
                     <div class="callout warn">
                         <strong>Prerequisite</strong>
                         <p>For web runs, the target site must be reachable from the Keel runner. For mobile, see <a href="#mobile">Mobile</a> (Appium + device).</p>
+                    </div>
+                    <div class="callout ok">
+                        <strong>Credits</strong>
+                        <p>Execute charges <strong>Execute</strong> credits once per test case in the run. Review-before-run is not charged. Heal Accept/Reject and flaky tags live on <a href="#evidence">Evidence</a> after the run.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="evidence" data-guide-section="evidence">
+                <header class="guide-section-head">
+                    <span class="guide-num">04b</span>
+                    <div>
+                        <h2>Evidence</h2>
+                        <p class="panel-intro">After a run, open Evidence from <a href="/execute">Run tests</a>, <a href="/runs">Run history</a>, or the Evidence page. You see step screenshots, pass/fail, and heal suggestions.</p>
+                    </div>
+                </header>
+                <ul class="guide-points">
+                    <li><strong>Heal Accept / Reject</strong> — when Keel finds a new way to reach a control, Accept keeps that fix for later runs; Reject leaves the case as-is.</li>
+                    <li><strong>Flaky tags</strong> — cases that sometimes pass and sometimes fail get a clear flaky mark so you can decide what to fix next.</li>
+                    <li>Evidence is the review surface for runs — it does not start a new charge by itself; the run already used Execute credits.</li>
+                </ul>
+                <div class="guide-callouts">
+                    <div class="callout ok">
+                        <strong>Credits</strong>
+                        <p>Heal review is part of Execute for day-to-day use. Admin → Prices may also list a confirmed <code>HEAL_REVIEW</code> credit row — Owner-editable like other services.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="visual-diffs" data-guide-section="visual-diffs">
+                <header class="guide-section-head">
+                    <span class="guide-num">04c</span>
+                    <div>
+                        <h2>Visual diffs</h2>
+                        <p class="panel-intro">Prove and compare screens after a run. On <a href="/execute">Run tests</a>, open the Visual diffs panel to see baseline, actual, and diff side by side, then <strong>Approve baseline</strong> when the new look is correct. This is different from the authoring <a href="#visual">Visual check</a> wording in a spreadsheet.</p>
+                    </div>
+                </header>
+                <ol class="guide-howto">
+                    <li>Run cases that include a visual check.</li>
+                    <li>On Execute (or via Evidence), open pending visual diffs for the project.</li>
+                    <li>Compare Baseline | Actual | Diff. Approve when the screen should become the new baseline, or replace the baseline image if needed.</li>
+                </ol>
+                <div class="guide-callouts">
+                    <div class="callout ok">
+                        <strong>Credits</strong>
+                        <p>Visual compare work usually sits with the Execute run. Pricing may also list a confirmed <code>VISUAL_DIFF</code> credit row — Owner-editable on Admin → Prices.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="suites" data-guide-section="suites">
+                <header class="guide-section-head">
+                    <span class="guide-num">04d</span>
+                    <div>
+                        <h2>Suites</h2>
+                        <p class="panel-intro">On <a href="/suites">Suites</a>, group cases into test packs. Add tags (smoke, regression, nightly, or your own), attach a schedule, pick an alert channel, and promote a green pack to an always-on monitor.</p>
+                    </div>
+                </header>
+                <ul class="guide-points">
+                    <li><strong>Tags</strong> — label a pack so you can find and filter it later.</li>
+                    <li><strong>Schedule</strong> — cron or interval; ops timezone note is Africa/Cairo.</li>
+                    <li><strong>Alerts</strong> — reuse portal alert channels (Slack, email, and similar).</li>
+                    <li><strong>Promote to monitor</strong> — keep a green pack watching prod or staging; alerts on fail or flaky.</li>
+                </ul>
+                <div class="guide-callouts">
+                    <div class="callout ok">
+                        <strong>Credits</strong>
+                        <p>Manual or scheduled suite runs use <strong>Execute</strong> credits per case. Pricing may also list a confirmed <code>SUITES_MONITOR</code> row for monitor/schedule add-on credits — Owner-editable on Admin → Prices.</p>
                     </div>
                 </div>
             </section>
@@ -243,7 +368,7 @@
                     <span class="guide-num">05</span>
                     <div>
                         <h2>Automate</h2>
-                        <p class="panel-intro">On <a href="/automate">Build code</a>, upload or select a workbook. Keel opens the site, proves the steps, then builds a framework you can download. If you already clicked through the site on <a href="#record">Record</a>, use Build the framework there instead. That uses the same builder and does not open Chrome again.</p>
+                        <p class="panel-intro">On <a href="/automate">Build code</a>, upload or select a workbook. Keel opens the site, checks the steps work, then builds a framework you can download. If you already clicked through the site on <a href="#record">Record</a>, use Build the framework there instead. That uses the same builder and does not open Chrome again.</p>
                     </div>
                 </header>
                 <ol class="guide-howto">
@@ -256,7 +381,15 @@
                 <div class="guide-callouts">
                     <div class="callout ok">
                         <strong>Tip</strong>
-                        <p>Author clear Steps and ExpectedResult first (see <a href="#tc-authoring">TC authoring</a>). Vague steps produce weaker automation.</p>
+                        <p>Author clear Steps and ExpectedResult first (see <a href="#tc-authoring">Case authoring</a>). Vague steps produce weaker automation.</p>
+                    </div>
+                    <div class="callout ok">
+                        <strong>Stronger builds</strong>
+                        <p>Packages now keep several ways to find each control, prefer clear on-screen names when they are unique, and remember plain-language finds you already accepted. That means fewer brittle clicks when the page layout shifts a little.</p>
+                    </div>
+                    <div class="callout warn">
+                        <strong>Credits</strong>
+                        <p>Automate charges <strong>Automate</strong> credits once per test case in the build (not once for the ZIP).</p>
                     </div>
                 </div>
             </section>
@@ -266,12 +399,13 @@
                     <span class="guide-num">06</span>
                     <div>
                         <h2>Framework export / packages</h2>
-                        <p class="panel-intro"><a href="/packages">Code packages</a> lists automation ZIPs Keel built. Download the framework when Automate finishes, or when a Record build finishes.</p>
+                        <p class="panel-intro"><a href="/packages">Code packages</a> lists automation ZIPs Keel built. Download the framework when Automate finishes, or when a Record build finishes. Builds include multi-way finds, smarter name matching, and remembered plain-language locators so heal and reruns stay steadier.</p>
                     </div>
                 </header>
                 <ul class="guide-points">
                     <li>Packages are per project / conversion job — open Code packages after Build code succeeds.</li>
                     <li>Use the downloaded ZIP in your own CI or IDE; Keel does not push to your repos automatically.</li>
+                    <li>No extra credit line for these build quality improvements — they ship inside Automate.</li>
                 </ul>
             </section>
 
@@ -329,9 +463,10 @@
                     </article>
                 </div>
                 <ul class="guide-points">
-                    <li>Open <a href="/pricing">Pricing</a> to see the price of one unit. A run charges that price once per test case. A framework build does the same. Bug Hunter charges once per allowed action (iterations × cycles × actions). Writing test cases stays one price for the job.</li>
-                    <li>Only the account owner can change those prices, manage users, or set a user’s credits. Hiding the button is not the check — the server refuses anyone else.</li>
-                    <li>Signup requests need the account owner’s approval and a credit grant — nothing is added automatically.</li>
+                    <li>Open <a href="/pricing">Pricing</a> for <strong>Credits each</strong> — these are credit units, not dollars. A run charges once per test case (Execute). A framework build does the same (Automate). Bug Hunter charges once per allowed action. Writing test cases (Generate / From knowledge) stays one price for the writing job unless a separate GFK row is seeded on Admin → Prices.</li>
+                    <li>New surfaces map onto those services: Evidence heal + flaky with Execute (and confirmed HEAL_REVIEW when listed); visual approve with Execute (and confirmed VISUAL_DIFF when listed); suites / schedules / monitor with Execute (and confirmed SUITES_MONITOR when listed); stronger packages inside Automate.</li>
+                    <li>Only the account Owner can change credit prices on Admin → Prices, manage users, or set a user's credit balance. Hiding the button is not the check — the server refuses anyone else.</li>
+                    <li>Signup requests need the account owner's approval and a credit grant — nothing is added automatically.</li>
                 </ul>
             </section>
 
@@ -565,7 +700,7 @@
                 <ul class="guide-points">
                     <li>Use visible labels: button text, field label, menu item, message copy.</li>
                     <li>Include navigation when needed: <code>Open the … page at /path</code>.</li>
-                    <li>Confirmations: <code>Confirm the text … is visible</code>. <code>Observe … is displayed</code> is treated as assert by default (see <a href="#verbs">Verbs</a>).</li>
+                    <li>Confirmations: <code>Confirm the text … is visible</code>. <code>Observe … is displayed</code> is treated as a check by default (see <a href="#verbs">Verbs</a>).</li>
                     <li>Do <strong>not</strong> embed dummy names like <code>Test</code> / <code>User</code> in Enter lines — use <a href="#testdata">TestData</a>.</li>
                 </ul>
             </section>
@@ -575,7 +710,7 @@
                     <span class="guide-num">03</span>
                     <div>
                         <h2>Verbs Keel understands</h2>
-                        <p class="panel-intro">A step runs when Keel classifies its verb as click, type, select, clear, assert, skip, drag, hover, double-click, or right-click. Unknown verbs are skipped. The Owner can add extra words onto those kinds on Admin.</p>
+                        <p class="panel-intro">A step runs when Keel classifies its verb as click, type, select, clear, check, skip, drag, hover, double-click, or right-click. Unknown verbs are skipped. The Owner can add extra words onto those kinds on Admin.</p>
                     </div>
                 </header>
                 <ul class="guide-points">
@@ -584,20 +719,20 @@
                     <li><strong>Clear</strong> — <code>clear the … field</code> (empties the field). A <strong>Clear</strong> button is still Click.</li>
                     <li><strong>Drag / drop</strong> — <code>Drag the Ticket card onto the Done column</code> (two named controls on the page).</li>
                     <li><strong>Hover / double-click / right-click</strong> — <code>hover over …</code>, <code>double click …</code>, <code>right click …</code>.</li>
-                    <li><strong>Assert visible</strong> — <code>confirm</code>, <code>verify</code>, <code>shown</code>, <code>visible</code>, <code>see</code>, <code>displays</code>, is shown, are visible.</li>
+                    <li><strong>Check visible</strong> — <code>confirm</code>, <code>verify</code>, <code>shown</code>, <code>visible</code>, <code>see</code>, <code>displays</code>, is shown, are visible.</li>
                     <li><strong>Skip the line</strong> — <code>post-login…</code>, <code>do not …</code> at the start of a step.</li>
                     <li><strong>List rows:</strong> a click that names a shared cell (<code>with Pending edit status</code> or <code>"Pending Edit"</code>) uses the <strong>first</strong> matching table/grid row. Quote a person name when you need that person: <code>Click on "Sara Ali"</code>. Two Login buttons on a page (not in a grid) stay unresolved.</li>
                     <li>Login / password / “click the login button” stay in code. They are listed on Admin as code-only specials and cannot be remapped.</li>
                 </ul>
                 <ol class="guide-howto">
                     <li>The account owner opens <a href="/admin/llm-settings">Admin → LLM &amp; API keys</a> and the <strong>Authoring verbs</strong> block (same Owner-only page as review batch size and browser).</li>
-                    <li>Built-in words are a read-only table. Add an alias: one word (letters only, 3–40), then treat as Click, Type, Select, Clear, Assert visible, Ignore, Drag, Drop, Hover, Double-click, or Right-click. Save. Max 50 aliases.</li>
+                    <li>Built-in words are a read-only table. Add an alias: one word (letters only, 3–40), then treat as Click, Type, Select, Clear, Check visible, Ignore, Drag, Drop, Hover, Double-click, or Right-click. Save. Max 50 aliases.</li>
                     <li>The next Execute, Automate, Generate review, or Record bind uses the list. Save on a running portal does not need another restart.</li>
                 </ol>
                 <div class="guide-callouts">
                     <div class="callout ok">
                         <strong>Default</strong>
-                        <p>Install seeds <code>observe</code> → Assert visible, so <code>Observe the Agent User Details page is displayed</code> waits for that page instead of skipping the line. The Owner may change or delete that alias. Built-in words such as <code>tap</code> cannot be remapped.</p>
+                        <p>Install seeds <code>observe</code> → Check visible, so <code>Observe the Agent User Details page is displayed</code> waits for that page instead of skipping the line. The Owner may change or delete that alias. Built-in words such as <code>tap</code> cannot be remapped.</p>
                     </div>
                     <div class="callout warn">
                         <strong>Not a status filter</strong>
@@ -694,7 +829,7 @@ Bennett
                 <header class="guide-section-head">
                     <span class="guide-num">06</span>
                     <div>
-                        <h2>Visual assertion</h2>
+                        <h2>Visual check</h2>
                         <p class="panel-intro">Optional. Describes what the screen should look like after the case’s steps pass.</p>
                     </div>
                 </header>

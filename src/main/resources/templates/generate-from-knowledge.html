@@ -1,0 +1,815 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Generate from knowledge')}"></th:block>
+</head>
+<body class="app-body">
+<link rel="stylesheet" th:href="@{/css/keel-portal-enhancements.css}"/>
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1>Generate from knowledge</h1>
+            <p class="lede">
+                Pick a project and one or more case packs (test knowledge files), set a batch size, then start a run.
+                Classic story-based <strong>Generate</strong> is unchanged at
+                <a href="/generate">/generate</a>.
+            </p>
+        </div>
+    </div>
+
+    <section class="panel workspace-launcher" id="workspace-launcher">
+        <p class="guide-kicker">Workspace</p>
+        <h2>Choose a project</h2>
+        <p class="panel-intro">Packs and runs are scoped to the project you pin here.</p>
+        <label>Project
+            <select id="launcher-project-select">
+                <option value="">— Loading projects —</option>
+            </select>
+        </label>
+        <p id="launcher-err" class="error" hidden></p>
+        <p id="launcher-no-projects" class="muted" hidden>
+            No projects yet — <a href="/projects">create one</a> first.
+        </p>
+        <p style="margin-top:0.75rem">
+            <button type="button" class="button" id="launcher-continue">Continue</button>
+        </p>
+    </section>
+
+    <div id="workspace-config" hidden>
+        <section class="panel workspace-pinned">
+            <p class="muted" style="margin:0">
+                Project: <strong id="pinned-project-name">—</strong>
+                <button type="button" class="button ghost" id="change-project" style="margin-left:0.5rem">Change</button>
+            </p>
+            <select id="project-select" hidden aria-hidden="true">
+                <option value="">— Loading projects —</option>
+            </select>
+            <p id="project-err" class="error" hidden></p>
+            <p id="no-projects" class="muted" hidden>
+                No projects yet —
+                <a href="/projects">create one</a> first.
+            </p>
+        </section>
+
+        <section class="panel" id="packs-panel">
+            <h2>Case packs <span class="muted">(test knowledge files)</span></h2>
+            <p class="panel-intro">Select one or more packs to guide generation. Multi-select checklist.</p>
+
+            <div id="ingest-strip" class="gfk-ingest">
+                <h3 style="margin-top:0">Add pack</h3>
+                <p class="panel-intro" style="margin-bottom:0.5rem">Add from the project library, a case workbook, or a markdown pack.</p>
+                <div class="gfk-ingest-tabs" role="tablist" aria-label="Add pack source">
+                    <button type="button" class="button ghost gfk-ingest-tab is-active" data-ingest-tab="library" role="tab" aria-selected="true">Library</button>
+                    <button type="button" class="button ghost gfk-ingest-tab" data-ingest-tab="upload-tc" role="tab" aria-selected="false">Upload cases</button>
+                    <button type="button" class="button ghost gfk-ingest-tab" data-ingest-tab="upload-md" role="tab" aria-selected="false">Upload .md</button>
+                </div>
+                <div class="gfk-ingest-fields" style="margin-top:0.75rem;display:grid;gap:0.65rem;max-width:36rem">
+                    <label>Title (optional)
+                        <input type="text" id="ingest-title" placeholder="Checkout pack"/>
+                    </label>
+                    <label>Batch size
+                        <input type="number" id="ingest-batch-size" min="1" max="500" value="30"/>
+                    </label>
+                </div>
+                <div id="ingest-pane-library" class="gfk-ingest-pane" data-ingest-pane="library" style="margin-top:0.75rem">
+                    <p class="field-hint muted">Multi-select project library TCs (same source as Execute / Bug Hunter).</p>
+                    <p id="ingest-lib-status" class="muted" role="status">Pin a project to load cases.</p>
+                    <p id="ingest-lib-empty" class="muted" hidden>No test cases in this project library yet.</p>
+                    <div id="ingest-lib-list" class="generate-options" hidden></div>
+                </div>
+                <div id="ingest-pane-upload-tc" class="gfk-ingest-pane" data-ingest-pane="upload-tc" hidden style="margin-top:0.75rem">
+                    <label>Case workbook (.xlsx / .csv)
+                        <input type="file" id="ingest-file-tc" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/>
+                    </label>
+                </div>
+                <div id="ingest-pane-upload-md" class="gfk-ingest-pane" data-ingest-pane="upload-md" hidden style="margin-top:0.75rem">
+                    <label>Markdown pack (.md)
+                        <input type="file" id="ingest-file-md" accept=".md,text/markdown,text/plain"/>
+                    </label>
+                </div>
+                <div class="actions" style="margin-top:0.85rem">
+                    <button type="button" class="button" id="ingest-submit">Add pack</button>
+                    <span id="ingest-status" class="muted" role="status"></span>
+                </div>
+            </div>
+
+            <hr style="margin:1.1rem 0;border:none;border-top:1px solid var(--border, #334)"/>
+            <p id="packs-status" class="muted" role="status">Loading packs…</p>
+            <div id="packs-list" class="generate-options" hidden></div>
+            <p id="packs-empty" class="muted" hidden>
+                Packs API not on tip yet — Backend Phase 1. You can still explore this page; Start stays disabled until packs are available.
+            </p>
+        </section>
+
+        <section class="panel" id="batch-panel">
+            <h2>Batch size</h2>
+            <p class="panel-intro">How many cases to aim for in this run (overrides pack metadata for the job).</p>
+            <label>Cases per run
+                <input type="number" id="batch-size" min="1" max="500" value="30"/>
+            </label>
+            <p class="field-hint muted" style="margin-top:0.35rem">
+                Presets hint: Ollama 20–40 · stronger models 50–100 · default 30
+            </p>
+        </section>
+
+        <section class="panel" id="run-panel">
+            <h2>Start run</h2>
+            <div class="generate-actions">
+                <button type="button" class="button" id="start-run" disabled>Start generate from knowledge packs</button>
+                <span id="run-status" class="muted" role="status"></span>
+            </div>
+        </section>
+
+        <section class="panel" id="plan-preview-panel">
+            <h2>Plan preview</h2>
+            <p id="plan-preview-empty" class="muted">Plan preview will appear here after the run starts.</p>
+            <div id="plan-preview-detail" hidden>
+                <p><strong id="plan-title"></strong>
+                    <span id="plan-meta" class="muted"></span>
+                </p>
+                <details id="plan-markdown-wrap" hidden>
+                    <summary>Pack markdown (truncated)</summary>
+                    <pre id="plan-markdown" class="mono" style="white-space:pre-wrap;max-height:16rem;overflow:auto"></pre>
+                </details>
+            </div>
+        </section>
+    </div>
+</main>
+</div>
+
+<script>
+(function () {
+    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+    const STORAGE_KEY = 'keel.gfkProjectId';
+    const initialProjectId = /*[[${projectId}]]*/ '';
+
+    const workspaceLauncher = document.getElementById('workspace-launcher');
+    const workspaceConfig = document.getElementById('workspace-config');
+    const launcherSel = document.getElementById('launcher-project-select');
+    const launcherContinue = document.getElementById('launcher-continue');
+    const launcherErr = document.getElementById('launcher-err');
+    const launcherNoProjects = document.getElementById('launcher-no-projects');
+    const projectSel = document.getElementById('project-select');
+    const projectErr = document.getElementById('project-err');
+    const noProjects = document.getElementById('no-projects');
+    const pinnedName = document.getElementById('pinned-project-name');
+    const changeProjectBtn = document.getElementById('change-project');
+    const packsStatus = document.getElementById('packs-status');
+    const packsList = document.getElementById('packs-list');
+    const packsEmpty = document.getElementById('packs-empty');
+    const batchSizeInput = document.getElementById('batch-size');
+    const startBtn = document.getElementById('start-run');
+    const runStatus = document.getElementById('run-status');
+    const planEmpty = document.getElementById('plan-preview-empty');
+    const planDetail = document.getElementById('plan-preview-detail');
+    const planTitle = document.getElementById('plan-title');
+    const planMeta = document.getElementById('plan-meta');
+    const planMdWrap = document.getElementById('plan-markdown-wrap');
+    const planMd = document.getElementById('plan-markdown');
+
+    let projects = [];
+    let packs = [];
+    let packsApiAvailable = false;
+    const selectedPackIds = new Set();
+    let activeRunId = null;
+    let pollTimer = null;
+    let runInFlight = false;
+    const POLL_INTERVAL_MS = 2000;
+    const POLL_MAX_TRIES = 60;
+    const TERMINAL_STATUSES = { SUCCEEDED: 1, FAILED: 1, CANCELLED: 1 };
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function showWorkspaceLauncher() {
+        if (workspaceLauncher) workspaceLauncher.hidden = false;
+        if (workspaceConfig) workspaceConfig.hidden = true;
+        updateStartEnabled();
+    }
+
+    function pinWorkspaceProject(projectId, projectList) {
+        projectSel.value = projectId;
+        if (launcherSel) launcherSel.value = projectId;
+        const proj = (projectList || []).find(function (p) { return p.projectId === projectId; });
+        if (pinnedName) {
+            if (proj) {
+                pinnedName.textContent = (proj.name || proj.projectId) + ' (' + proj.projectId + ')';
+            } else if (launcherSel && launcherSel.selectedIndex >= 0) {
+                pinnedName.textContent = launcherSel.options[launcherSel.selectedIndex].textContent;
+            } else {
+                pinnedName.textContent = projectId;
+            }
+        }
+        if (workspaceLauncher) workspaceLauncher.hidden = true;
+        if (workspaceConfig) workspaceConfig.hidden = false;
+        sessionStorage.setItem(STORAGE_KEY, projectId);
+        selectedPackIds.clear();
+        resetPlanPreview();
+        loadPacks(projectId);
+        loadIngestLibrary(projectId);
+        updateStartEnabled();
+    }
+
+    function resetPlanPreview() {
+        stopRunPoll();
+        activeRunId = null;
+        runInFlight = false;
+        planEmpty.hidden = false;
+        planEmpty.textContent = 'Plan preview will appear here after the run starts.';
+        planDetail.hidden = true;
+        planMdWrap.hidden = true;
+        planMd.textContent = '';
+        runStatus.textContent = '';
+        updateStartEnabled();
+    }
+
+    function updateStartEnabled() {
+        const projectId = projectSel && projectSel.value;
+        const hasPacks = packsApiAvailable && packs.length > 0;
+        const enough = !!(projectId && selectedPackIds.size >= 1);
+        if (runInFlight) {
+            startBtn.disabled = true;
+            return;
+        }
+        // When API empty: keep Start enabled for demo UX but click no-ops with status
+        if (!projectId) {
+            startBtn.disabled = true;
+            return;
+        }
+        if (hasPacks) {
+            startBtn.disabled = !enough;
+        } else {
+            startBtn.disabled = false;
+        }
+    }
+
+    function stopRunPoll() {
+        if (pollTimer) {
+            clearTimeout(pollTimer);
+            pollTimer = null;
+        }
+    }
+
+    function isTerminalStatus(status) {
+        return !!(status && TERMINAL_STATUSES[String(status).toUpperCase()]);
+    }
+
+    async function readErrorMessage(res) {
+        try {
+            const text = await res.text();
+            if (!text) return '';
+            try {
+                const body = JSON.parse(text);
+                if (body && (body.message || body.error || body.detail)) {
+                    return String(body.message || body.error || body.detail);
+                }
+            } catch (_) { /* plain text */ }
+            return text.length > 300 ? (text.slice(0, 300) + '…') : text;
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function showRunStatusLine(runId, status, extra) {
+        const bits = [];
+        if (runId) bits.push('runId ' + runId);
+        if (status) bits.push(String(status));
+        if (extra) bits.push(extra);
+        runStatus.textContent = bits.join(' · ');
+        planEmpty.hidden = false;
+        planEmpty.textContent = bits.length
+            ? ('Run ' + (runId || '?') + ' — ' + (status || '…') + (extra ? (' — ' + extra) : ''))
+            : 'Plan preview will appear here after the run starts.';
+    }
+
+    function finishRunUi(ok) {
+        runInFlight = false;
+        stopRunPoll();
+        updateStartEnabled();
+        return ok;
+    }
+
+    function schedulePoll(projectId, runId, triesLeft) {
+        stopRunPoll();
+        pollTimer = setTimeout(function () {
+            pollRun(projectId, runId, triesLeft);
+        }, POLL_INTERVAL_MS);
+    }
+
+    async function pollRun(projectId, runId, triesLeft) {
+        if (!runInFlight || activeRunId !== runId) return;
+        try {
+            const res = await fetch(
+                '/api/projects/' + encodeURIComponent(projectId) + '/generate-from-knowledge/runs/' + encodeURIComponent(runId),
+                { credentials: 'same-origin', headers: API_HEADERS }
+            );
+            if (res.status === 404 || res.status === 501) {
+                showRunStatusLine(runId, null, 'Waiting on Backend pack run API');
+                finishRunUi(false);
+                return;
+            }
+            if (!res.ok) {
+                const msg = await readErrorMessage(res);
+                showRunStatusLine(runId, null, msg || ('Poll failed (HTTP ' + res.status + ')'));
+                finishRunUi(false);
+                return;
+            }
+            const data = await res.json();
+            const status = data && data.status ? String(data.status) : '';
+            showRunStatusLine(runId, status || '…');
+            if (isTerminalStatus(status)) {
+                finishRunUi(true);
+                return;
+            }
+            if (triesLeft <= 1) {
+                showRunStatusLine(runId, status || '…', 'poll timed out');
+                finishRunUi(false);
+                return;
+            }
+            schedulePoll(projectId, runId, triesLeft - 1);
+        } catch (err) {
+            showRunStatusLine(runId, null, 'Waiting on Backend pack run API');
+            finishRunUi(false);
+        }
+    }
+
+    async function createAndPollRun(projectId) {
+        const packIds = Array.from(selectedPackIds);
+        const batchRaw = batchSizeInput ? Number(batchSizeInput.value) : NaN;
+        const body = { packIds: packIds };
+        if (Number.isFinite(batchRaw) && batchRaw >= 1) {
+            body.batchSize = Math.floor(batchRaw);
+        }
+        // optional title omitted — no title field on this page yet
+        runInFlight = true;
+        activeRunId = null;
+        stopRunPoll();
+        updateStartEnabled();
+        runStatus.textContent = 'Starting run…';
+        planEmpty.hidden = false;
+        planEmpty.textContent = 'Starting generate-from-knowledge run…';
+        try {
+            const res = await fetch(
+                '/api/projects/' + encodeURIComponent(projectId) + '/generate-from-knowledge/runs',
+                {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                    body: JSON.stringify(body)
+                }
+            );
+            if (res.status === 404 || res.status === 501) {
+                runStatus.textContent = 'Waiting on Backend pack run API';
+                planEmpty.textContent = 'Waiting on Backend pack run API';
+                finishRunUi(false);
+                return;
+            }
+            if (!res.ok) {
+                const msg = await readErrorMessage(res);
+                runStatus.textContent = msg || ('Create run failed (HTTP ' + res.status + ')');
+                planEmpty.textContent = runStatus.textContent;
+                finishRunUi(false);
+                return;
+            }
+            // Prefer 201; tolerate 200 with body if Backend returns that
+            const data = await res.json();
+            const runId = data && (data.runId || data.id);
+            const status = data && data.status ? String(data.status) : 'QUEUED';
+            if (!runId) {
+                runStatus.textContent = 'Create run succeeded but response had no runId';
+                planEmpty.textContent = runStatus.textContent;
+                finishRunUi(false);
+                return;
+            }
+            activeRunId = runId;
+            showRunStatusLine(runId, status);
+            if (isTerminalStatus(status)) {
+                finishRunUi(true);
+                return;
+            }
+            // Keep Start disabled while QUEUED/RUNNING
+            runInFlight = true;
+            updateStartEnabled();
+            schedulePoll(projectId, runId, POLL_MAX_TRIES);
+        } catch (err) {
+            runStatus.textContent = 'Waiting on Backend pack run API';
+            planEmpty.textContent = 'Waiting on Backend pack run API';
+            finishRunUi(false);
+        }
+    }
+
+    let ingestTab = 'library';
+    const selectedIngestTcIds = new Set();
+
+    const ingestTitleInput = document.getElementById('ingest-title');
+    const ingestBatchInput = document.getElementById('ingest-batch-size');
+    const ingestSubmit = document.getElementById('ingest-submit');
+    const ingestStatus = document.getElementById('ingest-status');
+    const ingestLibStatus = document.getElementById('ingest-lib-status');
+    const ingestLibEmpty = document.getElementById('ingest-lib-empty');
+    const ingestLibList = document.getElementById('ingest-lib-list');
+    const ingestFileTc = document.getElementById('ingest-file-tc');
+    const ingestFileMd = document.getElementById('ingest-file-md');
+
+    function ingestBatchSize() {
+        const n = parseInt(ingestBatchInput && ingestBatchInput.value, 10);
+        if (!Number.isFinite(n) || n < 1) return 30;
+        return Math.min(500, n);
+    }
+
+    function setIngestTab(tab) {
+        ingestTab = tab || 'library';
+        document.querySelectorAll('.gfk-ingest-tab').forEach(function (btn) {
+            const on = btn.getAttribute('data-ingest-tab') === ingestTab;
+            btn.classList.toggle('is-active', on);
+            btn.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        document.querySelectorAll('.gfk-ingest-pane').forEach(function (pane) {
+            pane.hidden = pane.getAttribute('data-ingest-pane') !== ingestTab;
+        });
+        if (ingestStatus) ingestStatus.textContent = '';
+    }
+
+    document.querySelectorAll('.gfk-ingest-tab').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            setIngestTab(btn.getAttribute('data-ingest-tab'));
+        });
+    });
+
+    async function loadIngestLibrary(projectId) {
+        selectedIngestTcIds.clear();
+        if (ingestLibList) {
+            ingestLibList.innerHTML = '';
+            ingestLibList.hidden = true;
+        }
+        if (ingestLibEmpty) ingestLibEmpty.hidden = true;
+        if (!projectId) {
+            if (ingestLibStatus) {
+                ingestLibStatus.hidden = false;
+                ingestLibStatus.textContent = 'Pin a project to load cases.';
+            }
+            return;
+        }
+        if (ingestLibStatus) {
+            ingestLibStatus.hidden = false;
+            ingestLibStatus.textContent = 'Loading library cases.';
+        }
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases', {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            if (!res.ok) {
+                if (ingestLibStatus) {
+                    ingestLibStatus.hidden = false;
+                    ingestLibStatus.textContent = res.status === 404
+                        ? 'Library cases not available yet (HTTP 404).'
+                        : ('Could not load library cases (HTTP ' + res.status + ').');
+                }
+                return;
+            }
+            const data = await res.json();
+            const cases = (data && Array.isArray(data.cases)) ? data.cases : (Array.isArray(data) ? data : []);
+            if (ingestLibStatus) ingestLibStatus.hidden = true;
+            if (!cases.length) {
+                if (ingestLibEmpty) ingestLibEmpty.hidden = false;
+                return;
+            }
+            if (ingestLibEmpty) ingestLibEmpty.hidden = true;
+            if (ingestLibList) ingestLibList.hidden = false;
+            cases.forEach(function (tc) {
+                const id = tc.tcId || tc.id;
+                if (!id || !ingestLibList) return;
+                const label = document.createElement('label');
+                label.className = 'generate-check';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = id;
+                cb.addEventListener('change', function () {
+                    if (cb.checked) selectedIngestTcIds.add(id);
+                    else selectedIngestTcIds.delete(id);
+                });
+                const span = document.createElement('span');
+                span.innerHTML = '<span class="mono">' + escapeHtml(id) + '</span> '
+                    + escapeHtml(tc.title || '');
+                label.appendChild(cb);
+                label.appendChild(span);
+                ingestLibList.appendChild(label);
+            });
+        } catch (err) {
+            if (ingestLibStatus) {
+                ingestLibStatus.hidden = false;
+                ingestLibStatus.textContent = 'Could not load library cases (network).';
+            }
+        }
+    }
+
+    async function submitIngest() {
+        const projectId = projectSel && projectSel.value;
+        if (!projectId) {
+            if (ingestStatus) ingestStatus.textContent = 'Select a project first.';
+            return;
+        }
+        if (ingestStatus) ingestStatus.textContent = 'Adding pack.';
+        if (ingestSubmit) ingestSubmit.disabled = true;
+        const title = ingestTitleInput ? String(ingestTitleInput.value || '').trim() : '';
+        const batchSize = ingestBatchSize();
+        const base = '/api/projects/' + encodeURIComponent(projectId) + '/knowledge-packs/ingest/';
+        try {
+            let res;
+            if (ingestTab === 'library') {
+                const tcIds = Array.from(selectedIngestTcIds);
+                if (!tcIds.length) {
+                    if (ingestStatus) ingestStatus.textContent = 'Select at least one library case.';
+                    return;
+                }
+                const body = { tcIds: tcIds, batchSize: batchSize };
+                if (title) body.title = title;
+                res = await fetch(base + 'library', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                    body: JSON.stringify(body)
+                });
+            } else if (ingestTab === 'upload-tc') {
+                const file = ingestFileTc && ingestFileTc.files && ingestFileTc.files[0];
+                if (!file) {
+                    if (ingestStatus) ingestStatus.textContent = 'Choose a case workbook file.';
+                    return;
+                }
+                const fd = new FormData();
+                fd.append('file', file);
+                fd.append('batchSize', String(batchSize));
+                if (title) fd.append('title', title);
+                res = await fetch(base + 'upload-tc', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: API_HEADERS,
+                    body: fd
+                });
+            } else {
+                const file = ingestFileMd && ingestFileMd.files && ingestFileMd.files[0];
+                if (!file) {
+                    if (ingestStatus) ingestStatus.textContent = 'Choose a .md file.';
+                    return;
+                }
+                const fd = new FormData();
+                fd.append('file', file);
+                fd.append('batchSize', String(batchSize));
+                if (title) fd.append('title', title);
+                res = await fetch(base + 'upload-md', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: API_HEADERS,
+                    body: fd
+                });
+            }
+            if (res.status === 404 || res.status === 501) {
+                if (ingestStatus) ingestStatus.textContent = 'Waiting on Backend case-pack add API';
+                return;
+            }
+            if (!res.ok) {
+                const msg = await readErrorMessage(res);
+                if (ingestStatus) ingestStatus.textContent = msg || ('Add pack failed (HTTP ' + res.status + ')');
+                return;
+            }
+            const created = await res.json().catch(function () { return {}; });
+            const packId = created && (created.packId || created.id);
+            if (ingestStatus) {
+                ingestStatus.textContent = packId
+                    ? ('Pack added: ' + packId)
+                    : 'Pack added.';
+            }
+            if (ingestFileTc) ingestFileTc.value = '';
+            if (ingestFileMd) ingestFileMd.value = '';
+            selectedIngestTcIds.clear();
+            if (ingestLibList) {
+                ingestLibList.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+                    cb.checked = false;
+                });
+            }
+            await loadPacks(projectId);
+        } catch (err) {
+            if (ingestStatus) ingestStatus.textContent = 'Waiting on Backend case-pack add API';
+        } finally {
+            if (ingestSubmit) ingestSubmit.disabled = false;
+        }
+    }
+
+    if (ingestSubmit) {
+        ingestSubmit.addEventListener('click', function () {
+            submitIngest();
+        });
+    }
+    setIngestTab('library');
+
+    async function loadProjects() {
+
+        if (projectErr) projectErr.hidden = true;
+        const res = await fetch('/api/projects', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            if (projectErr) {
+                projectErr.hidden = false;
+                projectErr.textContent = 'Could not load projects.';
+            }
+            return;
+        }
+        projects = await res.json();
+        projectSel.innerHTML = '';
+        if (launcherSel) launcherSel.innerHTML = '';
+        if (!projects.length) {
+            if (noProjects) noProjects.hidden = false;
+            if (launcherNoProjects) launcherNoProjects.hidden = false;
+            showWorkspaceLauncher();
+            return;
+        }
+        if (noProjects) noProjects.hidden = true;
+        if (launcherNoProjects) launcherNoProjects.hidden = true;
+        projects.forEach(function (p) {
+            const label = (p.name || p.projectId) + ' (' + p.projectId + ')';
+            const opt = document.createElement('option');
+            opt.value = p.projectId;
+            opt.textContent = label;
+            projectSel.appendChild(opt);
+            if (launcherSel) {
+                const lopt = document.createElement('option');
+                lopt.value = p.projectId;
+                lopt.textContent = label;
+                launcherSel.appendChild(lopt);
+            }
+        });
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlProjectId = urlParams.get('projectId');
+        const urlProject = (urlProjectId && projects.some(function (p) { return p.projectId === urlProjectId; }))
+            ? urlProjectId
+            : ((initialProjectId && projects.some(function (p) { return p.projectId === initialProjectId; }))
+                ? initialProjectId : null);
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const match = saved && projects.some(function (p) { return p.projectId === saved; });
+        const pinned = urlProject || (match ? saved : null);
+        if (pinned) {
+            pinWorkspaceProject(pinned, projects);
+        } else {
+            showWorkspaceLauncher();
+        }
+    }
+
+    async function loadPacks(projectId) {
+        packs = [];
+        packsApiAvailable = false;
+        selectedPackIds.clear();
+        packsList.innerHTML = '';
+        packsList.hidden = true;
+        packsEmpty.hidden = true;
+        packsStatus.hidden = false;
+        packsStatus.textContent = 'Loading packs…';
+        updateStartEnabled();
+        if (!projectId) return;
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/knowledge-packs', {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            if (!res.ok) {
+                packsStatus.hidden = true;
+                packsEmpty.hidden = false;
+                packsEmpty.textContent = 'Packs API not on tip yet — Backend Phase 1 (HTTP ' + res.status + ').';
+                updateStartEnabled();
+                return;
+            }
+            const data = await res.json();
+            packs = Array.isArray(data) ? data : (data && Array.isArray(data.packs) ? data.packs : []);
+            packsApiAvailable = true;
+            packsStatus.hidden = true;
+            if (!packs.length) {
+                packsEmpty.hidden = false;
+                packsEmpty.textContent = 'No case packs in this project yet.';
+                updateStartEnabled();
+                return;
+            }
+            packsEmpty.hidden = true;
+            packsList.hidden = false;
+            packs.forEach(function (pack) {
+                const id = pack.packId || pack.id;
+                if (!id) return;
+                const label = document.createElement('label');
+                label.className = 'generate-check';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = id;
+                cb.addEventListener('change', function () {
+                    if (cb.checked) {
+                        selectedPackIds.add(id);
+                        maybeFetchPackDetail(projectId, id, pack);
+                    } else {
+                        selectedPackIds.delete(id);
+                    }
+                    updateStartEnabled();
+                });
+                const span = document.createElement('span');
+                const title = pack.title || id;
+                const src = pack.source || '';
+                const rev = pack.revision != null ? ('rev ' + pack.revision) : '';
+                const muted = [src, rev].filter(Boolean).join(' · ');
+                span.innerHTML = escapeHtml(title) +
+                    (muted ? ' <span class="muted">(' + escapeHtml(muted) + ')</span>' : '');
+                label.appendChild(cb);
+                label.appendChild(span);
+                packsList.appendChild(label);
+            });
+            updateStartEnabled();
+        } catch (err) {
+            packsStatus.hidden = true;
+            packsEmpty.hidden = false;
+            packsEmpty.textContent = 'Packs API not on tip yet — Backend Phase 1 (network).';
+            updateStartEnabled();
+        }
+    }
+
+    async function maybeFetchPackDetail(projectId, packId, listPack) {
+        // Optional detail for plan-preview placeholder (title/revision; markdown truncated)
+        planEmpty.hidden = true;
+        planDetail.hidden = false;
+        planTitle.textContent = (listPack && listPack.title) || packId;
+        const bits = [];
+        if (listPack && listPack.source) bits.push(listPack.source);
+        if (listPack && listPack.revision != null) bits.push('rev ' + listPack.revision);
+        planMeta.textContent = bits.length ? (' — ' + bits.join(' · ')) : '';
+        try {
+            const res = await fetch(
+                '/api/projects/' + encodeURIComponent(projectId) + '/knowledge-packs/' + encodeURIComponent(packId),
+                { credentials: 'same-origin', headers: API_HEADERS }
+            );
+            if (!res.ok) return;
+            const detail = await res.json();
+            if (detail.title) planTitle.textContent = detail.title;
+            const metaBits = [];
+            if (detail.source) metaBits.push(detail.source);
+            if (detail.revision != null) metaBits.push('rev ' + detail.revision);
+            planMeta.textContent = metaBits.length ? (' — ' + metaBits.join(' · ')) : '';
+            if (detail.markdown) {
+                const md = String(detail.markdown);
+                planMd.textContent = md.length > 4000 ? (md.slice(0, 4000) + '\n…') : md;
+                planMdWrap.hidden = false;
+            }
+        } catch (_) { /* ignore until Backend live */ }
+    }
+
+    launcherContinue && launcherContinue.addEventListener('click', function () {
+        if (launcherErr) launcherErr.hidden = true;
+        const projectId = launcherSel ? launcherSel.value : '';
+        if (!projectId) {
+            if (launcherErr) {
+                launcherErr.hidden = false;
+                launcherErr.textContent = 'Select a project to continue.';
+            }
+            return;
+        }
+        pinWorkspaceProject(projectId, projects);
+    });
+
+    changeProjectBtn && changeProjectBtn.addEventListener('click', function () {
+        showWorkspaceLauncher();
+    });
+
+        startBtn.addEventListener('click', function () {
+        const projectId = projectSel.value;
+        if (!projectId) {
+            runStatus.textContent = 'Select a project first.';
+            return;
+        }
+        if (runInFlight) {
+            return;
+        }
+        if (!packsApiAvailable || packs.length === 0) {
+            runStatus.textContent = 'Waiting on Backend pack run API';
+            return;
+        }
+        if (selectedPackIds.size < 1) {
+            runStatus.textContent = 'Select at least one case pack.';
+            return;
+        }
+        createAndPollRun(projectId);
+    });
+
+    loadProjects().catch(function () {
+        if (projectErr) {
+            projectErr.hidden = false;
+            projectErr.textContent = 'Could not load projects.';
+        }
+    });
+})();
+</script>
+</body>
+</html>

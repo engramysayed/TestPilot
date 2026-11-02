@@ -374,7 +374,7 @@
         preRunReviewPanel.hidden = false;
         setPreRunReviewBusy(true);
         const reviewer = preRunReviewProviderLabel();
-        preRunReviewStatus.textContent = reviewer + ' is reviewing the exact selected suite…';
+        preRunReviewStatus.textContent = reviewer + ' is reviewing the exact selected cases…';
         if (preRunReviewProgressLabel) {
             preRunReviewProgressLabel.textContent = reviewer + ' is reviewing…';
         }
@@ -386,7 +386,7 @@
             for (let i = 0; i < batches.length; i++) {
                 preRunReviewStatus.textContent = batches.length > 1
                     ? ('Reviewing batch ' + (i + 1) + ' of ' + batches.length)
-                    : (reviewer + ' is reviewing the exact selected suite…');
+                    : (reviewer + ' is reviewing the exact selected cases…');
                 if (preRunReviewProgressLabel) {
                     preRunReviewProgressLabel.textContent = batches.length > 1
                         ? ('Reviewing batch ' + (i + 1) + ' of ' + batches.length)

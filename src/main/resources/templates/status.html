@@ -32,11 +32,11 @@
                   aria-hidden="true"></span>
             <div>
                 <h2>Live progress</h2>
-                <p class="panel-intro" th:if="${isExecuteJob}">This page polls until the execute run finishes.</p>
-                <p class="panel-intro" th:if="${isGenerateBatchJob}">This page polls while each user story is generated one-by-one.</p>
-                <p class="panel-intro" th:if="${isGenerateCompareJob}">This page polls while both models generate test cases in the background.</p>
-                <p class="panel-intro" th:if="${isHuntJob}">This page polls until the Bug Hunter finishes (planner finish, iteration cap, or cycle cap).</p>
-                <p class="panel-intro" th:if="${!isExecuteJob and !isGenerateBatchJob and !isGenerateCompareJob and !isHuntJob}">This page polls until the job finishes.</p>
+                <p class="panel-intro" th:if="${isExecuteJob}">This page refreshes until the test run finishes.</p>
+                <p class="panel-intro" th:if="${isGenerateBatchJob}">This page refreshes while each user story is turned into cases one-by-one.</p>
+                <p class="panel-intro" th:if="${isGenerateCompareJob}">This page refreshes while both models write test cases in the background.</p>
+                <p class="panel-intro" th:if="${isHuntJob}">This page refreshes until Bug Hunter finishes (plan done, or a step/cycle limit).</p>
+                <p class="panel-intro" th:if="${!isExecuteJob and !isGenerateBatchJob and !isGenerateCompareJob and !isHuntJob}">This page refreshes until the job finishes.</p>
             </div>
         </div>
         <div id="progress-track" class="progress-track"

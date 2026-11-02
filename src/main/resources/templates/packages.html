@@ -11,7 +11,7 @@
     <div class="page-title">
         <div>
             <h1>Automation</h1>
-            <p class="lede">Framework packages across all projects — inspect, download, delete, or clear leftover prove IR.</p>
+            <p class="lede">Framework packages across all projects — inspect, download, delete, or clear leftover proven-case drafts.</p>
         </div>
         <a class="button" href="/automate">New Automate run</a>
     </div>
@@ -58,7 +58,7 @@
     </section>
 
     <section class="panel">
-        <h2>Prove cleanup</h2>
+        <h2>Proven-case cleanup</h2>
         <p class="panel-intro">Clear leftover proven cases (<code>ir/</code>) after reviewing packages.</p>
         <ul class="artifact-list" id="ir-project-list">
             <li th:each="proj : ${projectRows}" class="artifact-item ir-project-row"
@@ -90,7 +90,7 @@
 <div id="irClearModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <div class="modal-card">
         <h3>Clear leftover proven cases?</h3>
-        <p class="muted">Removes proven-case IR drafts for this project. This cannot be undone.</p>
+        <p class="muted">Removes proven-case drafts for this project. This cannot be undone.</p>
         <p id="ir-clear-err" class="error hidden"></p>
         <div class="modal-actions">
             <button type="button" class="button ghost" id="irClearCancel">Cancel</button>

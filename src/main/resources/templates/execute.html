@@ -11,7 +11,7 @@
     <div class="page-title">
         <div>
             <h1>Execute &amp; verify</h1>
-            <p class="lede">Run manual test cases against your app with DOM and vision — find bugs without codegen first.</p>
+            <p class="lede">Run manual test cases against your app with page structure and screen vision — find bugs before building automation code.</p>
         </div>
     </div>
 
@@ -23,7 +23,7 @@
     <section class="panel workspace-launcher" id="workspace-launcher">
         <p class="guide-kicker">Workspace</p>
         <h2>Choose a project</h2>
-        <p class="panel-intro">Execute runs prove cases against one project's base URL and credential profile.</p>
+        <p class="panel-intro">Run test cases against one project's website URL and login profile.</p>
         <label>Project
             <select id="launcher-project-select">
                 <option value="">— Loading projects —</option>
@@ -131,7 +131,7 @@
                 <summary>Design mockups <span class="muted">optional — click to add</span></summary>
                 <p class="muted">One PNG of the last screen, named by test ID.</p>
                 <div id="design-ref-form" class="design-ref-form">
-                    <label>TC ID
+                    <label>Case ID
                         <input type="text" id="design-ref-tcId" name="tcId" placeholder="TC_001"/>
                     </label>
                     <label>Design PNG
@@ -225,6 +225,58 @@
         <p id="recent-execute-err" class="error" hidden></p>
     </section>
 
+
+    <section class="panel" id="visual-diffs-panel" hidden>
+        <h2>Screenshot diffs <span class="muted">(visual)</span></h2>
+        <p class="panel-intro">Pending saved good screenshots after Run tests or Hunt — review differences, then approve intentional changes.</p>
+        <div class="visual-diffs-layout">
+            <div class="visual-diffs-list-wrap">
+                <table class="table" id="visual-diffs-table" hidden>
+                    <thead>
+                    <tr>
+                        <th>Case</th>
+                        <th>Viewport</th>
+                        <th>Changed</th>
+                        <th>Run</th>
+                    </tr>
+                    </thead>
+                    <tbody id="visual-diffs-body"></tbody>
+                </table>
+                <p id="visual-diffs-empty" class="muted" hidden>No pending screenshot diffs.</p>
+                <p id="visual-diffs-waiting" class="muted" hidden>Waiting on Backend visual-diffs.</p>
+                <p id="visual-diffs-err" class="error" hidden></p>
+            </div>
+            <div id="visual-diffs-detail" class="visual-diffs-detail" hidden>
+                <div class="visual-diffs-detail-head">
+                    <p id="visual-diffs-detail-meta" class="muted"></p>
+                    <div class="actions visual-diffs-actions">
+                        <button type="button" class="button" id="visual-diffs-approve-btn">Approve saved good screenshot</button>
+                        <label class="button ghost visual-diffs-replace-label">Replace upload
+                            <input type="file" id="visual-diffs-replace-file" accept="image/png,image/*" hidden/>
+                        </label>
+                    </div>
+                </div>
+                <p id="visual-diffs-approve-msg" class="muted" hidden></p>
+                <p id="visual-diffs-approve-err" class="error" hidden></p>
+                <div class="design-compare-shots visual-diffs-shots">
+                    <figure>
+                        <figcaption>Saved good screenshot</figcaption>
+                        <img id="visual-diffs-img-baseline" alt="Saved good screenshot" loading="lazy"/>
+                    </figure>
+                    <figure>
+                        <figcaption>Actual</figcaption>
+                        <img id="visual-diffs-img-actual" alt="Actual" loading="lazy"/>
+                    </figure>
+                    <figure id="visual-diffs-diff-figure">
+                        <figcaption>Diff</figcaption>
+                        <img id="visual-diffs-img-diff" alt="Diff overlay" loading="lazy"/>
+                        <p id="visual-diffs-diff-missing" class="muted" hidden>No diff overlay.</p>
+                    </figure>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Live run + results host (also reused inside expanded recent rows) -->
     <section class="panel" id="job-panel" hidden>
         <h2>Run progress</h2>
@@ -248,7 +300,7 @@
 
     <section class="panel execute-results" id="results-panel" hidden>
         <h2>Results</h2>
-        <p class="panel-intro">Click a TC row for timeline and screenshots.</p>
+        <p class="panel-intro">Click a case row for timeline and screenshots.</p>
         <div class="keel-retry-tiles" id="retry-metrics-tiles" hidden aria-label="Retry metrics">
             <div class="keel-retry-tile keel-retry-tile--rate">
                 <span class="keel-retry-tile__value" id="rm-first-pass">n/a</span>
@@ -260,12 +312,12 @@
             </div>
             <div class="keel-retry-tile keel-retry-tile--flaky">
                 <span class="keel-retry-tile__value" id="rm-flaky">0</span>
-                <span class="keel-retry-tile__label">Flaky</span>
+                <span class="keel-retry-tile__label" title="Sometimes fails for no clear reason">Sometimes fails</span>
                 <span class="keel-retry-tile__sub muted" id="rm-reused-flaky" hidden></span>
             </div>
             <div class="keel-retry-tile keel-retry-tile--healed">
                 <span class="keel-retry-tile__value" id="rm-healed">0</span>
-                <span class="keel-retry-tile__label">Healed</span>
+                <span class="keel-retry-tile__label" title="Keel fixed a broken step">Fixed broken steps</span>
             </div>
             <div class="keel-retry-tile keel-retry-tile--infra">
                 <span class="keel-retry-tile__value" id="rm-infra">0</span>
@@ -277,13 +329,13 @@
             </div>
         </div>
         <p class="keel-retry-note muted" id="retry-metrics-note" hidden>
-            First-pass counts only cases that passed with no retry and no heal. Infra, config and reused cases are
+            First-pass counts only cases that passed with no retry and no auto-fix for broken steps. Infra, config and reused cases are
             excluded from both rates. Runs from before retry metrics show <em>Legacy</em>.
         </p>
         <p class="keel-verdict-legend" id="retry-verdict-legend" hidden>
             <span th:each="v : ${retryVerdicts}"
                   th:class="|keel-verdict keel-verdict--${v.badge}|"
-                  th:text="${v.label}">Verdict</span>
+                  th:text="${v.label}">Result</span>
         </p>
         <div id="bug-report-actions" class="bug-report-actions" hidden>
             <button type="button" class="button ghost" id="bug-report-json">Export bug report (JSON)</button>
@@ -293,10 +345,10 @@
         <table class="table" id="results-table">
             <thead>
             <tr>
-                <th>TC</th>
+                <th>Case</th>
                 <th>Title</th>
                 <th>QA</th>
-                <th>Verdict</th>
+                <th>Result</th>
                 <th>Design</th>
             </tr>
             </thead>
@@ -333,7 +385,7 @@
                 <th>Setup</th>
                 <th>Proof</th>
                 <th>Provider</th>
-                <th>Locator</th>
+                <th>How we found it</th>
             </tr>
             </thead>
             <tbody id="mobile-results-body"></tbody>
@@ -362,6 +414,66 @@
         </div>
     </div>
 </div>
+
+
+<style>
+/* Phase 4B visual diffs — scoped to Execute; dark-mode safe via existing tokens */
+.visual-diffs-layout {
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 960px) {
+  .visual-diffs-layout {
+    grid-template-columns: minmax(240px, 340px) 1fr;
+    align-items: start;
+  }
+}
+.visual-diffs-list-wrap .table tbody tr {
+  cursor: pointer;
+}
+.visual-diffs-list-wrap .table tbody tr.is-selected {
+  outline: 2px solid var(--accent, #2a9d8f);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--accent, #2a9d8f) 12%, transparent);
+}
+.visual-diffs-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.visual-diffs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.visual-diffs-replace-label {
+  cursor: pointer;
+  margin: 0;
+}
+.visual-diffs-shots {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+@media (max-width: 900px) {
+  .visual-diffs-shots {
+    grid-template-columns: 1fr !important;
+  }
+}
+.visual-diffs-shots img {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  background: var(--panel-bg, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #2a9d8f) 25%, transparent);
+}
+.visual-diffs-frac {
+  color: var(--muted, #6b7280);
+  font-variant-numeric: tabular-nums;
+}
+</style>
 
 <script th:inline="javascript">
 (function () {
@@ -557,7 +669,7 @@
         preRunReviewPanel.hidden = false;
         setPreRunReviewBusy(true);
         const reviewer = preRunReviewProviderLabel();
-        preRunReviewStatus.textContent = reviewer + ' is reviewing the exact selected suite…';
+        preRunReviewStatus.textContent = reviewer + ' is reviewing the exact selected cases…';
         if (preRunReviewProgressLabel) {
             preRunReviewProgressLabel.textContent = reviewer + ' is reviewing…';
         }
@@ -569,7 +681,7 @@
             for (let i = 0; i < batches.length; i++) {
                 preRunReviewStatus.textContent = batches.length > 1
                     ? ('Reviewing batch ' + (i + 1) + ' of ' + batches.length)
-                    : (reviewer + ' is reviewing the exact selected suite…');
+                    : (reviewer + ' is reviewing the exact selected cases…');
                 if (preRunReviewProgressLabel) {
                     preRunReviewProgressLabel.textContent = batches.length > 1
                         ? ('Reviewing batch ' + (i + 1) + ' of ' + batches.length)
@@ -910,6 +1022,266 @@
     const recentExecuteBody = document.getElementById('recent-execute-body');
     const recentExecuteEmpty = document.getElementById('recent-execute-empty');
     const recentExecuteErr = document.getElementById('recent-execute-err');
+
+    const visualDiffsPanel = document.getElementById('visual-diffs-panel');
+    const visualDiffsBody = document.getElementById('visual-diffs-body');
+    const visualDiffsTable = document.getElementById('visual-diffs-table');
+    const visualDiffsEmpty = document.getElementById('visual-diffs-empty');
+    const visualDiffsWaiting = document.getElementById('visual-diffs-waiting');
+    const visualDiffsErr = document.getElementById('visual-diffs-err');
+    const visualDiffsDetail = document.getElementById('visual-diffs-detail');
+    const visualDiffsDetailMeta = document.getElementById('visual-diffs-detail-meta');
+    const visualDiffsApproveBtn = document.getElementById('visual-diffs-approve-btn');
+    const visualDiffsApproveMsg = document.getElementById('visual-diffs-approve-msg');
+    const visualDiffsApproveErr = document.getElementById('visual-diffs-approve-err');
+    const visualDiffsReplaceFile = document.getElementById('visual-diffs-replace-file');
+    const visualDiffsImgBaseline = document.getElementById('visual-diffs-img-baseline');
+    const visualDiffsImgActual = document.getElementById('visual-diffs-img-actual');
+    const visualDiffsImgDiff = document.getElementById('visual-diffs-img-diff');
+    const visualDiffsDiffMissing = document.getElementById('visual-diffs-diff-missing');
+    let visualDiffsSelected = null;
+    let visualDiffsProjectId = '';
+
+    function resetVisualDiffsUi() {
+        visualDiffsSelected = null;
+        if (visualDiffsBody) visualDiffsBody.innerHTML = '';
+        if (visualDiffsTable) visualDiffsTable.hidden = true;
+        if (visualDiffsEmpty) visualDiffsEmpty.hidden = true;
+        if (visualDiffsWaiting) visualDiffsWaiting.hidden = true;
+        if (visualDiffsErr) visualDiffsErr.hidden = true;
+        if (visualDiffsDetail) visualDiffsDetail.hidden = true;
+        if (visualDiffsApproveMsg) visualDiffsApproveMsg.hidden = true;
+        if (visualDiffsApproveErr) visualDiffsApproveErr.hidden = true;
+        [visualDiffsImgBaseline, visualDiffsImgActual, visualDiffsImgDiff].forEach(function (img) {
+            if (!img) return;
+            img.removeAttribute('src');
+            img.hidden = true;
+        });
+        if (visualDiffsDiffMissing) visualDiffsDiffMissing.hidden = true;
+    }
+
+    function formatChangedFraction(row) {
+        const frac = row.changedFraction;
+        const max = row.maxChangedFraction;
+        if (frac == null && max == null) return '—';
+        const a = (typeof frac === 'number') ? (frac * 100).toFixed(2) + '%' : String(frac == null ? '—' : frac);
+        const b = (typeof max === 'number') ? (max * 100).toFixed(2) + '%' : '';
+        return b ? (a + ' / max ' + b) : a;
+    }
+
+    function visualDiffUrls(projectId, row) {
+        const base = '/api/projects/' + encodeURIComponent(projectId);
+        const ck = encodeURIComponent(row.caseKey);
+        const vp = encodeURIComponent(row.viewport);
+        const rid = encodeURIComponent(row.runId);
+        return {
+            baseline: base + '/visual-baselines/' + ck + '/' + vp + '/image',
+            actual: base + '/visual-diffs/' + rid + '/' + ck + '/' + vp + '/actual',
+            diff: base + '/visual-diffs/' + rid + '/' + ck + '/' + vp + '/diff',
+            meta: base + '/visual-diffs/' + rid + '/' + ck + '/' + vp,
+            approve: base + '/visual-baselines/' + ck + '/' + vp + '/approve',
+            replace: base + '/visual-baselines/' + ck + '/' + vp
+        };
+    }
+
+    function selectVisualDiffRow(projectId, row, tr) {
+        visualDiffsSelected = row;
+        if (visualDiffsBody) {
+            visualDiffsBody.querySelectorAll('tr').forEach(function (el) { el.classList.remove('is-selected'); });
+        }
+        if (tr) tr.classList.add('is-selected');
+        if (visualDiffsDetail) visualDiffsDetail.hidden = false;
+        if (visualDiffsApproveMsg) visualDiffsApproveMsg.hidden = true;
+        if (visualDiffsApproveErr) visualDiffsApproveErr.hidden = true;
+        const urls = visualDiffUrls(projectId, row);
+        if (visualDiffsDetailMeta) {
+            visualDiffsDetailMeta.textContent = (row.caseKey || '') + ' · ' + (row.viewport || '')
+                + ' · run ' + (row.runId || '')
+                + (row.passed === true ? ' · passed' : ' · failed');
+        }
+        function setImg(el, url) {
+            if (!el) return;
+            el.hidden = false;
+            el.onerror = function () { el.hidden = true; };
+            el.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
+        }
+        setImg(visualDiffsImgBaseline, urls.baseline);
+        setImg(visualDiffsImgActual, urls.actual);
+        if (visualDiffsImgDiff) {
+            visualDiffsImgDiff.hidden = false;
+            if (visualDiffsDiffMissing) visualDiffsDiffMissing.hidden = true;
+            visualDiffsImgDiff.onerror = function () {
+                visualDiffsImgDiff.hidden = true;
+                if (visualDiffsDiffMissing) visualDiffsDiffMissing.hidden = false;
+            };
+            visualDiffsImgDiff.src = urls.diff + '?v=' + Date.now();
+        }
+    }
+
+    function renderVisualDiffs(projectId, rows) {
+        resetVisualDiffsUi();
+        if (!visualDiffsBody) return;
+        if (!rows || !rows.length) {
+            if (visualDiffsEmpty) visualDiffsEmpty.hidden = false;
+            return;
+        }
+        if (visualDiffsTable) visualDiffsTable.hidden = false;
+        rows.forEach(function (row) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td>' + escapeHtml(row.caseKey || '') + '</td>'
+                + '<td>' + escapeHtml(row.viewport || '') + '</td>'
+                + '<td class="visual-diffs-frac muted">' + escapeHtml(formatChangedFraction(row)) + '</td>'
+                + '<td class="mono">' + escapeHtml(row.runId || '') + '</td>';
+            tr.addEventListener('click', function () { selectVisualDiffRow(projectId, row, tr); });
+            visualDiffsBody.appendChild(tr);
+        });
+    }
+
+    async function loadVisualDiffs(projectId) {
+        visualDiffsProjectId = projectId || '';
+        resetVisualDiffsUi();
+        if (!visualDiffsPanel) return;
+        if (!projectId) {
+            visualDiffsPanel.hidden = true;
+            return;
+        }
+        visualDiffsPanel.hidden = false;
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/visual-diffs?pending=true', {
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Accept': 'application/json' }, API_HEADERS)
+            });
+            if (res.status === 404 || res.status === 501) {
+                if (visualDiffsWaiting) visualDiffsWaiting.hidden = false;
+                return;
+            }
+            if (!res.ok) {
+                if (visualDiffsErr) {
+                    visualDiffsErr.hidden = false;
+                    visualDiffsErr.textContent = 'Could not load screenshot diffs (' + res.status + ').';
+                }
+                return;
+            }
+            const data = await res.json().catch(function () { return []; });
+            const rows = Array.isArray(data) ? data : (data.items || data.diffs || data.results || []);
+            renderVisualDiffs(projectId, rows);
+        } catch (e) {
+            if (visualDiffsWaiting) visualDiffsWaiting.hidden = false;
+        } finally {
+            focusVisualDiffsPanelFromHash();
+        }
+    }
+
+    function focusVisualDiffsPanelFromHash() {
+        const hash = (location.hash || '').replace(/^#/, '');
+        if (hash !== 'visual-diffs-panel') return;
+        if (!visualDiffsPanel || visualDiffsPanel.hidden) return;
+        try {
+            visualDiffsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (typeof visualDiffsPanel.focus === 'function') {
+                if (!visualDiffsPanel.hasAttribute('tabindex')) {
+                    visualDiffsPanel.setAttribute('tabindex', '-1');
+                }
+                visualDiffsPanel.focus({ preventScroll: true });
+            }
+        } catch (_) { /* ignore */ }
+    }
+
+    async function approveSelectedVisualBaseline() {
+        if (!visualDiffsSelected || !visualDiffsProjectId) return;
+        if (visualDiffsApproveMsg) visualDiffsApproveMsg.hidden = true;
+        if (visualDiffsApproveErr) visualDiffsApproveErr.hidden = true;
+        if (visualDiffsApproveBtn) visualDiffsApproveBtn.disabled = true;
+        try {
+            const urls = visualDiffUrls(visualDiffsProjectId, visualDiffsSelected);
+            const res = await fetch(urls.approve, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }, API_HEADERS),
+                body: JSON.stringify({ runId: visualDiffsSelected.runId })
+            });
+            const data = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                if (visualDiffsApproveErr) {
+                    visualDiffsApproveErr.hidden = false;
+                    visualDiffsApproveErr.textContent = data.message || data.error || ('Approve failed (' + res.status + ')');
+                }
+                return;
+            }
+            if (visualDiffsApproveMsg) {
+                visualDiffsApproveMsg.hidden = false;
+                visualDiffsApproveMsg.textContent = 'Saved good screenshot approved from run ' + (visualDiffsSelected.runId || '') + '.';
+            }
+            await loadVisualDiffs(visualDiffsProjectId);
+        } catch (e) {
+            if (visualDiffsApproveErr) {
+                visualDiffsApproveErr.hidden = false;
+                visualDiffsApproveErr.textContent = 'Approve failed (network).';
+            }
+        } finally {
+            if (visualDiffsApproveBtn) visualDiffsApproveBtn.disabled = false;
+        }
+    }
+
+    async function replaceSelectedVisualBaseline(file) {
+        if (!visualDiffsSelected || !visualDiffsProjectId || !file) return;
+        if (visualDiffsApproveMsg) visualDiffsApproveMsg.hidden = true;
+        if (visualDiffsApproveErr) visualDiffsApproveErr.hidden = true;
+        try {
+            const urls = visualDiffUrls(visualDiffsProjectId, visualDiffsSelected);
+            const fd = new FormData();
+            fd.append('file', file);
+            if (visualDiffsSelected.runId) fd.append('sourceRunId', visualDiffsSelected.runId);
+            const res = await fetch(urls.replace, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Accept': 'application/json' }, API_HEADERS),
+                body: fd
+            });
+            const data = await res.json().catch(function () { return {}; });
+            if (res.status === 404 || res.status === 501) {
+                if (visualDiffsApproveErr) {
+                    visualDiffsApproveErr.hidden = false;
+                    visualDiffsApproveErr.textContent = 'Waiting on Backend saved-good-screenshot upload.';
+                }
+                return;
+            }
+            if (!res.ok) {
+                if (visualDiffsApproveErr) {
+                    visualDiffsApproveErr.hidden = false;
+                    visualDiffsApproveErr.textContent = data.message || data.error || ('Replace failed (' + res.status + ')');
+                }
+                return;
+            }
+            if (visualDiffsApproveMsg) {
+                visualDiffsApproveMsg.hidden = false;
+                visualDiffsApproveMsg.textContent = 'Saved good screenshot replaced with uploaded image.';
+            }
+            await loadVisualDiffs(visualDiffsProjectId);
+        } catch (e) {
+            if (visualDiffsApproveErr) {
+                visualDiffsApproveErr.hidden = false;
+                visualDiffsApproveErr.textContent = 'Replace failed (network).';
+            }
+        } finally {
+            if (visualDiffsReplaceFile) visualDiffsReplaceFile.value = '';
+        }
+    }
+
+    if (visualDiffsApproveBtn) {
+        visualDiffsApproveBtn.addEventListener('click', function () { approveSelectedVisualBaseline(); });
+    }
+    if (visualDiffsReplaceFile) {
+        visualDiffsReplaceFile.addEventListener('change', function () {
+            const f = visualDiffsReplaceFile.files && visualDiffsReplaceFile.files[0];
+            if (f) replaceSelectedVisualBaseline(f);
+        });
+    }
+
+
     let expandedRunId = null;
     const runDetailHost = document.createElement('div');
     runDetailHost.id = 'run-detail-host';
@@ -1188,6 +1560,7 @@
         }
         loadProjectConfig(projectId);
         loadRecentExecuteRuns(projectId);
+        loadVisualDiffs(projectId);
     }
 
     function jobBadgeClass(status) {
@@ -1619,7 +1992,7 @@
             resultsEmpty.hidden = tcs.length > 0;
             if (tcs.length === 0) {
                 resultsEmpty.hidden = false;
-                resultsEmpty.textContent = 'No saved TC results for this run (IR missing or empty).';
+                resultsEmpty.textContent = 'No saved case results for this run (run details missing or empty).';
             } else {
                 resultsEmpty.textContent = 'No results yet.';
             }
@@ -1675,7 +2048,7 @@
             + (title ? ' title="' + escapeHtml(title.trim()) + '"' : '') + '>'
             + escapeHtml(tc.verdictLabel || key) + '</span>';
         if (tc.reusedFlaky) {
-            html += ' <span class="keel-verdict__flag" title="Reused from a run where this case was flaky">was flaky</span>';
+            html += ' <span class="keel-verdict__flag" title="Reused from a run where this case sometimes failed for no clear reason">sometimes failed before</span>';
         }
         return html;
     }
@@ -1704,7 +2077,7 @@
             document.getElementById('rm-config').textContent = m.configError || 0;
             const rf = document.getElementById('rm-reused-flaky');
             rf.hidden = !m.reusedFlaky;
-            rf.textContent = m.reusedFlaky ? '+' + m.reusedFlaky + ' reused flaky' : '';
+            rf.textContent = m.reusedFlaky ? '+' + m.reusedFlaky + ' reused sometimes-failing' : '';
             tiles.classList.toggle('keel-retry-tiles--warn', (m.infraError || 0) + (m.configError || 0) > 0);
             tiles.hidden = false; note.hidden = false; legend.hidden = false;
         } catch (e) {
@@ -1794,7 +2167,7 @@
         let data = {};
         try { data = await res.json(); } catch (e) { /* ignore */ }
         if (!res.ok) {
-            detailTd.innerHTML = '<p class="error">' + escapeHtml((data && data.message) || 'Failed to load TC detail') + '</p>';
+            detailTd.innerHTML = '<p class="error">' + escapeHtml((data && data.message) || 'Failed to load case detail') + '</p>';
             return;
         }
         let html = '';
@@ -1899,7 +2272,7 @@
         const fileInput = document.getElementById('design-ref-file');
         if (!tcId || !fileInput.files || !fileInput.files[0]) {
             designRefErr.hidden = false;
-            designRefErr.textContent = 'Enter a TC ID and select a PNG file.';
+            designRefErr.textContent = 'Enter a Case ID and select a PNG file.';
             return;
         }
         const body = new FormData();
@@ -2019,6 +2392,9 @@
     });
 
     projectSel.addEventListener('change', onProjectChange);
+    window.addEventListener('hashchange', focusVisualDiffsPanelFromHash);
+    // Deep-link from sidebar / Evidence: /execute#visual-diffs-panel
+    focusVisualDiffsPanelFromHash();
     loadProjects();
 })();
 </script>

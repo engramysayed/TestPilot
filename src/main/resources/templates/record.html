@@ -90,7 +90,7 @@
                 <div class="rw-build" id="rw-build-card">
                     <p class="rw-build-kicker">Already in hand</p>
                     <p id="rw-build-count"><strong>Keel remembered the controls you used.</strong></p>
-                    <p class="hint">While Chrome was open, each click kept a locator. Check this, on the Keel bar in that window, saves a real confirmation. Building uses the same framework writer and does not open Chrome again.</p>
+                    <p class="hint">While Chrome was open, each click saved how we find that control on the page. Check this, on the Keel bar in that window, saves a real confirmation. Building uses the same framework writer and does not open Chrome again.</p>
                     <label><input type="checkbox" id="rw-build" checked> Build the framework from this recording</label>
                 </div>
                 <label style="display:block;margin-top:0.8rem"><input type="checkbox" id="rw-run-once"> Run it once now to check it works</label>
@@ -245,7 +245,7 @@
             var buildBox = document.getElementById('rw-build');
             if (count) {
                 var bits = [];
-                bits.push(locatedCount === 1 ? '1 control has a locator' : locatedCount + ' controls have locators');
+                bits.push(locatedCount === 1 ? '1 control has a find-on-page' : locatedCount + ' controls have find-on-page hints');
                 bits.push(checkCount === 1 ? '1 check' : checkCount + ' checks');
                 count.textContent = '';
                 var strong = document.createElement('strong');
@@ -424,7 +424,7 @@
             var links = [{ href: '/projects/' + encodeURIComponent(pid) + '?tab=tcs', label: 'Open test cases' }];
             var text = 'Saved ' + tcId + " into this project's test cases.";
             if (payload.jobId) {
-                text += ' The framework is being written from the locators.';
+                text += ' The framework is being written from how we find those controls on the page.';
                 links.unshift({ href: '/status?jobId=' + encodeURIComponent(payload.jobId), label: 'Watch the framework build' });
                 links.push({ href: '/packages', label: 'Code packages' });
             } else if (payload.buildMessage) {
