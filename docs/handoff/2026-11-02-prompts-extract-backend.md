@@ -1,6 +1,6 @@
 # Handoff — prompts-extract Backend slice (2026-11-02)
 
-**Tip SHA:** `pending`  
+**Tip SHA:** `67315671c7bb0e50f848909b8e946b6c76b29564`  
 **Base AE tip:** `35b1aab` (`feat(ae): extract system prompts into PromptCatalog + resources`)  
 **Live tree:** `D:\Work\projects\Keel\keel\TestPilot`  
 **Specialist:** KeelBackend  
