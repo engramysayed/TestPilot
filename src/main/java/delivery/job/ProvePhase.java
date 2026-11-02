@@ -38,6 +38,11 @@ import delivery.visual.VisualDiffComparer;
 import delivery.visual.VisualDiffCompareResult;
 import delivery.visual.VisualDiffConfig;
 import delivery.visual.VisualDiffSession;
+import delivery.evidence.FailureDiagCapture;
+import delivery.evidence.FailureReplayWriter;
+import delivery.evidence.Phase2EvidenceConfig;
+import delivery.evidence.Phase2Session;
+import delivery.heal.HealProposalWriter;
 import delivery.visual.VisualDiffStatus;
 import delivery.heal.CursorHealClient;
 import delivery.heal.FailedLocator;
@@ -279,7 +284,9 @@ public class ProvePhase {
             }
         }
 
-        try (delivery.vision.VisionMissJournal.Scope journal = delivery.vision.VisionMissJournal.activate(evidence, request.password()); PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks); VisualDiffSession.Scope ignoredVisual = VisualDiffSession.activate(visualProjectRoot, visualRunId, visualProjectId)) {
+        try (delivery.vision.VisionMissJournal.Scope journal = delivery.vision.VisionMissJournal.activate(evidence, request.password()); PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks); VisualDiffSession.Scope ignoredVisual = VisualDiffSession.activate(visualProjectRoot, visualRunId, visualProjectId); Phase2Session.Scope ignoredPhase2 =
+                Phase2Session.activate(visualProjectRoot, visualRunId,
+                        request == null ? null : request.projectId(), "prove")) {
             int index = 0;
             Set<String> failedCallBeforeIds = new LinkedHashSet<>();
             List<Boolean> freshSession = CallBeforeExpander.freshSessionAt(allCases);
@@ -683,6 +690,10 @@ public class ProvePhase {
                         probe);
                 if (healed.ok()) {
                     healTier = healed.tierUsed();
+                    emitPhase2HealProposal(null, tc.tcId(), 0,
+                            recordFailures(outcome.provenSteps().isEmpty() ? steps : outcome.provenSteps(),
+                                    outcome.failureReason()),
+                            healed, null);
                     TcOutcome retry = execution.execute(tc.tcId(), healed.steps(), evidence);
                     if (retry.status() == TcStatus.PASSED) {
                         outcome = retry;
@@ -933,6 +944,7 @@ public class ProvePhase {
                             : stepBatch.stream().filter(s -> !s.validated()).findFirst()
                             .map(ProvenStep::rationale).orElse("unknown");
                     if (!mayHeal(intent, lastReason)) {
+                        execution.capturePhase2Failure(tc.tcId(), evidence, intentIndex, lastReason);
                         return StepAttempt.fail(lastReason, autoFillSteps, evidenceDir,
                                 retriesUsed, healTier, lastReason);
                     }
@@ -994,6 +1006,7 @@ public class ProvePhase {
                     evidenceDir = stepOutcome.evidenceDir() == null ? ""
                             : stepOutcome.evidenceDir().toString();
                     if (!mayHeal(intent, lastReason)) {
+                        execution.capturePhase2Failure(tc.tcId(), evidence, intentIndex, lastReason);
                         return StepAttempt.fail(lastReason, partial, evidenceDir,
                                 retriesUsed, healTier, lastReason);
                     }
@@ -1022,6 +1035,7 @@ public class ProvePhase {
                             continue;
                         }
                         if (healed.ok() && !refusesSubmitNavigation(intent, healed.steps())) {
+                            emitPhase2HealProposal(request, tc.tcId(), intentIndex, failedThisIntent, healed, null);
                             healTier = mergeHealTier(healTier, healed.tierUsed());
                             if ("ollama".equals(healed.tierUsed()) || "vision".equals(healed.tierUsed())) {
                                 ollamaUsed = true;
@@ -1330,6 +1344,14 @@ public class ProvePhase {
         }
         writeHealRecoveryEvidence(evidence, tc.tcId(), healed);
         applyHealWorkbookPatchBestEffort(healWorkbookApplier, request, tc.tcId(), healed);
+        try {
+            if (Phase2EvidenceConfig.healProposeOnly()) {
+                // flaky heal_retry signal when recovery/heal tier used
+                FlakyTagStore.append(Phase2Session.projectRoot(), tc.tcId(), null,
+                        "heal tier " + healed.tierUsed(), Phase2Session.jobId(), "heal_retry");
+            }
+        } catch (Exception ignored) {
+        }
         PostActionSettle.afterAction();
         LogsManager.info("HEAL_RECOVERY: executed " + healed.steps().size()
                 + " steps for " + tc.tcId() + "; retrying intent");
@@ -1343,7 +1365,33 @@ public class ProvePhase {
             String tcId,
             HealResult healed
     ) {
-        if (applier == null || request == null || healed == null || !healed.ok()) {
+        if (request == null || healed == null || !healed.ok()) {
+            return;
+        }
+        // Phase 2: emit proposal only — never silent Java rewrite; skip workbook auto-apply when propose-only.
+        if (Phase2EvidenceConfig.healProposeOnly()) {
+            try {
+                Path projectRoot = Phase2Session.projectRoot();
+                if (projectRoot == null && request.storeRoot() != null && request.projectId() != null) {
+                    projectRoot = new delivery.store.ProjectStore(
+                            request.storeRoot(), request.baseUrl(), request.tenantId())
+                            .projectRoot(request.projectId());
+                }
+                HealProposalWriter.emitFromHealResult(
+                        projectRoot,
+                        request.projectId(),
+                        Phase2Session.jobId() != null ? Phase2Session.jobId() : request.jobId(),
+                        tcId,
+                        0,
+                        List.of(),
+                        healed,
+                        null);
+            } catch (Exception e) {
+                LogsManager.warn("PHASE2_HEAL_PROPOSAL: " + e.getMessage());
+            }
+            return;
+        }
+        if (applier == null) {
             return;
         }
         if (!"recovery".equals(healed.tierUsed())) {
@@ -2436,4 +2484,85 @@ public class ProvePhase {
     public static int proveHtmlBudget() {
         return ObservationBudget.forProve();
     }
+
+
+
+    static void emitPhase2HealProposal(
+            ConversionJobRequest request,
+            String tcId,
+            int stepIndex,
+            List<FailedLocator> failed,
+            HealResult healed,
+            String evidenceRel
+    ) {
+        if (!Phase2EvidenceConfig.healProposeOnly() || healed == null || !healed.ok()) {
+            return;
+        }
+        try {
+            Path projectRoot = Phase2Session.projectRoot();
+            if (projectRoot == null && request != null && request.storeRoot() != null && request.projectId() != null) {
+                projectRoot = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId())
+                        .projectRoot(request.projectId());
+            }
+            String jobId = Phase2Session.jobId();
+            if ((jobId == null || jobId.isBlank()) && request != null) {
+                jobId = request.jobId();
+            }
+            HealProposalWriter.emitFromHealResult(
+                    projectRoot,
+                    request == null ? Phase2Session.projectId() : request.projectId(),
+                    jobId,
+                    tcId,
+                    stepIndex,
+                    failed == null ? List.of() : failed,
+                    healed,
+                    evidenceRel);
+        } catch (Exception e) {
+            LogsManager.warn("PHASE2_HEAL_PROPOSAL: " + e.getMessage());
+        }
+    }
+
+    /** Phase 2: screen+network+console under evidence/{tcFolder}/failure/{stepIndex}/. Best-effort. */
+    static void capturePhase2FailureEvidence(
+            TcExecutionService execution,
+            Path evidenceRoot,
+            String evidenceFolder,
+            String tcId,
+            int stepIndex,
+            String reason
+    ) {
+        if (!Phase2EvidenceConfig.failureEvidenceEnabled() || evidenceRoot == null) {
+            return;
+        }
+        try {
+            String folder = (evidenceFolder == null || evidenceFolder.isBlank()) ? tcId : evidenceFolder;
+            Path tcDir = evidenceRoot.resolve(folder);
+            byte[] png = execution == null ? null : execution.capturePngBytes();
+            String url = "";
+            try {
+                if (execution != null) {
+                    url = execution.currentUrlOrEmpty();
+                }
+            } catch (Exception ignored) {
+            }
+            FailureReplayWriter.write(new FailureReplayWriter.CaptureRequest(
+                    tcDir,
+                    Phase2Session.jobId(),
+                    tcId,
+                    stepIndex,
+                    reason,
+                    url,
+                    Phase2Session.source(),
+                    png), null);
+            // flaky hint on timeout / heal paths
+            String signal = FlakyTagStore.signalFromReason(reason, null);
+            if ("timeout".equals(signal) || "intermittent".equals(signal)) {
+                FlakyTagStore.append(Phase2Session.projectRoot(), tcId, stepIndex, reason,
+                        Phase2Session.jobId(), signal);
+            }
+        } catch (Exception e) {
+            LogsManager.warn("PHASE2_FAILURE: " + e.getMessage());
+        }
+    }
+
 }

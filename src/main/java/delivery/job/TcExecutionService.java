@@ -1,6 +1,10 @@
 package delivery.job;
 
 import delivery.codegen.PageClusterer;
+import delivery.evidence.FailureDiagCapture;
+import delivery.evidence.FailureReplayWriter;
+import delivery.evidence.Phase2EvidenceConfig;
+import delivery.evidence.Phase2Session;
 import delivery.codegen.ProvenStep;
 import delivery.vision.DomPostClickValidator;
 import delivery.vision.VisionMissJournal;
@@ -51,6 +55,7 @@ public class TcExecutionService {
         shotSeq.set(0);
         this.evidenceFolder = evidenceFolder;
         delivery.assertions.CaptureStore.clear();
+        attachPhase2Diag();
     }
 
     private String evidenceKey(String tcId) {
@@ -666,12 +671,62 @@ public class TcExecutionService {
      * Capture {@code failure.png} under {@code evidenceRoot/tcId} (e.g. login prelude bind fail
      * before any proven step). Returns the evidence directory path string, or empty on skip.
      */
+    public String currentUrlOrEmpty() {
+        try {
+            org.openqa.selenium.WebDriver d = driverFactory.get();
+            if (d == null) {
+                return "";
+            }
+            String u = d.getCurrentUrl();
+            return u == null ? "" : u;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** Attach Phase 2 CDP/network+console buffer for this TC (best-effort). */
+    public void attachPhase2Diag() {
+        if (!Phase2EvidenceConfig.diagAttachEnabled()) {
+            return;
+        }
+        try {
+            FailureDiagCapture.clearCurrent();
+            FailureDiagCapture.attach(driverFactory.get());
+        } catch (Exception e) {
+            LogsManager.warn("PHASE2_DIAG attach: " + e.getMessage());
+        }
+    }
+
+    /** Phase 2 failure/{stepIndex} bundle; keeps legacy failure.png via captureFailure. */
+    public void capturePhase2Failure(String tcId, Path evidenceRoot, int stepIndex, String reason) {
+        if (!Phase2EvidenceConfig.failureEvidenceEnabled() || evidenceRoot == null || tcId == null) {
+            return;
+        }
+        try {
+            Path evidenceDir = evidenceRoot.resolve(evidenceKey(tcId));
+            captureFailure(evidenceDir);
+            byte[] png = captureRedactedPng();
+            FailureReplayWriter.write(new FailureReplayWriter.CaptureRequest(
+                    evidenceDir,
+                    Phase2Session.jobId(),
+                    tcId,
+                    stepIndex,
+                    reason,
+                    currentUrlOrEmpty(),
+                    Phase2Session.source(),
+                    png), driverFactory.get());
+        } catch (Exception e) {
+            LogsManager.warn("PHASE2_FAILURE capture: " + e.getMessage());
+        }
+    }
+
     public String captureFailureEvidence(String tcId, Path evidenceRoot) {
         if (tcId == null || tcId.isBlank() || evidenceRoot == null) {
             return "";
         }
         Path evidenceDir = evidenceRoot.resolve(evidenceKey(tcId));
         captureFailure(evidenceDir);
+        capturePhase2Failure(tcId, evidenceRoot, 0, "captureFailureEvidence");
         return Files.isRegularFile(evidenceDir.resolve("failure.png"))
                 ? evidenceDir.toString()
                 : "";

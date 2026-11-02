@@ -2,6 +2,14 @@
 
 # Keel changelog
 
+## 2026-11-02 - Phase 2 AE: failure replay + heal proposals + flaky tags
+
+- On prove/execute failure, write evidence/{tcFolder}/failure/{stepIndex}/ (meta + best-effort screen/network/console) matching Backend interim contract.
+- Heal emits pending heal-proposals/{id}.json only (propose-only default); never silent Java rewrite.
+- Append laky-tags.json signals (timeout / heal_retry / intermittent / other).
+- Flags: keel.phase2.failure.evidence, keel.phase2.heal.proposeOnly, keel.phase2.flaky.emit (defaults on).
+- Handoff: docs/handoff/2026-11-02-phase2-ae.md.
+
 ## 2026-11-02 - Hunt: KnowledgePackReader HTTP (local service) swap
 
 - Prod `KnowledgePackConfig` bean: `NoOpKnowledgePackReader` → `HttpKnowledgePackReader.local` against `KnowledgePackService` (same store as live pack GETs). Missing packs log+skip.
