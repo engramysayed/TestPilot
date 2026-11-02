@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Production default until Backend HTTP KnowledgePack APIs are live-applied.
- * Returns empty so Hunt keeps legacy behavior when packs are requested but unavailable.
+ * Empty reader retained for tests / emergency fallback.
+ * Production bean is {@link HttpKnowledgePackReader} (see {@code KnowledgePackConfig}).
  */
 public final class NoOpKnowledgePackReader implements KnowledgePackReader {
     @Override

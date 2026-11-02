@@ -2,6 +2,11 @@
 
 # Keel changelog
 
+## 2026-11-02 - Hunt: KnowledgePackReader HTTP (local service) swap
+
+- Prod `KnowledgePackConfig` bean: `NoOpKnowledgePackReader` → `HttpKnowledgePackReader.local` against `KnowledgePackService` (same store as live pack GETs). Missing packs log+skip.
+- `HttpKnowledgePackReader.http(baseUrl)` implemented for out-of-process; tests in `HttpKnowledgePackReaderTest`.
+- Restart portal after deploy. Handoff: `docs/handoff/2026-11-02-hunt-knowledge-ae.md`.
 ## 2026-11-02 - Hunt: optional KnowledgePack guidance
 
 - Bug Hunter accepts optional `knowledgePackIds` on start (`HuntRequest` / `POST .../hunt-runs`). Empty ids keep legacy Hunt.

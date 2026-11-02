@@ -1,9 +1,15 @@
 # Hunt Knowledge Pack guidance (AE) — 2026-11-02
 
-**Status:** Live-applied on TestPilot (pack-guided Hunt). Backend HTTP pack APIs may still be landing; AE uses `KnowledgePackReader` so HTTP can plug without a second FS store.
+**Status:** LIVE-APPLIED HTTP swap — prod `KnowledgePackReader` bean is `HttpKnowledgePackReader.local(KnowledgePackService)` (same-process call to the store behind GET `/api/projects/{projectId}/knowledge-packs[/{packId}]`). No second FS pack store. Missing pack ids still skip (log + continue).
+**Tip:** `f8358f3` (feat(hunt): wire KnowledgePackReader to HTTP/local KnowledgePackService). Base was `cfa220e` (Backend ingest) + AE `b422366`.
+**Backup:** local branch `backup/hunt-http-reader-20261102` at `cfa220e` (no push).
 
-**Parent contract:** `docs/handoff/2026-11-02-knowledge-pack-contract.md` (and Maestro interim lock).
-
+**HTTP swap (2026-11-02):**
+- `KnowledgePackConfig` → `HttpKnowledgePackReader.local(service::list, service::get)`
+- `HttpKnowledgePackReader` also supports `http(baseUrl)` for out-of-process; unit tests cover local + mock HTTP + 404 skip
+- Flag unchanged: `delivery.hunt.knowledge-packs.enabled`
+- Fixture reader remains tests-only
+- Portal restart required to pick up bean swap
 ## Contract (consumed)
 
 | Field | Notes |
@@ -30,10 +36,10 @@ Hunt job input: optional `knowledgePackIds: string[]`. Empty/missing → **legac
 | Path | Role |
 |------|------|
 | `delivery/knowledge/KnowledgePack*.java` | DTO, source enum, reader, guidance compose |
-| `delivery/knowledge/NoOpKnowledgePackReader` | Production bean until HTTP |
-| `delivery/knowledge/HttpKnowledgePackReader` | Stub for Backend GET plug-in (returns empty today) |
+| `delivery/knowledge/NoOpKnowledgePackReader` | Retained fallback / tests |
+| `delivery/knowledge/HttpKnowledgePackReader` | Prod reader (local service transport + `http(baseUrl)`) |
 | `delivery/knowledge/FixtureKnowledgePackReader` | Tests only |
-| `delivery/portal/config/KnowledgePackConfig` | `@Bean KnowledgePackReader` → NoOp |
+| `delivery/portal/config/KnowledgePackConfig` | `@Bean KnowledgePackReader` → `HttpKnowledgePackReader.local` |
 | `delivery/hunt/HuntRequest` | `knowledgePackIds` |
 | `delivery/hunt/HuntBriefBuilder` | Appends pack guidance section |
 | `delivery/hunt/LiveHuntService` / `DryRunHuntService` | Accept `knowledgeGuidanceMd` |
