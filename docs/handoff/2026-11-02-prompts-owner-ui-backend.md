@@ -5,7 +5,7 @@
 **Live tree:** `D:\Work\projects\Keel\keel\TestPilot`  
 **Kickoff:** `docs/handoff/2026-11-02-prompts-owner-ui-kickoff.md`  
 **Base tip:** `301a3fc`  
-**Tip SHA:** see `git log -1` after Backend commit (recorded in Maestro/Leader report)  
+**Tip SHA:** `05c7dc8224fa25927568b611b793d6613ac7fe47`  
 **Backup:** `_backup/prompts-owner-ui-20261102-2252/`  
 **Portal LIVE:** left PID `17288` on `:8080` (jar not refreshed — Maestro owns after FE)
 
