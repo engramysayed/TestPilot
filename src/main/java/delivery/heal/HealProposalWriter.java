@@ -3,6 +3,7 @@ package delivery.heal;
 import delivery.codegen.ProvenStep;
 import delivery.evidence.Phase2EvidenceConfig;
 import delivery.evidence.Phase2Session;
+import delivery.prompts.PromptCatalog;
 import org.json.JSONObject;
 import utils.LogsManager;
 
@@ -153,6 +154,7 @@ public final class HealProposalWriter {
         } else {
             o.put("evidenceRel", p.evidenceRel());
         }
+        o.put("promptsVersion", PromptCatalog.version());
         return o;
     }
 

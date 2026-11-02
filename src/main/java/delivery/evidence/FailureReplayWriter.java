@@ -1,5 +1,6 @@
 package delivery.evidence;
 
+import delivery.prompts.PromptCatalog;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openqa.selenium.WebDriver;
@@ -102,6 +103,7 @@ public final class FailureReplayWriter {
                 source = Phase2Session.source();
             }
             meta.put("source", "execute".equalsIgnoreCase(source) ? "execute" : "prove");
+            meta.put("promptsVersion", PromptCatalog.version());
             Files.writeString(FailureReplayPaths.meta(dir), meta.toString(2));
         } catch (Exception e) {
             LogsManager.warn("PHASE2_FAILURE: meta " + e.getMessage());

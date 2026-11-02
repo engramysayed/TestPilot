@@ -2,6 +2,7 @@ package delivery.heal;
 
 import delivery.codegen.ProvenStep;
 import delivery.evidence.Phase2EvidenceConfig;
+import delivery.prompts.PromptCatalog;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -35,6 +36,9 @@ public class HealProposalWriterTest {
         Assert.assertEquals(o.getString("pageClass"), "Login_Page");
         Assert.assertEquals(o.getJSONObject("locatorAfter").getString("value"), "#new");
         Assert.assertTrue(o.isNull("decidedAt"));
+        Assert.assertTrue(o.has("promptsVersion"));
+        Assert.assertEquals(o.getString("promptsVersion"), PromptCatalog.version());
+        Assert.assertFalse(o.getString("promptsVersion").isBlank());
     }
 
     @Test
@@ -66,5 +70,19 @@ public class HealProposalWriterTest {
         Assert.assertEquals(o.getJSONObject("locatorBefore").getString("value"), "#gone");
         Assert.assertEquals(o.getJSONObject("locatorAfter").getString("value"), "#add");
         Assert.assertEquals(o.getInt("stepIndex"), 3);
+        Assert.assertEquals(o.getString("promptsVersion"), PromptCatalog.version());
+    }
+
+    @Test
+    public void stampsPromptsVersionFromCatalog() throws Exception {
+        Path tmp = Files.createTempDirectory("heal-proposal-prompts-ver-");
+        Path file = HealProposalWriter.emitPending(
+                tmp, "proj", "job", "TC_1", 0, "Login_Page",
+                new HealProposal.LocatorRef("css", "#a"),
+                new HealProposal.LocatorRef("css", "#b"),
+                "retry", "stamp check", null);
+        Assert.assertNotNull(file);
+        JSONObject o = new JSONObject(Files.readString(file, StandardCharsets.UTF_8));
+        Assert.assertEquals(o.getString("promptsVersion"), PromptCatalog.version());
     }
 }

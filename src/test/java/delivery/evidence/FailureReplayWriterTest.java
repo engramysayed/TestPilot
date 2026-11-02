@@ -1,5 +1,6 @@
 package delivery.evidence;
 
+import delivery.prompts.PromptCatalog;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -37,6 +38,9 @@ public class FailureReplayWriterTest {
         Assert.assertFalse(meta.getBoolean("hasNetwork"));
         Assert.assertFalse(meta.getBoolean("hasConsole"));
         Assert.assertEquals(meta.getString("source"), "prove");
+        Assert.assertTrue(meta.has("promptsVersion"));
+        Assert.assertEquals(meta.getString("promptsVersion"), PromptCatalog.version());
+        Assert.assertFalse(meta.getString("promptsVersion").isBlank());
         Assert.assertEquals(written, tcDir.resolve("failure").resolve("2"));
     }
 
@@ -47,5 +51,18 @@ public class FailureReplayWriterTest {
         Path written = FailureReplayWriter.write(new FailureReplayWriter.CaptureRequest(
                 tmp, "j", "TC_1", 0, "x", null, "execute", new byte[] {1}), null);
         Assert.assertNull(written);
+    }
+
+    @Test
+    public void stampsPromptsVersionFromCatalog() throws Exception {
+        Path tmp = Files.createTempDirectory("failure-replay-prompts-ver-");
+        Path tcDir = tmp.resolve("evidence").resolve("TC_2");
+        Files.createDirectories(tcDir);
+        Path written = FailureReplayWriter.write(new FailureReplayWriter.CaptureRequest(
+                tcDir, "job-2", "TC_2", 0, "timeout", null, "execute", null), null);
+        Assert.assertNotNull(written);
+        JSONObject meta = new JSONObject(Files.readString(FailureReplayPaths.meta(written), StandardCharsets.UTF_8));
+        Assert.assertEquals(meta.getString("promptsVersion"), PromptCatalog.version());
+        Assert.assertEquals(meta.getString("source"), "execute");
     }
 }
