@@ -7,12 +7,14 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
- * On-disk layout under {@code PortalStore.projectDiskRoot} / {@code ProjectStore.projectRoot}:
+ * On-disk layout under project disk root (same as {@code VisualDiffDiskStore}):
  * <pre>
  * visual-baselines/{caseKey}/{viewport}/baseline.png + meta.json
  * visual-diffs/{runId}/{caseKey}/{viewport}/actual.png (+ optional diff.png, result.json)
  * </pre>
- * caseKey uses {@link TcIdentity#storageKey(String)}.
+ * Keys match Backend {@code VisualDiffDiskStore} validation:
+ * {@code ^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$}. Prefer TC display id ({@code TC_1});
+ * do not use {@link TcIdentity#storageKey} (~HH) — that is invalid for the portal store.
  */
 public final class VisualBaselinePaths {
     public static final String BASELINES_DIR = "visual-baselines";
@@ -23,48 +25,67 @@ public final class VisualBaselinePaths {
     public static final String DIFF_PNG = "diff.png";
     public static final String RESULT_JSON = "result.json";
 
-    private static final Pattern SAFE_SEGMENT = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$");
+    /** Same rule as {@code delivery.portal.service.VisualDiffDiskStore}. */
+    public static final Pattern KEY = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$");
 
     private VisualBaselinePaths() {
     }
 
+    /**
+     * Portal/AE caseKey for a TC. Valid ids like {@code TC_LOGIN} pass through;
+     * otherwise non-allowed chars become {@code _}.
+     */
     public static String caseKey(String tcId) {
-        return TcIdentity.storageKey(tcId);
+        String id = TcIdentity.displayId(tcId);
+        if (id.isEmpty()) {
+            return "tc";
+        }
+        if (KEY.matcher(id).matches()) {
+            return id;
+        }
+        return sanitizeSegment(id, "tc");
     }
 
     public static String sanitizeViewport(String viewport) {
-        String v = viewport == null ? "" : viewport.trim();
+        return sanitizeSegment(viewport, VisualDiffConfig.DEFAULT_VIEWPORT);
+    }
+
+    public static String sanitizeRunId(String runId) {
+        return sanitizeSegment(runId, "local");
+    }
+
+    public static String sanitizeSegment(String raw, String fallback) {
+        String v = raw == null ? "" : raw.trim();
         if (v.isEmpty()) {
-            return VisualDiffConfig.DEFAULT_VIEWPORT;
+            return fallback;
         }
-        // Allow 1280x800 style as well as named desktop/mobile.
-        String compact = v.replace(' ', '_');
-        if (SAFE_SEGMENT.matcher(compact).matches()) {
-            return compact;
+        if (KEY.matcher(v).matches()) {
+            return v;
         }
-        StringBuilder sb = new StringBuilder(compact.length());
-        for (int i = 0; i < compact.length(); i++) {
-            char c = compact.charAt(i);
+        StringBuilder sb = new StringBuilder(v.length());
+        for (int i = 0; i < v.length(); i++) {
+            char c = v.charAt(i);
             if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
-                    || c == '.' || c == '_' || c == '-') {
+                    || c == '_' || c == '-') {
                 sb.append(c);
             } else {
                 sb.append('_');
             }
         }
         String out = sb.toString();
-        return out.isBlank() ? VisualDiffConfig.DEFAULT_VIEWPORT : out;
-    }
-
-    public static String sanitizeRunId(String runId) {
-        String r = runId == null ? "" : runId.trim();
-        if (r.isEmpty()) {
-            return "local";
+        while (out.startsWith("_") || out.startsWith("-")) {
+            out = out.substring(1);
         }
-        if (SAFE_SEGMENT.matcher(r).matches()) {
-            return r;
+        if (out.isBlank()) {
+            return fallback;
         }
-        return r.replaceAll("[^A-Za-z0-9._-]", "_");
+        if (!KEY.matcher(out).matches()) {
+            out = "k_" + out;
+            if (out.length() > 128) {
+                out = out.substring(0, 128);
+            }
+        }
+        return KEY.matcher(out).matches() ? out : fallback;
     }
 
     public static Path baselinesRoot(Path projectRoot) {
@@ -106,7 +127,6 @@ public final class VisualBaselinePaths {
         return diffDir(projectRoot, runId, caseKey, viewport).resolve(RESULT_JSON);
     }
 
-    /** Lowercase helper for logs. */
     public static String describe(String caseKey, String viewport) {
         return caseKey + "/" + sanitizeViewport(viewport).toLowerCase(Locale.ROOT);
     }

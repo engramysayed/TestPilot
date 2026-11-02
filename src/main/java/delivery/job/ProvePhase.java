@@ -33,6 +33,12 @@ import delivery.net.WorkerNetworkGuard;
 import delivery.store.DomainLocatorMemory;
 import delivery.store.PreferredHooksStore;
 import delivery.store.ProjectStore;
+import delivery.visual.VisualBaselinePaths;
+import delivery.visual.VisualDiffComparer;
+import delivery.visual.VisualDiffCompareResult;
+import delivery.visual.VisualDiffConfig;
+import delivery.visual.VisualDiffSession;
+import delivery.visual.VisualDiffStatus;
 import delivery.heal.CursorHealClient;
 import delivery.heal.FailedLocator;
 import delivery.heal.HealCascade;
@@ -259,7 +265,21 @@ public class ProvePhase {
                 ? List.of()
                 : PreferredHooksStore.load(request.storeRoot(), request.tenantId(), request.baseUrl());
 
-        try (delivery.vision.VisionMissJournal.Scope journal = delivery.vision.VisionMissJournal.activate(evidence, request.password()); PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks)) {
+        
+        Path visualProjectRoot = null;
+        String visualRunId = "local";
+        String visualProjectId = request == null ? "" : request.projectId();
+        if (request != null && request.storeRoot() != null && request.projectId() != null
+                && !request.projectId().isBlank()) {
+            visualProjectRoot = new ProjectStore(
+                    request.storeRoot(), request.baseUrl(), request.tenantId())
+                    .projectRoot(request.projectId());
+            if (request.jobId() != null && !request.jobId().isBlank()) {
+                visualRunId = request.jobId();
+            }
+        }
+
+        try (delivery.vision.VisionMissJournal.Scope journal = delivery.vision.VisionMissJournal.activate(evidence, request.password()); PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks); VisualDiffSession.Scope ignoredVisual = VisualDiffSession.activate(visualProjectRoot, visualRunId, visualProjectId)) {
             int index = 0;
             Set<String> failedCallBeforeIds = new LinkedHashSet<>();
             List<Boolean> freshSession = CallBeforeExpander.freshSessionAt(allCases);
@@ -2014,7 +2034,7 @@ public class ProvePhase {
             return draft;
         }
         if (!VisionAssertionGate.shouldRun(tc)) {
-            return draft;
+            return applyVisualBaselineDiff(tc, draft, execution);
         }
         byte[] png = execution == null ? new byte[0] : execution.capturePngBytes();
         VisionGroundingProvider provider = VisionGroundingConfig.createAssertionProvider();
@@ -2027,7 +2047,7 @@ public class ProvePhase {
                     e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
         }
         if (result == null) {
-            return draft;
+            return applyVisualBaselineDiff(tc, draft, execution);
         }
         Path evDir;
         String folder = execution == null
@@ -2044,10 +2064,10 @@ public class ProvePhase {
                 + " provider=" + VisionGroundingConfig.providerId()
                 + " model=" + VisionGroundingConfig.model());
         if (!shouldDemoteForVisual(result, tc.visualAssertion(), draft.lastPageUrl())) {
-            return draft;
+            return applyVisualBaselineDiff(tc, draft, execution);
         }
         String reason = "VISUAL_ASSERT:" + result.status().name();
-        return new TcDraft(
+        return applyVisualBaselineDiff(tc, new TcDraft(
                 draft.tcId(), draft.title(), draft.stepsText(), draft.expectedResult(),
                 TcDraftStatus.PARTIAL, draft.provenSteps(), draft.loginSteps(),
                 draft.needsLoginBeforeMethod(),
@@ -2055,6 +2075,64 @@ public class ProvePhase {
                 "visual-assert",
                 reason,
                 evDir.toString(),
+                draft.retryCountOnBlocker(),
+                draft.lastPageUrl(),
+                draft.healTier(),
+                draft.healSkipReason(),
+                draft.loginFormUrl()), execution);
+    }
+
+    /**
+     * Phase 4: optional in-process compare vs visual-baselines on the project disk root.
+     * Captures stay in evidence; artifacts go under visual-diffs/. Never rewrites baseline.
+     * Off unless {@code -Dkeel.visual.diff.enabled=true}. NO_BASELINE does not demote.
+     */
+    static TcDraft applyVisualBaselineDiff(
+            ManualTestCase tc,
+            TcDraft draft,
+            TcExecutionService execution
+    ) {
+        if (draft == null || draft.status() != TcDraftStatus.PASSED) {
+            return draft;
+        }
+        if (!VisualDiffConfig.enabled()) {
+            return draft;
+        }
+        Path projectRoot = VisualDiffSession.projectRoot();
+        if (projectRoot == null) {
+            return draft;
+        }
+        String caseKey = VisualBaselinePaths.caseKey(tc == null ? draft.tcId() : tc.tcId());
+        String viewport = VisualDiffConfig.viewport();
+        String runId = VisualDiffSession.runId();
+        byte[] png = execution == null ? new byte[0] : execution.capturePngBytes();
+        VisualDiffCompareResult result = VisualDiffComparer.compareAndWrite(
+                projectRoot, runId, caseKey, viewport, png);
+        utils.LogsManager.info("VISUAL_DIFF: tc=" + draft.tcId()
+                + " status=" + result.status()
+                + " fraction=" + result.changedFraction()
+                + " viewport=" + viewport
+                + " msg=" + result.message());
+        // Demote only on FAIL (drift). NO_BASELINE / PASS leave green; ERROR is ops noise.
+        if (result.status() != VisualDiffStatus.FAIL) {
+            return draft;
+        }
+        String reason = "VISUAL_DIFF:" + result.status().name()
+                + (result.message() == null || result.message().isBlank() ? "" : ":" + result.message());
+        String evidenceDir = draft.evidenceDir() == null ? "" : draft.evidenceDir();
+        if ((evidenceDir == null || evidenceDir.isBlank()) && result.actualPath() != null) {
+            evidenceDir = result.actualPath().getParent() == null
+                    ? ""
+                    : result.actualPath().getParent().toString();
+        }
+        return new TcDraft(
+                draft.tcId(), draft.title(), draft.stepsText(), draft.expectedResult(),
+                TcDraftStatus.PARTIAL, draft.provenSteps(), draft.loginSteps(),
+                draft.needsLoginBeforeMethod(),
+                Math.max(0, draft.provenSteps().size()),
+                "visual-diff",
+                reason,
+                evidenceDir,
                 draft.retryCountOnBlocker(),
                 draft.lastPageUrl(),
                 draft.healTier(),

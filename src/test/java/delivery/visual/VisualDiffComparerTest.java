@@ -1,5 +1,6 @@
 package delivery.visual;
 
+import delivery.portal.service.VisualDiffDiskStore;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -19,6 +20,7 @@ public class VisualDiffComparerTest {
     private String prevViewport;
     private String prevThreshold;
     private Path tmp;
+    private final VisualDiffDiskStore disk = new VisualDiffDiskStore();
 
     @BeforeMethod
     public void setUp() throws Exception {
@@ -61,52 +63,53 @@ public class VisualDiffComparerTest {
     public void noBaselineWritesActualAndNoBaselineStatus() throws Exception {
         byte[] actual = solidPng(Color.WHITE, 80, 60);
         VisualDiffCompareResult r = VisualDiffComparer.compareAndWrite(
-                tmp, "run1", "TC~5F1", "desktop", actual);
+                tmp, "run1", "TC_1", "desktop", actual);
         assertEquals(r.status(), VisualDiffStatus.NO_BASELINE);
         assertTrue(Files.isRegularFile(r.actualPath()));
         assertTrue(Files.isRegularFile(r.resultPath()));
         assertFalse(Files.isRegularFile(
-                VisualBaselinePaths.baselinePng(tmp, "TC~5F1", "desktop")));
+                VisualBaselinePaths.baselinePng(tmp, "TC_1", "desktop")));
     }
 
     @Test
     public void identicalPassWithinThreshold() throws Exception {
         byte[] png = solidPng(Color.WHITE, 80, 60);
-        VisualBaselineStore.writeBaseline(tmp, "prj", "TC~5F1", "desktop", png, "seed", 1);
+        disk.saveBaseline(tmp, "TC_1", "desktop", png, "seed", 8, 8.0, 0.02);
         VisualDiffCompareResult r = VisualDiffComparer.compareAndWrite(
-                tmp, "run2", "TC~5F1", "desktop", png);
+                tmp, "run2", "TC_1", "desktop", png);
         assertEquals(r.status(), VisualDiffStatus.PASS);
         assertEquals(r.changedBlocks(), 0);
         assertTrue(Files.isRegularFile(r.resultPath()));
         // baseline must not be rewritten by compare
-        VisualBaselineMeta meta = VisualBaselineStore.readMeta(tmp, "TC~5F1", "desktop").orElseThrow();
-        assertEquals(meta.revision(), 1);
-        assertEquals(meta.sourceRunId(), "seed");
+        assertEquals(disk.loadBaselineMeta(tmp, "TC_1", "desktop").orElseThrow().get("sourceRunId"), "seed");
     }
 
     @Test
     public void sizeMismatchFails() throws Exception {
-        VisualBaselineStore.writeBaseline(
-                tmp, "prj", "TC~5F1", "desktop", solidPng(Color.WHITE, 80, 60), "seed", 1);
+        disk.saveBaseline(tmp, "TC_1", "desktop", solidPng(Color.WHITE, 80, 60), "seed", 8, 8.0, 0.02);
         VisualDiffCompareResult r = VisualDiffComparer.compareAndWrite(
-                tmp, "run3", "TC~5F1", "desktop", solidPng(Color.WHITE, 100, 60));
+                tmp, "run3", "TC_1", "desktop", solidPng(Color.WHITE, 100, 60));
         assertEquals(r.status(), VisualDiffStatus.FAIL);
         assertEquals(r.changedFraction(), 1.0);
+        assertTrue(Files.isRegularFile(VisualBaselinePaths.diffPng(tmp, "run3", "TC_1", "desktop")),
+                "failed compare should write diff.png via DiskStore");
     }
 
     @Test
     public void realChangeFailsAboveThreshold() throws Exception {
-        VisualBaselineStore.writeBaseline(
-                tmp, "prj", "TC~5F1", "desktop", solidPng(Color.WHITE, 80, 60), "seed", 1);
+        disk.saveBaseline(tmp, "TC_1", "desktop", solidPng(Color.WHITE, 80, 60), "seed", 8, 8.0, 0.02);
         VisualDiffCompareResult r = VisualDiffComparer.compareAndWrite(
-                tmp, "run4", "TC~5F1", "desktop", solidPng(Color.RED, 80, 60));
+                tmp, "run4", "TC_1", "desktop", solidPng(Color.RED, 80, 60));
         assertEquals(r.status(), VisualDiffStatus.FAIL);
         assertTrue(r.changedFraction() > 0.02);
     }
 
     @Test
-    public void caseKeyUsesStorageKeyEncoding() {
-        assertEquals(VisualBaselinePaths.caseKey("TC_1"), "TC~5F1");
+    public void caseKeyMatchesPortalKeyNotStorageKey() {
+        assertEquals(VisualBaselinePaths.caseKey("TC_1"), "TC_1");
+        assertEquals(VisualBaselinePaths.caseKey("TC_LOGIN"), "TC_LOGIN");
+        assertTrue(VisualBaselinePaths.KEY.matcher(VisualBaselinePaths.caseKey("TC_1")).matches());
+        assertFalse(VisualBaselinePaths.caseKey("TC_1").contains("~"));
         assertEquals(VisualBaselinePaths.sanitizeViewport("1280x800"), "1280x800");
         assertEquals(VisualBaselinePaths.sanitizeViewport(" desktop "), "desktop");
     }
