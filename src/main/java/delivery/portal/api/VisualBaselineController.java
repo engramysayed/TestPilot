@@ -178,7 +178,8 @@ public class VisualBaselineController {
             return ResponseEntity.badRequest().body(new ApiError("BAD_REQUEST", "runId is required").asMap());
         }
         try {
-            Map<String, Object> meta = visuals.approveFromRun(projectId, String.valueOf(runIdObj), caseKey, viewport);
+            Map<String, Object> meta = visuals.approveFromRun(
+                    projectId, String.valueOf(runIdObj), caseKey, viewport, currentUser.requireUserId());
             Map<String, Object> out = new LinkedHashMap<>(meta);
             out.put("projectId", projectId);
             out.put("approvedFromRunId", String.valueOf(runIdObj).trim());
@@ -188,6 +189,8 @@ public class VisualBaselineController {
         } catch (VisualDiffDiskStore.NotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
+        } catch (delivery.portal.service.credits.InsufficientCreditsException e) {
+            throw e;
         } catch (Exception e) {
             return internalError(e);
         }

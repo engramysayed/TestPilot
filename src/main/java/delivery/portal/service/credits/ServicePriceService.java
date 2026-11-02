@@ -44,6 +44,17 @@ public class ServicePriceService {
         return prices.findById(kind.name()).map(ServicePrice::getCost).orElse(fallback(kind));
     }
 
+    /** Resolve admin price by ServicePrice code (core or add-on). Missing code -> 0 after seed. */
+    @Transactional
+    public long costByCode(String code) {
+        if (code == null || code.isBlank()) {
+            return 0L;
+        }
+        ensureSeeded();
+        String c = code.trim().toUpperCase(Locale.ROOT);
+        return prices.findById(c).map(ServicePrice::getCost).orElse(0L);
+    }
+
     @Transactional
     public void save(Map<String, String> form) {
         ensureSeeded();
@@ -107,7 +118,7 @@ public class ServicePriceService {
                 }
             }
         }
-        // Confirmed add-on rows: display + admin-editable (not wired into CreditsBillingKind / job debit).
+        // Confirmed add-on rows: display + admin-editable; debit via CreditService.tryDebitForAddon.
         ensureAddon("VISUAL_DIFF", "Visual diffs", 5L, 5);
         ensureAddon("SUITES_MONITOR", "Suites & monitor", 10L, 6);
         ensureAddon("HEAL_REVIEW", "Heal review", 5L, 7);

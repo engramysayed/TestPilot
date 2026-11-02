@@ -1,6 +1,7 @@
 package delivery.portal.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import delivery.portal.service.credits.CreditService;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -12,15 +13,18 @@ import java.util.Optional;
 /**
  * Portal facade for visual baselines / diffs under {@link PortalStore#projectDiskRoot(String)}.
  * Execute/Hunt can call {@link #compareActual} once a screenshot is available; FE uses the REST controllers.
+ * VISUAL_DIFF credits debit at compare/approve (idempotent per project/run/case/viewport).
  */
 @Service
 public class VisualDiffService {
     private final PortalStore store;
     private final VisualDiffDiskStore disk;
+    private final CreditService credits;
 
-    public VisualDiffService(PortalStore store, ObjectMapper objectMapper) {
+    public VisualDiffService(PortalStore store, ObjectMapper objectMapper, CreditService credits) {
         this.store = store;
         this.disk = new VisualDiffDiskStore(objectMapper);
+        this.credits = credits;
     }
 
     public Path projectRoot(String projectId) {
@@ -53,8 +57,10 @@ public class VisualDiffService {
                 projectRoot(projectId), caseKey, viewport, pngBytes, sourceRunId, block, lumaThreshold, maxChangedFraction);
     }
 
-    public Map<String, Object> approveFromRun(String projectId, String runId, String caseKey, String viewport)
+    public Map<String, Object> approveFromRun(
+            String projectId, String runId, String caseKey, String viewport, Long ownerUserId)
             throws IOException {
+        debitVisual(ownerUserId, projectId, runId, caseKey, viewport);
         return disk.approveFromRun(projectRoot(projectId), runId, caseKey, viewport);
     }
 
@@ -68,9 +74,16 @@ public class VisualDiffService {
             String caseKey,
             String viewport,
             byte[] actualPng,
-            boolean writeDiffPng
+            boolean writeDiffPng,
+            Long ownerUserId
     ) throws IOException {
+        debitVisual(ownerUserId, projectId, runId, caseKey, viewport);
         return disk.compare(projectRoot(projectId), runId, caseKey, viewport, actualPng, writeDiffPng);
+    }
+
+    private void debitVisual(Long ownerUserId, String projectId, String runId, String caseKey, String viewport) {
+        String stable = projectId + ":" + runId + ":" + caseKey + ":" + viewport;
+        credits.tryDebitForAddon(ownerUserId, CreditService.ADDON_VISUAL_DIFF, stable);
     }
 
     public List<Map<String, Object>> listDiffs(String projectId, String runId, boolean pendingOnly) throws IOException {

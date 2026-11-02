@@ -37,6 +37,17 @@ public class CreditCostTable {
         };
     }
 
+    /** Admin ServicePrice by code (add-ons and core). Falls back to 0 when no price service. */
+    public long costByCode(String code) {
+        if (code == null || code.isBlank()) {
+            return 0L;
+        }
+        if (prices != null) {
+            return prices.costByCode(code);
+        }
+        return 0L;
+    }
+
     public Map<String, Object> asCostsDto() {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("generate", cost(CreditsBillingKind.GENERATE));

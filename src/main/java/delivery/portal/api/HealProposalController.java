@@ -112,7 +112,7 @@ public class HealProposalController {
             return denied;
         }
         try {
-            return ResponseEntity.ok(proposals.accept(projectId, proposalId));
+            return ResponseEntity.ok(proposals.accept(projectId, proposalId, currentUser.requireUserId()));
         } catch (HealProposalDiskStore.NotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
@@ -123,6 +123,8 @@ public class HealProposalController {
                  | HealProposalDiskStore.BadRequestException
                  | HealProposalDiskStore.BadPathException e) {
             return badRequest(e.getMessage());
+        } catch (delivery.portal.service.credits.InsufficientCreditsException e) {
+            throw e;
         } catch (Exception e) {
             return internalError(e);
         }
@@ -139,7 +141,7 @@ public class HealProposalController {
             return denied;
         }
         try {
-            return ResponseEntity.ok(proposals.reject(projectId, proposalId));
+            return ResponseEntity.ok(proposals.reject(projectId, proposalId, currentUser.requireUserId()));
         } catch (HealProposalDiskStore.NotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
@@ -148,6 +150,8 @@ public class HealProposalController {
                     .body(new ApiError("CONFLICT", e.getMessage()).asMap());
         } catch (HealProposalDiskStore.BadPathException | HealProposalDiskStore.BadRequestException e) {
             return badRequest(e.getMessage());
+        } catch (delivery.portal.service.credits.InsufficientCreditsException e) {
+            throw e;
         } catch (Exception e) {
             return internalError(e);
         }

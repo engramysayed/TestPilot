@@ -141,7 +141,8 @@ public class VisualDiffController {
         }
         try {
             Map<String, Object> result = visuals.compareActual(
-                    projectId, runId, caseKey, viewport, file.getBytes(), writeDiffPng);
+                    projectId, runId, caseKey, viewport, file.getBytes(), writeDiffPng,
+                    currentUser.requireUserId());
             Map<String, Object> body = new LinkedHashMap<>(result);
             body.put("projectId", projectId);
             return ResponseEntity.ok(body);
@@ -150,6 +151,8 @@ public class VisualDiffController {
         } catch (VisualDiffDiskStore.NotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
+        } catch (delivery.portal.service.credits.InsufficientCreditsException e) {
+            throw e;
         } catch (Exception e) {
             return internalError(e);
         }

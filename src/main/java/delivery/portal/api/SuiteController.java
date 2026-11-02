@@ -20,6 +20,7 @@ import delivery.portal.service.PortalStore;
 import delivery.portal.service.ProjectCredentialService;
 import delivery.portal.service.SuiteDiskStore;
 import delivery.portal.service.SuiteService;
+import delivery.portal.service.credits.CreditService;
 import delivery.portal.worker.ExecuteWorker;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -55,6 +56,7 @@ public class SuiteController {
     private final ProjectCredentialService credentials;
     private final PermissionEnforcer permissionEnforcer;
     private final ExecuteWorker worker;
+    private final CreditService credits;
 
     public SuiteController(
             PortalStore store,
@@ -63,7 +65,8 @@ public class SuiteController {
             GeneratedWorkbookService workbooks,
             ProjectCredentialService credentials,
             PermissionEnforcer permissionEnforcer,
-            ExecuteWorker worker
+            ExecuteWorker worker,
+            CreditService credits
     ) {
         this.store = store;
         this.currentUser = currentUser;
@@ -72,6 +75,7 @@ public class SuiteController {
         this.credentials = credentials;
         this.permissionEnforcer = permissionEnforcer;
         this.worker = worker;
+        this.credits = credits;
     }
 
     public record CreateSuiteRequest(String name, List<String> tags, List<String> tcIds) {
@@ -504,14 +508,21 @@ public class SuiteController {
         if (runner != null && "private".equalsIgnoreCase(runner.trim())) {
             job.setRequirePrivateRunner(true);
         }
+
+        String trigger = body == null || body.trigger() == null || body.trigger().isBlank()
+                ? "manual"
+                : body.trigger().trim().toLowerCase();
+        // SUITES_MONITOR: charge only when this run is a scheduled/monitor fire (not manual).
+        if ("schedule".equals(trigger) || "monitor".equals(trigger)) {
+            credits.tryDebitForAddon(
+                    ownerId, CreditService.ADDON_SUITES_MONITOR, projectId + ":" + suiteId + ":" + jobId);
+        }
+
         store.saveJob(job);
         if (!job.isRequirePrivateRunner()) {
             worker.submit(jobId);
         }
 
-        String trigger = body == null || body.trigger() == null || body.trigger().isBlank()
-                ? "manual"
-                : body.trigger().trim().toLowerCase();
         if ("schedule".equals(trigger) || "monitor".equals(trigger) || suite.get("schedule") != null) {
             try {
                 suites.recordFire(projectId, suiteId, jobId);

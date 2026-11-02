@@ -28,6 +28,12 @@ public class CreditService {
     public static final String REASON_ADMIN_ADJUST = "ADMIN_ADJUST";
     public static final String REASON_JOB_DEBIT = "JOB_DEBIT";
     public static final String REASON_JOB_REFUND = "JOB_REFUND";
+    public static final String REASON_ADDON_DEBIT = "ADDON_DEBIT";
+
+    /** Add-on ServicePrice codes (not JobKinds). */
+    public static final String ADDON_VISUAL_DIFF = "VISUAL_DIFF";
+    public static final String ADDON_SUITES_MONITOR = "SUITES_MONITOR";
+    public static final String ADDON_HEAL_REVIEW = "HEAL_REVIEW";
 
     public static final String MODE_SET_ABSOLUTE = "SET_ABSOLUTE";
     public static final String MODE_GRANT_DELTA = "GRANT_DELTA";
@@ -206,6 +212,61 @@ public class CreditService {
 
         CreditLedgerEntry entry = newLedger(
                 userId, -cost, newBal, REASON_JOB_DEBIT, jobId, kind.name(), null, key, breakdown);
+        try {
+            ledger.save(entry);
+        } catch (DataIntegrityViolationException race) {
+            // concurrent identical debit — treat as success (idempotent)
+        }
+    }
+
+    /**
+     * Debit when an add-on feature is used (visual review, scheduled suite run, heal review).
+     * Cost comes from admin-editable ServicePrice by code — not from JobKind.
+     * Idempotent on debit:addon:{code}:{stableId}. No-op when credits disabled or cost <= 0.
+     */
+    @Transactional
+    public void tryDebitForAddon(Long userId, String servicePriceCode, String stableId) {
+        if (userId == null || !costs.enabled()) {
+            return;
+        }
+        if (servicePriceCode == null || servicePriceCode.isBlank()) {
+            throw new IllegalArgumentException("servicePriceCode is required");
+        }
+        if (stableId == null || stableId.isBlank()) {
+            throw new IllegalArgumentException("stableId is required");
+        }
+        String code = servicePriceCode.trim().toUpperCase();
+        String stable = stableId.trim();
+        if (stable.length() > 160) {
+            throw new IllegalArgumentException("stableId max 160 chars");
+        }
+        long cost = costs.costByCode(code);
+        if (cost <= 0L) {
+            return;
+        }
+        String key = "debit:addon:" + code + ":" + stable;
+        Optional<CreditLedgerEntry> existing = ledger.findByIdempotencyKey(key);
+        if (existing.isPresent()) {
+            return;
+        }
+
+        UserCredits row = credits.findByIdForUpdate(userId).orElseGet(() -> newZero(userId));
+        if (ledger.findByIdempotencyKey(key).isPresent()) {
+            return;
+        }
+        long balance = row.getBalance();
+        if (balance < cost) {
+            throw new InsufficientCreditsException(cost, balance, code, null);
+        }
+        long newBal = balance - cost;
+        row.setBalance(newBal);
+        row.setLifetimeSpent(row.getLifetimeSpent() + cost);
+        row.setUpdatedAt(Instant.now());
+        credits.save(row);
+
+        String note = "Add-on " + code + " x 1 @ " + cost;
+        CreditLedgerEntry entry = newLedger(
+                userId, -cost, newBal, REASON_ADDON_DEBIT, stable, code, null, key, note);
         try {
             ledger.save(entry);
         } catch (DataIntegrityViolationException race) {

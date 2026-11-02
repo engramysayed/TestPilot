@@ -1,6 +1,7 @@
 package delivery.portal.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import delivery.portal.service.credits.CreditService;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -12,15 +13,18 @@ import java.util.Optional;
 
 /**
  * Heal proposal store + Accept/Reject. Accept patches existing generated Java only.
+ * HEAL_REVIEW credits debit once per proposal on Accept or Reject.
  */
 @Service
 public class HealProposalService {
     private final PortalStore store;
     private final HealProposalDiskStore disk;
+    private final CreditService credits;
 
-    public HealProposalService(PortalStore store, ObjectMapper objectMapper) {
+    public HealProposalService(PortalStore store, ObjectMapper objectMapper, CreditService credits) {
         this.store = store;
         this.disk = new HealProposalDiskStore(objectMapper);
+        this.credits = credits;
     }
 
     public Path projectRoot(String projectId) {
@@ -45,7 +49,7 @@ public class HealProposalService {
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> accept(String projectId, String proposalId) throws IOException {
+    public Map<String, Object> accept(String projectId, String proposalId, Long ownerUserId) throws IOException {
         Map<String, Object> proposal = disk.load(projectRoot(projectId), proposalId)
                 .orElseThrow(() -> new HealProposalDiskStore.NotFoundException(
                         "Heal proposal not found: " + proposalId));
@@ -53,6 +57,7 @@ public class HealProposalService {
         if (!HealProposalDiskStore.STATUS_PENDING.equals(status)) {
             throw new HealProposalDiskStore.ConflictException("Heal proposal already decided: " + status);
         }
+        debitHeal(ownerUserId, projectId, proposalId);
         Map<String, Object> before = (Map<String, Object>) proposal.get("locatorBefore");
         Map<String, Object> after = (Map<String, Object>) proposal.get("locatorAfter");
         String pageClass = String.valueOf(proposal.get("pageClass"));
@@ -66,7 +71,19 @@ public class HealProposalService {
         return out;
     }
 
-    public Map<String, Object> reject(String projectId, String proposalId) throws IOException {
+    public Map<String, Object> reject(String projectId, String proposalId, Long ownerUserId) throws IOException {
+        Map<String, Object> proposal = disk.load(projectRoot(projectId), proposalId)
+                .orElseThrow(() -> new HealProposalDiskStore.NotFoundException(
+                        "Heal proposal not found: " + proposalId));
+        String status = String.valueOf(proposal.getOrDefault("status", ""));
+        if (!HealProposalDiskStore.STATUS_PENDING.equals(status)) {
+            throw new HealProposalDiskStore.ConflictException("Heal proposal already decided: " + status);
+        }
+        debitHeal(ownerUserId, projectId, proposalId);
         return disk.markStatus(projectRoot(projectId), proposalId, HealProposalDiskStore.STATUS_REJECTED);
+    }
+
+    private void debitHeal(Long ownerUserId, String projectId, String proposalId) {
+        credits.tryDebitForAddon(ownerUserId, CreditService.ADDON_HEAL_REVIEW, projectId + ":" + proposalId);
     }
 }
