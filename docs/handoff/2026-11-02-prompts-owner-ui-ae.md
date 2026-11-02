@@ -6,7 +6,7 @@
 **Kickoff:** `docs/handoff/2026-11-02-prompts-owner-ui-kickoff.md`  
 **Backend handoff:** `docs/handoff/2026-11-02-prompts-owner-ui-backend.md`  
 **Base tip:** `8d7fe97` (verified HEAD before edits)  
-**Tip SHA:** ac0a227d5aea2bc27d13363211e88d28540693e1  
+**Tip SHA:** `4685bcf079c39d4519647ce206212f34f335cc84`  
 **Backup:** `_backup/prompts-owner-ui-ae-20261102-2257/`  
 **No push.**
 
