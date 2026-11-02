@@ -1,5 +1,7 @@
 package delivery.authoring;
 
+import delivery.prompts.PromptCatalog;
+
 import delivery.codegen.ProvenStep;
 import delivery.excel.ManualTestCase;
 import delivery.heal.FailedLocator;
@@ -520,11 +522,7 @@ public class AuthoringService {
         boolean hasImage = pngOrNull != null && pngOrNull.length > 0;
         String system = hasImage
                 ? LocatorPolicy.visionHealRules()
-                : """
-                Pick exactly one candidateId from the shortlist that best matches the Excel step intent.
-                Return ONLY JSON: {"candidateId":"<id from shortlist>"}.
-                Do not invent ids. Do not return locators.
-                """;
+                : PromptCatalog.get("authoring/authoring-service");
         String user = """
                 TC_ID: %s
                 Intent hint: %s
@@ -553,10 +551,8 @@ public class AuthoringService {
             // Vision model missing / reject image — fall back to text-only once
             if (hasImage) {
                 try {
-                    String raw = llmClient.completeRankingJson("""
-                            Pick exactly one candidateId from the shortlist that best matches the Excel step intent.
-                            Return ONLY JSON: {"candidateId":"<id from shortlist>"}.
-                            """, user);
+                    String raw = llmClient.completeRankingJson(
+                            PromptCatalog.get("authoring/authoring-service"), user);
                     return preferCandidate(tc, candidates, shortlist, raw, ambiguousReason);
                 } catch (Exception ignored) {
                     return List.of();

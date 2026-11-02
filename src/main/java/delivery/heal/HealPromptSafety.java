@@ -1,5 +1,7 @@
 package delivery.heal;
 
+import delivery.prompts.PromptCatalog;
+
 import delivery.authoring.StepIntentBinder;
 import delivery.settle.SettlePolicy;
 import delivery.settle.SideEffectClassifier;
@@ -71,38 +73,44 @@ public final class HealPromptSafety {
      */
     public static String safetyBlock(boolean secret, SettlePolicy.SideEffects se, List<String> banned,
                                      boolean crash) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("## Safety (must obey)\n");
+        String crashBlock = "";
         if (crash) {
-            sb.append("- CRASH/ERROR PAGE DETECTED. Return ONLY ")
-                    .append("{\"mode\":\"abort\",\"thought\":\"crash or fatal error page — do not invent locators\"}")
-                    .append(" — do not pick, invent, or recover.\n");
+            crashBlock = "- CRASH/ERROR PAGE DETECTED. Return ONLY "
+                    + "{\"mode\":\"abort\",\"thought\":\"crash or fatal error page — do not invent locators\"}"
+                    + " — do not pick, invent, or recover.\n";
         }
-        sb.append("- secret=").append(secret ? "true" : "false");
-        if (secret) {
-            sb.append(": NEVER echo, print, or invent real secret/password/OTP values; ")
-                    .append("use empty value or ${TARGET_PASSWORD}/${TARGET_OTP} tokens only.\n");
-        } else {
-            sb.append(".\n");
-        }
+        String secretClause = secret
+                ? ": NEVER echo, print, or invent real secret/password/OTP values; "
+                  + "use empty value or ${TARGET_PASSWORD}/${TARGET_OTP} tokens only.\n"
+                : ".\n";
         String wire = se == null ? SettlePolicy.SideEffects.UNKNOWN.wire : se.wire;
-        sb.append("- sideEffects=").append(wire);
+        String sideEffectsClause;
         if (se == SettlePolicy.SideEffects.NONE) {
-            sb.append(": read-only — recovery retries on the same control are allowed.\n");
+            sideEffectsClause = ": read-only — recovery retries on the same control are allowed.\n";
         } else {
-            sb.append(": do NOT invent mutating retries (no re-submit/delete/pay/logout). ")
-                    .append("Recovery may only clear/dismiss or navigate to the Excel open-path. ")
-                    .append("Mark invented steps with \"sideEffects\":\"").append(wire).append("\".\n");
+            sideEffectsClause = ": do NOT invent mutating retries (no re-submit/delete/pay/logout). "
+                    + "Recovery may only clear/dismiss or navigate to the Excel open-path. "
+                    + "Mark invented steps with \"sideEffects\":\"" + wire + "\".\n";
         }
+        String bannedBlock;
         if (banned != null && !banned.isEmpty()) {
-            sb.append("- Banned locators (already failed — do not return these):\n");
-            for (String b : banned) sb.append("  - ").append(b).append('\n');
+            StringBuilder bb = new StringBuilder();
+            bb.append("- Banned locators (already failed — do not return these):\n");
+            for (String b : banned) {
+                bb.append("  - ").append(b).append('\n');
+            }
+            bannedBlock = bb.toString();
         } else {
-            sb.append("- Banned locators: (none)\n");
+            bannedBlock = "- Banned locators: (none)\n";
         }
-        sb.append("- Stop: if you cannot decide safely, return empty candidateId / empty steps ")
-                .append("(or mode=abort on crash) rather than guessing.\n");
-        return sb.toString();
+        return PromptCatalog.format("heal/safety", java.util.Map.of(
+                "crashBlock", crashBlock,
+                "secretFlag", secret ? "true" : "false",
+                "secretClause", secretClause,
+                "sideEffectsWire", wire,
+                "sideEffectsClause", sideEffectsClause,
+                "bannedBlock", bannedBlock
+        ));
     }
 
     public static String trim(String s, int n) {

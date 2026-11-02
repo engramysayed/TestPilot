@@ -1,5 +1,7 @@
 package delivery.authoring;
 
+import delivery.prompts.PromptCatalog;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -107,11 +109,7 @@ public record HealPickPayload(
     }
 
     public String ollamaSystem() {
-        return """
-                Pick exactly one candidateId from the scored shortlist.
-                Reply with JSON only: {"candidateId":"<id from shortlist>"}.
-                Ids must come from the shortlist only. Do not return locators. JSON only - no prose.
-                """;
+        return PromptCatalog.get("authoring/heal-pick-payload");
     }
 
     public String ollamaUser(String tcId, String failureReason) {

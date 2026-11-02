@@ -4,10 +4,103 @@
  * Model is hard-locked to Auto (id: "auto"). Do not pin composer/opus.
  *
  * stdin JSON: { mode:"pick"|"invent"|"authoring-review", ... }
+ *
+ * Prompt SoT: src/main/resources/prompts/ (ids heal/pick, heal/invent, ...).
+ * Override: env KEEL_PROMPTS_DIR (mirrors Spring keel.prompts.dir) — same relative paths.
  */
 import { Agent } from "@cursor/sdk";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { stdin as input } from "node:process";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/** Resolve prompt id (e.g. heal/pick) from KEEL_PROMPTS_DIR then repo resources/prompts. */
+function promptRoots() {
+  const roots = [];
+  if (process.env.KEEL_PROMPTS_DIR && String(process.env.KEEL_PROMPTS_DIR).trim()) {
+    roots.push(resolve(String(process.env.KEEL_PROMPTS_DIR).trim()));
+  }
+  // tools/cursor-heal -> repo root src/main/resources/prompts
+  roots.push(resolve(__dirname, "../../src/main/resources/prompts"));
+  roots.push(resolve(process.cwd(), "src/main/resources/prompts"));
+  return roots;
+}
+
+const promptCache = new Map(); // id -> { text, mtimeMs, path }
+
+function loadPrompt(id) {
+  const key = String(id || "").replace(/\\/g, "/").replace(/\.(md|txt)$/, "");
+  for (const root of promptRoots()) {
+    for (const ext of [".md", ".txt"]) {
+      const p = join(root, key + ext);
+      if (!existsSync(p)) continue;
+      let mtimeMs = 0;
+      try { mtimeMs = statSync(p).mtimeMs; } catch { /* ignore */ }
+      const cached = promptCache.get(key);
+      const fromOverride = !!(process.env.KEEL_PROMPTS_DIR && String(process.env.KEEL_PROMPTS_DIR).trim()
+        && resolve(root) === resolve(String(process.env.KEEL_PROMPTS_DIR).trim()));
+      if (cached && cached.path === p && (!fromOverride || cached.mtimeMs === mtimeMs)) {
+        return cached.text;
+      }
+      const text = readFileSync(p, "utf8");
+      promptCache.set(key, { text, mtimeMs, path: p });
+      return text;
+    }
+  }
+  throw new Error(`Prompt not found: ${key} (set KEEL_PROMPTS_DIR or run from repo with src/main/resources/prompts)`);
+}
+
+function formatPrompt(id, vars) {
+  let text = loadPrompt(id);
+  if (!vars) return text;
+  return text.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, name) => {
+    const v = vars[name];
+    return v == null ? "" : String(v);
+  });
+}
+
+
+
+function buildSafetySection(req) {
+  if (req.safetyBlock && String(req.safetyBlock).trim()) {
+    return "\n" + String(req.safetyBlock).trim() + "\n";
+  }
+  const secret = !!req.secret;
+  const se = req.sideEffects || "unknown";
+  const banned = Array.isArray(req.bannedLocators) ? req.bannedLocators : [];
+  const crash = !!req.crash;
+  let crashBlock = "";
+  if (crash) {
+    crashBlock = "- CRASH/ERROR PAGE DETECTED. Return ONLY {\"mode\":\"abort\",\"thought\":\"crash or fatal error page — do not invent locators\"} — do not pick, invent, or recover.\n";
+  }
+  const secretClause = secret
+    ? ": NEVER echo, print, or invent real secret/password/OTP values; use empty value or ${TARGET_PASSWORD}/${TARGET_OTP} tokens only.\n"
+    : ".\n";
+  let sideEffectsClause;
+  if (se === "none") {
+    sideEffectsClause = ": read-only — recovery retries on the same control are allowed.\n";
+  } else {
+    sideEffectsClause = ": do NOT invent mutating retries (no re-submit/delete/pay/logout). Recovery may only clear/dismiss or navigate to the Excel open-path. Mark invented steps with \"sideEffects\":\"" + se + "\".\n";
+  }
+  let bannedBlock;
+  if (banned.length) {
+    bannedBlock = "- Banned locators (already failed — do not return these):\n";
+    for (const b of banned) bannedBlock += "  - " + b + "\n";
+  } else {
+    bannedBlock = "- Banned locators: (none)\n";
+  }
+  const block = formatPrompt("heal/safety", {
+    crashBlock,
+    secretFlag: secret ? "true" : "false",
+    secretClause,
+    sideEffectsWire: se,
+    sideEffectsClause,
+    bannedBlock,
+  });
+  return "\n" + block.trimEnd() + "\n";
+}
 
 function readStdin() {
   return new Promise((resolve, reject) => {
@@ -76,291 +169,55 @@ async function main() {
     screenshotNote = `\nscreenshotPath: ${screenshotPath}\nFailure screenshot PNG preview/base64:\n${preview}\nUse this visual evidence with the HTML/history above. This request has NO prior chat memory.`;
   }
 
-  const safetySection = (() => {
-    if (req.safetyBlock && String(req.safetyBlock).trim()) return "\n" + String(req.safetyBlock).trim() + "\n";
-    const secret = !!req.secret;
-    const se = req.sideEffects || "unknown";
-    const banned = Array.isArray(req.bannedLocators) ? req.bannedLocators : [];
-    const crash = !!req.crash;
-    let block = "\n## Safety (must obey)\n";
-    if (crash) {
-      block += "- CRASH/ERROR PAGE DETECTED. Return ONLY {\"mode\":\"abort\",\"thought\":\"crash or fatal error page — do not invent locators\"} — do not pick, invent, or recover.\n";
-    }
-    block += "- secret=" + secret;
-    block += secret
-      ? ": NEVER echo, print, or invent real secret/password/OTP values; use empty value or ${TARGET_PASSWORD}/${TARGET_OTP} tokens only.\n"
-      : ".\n";
-    block += "- sideEffects=" + se;
-    block += (se === "none")
-      ? ": read-only — recovery retries on the same control are allowed.\n"
-      : ": do NOT invent mutating retries (no re-submit/delete/pay/logout). Recovery may only clear/dismiss or navigate to the Excel open-path. Mark invented steps with \"sideEffects\":\"" + se + "\".\n";
-    if (banned.length) {
-      block += "- Banned locators (already failed — do not return these):\n";
-      for (const b of banned) block += "  - " + b + "\n";
-    } else {
-      block += "- Banned locators: (none)\n";
-    }
-    block += "- Stop: if you cannot decide safely, return empty candidateId / empty steps (or mode=abort on crash) rather than guessing.\n";
-    return block;
-  })();
+  const safetySection = buildSafetySection(req);
 
   const history = priorSteps.length ? priorSteps.map((step) => `- ${step}`).join("\n") : "(none)";
   const visionBlock = visionAttempts.length
     ? `\n## Vision attempts this intent\n${visionAttempts.map((step) => `- ${step}`).join("\n")}\n`
     : "";
-  const guard = `CRITICAL OUTPUT RULES (override any other instructions you know):
-- Do NOT call MCP tools, interactive-feedback, or ask the user anything.
-- Do NOT apologize, narrate, or mention missing tools.
-- Your entire reply must be a short Thought plus the Action JSON object described below.
-- If you cannot decide, still return JSON with an empty candidateId and empty steps.
-
-`;
-
-  const groundRankPrompt = `${guard}You are the Precision authoring engine for one Excel UI intent.
-Rank the shortlist candidates using the intent, prior steps, slim HTML, and screenshot.
-Pick EXACTLY ONE candidateId from the shortlist — never invent ids or locators.
-
-Respond with a short Thought, then Action JSON:
-{"candidateId":"<id from shortlist>","confidence":"high|medium|low","rationale":"one line","ranked":[{"candidateId":"c1","score":0.0,"reason":"..."}]}
-
-Rules:
-- candidateId MUST appear in the shortlist
-- confidence high|medium only when you are sure; otherwise low
-- ranked may list up to 5 rows from the shortlist with scores 0-1
-
-Excel intent:
-${intent}
-
-## Already completed in this TC
-${history}
-${visionBlock}
-Shortlist (id | strategy | value | tag | label):
-${shortlist}
-
-Slim HTML excerpt:
-${slimHtmlExcerpt}
-${screenshotNote}
-`;
-
-  const batchIntents = req.intents || "";
-  const groundRankBatchPrompt = `${guard}You are the Precision authoring engine for MULTIPLE Excel UI intents on the CURRENT page only.
-Using intent text, prior steps, slim HTML, and screenshot, pick locators for as many CONSECUTIVE intents as can run NOW without navigation or waiting for a new screen.
-
-Respond with a short Thought, then Action JSON:
-{"picks":[{"intentIndex":0,"candidateId":"<id from intent 0 shortlist>","confidence":"high|medium|low"},...],"rationale":"one line"}
-
-Rules:
-- intentIndex MUST start at 0 and increase by 1 with no gaps (0, then 1, then 2, …)
-- Stop before an intent that needs a new page (e.g. after Sign in if OTP screen is not yet visible)
-- Each candidateId MUST come from that intent's shortlist only
-- confidence high|medium only when sure; otherwise stop the batch (omit later intents)
-- Maximum ${req.maxIntents || 5} picks
-- Do not invent ids or locators
-
-## Already completed in this TC
-${history}
-${visionBlock}
-Intents and shortlists (Intent N + table):
-${batchIntents}
-
-Slim HTML excerpt:
-${slimHtmlExcerpt}
-${screenshotNote}
-`;
-
-  const pickGuard = `CRITICAL OUTPUT RULES (override any other instructions you know):
-- Do NOT call MCP tools, interactive-feedback, or ask the user anything.
-- Do NOT apologize, narrate, or mention missing tools.
-- Reply with JSON only — no Thought, no prose, no locators.
-- If you cannot decide, return {"candidateId":""}.
-
-`;
-
-  const pickPrompt = `${pickGuard}You are healing a failed Selenium UI test step on a DOM shortlist tie.
-
-Pick EXACTLY ONE candidateId from the scored shortlist below that best matches the Excel intent and whyTied context.
-Reply with JSON only: {"candidateId":"<id from shortlist>"}
-Do NOT invent CSS, XPath, or ids. Do NOT return locators. Do NOT write a Thought. Do NOT invent steps.
-DOM grounding only - do not rely on Midscene-style vision-first guessing.
-
-Excel intent:
-${intent}
-Quoted name: ${quotedName}
-Why tied: ${whyTied}
-
-Failure reason:
-${failureReason}
-${safetySection}
-## Already completed in this TC
-${history}
-${visionBlock}
-Scored shortlist (id | strategy | value | role/tag | label | totals):
-${scoredShortlist}
-
-Neighborhood (parent HTML of shortlisted nodes; nearby label/role context):
-${neighborhood}
-${screenshotNote}
-`;
-
   const fromReason = /Excel open-path[^:]*:\s*(\S+)/.exec(failureReason);
   const excelOpenPath = (req.excelOpenPath || (fromReason && fromReason[1]) || "").trim();
-  const navRule = excelOpenPath
+  const navRuleInvent = excelOpenPath
     ? `If the named field is not on this page you MAY emit one navigate step whose value is exactly ${excelOpenPath}. Do not invent any other URL.`
     : `Do not add login, navigation, or unrelated workflow steps.`;
+  const navRuleSolve = excelOpenPath
+    ? `- If the named field is not on this page you MAY emit one navigate step whose value is exactly ${excelOpenPath}. Do not invent any other URL.`
+    : `- Return 1 to 3 steps for this intent only. No login, navigation, or unrelated steps.`;
+  const batchIntents = req.intents || "";
 
-  const inventPrompt = `${guard}You are the final one-shot healer for one failed Selenium UI intent.
-Invent locators only for this exact intent. Return 1 to 3 steps maximum.
-${navRule} Prefer stable id, name,
-data-test*, CSS attribute, or XPath attribute locators. Never use /html/body or UUID-like values.
-
-Decide between two answers:
-
-A) The intent can be satisfied on this page with 1–3 element steps:
-   {"thought":"short reason","steps":[{"action":"click|type|select|assert|navigate","locatorStrategy":"id|name|css|xpath|data-testid|data-test|data-qa","locatorValue":"...","value":"","assertionType":"","assertionExpected":""}]}
-
-B) The screenshot/HTML show the page STATE is wrong for this intent (field filled when Excel said leave empty,
-   wrong value visible, stale form after a prior mistake). Propose a short recovery plan (clear/click/type/select/navigate only):
-   {"mode":"recovery","thought":"why state is wrong","recoverySteps":[
-     {"action":"clear|click|type|select|navigate","locatorStrategy":"css","locatorValue":"...","value":""}
-   ],"automationNotes":["Excel-safe note for Automate after recovery succeeds"]}
-   navigate is allowed ONLY to the Excel open-path when provided.
-
-Every locator attribute must already appear in the HTML below. Max 5 recovery steps.
-After recovery succeeds, Keel retries the SAME failed intent (no intent-index jump).
-
-Excel intent:
-${intent}
-
-Failure reason:
-${failureReason}
-${safetySection}
-## Already completed in this TC
-${history}
-${visionBlock}
-Slim HTML excerpt:
-${slimHtmlExcerpt}
-${screenshotNote}
-`;
-
-  // Solve is the escalation after the cheap local pick failed: the shortlist may simply not
-  // contain the element, so refusing the rows and returning a locator is a valid answer.
-  const solvePrompt = `${guard}You are the senior healer for one failed Selenium UI test step.
-The cheap local model already tried to pick from the shortlist and got it wrong, so do not
-assume the answer is in the list. Decide honestly between two answers:
-
-A) One shortlist row really is the element the Excel intent describes:
-   {"thought":"why this row","candidateId":"<id from shortlist>"}
-
-B) No row matches. Then read the HTML and screenshot and write the locator yourself:
-   {"thought":"why no row matches and how you found the element",
-    "steps":[{"action":"click|type|select|assert|navigate","locatorStrategy":"id|name|css|xpath|data-testid|data-test|data-qa","locatorValue":"...","value":"","assertionType":"","assertionExpected":""}]}
-
-C) The page STATE is wrong for the intent (filled when empty expected, wrong value visible). Return recovery:
-   {"mode":"recovery","thought":"why state is wrong","recoverySteps":[
-     {"action":"clear|click|type|select|navigate","locatorStrategy":"css","locatorValue":"...","value":""}
-   ],"automationNotes":["Excel-safe note for Automate"]}
-   navigate only to the Excel open-path when provided. Max 5 recovery steps.
-   After recovery, Keel retries the SAME failed intent (no intent-index jump).
-
-Answer B is expected and correct when the field's name is only in a nearby label or span
-rather than in an attribute on the control itself. Never force-fit a row you do not believe in.
-
-Locator rules:
-- Prefer a hand-written id, name, data-test*, or an attribute selector on a human attribute
-  (aria-label, placeholder, title, role).
-- Never build on a framework-generated id such as _r_15_, :r0:, ember1423 or mui-42.
-- When the control carries no name of its own, anchor on its label:
-  //label[contains(normalize-space(.),'First name')]//input  (label wraps the control)
-  //label[contains(normalize-space(.),'Email')]/following::input[1]  (label sits beside it)
-- Every attribute and every word you put in a locator must already appear in the HTML below.
-${excelOpenPath
-  ? `- If the named field is not on this page you MAY emit one navigate step whose value is exactly ${excelOpenPath}. Do not invent any other URL.`
-  : `- Return 1 to 3 steps for this intent only. No login, navigation, or unrelated steps.`}
-
-Excel intent:
-${intent}
-
-Failure reason:
-${failureReason}
-${safetySection}
-## Already completed in this TC
-${history}
-${visionBlock}
-Shortlist (id | strategy | value | tag | label):
-${shortlist}
-
-Slim HTML excerpt:
-${slimHtmlExcerpt}
-${screenshotNote}
-`;
-
-  const authoringReviewPrompt = `You are Keel authoring reviewer.
-Review the complete suite JSON below together with its optional stories and requirementsNotes.
-Return ONLY one valid JSON object with:
-{"findings":[{"severity":"info|warn|error","tcId":"TC_...","message":"..."}],
- "cases":[...the complete reviewed suite...],
- "coverageNotes":"..."}
-
-Fix leave-empty/TestData alignment, vague assertions, and ambiguous controls. Flag missing
-coverage against stories when stories/requirementsNotes are present; if both are empty, say so
-in a finding and still repair authoring issues. Return the FULL suite in cases[] — every input
-TC_id exactly once (you may add new TC_ids for missing coverage only if total stays reasonable).
-Do not invent a large unrelated suite. Preserve existing TC_id values and obey KeelPath rules.
-Do not use tools, edit files, narrate, or wrap the JSON in markdown.
-Quoted phrases are visible-text waits: the string MUST match the screen (Upload Transaction List is not Upload Transactions List).
-Outcome "and" may split extra checks; "expands and sub-menu items are shown" stays one check.
-After a fill, prefer "{Field} is accepted" or "OTP is accepted". Never assert typed digits or password on a masked field (do not keep filled with '245345' as visible text).
-Keep "{Field} is shown", "{Button} is clicked", and page-shown wording.
-Do not invent large extra suites. Preserve tcId and KeelPath.
-Flag leftover Expected with no matching step.
-Leftover Expected that names a heading must quote the distinctive words only. Never quote area, button, label, title, page, section, field, menu, item, list, visible, shown, displayed. Example: "the Upload Transactions list area is visible" → 'Upload Transactions'.
-
-Suite JSON:
-${req.suite || ""}
-`;
-
-  const huntPrompt = `${guard}You are Keel's Bug Hunter planner.
-Break the feature and invent edge-case scenarios within the remaining scenario budget.
-Return ONLY one JSON object:
-{"decision":"continue"|"finish","rationale":"...","actions":[],"bugs":[],"scenarios":[]}
-actions allowlist only: navigate{url}, back{}, forward{}, refresh{}, restart_browser{login?},
-execute_js{script},
-click{locator}, type{locator,value}, clear{locator},
-wait{ms}, assert_visible{locator}, assert_text{text}.
-Never use fill — use type. Copy locators exactly from the page map (e.g. [data-axis-test-id='username_Input']).
-Aliases: navigate_back→back, reload→refresh, js→execute_js, fresh_session|reset_browser|restart→restart_browser.
-Current URL is in the page map (## URL). Prefer UI logout when Sign out is on the map; else restart_browser for a clean session (base URL only — no server auto-login). restart_browser{login:true} means YOU log in again via type/click on next cycles. Max 2 restarts/hunt.
-LOGIN: server never auto-logs in. When credential tokens are in the prompt, YOU drive username→password→Sign In→OTP using mapped locators and \${TARGET_*} tokens. Probe empty/invalid credentials before happy-path when Untested lists them.
-Prefer UI locators; use execute_js only for short page probes (max ~4000 chars).
-Respect actionCapPerCycle from Caps (default 5). wait with blank ms becomes 5000ms server-side.
-After Sign In/submit, prefer wait{ms:1000} before assert_text.
-Emit at most 2-3 new scenarios per cycle; do not fill scenarioCap in cycle 1.
-Do not re-file the same bug theme. Prefer observed UI copy over outdated TC wording.
-When credentials tokens appear in the user prompt, happy-path type values MUST be
-\${TARGET_USERNAME} / \${TARGET_PASSWORD} / \${TARGET_OTP} (never invent real passwords).
-Prefer Untested coverage gaps over repeating probed paths.
-HISTORY: read steps journal + coverage; do not repeat succeeded steps or blocked locators; continue from latest sub-goal.
-SAFETY: blank URL or empty page map → refresh or navigate first; do not invent selectors without DOM.
-FORM DATA: realistic dummy for non-credential fields; credential fields use \${TARGET_*} tokens only.
-BUGS: file only with evidence (network failure, failed mapped assert, clear wrong UI copy); no speculative/toast/assert_text noise.
-Locator rules: only emit locators from the page map / slim excerpt; when ## Locator preference lists attrs those are RANK 1 over id/name twins; if absent prefer id, name, data-test*, css; xpath last resort; never jQuery pseudo (:contains/:has); never volatile framework ids.
-Do not use tools, edit files, or narrate outside JSON.
-
-${req.prompt || ""}
-
-Slim HTML excerpt:
-${slimHtmlExcerpt}
-${screenshotNote}
-`;
+  const varsCommon = {
+    intent,
+    failureReason,
+    safetySection,
+    history,
+    visionBlock,
+    screenshotNote,
+    shortlist,
+    slimHtmlExcerpt,
+    scoredShortlist,
+    neighborhood,
+    quotedName,
+    whyTied,
+    batchIntents,
+    maxIntents: String(req.maxIntents || 5),
+    navRule: navRuleInvent,
+    prompt: req.prompt || "",
+    suite: req.suite || "",
+  };
 
   const prompts = {
-    pick: pickPrompt,
-    groundRank: groundRankPrompt,
-    groundRankBatch: groundRankBatchPrompt,
-    invent: inventPrompt,
-    solve: solvePrompt,
-    "authoring-review": authoringReviewPrompt,
-    hunt: huntPrompt,
+    pick: formatPrompt("heal/pick", varsCommon),
+    groundRank: formatPrompt("heal/ground-rank", varsCommon),
+    groundRankBatch: formatPrompt("heal/ground-rank-batch", varsCommon),
+    invent: formatPrompt("heal/invent", { ...varsCommon, navRule: navRuleInvent }),
+    solve: formatPrompt("heal/solve", { ...varsCommon, navRule: navRuleSolve }),
+    "authoring-review": formatPrompt("authoring/authoring-review-cursor", {
+      suite: req.suite || "",
+    }),
+    hunt: formatPrompt("heal/hunt-cursor", {
+      ...varsCommon,
+      prompt: req.prompt || "",
+    }),
   };
   console.error(`PERF cursor_prepare elapsedMs=${Math.round(performance.now() - prepareStarted)}`);
   const agentStarted = performance.now();

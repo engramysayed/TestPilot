@@ -1,6 +1,7 @@
 package delivery.codegen;
 
 import delivery.authoring.LocalLlmClient;
+import delivery.prompts.PromptCatalog;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -9,9 +10,7 @@ import java.util.Locale;
  * Deterministic title → Java test method name; optional Ollama polish (methods only).
  */
 public final class TestMethodNaming {
-    private static final String OLLAMA_SYSTEM =
-            "Return ONE Java test method identifier only, max 5 English words, "
-                    + "underscores between words, no explanation or punctuation.";
+    private static final String OLLAMA_SYSTEM_ID = "codegen/test-method-naming";
 
     private TestMethodNaming() {
     }
@@ -25,7 +24,7 @@ public final class TestMethodNaming {
         try {
             String user = "Page: " + (pageName == null ? "" : pageName.trim())
                     + "\nFallback: " + deterministic;
-            String raw = client.completeChat(OLLAMA_SYSTEM, user, false);
+            String raw = client.completeChat(PromptCatalog.get(OLLAMA_SYSTEM_ID), user, false);
             String polished = parseOllamaResponse(raw);
             return polished != null ? polished : deterministic;
         } catch (Exception ignored) {

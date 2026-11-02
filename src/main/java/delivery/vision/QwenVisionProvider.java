@@ -1,6 +1,7 @@
 package delivery.vision;
 
 import delivery.authoring.LocalLlmClient;
+import delivery.prompts.PromptCatalog;
 import delivery.authoring.StepIntentBinder;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -27,9 +28,7 @@ public final class QwenVisionProvider implements VisionGroundingProvider {
             + "observation and evidence must be concrete visible UI facts; never leave them blank when status is PASS or FAIL.\n"
             + "confidence is in 0 to 1; use values like 0.7–0.99 (do not default to 0).";
 
-    private static final String ASSERT_RETRY_NUDGE =
-            "Return the full JSON again with non-empty observation and evidence. "
-                    + "confidence must be 0.7–0.99 for PASS or FAIL. No angle-bracket placeholders.";
+    private static final String ASSERT_RETRY_NUDGE = PromptCatalog.get("vision/qwen-assert-retry").trim();
 
     /** Qwen2.5-VL 7B (Apache-2.0); the 3B weights are non-commercial. Override with delivery.vision.assert.model. */
     static final String DEFAULT_MODEL = "qwen2.5vl:7b";

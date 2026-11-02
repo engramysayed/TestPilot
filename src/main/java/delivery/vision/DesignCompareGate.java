@@ -1,6 +1,7 @@
 package delivery.vision;
 
 import delivery.authoring.LocalLlmClient;
+import delivery.prompts.PromptCatalog;
 import org.json.JSONObject;
 
 import java.io.IOException;
