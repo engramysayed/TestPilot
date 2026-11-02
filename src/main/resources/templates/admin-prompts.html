@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Prompts')}"></th:block>
+    <style>
+        .prompts-layout { display: grid; grid-template-columns: minmax(14rem, 18rem) 1fr; gap: 1rem; align-items: start; }
+        @media (max-width: 860px) { .prompts-layout { grid-template-columns: 1fr; } }
+        .prompts-list { max-height: 70vh; overflow: auto; margin: 0; padding: 0; list-style: none; }
+        .prompts-list button {
+            display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 0.5rem;
+            text-align: left; border: 1px solid transparent; background: transparent; border-radius: 8px;
+            padding: 0.55rem 0.65rem; cursor: pointer; color: inherit; font: inherit;
+        }
+        .prompts-list button:hover { background: var(--mint, #e3f3ef); }
+        .prompts-list button.active {
+            background: var(--mint, #e3f3ef); border-color: #9fd5c8; color: var(--teal, #087f78); font-weight: 600;
+        }
+        .prompts-list .prompt-id { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .source-badge {
+            flex-shrink: 0; display: inline-block; padding: 0.12rem 0.45rem; border-radius: 999px;
+            font-size: 0.72rem; font-weight: 600; border: 1px solid #c5d8e4; background: #eef4f8; color: #4a7088;
+        }
+        .source-badge--override { background: #e3f3ef; border-color: #9fd5c8; color: #087f78; }
+        .source-badge--classpath { background: #eef4f8; border-color: #c5d8e4; color: #4a7088; }
+        .prompts-editor label { display: block; font-weight: 600; margin-bottom: 0.35rem; }
+        .prompts-editor textarea {
+            width: 100%; min-height: 22rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.85rem; line-height: 1.45; box-sizing: border-box;
+        }
+        .prompts-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.75rem; }
+        .prompts-diff {
+            margin-top: 1rem; padding: 0.75rem; border-radius: 8px; border: 1px solid #c5d8e4;
+            background: #f7fafb; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.8rem; line-height: 1.4; max-height: 22rem; overflow: auto;
+        }
+        .prompts-empty { padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid #e8d4a8; background: #faf3e6; color: #8a5a00; margin-bottom: 1rem; }
+        .prompts-meta { margin: 0 0 0.75rem; color: var(--muted, #656d76); font-size: 0.9rem; }
+        .prompts-detail-empty { color: var(--muted, #656d76); padding: 1rem 0; }
+    </style>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1>Prompts</h1>
+            <p class="lede">Edit the prompt pack text Keel uses for generate and heal. Built-in text ships with the product; your overrides live in the host override folder. The owner sets that folder with <code>keel.prompts.dir</code> or <code>KEEL_PROMPTS_DIR</code>.</p>
+        </div>
+    </div>
+
+    <div id="override-banner" class="prompts-empty" hidden></div>
+    <p class="ok" id="prompts-saved" hidden>Saved to the override folder.</p>
+    <p class="error" id="prompts-error" hidden></p>
+
+    <div class="prompts-layout">
+        <section class="panel">
+            <h2 style="font-size:1.05rem;margin:0 0 0.65rem;">Prompt pack</h2>
+            <p class="muted" id="prompts-list-hint" style="margin-top:0;">Loading…</p>
+            <ul class="prompts-list" id="prompts-list" aria-label="Prompt ids"></ul>
+        </section>
+        <section class="panel prompts-editor">
+            <div id="prompt-detail-empty" class="prompts-detail-empty">Choose a prompt on the left to view or edit it.</div>
+            <div id="prompt-detail" hidden>
+                <p class="prompts-meta">
+                    <strong id="prompt-detail-id"></strong>
+                    <span id="prompt-detail-source" class="source-badge" style="margin-left:0.5rem;"></span>
+                </p>
+                <label for="prompt-text">Prompt text</label>
+                <textarea id="prompt-text" spellcheck="false" autocomplete="off"></textarea>
+                <div class="prompts-actions">
+                    <button type="button" class="btn btn-primary" id="btn-save-prompt">Save to override</button>
+                    <button type="button" class="btn" id="btn-diff-prompt">Diff vs classpath</button>
+                </div>
+                <div id="prompt-diff-wrap" hidden>
+                    <h3 style="font-size:0.95rem;margin:1rem 0 0.35rem;">Diff vs classpath</h3>
+                    <pre class="prompts-diff" id="prompt-diff"></pre>
+                </div>
+            </div>
+        </section>
+    </div>
+</main>
+</div>
+<script>
+(function () {
+    const HDR = {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-Keel-Requested-With': 'Keel'
+    };
+    const savedEl = document.getElementById('prompts-saved');
+    const errEl = document.getElementById('prompts-error');
+    const bannerEl = document.getElementById('override-banner');
+    const listEl = document.getElementById('prompts-list');
+    const listHint = document.getElementById('prompts-list-hint');
+    const detailEmpty = document.getElementById('prompt-detail-empty');
+    const detailEl = document.getElementById('prompt-detail');
+    const idEl = document.getElementById('prompt-detail-id');
+    const sourceEl = document.getElementById('prompt-detail-source');
+    const textEl = document.getElementById('prompt-text');
+    const diffWrap = document.getElementById('prompt-diff-wrap');
+    const diffEl = document.getElementById('prompt-diff');
+    let selectedId = null;
+    let overrideConfigured = true;
+
+    function showError(msg) {
+        if (!errEl) return;
+        if (!msg) {
+            errEl.hidden = true;
+            errEl.textContent = '';
+            return;
+        }
+        errEl.hidden = false;
+        errEl.textContent = msg;
+    }
+    function showSaved() {
+        if (!savedEl) return;
+        savedEl.hidden = false;
+        setTimeout(function () { savedEl.hidden = true; }, 2500);
+    }
+    function statusMessage(status) {
+        if (status === 401) return 'Sign in again to manage prompts.';
+        if (status === 403) return 'Only the account owner can manage prompts.';
+        if (status === 404) return 'Prompts API not found yet (404). Backend may still be landing.';
+        if (status === 501) return 'Prompts API is not implemented on this build (501).';
+        return null;
+    }
+    function setBanner(message, configured) {
+        overrideConfigured = configured !== false;
+        if (!bannerEl) return;
+        if (overrideConfigured && !message) {
+            bannerEl.hidden = true;
+            bannerEl.textContent = '';
+            return;
+        }
+        bannerEl.hidden = false;
+        bannerEl.textContent = message
+            || 'Override folder is not set. List and view still work from the built-in pack. To save edits, set keel.prompts.dir or KEEL_PROMPTS_DIR on the portal host.';
+    }
+    function sourceLabel(source) {
+        return source === 'override' ? 'override' : 'classpath';
+    }
+    function paintSourceBadge(el, source) {
+        const label = sourceLabel(source);
+        el.textContent = label;
+        el.className = 'source-badge source-badge--' + label;
+    }
+    function normalizeListPayload(body) {
+        if (Array.isArray(body)) {
+            return { items: body, overrideConfigured: true, message: null };
+        }
+        if (body && typeof body === 'object') {
+            const items = Array.isArray(body.items) ? body.items
+                : (Array.isArray(body.prompts) ? body.prompts : []);
+            const configured = body.overrideConfigured !== false
+                && body.overrideDirConfigured !== false
+                && body.configured !== false;
+            const message = body.message || body.error || null;
+            let overrideOk = configured;
+            if (body.overrideConfigured === false || body.overrideDirConfigured === false || body.configured === false) {
+                overrideOk = false;
+            }
+            return { items: items, overrideConfigured: overrideOk, message: message };
+        }
+        return { items: [], overrideConfigured: true, message: null };
+    }
+    function renderList(items) {
+        listEl.innerHTML = '';
+        if (!items.length) {
+            listHint.textContent = 'No prompts found.';
+            return;
+        }
+        listHint.textContent = items.length + ' prompt' + (items.length === 1 ? '' : 's');
+        items.forEach(function (item) {
+            const id = item && item.id ? String(item.id) : '';
+            if (!id) return;
+            const li = document.createElement('li');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.dataset.id = id;
+            if (id === selectedId) btn.classList.add('active');
+            const idSpan = document.createElement('span');
+            idSpan.className = 'prompt-id';
+            idSpan.textContent = id;
+            const badge = document.createElement('span');
+            paintSourceBadge(badge, item.source);
+            btn.appendChild(idSpan);
+            btn.appendChild(badge);
+            btn.addEventListener('click', function () {
+                selectPrompt(id);
+            });
+            li.appendChild(btn);
+            listEl.appendChild(li);
+        });
+    }
+    function setActiveListButton(id) {
+        listEl.querySelectorAll('button').forEach(function (btn) {
+            btn.classList.toggle('active', btn.dataset.id === id);
+        });
+    }
+    function hideDiff() {
+        diffWrap.hidden = true;
+        diffEl.textContent = '';
+    }
+    function renderDiffPayload(data, contentType) {
+        if (typeof data === 'string') {
+            return data;
+        }
+        if (data && typeof data === 'object') {
+            if (typeof data.unified === 'string') return data.unified;
+            if (typeof data.diff === 'string') return data.diff;
+            if (typeof data.text === 'string') return data.text;
+            if (Array.isArray(data.lines)) {
+                return data.lines.map(function (line) {
+                    if (typeof line === 'string') return line;
+                    if (line && typeof line === 'object') {
+                        const prefix = line.type || line.op || line.kind || '';
+                        const body = line.text != null ? line.text : (line.line != null ? line.line : JSON.stringify(line));
+                        return (prefix ? (prefix + ' ') : '') + body;
+                    }
+                    return String(line);
+                }).join('\n');
+            }
+            try { return JSON.stringify(data, null, 2); } catch (e) { return String(data); }
+        }
+        if (contentType && contentType.indexOf('text/') === 0) {
+            return String(data == null ? '' : data);
+        }
+        return data == null ? '(empty diff)' : String(data);
+    }
+    async function loadList() {
+        showError('');
+        listHint.textContent = 'Loading…';
+        const res = await fetch('/api/admin/prompts', { credentials: 'same-origin', headers: HDR });
+        const known = statusMessage(res.status);
+        if (!res.ok) {
+            const body = await res.json().catch(function () { return {}; });
+            const msg = known || body.message || body.error || ('Could not load prompts (' + res.status + ').');
+            showError(msg);
+            listHint.textContent = 'Could not load list.';
+            if (res.status === 400 && (body.message || body.error)) {
+                setBanner(body.message || body.error, false);
+            }
+            return;
+        }
+        const body = await res.json().catch(function () { return []; });
+        const normalized = normalizeListPayload(body);
+        if (!normalized.overrideConfigured) {
+            setBanner(normalized.message, false);
+        } else if (normalized.message && /override|KEEL_PROMPTS_DIR|keel\.prompts\.dir/i.test(String(normalized.message))) {
+            setBanner(normalized.message, false);
+        } else {
+            setBanner(null, true);
+        }
+        renderList(normalized.items);
+    }
+    async function selectPrompt(id) {
+        showError('');
+        hideDiff();
+        selectedId = id;
+        setActiveListButton(id);
+        const res = await fetch('/api/admin/prompts/' + encodeURIComponent(id), {
+            credentials: 'same-origin', headers: HDR
+        });
+        const known = statusMessage(res.status);
+        if (!res.ok) {
+            const body = await res.json().catch(function () { return {}; });
+            showError(known || body.message || body.error || ('Could not load prompt (' + res.status + ').'));
+            return;
+        }
+        const data = await res.json().catch(function () { return {}; });
+        detailEmpty.hidden = true;
+        detailEl.hidden = false;
+        idEl.textContent = data.id || id;
+        paintSourceBadge(sourceEl, data.source);
+        textEl.value = data.text != null ? String(data.text) : '';
+    }
+    async function savePrompt() {
+        showError('');
+        if (!selectedId) {
+            showError('Choose a prompt first.');
+            return;
+        }
+        const res = await fetch('/api/admin/prompts/' + encodeURIComponent(selectedId), {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: HDR,
+            body: JSON.stringify({ text: textEl.value })
+        });
+        const body = await res.json().catch(function () { return {}; });
+        const known = statusMessage(res.status);
+        if (!res.ok) {
+            const msg = known || body.message || body.error || ('Save failed (' + res.status + ').');
+            showError(msg);
+            if (res.status === 400) {
+                setBanner(msg, false);
+            }
+            return;
+        }
+        showSaved();
+        paintSourceBadge(sourceEl, body.source || 'override');
+        if (body.text != null) textEl.value = String(body.text);
+        await loadList();
+        setActiveListButton(selectedId);
+    }
+    async function loadDiff() {
+        showError('');
+        if (!selectedId) {
+            showError('Choose a prompt first.');
+            return;
+        }
+        const res = await fetch('/api/admin/prompts/' + encodeURIComponent(selectedId) + '/diff', {
+            credentials: 'same-origin', headers: HDR
+        });
+        const known = statusMessage(res.status);
+        const contentType = res.headers.get('content-type') || '';
+        let data;
+        if (contentType.indexOf('application/json') >= 0) {
+            data = await res.json().catch(function () { return {}; });
+        } else {
+            data = await res.text().catch(function () { return ''; });
+        }
+        if (!res.ok) {
+            const msg = known
+                || (data && data.message)
+                || (data && data.error)
+                || ('Diff failed (' + res.status + ').');
+            showError(typeof msg === 'string' ? msg : ('Diff failed (' + res.status + ').'));
+            return;
+        }
+        diffWrap.hidden = false;
+        diffEl.textContent = renderDiffPayload(data, contentType) || '(no differences)';
+    }
+
+    document.getElementById('btn-save-prompt').addEventListener('click', function () {
+        savePrompt().catch(function (e) { showError(String(e)); });
+    });
+    document.getElementById('btn-diff-prompt').addEventListener('click', function () {
+        loadDiff().catch(function (e) { showError(String(e)); });
+    });
+    loadList().catch(function (e) { showError(String(e)); });
+})();
+</script>
+</body>
+</html>

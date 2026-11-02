@@ -255,6 +255,10 @@
                 <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2 4h4l-3 3 1 5-4-2-4 2 1-5-3-3h4z"/><circle cx="12" cy="18" r="2"/></svg>
                 <span>LLM &amp; API keys</span>
             </a>
+            <a href="/admin/prompts" th:if="${headAdmin}" th:classappend="${navActive == 'prompts'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9l3 3v13H6z"/><path d="M14 4v4h4"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
+                <span>Prompts</span>
+            </a>
         </th:block>
     </nav>
 

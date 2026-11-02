@@ -161,6 +161,7 @@ public class PortalUiController {
             case "domains" -> "Domains";
             case "roles" -> "Roles";
             case "llm-settings" -> "LLM & API keys";
+            case "prompts" -> "Prompts";
             default -> "Keel";
         };
     }
@@ -562,6 +563,13 @@ public class PortalUiController {
             }
         }
         return "admin-llm-settings";
+    }
+
+    @GetMapping("/admin/prompts")
+    public String adminPrompts(Model model) {
+        requireHeadPage();
+        addNav(model, "prompts");
+        return "admin-prompts";
     }
 
     @GetMapping("/account")
