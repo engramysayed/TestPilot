@@ -1,7 +1,7 @@
 # Handoff — Guide + Pricing backend (covers + draft add-on seeds)
 
 **Status:** GREEN  
-**Tip SHA:** TIP_SHA_PLACEHOLDER  
+**Tip SHA:** 857a8fa  
 **Base:** c93aa6d (descendant)  
 **Backup:** `D:\Work\projects\Keel\keel\TestPilot\_backup\guide-pricing-20261102-2115`  
 **Tree:** Keel live tip `D:\Work\projects\Keel\keel\TestPilot` (Keel ≠ Sonic)  
