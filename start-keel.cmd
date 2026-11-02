@@ -6,6 +6,8 @@ setlocal
 REM LD-01: portal inherits SPRING_PROFILES_ACTIVE=product from start-portal.cmd (mobile on). CI uses base props (mobile off).
 cd /d "%~dp0"
 
+if exist "%~dp0keel-env.local.bat" call "%~dp0keel-env.local.bat"
+
 set "SECRETS_STATUS=missing"
 set "OLLAMA_STATUS=skipped"
 set "APPIUM_STATUS=skipped"
@@ -32,9 +34,9 @@ if not errorlevel 1 (
     set "OLLAMA_STATUS=not_on_path"
     echo [2/5] WARNING: Ollama not on PATH and nothing on :11434. Start Ollama yourself if needed.
   ) else (
-    start "Keel Ollama" cmd /k ollama serve
+    start "Keel Ollama" cmd /k ""%~dp0scripts\start-ollama-keel.cmd""
     set "OLLAMA_STATUS=started"
-    echo [2/5] Ollama: started window "Keel Ollama" ^(ollama serve^).
+    echo [2/5] Ollama: started window "Keel Ollama" ^(models on D: via OLLAMA_MODELS^).
   )
 )
 

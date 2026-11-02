@@ -7,6 +7,7 @@ REM Fallback: set KEEL_ENGINE_LEGACY=1 to run the old v1 PrivateRunnerAgent (Exe
 setlocal
 cd /d "%~dp0"
 
+if exist "%~dp0keel-env.local.bat" call "%~dp0keel-env.local.bat"
 if exist "%~dp0api-keys.local.bat" call "%~dp0api-keys.local.bat"
 if "%KEEL_PORTAL_URL%"=="" set "KEEL_PORTAL_URL=http://localhost:8080"
 if "%KEEL_ENGINE_HOME%"=="" set "KEEL_ENGINE_HOME=%USERPROFILE%\Keel\engine"

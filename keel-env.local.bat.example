@@ -1,0 +1,17 @@
+@echo off
+REM Copy to keel-env.local.bat (gitignored). Loaded by start-keel.cmd / start-portal.cmd / rebuild-portal.cmd.
+REM Machine paths and DB password — no API keys here (use api-keys.local.bat).
+
+REM JDK 21 (must come before Oracle Java 8 shims on PATH)
+set "JAVA_HOME=C:\Program Files\Java\jdk-21.0.13.0.3"
+set "PATH=%JAVA_HOME%\bin;%PATH%"
+
+REM H2 portal-db password (see docs/ops/backup-restore.md). Empty sa password DBs migrate once at startup.
+set "KEEL_DB_PASSWORD=CHANGE_ME_strong_local_password"
+
+REM Ollama weights (optional; set same value as Windows user env OLLAMA_MODELS)
+set "OLLAMA_MODELS=D:\Ollama\models"
+
+REM Android SDK (Scoop android-clt) — mobile APK inspect when product profile is on
+set "ANDROID_HOME=%USERPROFILE%\scoop\apps\android-clt\current"
+set "PATH=%ANDROID_HOME%\cmdline-tools\latest\bin;%ANDROID_HOME%\platform-tools;%PATH%"

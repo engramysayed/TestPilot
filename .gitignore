@@ -16,6 +16,7 @@ delivery.properties
 tools/cursor-heal/node_modules/
 cursor-api-key.local.bat
 api-keys.local.bat
+keel-env.local.bat
 
 # IDE / agent / local tooling
 .idea/

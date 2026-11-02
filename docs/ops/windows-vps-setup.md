@@ -11,11 +11,14 @@ Host TestPilot Delivery Portal on a Windows Server VPS using RDP — same skills
 
 ## One-time installs (RDP in)
 
-1. **JDK 21+** (Temurin or Oracle) — add `java` to PATH.
-2. **Maven 3.9+** — add `mvn` to PATH.
+1. **JDK 21+** (Temurin or Oracle) — set `JAVA_HOME` to the full JDK (not only `javapath`) so `java`/`jar`/`mvn` agree. Copy `keel-env.local.bat.example` → `keel-env.local.bat` and fix paths.
+2. **Maven 3.9+** — add `mvn` to PATH (e.g. `scoop install maven`).
 3. **Google Chrome** (Selenium/driver needs a browser when dry-run is off).
-4. **Ollama for Windows** — install from https://ollama.com ; pull a model later.
-5. **Git** (optional) — to clone the repo.
+4. **Ollama for Windows** — install from https://ollama.com ; run `scripts\pull-ollama-models.cmd` or pull tags from `application.properties`.
+5. **Android APK inspect (mobile)** — `scoop install android-clt`, accept SDK licenses, `sdkmanager build-tools;35.0.0`, PATH in `keel-env.local.bat` (see example).
+6. **Git** (optional) — to clone the repo.
+
+Set **`KEEL_DB_PASSWORD`** in `keel-env.local.bat` (not committed). On first start with a password while the on-disk H2 DB still has the empty `sa` password, the portal migrates once (`H2PasswordMigrator`; see [backup-restore.md](backup-restore.md)).
 
 ## Deploy the app
 

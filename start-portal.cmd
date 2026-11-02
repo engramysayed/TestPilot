@@ -6,6 +6,7 @@ REM (e.g. %USERPROFILE%\Keel\portal). If unset, data stays in .\delivery-store a
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
+if exist "%~dp0keel-env.local.bat" call "%~dp0keel-env.local.bat"
 if exist "%~dp0api-keys.local.bat" call "%~dp0api-keys.local.bat"
 REM LD-01: product profile keeps delivery.mobile.enabled=true for live devices.
 REM CI reads base application.properties (false) and never sets this profile.

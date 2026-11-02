@@ -5,6 +5,8 @@ REM After this: start-portal.cmd, then Ctrl+F5 in the browser.
 setlocal
 cd /d "%~dp0"
 
+if exist "%~dp0keel-env.local.bat" call "%~dp0keel-env.local.bat"
+
 echo Packaging keel-portal jar (tests skipped)...
 call mvn -pl keel-portal -am -Dmaven.compiler.release=21 -DskipTests package
 if errorlevel 1 (
