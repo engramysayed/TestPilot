@@ -1,9 +1,12 @@
 package delivery.effect;
 
 import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
@@ -14,6 +17,12 @@ import java.util.List;
  */
 public final class ScreenshotDiff {
     public record Result(int changedBlocks, int totalBlocks, double changedFraction) {
+        public boolean passes(double maxChangedFraction) {
+            if (maxChangedFraction < 0) {
+                return changedBlocks == 0;
+            }
+            return changedFraction <= maxChangedFraction;
+        }
     }
 
     private ScreenshotDiff() {
@@ -36,6 +45,39 @@ public final class ScreenshotDiff {
             }
         }
         return new Result(changed, total, total == 0 ? 0 : (double) changed / total);
+    }
+
+    /**
+     * Same block/luma compare as {@link #compare}, plus a PNG where changed blocks are tinted magenta
+     * over the after image (for evidence / FE approve UX). Size mismatch yields a solid red 8x8 PNG.
+     */
+    public static byte[] renderDiffPng(byte[] beforePng, byte[] afterPng, List<Rectangle> masksPx, int block, double lumaThreshold) {
+        BufferedImage a = read(beforePng), b = read(afterPng);
+        if (a.getWidth() != b.getWidth() || a.getHeight() != b.getHeight()) {
+            BufferedImage mismatch = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = mismatch.createGraphics();
+            g.setColor(Color.RED);
+            g.fillRect(0, 0, 8, 8);
+            g.dispose();
+            return toPng(mismatch);
+        }
+        int w = a.getWidth(), h = a.getHeight();
+        BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = out.createGraphics();
+        g.drawImage(b, 0, 0, null);
+        g.setColor(new Color(255, 0, 255)); // opaque magenta highlight blocks
+        int bw = (w + block - 1) / block, bh = (h + block - 1) / block;
+        for (int by = 0; by < bh; by++) {
+            for (int bx = 0; bx < bw; bx++) {
+                Rectangle r = new Rectangle(bx * block, by * block, Math.min(block, w - bx * block), Math.min(block, h - by * block));
+                if (masked(r, masksPx)) continue;
+                if (Math.abs(meanLuma(a, r) - meanLuma(b, r)) > lumaThreshold) {
+                    g.fillRect(r.x, r.y, r.width, r.height);
+                }
+            }
+        }
+        g.dispose();
+        return toPng(out);
     }
 
     private static boolean masked(Rectangle r, List<Rectangle> masks) {
@@ -62,6 +104,18 @@ public final class ScreenshotDiff {
             return i;
         } catch (IOException e) {
             throw new IllegalArgumentException(e);
+        }
+    }
+
+    private static byte[] toPng(BufferedImage image) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            if (!ImageIO.write(image, "png", out)) {
+                throw new IllegalStateException("PNG writer missing");
+            }
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
         }
     }
 }
