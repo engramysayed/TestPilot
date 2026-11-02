@@ -1,6 +1,7 @@
 # 2026-11-02 — Phase 4 visual diffs (AE)
 
 **Owner:** Keel Automation Engine  
+**AE tip:** 6296112  
 **Aligned to Backend tip:** `8c486cc` (`docs/handoff/2026-11-02-phase4-visual-diffs-backend.md`)  
 **Backup before AE work:** `backup/phase4-visual-diffs-20261102-174936` @ `cfa220e`
 
