@@ -21,13 +21,22 @@ public final class DryRunHuntService {
                              Path huntRoot,
                              JobProgressTracker tracker,
                              BooleanSupplier cancelCheck) throws Exception {
+        return run(request, selectedCases, huntRoot, tracker, cancelCheck, "");
+    }
+
+    public HuntJobResult run(HuntRequest request,
+                             List<ManualTestCase> selectedCases,
+                             Path huntRoot,
+                             JobProgressTracker tracker,
+                             BooleanSupplier cancelCheck,
+                             String knowledgeGuidanceMd) throws Exception {
         request.normalize();
         if (tracker != null) {
             tracker.update(0, request.getCycleCeiling(), "Writing brief");
         }
         checkCancel(cancelCheck);
 
-        String brief = HuntBriefBuilder.build(request, selectedCases);
+        String brief = HuntBriefBuilder.build(request, selectedCases, knowledgeGuidanceMd);
         Files.createDirectories(huntRoot);
         Files.writeString(huntRoot.resolve("brief.md"), brief, StandardCharsets.UTF_8);
 

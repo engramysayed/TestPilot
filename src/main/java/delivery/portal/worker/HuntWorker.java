@@ -9,6 +9,9 @@ import delivery.hunt.HuntPlanner;
 import delivery.hunt.HuntRequest;
 import delivery.hunt.HuntRuntimeFactory;
 import delivery.hunt.LiveHuntService;
+import delivery.knowledge.KnowledgePack;
+import delivery.knowledge.KnowledgePackGuidance;
+import delivery.knowledge.KnowledgePackReader;
 import delivery.job.JobCancelledException;
 import delivery.job.JobProgressTracker;
 import delivery.portal.DeliveryPortalProperties;
@@ -37,13 +40,16 @@ public class HuntWorker {
     private final PortalStore portalStore;
     private final GeneratedWorkbookService workbooks;
     private final Environment env;
+    private final KnowledgePackReader knowledgePackReader;
 
     public HuntWorker(DeliveryPortalProperties props, PortalStore portalStore,
-                      GeneratedWorkbookService workbooks, Environment env) {
+                      GeneratedWorkbookService workbooks, Environment env,
+                      KnowledgePackReader knowledgePackReader) {
         this.props = props;
         this.portalStore = portalStore;
         this.workbooks = workbooks;
         this.env = env;
+        this.knowledgePackReader = knowledgePackReader;
     }
 
     @Async("huntExecutor")
@@ -87,11 +93,27 @@ public class HuntWorker {
                     .resolve("hunt-runs").resolve(jobId);
             Files.createDirectories(huntRoot);
 
+            String knowledgeGuidanceMd = "";
+            if (props.getHunt().isKnowledgePacksEnabled()
+                    && request.getKnowledgePackIds() != null
+                    && !request.getKnowledgePackIds().isEmpty()
+                    && knowledgePackReader != null) {
+                List<KnowledgePack> packs = knowledgePackReader.getByIds(
+                        job.getProjectId(), request.getKnowledgePackIds());
+                knowledgeGuidanceMd = KnowledgePackGuidance.compose(packs);
+                log.info("Hunt job {} knowledgePacks requested={} loaded={} guidanceChars={}",
+                        jobId,
+                        request.getKnowledgePackIds().size(),
+                        packs.size(),
+                        knowledgeGuidanceMd.length());
+            }
+            final String knowledgeGuidance = knowledgeGuidanceMd == null ? "" : knowledgeGuidanceMd;
+
             BooleanSupplier cancelCheck = () -> portalStore.isCancelRequested(jobId);
             JobProgressTracker tracker = new JobProgressTracker();
             HuntJobResult result = runWithProgressMirror(job, tracker, () -> {
                 if (props.isDryRun()) {
-                    return new DryRunHuntService().run(request, selected, huntRoot, tracker, cancelCheck);
+                    return new DryRunHuntService().run(request, selected, huntRoot, tracker, cancelCheck, knowledgeGuidance);
                 }
                 HuntPlanner planner = HuntRuntimeFactory.plannerFor(request, delivery.portal.engine.InProcessJobContext.settings(props));
                 return new LiveHuntService().run(
@@ -102,7 +124,8 @@ public class HuntWorker {
                         planner,
                         tracker,
                         cancelCheck,
-                        Path.of(props.getStoreRoot())
+                        Path.of(props.getStoreRoot()),
+                        knowledgeGuidance
                 );
             });
 

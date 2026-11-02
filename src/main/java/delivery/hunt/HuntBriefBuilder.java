@@ -10,6 +10,10 @@ public final class HuntBriefBuilder {
     }
 
     public static String build(HuntRequest request, List<ManualTestCase> selectedCases) {
+        return build(request, selectedCases, "");
+    }
+
+    public static String build(HuntRequest request, List<ManualTestCase> selectedCases, String knowledgeGuidanceMd) {
         StringBuilder sb = new StringBuilder();
         sb.append("# Bug Hunter brief\n\n");
         sb.append("- Project: `").append(nullToEmpty(request.getProjectId())).append("`\n");
@@ -17,7 +21,13 @@ public final class HuntBriefBuilder {
         sb.append("- Base URL: ").append(nullToEmpty(request.getBaseUrl())).append("\n");
         sb.append("- Planner: ").append(nullToEmpty(request.getPlanner())).append("\n");
         sb.append("- Scenario cap: ").append(request.getScenarioCap()).append("\n");
-        sb.append("- Cycle ceiling: ").append(request.getCycleCeiling()).append("\n\n");
+        sb.append("- Cycle ceiling: ").append(request.getCycleCeiling()).append("\n");
+        if (request.getKnowledgePackIds() != null && !request.getKnowledgePackIds().isEmpty()) {
+            sb.append("- Knowledge packs: `")
+                    .append(String.join("`, `", request.getKnowledgePackIds()))
+                    .append("`\n");
+        }
+        sb.append("\n");
 
         String us = request.getUserStory();
         if (us != null && !us.isBlank()) {
@@ -27,23 +37,33 @@ public final class HuntBriefBuilder {
 
         sb.append("## Selected test cases\n\n");
         if (selectedCases == null || selectedCases.isEmpty()) {
-            sb.append("_No cases resolved — IDs: ");
+            sb.append("_No cases resolved - IDs: ");
             sb.append(request.getTcIds() == null ? "" : String.join(", ", request.getTcIds()));
-            sb.append("_\n");
-            return sb.toString();
+            sb.append("_\n\n");
+        } else {
+            for (ManualTestCase tc : selectedCases) {
+                sb.append("### ").append(tc.tcId()).append(" - ").append(nullToEmpty(tc.title())).append("\n\n");
+                if (tc.steps() != null && !tc.steps().isBlank()) {
+                    sb.append("**Steps**\n\n").append(tc.steps().trim()).append("\n\n");
+                }
+                if (tc.expectedResult() != null && !tc.expectedResult().isBlank()) {
+                    sb.append("**Expected**\n\n").append(tc.expectedResult().trim()).append("\n\n");
+                }
+                if (tc.tags() != null && !tc.tags().isBlank()) {
+                    sb.append("**Tags:** ").append(tc.tags().trim()).append("\n\n");
+                }
+            }
         }
-        for (ManualTestCase tc : selectedCases) {
-            sb.append("### ").append(tc.tcId()).append(" — ").append(nullToEmpty(tc.title())).append("\n\n");
-            if (tc.steps() != null && !tc.steps().isBlank()) {
-                sb.append("**Steps**\n\n").append(tc.steps().trim()).append("\n\n");
+
+        String guidance = knowledgeGuidanceMd == null ? "" : knowledgeGuidanceMd.trim();
+        if (!guidance.isBlank()) {
+            sb.append(guidance);
+            if (!guidance.endsWith("\n")) {
+                sb.append("\n");
             }
-            if (tc.expectedResult() != null && !tc.expectedResult().isBlank()) {
-                sb.append("**Expected**\n\n").append(tc.expectedResult().trim()).append("\n\n");
-            }
-            if (tc.tags() != null && !tc.tags().isBlank()) {
-                sb.append("**Tags:** ").append(tc.tags().trim()).append("\n\n");
-            }
+            sb.append("\n");
         }
+
         sb.append("## Mission\n\n");
         sb.append("Break the feature where safe, invent up to ")
                 .append(request.getScenarioCap())

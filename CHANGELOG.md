@@ -2,6 +2,12 @@
 
 # Keel changelog
 
+## 2026-11-02 - Hunt: optional KnowledgePack guidance
+
+- Bug Hunter accepts optional `knowledgePackIds` on start (`HuntRequest` / `POST .../hunt-runs`). Empty ids keep legacy Hunt.
+- Pack markdown is composed into the hunt brief for planner sequencing; invent-extras stay evidence-gated. Preferred-hook binding unchanged.
+- `KnowledgePackReader` + NoOp/HTTP stub (no second FS store). Flag: `delivery.hunt.knowledge-packs.enabled` (default true).
+- Handoff: `docs/handoff/2026-11-02-hunt-knowledge-ae.md`.
 ## 2026-10-27 - Repo hygiene
 
 - Ignore accidental root `META-INF/` (jar extract) and local `patches/` scratch; handoff notes tied to commit hashes.

@@ -217,4 +217,27 @@ public class HuntApiTest extends AbstractTestNGSpringContextTests {
         Assert.fail("Hunt job did not complete: " + jobId);
         return null;
     }
+
+    @Test
+    public void startHunt_knowledgePackIds_persistedOnRequestJson() throws Exception {
+        String projectId = createProject();
+        workbooks.saveFromCases(projectId, List.of(
+                new ManualTestCase("TC_01", "Login", "", "1. Open login", "Home", "P1", "smoke")
+        ), "test", "hunt-api-kp");
+
+        MvcResult start = mockMvc.perform(post("/api/projects/" + projectId + "/hunt-runs")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tcIds\":[\"TC_01\"],\"planner\":\"ollama\",\"scenarioCap\":2,\"cycleCeiling\":2,\"knowledgePackIds\":[\"kp_01JEXAMPLE\"]}"))
+                .andExpect(status().isAccepted())
+                .andReturn();
+        String jobId = new JSONObject(start.getResponse().getContentAsString()).getString("jobId");
+        Path requestJson = store.projectDiskRoot(projectId).resolve("hunt-runs").resolve(jobId).resolve("request.json");
+        Assert.assertTrue(Files.isRegularFile(requestJson));
+        String body = Files.readString(requestJson);
+        Assert.assertTrue(body.contains("kp_01JEXAMPLE"));
+        Assert.assertTrue(body.contains("knowledgePackIds"));
+        waitTerminal(jobId);
+    }
 }

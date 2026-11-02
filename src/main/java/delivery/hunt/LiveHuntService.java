@@ -47,7 +47,7 @@ public final class LiveHuntService {
             JobProgressTracker tracker,
             BooleanSupplier cancelCheck
     ) throws Exception {
-        return run(request, selectedCases, huntRoot, loginRequest, planner, tracker, cancelCheck, null);
+        return run(request, selectedCases, huntRoot, loginRequest, planner, tracker, cancelCheck, null, "");
     }
 
     public HuntJobResult run(
@@ -60,12 +60,26 @@ public final class LiveHuntService {
             BooleanSupplier cancelCheck,
             Path storeRoot
     ) throws Exception {
+        return run(request, selectedCases, huntRoot, loginRequest, planner, tracker, cancelCheck, storeRoot, "");
+    }
+
+    public HuntJobResult run(
+            HuntRequest request,
+            List<ManualTestCase> selectedCases,
+            Path huntRoot,
+            ConversionJobRequest loginRequest,
+            HuntPlanner planner,
+            JobProgressTracker tracker,
+            BooleanSupplier cancelCheck,
+            Path storeRoot,
+            String knowledgeGuidanceMd
+    ) throws Exception {
         request.normalize();
         if (planner == null) {
             throw new IllegalArgumentException("planner required");
         }
         Files.createDirectories(huntRoot);
-        String brief = HuntBriefBuilder.build(request, selectedCases);
+        String brief = HuntBriefBuilder.build(request, selectedCases, knowledgeGuidanceMd);
         Files.writeString(huntRoot.resolve("brief.md"), brief, StandardCharsets.UTF_8);
         HuntStepsJournal journal = new HuntStepsJournal(huntRoot);
         HuntCoverageMap coverage = new HuntCoverageMap(huntRoot);

@@ -68,7 +68,8 @@ public class HuntController {
             String credentialProfile,
             String otp,
             String domMode,
-            Boolean strategiesEnabled
+            Boolean strategiesEnabled,
+            List<String> knowledgePackIds
     ) {
     }
 
@@ -100,7 +101,7 @@ public class HuntController {
                             "No generated workbook for this project — generate or upload TCs first").asMap());
         }
         StartHuntBody req = body == null
-                ? new StartHuntBody(List.of(), "", "ollama", null, null, null, null, null, null, null, null)
+                ? new StartHuntBody(List.of(), "", "ollama", null, null, null, null, null, null, null, null, null)
                 : body;
         List<String> tcIds = req.tcIds() == null ? List.of() : req.tcIds();
         if (tcIds.isEmpty()) {
@@ -156,6 +157,9 @@ public class HuntController {
         }
         if (req.strategiesEnabled() != null) {
             hunt.setStrategiesEnabled(req.strategiesEnabled());
+        }
+        if (req.knowledgePackIds() != null) {
+            hunt.setKnowledgePackIds(req.knowledgePackIds());
         }
         hunt.normalize();
 

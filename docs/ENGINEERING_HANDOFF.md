@@ -57,6 +57,7 @@ Matching plans/tasks/notes sit beside each spec under `docs/superpowers/plans/`.
    - Gaps backlog: `docs/superpowers/plans/2026-09-10-bug-hunter-phase12-gaps.md`
    - Deferred Phase 3: `docs/superpowers/plans/2026-09-10-bug-hunter-phase3-twopass-dom.md`
 6. Package: `delivery.hunt.*` under `src/main/java/delivery/hunt/`. Never put plaintext passwords in planner prompts or pack artifacts.
+7. **Knowledge packs (2026-11-02):** optional `knowledgePackIds` on Hunt → brief guidance via `KnowledgePackReader` (NoOp until Backend HTTP). Flag `delivery.hunt.knowledge-packs.enabled`. See `docs/handoff/2026-11-02-hunt-knowledge-ae.md`.
 
 ```bat
 mvn -q "-Dtest=HuntCoreTest,HuntBugDedupeTest,HuntBugTriageTest,HuntSecretResolverTest,HuntOracleLoginFeatureTest,HuntPlannerPromptCredsTest,JobLoginServiceHooksTest,HuntStopRulesTest,HuntOracleTest" test

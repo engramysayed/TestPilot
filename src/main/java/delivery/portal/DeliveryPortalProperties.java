@@ -67,12 +67,22 @@ public class DeliveryPortalProperties {
         /** DOM prompt mode for Bug Hunter: auto | map | slim */
         private String domMode = "auto";
         private TriageProperties triage = new TriageProperties();
+        /**
+         * When true, Hunt may load KnowledgePack markdown for planner guidance
+         * (delivery.hunt.knowledge-packs.enabled). Empty/missing pack ids keep legacy Hunt.
+         * Default true; NoOp/HTTP stub readers return empty until Backend APIs ship.
+         */
+        private boolean knowledgePacksEnabled = true;
 
         public String getDomMode() { return domMode == null ? "auto" : domMode; }
         public void setDomMode(String domMode) { this.domMode = domMode; }
         public TriageProperties getTriage() { return triage; }
         public void setTriage(TriageProperties triage) {
             this.triage = triage == null ? new TriageProperties() : triage;
+        }
+        public boolean isKnowledgePacksEnabled() { return knowledgePacksEnabled; }
+        public void setKnowledgePacksEnabled(boolean knowledgePacksEnabled) {
+            this.knowledgePacksEnabled = knowledgePacksEnabled;
         }
     }
 

@@ -27,6 +27,8 @@ public final class HuntRequest {
     private int actionCapPerCycle = DEFAULT_ACTION_CAP;
     private String domMode = "auto";
     private boolean strategiesEnabled = true;
+    /** Optional KnowledgePack ids (project-scoped). Empty = legacy Hunt (no pack guidance). */
+    private List<String> knowledgePackIds = new ArrayList<>();
     /** Optional static OTP for hunt credential tokens — blank means no ${TARGET_OTP}. */
     private String otp = "";
 
@@ -58,6 +60,10 @@ public final class HuntRequest {
     public void setActionCapPerCycle(int actionCapPerCycle) { this.actionCapPerCycle = actionCapPerCycle; }
     public String getDomMode() { return domMode == null ? "auto" : domMode; }
     public void setDomMode(String domMode) { this.domMode = domMode; }
+    public List<String> getKnowledgePackIds() { return knowledgePackIds; }
+    public void setKnowledgePackIds(List<String> knowledgePackIds) {
+        this.knowledgePackIds = knowledgePackIds == null ? new ArrayList<>() : new ArrayList<>(knowledgePackIds);
+    }
     public boolean isStrategiesEnabled() { return strategiesEnabled; }
     public void setStrategiesEnabled(boolean strategiesEnabled) {
         this.strategiesEnabled = strategiesEnabled;
@@ -107,6 +113,16 @@ public final class HuntRequest {
             }
         }
         tcIds = cleaned;
+        if (knowledgePackIds == null) {
+            knowledgePackIds = new ArrayList<>();
+        }
+        List<String> packCleaned = new ArrayList<>();
+        for (String id : knowledgePackIds) {
+            if (id != null && !id.isBlank()) {
+                packCleaned.add(id.trim());
+            }
+        }
+        knowledgePackIds = packCleaned;
         String dm = getDomMode().trim().toLowerCase(Locale.ROOT);
         if (!"auto".equals(dm) && !"map".equals(dm) && !"slim".equals(dm)) {
             domMode = "auto";
