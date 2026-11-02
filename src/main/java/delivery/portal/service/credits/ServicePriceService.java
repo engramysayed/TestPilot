@@ -107,13 +107,20 @@ public class ServicePriceService {
                 }
             }
         }
-        // Draft add-on rows: display + admin-editable only (not wired into CreditsBillingKind).
+        // Confirmed add-on rows: display + admin-editable (not wired into CreditsBillingKind / job debit).
         ensureAddon("VISUAL_DIFF", "Visual diffs", 5L, 5);
         ensureAddon("SUITES_MONITOR", "Suites & monitor", 10L, 6);
         ensureAddon("HEAL_REVIEW", "Heal review", 5L, 7);
+        // Refresh old canned draft covers only when still exact match (owner edits preserved).
+        refreshLegacyCovers("VISUAL_DIFF",
+                "Compare screenshots and review visual changes after a prove run. Draft credit amount — the account owner can edit it on Admin → Prices.");
+        refreshLegacyCovers("SUITES_MONITOR",
+                "Scheduled suite runs and monitor alerts that watch tagged cases. Draft credit amount — the account owner can edit it on Admin → Prices.");
+        refreshLegacyCovers("HEAL_REVIEW",
+                "Review heal proposals: Accept or Reject suggested fixes after a failed run. Draft credit amount — the account owner can edit it on Admin → Prices.");
     }
 
-    /** Insert a draft add-on row only when missing so re-runs keep owner edits. */
+    /** Insert an add-on row only when missing so re-runs keep owner edits. */
     private void ensureAddon(String code, String label, long cost, int order) {
         if (prices.findById(code).isPresent()) {
             return;
@@ -207,11 +214,11 @@ public class ServicePriceService {
             case "HUNT" ->
                     "A step is one click or one thing typed. The hunt page shows how many steps this run may try.";
             case "VISUAL_DIFF" ->
-                    "Compare screenshots and review visual changes after a prove run. Draft credit amount — the account owner can edit it on Admin → Prices.";
+                    "Compare screenshots and review visual changes after a prove run. Owner can edit on Admin → Prices.";
             case "SUITES_MONITOR" ->
-                    "Scheduled suite runs and monitor alerts that watch tagged cases. Draft credit amount — the account owner can edit it on Admin → Prices.";
+                    "Scheduled suite runs and monitor alerts that watch tagged cases. Owner can edit on Admin → Prices.";
             case "HEAL_REVIEW" ->
-                    "Review heal proposals: Accept or Reject suggested fixes after a failed run. Draft credit amount — the account owner can edit it on Admin → Prices.";
+                    "Review heal proposals: Accept or Reject suggested fixes after a failed run. Owner can edit on Admin → Prices.";
             default -> "";
         };
     }

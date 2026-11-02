@@ -26,11 +26,12 @@ public class ServicePriceServiceTest {
             "GENERATE", "EXECUTE", "AUTOMATE", "HUNT", "VISUAL_DIFF", "SUITES_MONITOR", "HEAL_REVIEW");
 
     @Test
-    public void detailAndUnitLabelCoverCoreAndDraftAddons() {
+    public void detailAndUnitLabelCoverCoreAndAddons() {
         for (String code : ALL) {
             String detail = ServicePriceService.detail(code);
             Assert.assertFalse(detail.isBlank(), code + " detail blank");
             Assert.assertTrue(detail.length() <= 240, code + " detail too long: " + detail.length());
+            Assert.assertFalse(detail.toLowerCase().contains("draft"), code + " still says draft: " + detail);
             String unit = ServicePriceService.unitLabel(code);
             Assert.assertFalse(unit.isBlank(), code + " unit blank");
         }
@@ -41,7 +42,7 @@ public class ServicePriceServiceTest {
     }
 
     @Test
-    public void ensureSeededListReturnsCoreFourPlusThreeDraftAddons() {
+    public void ensureSeededListReturnsCoreFourPlusThreeAddons() {
         MapStore store = new MapStore();
         ServicePriceRepository repo = mock(ServicePriceRepository.class);
         when(repo.count()).thenAnswer(inv -> (long) store.map.size());
@@ -72,6 +73,7 @@ public class ServicePriceServiceTest {
             String detail = String.valueOf(row.get("detail"));
             Assert.assertFalse(detail.isBlank());
             Assert.assertTrue(detail.length() <= 240, row.get("code") + " detail too long");
+            Assert.assertFalse(detail.toLowerCase().contains("draft"), row.get("code") + " still says draft");
         }
 
         // Re-run must not reset owner-customized covers or wipe add-ons.
@@ -99,6 +101,16 @@ public class ServicePriceServiceTest {
                 "Charged once for each test case in the build, not once for the package.", 25L, 3));
         store.map.put("HUNT", row("HUNT", "Bug Hunter", "Each step",
                 "A step is one click or one thing typed. The hunt page shows how many steps this run may try.", 15L, 4));
+        // Old draft canned covers — must refresh to non-draft when exact match.
+        store.map.put("VISUAL_DIFF", row("VISUAL_DIFF", "Visual diffs", "Each review",
+                "Compare screenshots and review visual changes after a prove run. Draft credit amount — the account owner can edit it on Admin → Prices.",
+                5L, 5));
+        store.map.put("SUITES_MONITOR", row("SUITES_MONITOR", "Suites & monitor", "Each scheduled run",
+                "Scheduled suite runs and monitor alerts that watch tagged cases. Draft credit amount — the account owner can edit it on Admin → Prices.",
+                10L, 6));
+        store.map.put("HEAL_REVIEW", row("HEAL_REVIEW", "Heal review", "Each proposal",
+                "Owner customized heal review cover — leave alone.",
+                5L, 7));
 
         ServicePriceRepository repo = mock(ServicePriceRepository.class);
         when(repo.count()).thenAnswer(inv -> (long) store.map.size());
@@ -123,6 +135,10 @@ public class ServicePriceServiceTest {
         Assert.assertTrue(details.containsKey("VISUAL_DIFF"));
         Assert.assertTrue(details.containsKey("SUITES_MONITOR"));
         Assert.assertTrue(details.containsKey("HEAL_REVIEW"));
+        Assert.assertFalse(details.get("VISUAL_DIFF").toLowerCase().contains("draft"));
+        Assert.assertFalse(details.get("SUITES_MONITOR").toLowerCase().contains("draft"));
+        Assert.assertEquals(details.get("HEAL_REVIEW"), "Owner customized heal review cover — leave alone.");
+        Assert.assertTrue(details.get("VISUAL_DIFF").contains("Owner can edit on Admin"));
     }
 
     private static ServicePrice row(String code, String label, String chargedAs, String covers, long cost, int order) {
