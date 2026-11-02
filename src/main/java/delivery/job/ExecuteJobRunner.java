@@ -29,15 +29,26 @@ public class ExecuteJobRunner {
     }
 
     public ExecuteJobResult run(ConversionJobRequest request, String jobId, BooleanSupplier cancelCheck) throws Exception {
+        boolean activatedProps = SuiteRunContext.current() == null && SuiteRunContext.activateFromSystemProperties();
+        try {
         List<ManualTestCase> cases = KeelPathCaseFilter.requireForSurface(
                 new ExcelTcReader(true).read(request.excel()),
                 KeelPathCaseFilter.Surface.EXECUTE,
                 "No runnable test cases in workbook — only MANUAL rows are skipped on Execute"
         );
+        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
+        Path projectRoot = store.projectRoot(request.projectId());
+        cases = SuiteCaseFilter.requireFiltered(
+                cases,
+                projectRoot,
+                "No test cases match the suite tag/suiteId/tcIds filter"
+        );
         TcIdentity.requireValidCases(cases);
 
-        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
-        Path dest = store.projectRoot(request.projectId()).resolve("execute-runs").resolve(jobId);
+        String effectiveBase = MonitorTargetResolver.resolveForActiveContext(request.baseUrl(), null);
+        request = ConversionJobRequests.withBaseUrl(request, effectiveBase);
+
+        Path dest = projectRoot.resolve("execute-runs").resolve(jobId);
         Files.createDirectories(dest);
 
         String workFolder;
@@ -78,9 +89,16 @@ public class ExecuteJobRunner {
         String message = PrecisionFallbackMessage.appendIfNeeded(drafts, "execute completed");
         RunHealth health = progress.health();
         message = message + " — " + health.summary();
-        return new ExecuteJobResult(progress.passed(), progress.todo(), message,
+        ExecuteJobResult result = new ExecuteJobResult(progress.passed(), progress.todo(), message,
                 health.flaky(), health.healed(), health.infraError(), health.configError(),
                 health.firstPassRate(), health.finalPassRate());
+        SuiteAlertNotifier.notifyOutcome(result.passed(), result.todo(), result.flaky(), result.message());
+        return result;
+        } finally {
+            if (activatedProps) {
+                SuiteRunContext.clear();
+            }
+        }
     }
 
     static ProvePhase.HealWorkbookApplier healWorkbookApplier(ConversionJobRequest request) {

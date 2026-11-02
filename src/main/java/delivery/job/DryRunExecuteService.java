@@ -32,16 +32,24 @@ public class DryRunExecuteService {
             JobProgressTracker progress,
             BooleanSupplier cancelCheck
     ) throws Exception {
+        boolean activatedProps = SuiteRunContext.current() == null && SuiteRunContext.activateFromSystemProperties();
+        try {
         List<ManualTestCase> cases = KeelPathCaseFilter.requireForSurface(
                 new ExcelTcReader().read(request.excel()),
                 KeelPathCaseFilter.Surface.EXECUTE,
                 "No runnable test cases in workbook — only MANUAL rows are skipped on Execute"
         );
-        TcIdentity.requireValidCases(cases);
-        progress.update(0, cases.size(), "Dry-run execute (no local AI)");
-
         ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
         Path projectRoot = store.projectRoot(request.projectId());
+        cases = SuiteCaseFilter.requireFiltered(
+                cases,
+                projectRoot,
+                "No test cases match the suite tag/suiteId/tcIds filter"
+        );
+        TcIdentity.requireValidCases(cases);
+        request = ConversionJobRequests.withBaseUrl(
+                request, MonitorTargetResolver.resolveForActiveContext(request.baseUrl(), null));
+        progress.update(0, cases.size(), "Dry-run execute (no local AI)");
         Path dest = projectRoot.resolve("execute-runs").resolve(jobId);
         Files.createDirectories(dest);
         TcDraftStore drafts = new TcDraftStore(dest);
@@ -88,6 +96,13 @@ public class DryRunExecuteService {
                             + ", blocked " + progress.todo());
         }
 
-        return new ExecuteJobResult(0, cases.size(), "dry-run execute completed");
+        ExecuteJobResult result = new ExecuteJobResult(0, cases.size(), "dry-run execute completed");
+        SuiteAlertNotifier.notifyOutcome(result.passed(), result.todo(), 0, result.message());
+        return result;
+        } finally {
+            if (activatedProps) {
+                SuiteRunContext.clear();
+            }
+        }
     }
 }

@@ -53,12 +53,23 @@ public class ConversionJobRunner {
             throw new IllegalStateException("UPDATE_WITHOUT_FRAMEWORK");
         }
 
+        boolean activatedProps = SuiteRunContext.current() == null && SuiteRunContext.activateFromSystemProperties();
+        try {
         List<ManualTestCase> allCases = KeelPathCaseFilter.requireForSurface(
                 new ExcelTcReader(true).read(request.excel()),
                 KeelPathCaseFilter.Surface.AUTOMATE,
-                "No runnable test cases in workbook — MANUAL rows are skipped on Automate; use AUTOMATE/EXECUTE/VISION_ONLY or blank KeelPath"
+                "No runnable test cases in workbook - MANUAL rows are skipped on Automate; use AUTOMATE/EXECUTE/VISION_ONLY or blank KeelPath"
+        );
+        Path suiteProjectRoot = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId())
+                .projectRoot(request.projectId());
+        allCases = SuiteCaseFilter.requireFiltered(
+                allCases,
+                suiteProjectRoot,
+                "No test cases match the suite tag/suiteId/tcIds filter"
         );
         TcIdentity.requireValidCases(allCases);
+        request = ConversionJobRequests.withBaseUrl(
+                request, MonitorTargetResolver.resolveForActiveContext(request.baseUrl(), null));
 
         Map<String, String> storedHashes = new HashMap<>();
         Path hashFile = store.projectRoot(request.projectId()).resolve("tc-hashes.json");
@@ -99,7 +110,14 @@ public class ConversionJobRunner {
 
         progress.update(proveUnits, jobTotal, "Phase2 starting");
         EmitPhase emit = new EmitPhase(progress);
-        return emit.emit(request, allCases, work, projectDir, workFolder, mode, cancelCheck, publicationGuard);
+        ConversionJobResult conversionResult = emit.emit(request, allCases, work, projectDir, workFolder, mode, cancelCheck, publicationGuard);
+        SuiteAlertNotifier.notifyOutcome(conversionResult.passed(), conversionResult.todo(), 0, conversionResult.message());
+        return conversionResult;
+        } finally {
+            if (activatedProps) {
+                SuiteRunContext.clear();
+            }
+        }
     }
 
     /**

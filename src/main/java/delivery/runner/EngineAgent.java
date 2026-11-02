@@ -52,15 +52,21 @@ public class EngineAgent {
     private final EngineConfig config;
     private final RunnerV2Client client;
     private final Worker worker;
+    private final ScheduleClaimPoller scheduleClaim;
 
     public EngineAgent(EngineConfig config) {
-        this(config, new RunnerV2Client(config.portalUrl(), config.token()), null);
+        this(config, new RunnerV2Client(config.portalUrl(), config.token()), null, null);
     }
 
     public EngineAgent(EngineConfig config, RunnerV2Client client, Worker worker) {
+        this(config, client, worker, null);
+    }
+
+    public EngineAgent(EngineConfig config, RunnerV2Client client, Worker worker, ScheduleClaimPoller scheduleClaim) {
         this.config = config;
         this.client = client;
         this.worker = worker == null ? this::defaultWorker : worker;
+        this.scheduleClaim = scheduleClaim == null ? ScheduleClaimPoller.fromEnv(config) : scheduleClaim;
     }
 
     public static void main(String[] args) throws Exception {
@@ -95,6 +101,9 @@ public class EngineAgent {
 
     /** @return 1 if a job was claimed and handled, 0 if there was no work. */
     public int runOnce() throws Exception {
+        if (scheduleClaim != null) {
+            scheduleClaim.tick();
+        }
         JSONObject claimReq = new JSONObject();
         JSONArray kinds = new JSONArray();
         REMOTE_KINDS.forEach(k -> kinds.put(k.name()));

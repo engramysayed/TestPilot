@@ -2,6 +2,14 @@
 
 # Keel changelog
 
+## 2026-11-02 - Phase 3 AE: suite tag filter + schedule claim hook
+
+- Runner honors suite `tcIds` / tag / suiteId via `SuiteCaseFilter` + read-only `SuiteStore` (`{projectRoot}/suites.json`, Backend SoT).
+- Schedule claim: `ScheduleClaimClient` GET `/api/schedules/due` → POST `.../suites/{suiteId}/runs`; `EngineAgent` ticks via `ScheduleClaimPoller`.
+- Monitor target → base URL via `MonitorTargetResolver`; fail/flake via bound `AlertChannel` (`SuiteAlertNotifier`, unbound = log only).
+- Handoff: docs/handoff/2026-11-02-phase3-ae.md.
+
+
 ## 2026-11-02 - Phase 2 AE: failure replay + heal proposals + flaky tags
 
 - On prove/execute failure, write evidence/{tcFolder}/failure/{stepIndex}/ (meta + best-effort screen/network/console) matching Backend interim contract.
