@@ -22,10 +22,14 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Classpath hits are cached. When an override dir is set, files are re-read each call
  * (hot-reload). Missing override file fails closed (does not silently fall back).
+ *
+ * <p>Admin / inventory helpers ({@link #version()}, {@link #tryClasspathText(String)},
+ * {@link #tryOverrideText(String)}) do not change runtime {@link #get(String)} fail-closed rules.
  */
 public final class PromptCatalog {
     public static final String PROP_DIR = "keel.prompts.dir";
     public static final String ENV_DIR = "KEEL_PROMPTS_DIR";
+    public static final String VERSION_FILE = "VERSION";
 
     private static final Map<String, String> CACHE = new ConcurrentHashMap<>();
     /** Programmatic override (Spring); when non-null, wins over property/env. */
@@ -76,6 +80,81 @@ public final class PromptCatalog {
     }
 
     /**
+     * Prompt pack version: override {@code VERSION} file first, then classpath
+     * {@code prompts/VERSION}. Returns {@code unknown} when neither exists.
+     */
+    public static String version() {
+        Optional<Path> override = overrideDir();
+        if (override.isPresent()) {
+            Path file = override.get().resolve(VERSION_FILE);
+            if (Files.isRegularFile(file)) {
+                try {
+                    String body = Files.readString(file, StandardCharsets.UTF_8).trim();
+                    if (!body.isEmpty()) {
+                        return body.lines().findFirst().orElse(body).trim();
+                    }
+                } catch (IOException e) {
+                    throw new IllegalStateException("failed reading override " + VERSION_FILE, e);
+                }
+            }
+        }
+        ClassLoader cl = PromptCatalog.class.getClassLoader();
+        try (InputStream in = cl.getResourceAsStream("prompts/" + VERSION_FILE)) {
+            if (in != null) {
+                String body = new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
+                if (!body.isEmpty()) {
+                    return body.lines().findFirst().orElse(body).trim();
+                }
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("failed reading classpath prompts/" + VERSION_FILE, e);
+        }
+        return "unknown";
+    }
+
+    /** Classpath prompt body when present (ignores override dir). */
+    public static Optional<String> tryClasspathText(String id) {
+        String normalized = normalizeId(id);
+        try {
+            return Optional.of(readClasspath(normalized));
+        } catch (IllegalStateException e) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Override file body when override dir is set and {@code <id>.md|.txt} exists;
+     * empty when dir unset or file missing (does not throw).
+     */
+    public static Optional<String> tryOverrideText(String id) {
+        String normalized = normalizeId(id);
+        Optional<Path> override = overrideDir();
+        if (override.isEmpty()) {
+            return Optional.empty();
+        }
+        Path dir = override.get();
+        for (String ext : new String[] {".md", ".txt"}) {
+            Path file = dir.resolve(normalized + ext).normalize();
+            if (!file.startsWith(dir.normalize())) {
+                throw new IllegalArgumentException("prompt path escapes override dir: " + id);
+            }
+            if (Files.isRegularFile(file)) {
+                try {
+                    return Optional.of(Files.readString(file, StandardCharsets.UTF_8));
+                } catch (IOException e) {
+                    throw new IllegalStateException("failed reading override prompt " + file, e);
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** True when override dir is set and a {@code .md} or {@code .txt} file exists for id. */
+    public static boolean hasOverrideFile(String id) {
+        return tryOverrideText(id).isPresent();
+    }
+
+    /**
      * Spring / tests: bind {@code keel.prompts.dir} without relying on system properties.
      * Pass {@code null} to clear. Non-null paths must be absolute; directory need not exist yet
      * (missing file still fails on {@link #get}). Clears classpath cache.
@@ -122,7 +201,7 @@ public final class PromptCatalog {
         CACHE.clear();
     }
 
-    static String normalizeId(String id) {
+    public static String normalizeId(String id) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("prompt id must be non-blank");
         }

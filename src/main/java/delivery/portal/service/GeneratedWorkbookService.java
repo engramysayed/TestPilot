@@ -166,6 +166,7 @@ public class GeneratedWorkbookService {
         }
         meta.put("createdAt", Instant.now().toString());
         meta.put("excelFile", EXCEL_FILE);
+        meta.put("promptsVersion", delivery.prompts.PromptCatalog.version());
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(dir.resolve(META_FILE).toFile(), meta);
         Map<String, Object> out = listCases(projectId);
         out.put("revisionId", rev.id());
@@ -286,6 +287,7 @@ public class GeneratedWorkbookService {
         }
         meta.put("createdAt", Instant.now().toString());
         meta.put("excelFile", EXCEL_FILE);
+        meta.put("promptsVersion", delivery.prompts.PromptCatalog.version());
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(dir.resolve(META_FILE).toFile(), meta);
     }
 
