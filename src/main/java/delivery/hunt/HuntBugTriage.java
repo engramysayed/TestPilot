@@ -1,5 +1,6 @@
 package delivery.hunt;
 
+import delivery.prompts.PromptCatalog;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -96,24 +97,19 @@ public final class HuntBugTriage {
     }
 
     public static String triagePrompt(List<Map<String, Object>> bugs, String journalSlice, String coverageSlice) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("You are triaging Bug Hunter findings. Return ONLY JSON:\n");
-        sb.append("{\"keep\":[{\"title\":\"...\",\"reason\":\"...\"}],");
-        sb.append("\"drop\":[{\"title\":\"...\",\"reason\":\"noise|duplicate|oracle_false|flake\"}],");
-        sb.append("\"merge\":[{\"into\":\"...\",\"from\":[\"...\"],\"reason\":\"...\"}]}\n");
-        sb.append("Rules: do not invent new bugs; when unsure KEEP; drop oracle noise,");
-        sb.append(" duplicates, timing flakes, and unexpected-login-URL on login features.\n\n");
-        sb.append("## Candidates\n");
+        StringBuilder candidates = new StringBuilder();
         int i = 1;
         for (Map<String, Object> b : bugs == null ? List.<Map<String, Object>>of() : bugs) {
-            sb.append(i++).append(". ").append(b.get("title"))
+            candidates.append(i++).append(". ").append(b.get("title"))
                     .append(" | sev=").append(b.get("severity"))
                     .append(" | dup=").append(b.getOrDefault("dupCount", 1))
                     .append('\n');
         }
-        sb.append("\n## Journal (tail)\n").append(journalSlice == null ? "" : journalSlice).append('\n');
-        sb.append("\n## Coverage\n").append(coverageSlice == null ? "" : coverageSlice).append('\n');
-        return sb.toString();
+        return PromptCatalog.format("hunt/bug-triage", Map.of(
+                "candidates", candidates.toString(),
+                "journal", journalSlice == null ? "" : journalSlice,
+                "coverage", coverageSlice == null ? "" : coverageSlice
+        ));
     }
 
     private static List<String> titlesFrom(JSONArray arr) {

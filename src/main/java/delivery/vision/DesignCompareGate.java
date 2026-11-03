@@ -8,16 +8,7 @@ import java.io.IOException;
 
 public final class DesignCompareGate {
 
-    static final String SYSTEM_PROMPT =
-            "Return JSON only. No markdown. Schema:\n"
-            + "{\"status\":\"MATCH|MISMATCH|UNCERTAIN\",\"confidence\":0.9,"
-            + "\"observation\":\"concrete layout and UI differences or matches\","
-            + "\"evidence\":\"why the status follows from visible pixels\"}\n"
-            + "status must be MATCH, MISMATCH, or UNCERTAIN.\n"
-            + "Image 1 is the design reference. Image 2 is the actual UI screenshot.\n"
-            + "Compare layout, labels, controls, colors, and spacing — not pixel-perfect equality.\n"
-            + "Do not invent elements that are not visible.\n"
-            + "observation and evidence must be concrete; never use angle-bracket placeholders.";
+    static final String SYSTEM_PROMPT = PromptCatalog.get("vision/design-compare").trim();
 
     private static final String USER_PROMPT =
             "Compare the design reference (first image) to the actual UI (second image).";

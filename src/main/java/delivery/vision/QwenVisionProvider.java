@@ -15,18 +15,7 @@ public final class QwenVisionProvider implements VisionGroundingProvider {
 
     static final String SYSTEM_PROMPT = VisionPromptTemplate.systemPrompt();
 
-    static final String ASSERT_SYSTEM_PROMPT =
-            "Return JSON only. No markdown. Schema:\n"
-            + "{\"status\":\"PASS|FAIL|UNCERTAIN\",\"confidence\":0.9,"
-            + "\"observation\":\"concrete UI text and controls visible in the screenshot\","
-            + "\"evidence\":\"why the status matches the assertion\"}\n"
-            + "status must be PASS, FAIL, or UNCERTAIN.\n"
-            + "Judge this screenshot only. Do not compare to Figma or a reference image.\n"
-            + "Do not invent locators or CSS selectors.\n"
-            + "Do not copy placeholder angle-bracket text into observation or evidence.\n"
-            + "Never set observation or evidence to schema examples like \"what is visible\" or \"why\".\n"
-            + "observation and evidence must be concrete visible UI facts; never leave them blank when status is PASS or FAIL.\n"
-            + "confidence is in 0 to 1; use values like 0.7–0.99 (do not default to 0).";
+    static final String ASSERT_SYSTEM_PROMPT = PromptCatalog.get("vision/qwen").trim();
 
     private static final String ASSERT_RETRY_NUDGE = PromptCatalog.get("vision/qwen-assert-retry").trim();
 
