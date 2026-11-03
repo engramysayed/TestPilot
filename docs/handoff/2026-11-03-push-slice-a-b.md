@@ -67,3 +67,15 @@ No force-push. No history rewrite. No PR merges.
 
 - Optional: commit this handoff alone and push if tree otherwise left alone (WIP files must stay unstaged).
 - Continue Maestro/Leader loop from tip `780b112`.
+
+## Follow-up (handoff commit)
+
+After writing this doc, committed handoff-only and pushed:
+
+| Item | Value |
+|------|-------|
+| Handoff commit | `df83752d5dfb5a0b50002b4c7ecda1c323a70f62` (short `df83752`) |
+| Final remote tip | `df83752` on both `keel/main` and `origin/main` |
+| Slice A+B feature tip | still `780b112` (range above unchanged) |
+
+WIP leftovers listed above remain uncommitted/unpushed.
