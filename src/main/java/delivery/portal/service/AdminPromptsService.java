@@ -113,7 +113,7 @@ public class AdminPromptsService {
         return out;
     }
 
-    TreeSet<String> classpathIds() throws IOException {
+    public TreeSet<String> classpathIds() throws IOException {
         TreeSet<String> ids = new TreeSet<>();
         Resource[] resources = resolver.getResources("classpath*:prompts/**/*.*");
         for (Resource resource : resources) {
