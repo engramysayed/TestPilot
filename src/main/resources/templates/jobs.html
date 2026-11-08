@@ -59,6 +59,11 @@
                         <a class="button small" th:if="${j['resultsUrl'] != null}" th:href="${j['resultsUrl']}">Results</a>
                         <a th:if="${j.status == 'COMPLETED' or j.status == 'COMPLETED_WITH_BLOCK' or (j.jobKind == 'HUNT' and j.status == 'FAILED')}" class="button"
                            th:href="@{/api/jobs/{id}/download(id=${j.jobId})}">Download</a>
+                        <button type="button" class="button small danger run-delete"
+                                th:data-job-id="${j.jobId}"
+                                th:data-job-kind="${j.jobKind}"
+                                th:disabled="${j.status == 'QUEUED' or j.status == 'RUNNING'}"
+                                th:title="${(j.status == 'QUEUED' or j.status == 'RUNNING') ? 'Cancel the run first' : 'Delete this run and its evidence'}">Delete</button>
                     </td>
                 </tr>
                 </tbody>
@@ -67,5 +72,39 @@
     </section>
 </main>
 </div>
+<script th:inline="javascript">
+    (function () {
+        var csrfName = /*[[${_csrf != null ? _csrf.headerName : ''}]]*/ '';
+        var csrfVal = /*[[${_csrf != null ? _csrf.token : ''}]]*/ '';
+        document.querySelectorAll('button.run-delete').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var jobId = btn.getAttribute('data-job-id');
+                var kind = btn.getAttribute('data-job-kind') || 'run';
+                if (!window.keelConfirm) { return; }
+                keelConfirm({
+                    title: 'Delete this run?',
+                    message: kind + ' ' + jobId + ' and its evidence folder will be removed. This cannot be undone.',
+                    confirmLabel: 'Delete',
+                    danger: true,
+                    onConfirm: function () {
+                        // Execute has a richer endpoint (worker-lock aware); use it for EXECUTE; the generic
+                        // endpoint handles the rest.
+                        var url = kind === 'EXECUTE' ? ('/api/execute-runs/' + jobId) : ('/api/runs/' + jobId);
+                        var headers = { 'X-Keel-Requested-With': 'Keel' };
+                        if (csrfName) { headers[csrfName] = csrfVal; }
+                        fetch(url, { method: 'DELETE', credentials: 'same-origin', headers: headers })
+                            .then(function (r) {
+                                if (r.ok) { var row = btn.closest('tr'); if (row) row.remove(); return; }
+                                return r.json().then(function (body) {
+                                    keelAlert && keelAlert((body && body.message) || ('Delete failed (' + r.status + ')'));
+                                });
+                            })
+                            .catch(function () { keelAlert && keelAlert('Delete failed. Check your connection.'); });
+                    }
+                });
+            });
+        });
+    })();
+</script>
 </body>
 </html>

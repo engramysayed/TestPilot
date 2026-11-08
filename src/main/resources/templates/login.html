@@ -1,14 +1,102 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments :: authPageHead(title='Sign in')}"></th:block>
+    <style>
+        /* Scoped login polish — does not leak out because of .login-body. */
+        .login-body {
+            background:
+                radial-gradient(circle at 15% 20%, rgba(8, 127, 120, 0.22), transparent 55%),
+                radial-gradient(circle at 85% 0%, rgba(17, 42, 53, 0.4), transparent 60%),
+                #0b1620;
+            min-height: 100vh;
+        }
+        .loginpage { min-height: 100vh; }
+        .loginbrand {
+            padding: 3rem clamp(1.25rem, 5vw, 4rem);
+            color: #e7f1ef;
+            display: flex; flex-direction: column; gap: 1.1rem;
+            background: transparent;
+        }
+        .loginbrand-logo {
+            font-weight: 800; font-size: 1.35rem; letter-spacing: 0.02em; color: #e3f3ef;
+            display: inline-flex; align-items: center; gap: 0.5rem;
+        }
+        .loginbrand-logo::before {
+            content: ""; display: inline-block; width: 1.5rem; height: 1.5rem; border-radius: 6px;
+            background: linear-gradient(135deg, #087f78, #0ea5a0);
+        }
+        .loginbrand h1 {
+            font-size: clamp(1.75rem, 2.6vw, 2.4rem);
+            line-height: 1.12; letter-spacing: -0.015em; margin: 0.75rem 0 0;
+        }
+        .loginbrand > p { max-width: 36ch; color: #a3b8c0; margin: 0; }
+        .loginbrand-highlights {
+            margin-top: 1.5rem; padding: 0; list-style: none;
+            display: grid; gap: 0.6rem;
+        }
+        .loginbrand-highlights li {
+            color: #c8d6dc; font-size: 0.95rem;
+            display: flex; gap: 0.6rem; align-items: center;
+        }
+        .loginbrand-highlights li::before {
+            content: ""; width: 1rem; height: 1rem; border-radius: 50%;
+            background: rgba(8, 127, 120, 0.25);
+            border: 1.5px solid #0ea5a0; flex: 0 0 auto;
+        }
+        .loginbrand-foot {
+            margin-top: auto; padding-top: 1.5rem;
+            font-size: 0.72rem; letter-spacing: 0.22em; color: #5d6678;
+        }
+
+        .loginform {
+            margin: 2rem clamp(1rem, 4vw, 3rem);
+            padding: clamp(1.75rem, 4vw, 2.5rem);
+            background: #ffffff;
+            border-radius: 18px;
+            box-shadow: 0 25px 60px -20px rgba(8, 20, 26, 0.5);
+            align-self: center;
+            max-width: 420px;
+            width: 100%;
+        }
+        .loginform .eyebrow {
+            font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
+            color: #5d6678; margin: 0 0 0.5rem;
+        }
+        .loginform h1 {
+            margin: 0 0 0.35rem; font-size: 1.5rem; color: #112a35; letter-spacing: -0.01em;
+        }
+        .loginform-intro { color: #5d6678; margin: 0 0 1.4rem; }
+        .login-form .field { display: block; margin-bottom: 0.9rem; }
+        .login-form .field > span { display: block; font-size: 0.78rem; color: #5d6678; margin-bottom: 0.3rem; }
+        .login-form .field input {
+            width: 100%; padding: 0.7rem 0.85rem;
+            border: 1px solid #d7dde3; border-radius: 10px; font-size: 0.95rem;
+            transition: border-color 120ms ease, box-shadow 120ms ease;
+        }
+        .login-form .field input:focus {
+            outline: none; border-color: #087f78;
+            box-shadow: 0 0 0 3px rgba(8, 127, 120, 0.18);
+        }
+        .login-submit {
+            width: 100%; margin-top: 0.3rem; padding: 0.75rem;
+            font-weight: 600; letter-spacing: 0.01em;
+        }
+        .login-alt { margin-top: 1.2rem; font-size: 0.85rem; color: #5d6678; text-align: center; }
+        .login-alt a { color: #087f78; font-weight: 500; }
+    </style>
 </head>
 <body class="login-body">
 <main class="loginpage" aria-label="Sign in">
     <section class="loginbrand" aria-label="Keel">
         <div class="loginbrand-logo">keel</div>
-        <h1>From test intent<br/>to trusted evidence.</h1>
-        <p>Your test library, execution, and automation in one workspace.</p>
+        <h1>From test intent,<br/>to trusted evidence.</h1>
+        <p>Your test library, execution runs, and automation — in one workspace.</p>
+        <ul class="loginbrand-highlights">
+            <li>Write cases in plain English; run the same ones on web and mobile.</li>
+            <li>Evidence for every run — screenshots, diffs, retries.</li>
+            <li>Alerts to email or Telegram when a suite fails.</li>
+        </ul>
         <p class="loginbrand-foot">WEB &amp; MOBILE AUTOMATION</p>
     </section>
     <section class="loginform">
@@ -27,7 +115,7 @@
             </label>
             <label class="field">
                 <span>Password</span>
-                <input type="password" name="password" required autocomplete="current-password" placeholder="Password"/>
+                <input type="password" name="password" required autocomplete="current-password" placeholder="Your password"/>
             </label>
             <button type="submit" class="button primary login-submit">Sign in</button>
         </form>
