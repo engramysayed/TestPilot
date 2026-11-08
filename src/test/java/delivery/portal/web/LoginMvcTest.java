@@ -39,7 +39,8 @@ public class LoginMvcTest extends AbstractTestNGSpringContextTests {
         Assert.assertTrue(body.contains("class=\"loginpage\""), "login must use loginpage grid");
         Assert.assertTrue(body.contains("class=\"loginbrand\""), "login must include brand panel");
         Assert.assertTrue(body.contains("From test intent"), "login must show mock tagline");
-        Assert.assertTrue(body.contains("WEB AUTOMATION / ANDROID NEXT"));
+        Assert.assertTrue(body.contains("WEB &amp; MOBILE AUTOMATION"),
+                "login footer should say web & mobile (android is live now)");
         Assert.assertTrue(body.contains("Email address"));
         Assert.assertFalse(body.contains("login-split"), "old login-split layout removed");
     }
