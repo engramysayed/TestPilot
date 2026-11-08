@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Plain-English cases')}"></th:block>
 </head>
@@ -11,12 +11,10 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1>Plain-English cases</h1>
+            <h1 th:text="#{page.plain-cases.title}">Plain-English cases</h1>
             <p class="lede">
-                Author short test steps in plain English (one action or expectation per line).
-                No Java required. Cases run through the same <strong>Execute</strong> runner.
-                This page is separate from classic <a href="/generate">Generate</a> and
-                <a href="/generate-from-knowledge">From knowledge</a>.
+                Write a test case one line at a time, in plain English — one click or one check per line.
+                No code. Runs on the same Execute engine as everything else.
             </p>
         </div>
     </div>

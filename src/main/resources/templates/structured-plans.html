@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Structured plans')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1 th:text="#{page.structured-plans.title}">Structured plans</h1>
+            <p class="lede">
+                A reusable list of steps you can pin on many test cases. Each step is one action
+                (click, type) or one check (expect). Unlike a single case, a plan is named and shared —
+                change it once, every case that uses it picks up the change.
+            </p>
+        </div>
+    </div>
+    <section class="panel workspace-launcher" id="workspace-launcher">
+        <h2>Choose a project</h2>
+        <label>Project <select id="launcher-project-select"><option value="">Loading…</option></select></label>
+        <p style="margin-top:0.75rem"><button type="button" class="button" id="launcher-continue">Continue</button></p>
+    </section>
+    <div id="workspace-config" hidden>
+        <section class="panel">
+            <p class="muted">Project: <strong id="pinned-name">—</strong>
+                <button type="button" class="button ghost" id="change-project">Change</button></p>
+        </section>
+        <section class="panel">
+            <h2>Plans</h2>
+            <ul id="plan-list" class="mono"></ul>
+            <p id="plan-empty" class="muted">No plans yet.</p>
+        </section>
+        <section class="panel">
+            <h2 id="editor-title">New / edit plan</h2>
+            <label>Plan id <input type="text" id="plan-id" pattern="[A-Za-z0-9][A-Za-z0-9_-]*" placeholder="login-happy"/></label>
+            <label style="display:block;margin-top:0.5rem">Name <input type="text" id="plan-name" maxlength="200"/></label>
+            <div id="steps" style="margin-top:0.75rem"></div>
+            <p style="margin-top:0.5rem">
+                <button type="button" class="button ghost" id="add-step">Add step</button>
+                <button type="button" class="button" id="save-plan" style="margin-left:0.5rem">Save</button>
+                <span id="save-status" class="muted"></span>
+            </p>
+        </section>
+    </div>
+</main>
+</div>
+<script>
+(function () {
+    const H = { 'X-Keel-Requested-With': 'Keel', 'Content-Type': 'application/json' };
+    const STORAGE = 'keel.structuredPlansProjectId';
+    const initial = /*[[${projectId}]]*/ '';
+    let projectId = '';
+    let editingRevision = null;
+
+    const launcher = document.getElementById('workspace-launcher');
+    const config = document.getElementById('workspace-config');
+    const launcherSel = document.getElementById('launcher-project-select');
+
+    function stepRow(type, text, id) {
+        const div = document.createElement('div');
+        div.style.marginBottom = '0.5rem';
+        div.innerHTML = '<select class="step-type"><option value="action">action</option><option value="assert">assert</option></select>'
+            + ' <input class="step-text" style="width:60%" value="' + (text || '').replace(/"/g, '&quot;') + '"/>'
+            + ' <button type="button" class="button ghost step-del">Remove</button>';
+        div.querySelector('.step-type').value = type || 'action';
+        div.querySelector('.step-del').onclick = () => div.remove();
+        return div;
+    }
+
+    function collectSteps() {
+        return [...document.querySelectorAll('#steps > div')].map((div, i) => ({
+            id: 's' + (i + 1),
+            type: div.querySelector('.step-type').value,
+            text: div.querySelector('.step-text').value.trim()
+        })).filter(s => s.text);
+    }
+
+    async function loadProjects() {
+        const res = await fetch('/api/projects', { headers: H });
+        const rows = await res.json();
+        launcherSel.innerHTML = '<option value="">— Select —</option>';
+        rows.forEach(p => {
+            const o = document.createElement('option');
+            o.value = p.projectId;
+            o.textContent = p.name || p.projectId;
+            launcherSel.appendChild(o);
+        });
+    }
+
+    async function refreshPlans() {
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/structured-plans', { headers: H });
+        const plans = await res.json();
+        const list = document.getElementById('plan-list');
+        list.innerHTML = '';
+        document.getElementById('plan-empty').hidden = plans.length > 0;
+        plans.forEach(p => {
+            const li = document.createElement('li');
+            li.innerHTML = '<button type="button" class="button ghost plan-open">' + p.id + '</button> rev ' + p.revision;
+            li.querySelector('.plan-open').onclick = () => openPlan(p.id);
+            list.appendChild(li);
+        });
+    }
+
+    async function openPlan(id) {
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/structured-plans/' + encodeURIComponent(id), { headers: H });
+        if (!res.ok) return;
+        const p = await res.json();
+        document.getElementById('plan-id').value = p.id;
+        document.getElementById('plan-id').disabled = true;
+        document.getElementById('plan-name').value = p.name || '';
+        editingRevision = p.revision;
+        const steps = document.getElementById('steps');
+        steps.innerHTML = '';
+        (p.steps || []).forEach(s => steps.appendChild(stepRow(s.type, s.text, s.id)));
+    }
+
+    document.getElementById('add-step').onclick = () => document.getElementById('steps').appendChild(stepRow('action', '', null));
+    document.getElementById('save-plan').onclick = async () => {
+        const id = document.getElementById('plan-id').value.trim();
+        const body = { id, name: document.getElementById('plan-name').value.trim(), steps: collectSteps() };
+        if (editingRevision != null) body.expectedRevision = editingRevision;
+        const path = '/api/projects/' + encodeURIComponent(projectId) + '/structured-plans'
+            + (editingRevision != null ? '/' + encodeURIComponent(id) : '');
+        const method = editingRevision != null ? 'PUT' : 'POST';
+        const res = await fetch(path, { method, headers: H, body: JSON.stringify(body) });
+        document.getElementById('save-status').textContent = res.ok ? 'Saved' : 'Error ' + res.status;
+        if (res.ok) { editingRevision = (await res.json()).revision; await refreshPlans(); }
+    };
+
+    document.getElementById('launcher-continue').onclick = () => {
+        projectId = launcherSel.value;
+        if (!projectId) return;
+        localStorage.setItem(STORAGE, projectId);
+        launcher.hidden = true;
+        config.hidden = false;
+        document.getElementById('pinned-name').textContent = launcherSel.selectedOptions[0].textContent;
+        document.getElementById('plan-id').disabled = false;
+        editingRevision = null;
+        refreshPlans();
+        document.getElementById('steps').appendChild(stepRow('action', 'Open login page', null));
+        document.getElementById('steps').appendChild(stepRow('assert', 'Dashboard is visible', null));
+    };
+    document.getElementById('change-project').onclick = () => { config.hidden = true; launcher.hidden = false; };
+    loadProjects().then(() => {
+        const pin = initial || localStorage.getItem(STORAGE) || '';
+        if (pin) { launcherSel.value = pin; document.getElementById('launcher-continue').click(); }
+    });
+})();
+</script>
+</body>
+</html>

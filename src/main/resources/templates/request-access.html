@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: authPageHead(title='Request access')}"></th:block>
 </head>
@@ -9,11 +9,11 @@
         <div class="loginbrand-logo">keel</div>
         <h1>From test intent<br/>to trusted evidence.</h1>
         <p>Your test library, execution, and automation in one workspace.</p>
-        <p class="loginbrand-foot">WEB AUTOMATION / ANDROID NEXT</p>
+        <p class="loginbrand-foot">WEB &amp; MOBILE AUTOMATION</p>
     </section>
     <section class="loginform">
         <p class="eyebrow">New here</p>
-        <h1>Request access</h1>
+        <h1 th:text="#{page.request-access.title}">Request access</h1>
         <p class="loginform-intro">Leave your work email. An admin reviews requests and sends a link so you can set your own password. New accounts stay <strong>pending approval</strong> until an admin approves you and sets credits (manual — no free trial).</p>
         <p id="ok" class="ok hidden"></p>
         <p id="err" class="error hidden"></p>

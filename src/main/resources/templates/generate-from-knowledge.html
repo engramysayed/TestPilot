@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Generate from knowledge')}"></th:block>
 </head>
@@ -11,11 +11,11 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1>Generate from knowledge</h1>
+            <h1 th:text="#{page.generate-from-knowledge.title}">Generate from case packs</h1>
             <p class="lede">
-                Pick a project and one or more case packs (test knowledge files), set a batch size, then start a run.
-                Classic story-based <strong>Generate</strong> is unchanged at
-                <a href="/generate">/generate</a>.
+                A case pack is a saved bundle of test ideas for a feature. Pick one or more, say how many cases
+                you want, and Keel writes them. Use this when you have packs ready — otherwise start from
+                <a href="/generate">Generate</a>.
             </p>
         </div>
     </div>

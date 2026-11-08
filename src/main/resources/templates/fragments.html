@@ -186,7 +186,7 @@
         </a>
         <a href="/generate-from-knowledge" data-feature-perm="feature.generate" th:classappend="${navActive == 'generate-from-knowledge'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z"/><path d="M13 5h7v12a2 2 0 0 1-2 2h-7a2 2 0 0 0 2-2z"/><path d="M7 9h2 M7 12h2"/></svg>
-            <span>From knowledge packs</span>
+            <span>From case packs</span>
         </a>
         <a href="/record" data-feature-perm="feature.generate" th:classappend="${navActive == 'record'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>
@@ -224,20 +224,12 @@
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l12 8-12 8z"/></svg>
             <span>Runs &amp; evidence</span>
         </a>
-        <a href="/execute#visual-diffs-panel" data-feature-perm="feature.execute" th:classappend="${navActive == 'execute'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v7H4z"/><path d="M13 5h7v7h-7z"/><path d="M4 14h7v5H4z"/><path d="M13 14h7v5h-7z"/></svg>
-            <span>Screenshot diffs</span>
-        </a>
         <a href="/bug-hunter" data-feature-perm="feature.hunt" th:classappend="${navActive == 'bug-hunter'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8 11h6"/><path d="M11 8v6"/></svg>
             <span>Bug Hunter</span>
         </a>
 
         <p class="sidebar-label">Workspace</p>
-        <a href="/packages" th:classappend="${navActive == 'packages'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4z M3 7l9 5 9-5 M12 12v9"/></svg>
-            <span>Runtime packages</span>
-        </a>
         <a href="/pricing" th:classappend="${navActive == 'pricing'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             <span>Pricing</span>

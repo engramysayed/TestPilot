@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Run memory')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1 th:text="#{page.run-memory.title}">Run memory</h1>
+            <p class="lede">
+                Keel learns which page elements it struggled to find in past runs. Approve a hint here and
+                the next Execute uses it right away, so the same case doesn't have to re-learn what "Login"
+                means on your site.
+            </p>
+        </div>
+    </div>
+    <section class="panel workspace-launcher" id="workspace-launcher">
+        <h2>Choose a project</h2>
+        <label>Project <select id="launcher-project-select"><option value="">Loading…</option></select></label>
+        <p style="margin-top:0.75rem"><button type="button" class="button" id="launcher-continue">Continue</button></p>
+    </section>
+    <div id="workspace-config" hidden>
+        <section class="panel">
+            <p class="muted">Project: <strong id="pinned-name">—</strong>
+                <button type="button" class="button ghost" id="change-project">Change</button></p>
+        </section>
+        <section class="panel">
+            <h2>Propose memory</h2>
+            <label>Id <input type="text" id="mem-id" placeholder="mem_login_btn"/></label>
+            <label style="display:block;margin-top:0.5rem">Summary <input type="text" id="mem-summary" style="width:100%"/></label>
+            <label style="display:block;margin-top:0.5rem">Locator hint <input type="text" id="mem-locator" style="width:100%"/></label>
+            <label style="display:block;margin-top:0.5rem">Source job <input type="text" id="mem-job" placeholder="exec_…"/></label>
+            <p style="margin-top:0.5rem"><button type="button" class="button" id="propose">Propose</button></p>
+        </section>
+        <section class="panel">
+            <h2>Approved &amp; proposed</h2>
+            <table class="status" style="width:100%"><thead><tr><th>Id</th><th>Status</th><th>Summary</th><th></th></tr></thead>
+            <tbody id="mem-rows"></tbody></table>
+        </section>
+    </div>
+</main>
+</div>
+<script>
+(function () {
+    const H = { 'X-Keel-Requested-With': 'Keel', 'Content-Type': 'application/json' };
+    const STORAGE = 'keel.runMemoryProjectId';
+    const initial = /*[[${projectId}]]*/ '';
+    let projectId = '';
+    const base = () => '/api/projects/' + encodeURIComponent(projectId) + '/run-memory';
+
+    async function loadProjects() {
+        const res = await fetch('/api/projects', { headers: H });
+        const rows = await res.json();
+        const sel = document.getElementById('launcher-project-select');
+        sel.innerHTML = '<option value="">— Select —</option>';
+        rows.forEach(p => {
+            const o = document.createElement('option');
+            o.value = p.projectId;
+            o.textContent = p.name || p.projectId;
+            sel.appendChild(o);
+        });
+    }
+
+    async function refresh() {
+        const res = await fetch(base(), { headers: H });
+        const rows = await res.json();
+        const tbody = document.getElementById('mem-rows');
+        tbody.innerHTML = '';
+        rows.forEach(m => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td class="mono">' + m.id + '</td><td>' + m.status + '</td><td>' + (m.summary || '') + '</td><td></td>';
+            const td = tr.lastElementChild;
+            if (m.status === 'proposed') {
+                const a = document.createElement('button');
+                a.className = 'button ghost';
+                a.textContent = 'Approve';
+                a.onclick = async () => {
+                    await fetch(base() + '/' + encodeURIComponent(m.id) + '/approve', { method: 'POST', headers: H });
+                    refresh();
+                };
+                td.appendChild(a);
+            }
+            if (m.status !== 'retired') {
+                const r = document.createElement('button');
+                r.className = 'button ghost';
+                r.textContent = 'Retire';
+                r.style.marginLeft = '0.35rem';
+                r.onclick = async () => {
+                    await fetch(base() + '/' + encodeURIComponent(m.id) + '/retire', { method: 'POST', headers: H });
+                    refresh();
+                };
+                td.appendChild(r);
+            }
+            tbody.appendChild(tr);
+        });
+    }
+
+    document.getElementById('propose').onclick = async () => {
+        const body = {
+            id: document.getElementById('mem-id').value.trim(),
+            summary: document.getElementById('mem-summary').value.trim(),
+            locatorHint: document.getElementById('mem-locator').value.trim(),
+            sourceJobId: document.getElementById('mem-job').value.trim()
+        };
+        await fetch(base(), { method: 'POST', headers: H, body: JSON.stringify(body) });
+        refresh();
+    };
+
+    document.getElementById('launcher-continue').onclick = () => {
+        const sel = document.getElementById('launcher-project-select');
+        projectId = sel.value;
+        if (!projectId) return;
+        localStorage.setItem(STORAGE, projectId);
+        document.getElementById('workspace-launcher').hidden = true;
+        document.getElementById('workspace-config').hidden = false;
+        document.getElementById('pinned-name').textContent = sel.selectedOptions[0].textContent;
+        refresh();
+    };
+    document.getElementById('change-project').onclick = () => {
+        document.getElementById('workspace-config').hidden = true;
+        document.getElementById('workspace-launcher').hidden = false;
+    };
+    loadProjects().then(() => {
+        const pin = initial || localStorage.getItem(STORAGE) || '';
+        if (pin) {
+            document.getElementById('launcher-project-select').value = pin;
+            document.getElementById('launcher-continue').click();
+        }
+    });
+})();
+</script>
+</body>
+</html>

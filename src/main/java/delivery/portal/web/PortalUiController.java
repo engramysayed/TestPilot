@@ -285,6 +285,20 @@ public class PortalUiController {
         return "plain-cases";
     }
 
+    @GetMapping("/structured-plans")
+    public String structuredPlans(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
+        addNav(model, "structured-plans");
+        model.addAttribute("projectId", projectId == null ? "" : projectId);
+        return "structured-plans";
+    }
+
+    @GetMapping("/run-memory")
+    public String runMemory(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
+        addNav(model, "run-memory");
+        model.addAttribute("projectId", projectId == null ? "" : projectId);
+        return "run-memory";
+    }
+
     @GetMapping("/suites")
     public String suites(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
         addNav(model, "suites");
@@ -372,11 +386,17 @@ public class PortalUiController {
 
     private List<Map<String, Object>> enrichedJobsForOwner(Long ownerUserId) {
         List<Map<String, Object>> rows = new ArrayList<>();
+        // Cache project names so a big run list doesn't hit the DB per row.
+        Map<String, String> nameCache = new java.util.HashMap<>();
         for (JobEntity entity : store.listJobEntities(ownerUserId)) {
             Map<String, Object> row = new LinkedHashMap<>();
             String jobKind = entity.getJobKind() == null ? JobRecord.JobKind.CONVERT.name() : entity.getJobKind();
+            String projectId = entity.getProjectId();
             row.put("jobId", entity.getJobId());
-            row.put("projectId", entity.getProjectId());
+            row.put("projectId", projectId);
+            row.put("projectName", nameCache.computeIfAbsent(projectId == null ? "" : projectId,
+                    pid -> pid.isBlank() ? "" : store.getOwnedProject(pid, ownerUserId)
+                            .map(p -> p.getName()).orElse(pid)));
             row.put("jobKind", jobKind);
             row.put("mode", entity.getMode());
             row.put("status", entity.getStatus());
@@ -513,6 +533,14 @@ public class PortalUiController {
             return "admin-pricing";
         }
         return "redirect:/admin/pricing?saved";
+    }
+
+    @GetMapping("/admin/refunds")
+    public String adminRefunds(Model model) {
+        requireHeadPage();
+        addNav(model, "refunds");
+        model.addAttribute("pageTitle", "Refunds");
+        return "admin-refunds";
     }
 
     @GetMapping("/admin/users")

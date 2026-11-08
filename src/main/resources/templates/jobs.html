@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
         <th:block th:replace="~{fragments :: pageHead(title='Runs')}"></th:block>
 </head>
@@ -10,10 +10,9 @@
 <main class="shell shell-wide shell-runs keel-page">
     <div class="page-title">
         <div>
-            <h1>Runs</h1>
-            <p class="lede">Generate, Automate, and Execute history for your account. Open status for live progress.</p>
+            <h1 th:text="#{page.jobs.title}">Runs</h1>
+            <p class="lede" th:text="#{page.jobs.lede}">Generate, Automate, and Execute history for your account. Open status for live progress.</p>
         </div>
-        <a class="button" href="/automate">New Automate run</a>
     </div>
     <section class="panel" th:if="${#lists.isEmpty(jobs)}">
         <p class="muted">No runs yet. Start from <a href="/generate">Generate</a>, <a href="/record">Record</a>, <a href="/automate">Automate</a>, or <a href="/execute">Execute</a>.</p>
@@ -28,7 +27,6 @@
                     <th>Run</th>
                     <th>Kind</th>
                     <th>Project</th>
-                    <th>Mode</th>
                     <th>Status</th>
                     <th>Progress</th>
                     <th>Message</th>
@@ -39,8 +37,7 @@
                 <tr th:each="j : ${jobs}">
                     <td><code class="mono" th:text="${j.jobId}" th:title="${j.jobId}">job_</code></td>
                     <td th:text="${j.jobKind == 'EXECUTE'} ? 'Execute' : (${j.jobKind == 'GENERATE_BATCH'} ? 'Generate' : (${j.jobKind == 'GENERATE_COMPARE'} ? 'Compare' : (${j.jobKind == 'HUNT'} ? 'Bug Hunter' : 'Automate')))">Automate</td>
-                    <td class="mono" th:text="${j.projectId}" th:title="${j.projectId}">prj_</td>
-                    <td class="clip" th:text="${j.mode}" th:title="${j.mode}">NEW</td>
+                    <td th:text="${#strings.isEmpty(j.projectName)} ? ${j.projectId} : ${j.projectName}" th:title="${j.projectId}">Project</td>
                     <td>
                         <span class="badge run-status"
                               th:classappend="${j.status == 'COMPLETED'} ? ' badge--pass' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? ' badge--block' : (${j.status == 'FAILED'} ? ' badge--fail' : (${j.status == 'RUNNING' or j.status == 'QUEUED'} ? ' badge--run' : '')))">
