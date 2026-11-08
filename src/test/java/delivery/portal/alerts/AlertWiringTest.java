@@ -31,7 +31,7 @@ public class AlertWiringTest extends AbstractTestNGSpringContextTests {
         Assert.assertFalse(evaluator.settings().enabled(), "AL-1 dead-man is off in 0a");
         Assert.assertEquals(evaluator.settings().deadman(), Duration.ofMinutes(5));
         Assert.assertEquals(channels.stream().map(AlertChannel::id).collect(Collectors.toSet()),
-                Set.of("telegram", "email", "slack"));
+                Set.of("telegram", "email"));
         Assert.assertTrue(channels.stream().noneMatch(AlertChannel::enabled));
         Assert.assertEquals(evaluator.evaluate(), List.of());
         Assert.assertNotNull(heartbeats.engines());

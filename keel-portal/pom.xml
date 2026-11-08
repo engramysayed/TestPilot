@@ -330,6 +330,10 @@
                     <excludes>
                         <exclude>**/SharedInstallDrillTest.java</exclude>
                         <exclude>**/DedicatedInstallDrillTest.java</exclude>
+                        <!-- Live-smoke tests need Ollama or a real browser session and OOM a
+                             16 GB laptop when run with the rest. Opt in via -P deterministic
+                             or -Dtest=<SomeLiveSmokeTest> -Dsurefire.failIfNoSpecifiedTests=false. -->
+                        <exclude>**/*LiveSmoke*</exclude>
                     </excludes>
                 </configuration>
                 <dependencies>
@@ -418,6 +422,39 @@
                                 <exclude>**/DedicatedInstallDrillTest.java</exclude>
                             </excludes>
                         </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>keel-cli</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>3.7.1</version>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>delivery.portal.cli.KeelPortalCli</mainClass>
+                                </manifest>
+                            </archive>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <finalName>keel-cli</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>keel-cli-jar</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>

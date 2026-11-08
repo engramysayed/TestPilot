@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Account')}"></th:block>
 </head>
@@ -10,7 +10,7 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1>My account</h1>
+            <h1 th:text="#{page.account.title}">My account</h1>
             <p class="lede">Signed in as <strong id="email">…</strong> (<span id="role">…</span>)</p>
         </div>
     </div>
@@ -92,14 +92,6 @@
                 <p class="hint" id="calm-hint-email">Email address</p>
             </div>
         </div>
-        <div class="calm-channel">
-            <label class="calm-toggle"><input type="checkbox" data-calm-ch="slack" aria-label="Slack alerts"><span></span></label>
-            <b>Slack</b>
-            <div>
-                <input type="text" id="calm-ch-slack" value="" placeholder="https://hooks.slack.com/services/…" aria-label="Slack webhook" disabled/>
-                <p class="hint" id="calm-hint-slack">Incoming webhook URL · turned off</p>
-            </div>
-        </div>
         <p style="margin-top:1rem">
             <button type="button" class="button primary" id="calm-prefs-save">Save preferences</button>
             <span class="muted" id="calm-prefs-msg" style="margin-left:0.75rem"></span>
@@ -169,8 +161,7 @@
     var accountEmail = '';
     var hintBase = {
         telegram: 'Chat id or @group',
-        email: 'Email address',
-        slack: 'Incoming webhook URL'
+        email: 'Email address'
     };
     function applyChannel(k, row) {
         var cb = document.querySelector('[data-calm-ch="' + k + '"]');
@@ -184,7 +175,6 @@
         }
         if (hint) {
             var extra = row && row.reason ? ' · ' + row.reason : '';
-            if (k === 'slack' && !on && !extra) extra = ' · turned off';
             hint.textContent = hintBase[k] + extra;
         }
     }
@@ -201,7 +191,7 @@
             .then(function (res) { return res.json(); })
             .then(function (data) {
                 accountEmail = data.accountEmail || '';
-                ['telegram', 'email', 'slack'].forEach(function (k) { applyChannel(k, data[k] || {}); });
+                ['telegram', 'email'].forEach(function (k) { applyChannel(k, data[k] || {}); });
             })
             .catch(function () {
                 var msg = document.getElementById('calm-prefs-msg');
@@ -219,9 +209,6 @@
             var inp = document.getElementById('calm-ch-' + key);
             var hint = document.getElementById('calm-hint-' + key);
             if (inp) inp.disabled = !cb.checked;
-            if (hint && key === 'slack') {
-                hint.textContent = hintBase.slack + (cb.checked ? '' : ' · turned off');
-            }
             if (!cb.checked) return;
             if (cb.getAttribute('data-calm-ch') === 'email' && inp && !inp.value.trim() && accountEmail) {
                 inp.value = accountEmail;
@@ -232,7 +219,7 @@
         var model = (document.querySelector('input[name="calm-model"]:checked') || {}).value || 'ui-tars';
         try { localStorage.setItem(KEY, JSON.stringify({ model: model })); } catch (e) { /* ignore */ }
         var body = {};
-        ['telegram', 'email', 'slack'].forEach(function (k) {
+        ['telegram', 'email'].forEach(function (k) {
             var cb = document.querySelector('[data-calm-ch="' + k + '"]');
             var inp = document.getElementById('calm-ch-' + k);
             body[k] = { on: !!(cb && cb.checked), target: inp ? inp.value.trim() : '' };

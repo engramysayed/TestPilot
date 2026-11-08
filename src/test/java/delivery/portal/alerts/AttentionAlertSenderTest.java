@@ -24,7 +24,7 @@ public class AttentionAlertSenderTest {
     @Test
     public void telegramNeedsAServerToken() {
         Rec transport = new Rec();
-        AttentionAlertSender.Prefs prefs = new AttentionAlertSender.Prefs(true, "@keelgroup", false, "", false, "");
+        AttentionAlertSender.Prefs prefs = new AttentionAlertSender.Prefs(true, "@keelgroup", false, "");
         AttentionAlertSender.Result result = sender.sendEach(
                 prefs, "hello", new AttentionAlertSender.Config("", false, ""), transport);
         Assert.assertFalse(result.ok());
@@ -36,7 +36,7 @@ public class AttentionAlertSenderTest {
     public void telegramPostsChatWithoutLeakingTheTokenInTheError() {
         Rec transport = new Rec();
         transport.boom = new IllegalStateException("https://api.telegram.org/bot123:abc/sendMessage failed");
-        AttentionAlertSender.Prefs prefs = new AttentionAlertSender.Prefs(true, "@keelgroup", false, "", false, "");
+        AttentionAlertSender.Prefs prefs = new AttentionAlertSender.Prefs(true, "@keelgroup", false, "");
         AttentionAlertSender.Result result = sender.sendEach(
                 prefs, "hello", new AttentionAlertSender.Config("123:abc", false, ""), transport);
         Assert.assertFalse(result.ok());
@@ -47,7 +47,7 @@ public class AttentionAlertSenderTest {
     @Test
     public void telegramAcceptsAChatId() {
         Rec transport = new Rec();
-        AttentionAlertSender.Prefs prefs = new AttentionAlertSender.Prefs(true, "-10099", false, "", false, "");
+        AttentionAlertSender.Prefs prefs = new AttentionAlertSender.Prefs(true, "-10099", false, "");
         AttentionAlertSender.Result result = sender.sendEach(
                 prefs, "hello", new AttentionAlertSender.Config("123:abc", false, ""), transport);
         Assert.assertTrue(result.ok(), result.errors().toString());
@@ -59,7 +59,7 @@ public class AttentionAlertSenderTest {
     @Test
     public void emailNeedsMailAndARealAddress() {
         Rec transport = new Rec();
-        AttentionAlertSender.Prefs prefs = new AttentionAlertSender.Prefs(false, "", true, "you@company.com", false, "");
+        AttentionAlertSender.Prefs prefs = new AttentionAlertSender.Prefs(false, "", true, "you@company.com");
         AttentionAlertSender.Result blocked = sender.sendEach(
                 prefs, "hello", new AttentionAlertSender.Config("", false, ""), transport);
         Assert.assertTrue(blocked.errors().get(0).contains("delivery.mail-enabled"));
@@ -69,31 +69,6 @@ public class AttentionAlertSenderTest {
                 prefs, "Execute run failed.", new AttentionAlertSender.Config("", true, "keel@localhost"), transport);
         Assert.assertTrue(sent.ok(), sent.errors().toString());
         Assert.assertEquals(transport.mail, List.of("you@company.com"));
-    }
-
-    @Test
-    public void slackNeedsAnHttpsWebhook() {
-        Rec transport = new Rec();
-        AttentionAlertSender.Config config = ready();
-        Assert.assertFalse(sender.sendEach(slack("#website-tests"), "hi", config, transport).ok());
-        Assert.assertFalse(sender.sendEach(slack("http://hooks.slack.com/services/T/B/x"), "hi", config, transport).ok());
-        Assert.assertFalse(sender.sendEach(slack("https://127.0.0.1/hook"), "hi", config, transport).ok());
-        Assert.assertTrue(transport.urls.isEmpty());
-
-        AttentionAlertSender.Result sent = sender.sendEach(
-                slack("https://hooks.slack.com/services/T/B/x"), "hi", config, transport);
-        Assert.assertTrue(sent.ok(), sent.errors().toString());
-        Assert.assertEquals(transport.urls.size(), 1);
-        Assert.assertTrue(transport.bodies.get(0).contains("hi"));
-    }
-
-    @Test
-    public void slackFailureReportsTheStatus() {
-        Rec transport = new Rec();
-        transport.code = 404;
-        AttentionAlertSender.Result result = sender.sendEach(
-                slack("https://hooks.slack.com/services/T/B/x"), "hi", ready(), transport);
-        Assert.assertTrue(result.errors().get(0).contains("404"));
     }
 
     @Test
@@ -118,18 +93,12 @@ public class AttentionAlertSenderTest {
     public void prefsRoundTrip() {
         AttentionAlertSender.Prefs prefs = AttentionAlertSender.Prefs.fromRequest(Map.of(
                 "telegram", Map.of("on", true, "target", " @keelgroup "),
-                "email", Map.of("on", false, "target", ""),
-                "slack", Map.of("on", true, "target", "https://hooks.slack.com/services/T/B/x")
+                "email", Map.of("on", false, "target", "")
         ));
         AttentionAlertSender.Prefs again = AttentionAlertSender.Prefs.parse(prefs.toJson());
         Assert.assertTrue(again.telegramOn());
         Assert.assertEquals(again.telegramChat(), "@keelgroup");
         Assert.assertFalse(again.emailOn());
-        Assert.assertTrue(again.slackOn());
-    }
-
-    private static AttentionAlertSender.Prefs slack(String target) {
-        return new AttentionAlertSender.Prefs(false, "", false, "", true, target);
     }
 
     private static AttentionAlertSender.Config ready() {
@@ -143,16 +112,6 @@ public class AttentionAlertSenderTest {
         int code = 200;
         String response = "{\"ok\":true}";
         RuntimeException boom;
-
-        @Override
-        public int postJson(String url, String json) {
-            urls.add(url);
-            bodies.add(json);
-            if (boom != null) {
-                throw boom;
-            }
-            return code;
-        }
 
         @Override
         public String postBody(String url, String json) {

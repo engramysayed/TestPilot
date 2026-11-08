@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Lists registered {@link delivery.portal.alerts.AlertChannel} beans (Slack/Email/Telegram stubs).
+ * Lists registered {@link delivery.portal.alerts.AlertChannel} beans (Email/Telegram stubs).
  */
 @RestController
 @RequestMapping("/api/alert-channels")

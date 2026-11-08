@@ -9,4 +9,7 @@ public interface MobileDeviceLeaseRepository extends JpaRepository<MobileDeviceL
     Optional<MobileDeviceLeaseEntity> findByLeaseId(String leaseId);
     Optional<MobileDeviceLeaseEntity> findByDeviceId(String deviceId);
     List<MobileDeviceLeaseEntity> findByTenantId(String tenantId);
+
+    /** Sweep RESERVED/ACTIVE leases only; FREE and closed ones never need reconciliation. */
+    List<MobileDeviceLeaseEntity> findByStateIn(java.util.Collection<String> states);
 }

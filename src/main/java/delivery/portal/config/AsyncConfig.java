@@ -10,11 +10,15 @@ import java.util.concurrent.Executor;
 @Configuration
 @EnableAsync
 public class AsyncConfig {
+    // Job executors: each run needs its own thread. corePool=2 keeps two users unblocked;
+    // maxPool=4 lets the fourth user wait only briefly before a burst thread picks it up.
+    // The old (1,2) pool queued every third run until the current one finished.
+
     @Bean(name = "conversionExecutor")
     public Executor conversionExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1);
-        executor.setMaxPoolSize(2);
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
         executor.setQueueCapacity(50);
         executor.setThreadNamePrefix("conversion-");
         executor.initialize();
@@ -24,8 +28,8 @@ public class AsyncConfig {
     @Bean(name = "executeExecutor")
     public Executor executeExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1);
-        executor.setMaxPoolSize(2);
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
         executor.setQueueCapacity(50);
         executor.setThreadNamePrefix("execute-");
         executor.initialize();
@@ -35,8 +39,9 @@ public class AsyncConfig {
     @Bean(name = "generateBatchExecutor")
     public Executor generateBatchExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        // Batch jobs are heavier; keep serial by design but allow a 2nd on standby for a burst.
         executor.setCorePoolSize(1);
-        executor.setMaxPoolSize(1);
+        executor.setMaxPoolSize(2);
         executor.setQueueCapacity(50);
         executor.setThreadNamePrefix("generate-batch-");
         executor.initialize();
@@ -46,8 +51,8 @@ public class AsyncConfig {
     @Bean(name = "huntExecutor")
     public Executor huntExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1);
-        executor.setMaxPoolSize(2);
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
         executor.setQueueCapacity(50);
         executor.setThreadNamePrefix("hunt-");
         executor.initialize();
@@ -57,9 +62,11 @@ public class AsyncConfig {
     @Bean(name = "webhookExecutor")
     public Executor webhookExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1);
-        executor.setMaxPoolSize(2);
-        executor.setQueueCapacity(50);
+        // Each member of a project may get a parallel SMTP/HTTPS send; 4 threads handles fan-out
+        // for typical team sizes without piling up when Gmail is slow.
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(200);
         executor.setThreadNamePrefix("webhook-");
         executor.initialize();
         return executor;

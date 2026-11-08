@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Suites (test packs)')}"></th:block>
     <style>
@@ -59,6 +59,37 @@
         }
         .panel-actions { margin-top: 0.85rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
         .tag-built-ins, .tag-customs { margin-top: 0.5rem; }
+        .tc-picker-list {
+            max-height: 14rem;
+            overflow: auto;
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            border-radius: 0.35rem;
+            padding: 0.35rem 0.5rem;
+            margin-top: 0.35rem;
+        }
+        .tc-picker-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.45rem;
+            padding: 0.25rem 0.15rem;
+            border-radius: 0.25rem;
+        }
+        .tc-picker-row:focus-within { background: rgba(15, 118, 110, 0.06); }
+        .tc-picker-row label { flex: 1; cursor: pointer; margin: 0; }
+        .tc-picker-selected {
+            list-style: none;
+            margin: 0.35rem 0 0;
+            padding: 0;
+        }
+        .tc-picker-selected li {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+            margin: 0.25rem 0;
+        }
+        .tc-picker-unresolved { color: #b45309; font-weight: 600; }
+        .tc-picker-plain-hint { font-size: 0.8rem; }
     </style>
 </head>
 <body class="app-body">
@@ -70,7 +101,7 @@
     <div class="page-title">
         <div>
             <h1>Suites <span class="muted">(test packs)</span></h1>
-            <p class="lede">
+            <p class="lede" th:text="#{page.suites.lede}">
                 Pack test cases into tagged test packs (smoke / regression / nightly + your packs),
                 attach a schedule and alert channel, and promote a green pack to an always-on monitor.
                 Tags can filter Run tests / step checks once Backend wires the filter — display only until then.
@@ -130,10 +161,14 @@
                     <input type="text" id="create-tags" maxlength="400" placeholder="e.g. checkout, critical"/>
                 </label>
             </div>
-            <div class="field-row">
-                <label>Case IDs (comma-separated, optional)
-                    <input type="text" id="create-tcids" maxlength="800" placeholder="e.g. TC_1, TC_2"/>
-                </label>
+            <div class="field-row" id="create-cases-row">
+                <label>Test cases <span class="muted">(optional)</span></label>
+                <input type="search" id="create-library-search" placeholder="Search library by id or title" autocomplete="off"
+                       aria-controls="create-library-list"/>
+                <p id="create-library-status" class="muted" role="status" style="margin:0.35rem 0 0"></p>
+                <div id="create-library-list" class="tc-picker-list" role="listbox" aria-label="Library test cases"></div>
+                <p id="create-selected-summary" class="muted" style="margin:0.5rem 0 0.25rem">Selected: 0</p>
+                <ul id="create-selected-list" class="tc-picker-selected" aria-label="Selected test cases for new pack"></ul>
             </div>
             <div class="panel-actions">
                 <button type="button" class="button" id="create-suite" disabled>Create test pack</button>
@@ -168,10 +203,44 @@
                 </div>
             </section>
 
+            <section class="panel" id="cases-panel">
+                <h2>Test cases</h2>
+                <p class="panel-intro">
+                    Search the project library and build membership for this pack. Selection order is preserved.
+                    Plain-English cases appear for reference; suite run uses workbook library IDs only.
+                </p>
+                <div class="field-row">
+                    <label class="sr-only" for="detail-library-search">Search library</label>
+                    <input type="search" id="detail-library-search" placeholder="Search by id or title" autocomplete="off"
+                           aria-controls="detail-library-list"/>
+                </div>
+                <p id="detail-library-status" class="muted" role="status" style="margin:0.35rem 0 0"></p>
+                <div id="detail-library-list" class="tc-picker-list" role="listbox" aria-label="Library test cases"></div>
+                <p id="detail-selected-summary" class="muted" style="margin:0.65rem 0 0.25rem">Selected: 0</p>
+                <ul id="detail-selected-list" class="tc-picker-selected" aria-label="Selected test cases"></ul>
+                <p id="detail-unresolved-note" class="tc-picker-unresolved" hidden role="status"></p>
+                <div class="panel-actions">
+                    <button type="button" class="button" id="save-membership">Save test cases</button>
+                    <span id="membership-status" class="muted" role="status"></span>
+                </div>
+            </section>
+
+            <section class="panel" id="plan-panel">
+                <h2>Structured plan</h2>
+                <p class="panel-intro">Optional plan id pinned on each suite run as <code>structured-plan-snapshot.json</code> on the job.</p>
+                <label>Plan id
+                    <input type="text" id="detail-structured-plan-id" placeholder="login-happy" autocomplete="off"/>
+                </label>
+                <div class="panel-actions" style="margin-top:0.65rem">
+                    <button type="button" class="button ghost" id="save-structured-plan">Save plan link</button>
+                    <span id="plan-link-status" class="muted" role="status"></span>
+                </div>
+            </section>
+
             <section class="panel" id="schedule-panel">
                 <h2>Schedule</h2>
                 <p class="panel-intro">
-                    Cron or interval schedule for this test pack. Timezone for Keel ops: <strong>Africa/Cairo</strong> (read-only note; schedule body uses project/local zone per Backend contract).
+                    Run this test pack on a cron or a fixed interval (at least every 5 minutes). A run is skipped — not queued — while the previous scheduled run is still going, and slots missed while Keel was down are skipped and shown below.
                 </p>
                 <label style="display:inline-flex;align-items:center;gap:0.4rem">
                     <input type="checkbox" id="schedule-enabled"/> Enable schedule
@@ -184,7 +253,20 @@
                     <label>Cron expression (5-field schedule)
                         <input type="text" id="schedule-cron" placeholder="0 2 * * *" autocomplete="off"/>
                     </label>
-                    <p class="field-hint muted">Example: <code>0 2 * * *</code> = 02:00 daily. Africa/Cairo ops hint.</p>
+                    <p class="field-hint muted">Example: <code>0 2 * * *</code> = 02:00 daily, <code>0 9 * * 1-5</code> = 09:00 on weekdays.</p>
+                    <label>Time zone
+                        <input type="text" id="schedule-timezone" placeholder="Africa/Cairo" list="schedule-tz-list" autocomplete="off"/>
+                    </label>
+                    <datalist id="schedule-tz-list">
+                        <option value="Africa/Cairo"></option><option value="Asia/Riyadh"></option><option value="Asia/Dubai"></option>
+                        <option value="Europe/London"></option><option value="Europe/Berlin"></option><option value="America/New_York"></option>
+                        <option value="UTC"></option>
+                    </datalist>
+                </div>
+                <div class="field-row">
+                    <label>Login profile for scheduled runs <span class="muted">(blank = first profile by name)</span>
+                        <input type="text" id="schedule-profile" placeholder="default" autocomplete="off"/>
+                    </label>
                 </div>
                 <div class="field-row" id="interval-row" hidden>
                     <label>Interval minutes (min 5)
@@ -202,7 +284,7 @@
             <section class="panel" id="alerts-panel">
                 <h2>Alert channel</h2>
                 <p class="panel-intro">
-                    Uses the portal’s alert channels (Slack / Email / Telegram / Stub) — no second channel setup.
+                    Uses the portal’s alert channels (Email / Telegram / Stub) — no second channel setup.
                 </p>
                 <div class="field-row">
                     <label>Channel
@@ -262,953 +344,7 @@
 </main>
 </div>
 
-<script>
-(function () {
-    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
-    const STORAGE_KEY = 'keel.suitesProjectId';
-    const LAST_SUITE_KEY = 'keel.suitesLastSuiteId';
-    const BUILTIN_TAGS = ['smoke', 'regression', 'nightly'];
-    const FALLBACK_CHANNELS = [
-        { id: 'slack', enabled: true, minSeverity: null },
-        { id: 'email', enabled: true, minSeverity: null },
-        { id: 'telegram', enabled: true, minSeverity: null },
-        { id: 'stub', enabled: true, minSeverity: null }
-    ];
-    const initialProjectId = /*[[${projectId}]]*/ '';
-
-    const workspaceLauncher = document.getElementById('workspace-launcher');
-    const workspaceConfig = document.getElementById('workspace-config');
-    const launcherSel = document.getElementById('launcher-project-select');
-    const launcherContinue = document.getElementById('launcher-continue');
-    const launcherErr = document.getElementById('launcher-err');
-    const launcherNoProjects = document.getElementById('launcher-no-projects');
-    const projectSel = document.getElementById('project-select');
-    const projectErr = document.getElementById('project-err');
-    const noProjects = document.getElementById('no-projects');
-    const pinnedName = document.getElementById('pinned-project-name');
-    const changeProjectBtn = document.getElementById('change-project');
-    const apiWaitNote = document.getElementById('api-wait-note');
-
-    const createName = document.getElementById('create-name');
-    const createTags = document.getElementById('create-tags');
-    const createTcIds = document.getElementById('create-tcids');
-    const createBtn = document.getElementById('create-suite');
-    const refreshBtn = document.getElementById('refresh-suites');
-    const createStatus = document.getElementById('create-status');
-    const suitesEmpty = document.getElementById('suites-empty');
-    const suitesList = document.getElementById('suites-list');
-    const suitesMeta = document.getElementById('suites-meta');
-    const suiteDetail = document.getElementById('suite-detail');
-
-    const builtinChips = document.getElementById('builtin-chips');
-    const customChips = document.getElementById('custom-chips');
-    const customTagInput = document.getElementById('custom-tag-input');
-    const addCustomTagBtn = document.getElementById('add-custom-tag');
-    const saveTagsBtn = document.getElementById('save-tags');
-    const tagsStatus = document.getElementById('tags-status');
-
-    const scheduleEnabled = document.getElementById('schedule-enabled');
-    const scheduleCron = document.getElementById('schedule-cron');
-    const scheduleInterval = document.getElementById('schedule-interval');
-    const cronRow = document.getElementById('cron-row');
-    const intervalRow = document.getElementById('interval-row');
-    const scheduleMeta = document.getElementById('schedule-meta');
-    const saveScheduleBtn = document.getElementById('save-schedule');
-    const clearScheduleBtn = document.getElementById('clear-schedule');
-    const scheduleStatus = document.getElementById('schedule-status');
-
-    const alertChannel = document.getElementById('alert-channel');
-    const alertSeverity = document.getElementById('alert-severity');
-    const saveAlertsBtn = document.getElementById('save-alerts');
-    const clearAlertsBtn = document.getElementById('clear-alerts');
-    const alertsStatus = document.getElementById('alerts-status');
-
-    const monitorEnabled = document.getElementById('monitor-enabled');
-    const monitorTarget = document.getElementById('monitor-target');
-    const monitorFromJob = document.getElementById('monitor-from-job');
-    const monitorMeta = document.getElementById('monitor-meta');
-    const saveMonitorBtn = document.getElementById('save-monitor');
-    const demoteMonitorBtn = document.getElementById('demote-monitor');
-    const runSuiteBtn = document.getElementById('run-suite');
-    const monitorStatus = document.getElementById('monitor-status');
-
-    let projects = [];
-    let suites = [];
-    let channels = FALLBACK_CHANNELS.slice();
-    let selectedSuiteId = null;
-    let selectedSuite = null;
-    let draftTags = [];
-    let apiAvailable = false;
-    let createInFlight = false;
-
-    function escapeHtml(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    }
-
-    function showApiWait(show) {
-        if (apiWaitNote) apiWaitNote.hidden = !show;
-    }
-
-    function isStubStatus(status) {
-        return status === 404 || status === 501;
-    }
-
-    async function readErrorMessage(res) {
-        try {
-            const text = await res.text();
-            if (!text) return '';
-            try {
-                const body = JSON.parse(text);
-                if (body && (body.message || body.error || body.detail)) {
-                    return String(body.message || body.error || body.detail);
-                }
-            } catch (_) { /* plain text */ }
-            return text.length > 300 ? (text.slice(0, 300) + '...') : text;
-        } catch (_) {
-            return '';
-        }
-    }
-
-    function suiteIdOf(row) {
-        if (!row) return null;
-        return row.suiteId || row.id || null;
-    }
-
-    function normalizeList(data) {
-        if (Array.isArray(data)) return data;
-        if (!data || typeof data !== 'object') return [];
-        if (Array.isArray(data.suites)) return data.suites;
-        if (Array.isArray(data.items)) return data.items;
-        if (Array.isArray(data.results)) return data.results;
-        return [];
-    }
-
-    function normalizeChannels(data) {
-        const rows = Array.isArray(data) ? data
-            : (data && Array.isArray(data.channels) ? data.channels
-                : (data && Array.isArray(data.items) ? data.items : []));
-        return rows.map(function (c) {
-            return {
-                id: String(c.id || c.channelId || c.name || ''),
-                enabled: c.enabled !== false,
-                minSeverity: c.minSeverity || c.min_severity || null
-            };
-        }).filter(function (c) { return !!c.id; });
-    }
-
-    function parseCsv(raw) {
-        return String(raw || '')
-            .split(',')
-            .map(function (s) { return s.trim(); })
-            .filter(function (s) { return s.length > 0; });
-    }
-
-    function isBuiltinTag(tag) {
-        const t = String(tag || '').toLowerCase();
-        return BUILTIN_TAGS.indexOf(t) >= 0;
-    }
-
-    function showWorkspaceLauncher() {
-        if (workspaceLauncher) workspaceLauncher.hidden = false;
-        if (workspaceConfig) workspaceConfig.hidden = true;
-        if (suiteDetail) suiteDetail.hidden = true;
-        updateCreateEnabled();
-    }
-
-    function pinWorkspaceProject(projectId, projectList) {
-        projectSel.value = projectId;
-        if (launcherSel) launcherSel.value = projectId;
-        const proj = (projectList || []).find(function (p) { return p.projectId === projectId; });
-        if (pinnedName) {
-            if (proj) {
-                pinnedName.textContent = (proj.name || proj.projectId) + ' (' + proj.projectId + ')';
-            } else if (launcherSel && launcherSel.selectedIndex >= 0) {
-                pinnedName.textContent = launcherSel.options[launcherSel.selectedIndex].textContent;
-            } else {
-                pinnedName.textContent = projectId;
-            }
-        }
-        if (workspaceLauncher) workspaceLauncher.hidden = true;
-        if (workspaceConfig) workspaceConfig.hidden = false;
-        sessionStorage.setItem(STORAGE_KEY, projectId);
-        selectedSuiteId = sessionStorage.getItem(LAST_SUITE_KEY + '.' + projectId) || null;
-        selectedSuite = null;
-        draftTags = [];
-        apiAvailable = false;
-        showApiWait(false);
-        if (createStatus) createStatus.textContent = '';
-        clearDetailStatuses();
-        loadChannels();
-        loadSuites(projectId);
-        updateCreateEnabled();
-    }
-
-    function clearDetailStatuses() {
-        if (tagsStatus) tagsStatus.textContent = '';
-        if (scheduleStatus) scheduleStatus.textContent = '';
-        if (alertsStatus) alertsStatus.textContent = '';
-        if (monitorStatus) monitorStatus.textContent = '';
-    }
-
-    function updateCreateEnabled() {
-        const projectId = projectSel && projectSel.value;
-        const name = (createName && createName.value || '').trim();
-        const tags = parseCsv(createTags && createTags.value);
-        createBtn.disabled = !!(createInFlight || !projectId || !name || tags.length < 1);
-    }
-
-    function suitesBase(projectId) {
-        return '/api/projects/' + encodeURIComponent(projectId) + '/suites';
-    }
-
-    function renderChannelSelect(selectedId) {
-        const prev = selectedId != null ? selectedId : (alertChannel.value || '');
-        alertChannel.innerHTML = '<option value="">- None -</option>';
-        channels.forEach(function (c) {
-            const opt = document.createElement('option');
-            opt.value = c.id;
-            opt.textContent = c.id + (c.enabled === false ? ' (disabled)' : '');
-            alertChannel.appendChild(opt);
-        });
-        if (prev && Array.prototype.some.call(alertChannel.options, function (o) { return o.value === prev; })) {
-            alertChannel.value = prev;
-        }
-    }
-
-    async function loadChannels() {
-        try {
-            const res = await fetch('/api/alert-channels', {
-                credentials: 'same-origin',
-                headers: API_HEADERS
-            });
-            if (isStubStatus(res.status) || !res.ok) {
-                channels = FALLBACK_CHANNELS.slice();
-                renderChannelSelect();
-                return;
-            }
-            const data = await res.json().catch(function () { return []; });
-            const normalized = normalizeChannels(data);
-            channels = normalized.length ? normalized : FALLBACK_CHANNELS.slice();
-            renderChannelSelect();
-        } catch (_) {
-            channels = FALLBACK_CHANNELS.slice();
-            renderChannelSelect();
-        }
-    }
-
-    function renderSuitesList() {
-        if (!suites.length) {
-            suitesEmpty.hidden = false;
-            suitesEmpty.textContent = apiAvailable ? 'No test packs yet.' : 'No test packs yet.';
-            suitesList.hidden = true;
-            suitesList.innerHTML = '';
-            if (suitesMeta) {
-                suitesMeta.textContent = apiAvailable ? '' : 'Waiting on Backend test-pack / schedule APIs.';
-            }
-            if (suiteDetail) suiteDetail.hidden = true;
-            return;
-        }
-        suitesEmpty.hidden = true;
-        suitesList.hidden = false;
-        suitesList.innerHTML = suites.map(function (row) {
-            const id = suiteIdOf(row) || '';
-            const name = (row.name || '').trim() || '(unnamed)';
-            const tags = Array.isArray(row.tags) ? row.tags : [];
-            const builtIn = !!row.builtIn;
-            const active = id && id === selectedSuiteId;
-            const tagBits = tags.map(function (t) { return escapeHtml(t); }).join(', ');
-            return '<li class="' + (active ? 'active-suite' : '') + '">'
-                + '<button type="button" class="button ghost suite-pick" data-suite-id="' + escapeHtml(id) + '"'
-                + ' style="padding:0.15rem 0.4rem">'
-                + escapeHtml(name) + '</button>'
-                + ' <span class="muted">' + escapeHtml(id)
-                + (builtIn ? ' | built-in' : '')
-                + (tagBits ? ' | ' + tagBits : '')
-                + '</span>'
-                + '</li>';
-        }).join('');
-        if (suitesMeta) {
-            suitesMeta.textContent = suites.length + (suites.length === 1 ? ' test pack' : ' test packs')
-                + (selectedSuiteId ? ' | selected ' + selectedSuiteId : '');
-        }
-        Array.prototype.forEach.call(suitesList.querySelectorAll('[data-suite-id]'), function (btn) {
-            btn.addEventListener('click', function () {
-                selectSuite(btn.getAttribute('data-suite-id'));
-            });
-        });
-    }
-
-    function syncScheduleKindUi() {
-        const kind = (document.querySelector('input[name="schedule-kind"]:checked') || {}).value || 'cron';
-        if (cronRow) cronRow.hidden = kind !== 'cron';
-        if (intervalRow) intervalRow.hidden = kind !== 'interval';
-    }
-
-    function setScheduleKind(kind) {
-        const want = kind === 'interval' ? 'interval' : 'cron';
-        Array.prototype.forEach.call(document.querySelectorAll('input[name="schedule-kind"]'), function (el) {
-            el.checked = el.value === want;
-        });
-        syncScheduleKindUi();
-    }
-
-    function renderTagChips() {
-        const set = {};
-        draftTags.forEach(function (t) { set[String(t).toLowerCase()] = String(t); });
-
-        builtinChips.innerHTML = BUILTIN_TAGS.map(function (tag) {
-            const on = !!set[tag];
-            return '<button type="button" class="suite-chip' + (on ? ' active' : '') + '" data-builtin-tag="'
-                + escapeHtml(tag) + '" aria-pressed="' + (on ? 'true' : 'false') + '">'
-                + escapeHtml(tag) + '</button>';
-        }).join('');
-
-        const customs = draftTags.filter(function (t) { return !isBuiltinTag(t); });
-        if (!customs.length) {
-            customChips.innerHTML = '<span class="muted">No custom tags.</span>';
-        } else {
-            customChips.innerHTML = customs.map(function (tag) {
-                return '<span class="suite-chip active">' + escapeHtml(tag)
-                    + ' <button type="button" class="chip-x" data-remove-tag="' + escapeHtml(tag)
-                    + '" aria-label="Remove ' + escapeHtml(tag) + '">&times;</button></span>';
-            }).join('');
-        }
-
-        Array.prototype.forEach.call(builtinChips.querySelectorAll('[data-builtin-tag]'), function (btn) {
-            btn.addEventListener('click', function () {
-                const tag = btn.getAttribute('data-builtin-tag');
-                toggleDraftTag(tag);
-            });
-        });
-        Array.prototype.forEach.call(customChips.querySelectorAll('[data-remove-tag]'), function (btn) {
-            btn.addEventListener('click', function () {
-                removeDraftTag(btn.getAttribute('data-remove-tag'));
-            });
-        });
-    }
-
-    function toggleDraftTag(tag) {
-        const lower = String(tag || '').toLowerCase();
-        const idx = draftTags.findIndex(function (t) { return String(t).toLowerCase() === lower; });
-        if (idx >= 0) draftTags.splice(idx, 1);
-        else draftTags.push(tag);
-        renderTagChips();
-    }
-
-    function removeDraftTag(tag) {
-        const lower = String(tag || '').toLowerCase();
-        draftTags = draftTags.filter(function (t) { return String(t).toLowerCase() !== lower; });
-        renderTagChips();
-    }
-
-    function addCustomTag() {
-        const raw = (customTagInput.value || '').trim();
-        if (!raw) return;
-        if (isBuiltinTag(raw)) {
-            tagsStatus.textContent = 'Reserved built-in tag — toggle the chip instead.';
-            return;
-        }
-        const lower = raw.toLowerCase();
-        if (draftTags.some(function (t) { return String(t).toLowerCase() === lower; })) {
-            tagsStatus.textContent = 'Already added.';
-            return;
-        }
-        draftTags.push(raw);
-        customTagInput.value = '';
-        tagsStatus.textContent = '';
-        renderTagChips();
-    }
-
-    function fillDetailFromSuite(suite) {
-        selectedSuite = suite || null;
-        if (!suite) {
-            suiteDetail.hidden = true;
-            return;
-        }
-        suiteDetail.hidden = false;
-        draftTags = Array.isArray(suite.tags) ? suite.tags.slice() : [];
-        renderTagChips();
-
-        const sched = suite.schedule || null;
-        scheduleEnabled.checked = !!(sched && sched.enabled);
-        setScheduleKind(sched && sched.kind === 'interval' ? 'interval' : 'cron');
-        scheduleCron.value = (sched && sched.cron) || '';
-        scheduleInterval.value = (sched && sched.intervalMinutes != null) ? sched.intervalMinutes : '';
-        const metaBits = [];
-        if (sched && sched.nextRunAt) metaBits.push('nextRunAt ' + sched.nextRunAt);
-        if (sched && sched.lastFiredAt) metaBits.push('lastFiredAt ' + sched.lastFiredAt);
-        if (sched && sched.lastJobId) metaBits.push('lastJobId ' + sched.lastJobId);
-        scheduleMeta.textContent = metaBits.join(' | ');
-
-        renderChannelSelect(suite.alertChannelId || '');
-        alertChannel.value = suite.alertChannelId || '';
-        alertSeverity.value = suite.alertMinSeverity || '';
-
-        const mon = suite.monitor || null;
-        monitorEnabled.checked = !!(mon && mon.enabled);
-        monitorTarget.value = (mon && mon.target === 'staging') ? 'staging' : 'prod';
-        monitorFromJob.value = (mon && mon.promotedFromJobId) || '';
-        const monBits = [];
-        if (mon && mon.promotedAt) monBits.push('promotedAt ' + mon.promotedAt);
-        if (mon && mon.lastStatus) monBits.push('lastStatus ' + mon.lastStatus);
-        if (mon && mon.lastCheckedAt) monBits.push('lastCheckedAt ' + mon.lastCheckedAt);
-        if (mon && mon.target) monBits.push('target ' + mon.target);
-        monitorMeta.textContent = monBits.join(' | ');
-        clearDetailStatuses();
-    }
-
-    async function selectSuite(suiteId) {
-        if (!suiteId) return;
-        const projectId = projectSel.value;
-        selectedSuiteId = suiteId;
-        if (projectId) sessionStorage.setItem(LAST_SUITE_KEY + '.' + projectId, suiteId);
-        renderSuitesList();
-
-        const cached = suites.find(function (s) { return suiteIdOf(s) === suiteId; });
-        fillDetailFromSuite(cached || { suiteId: suiteId, tags: [] });
-
-        if (!projectId) return;
-        try {
-            const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId), {
-                credentials: 'same-origin',
-                headers: API_HEADERS
-            });
-            if (isStubStatus(res.status)) {
-                apiAvailable = false;
-                showApiWait(true);
-                return;
-            }
-            if (!res.ok) return;
-            apiAvailable = true;
-            showApiWait(false);
-            const data = await res.json().catch(function () { return null; });
-            if (data) {
-                const idx = suites.findIndex(function (s) { return suiteIdOf(s) === suiteId; });
-                if (idx >= 0) suites[idx] = data;
-                else suites.push(data);
-                fillDetailFromSuite(data);
-                renderSuitesList();
-            }
-        } catch (_) {
-            apiAvailable = false;
-            showApiWait(true);
-        }
-    }
-
-    async function loadSuites(projectId) {
-        if (!projectId) return;
-        suites = [];
-        renderSuitesList();
-        try {
-            const res = await fetch(suitesBase(projectId), {
-                credentials: 'same-origin',
-                headers: API_HEADERS
-            });
-            if (isStubStatus(res.status)) {
-                apiAvailable = false;
-                showApiWait(true);
-                if (suitesMeta) suitesMeta.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-                return;
-            }
-            if (!res.ok) {
-                apiAvailable = false;
-                showApiWait(true);
-                if (suitesMeta) suitesMeta.textContent = 'Could not load test packs (HTTP ' + res.status + ').';
-                return;
-            }
-            apiAvailable = true;
-            showApiWait(false);
-            const data = await res.json().catch(function () { return []; });
-            suites = normalizeList(data);
-            if (selectedSuiteId && !suites.some(function (s) { return suiteIdOf(s) === selectedSuiteId; })) {
-                selectedSuiteId = suites.length ? suiteIdOf(suites[0]) : null;
-            } else if (!selectedSuiteId && suites.length) {
-                selectedSuiteId = suiteIdOf(suites[0]);
-            }
-            renderSuitesList();
-            if (selectedSuiteId) {
-                await selectSuite(selectedSuiteId);
-            } else if (suiteDetail) {
-                suiteDetail.hidden = true;
-            }
-        } catch (_) {
-            apiAvailable = false;
-            showApiWait(true);
-            if (suitesMeta) suitesMeta.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-        }
-    }
-
-    async function createSuite() {
-        const projectId = projectSel.value;
-        const name = (createName.value || '').trim();
-        const tags = parseCsv(createTags.value);
-        const tcIds = parseCsv(createTcIds.value);
-        if (!projectId || !name || !tags.length) {
-            createStatus.textContent = 'Name and at least one tag required.';
-            return;
-        }
-        createInFlight = true;
-        updateCreateEnabled();
-        createStatus.textContent = 'Creating...';
-        showApiWait(false);
-        try {
-            const res = await fetch(suitesBase(projectId), {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
-                body: JSON.stringify({ name: name, tags: tags, tcIds: tcIds })
-            });
-            if (isStubStatus(res.status)) {
-                apiAvailable = false;
-                createStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-                showApiWait(true);
-                return;
-            }
-            if (!res.ok) {
-                const msg = await readErrorMessage(res);
-                createStatus.textContent = msg || ('Create failed (HTTP ' + res.status + ')');
-                return;
-            }
-            apiAvailable = true;
-            showApiWait(false);
-            let data = null;
-            try { data = await res.json(); } catch (_) { data = null; }
-            const id = suiteIdOf(data);
-            createStatus.textContent = id ? ('Created (' + id + ').') : 'Created.';
-            createName.value = '';
-            createTags.value = '';
-            createTcIds.value = '';
-            if (id) selectedSuiteId = id;
-            await loadSuites(projectId);
-        } catch (_) {
-            createStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-            showApiWait(true);
-        } finally {
-            createInFlight = false;
-            updateCreateEnabled();
-        }
-    }
-
-    async function saveTags() {
-        const projectId = projectSel.value;
-        const suiteId = selectedSuiteId;
-        if (!projectId || !suiteId) {
-            tagsStatus.textContent = 'Select a test pack first.';
-            return;
-        }
-        if (!draftTags.length) {
-            tagsStatus.textContent = 'At least one tag required.';
-            return;
-        }
-        tagsStatus.textContent = 'Saving tags...';
-        try {
-            const body = { tags: draftTags.slice() };
-            if (selectedSuite && selectedSuite.name) body.name = selectedSuite.name;
-            if (selectedSuite && Array.isArray(selectedSuite.tcIds)) body.tcIds = selectedSuite.tcIds;
-            const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId), {
-                method: 'PUT',
-                credentials: 'same-origin',
-                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
-                body: JSON.stringify(body)
-            });
-            if (isStubStatus(res.status)) {
-                tagsStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-                showApiWait(true);
-                return;
-            }
-            if (!res.ok) {
-                const msg = await readErrorMessage(res);
-                tagsStatus.textContent = msg || ('Save failed (HTTP ' + res.status + ')');
-                return;
-            }
-            tagsStatus.textContent = 'Tags saved.';
-            showApiWait(false);
-            await loadSuites(projectId);
-        } catch (_) {
-            tagsStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-            showApiWait(true);
-        }
-    }
-
-    async function saveSchedule() {
-        const projectId = projectSel.value;
-        const suiteId = selectedSuiteId;
-        if (!projectId || !suiteId) {
-            scheduleStatus.textContent = 'Select a test pack first.';
-            return;
-        }
-        const kind = (document.querySelector('input[name="schedule-kind"]:checked') || {}).value || 'cron';
-        const body = {
-            enabled: !!scheduleEnabled.checked,
-            kind: kind
-        };
-        if (kind === 'cron') {
-            body.cron = (scheduleCron.value || '').trim() || null;
-        } else {
-            const n = parseInt(scheduleInterval.value, 10);
-            body.intervalMinutes = isNaN(n) ? null : n;
-        }
-        scheduleStatus.textContent = 'Saving schedule...';
-        try {
-            const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/schedule', {
-                method: 'PUT',
-                credentials: 'same-origin',
-                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
-                body: JSON.stringify(body)
-            });
-            if (isStubStatus(res.status)) {
-                scheduleStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-                showApiWait(true);
-                return;
-            }
-            if (!res.ok) {
-                const msg = await readErrorMessage(res);
-                scheduleStatus.textContent = msg || ('Save failed (HTTP ' + res.status + ')');
-                return;
-            }
-            scheduleStatus.textContent = 'Schedule saved.';
-            showApiWait(false);
-            await selectSuite(suiteId);
-        } catch (_) {
-            scheduleStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-            showApiWait(true);
-        }
-    }
-
-    async function clearSchedule() {
-        const projectId = projectSel.value;
-        const suiteId = selectedSuiteId;
-        if (!projectId || !suiteId) {
-            scheduleStatus.textContent = 'Select a test pack first.';
-            return;
-        }
-        scheduleStatus.textContent = 'Clearing schedule...';
-        try {
-            const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/schedule', {
-                method: 'DELETE',
-                credentials: 'same-origin',
-                headers: API_HEADERS
-            });
-            if (isStubStatus(res.status)) {
-                scheduleStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-                showApiWait(true);
-                return;
-            }
-            if (!res.ok) {
-                const msg = await readErrorMessage(res);
-                scheduleStatus.textContent = msg || ('Clear failed (HTTP ' + res.status + ')');
-                return;
-            }
-            scheduleStatus.textContent = 'Schedule cleared.';
-            showApiWait(false);
-            await selectSuite(suiteId);
-        } catch (_) {
-            scheduleStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-            showApiWait(true);
-        }
-    }
-
-    async function saveAlerts() {
-        const projectId = projectSel.value;
-        const suiteId = selectedSuiteId;
-        if (!projectId || !suiteId) {
-            alertsStatus.textContent = 'Select a test pack first.';
-            return;
-        }
-        const channelId = (alertChannel.value || '').trim();
-        if (!channelId) {
-            alertsStatus.textContent = 'Pick a channel, or use Clear channel link.';
-            return;
-        }
-        const body = { alertChannelId: channelId };
-        const sev = (alertSeverity.value || '').trim();
-        if (sev) body.alertMinSeverity = sev;
-        alertsStatus.textContent = 'Saving alerts...';
-        try {
-            const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/alerts', {
-                method: 'PUT',
-                credentials: 'same-origin',
-                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
-                body: JSON.stringify(body)
-            });
-            if (isStubStatus(res.status)) {
-                alertsStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-                showApiWait(true);
-                return;
-            }
-            if (!res.ok) {
-                const msg = await readErrorMessage(res);
-                alertsStatus.textContent = msg || ('Save failed (HTTP ' + res.status + ')');
-                return;
-            }
-            alertsStatus.textContent = 'Alerts saved.';
-            showApiWait(false);
-            await selectSuite(suiteId);
-        } catch (_) {
-            alertsStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-            showApiWait(true);
-        }
-    }
-
-    async function clearAlerts() {
-        const projectId = projectSel.value;
-        const suiteId = selectedSuiteId;
-        if (!projectId || !suiteId) {
-            alertsStatus.textContent = 'Select a test pack first.';
-            return;
-        }
-        alertsStatus.textContent = 'Clearing channel link...';
-        try {
-            const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/alerts', {
-                method: 'DELETE',
-                credentials: 'same-origin',
-                headers: API_HEADERS
-            });
-            if (isStubStatus(res.status)) {
-                alertsStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-                showApiWait(true);
-                return;
-            }
-            if (!res.ok) {
-                const msg = await readErrorMessage(res);
-                alertsStatus.textContent = msg || ('Clear failed (HTTP ' + res.status + ')');
-                return;
-            }
-            alertsStatus.textContent = 'Channel link cleared.';
-            showApiWait(false);
-            await selectSuite(suiteId);
-        } catch (_) {
-            alertsStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-            showApiWait(true);
-        }
-    }
-
-    async function saveMonitor() {
-        const projectId = projectSel.value;
-        const suiteId = selectedSuiteId;
-        if (!projectId || !suiteId) {
-            monitorStatus.textContent = 'Select a test pack first.';
-            return;
-        }
-        if (!monitorEnabled.checked) {
-            monitorStatus.textContent = 'Turn on Always-on monitor, or use Demote.';
-            return;
-        }
-        const body = { target: monitorTarget.value === 'staging' ? 'staging' : 'prod' };
-        const fromJob = (monitorFromJob.value || '').trim();
-        if (fromJob) body.fromJobId = fromJob;
-        monitorStatus.textContent = 'Promoting...';
-        try {
-            const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/promote-monitor', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
-                body: JSON.stringify(body)
-            });
-            if (isStubStatus(res.status)) {
-                monitorStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-                showApiWait(true);
-                return;
-            }
-            if (!res.ok) {
-                const msg = await readErrorMessage(res);
-                monitorStatus.textContent = msg || ('Promote failed (HTTP ' + res.status + ')');
-                return;
-            }
-            monitorStatus.textContent = 'Promoted to always-on monitor.';
-            showApiWait(false);
-            await selectSuite(suiteId);
-        } catch (_) {
-            monitorStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-            showApiWait(true);
-        }
-    }
-
-    async function demoteMonitor() {
-        const projectId = projectSel.value;
-        const suiteId = selectedSuiteId;
-        if (!projectId || !suiteId) {
-            monitorStatus.textContent = 'Select a test pack first.';
-            return;
-        }
-        monitorStatus.textContent = 'Removing from monitor...';
-        try {
-            const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/monitor', {
-                method: 'DELETE',
-                credentials: 'same-origin',
-                headers: API_HEADERS
-            });
-            if (isStubStatus(res.status)) {
-                monitorStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-                showApiWait(true);
-                return;
-            }
-            if (!res.ok) {
-                const msg = await readErrorMessage(res);
-                monitorStatus.textContent = msg || ('Demote failed (HTTP ' + res.status + ')');
-                return;
-            }
-            monitorStatus.textContent = 'Removed from always-on monitor.';
-            monitorEnabled.checked = false;
-            showApiWait(false);
-            await selectSuite(suiteId);
-        } catch (_) {
-            monitorStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-            showApiWait(true);
-        }
-    }
-
-    async function runSuiteNow() {
-        const projectId = projectSel.value;
-        const suiteId = selectedSuiteId;
-        if (!projectId || !suiteId) {
-            monitorStatus.textContent = 'Select a test pack first.';
-            return;
-        }
-        monitorStatus.textContent = 'Starting test pack run...';
-        try {
-            const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/runs', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
-                body: JSON.stringify({ trigger: 'manual' })
-            });
-            if (isStubStatus(res.status)) {
-                monitorStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-                showApiWait(true);
-                return;
-            }
-            if (res.status !== 202 && !res.ok) {
-                const msg = await readErrorMessage(res);
-                monitorStatus.textContent = msg || ('Run failed (HTTP ' + res.status + ')');
-                return;
-            }
-            let data = null;
-            try { data = await res.json(); } catch (_) { data = null; }
-            const jobId = data && (data.jobId || data.id);
-            if (jobId) {
-                monitorStatus.innerHTML = 'Queued job <code>' + escapeHtml(jobId) + '</code>. '
-                    + '<a href="/status?jobId=' + encodeURIComponent(jobId) + '">View status</a>';
-            } else {
-                monitorStatus.textContent = 'Run accepted (HTTP ' + res.status + ').';
-            }
-            showApiWait(false);
-        } catch (_) {
-            monitorStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
-            showApiWait(true);
-        }
-    }
-
-    async function loadProjects() {
-        if (projectErr) projectErr.hidden = true;
-        const res = await fetch('/api/projects', {
-            credentials: 'same-origin',
-            headers: API_HEADERS
-        });
-        if (!res.ok) {
-            if (projectErr) {
-                projectErr.hidden = false;
-                projectErr.textContent = 'Could not load projects.';
-            }
-            return;
-        }
-        projects = await res.json();
-        projectSel.innerHTML = '';
-        if (launcherSel) launcherSel.innerHTML = '';
-        if (!projects.length) {
-            if (noProjects) noProjects.hidden = false;
-            if (launcherNoProjects) launcherNoProjects.hidden = false;
-            showWorkspaceLauncher();
-            return;
-        }
-        if (noProjects) noProjects.hidden = true;
-        if (launcherNoProjects) launcherNoProjects.hidden = true;
-        projects.forEach(function (p) {
-            const label = (p.name || p.projectId) + ' (' + p.projectId + ')';
-            const opt = document.createElement('option');
-            opt.value = p.projectId;
-            opt.textContent = label;
-            projectSel.appendChild(opt);
-            if (launcherSel) {
-                const lopt = document.createElement('option');
-                lopt.value = p.projectId;
-                lopt.textContent = label;
-                launcherSel.appendChild(lopt);
-            }
-        });
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlProjectId = urlParams.get('projectId');
-        const urlProject = (urlProjectId && projects.some(function (p) { return p.projectId === urlProjectId; }))
-            ? urlProjectId
-            : ((initialProjectId && projects.some(function (p) { return p.projectId === initialProjectId; }))
-                ? initialProjectId : null);
-        const saved = sessionStorage.getItem(STORAGE_KEY);
-        const match = saved && projects.some(function (p) { return p.projectId === saved; });
-        const pinned = urlProject || (match ? saved : null);
-        if (pinned) {
-            pinWorkspaceProject(pinned, projects);
-        } else {
-            showWorkspaceLauncher();
-        }
-    }
-
-    launcherContinue && launcherContinue.addEventListener('click', function () {
-        if (launcherErr) launcherErr.hidden = true;
-        const projectId = launcherSel ? launcherSel.value : '';
-        if (!projectId) {
-            if (launcherErr) {
-                launcherErr.hidden = false;
-                launcherErr.textContent = 'Select a project to continue.';
-            }
-            return;
-        }
-        pinWorkspaceProject(projectId, projects);
-    });
-
-    changeProjectBtn && changeProjectBtn.addEventListener('click', function () {
-        showWorkspaceLauncher();
-    });
-
-    createName && createName.addEventListener('input', updateCreateEnabled);
-    createTags && createTags.addEventListener('input', updateCreateEnabled);
-    createBtn && createBtn.addEventListener('click', createSuite);
-    refreshBtn && refreshBtn.addEventListener('click', function () {
-        const projectId = projectSel && projectSel.value;
-        if (projectId) loadSuites(projectId);
-    });
-    addCustomTagBtn && addCustomTagBtn.addEventListener('click', addCustomTag);
-    customTagInput && customTagInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addCustomTag();
-        }
-    });
-    saveTagsBtn && saveTagsBtn.addEventListener('click', saveTags);
-    Array.prototype.forEach.call(document.querySelectorAll('input[name="schedule-kind"]'), function (el) {
-        el.addEventListener('change', syncScheduleKindUi);
-    });
-    saveScheduleBtn && saveScheduleBtn.addEventListener('click', saveSchedule);
-    clearScheduleBtn && clearScheduleBtn.addEventListener('click', clearSchedule);
-    saveAlertsBtn && saveAlertsBtn.addEventListener('click', saveAlerts);
-    clearAlertsBtn && clearAlertsBtn.addEventListener('click', clearAlerts);
-    saveMonitorBtn && saveMonitorBtn.addEventListener('click', saveMonitor);
-    demoteMonitorBtn && demoteMonitorBtn.addEventListener('click', demoteMonitor);
-    runSuiteBtn && runSuiteBtn.addEventListener('click', runSuiteNow);
-
-    syncScheduleKindUi();
-    renderChannelSelect();
-    loadProjects().catch(function () {
-        if (projectErr) {
-            projectErr.hidden = false;
-            projectErr.textContent = 'Could not load projects.';
-        }
-        showWorkspaceLauncher();
-    });
-})();
-</script>
+<script th:inline="javascript">window.KEEL_PAGE = Object.assign(window.KEEL_PAGE || {}, { initialProjectId: /*[[${projectId}]]*/ '' });</script>
+<script th:src="@{/js/pages/suites.js}"></script>
 </body>
 </html>

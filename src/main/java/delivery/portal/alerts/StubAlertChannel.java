@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * B12 stub channel: Telegram, email and Slack are not built yet (AL-1 is still open), so an enabled stub only logs
+ * B12 stub channel: Telegram and email are not built yet (AL-1 is still open), so an enabled stub only logs
  * {@code ALERT_STUB} and keeps the message for the channel-health view and tests. Nothing leaves the machine.
  * All channels are disabled by default.
  */

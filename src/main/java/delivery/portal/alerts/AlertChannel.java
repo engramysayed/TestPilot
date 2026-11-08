@@ -12,4 +12,9 @@ public interface AlertChannel {
     Alert.Severity minSeverity();
 
     void send(Alert alert) throws Exception;
+
+    /** Reasons the channel would refuse to send today (missing token, no recipients, …). Empty = ready. */
+    default java.util.List<String> readinessIssues() {
+        return enabled() ? java.util.List.of() : java.util.List.of("disabled");
+    }
 }

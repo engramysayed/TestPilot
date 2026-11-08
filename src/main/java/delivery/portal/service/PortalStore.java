@@ -216,6 +216,10 @@ public class PortalStore {
         return filesystemStoreFor(projectId).projectRoot(projectId);
     }
 
+    public Path storeRoot() {
+        return storeRootPath;
+    }
+
     private String resolveBaseUrlHint(String projectId) {
         if (projectId == null || projectId.isBlank()) {
             return null;
@@ -303,6 +307,16 @@ public class PortalStore {
         return projectRepository.findByProjectId(projectId).map(this::toRecord);
     }
 
+    /** Locator ranking mode stored next to the preferred hooks for this project's site. */
+    public String locatorModeWire(String projectId) {
+        try {
+            return PreferredHooksStore.loadMode(
+                    storeRootPath, tenantForProject(projectId), resolveBaseUrlHint(projectId)).wire();
+        } catch (RuntimeException e) {
+            return delivery.locator.LocatorMode.STABLE_FIRST.wire();
+        }
+    }
+
     public String preferredHooksJoined(String projectId) {
         return PreferredHooksStore.join(PreferredHooksStore.load(
                 storeRootPath, tenantForProject(projectId), resolveBaseUrlHint(projectId)));
@@ -343,6 +357,14 @@ public class PortalStore {
                 .collect(Collectors.toList());
     }
 
+    /** Internal schedule worker: all non-archived projects (no user filter). */
+    public List<ProjectRecord> listProjectsForScheduleDispatch() {
+        return projectRepository.findAll().stream()
+                .filter(p -> !p.isArchived())
+                .map(this::toRecord)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public Optional<ProjectRecord> updateOwnedProject(String projectId, Long ownerUserId, PatchProjectRequest patch) {
         Optional<ProjectEntity> owned = projectRepository.findByProjectId(projectId)
@@ -367,6 +389,12 @@ public class PortalStore {
                     ? entity.getBaseUrl()
                     : resolveBaseUrlHint(projectId);
             PreferredHooksStore.save(storeRootPath, tenantForProject(projectId), url, patch.preferredHooks());
+        }
+        if (patch.locatorMode() != null && !patch.locatorMode().isBlank()) {
+            String url = entity.getBaseUrl() != null && !entity.getBaseUrl().isBlank()
+                    ? entity.getBaseUrl()
+                    : resolveBaseUrlHint(projectId);
+            PreferredHooksStore.saveMode(storeRootPath, tenantForProject(projectId), url, patch.locatorMode());
         }
         if (patch.authoringEngine() != null) {
             entity.setAuthoringEngine(AuthoringEngine.parse(patch.authoringEngine()).wireValue());
@@ -609,6 +637,7 @@ public class PortalStore {
         entity.setProgressCurrent(job.getProgressCurrent());
         entity.setProgressTotal(job.getProgressTotal());
         entity.setMessage(job.getMessage());
+        entity.setError(truncate(job.getError(), 1024));
         if (entity.getCreatedAt() == null) {
             Instant created = job.getCreatedAt() != null ? job.getCreatedAt() : Instant.now();
             entity.setCreatedAt(created);
@@ -724,8 +753,24 @@ public class PortalStore {
                 delivery.portal.jobs.DurableJobClaim.DEFAULT_LEASE);
         if (lease.isPresent()) {
             syncJobPersistence(job);
+            // Every worker kind gets lease renewal (previously only ConversionWorker heartbeated).
+            leaseKeeper.track(jobId, lease.get());
         }
         return lease;
+    }
+
+    private final delivery.portal.jobs.LeaseKeeper leaseKeeper = new delivery.portal.jobs.LeaseKeeper(
+            this::heartbeat,
+            java.time.Duration.ofMinutes(Long.getLong("delivery.jobs.max-runtime-minutes", 180L)));
+
+    /** Background lease renewal; exposed for ops diagnostics. */
+    public delivery.portal.jobs.LeaseKeeper leaseKeeper() {
+        return leaseKeeper;
+    }
+
+    @jakarta.annotation.PreDestroy
+    void stopLeaseKeeper() {
+        leaseKeeper.close();
     }
 
     public synchronized boolean heartbeat(String jobId, delivery.portal.jobs.DurableJobClaim.Lease lease) {
@@ -754,7 +799,9 @@ public class PortalStore {
     public synchronized int reconcileExpiredLeases() {
         Instant now = Instant.now();
         int n = 0;
-        for (JobEntity entity : jobRepository.findAll()) {
+        // Only RUNNING jobs can hold a lease; let the DB filter so we don't load every
+        // finished job every tick (used to fetch the whole table).
+        for (JobEntity entity : jobRepository.findByStatus(JobRecord.Status.RUNNING.name())) {
             JobRecord job = jobs.get(entity.getJobId());
             if (job == null) {
                 job = hydrate(entity);
@@ -872,6 +919,24 @@ public class PortalStore {
             }
         }
         return userId.equals(job.getOwnerUserId());
+    }
+
+    /** Everyone who can see the project: workspace members, or just the owner for a personal project. */
+    public java.util.List<Long> projectMemberIds(String projectId) {
+        return projectRepository.findByProjectId(projectId).map(p -> {
+            String tenantId = p.getTenantId();
+            if (tenantId != null && !tenantId.isBlank()) {
+                try {
+                    return delivery.identity.WorkspaceDirectory.open(storeRootPath)
+                            .listMembers(delivery.identity.TenantId.parse(tenantId)).stream()
+                            .map(m -> m.userId())
+                            .toList();
+                } catch (Exception e) {
+                    // same fallback as canAccessProject: unreadable directory → owner only
+                }
+            }
+            return java.util.List.of(p.getOwnerUserId());
+        }).orElse(java.util.List.of());
     }
 
     public boolean canOperate(String projectId, Long userId) {
@@ -1037,6 +1102,9 @@ public class PortalStore {
         job.setProgressTotal(e.getProgressTotal());
         if (e.getMessage() != null) {
             job.setMessage(e.getMessage());
+        }
+        if (e.getError() != null && !e.getError().isBlank()) {
+            job.setError(e.getError());
         }
         if (e.getZipPath() != null && !e.getZipPath().isBlank()) {
             job.setZipPath(Path.of(e.getZipPath()));
@@ -1620,5 +1688,12 @@ public class PortalStore {
             throw new IllegalArgumentException("unknown project");
         }
         return tenant;
+    }
+
+    private static String truncate(String s, int max) {
+        if (s == null) {
+            return null;
+        }
+        return s.length() <= max ? s : s.substring(0, max);
     }
 }

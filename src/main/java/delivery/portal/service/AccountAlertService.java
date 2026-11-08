@@ -1,6 +1,7 @@
 package delivery.portal.service;
 
 import delivery.portal.DeliveryPortalProperties;
+import delivery.portal.alerts.Alert;
 import delivery.portal.alerts.AttentionAlertSender;
 import delivery.portal.model.JobRecord;
 import delivery.portal.persistence.PortalUser;
@@ -9,11 +10,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.concurrent.Executor;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -32,15 +36,17 @@ public class AccountAlertService {
     private final org.springframework.core.env.Environment env;
     private final AttentionAlertSender sender;
     private final AttentionAlertSender.Transport transport;
+    private final Executor fanOut;
 
     @Autowired
     public AccountAlertService(
             PortalUserRepository users,
             DeliveryPortalProperties props,
             org.springframework.core.env.Environment env,
-            ObjectProvider<JavaMailSender> mail
+            ObjectProvider<JavaMailSender> mail,
+            @Qualifier("webhookExecutor") Executor fanOut
     ) {
-        this(users, props, env, new AttentionAlertSender(), new HttpAlertTransport(mail));
+        this(users, props, env, new AttentionAlertSender(), new HttpAlertTransport(mail), fanOut);
     }
 
     AccountAlertService(
@@ -50,11 +56,24 @@ public class AccountAlertService {
             AttentionAlertSender sender,
             AttentionAlertSender.Transport transport
     ) {
+        // Tests without an executor: run sends on the caller's thread.
+        this(users, props, env, sender, transport, Runnable::run);
+    }
+
+    AccountAlertService(
+            PortalUserRepository users,
+            DeliveryPortalProperties props,
+            org.springframework.core.env.Environment env,
+            AttentionAlertSender sender,
+            AttentionAlertSender.Transport transport,
+            Executor fanOut
+    ) {
         this.users = users;
         this.props = props;
         this.env = env;
         this.sender = sender;
         this.transport = transport;
+        this.fanOut = fanOut;
     }
 
     public Map<String, Object> view(Long userId) {
@@ -63,7 +82,6 @@ public class AccountAlertService {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("telegram", channel(prefs.telegramOn(), prefs.telegramChat(), sender.readinessReason("telegram", config)));
         out.put("email", channel(prefs.emailOn(), prefs.emailTo(), sender.readinessReason("email", config)));
-        out.put("slack", channel(prefs.slackOn(), prefs.slackWebhook(), ""));
         out.put("accountEmail", user(userId).getEmail());
         return out;
     }
@@ -119,6 +137,42 @@ public class AccountAlertService {
         }
     }
 
+    /** Suite alert → every project member who turned on account alerts. Each send runs on its own
+     *  executor task so a slow SMTP for one member never blocks the others. Failures are logged. */
+    public void notifySuiteAlert(java.util.List<Long> memberIds, String projectId, Alert alert) {
+        if (memberIds == null || memberIds.isEmpty() || alert == null) {
+            return;
+        }
+        String text = "Suite alert (" + alert.severity() + "): " + alert.message()
+                + "\nProject " + projectId + " · " + alert.subject();
+        AttentionAlertSender.Config config = config();
+        // One batch read beats N findById calls (N+1).
+        java.util.List<PortalUser> loaded;
+        try {
+            loaded = users.findAllById(memberIds);
+        } catch (Exception e) {
+            log.warn("Suite alert lookup failed for project {}: {}", projectId, e.getMessage());
+            return;
+        }
+        for (PortalUser user : loaded) {
+            AttentionAlertSender.Prefs prefs = AttentionAlertSender.Prefs.parse(user.getAlertPrefs());
+            if (!prefs.anyOn()) {
+                continue;
+            }
+            Long userId = user.getId();
+            fanOut.execute(() -> {
+                try {
+                    AttentionAlertSender.Result result = sender.sendEach(prefs, text, config, transport);
+                    if (!result.errors().isEmpty()) {
+                        log.warn("Suite alert incomplete for user {}: {}", userId, result.errors());
+                    }
+                } catch (Exception e) {
+                    log.warn("Suite alert skipped for user {}: {}", userId, e.getMessage());
+                }
+            });
+        }
+    }
+
     private AttentionAlertSender.Prefs load(Long userId) {
         return AttentionAlertSender.Prefs.parse(user(userId).getAlertPrefs());
     }
@@ -154,12 +208,6 @@ public class AccountAlertService {
 
         HttpAlertTransport(ObjectProvider<JavaMailSender> mail) {
             this.mail = mail;
-        }
-
-        @Override
-        public int postJson(String url, String json) throws Exception {
-            HttpResponse<String> response = send(url, json);
-            return response.statusCode();
         }
 
         @Override

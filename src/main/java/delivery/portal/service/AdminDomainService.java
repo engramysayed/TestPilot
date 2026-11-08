@@ -156,7 +156,9 @@ public class AdminDomainService {
             }
         }
         if (jobs != null) {
-            for (JobEntity job : jobs.findAll()) {
+            // Prefilter by substring so a 50k-job table doesn't load whole. Java still
+            // verifies the exact host because folderNameFromHostOrUrl normalizes further.
+            for (JobEntity job : jobs.findByBaseUrlContaining(domainFolder)) {
                 String fromUrl = DomainStorePaths.folderNameFromHostOrUrl(job.getBaseUrl());
                 if (domainFolder.equals(fromUrl) && job.getProjectId() != null && !job.getProjectId().isBlank()) {
                     ids.add(job.getProjectId());

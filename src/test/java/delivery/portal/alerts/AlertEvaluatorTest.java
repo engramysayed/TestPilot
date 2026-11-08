@@ -31,7 +31,6 @@ public class AlertEvaluatorTest {
     List<EngineHeartbeats.Engine> engines;
     Rec telegram;
     Rec email;
-    Rec slack;
 
     @org.testng.annotations.BeforeMethod
     public void fresh() {
@@ -39,11 +38,10 @@ public class AlertEvaluatorTest {
         engines = new ArrayList<>();
         telegram = new Rec("telegram", true, Alert.Severity.WARNING);
         email = new Rec("email", true, Alert.Severity.CRITICAL);
-        slack = new Rec("slack", false, Alert.Severity.WARNING);
     }
 
     AlertEvaluator evaluator(boolean enabled, Set<String> muted) {
-        return new AlertEvaluator(() -> List.copyOf(engines), List.of(telegram, email, slack), clock,
+        return new AlertEvaluator(() -> List.copyOf(engines), List.of(telegram, email), clock,
                 new AlertEvaluator.Settings(enabled, Duration.ofMinutes(5), Duration.ofMinutes(60), muted));
     }
 
@@ -78,7 +76,6 @@ public class AlertEvaluatorTest {
 
         Assert.assertEquals(telegram.sent().size(), 2, "fan-out to every enabled channel");
         Assert.assertEquals(email.sent().size(), 2, "critical passes email's min-severity");
-        Assert.assertEquals(slack.sent().size(), 0, "disabled channel stays silent");
         Assert.assertEquals(telegram.lastSuccess(), clock.instant());
     }
 

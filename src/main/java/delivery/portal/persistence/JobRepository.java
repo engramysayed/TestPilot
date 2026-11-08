@@ -15,4 +15,13 @@ public interface JobRepository extends JpaRepository<JobEntity, Long> {
     void deleteByProjectId(String projectId);
 
     List<JobEntity> findByProjectId(String projectId);
+
+    /** Refund sweeper: recently finished jobs in a given status. */
+    List<JobEntity> findByStatusAndCompletedAtAfter(String status, java.time.Instant after);
+
+    /** Lease reconciliation: RUNNING jobs are the only ones holding a lease. */
+    List<JobEntity> findByStatus(String status);
+
+    /** Admin delete-domain: pre-filter by URL substring; Java still checks the exact host. */
+    List<JobEntity> findByBaseUrlContaining(String substring);
 }

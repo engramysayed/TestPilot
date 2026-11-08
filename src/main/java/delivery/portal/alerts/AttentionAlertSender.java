@@ -1,9 +1,7 @@
 package delivery.portal.alerts;
 
-import delivery.net.TargetNetworkPolicy;
 import org.json.JSONObject;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -21,14 +19,12 @@ public final class AttentionAlertSender {
             boolean telegramOn,
             String telegramChat,
             boolean emailOn,
-            String emailTo,
-            boolean slackOn,
-            String slackWebhook
+            String emailTo
     ) {
-        public static final Prefs OFF = new Prefs(false, "", false, "", false, "");
+        public static final Prefs OFF = new Prefs(false, "", false, "");
 
         public boolean anyOn() {
-            return telegramOn || emailOn || slackOn;
+            return telegramOn || emailOn;
         }
 
         public String toJson() {
@@ -37,8 +33,6 @@ public final class AttentionAlertSender {
             o.put("telegramChat", telegramChat == null ? "" : telegramChat);
             o.put("emailOn", emailOn);
             o.put("emailTo", emailTo == null ? "" : emailTo);
-            o.put("slackOn", slackOn);
-            o.put("slackWebhook", slackWebhook == null ? "" : slackWebhook);
             return o.toString();
         }
 
@@ -51,9 +45,7 @@ public final class AttentionAlertSender {
                     o.optBoolean("telegramOn"),
                     o.optString("telegramChat", "").trim(),
                     o.optBoolean("emailOn"),
-                    o.optString("emailTo", "").trim(),
-                    o.optBoolean("slackOn"),
-                    o.optString("slackWebhook", "").trim());
+                    o.optString("emailTo", "").trim());
         }
 
         public static Prefs fromRequest(Map<String, Object> body) {
@@ -64,9 +56,7 @@ public final class AttentionAlertSender {
                     flag(body.get("telegram")),
                     text(body.get("telegram")),
                     flag(body.get("email")),
-                    text(body.get("email")),
-                    flag(body.get("slack")),
-                    text(body.get("slack")));
+                    text(body.get("email")));
         }
 
         private static boolean flag(Object channel) {
@@ -98,8 +88,6 @@ public final class AttentionAlertSender {
     }
 
     public interface Transport {
-        int postJson(String url, String json) throws Exception;
-
         String postBody(String url, String json) throws Exception;
 
         void sendMail(String from, String to, String subject, String text) throws Exception;
@@ -164,14 +152,6 @@ public final class AttentionAlertSender {
                 errors.add(e.getMessage() == null ? "Email failed" : e.getMessage());
             }
         }
-        if (prefs.slackOn()) {
-            try {
-                sendSlack(prefs.slackWebhook(), body, transport);
-                sent.add("Slack");
-            } catch (Exception e) {
-                errors.add(e.getMessage() == null ? "Slack failed" : e.getMessage());
-            }
-        }
         return new Result(sent, errors);
     }
 
@@ -233,47 +213,6 @@ public final class AttentionAlertSender {
             subject = subject.substring(0, 120);
         }
         transport.sendMail(from, to, subject, text);
-    }
-
-    private static void sendSlack(String webhook, String text, Transport transport) throws Exception {
-        String url = requirePublicHttps(webhook);
-        JSONObject payload = new JSONObject();
-        payload.put("text", text);
-        int code;
-        try {
-            code = transport.postJson(url, payload.toString());
-        } catch (IllegalArgumentException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Slack could not be reached.");
-        }
-        if (code < 200 || code >= 300) {
-            throw new IllegalArgumentException("Slack did not accept the message (" + code + ").");
-        }
-    }
-
-    static String requirePublicHttps(String webhook) {
-        if (webhook == null || webhook.isBlank()) {
-            throw new IllegalArgumentException("Slack needs an incoming webhook URL, not a channel name.");
-        }
-        URI uri;
-        try {
-            uri = URI.create(webhook.trim());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Slack webhook URL is not valid.");
-        }
-        String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
-        if (!"https".equals(scheme)) {
-            throw new IllegalArgumentException("Slack webhook URL must start with https.");
-        }
-        if (uri.getHost() == null || uri.getHost().isBlank()) {
-            throw new IllegalArgumentException("Slack webhook URL is not valid.");
-        }
-        TargetNetworkPolicy.Decision decision = TargetNetworkPolicy.forJob("").inspectOutbound(uri.toString());
-        if (!decision.allowed()) {
-            throw new IllegalArgumentException("Slack webhook URL is not allowed.");
-        }
-        return uri.toString();
     }
 
     private static boolean safeDetail(String detail) {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Guide')}"></th:block>
 </head>
@@ -11,8 +11,8 @@
     <header class="heading guide-hero guide-reveal">
         <div>
             <p class="eyebrow">Help</p>
-            <h1>Guide</h1>
-            <p class="lede">
+            <h1 th:text="#{page.guide.title}">Guide</h1>
+            <p class="lede" th:text="#{page.guide.lede}">
                 How to use Keel day to day — write cases, generate from knowledge, run tests, review evidence,
                 compare screens, schedule suites, build code packages, hunt bugs, and manage credits.
                 Owner sets credit prices on Admin → Prices.
@@ -30,6 +30,7 @@
         <nav class="guide-toc panel product-guide-toc" aria-label="Guide sections">
             <p class="guide-toc-title">On this page</p>
             <a href="#overview">Overview</a>
+            <a href="#whats-new">What's new</a>
             <a href="#generate">Generate</a>
             <a href="#generate-from-knowledge">Generate from knowledge</a>
             <a href="#plain-cases">Plain-English cases</a>
@@ -40,9 +41,12 @@
             <a href="#visual-diffs">Visual diffs</a>
             <a href="#suites">Suites</a>
             <a href="#automate">Automate</a>
+            <a href="#locators">Locators &amp; languages</a>
             <a href="#packages">Packages</a>
             <a href="#hunt">Bug Hunt</a>
             <a href="#credits">Credits</a>
+            <a href="#refunds">Refunds</a>
+            <a href="#tunnel">Private app tunnel</a>
             <a href="#roles">Roles</a>
             <a href="#account">Account</a>
             <a href="#mobile">Mobile</a>
@@ -93,6 +97,30 @@
                 </div>
             </section>
 
+            <section class="panel guide-section guide-reveal" id="whats-new" data-guide-section="whats-new">
+                <header class="guide-section-head">
+                    <span class="guide-num">New</span>
+                    <div>
+                        <h2>What's new (7 Nov 2026)</h2>
+                        <p class="panel-intro">The latest changes, with links to the section that explains each one.</p>
+                    </div>
+                </header>
+                <ul class="guide-points">
+                    <li><strong>Test ids come first.</strong> Every stage (matching steps, live proof, the generated framework, and visual heal) now uses one locator order: your preferred hook, then <code>data-testid</code>, then a unique id or name, then role and label, then visible text. See <a href="#locators">Locators &amp; languages</a>.</li>
+                    <li><strong>Locator ranking per project.</strong> Projects → Settings → <em>Locator ranking</em>: <em>Stable first</em> (default) or <em>User-facing first</em>.</li>
+                    <li><strong>Arabic steps.</strong> Write <code>اضغط على زر حفظ</code> or <code>Click the Save button</code>; both bind. See <a href="#verbs">Verbs</a>.</li>
+                    <li><strong>Generated frameworks fall back properly.</strong> Each element has one field that tries the main locator, then its fallbacks, and logs when a fallback wins.</li>
+                    <li><strong>Refunds.</strong> When a charged run fails because of the platform, a refund request reaches the account owner automatically; you can also ask from the run page. See <a href="#refunds">Refunds</a>.</li>
+                    <li><strong>Runs recover on their own.</strong> If a worker crashes or hangs, the run is picked up again (or marked for review) within about a minute, without restarting Keel.</li>
+                    <li><strong>Run on a real phone.</strong> Project → Mobile → <em>Run on a phone</em>: Keel reserves the phone, starts Appium, a mobile runner executes the cases, and the phone is freed when the run ends — or automatically if the runner stops. See <a href="#mobile">Mobile</a>.</li>
+                    <li><strong>Generated cases link to their story.</strong> Each generated case carries the story or acceptance criterion it covers (shown as a <code>req:US-1</code> tag). Generate shows which stories have cases and which have none. See <a href="#generate">Generate</a>.</li>
+                    <li><strong>Arabic stories → Arabic cases.</strong> Generation keeps the language of your requirements and never translates quoted button names or messages.</li>
+                    <li><strong>Keel in Arabic.</strong> Top bar → <em>العربية</em> switches the menus and page headings to Arabic, right to left. Choose <em>English</em> to switch back.</li>
+                    <li><strong>No more browser pop-ups.</strong> Confirmations and notices now appear inside the page.</li>
+                    <li><strong>Private app tunnel.</strong> Restarts keep the same tunnel address, and the tunnel runs on its own web address for safety. See <a href="#tunnel">Private app tunnel</a>.</li>
+                </ul>
+            </section>
+
             <section class="panel guide-section guide-reveal" id="generate" data-guide-section="generate">
                 <header class="guide-section-head">
                     <span class="guide-num">01</span>
@@ -120,6 +148,8 @@
                     <li>Generate. Review the quality-gate panel before you import.</li>
                     <li>If the gate failed, fix issues or explicitly confirm import — Keel refuses silent import when checks have not passed.</li>
                     <li>Use the suggested how-to-test (Keel path) tip when shown — it is guidance, not a second product.</li>
+                    <li><strong>Story coverage.</strong> Every generated case is tagged with the story it covers (<code>req:US-1</code>, <code>req:AC-2</code>). Open <em>Story coverage</em> on Generate to see which stories have cases and which have none. Suites can filter by the same tag.</li>
+                    <li><strong>Language.</strong> Paste Arabic stories to get Arabic cases. Button names and messages are quoted exactly as written, in the app's own language.</li>
                 </ol>
                 <div class="guide-callouts">
                     <div class="callout ok">
@@ -351,9 +381,11 @@
                 </header>
                 <ul class="guide-points">
                     <li><strong>Tags</strong> — label a pack so you can find and filter it later.</li>
-                    <li><strong>Schedule</strong> — cron or interval; ops timezone note is Africa/Cairo.</li>
-                    <li><strong>Alerts</strong> — reuse portal alert channels (Slack, email, and similar).</li>
-                    <li><strong>Promote to monitor</strong> — keep a green pack watching prod or staging; alerts on fail or flaky.</li>
+                    <li><strong>Schedule</strong> — cron (e.g. <code>0 2 * * *</code>) or an interval, at most every 5 minutes. Choose the time zone (default Africa/Cairo) and the login profile scheduled runs use.</li>
+                    <li><strong>One run at a time</strong> — if the previous scheduled run is still going, the next slot is skipped and shown as <em>SKIPPED_OVERLAP</em>. If Keel was down for more than an hour past a slot, that slot is skipped (<em>MISSED</em>) instead of running at an odd time.</li>
+                    <li><strong>Running a pack by hand</strong> does not move its schedule.</li>
+                    <li><strong>Alerts</strong> — email or Telegram: any failing case alerts (all failed = critical, some failed = warning), and so does a run that crashed or could not start (no credits, no test cases, no workbook).</li>
+                    <li><strong>Promote to monitor</strong> — keep a green pack watching prod or staging. The pack shows its last status (green / degraded / red) and when it was checked.</li>
                 </ul>
                 <div class="guide-callouts">
                     <div class="callout ok">
@@ -390,6 +422,47 @@
                     <div class="callout warn">
                         <strong>Credits</strong>
                         <p>Automate charges <strong>Automate</strong> credits once per test case in the build (not once for the ZIP).</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="locators" data-guide-section="locators">
+                <header class="guide-section-head">
+                    <span class="guide-num">New</span>
+                    <div>
+                        <h2>Locators &amp; languages</h2>
+                        <p class="panel-intro">How Keel chooses the way it finds each element, and how to keep tests working when the site changes wording or language.</p>
+                    </div>
+                </header>
+                <div class="decision-row">
+                    <article class="decision-card accent">
+                        <span class="decision-label">1–2</span>
+                        <h3>Your hook, then test id</h3>
+                        <p>Attributes developers add for tests, such as <code>data-axis-test-id</code> or <code>data-testid</code>. They survive redesigns and translations.</p>
+                    </article>
+                    <div class="decision-arrow" aria-hidden="true"></div>
+                    <article class="decision-card">
+                        <span class="decision-label">3–4</span>
+                        <h3>Unique id or name</h3>
+                        <p>Only when a developer wrote it. Ids made up by a framework (<code>ember123</code>, <code>ctl00$…</code>) are never used as the main locator.</p>
+                    </article>
+                    <div class="decision-arrow" aria-hidden="true"></div>
+                    <article class="decision-card">
+                        <span class="decision-label">5–7</span>
+                        <h3>Role, label, text</h3>
+                        <p>Button name, placeholder, visible words. Easy to read, but they change when the copy or the language changes, so they are kept as fallbacks.</p>
+                    </article>
+                </div>
+                <ul class="guide-points">
+                    <li><strong>Locator ranking</strong> (Projects → Settings): <em>Stable first</em> uses the order above. <em>User-facing first</em> puts role and label before test ids, if your team prefers tests that read like the page. Your preferred hook is first in both.</li>
+                    <li>When a test id exists on the element, it becomes the main locator even if the step was proven on a label.</li>
+                    <li>Generated pages keep up to two fallbacks per element. During a customer run, the first one that matches wins, and the run log says when a fallback was used.</li>
+                    <li><strong>Arabic and English.</strong> Steps can be in either language. Keel understands Arabic verbs (اضغط، انقر، أدخل، اكتب، اختر، تحقق، مرر، اسحب) and ignores spelling differences such as أ / إ / ا and ة / ه.</li>
+                </ul>
+                <div class="guide-callouts">
+                    <div class="callout ok">
+                        <strong>Best practice for Arabic/English apps</strong>
+                        <p>Ask your developers to add one test id to every button, link, and field. It is the only locator that keeps working when users switch language.</p>
                     </div>
                 </div>
             </section>
@@ -470,6 +543,61 @@
                 </ul>
             </section>
 
+            <section class="panel guide-section guide-reveal" id="refunds" data-guide-section="refunds">
+                <header class="guide-section-head">
+                    <span class="guide-num">New</span>
+                    <div>
+                        <h2>Refunds</h2>
+                        <p class="panel-intro">Credits charged for a run that failed can be returned. The account owner decides.</p>
+                    </div>
+                </header>
+                <div class="decision-row">
+                    <article class="decision-card">
+                        <span class="decision-label">Automatic</span>
+                        <h3>Platform failure</h3>
+                        <p>The browser crashed, the network dropped, a worker stopped, or the AI provider was down. A request opens within about two minutes.</p>
+                    </article>
+                    <div class="decision-arrow" aria-hidden="true"></div>
+                    <article class="decision-card">
+                        <span class="decision-label">You</span>
+                        <h3>Request refund</h3>
+                        <p>On a failed run's page, add a short note and press <strong>Request refund</strong>. The page then shows the request status and the owner's reply.</p>
+                    </article>
+                    <div class="decision-arrow" aria-hidden="true"></div>
+                    <article class="decision-card accent">
+                        <span class="decision-label">Owner</span>
+                        <h3>Admin → Refunds</h3>
+                        <p>See who, which project and run, what was charged, why it failed, the run timeline, and links to evidence. Refund all or part, or reject with a reason.</p>
+                    </article>
+                </div>
+                <ul class="guide-points">
+                    <li>Failures caused by the test itself (a wrong step, a wrong expected result) or by setup (wrong password, wrong URL) are not opened automatically, but you can still ask.</li>
+                    <li>A run is refunded at most once, and never more than it was charged.</li>
+                </ul>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="tunnel" data-guide-section="tunnel">
+                <header class="guide-section-head">
+                    <span class="guide-num">New</span>
+                    <div>
+                        <h2>Private app tunnel</h2>
+                        <p class="panel-intro">Run cloud tests against a site that only exists on your computer or VPN.</p>
+                    </div>
+                </header>
+                <ol class="guide-howto">
+                    <li>Your admin turns the tunnel on and gives it its <strong>own web address</strong> (for example <code>tunnel.your-keel.com</code>), separate from the Keel address.</li>
+                    <li>On your computer run <code>keel tunnel start --project &lt;id&gt; --target http://localhost:3000</code>.</li>
+                    <li>The Execute page shows <strong>Tunnel: active</strong>. Runs for that project use the tunnel instead of the project URL.</li>
+                    <li>Restarting the command keeps the same address. Add <code>--re-enroll</code> to get a new one.</li>
+                </ol>
+                <div class="guide-callouts">
+                    <div class="callout warn">
+                        <strong>If the command stops</strong>
+                        <p>After about a minute the badge shows <strong>offline</strong> and runs go back to the project URL.</p>
+                    </div>
+                </div>
+            </section>
+
             <section class="panel guide-section guide-reveal" id="roles" data-guide-section="roles">
                 <header class="guide-section-head">
                     <span class="guide-num">09</span>
@@ -503,7 +631,7 @@
                 <ul class="guide-points">
                     <li><strong>Vision model</strong> is only the model that looks at the screen during a run (UI-TARS, or Qwen vision). It stays in this browser. It does not write test cases. Writing uses Gemma, chosen on Generate.</li>
                     <li><strong>Alerts</strong> are saved on the account. Keel sends a message when a run fails or finishes with a block. Turning a channel on sends a confirmation first, and the setting is kept only if that message goes out.</li>
-                    <li>Telegram and email send only after this Keel computer has a bot token or a mail server configured. Slack uses the incoming webhook you paste.</li>
+                    <li>Telegram and email send only after this Keel computer has a bot token or a mail server configured.</li>
                     <li>A project’s Usage and budget is a cap on that project. It is not the same as the account credit balance in the top bar.</li>
                     <li>The account <strong>owner</strong> sets install-wide LLM keys, review batch size, browser, and <a href="#verbs">Authoring verbs</a> on <a href="/admin/llm-settings">Admin → LLM &amp; API keys</a>. Members cannot change that page.</li>
                 </ul>
@@ -528,6 +656,13 @@
                     <li><strong>App file (APK)</strong> — upload and inspect; pick the launcher activity when the APK exposes more than one.</li>
                     <li><strong>Already installed</strong> — use the package already on the phone instead of uploading an APK.</li>
                 </ul>
+                <h3>Run on a phone</h3>
+                <ol class="guide-howto">
+                    <li>On the computer the phone is plugged into, enroll a runner (Project → Settings → <em>Private runners</em>), set <code>KEEL_RUNNER_TOKEN</code>, and start <code>scripts\mobile-runner.cmd</code>.</li>
+                    <li>Project → Mobile → <strong>Find connected phones</strong>, pick the phone, optionally list test case IDs, then <strong>Run on phone</strong>.</li>
+                    <li>Keel reserves the phone, starts Appium, and waits for the runner. Results appear in the table case by case.</li>
+                    <li>When the run ends — or if the runner stops responding for about 45 seconds, or nobody picks the run up in 5 minutes — Keel stops Appium and frees the phone. A phone that was left stuck is freed within a couple of minutes.</li>
+                </ol>
             </section>
 
             <section class="panel guide-section guide-reveal product-guide-tc-banner" id="tc-authoring" data-guide-section="tc-authoring">
@@ -722,6 +857,7 @@
                     <li><strong>Check visible</strong> — <code>confirm</code>, <code>verify</code>, <code>shown</code>, <code>visible</code>, <code>see</code>, <code>displays</code>, is shown, are visible.</li>
                     <li><strong>Skip the line</strong> — <code>post-login…</code>, <code>do not …</code> at the start of a step.</li>
                     <li><strong>List rows:</strong> a click that names a shared cell (<code>with Pending edit status</code> or <code>"Pending Edit"</code>) uses the <strong>first</strong> matching table/grid row. Quote a person name when you need that person: <code>Click on "Sara Ali"</code>. Two Login buttons on a page (not in a grid) stay unresolved.</li>
+                    <li><strong>Arabic</strong> — Click: <code>اضغط</code>, <code>انقر</code>, <code>افتح</code>, <code>اذهب إلى</code>. Type: <code>أدخل</code>, <code>اكتب</code>, <code>املأ</code>. Select: <code>اختر</code>, <code>حدد</code>. Clear: <code>امسح</code>. Check visible: <code>تحقق</code>, <code>تأكد</code>, <code>يظهر</code>. Hover: <code>مرر</code>. Drag: <code>اسحب</code>. Login words: <code>تسجيل الدخول</code>, <code>اسم المستخدم</code>, <code>كلمة المرور</code>.</li>
                     <li>Login / password / “click the login button” stay in code. They are listed on Admin as code-only specials and cannot be remapped.</li>
                 </ul>
                 <ol class="guide-howto">
@@ -922,156 +1058,8 @@ Bennett
     </div>
 </main>
 </div>
-<script>
-(function () {
-    var PROMPT_URL = '/prompts/keel-tc-rewrite-to-csv.txt';
-    var preview = document.getElementById('guide-ai-prompt-preview');
-    var copyBtn = document.getElementById('guide-ai-copy-btn');
-    var statusEl = document.getElementById('guide-ai-status');
-    if (!preview || !copyBtn || !statusEl) {
-        return;
-    }
-    var promptText = '';
-
-    function setStatus(msg, isError) {
-        statusEl.textContent = msg || '';
-        statusEl.classList.toggle('is-error', !!isError);
-    }
-
-    function loadPrompt() {
-        return fetch(PROMPT_URL, { credentials: 'same-origin' })
-            .then(function (res) {
-                if (!res.ok) {
-                    throw new Error('Could not load prompt (' + res.status + ')');
-                }
-                return res.text();
-            })
-            .then(function (text) {
-                promptText = (text || '').trim();
-                if (!promptText) {
-                    throw new Error('Prompt file was empty');
-                }
-                preview.textContent = promptText;
-                copyBtn.disabled = false;
-                setStatus('', false);
-            })
-            .catch(function (err) {
-                promptText = '';
-                preview.textContent = 'Prompt failed to load. Open ' + PROMPT_URL + ' in a new tab, or refresh the page.';
-                copyBtn.disabled = true;
-                setStatus(err && err.message ? err.message : 'Failed to load prompt', true);
-            });
-    }
-
-    copyBtn.addEventListener('click', function () {
-        if (!promptText) {
-            setStatus('Prompt not loaded yet', true);
-            return;
-        }
-        var done = function () {
-            copyBtn.textContent = 'Copied';
-            setStatus('Copied — paste into your AI chat', false);
-            window.setTimeout(function () {
-                copyBtn.textContent = 'Copy prompt';
-            }, 2000);
-        };
-        var fail = function () {
-            setStatus('Clipboard blocked — select the prompt text and press Ctrl+C (Cmd+C on Mac)', true);
-        };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(promptText).then(done).catch(fail);
-        } else {
-            fail();
-        }
-    });
-
-    loadPrompt();
-})();
-</script>
-<script>
-(function () {
-    function initGuideMotion() {
-        var sections = Array.prototype.slice.call(document.querySelectorAll('[data-guide-section]'));
-        var toc = document.querySelector('.guide-toc');
-        if (!sections.length || !toc) {
-            return;
-        }
-
-        var tocLinks = toc.querySelectorAll('a[href^="#"]');
-        var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var visible = {};
-        var minRatio = 0.15;
-
-        function setActiveSection(id) {
-            if (!id) {
-                return;
-            }
-            Array.prototype.forEach.call(tocLinks, function (link) {
-                var match = link.getAttribute('href') === '#' + id;
-                link.classList.toggle('is-active', match);
-                if (match) {
-                    link.setAttribute('aria-current', 'location');
-                } else {
-                    link.removeAttribute('aria-current');
-                }
-            });
-        }
-
-        function updateActiveFromVisible() {
-            var activeId = null;
-            sections.forEach(function (section) {
-                var id = section.getAttribute('data-guide-section');
-                if (id && visible[id] >= minRatio) {
-                    activeId = id;
-                }
-            });
-            if (activeId) {
-                setActiveSection(activeId);
-            }
-        }
-
-        if (reducedMotion) {
-            sections.forEach(function (section) {
-                section.classList.add('is-visible');
-            });
-        }
-
-        var observer = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-                var id = entry.target.getAttribute('data-guide-section');
-                if (!id) {
-                    return;
-                }
-                if (entry.isIntersecting) {
-                    if (!reducedMotion) {
-                        entry.target.classList.add('is-visible');
-                    }
-                    visible[id] = entry.intersectionRatio;
-                } else {
-                    delete visible[id];
-                }
-            });
-            updateActiveFromVisible();
-        }, {
-            threshold: [0.15, 0.2, 0.35, 0.5, 0.65]
-        });
-
-        sections.forEach(function (section) {
-            observer.observe(section);
-        });
-
-        if (sections[0]) {
-            setActiveSection(sections[0].getAttribute('data-guide-section'));
-        }
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initGuideMotion);
-    } else {
-        initGuideMotion();
-    }
-})();
-</script>
+<script th:src="@{/js/pages/guide.js}"></script>
+<script th:src="@{/js/pages/guide-2.js}"></script>
 
 </body>
 </html>
