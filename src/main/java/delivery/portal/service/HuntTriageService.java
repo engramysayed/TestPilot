@@ -202,7 +202,11 @@ public class HuntTriageService {
         }
         if (raw.startsWith("{")) {
             Map<String, Object> wrap = MAPPER.readValue(raw, new TypeReference<>() {});
-            Object bugs = wrap.get("bugs");
+            // HuntPackWriter writes `rows: [...]`; older runs may still carry `bugs: [...]`.
+            Object bugs = wrap.get("rows");
+            if (!(bugs instanceof List<?>)) {
+                bugs = wrap.get("bugs");
+            }
             if (bugs instanceof List<?> list) {
                 List<Map<String, Object>> out = new ArrayList<>();
                 for (Object o : list) {
