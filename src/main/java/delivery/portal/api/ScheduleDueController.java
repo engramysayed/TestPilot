@@ -1,9 +1,12 @@
 package delivery.portal.api;
 
 import delivery.portal.security.CurrentUserService;
+import delivery.portal.security.PrivateRunnerFilter;
 import delivery.portal.service.SuiteService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -27,9 +30,14 @@ public class ScheduleDueController {
     public ResponseEntity<?> due(
             @RequestParam(value = "withinSeconds", required = false, defaultValue = "60") int withinSeconds
     ) {
-        Long userId = currentUser.requireUserId();
+        int within = Math.max(0, withinSeconds);
         try {
-            int within = Math.max(0, withinSeconds);
+            // A runner-authenticated call (engine poller) spans every project it can dispatch for.
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth instanceof PrivateRunnerFilter.RunnerToken) {
+                return ResponseEntity.ok(suites.listDueForAllProjects(within));
+            }
+            Long userId = currentUser.requireUserId();
             return ResponseEntity.ok(suites.listDue(userId, within));
         } catch (Exception e) {
             String msg = e.getMessage() == null ? "Internal error" : e.getMessage();

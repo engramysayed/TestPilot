@@ -43,12 +43,20 @@ public class PrivateRunnerFilter extends OncePerRequestFilter {
         String path = request.getRequestURI() == null ? "" : request.getRequestURI();
         boolean v2 = path.equals(keel.contract.runner.RunnerHeaders.V2_PREFIX)
                 || path.startsWith(keel.contract.runner.RunnerHeaders.V2_PREFIX + "/");
-        if (!path.startsWith(keel.contract.runner.RunnerHeaders.V1_PREFIX) && !v2) {
+        // Phase 3 AE schedule hook: the engine polls GET /api/schedules/due with a runner token.
+        // Also accept it here; without this the token was ignored and the controller returned 401.
+        boolean schedules = path.equals("/api/schedules") || path.startsWith("/api/schedules/");
+        if (!path.startsWith(keel.contract.runner.RunnerHeaders.V1_PREFIX) && !v2 && !schedules) {
             filterChain.doFilter(request, response);
             return;
         }
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (header == null || !header.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            if (schedules) {
+                // UI calls this endpoint with a session cookie, not a bearer — fall through.
+                filterChain.doFilter(request, response);
+                return;
+            }
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "runner token required");
             return;
         }
