@@ -403,12 +403,19 @@ public class PortalUiController {
             row.put("progressCurrent", entity.getProgressCurrent());
             row.put("progressTotal", entity.getProgressTotal());
             row.put("message", entity.getMessage() == null ? "" : entity.getMessage());
+            // Human label for the Run column: 'Nov 09 · 16:42' from the completed/created timestamp.
+            java.time.Instant when = entity.getCompletedAt() != null ? entity.getCompletedAt() : entity.getCreatedAt();
+            row.put("startedAtLabel", when == null ? "" : RUN_WHEN.format(when));
             row.put("downloadable", JobRecord.isDownloadable(JobRecord.parseJobKind(jobKind), entity.getStatus()));
             jobLinks.enrich(row, entity.getJobId(), JobRecord.parseJobKind(jobKind), entity.getStatus());
             rows.add(row);
         }
         return rows;
     }
+
+    private static final java.time.format.DateTimeFormatter RUN_WHEN =
+            java.time.format.DateTimeFormatter.ofPattern("MMM dd · HH:mm")
+                    .withZone(java.time.ZoneId.systemDefault());
 
     @GetMapping("/status")
     public String status(@RequestParam("jobId") String jobId, Model model) {

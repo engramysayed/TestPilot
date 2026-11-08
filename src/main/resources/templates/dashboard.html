@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Overview')}"></th:block>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
@@ -12,7 +12,7 @@
     <header class="heading">
         <div>
             <p class="eyebrow">Your quality workspace</p>
-            <h1>A clearer view of every run.</h1>
+            <h1 th:text="#{page.dashboard.title}">A clearer view of every run.</h1>
             <p class="sub">Review what passed, understand what failed, and decide what runs next.</p>
         </div>
         <div class="actions">
@@ -138,7 +138,7 @@
                     th:attr="data-project=${j.projectId},data-day=${j.day},data-status=${j.status}">
                     <td>
                         <b th:text="${j.jobKind == 'EXECUTE'} ? 'Execute run' : (${j.jobKind == 'GENERATE_BATCH'} ? 'Generate batch' : (${j.jobKind == 'HUNT'} ? 'Bug Hunter' : 'Automate'))">Run</b>
-                        <small class="mono" th:text="${j.jobId}">job</small>
+                        <small th:text="${j.createdAt}" th:title="${j.jobId}" class="muted">Nov 09 16:42</small>
                     </td>
                     <td th:text="${j.projectName}">Project</td>
                     <td>

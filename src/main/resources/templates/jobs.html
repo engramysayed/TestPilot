@@ -35,7 +35,9 @@
                 </thead>
                 <tbody>
                 <tr th:each="j : ${jobs}">
-                    <td><code class="mono" th:text="${j.jobId}" th:title="${j.jobId}">job_</code></td>
+                    <td>
+                        <b th:text="${#strings.isEmpty(j.startedAtLabel)} ? ${j.jobId} : ${j.startedAtLabel}" th:title="${j.jobId}">Nov 09 · 16:42</b>
+                    </td>
                     <td th:text="${j.jobKind == 'EXECUTE'} ? 'Execute' : (${j.jobKind == 'GENERATE_BATCH'} ? 'Generate' : (${j.jobKind == 'GENERATE_COMPARE'} ? 'Compare' : (${j.jobKind == 'HUNT'} ? 'Bug Hunter' : 'Automate')))">Automate</td>
                     <td th:text="${#strings.isEmpty(j.projectName)} ? ${j.projectId} : ${j.projectName}" th:title="${j.projectId}">Project</td>
                     <td>

@@ -253,10 +253,10 @@ public class DashboardService {
         item.put("jobKind", kind.name());
         item.put("severity", attentionSeverity(job, kind));
         item.put("title", attentionTitle(job, kind));
-        // Keep only the last 8 chars of the id so the card isn't dominated by it; full id on hover from href.
-        String jobId = job.getJobId() == null ? "" : job.getJobId();
-        String shortId = jobId.length() > 8 ? "…" + jobId.substring(jobId.length() - 8) : jobId;
-        item.put("subtitle", projectName + " · " + shortId);
+        // Human subtitle: project name + when it happened. The full job id is still linked via href.
+        java.time.Instant when = job.getCompletedAt() != null ? job.getCompletedAt() : job.getCreatedAt();
+        String whenLabel = when == null ? "" : WHEN.format(when);
+        item.put("subtitle", whenLabel.isBlank() ? projectName : (projectName + " · " + whenLabel));
         item.put("href", attentionHref(job, kind, links));
         return item;
     }
