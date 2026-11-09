@@ -303,11 +303,13 @@ if ("http".equals(uri.getScheme()) && !loopback) {
 **Test:** `EngineConfigTest` — `KEEL_PORTAL_URL=http://portal.example.com` throws.
 **Risk:** Breaks any deploy that currently relies on plain HTTP to a remote portal (there shouldn't be any).
 
-### 🟡 B7 — `MobileRunOrchestrator.runs` never evicts completed runs
-**Finding #20**
-**File:** `src/main/java/delivery/mobile/run/MobileRunOrchestrator.java:70, 141`
+### ✅ B7 — `MobileRunOrchestrator.runs` evicts after 30 min (already done)
+**Finding #20** — **Resolved; no fix needed.**
+**File:** `src/main/java/delivery/mobile/run/MobileRunOrchestrator.java:266-298`
 
-**Current:** `runs.put(run.runId, run)` is the only mutation. The ConcurrentHashMap grows for the JVM's lifetime.
+**Resolution:** `tick()` at line 297 already runs via a scheduled ticker and evicts terminal runs older than 30 minutes (`runs.values().removeIf(...)`). My original audit grep only saw the `put` and missed the eviction inside `tick()`. No code change needed; status lookups for runs older than 30 min read from the persisted `runs/<runId>.json` instead.
+
+**Current (reference; kept for history):** `runs.put(run.runId, run)` is the only mutation. The ConcurrentHashMap grows for the JVM's lifetime.
 
 **Fix:** When a run reaches a terminal state (FAILED / COMPLETED / CANCELLED), evict it. Grep `MobileRun` for the status-change path, add `runs.remove(runId)` after terminal state is set. If there is no single such code point, wrap a `completeRun(runId)` helper and call it.
 
