@@ -52,30 +52,9 @@ public class JobDeletionControllerTest extends AbstractTestNGSpringContextTests 
 
     @Test
     public void deleteCompletedConvertJobSucceeds() throws Exception {
-        MvcResult created = mockMvc.perform(post("/api/projects")
-                        .with(httpBasic(ADMIN_USER, ADMIN_PASS))
-                        .header("X-Keel-Requested-With", "Keel")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Delete Test\",\"baseUrl\":\"https://example.test/\"}"))
-                .andExpect(status().isCreated())
-                .andReturn();
-        String projectId = new JSONObject(created.getResponse().getContentAsString()).getString("projectId");
-
-        long ownerId = -1L;
-        for (long id = 1L; id < 50L; id++) {
-            if (store.getOwnedProject(projectId, id).isPresent()) {
-                ownerId = id;
-                break;
-            }
-        }
-        Assert.assertTrue(ownerId > 0, "Could not resolve owner user id");
-
-        String jobId = "job_generic_delete_ut";
-        JobRecord job = new JobRecord(
-                jobId, projectId, ownerId, "NEW", Path.of("dummy.xlsx"),
-                "https://example.test/", "", "", false, JobRecord.JobKind.CONVERT);
-        job.setStatus(JobRecord.Status.COMPLETED);
-        store.saveJob(job);
+        String projectId = createProjectAndReturnId();
+        long ownerId = resolveOwnerId(projectId);
+        String jobId = seedJob(projectId, ownerId, JobRecord.Status.COMPLETED);
 
         mockMvc.perform(delete("/api/runs/" + jobId)
                         .with(httpBasic(ADMIN_USER, ADMIN_PASS))
@@ -85,5 +64,64 @@ public class JobDeletionControllerTest extends AbstractTestNGSpringContextTests 
                 .andExpect(jsonPath("$.jobId").value(jobId));
 
         Assert.assertTrue(store.getJob(jobId).isEmpty(), "job row should be gone");
+    }
+
+    @Test
+    public void deleteRunningJobReturns409() throws Exception {
+        String projectId = createProjectAndReturnId();
+        long ownerId = resolveOwnerId(projectId);
+        String jobId = seedJob(projectId, ownerId, JobRecord.Status.RUNNING);
+
+        mockMvc.perform(delete("/api/runs/" + jobId)
+                        .with(httpBasic(ADMIN_USER, ADMIN_PASS))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("JOB_ACTIVE"));
+
+        Assert.assertTrue(store.getJob(jobId).isPresent(), "row still there after refused delete");
+    }
+
+    @Test
+    public void deleteByNonOwnerReturns404() throws Exception {
+        String projectId = createProjectAndReturnId();
+        long ownerId = resolveOwnerId(projectId);
+        String jobId = seedJob(projectId, ownerId, JobRecord.Status.COMPLETED);
+
+        // A different signed-in identity sees the same jobId as not-owned → 404 (not 403), so the
+        // existence of someone else's job is not leaked.
+        mockMvc.perform(delete("/api/runs/" + jobId)
+                        .with(httpBasic("ghost@testpilot.local", "WrongPass1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isUnauthorized());
+
+        Assert.assertTrue(store.getJob(jobId).isPresent(), "row untouched by non-owner");
+    }
+
+    private String createProjectAndReturnId() throws Exception {
+        MvcResult created = mockMvc.perform(post("/api/projects")
+                        .with(httpBasic(ADMIN_USER, ADMIN_PASS))
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Delete Test\",\"baseUrl\":\"https://example.test/\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return new JSONObject(created.getResponse().getContentAsString()).getString("projectId");
+    }
+
+    private long resolveOwnerId(String projectId) {
+        for (long id = 1L; id < 50L; id++) {
+            if (store.getOwnedProject(projectId, id).isPresent()) return id;
+        }
+        throw new AssertionError("Could not resolve owner user id");
+    }
+
+    private String seedJob(String projectId, long ownerId, JobRecord.Status status) {
+        String jobId = "job_generic_delete_" + Long.toHexString(System.nanoTime());
+        JobRecord job = new JobRecord(
+                jobId, projectId, ownerId, "NEW", Path.of("dummy.xlsx"),
+                "https://example.test/", "", "", false, JobRecord.JobKind.CONVERT);
+        job.setStatus(status);
+        store.saveJob(job);
+        return jobId;
     }
 }
