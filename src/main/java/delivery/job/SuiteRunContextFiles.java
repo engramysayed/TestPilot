@@ -41,7 +41,7 @@ public final class SuiteRunContextFiles {
                 .put("alertChannelId", nz(ctx.alertChannelId()))
                 .put("alertMinSeverity", nz(ctx.alertMinSeverity()))
                 .put("monitorTarget", nz(ctx.monitorTarget()));
-        Files.writeString(path(executeRunDir), o.toString(2), StandardCharsets.UTF_8);
+        delivery.store.Atomic.writeString(path(executeRunDir), o.toString(2), StandardCharsets.UTF_8);
     }
 
     public static Optional<SuiteRunContext> read(Path executeRunDir) {

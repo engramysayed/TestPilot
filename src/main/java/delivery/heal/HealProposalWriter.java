@@ -73,7 +73,7 @@ public final class HealProposalWriter {
             Path dir = projectRoot.resolve("heal-proposals");
             Files.createDirectories(dir);
             Path file = dir.resolve(id + ".json");
-            Files.writeString(file, toJson(proposal).toString(2));
+            delivery.store.Atomic.writeString(file, toJson(proposal).toString(2), java.nio.charset.StandardCharsets.UTF_8);
             LogsManager.info("PHASE2_HEAL_PROPOSAL: wrote " + file.getFileName());
             return file;
         } catch (Exception e) {

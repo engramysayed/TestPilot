@@ -26,7 +26,8 @@ public class TcDraftStore {
     public void write(TcDraft draft) throws Exception {
         Files.createDirectories(irDir);
         Path file = irDir.resolve(TcIdentity.storageKey(draft.tcId()) + ".json");
-        Files.writeString(file, toJson(draft).toString(2), StandardCharsets.UTF_8);
+        // Atomic write: crash mid-write cannot leave a truncated draft that fails to parse later.
+        delivery.store.Atomic.writeString(file, toJson(draft).toString(2), StandardCharsets.UTF_8);
         Path legacy = irDir.resolve(safeFileName(draft.tcId()) + ".json");
         if (!legacy.equals(file) && Files.isRegularFile(legacy)) {
             TcDraft existing = fromJson(new JSONObject(Files.readString(legacy, StandardCharsets.UTF_8)));
