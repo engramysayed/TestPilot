@@ -219,15 +219,31 @@ public class ProjectStore {
         if (!Files.exists(root)) {
             return;
         }
-        Files.walk(root)
-                .sorted((a, b) -> b.compareTo(a))
-                .forEach(p -> {
-                    try {
-                        Files.deleteIfExists(p);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+        // walkFileTree does NOT follow symlinks by default; Files.walk DOES. A malicious
+        // symlink inside the tree would otherwise escape when the run is purged.
+        Files.walkFileTree(root, new java.nio.file.SimpleFileVisitor<Path>() {
+            @Override
+            public java.nio.file.FileVisitResult visitFile(Path file,
+                    java.nio.file.attribute.BasicFileAttributes attrs) throws java.io.IOException {
+                Files.deleteIfExists(file);
+                return java.nio.file.FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public java.nio.file.FileVisitResult visitFileFailed(Path file, java.io.IOException exc)
+                    throws java.io.IOException {
+                // broken symlinks land here; still unlink the entry itself
+                Files.deleteIfExists(file);
+                return java.nio.file.FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public java.nio.file.FileVisitResult postVisitDirectory(Path dir, java.io.IOException exc)
+                    throws java.io.IOException {
+                Files.deleteIfExists(dir);
+                return java.nio.file.FileVisitResult.CONTINUE;
+            }
+        });
     }
 
     private static String sha256(Path file) {
