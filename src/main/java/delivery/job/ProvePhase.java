@@ -445,11 +445,11 @@ public class ProvePhase {
                     openFreshPage(driverFactory, request.baseUrl());
                 } catch (Exception retry) {
                     return todoDraft(tc, List.of(), false, List.of(),
-                            "Browser session died: " + retry.getMessage(), "", 0, "");
+                            scrubReason("Browser session died: " + retry.getMessage(), request), "", 0, "");
                 }
             } else {
                 return todoDraft(tc, List.of(), false, List.of(),
-                        "Browser navigate failed: " + e.getMessage(), "", 0, "");
+                        scrubReason("Browser navigate failed: " + e.getMessage(), request), "", 0, "");
             }
         }
 
@@ -520,7 +520,7 @@ public class ProvePhase {
                                 : loginOutcome.evidenceDir().toString();
                         return todoDraft(tc, List.of(), true,
                                 scrubSecrets(stampLoginNames(loginSteps, loginFormUrl), request),
-                                "LOGIN_FAILED: " + loginOutcome.failureReason() + " | " + e.getMessage(),
+                                scrubReason("LOGIN_FAILED: " + loginOutcome.failureReason() + " | " + e.getMessage(), request),
                                 ev, 0, currentUrl(driverFactory))
                                 .withLoginFormUrl(loginFormUrl);
                     }
@@ -533,12 +533,13 @@ public class ProvePhase {
                 }
             } catch (IllegalStateException e) {
                 String ev = execution.captureFailureEvidence(tc.tcId(), evidence);
-                return todoDraft(tc, List.of(), true, loginSteps, e.getMessage(), ev, 0, currentUrl(driverFactory))
+                return todoDraft(tc, List.of(), true, loginSteps,
+                        scrubReason(e.getMessage(), request), ev, 0, currentUrl(driverFactory))
                         .withLoginFormUrl(loginFormUrl);
             } catch (Exception e) {
                 String ev = execution.captureFailureEvidence(tc.tcId(), evidence);
                 return todoDraft(tc, List.of(), true, loginSteps,
-                        "Login prelude error: " + e.getMessage(), ev, 0, currentUrl(driverFactory))
+                        scrubReason("Login prelude error: " + e.getMessage(), request), ev, 0, currentUrl(driverFactory))
                         .withLoginFormUrl(loginFormUrl);
             }
         }
@@ -2245,6 +2246,23 @@ public class ProvePhase {
                 steps == null ? List.of() : steps,
                 loginSteps == null ? List.of() : loginSteps,
                 needsLogin, 0, "", reason, evidenceDir, retries, url);
+    }
+
+    /**
+     * Scrub job credentials out of any text destined for todoDraft.reason, worker logs, or
+     * status messages. Exception.getMessage() from the driver stack sometimes includes typed
+     * values; without this the password can land in todoDraft.reason unscrubbed.
+     */
+    static String scrubReason(String text, ConversionJobRequest request) {
+        if (text == null || text.isEmpty() || request == null) {
+            return text == null ? "" : text;
+        }
+        String user = request.username() == null ? "" : request.username();
+        String pass = request.password() == null ? "" : request.password();
+        if (user.isBlank() && (pass == null || pass.isEmpty())) {
+            return text;
+        }
+        return delivery.privacy.SecretSanitizer.scrubText(text, java.util.List.of(user, pass));
     }
 
     /** Replace job username/password literals with ${TARGET_*} for IR and emit. */
