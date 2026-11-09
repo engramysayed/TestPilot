@@ -39,6 +39,10 @@ public class AdminSeedRunner implements ApplicationRunner {
             log.warn("Admin seed skipped — set delivery.admin-email and delivery.admin-password");
             return;
         }
+        if ("please-change".equalsIgnoreCase(password.trim())) {
+            log.warn("Admin seed skipped — KEEL_ADMIN_PASSWORD still 'please-change'. Set a real value before first boot.");
+            return;
+        }
         if (users.existsByEmailIgnoreCase(email.trim())) {
             return;
         }
