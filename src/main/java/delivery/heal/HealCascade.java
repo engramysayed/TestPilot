@@ -294,33 +294,22 @@ public class HealCascade {
             List<FailedLocator> failed,
             CandidateLivenessProbe probe
     ) {
-        if (intent == null) {
-            return HealResult.fail("HEAL_EXHAUSTED: missing intent or HTML");
-        }
-        if (bindQuality != null) {
-            bindQuality.healEntered++;
+        // Early guard — audit C3 #30 first extracted helper. Behaviour unchanged.
+        HealResult guardReject = heal_earlyGuards(tcId, intent, slimHtml, failureReason,
+                failed == null ? List.of() : failed);
+        if (guardReject != null) {
+            return guardReject;
         }
         List<String> priorSteps = priorStepSummaries == null ? List.of() : priorStepSummaries;
         List<ProvenStep> spentSteps = spent == null ? List.of() : spent;
         List<FailedLocator> failedLocators = failed == null ? List.of() : failed;
-        // AE-L3: init LoopGuard + guardBefore before empty-HTML invent (no silent A10 bypass).
-        if (intentGuard == null && loopGuardsEnabled()) {
-            intentGuard = LoopGuard.of(LoopGuard.Loop.HEAL);
-        }
-        boolean secret = HealPromptSafety.isSecretIntent(intent);
         SettlePolicy.SideEffects se = HealPromptSafety.sideEffectsOf(intent);
-        List<String> banned = HealPromptSafety.formatBanned(failedLocators);
-        String htmlForSafety = slimHtml == null ? "" : slimHtml;
-        boolean crash = HealPromptSafety.looksLikeCrash(failureReason, htmlForSafety);
-        String safetyText = HealPromptSafety.safetyBlock(secret, se, banned, crash);
-        lastSafety = new CursorHealClient.HealSafety(secret, se.wire, banned, crash, safetyText);
-        if (crash) {
-            LogsManager.info("HEAL_ABORT: crash/error page detected for " + tcId);
-            return HealResult.fail("HEAL_ABORTED: crash or fatal error page — heal skipped");
-        }
-        LoopGuard.Verdict pre = guardBefore("heal:" + (intent.text() == null ? "" : intent.text()));
-        if (pre != null && pre.stop()) {
-            return HealResult.fail("HEAL_STOPPED: " + pre.reason());
+        if (slimHtml == null || slimHtml.isBlank()) {
+            HealResult invented = tryInvent(tcId, intent, "", pngOrNull,
+                    failureReason, priorSteps, "empty_html", screenshotPathOrNull, allowInvent, se);
+            return invented != null
+                    ? invented
+                    : HealResult.fail("HEAL_EXHAUSTED: missing intent or HTML");
         }
         if (slimHtml == null || slimHtml.isBlank()) {
             HealResult invented = tryInvent(tcId, intent, "", pngOrNull,
@@ -333,6 +322,7 @@ public class HealCascade {
         if (!failedLocators.isEmpty()) {
             reason = reason + bannedBlock(failedLocators);
         }
+        String safetyText = lastSafety == null ? "" : lastSafety.safetyBlock();
         reason = safetyText + "\n" + reason;
         List<DomCandidate> candidates = DomCandidateExtractor.extract(slimHtml);
         if (StepIntentBinder.spendsMustAvoidPriorFills(intent)) {
@@ -575,6 +565,47 @@ public class HealCascade {
             }
         }
         return out;
+    }
+
+    /**
+     * Audit C3 #30 — first extracted helper from the 256-line heal() body.
+     * Runs the cheap reject checks (null intent, bindQuality metric bump, LoopGuard init, safety
+     * side-effects, crash-page abort, LoopGuard pre-check) in one place. Returns a HealResult to
+     * stop immediately, or null to continue the main heal flow.
+     * Behaviour is identical to the inline version it replaced.
+     */
+    private HealResult heal_earlyGuards(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String slimHtml,
+            String failureReason,
+            List<FailedLocator> failedLocators
+    ) {
+        if (intent == null) {
+            return HealResult.fail("HEAL_EXHAUSTED: missing intent or HTML");
+        }
+        if (bindQuality != null) {
+            bindQuality.healEntered++;
+        }
+        if (intentGuard == null && loopGuardsEnabled()) {
+            intentGuard = LoopGuard.of(LoopGuard.Loop.HEAL);
+        }
+        boolean secret = HealPromptSafety.isSecretIntent(intent);
+        SettlePolicy.SideEffects se = HealPromptSafety.sideEffectsOf(intent);
+        List<String> banned = HealPromptSafety.formatBanned(failedLocators);
+        String htmlForSafety = slimHtml == null ? "" : slimHtml;
+        boolean crash = HealPromptSafety.looksLikeCrash(failureReason, htmlForSafety);
+        String safetyText = HealPromptSafety.safetyBlock(secret, se, banned, crash);
+        lastSafety = new CursorHealClient.HealSafety(secret, se.wire, banned, crash, safetyText);
+        if (crash) {
+            LogsManager.info("HEAL_ABORT: crash/error page detected for " + tcId);
+            return HealResult.fail("HEAL_ABORTED: crash or fatal error page — heal skipped");
+        }
+        LoopGuard.Verdict pre = guardBefore("heal:" + (intent.text() == null ? "" : intent.text()));
+        if (pre != null && pre.stop()) {
+            return HealResult.fail("HEAL_STOPPED: " + pre.reason());
+        }
+        return null;
     }
 
     private static String bannedBlock(List<FailedLocator> failed) {
