@@ -21,9 +21,15 @@ public class ProductionSafetyRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        // 'product' is the real-deployment profile start-portal.cmd uses by default. Treat it as
+        // production for safety-guard purposes so a blank DB password or default admin password
+        // refuses to boot on an operator's machine, not only in a distant 'production' profile
+        // that nobody actually uses.
         boolean production = Boolean.parseBoolean(env.getProperty("delivery.install.production", "false"))
                 || Arrays.stream(env.getActiveProfiles())
-                .anyMatch(p -> "prod".equalsIgnoreCase(p) || "production".equalsIgnoreCase(p));
+                .anyMatch(p -> "prod".equalsIgnoreCase(p)
+                        || "production".equalsIgnoreCase(p)
+                        || "product".equalsIgnoreCase(p));
         ProductionSafetyGuard.requireSafe(new ProductionSafetyGuard.Config(
                 production,
                 env.getProperty("delivery.admin-password", ""),
