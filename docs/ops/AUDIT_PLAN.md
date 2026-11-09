@@ -505,6 +505,16 @@ Follow `ExecuteRunControllerTest` for setup patterns.
 
 Order to attack them in: **C1 → C2 → C3 → C4 → C5**. Each is behaviour-preserving.
 
+**First-pass commits landed** — each on its own branch, non-breaking "target shape added alongside" change. Follow-up work per item spelled out under each.
+
+| Item | Branch | Commit | First pass | Follow-up weekend work |
+|---|---|---|---|---|
+| C1 #28 | `audit-c1-healcascade` | `7cd9e32` | `HealCall` record + `heal(HealCall)` entry, 5 short overloads `@Deprecated` | Migrate ProvePhase (4 call sites) + HealCascadeTest/HealCascadeLoopGuardTest/CursorSolveTest to `HealCall`; delete the 5 deprecated overloads. |
+| C2 #29 | `audit-c2-bindrequest` | `4822ee3` | `BindRequest` record + `bind(BindRequest)` entry, 2 short overloads `@Deprecated` | Migrate `bind(tc,cands)` and `bind(tc,cands,preferOnTie)` call sites; delete the 2 deprecated overloads. |
+| C3 #30 | `audit-c3-mega-methods` | `1ae087e` | `heal_earlyGuards()` helper extracted from HealCascade.heal() | Extract tryVision / tryCursor / tryInvent / tryFallback from heal(); then split attemptIntentWithRetry (435L) and bindSingleInternal (263L). |
+| C4 #10 | `audit-c4-portalstore-split` | `b194b2a` | `PortalStoreSplitPlan` javadoc anchor in `delivery.portal.service.store` | Execute the 3-phase plan: (1) split into 5 sub-stores + keep facade, (2) migrate 105 callers per-controller, (3) delete facade. |
+| C5 #14 | `audit-c5-abstractworker` | `50353d3` | `AbstractJobWorker` scaffold, no worker migrated | Port one worker per commit to extend `AbstractJobWorker` (5 workers = 5 follow-up commits). |
+
 ### 🔴 C1 — Collapse `HealCascade` constructor + heal() overloads
 **Finding #28**
 **File:** `src/main/java/delivery/heal/HealCascade.java:70-228`
