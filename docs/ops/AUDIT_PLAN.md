@@ -15,10 +15,12 @@
 
 ## Suggested order
 
-1. **Batch A** (half an hour, one commit) → ships 6 small wins.
-2. **Batch B** in the order listed — stop before a public-facing deploy.
+1. **Batch A** (half an hour, one commit) → ships 6 small wins. ✅ done (commit a4939b3)
+2. **Batch B** in the order listed — stop before a public-facing deploy. ✅ done (B1-B15, commits 4adebcf..cb7df5e; B7 #20 was already handled)
 3. **Batch C** one item per month — no behaviour change, each on its own branch.
 4. **Batch D** whenever.
+
+**Batch B landed commits:** 4adebcf (B1), eb209e2 (B2), 66dbcd6 (B3), 20f49a6 (B4), 897544e (B5), 8a9ab25 (B6), 3c5677e (B8), 5ea85cf (B9), af3a82e (B10+B11), b0b4ecf (B12), 5073097 (B13), ea123eb (B14), cb7df5e (B15).
 
 ---
 
