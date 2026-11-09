@@ -2261,11 +2261,22 @@ public class ProvePhase {
         for (ProvenStep s : steps) {
             String v = s.value() == null ? "" : s.value();
             boolean secret = s.secret();
+            // Exact-match first keeps the ${TARGET_*} placeholder shape for codegen round-trip.
             if (!user.isBlank() && user.equals(v)) {
                 v = "${TARGET_USERNAME}";
             } else if (pass != null && !pass.isEmpty() && pass.equals(v)) {
                 v = "${TARGET_PASSWORD}";
                 secret = true; // r2: value comes from a credential
+            } else {
+                // Partial / wrapped match (whitespace padding, URL-encoded, concatenated into a
+                // larger value). SecretSanitizer replaces every occurrence with MASK so it never
+                // lands in IR / emit / status output.
+                String scrubbed = delivery.privacy.SecretSanitizer.scrubText(
+                        v, java.util.List.of(user, pass));
+                if (!scrubbed.equals(v)) {
+                    v = scrubbed;
+                    secret = true;
+                }
             }
             secret = secret || delivery.ir.SecretStep.isSecretValue(v, java.util.List.of());
             out.add(new ProvenStep(
