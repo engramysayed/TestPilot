@@ -177,10 +177,38 @@ public final class StepIntentBinder {
         return p;
     }
 
+    /**
+     * One-shot bind input; prefer this over the overload cascade for new callers.
+     * Use {@link BindRequest#of(ManualTestCase, List)} for the minimal case.
+     */
+    public record BindRequest(
+            ManualTestCase tc,
+            List<DomCandidate> candidates,
+            List<String> preferOnTie,
+            String slimHtml
+    ) {
+        public BindRequest {
+            preferOnTie = preferOnTie == null ? List.of() : preferOnTie;
+        }
+
+        public static BindRequest of(ManualTestCase tc, List<DomCandidate> candidates) {
+            return new BindRequest(tc, candidates, List.of(), null);
+        }
+    }
+
+    /** Preferred entry point: pass a {@link BindRequest} record. */
+    public static BindResult bind(BindRequest request) {
+        return bind(request.tc(), request.candidates(), request.preferOnTie(), request.slimHtml());
+    }
+
+    /** @deprecated prefer {@link #bind(BindRequest)}. */
+    @Deprecated
     public static BindResult bind(ManualTestCase tc, List<DomCandidate> candidates) {
         return bind(tc, candidates, List.of());
     }
 
+    /** @deprecated prefer {@link #bind(BindRequest)}. */
+    @Deprecated
     public static BindResult bind(ManualTestCase tc, List<DomCandidate> candidates, List<String> preferOnTie) {
         return bind(tc, candidates, preferOnTie, null);
     }
