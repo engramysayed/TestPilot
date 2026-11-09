@@ -50,6 +50,23 @@ public final class MobileRunnerAgent {
             System.err.println("KEEL_RUNNER_TOKEN is required (enroll a runner on the project's Runners tab)");
             System.exit(2);
         }
+        // Plain http to a non-loopback portal would send the bearer in clear text.
+        try {
+            java.net.URI uri = java.net.URI.create(portal);
+            if ("http".equalsIgnoreCase(uri.getScheme())) {
+                String host = uri.getHost() == null ? "" : uri.getHost();
+                boolean loopback = host.equals("127.0.0.1") || host.equals("localhost")
+                        || host.equals("::1") || host.equals("[::1]");
+                if (!loopback) {
+                    System.err.println("KEEL_PORTAL_URL points off-host (" + host
+                            + ") over plain http; use https.");
+                    System.exit(2);
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            System.err.println("KEEL_PORTAL_URL is not a valid URL: " + portal);
+            System.exit(2);
+        }
         boolean once = List.of(args).contains("--once");
         MobileRunnerAgent agent = new MobileRunnerAgent(portal, token);
         do {

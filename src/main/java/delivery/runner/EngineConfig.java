@@ -54,6 +54,20 @@ public record EngineConfig(URI portalUrl, String token, Path workDir, Path templ
         if (!"http".equals(uri.getScheme()) && !"https".equals(uri.getScheme())) {
             throw new IllegalStateException("ENGINE_CONFIG_REFUSED: keel.engine.portal-url must be http(s)");
         }
+        // Plain HTTP to a non-loopback portal would send the tp_run_ bearer in clear text.
+        // Loopback stays legal (same-machine 0a install over http://127.0.0.1:8080).
+        if ("http".equals(uri.getScheme())) {
+            String host = uri.getHost() == null ? "" : uri.getHost();
+            boolean loopback = switch (host) {
+                case "127.0.0.1", "localhost", "::1", "[::1]" -> true;
+                default -> false;
+            };
+            if (!loopback) {
+                throw new IllegalStateException(
+                        "ENGINE_CONFIG_REFUSED: keel.engine.portal-url points off-host (" + host
+                                + ") over plain http; use https to avoid leaking the runner bearer");
+            }
+        }
         // B11: proxy wiring, off unless keel.engine.proxy.enabled=true (KEEL_ENGINE_PROXY_ENABLED)
         EngineProxy proxy = EngineProxy.from(k -> pick(kv, k, env,
                 "KEEL_ENGINE_PROXY_" + k.substring(EngineProxy.PREFIX.length()).replace('-', '_').toUpperCase(Locale.ROOT),
