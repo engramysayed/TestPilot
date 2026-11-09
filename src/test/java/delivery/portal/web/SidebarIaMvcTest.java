@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "delivery.emit-compile-check=false",
         "delivery.sidebar.ia-enabled=true",
         "delivery.roles.ui-enabled=true",
+        "delivery.credits.enabled=true",
         "delivery.store-root=./target/test-delivery-store-sidebariamvc",
         "delivery.work-dir=./target/test-delivery-work-sidebariamvc"
 })
