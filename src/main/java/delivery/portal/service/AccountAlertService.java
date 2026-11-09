@@ -86,11 +86,29 @@ public class AccountAlertService {
         return out;
     }
 
+    // Per-user cooldown so a user rapid-clicking Save doesn't spam SMTP/Telegram and get the
+    // Gmail sender rate-limited. 60s is long enough to avoid double-sends on accidental
+    // double-click, short enough that intentional re-tests still work.
+    private static final java.time.Duration CONFIRMATION_COOLDOWN = java.time.Duration.ofSeconds(60);
+    private final java.util.concurrent.ConcurrentHashMap<Long, java.time.Instant> lastConfirmAt
+            = new java.util.concurrent.ConcurrentHashMap<>();
+
     @Transactional
     public Map<String, Object> save(Long userId, Map<String, Object> body) {
         AttentionAlertSender.Prefs prefs = AttentionAlertSender.Prefs.fromRequest(body);
-        AttentionAlertSender.Result result = sender.sendEach(
-                prefs, AttentionAlertSender.CONFIRMATION, config(), transport);
+        java.time.Instant now = java.time.Instant.now();
+        java.time.Instant last = lastConfirmAt.get(userId);
+        boolean inCooldown = last != null && java.time.Duration.between(last, now).compareTo(CONFIRMATION_COOLDOWN) < 0;
+        AttentionAlertSender.Result result;
+        if (inCooldown) {
+            // Skip the live send inside the cooldown, but still save the prefs below.
+            result = new AttentionAlertSender.Result(java.util.List.of(), java.util.List.of());
+        } else {
+            result = sender.sendEach(prefs, AttentionAlertSender.CONFIRMATION, config(), transport);
+            if (result.ok()) {
+                lastConfirmAt.put(userId, now);
+            }
+        }
         if (!result.ok()) {
             throw new IllegalArgumentException(String.join(" ", result.errors()));
         }
