@@ -69,6 +69,9 @@ public class EngineAgent {
         this.scheduleClaim = scheduleClaim == null ? ScheduleClaimPoller.fromEnv(config) : scheduleClaim;
     }
 
+    /** Shutdown flag flipped by the JVM shutdown hook so the run loop can drain cleanly. */
+    private static volatile boolean shuttingDown = false;
+
     public static void main(String[] args) throws Exception {
         EngineConfig config;
         try {
@@ -80,12 +83,18 @@ public class EngineAgent {
         }
         config.proxy().publish(System.getProperties(), config.portalUrl()); // B11, no-op unless enabled
         System.out.println("Keel engine " + config);
+        Thread mainThread = Thread.currentThread();
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            shuttingDown = true;
+            System.out.println("Keel engine: shutdown signal — draining");
+            mainThread.interrupt();
+        }, "keel-engine-shutdown"));
         new EngineAgent(config).runLoop();
     }
 
     public void runLoop() throws Exception {
         Files.createDirectories(config.workDir());
-        while (!Thread.currentThread().isInterrupted()) {
+        while (!Thread.currentThread().isInterrupted() && !shuttingDown) {
             try {
                 if (runOnce() == 0) {
                     Thread.sleep(config.pollMillis());
@@ -94,7 +103,7 @@ public class EngineAgent {
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
                 System.err.println("engine cycle: " + e.getMessage());
-                Thread.sleep(config.pollMillis());
+                try { Thread.sleep(config.pollMillis()); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
             }
         }
     }
