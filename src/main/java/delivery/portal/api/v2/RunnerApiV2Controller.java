@@ -59,6 +59,7 @@ public class RunnerApiV2Controller {
     public RunnerApiV2Controller(PortalStore store, RunnerFencing fencing,
                                  MobileExecuteResultService mobileResults,
                                  MobileProperties mobileProperties,
+                                 delivery.portal.DeliveryPortalProperties portalProperties,
                                  @Value("${keel.runner.v2.chunk-max-bytes:8388608}") long chunkMaxBytes,
                                  @Value("${keel.runner.v2.chunk-dir:}") String chunkDir) {
         this.store = store;
@@ -66,8 +67,35 @@ public class RunnerApiV2Controller {
         this.mobileResults = mobileResults;
         this.mobileProperties = mobileProperties;
         this.chunkMaxBytes = chunkMaxBytes;
+        // Stage chunks under the portal's own store root by default. /tmp (java.io.tmpdir on
+        // Linux) is world-readable; another local user could tail artifact bytes mid-upload.
         this.chunkRoot = chunkDir == null || chunkDir.isBlank()
-                ? Path.of(System.getProperty("java.io.tmpdir"), "keel-v2-chunks") : Path.of(chunkDir);
+                ? Path.of(portalProperties.getStoreRoot()).resolve("chunks")
+                : Path.of(chunkDir);
+    }
+
+    /**
+     * Sweep abandoned chunk uploads. If a runner uploads parts 0..N-2 and never sends
+     * last=true, the .part files would otherwise stay forever. Runs hourly.
+     */
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 3_600_000L)
+    public void sweepStaleChunks() throws java.io.IOException {
+        if (!Files.isDirectory(chunkRoot)) {
+            return;
+        }
+        Instant cutoff = Instant.now().minus(java.time.Duration.ofHours(6));
+        try (Stream<Path> stream = Files.walk(chunkRoot, 3)) {
+            stream.filter(Files::isDirectory)
+                    .filter(p -> !p.equals(chunkRoot))
+                    .filter(p -> {
+                        try {
+                            return Files.getLastModifiedTime(p).toInstant().isBefore(cutoff);
+                        } catch (java.io.IOException e) {
+                            return false;
+                        }
+                    })
+                    .forEach(RunnerApiV2Controller::deleteTree);
+        }
     }
 
     @PostMapping("/claim")
