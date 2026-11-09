@@ -41,6 +41,11 @@ Live list; add new findings at the bottom, promote through batches as they land.
 | 23 | Non-atomic file writes (`TcDraftStore.write`, `HealProposalWriter`, `SuiteRunContextFiles.write`) | multiple | 🟡 |
 | 24 | V2 runner chunk uploads leak: `.part` files stay forever if the final `last=true` never arrives | `src/main/java/delivery/portal/api/v2/RunnerApiV2Controller.java:207-226` | 🟡 |
 | 25 | V2 runner chunk root defaults to `java.io.tmpdir/keel-v2-chunks` — world-readable on Linux | `src/main/java/delivery/portal/api/v2/RunnerApiV2Controller.java:69-70` | 🟡 |
+| 26 | `scrubSecrets` uses `equals` match — misses the password wrapped with whitespace, URL-encoded, or concatenated into a longer value | `src/main/java/delivery/job/ProvePhase.java:2251` | 🟡 |
+| 27 | Failure-reason and `message` strings are never scrubbed — exception text that ever carries the typed password lands in `todoDraft.reason` unscrubbed | `src/main/java/delivery/job/ProvePhase.java:538, 1551` | 🟡 |
+| 28 | `HealCascade` has **6 constructor overloads + 7 `heal()` overloads** — pure boilerplate. New parameter = 7 touch points | `src/main/java/delivery/heal/HealCascade.java:70-228` | 🔴 |
+| 29 | `StepIntentBinder` has 6 public `bind*` overloads chaining to one `bindSingleInternal` | `src/main/java/delivery/authoring/StepIntentBinder.java:180-250` | 🔴 |
+| 30 | Three single methods over 250 lines each: `ProvePhase.attemptIntentWithRetry` (435L), `HealCascade.heal` 7-param (256L), `StepIntentBinder.bindSingleInternal` (263L). Any one path through them is impossible to test in isolation | multiple | 🔴 |
 
 ## Suggested order
 
@@ -48,10 +53,10 @@ Live list; add new findings at the bottom, promote through batches as they land.
 #4, #6, #9, #16, #18, #22. Around 15 lines total.
 
 ### 🟡 Batch B — security + correctness, each its own commit
-#1 → #2 → #3 → #7 → #13 → #19 → #20 → #21 → #23 → #24 → #25 → #5 → #8. Each 30 min to 2 hours; tests required for #2, #7, #20, #23, #24.
+#1 → #2 → #3 → #7 → #13 → #19 → #20 → #21 → #23 → #24 → #25 → **#26** → **#27** → #5 → #8. Each 30 min to 2 hours; tests required for #2, #7, #20, #23, #24, #26, #27.
 
 ### 🔴 Batch C — refactors, one branch per item
-#10 PortalStore split → #14 AbstractJobWorker → #15 StepIntentBinder/ProvePhase split.
+#10 PortalStore split → #14 AbstractJobWorker → #15 + **#30** StepIntentBinder/ProvePhase/HealCascade split (same work, add HealCascade.heal 256-line body) → **#28** HealCascade constructor+heal overloads collapsed to Config/Builder (smallest of the C items, half a day, do first) → **#29** StepIntentBinder bind overloads collapsed to a BindRequest record.
 
 ### ⚪ Batch D — housekeeping
 #11 triage failing tests after live-smoke exclude lands. #17 only if real users hit the 20MB cap.
