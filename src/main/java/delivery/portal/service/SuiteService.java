@@ -204,9 +204,18 @@ public class SuiteService {
     }
 
     public List<Map<String, Object>> listDueForAllProjects(int withinSeconds) throws IOException {
+        return collectDue(store.listProjectsForScheduleDispatch(), withinSeconds);
+    }
+
+    /** Runner-authed variant: scope to the runner's own tenant. */
+    public List<Map<String, Object>> listDueForAllProjectsOfTenant(String tenantId, int withinSeconds) throws IOException {
+        return collectDue(store.listProjectsForScheduleDispatchByTenant(tenantId), withinSeconds);
+    }
+
+    private List<Map<String, Object>> collectDue(List<delivery.portal.model.ProjectRecord> projects, int withinSeconds) throws IOException {
         Instant now = Instant.now();
         List<Map<String, Object>> due = new ArrayList<>();
-        for (var project : store.listProjectsForScheduleDispatch()) {
+        for (var project : projects) {
             if (project.isArchived()) {
                 continue;
             }

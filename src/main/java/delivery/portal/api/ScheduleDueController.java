@@ -32,10 +32,12 @@ public class ScheduleDueController {
     ) {
         int within = Math.max(0, withinSeconds);
         try {
-            // A runner-authenticated call (engine poller) spans every project it can dispatch for.
+            // A runner-authenticated call (engine poller) spans every project the runner can
+            // dispatch for — scoped to its own tenant so tenant A never sees tenant B.
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth instanceof PrivateRunnerFilter.RunnerToken) {
-                return ResponseEntity.ok(suites.listDueForAllProjects(within));
+            if (auth instanceof PrivateRunnerFilter.RunnerToken runnerToken) {
+                String tenantId = runnerToken.enrollment().tenant().value();
+                return ResponseEntity.ok(suites.listDueForAllProjectsOfTenant(tenantId, within));
             }
             Long userId = currentUser.requireUserId();
             return ResponseEntity.ok(suites.listDue(userId, within));

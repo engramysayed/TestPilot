@@ -365,6 +365,21 @@ public class PortalStore {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Runner-authed schedule dispatch: non-archived projects in the runner's own tenant only.
+     * A runner enrolled in tenant A must not see tenant B's suites.
+     */
+    public List<ProjectRecord> listProjectsForScheduleDispatchByTenant(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return java.util.List.of();
+        }
+        return projectRepository.findAll().stream()
+                .filter(p -> !p.isArchived())
+                .filter(p -> tenantId.equals(p.getTenantId()))
+                .map(this::toRecord)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public Optional<ProjectRecord> updateOwnedProject(String projectId, Long ownerUserId, PatchProjectRequest patch) {
         Optional<ProjectEntity> owned = projectRepository.findByProjectId(projectId)
