@@ -87,7 +87,7 @@ public class AdminPromptsApiTest extends AbstractTestNGSpringContextTests {
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray())
-                .andExpect(jsonPath("$.promptsVersion").value("2026.11.02"));
+                .andExpect(jsonPath("$.promptsVersion").value("2026.11.07"));
 
         mockMvc.perform(get("/api/admin/prompts/heal/pick")
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))

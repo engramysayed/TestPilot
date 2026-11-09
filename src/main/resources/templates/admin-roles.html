@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Roles')}"></th:block>
 </head>
@@ -10,8 +10,8 @@
 <main class="shell keel-page" th:attr="data-roles-ui=${rolesUiEnabled} ?: true">
     <div class="page-title">
         <div>
-            <h1>Roles &amp; permissions</h1>
-            <p class="lede">Create custom roles and choose what each role can do. Approving a user still happens on Users — pick a role there every time.</p>
+            <h1 th:text="#{page.admin-roles.title}">Roles &amp; permissions</h1>
+            <p class="lede" th:text="#{page.admin-roles.lede}">Create custom roles and choose what each role can do. Approving a user still happens on Users — pick a role there every time.</p>
         </div>
         <button type="button" class="button primary" id="btn-new-role">New role</button>
     </div>
@@ -285,7 +285,7 @@
           if (!ok) return;
           var d = await api('/api/admin/roles/' + encodeURIComponent(role.roleId), { method: 'DELETE' });
           if (!d.ok) {
-            await (window.keelAlert || function(m){alert(typeof m==='string'?m:m.message);return Promise.resolve();})(d.data.message || 'Delete failed');
+            await window.keelAlert(d.data.message || 'Delete failed');
             return;
           }
           loadRoles();

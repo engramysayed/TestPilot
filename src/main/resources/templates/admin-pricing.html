@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Prices')}"></th:block>
 </head>
@@ -10,8 +10,8 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1>Prices</h1>
-            <p class="lede">Set the name, how it is charged, and the price of one unit. A job multiplies that price by how many units it includes, for every account.</p>
+            <h1 th:text="#{page.admin-pricing.title}">Prices</h1>
+            <p class="lede" th:text="#{page.admin-pricing.lede}">Set the name, how it is charged, and the price of one unit. A job multiplies that price by how many units it includes, for every account.</p>
         </div>
     </div>
     <section class="panel">

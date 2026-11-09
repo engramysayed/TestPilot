@@ -92,7 +92,8 @@ public final class SeleniumGroundingBrowser implements GroundingBrowser {
                 /^(ember|ext-gen|ext-comp|yui_|gwt-uid|isc_)[\\w-]*\\d+[\\w-]*$/,
                 /^(mui|radix|headlessui|downshift|react-select|react-aria)[-_].*/,
                 /^(svelte|sc|css|jss|emotion)-[0-9a-z]{5,}$/,
-                /^(js|jsc|mount|u)_[0-9a-z]{1,4}(_[0-9a-z]{1,4})*$/, /^ng-?\\w*-?\\d+$/
+                /^(js|jsc|mount|u)_[0-9a-z]{1,4}(_[0-9a-z]{1,4})*$/, /^ng-?\\w*-?\\d+$/,
+                /^ctl\\d+[_$].*/, /(^|.*[:_])j_id(t|_)?\\d+.*/
               ];
               for (const re of shapes) { if (re.test(lower)) return true; }
               let longest = '';

@@ -18,6 +18,7 @@ import delivery.portal.roles.PermissionEnforcer;
 import delivery.portal.service.CompareJobFiles;
 import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.JobLinkEnricher;
+import delivery.portal.service.JobVisionSummaryService;
 import delivery.portal.service.PortalStore;
 import delivery.portal.service.ProjectCredentialService;
 import delivery.portal.worker.ConversionWorker;
@@ -55,11 +56,12 @@ public class JobController {
     private final GeneratedWorkbookService workbooks;
     private final DeliveryPortalProperties portalProperties;
     private final JobLinkEnricher jobLinks;
+    private final JobVisionSummaryService visionSummary;
 
     public JobController(PortalStore store, ConversionWorker worker, CurrentUserService currentUser,
                          ProjectCredentialService credentials, GeneratedWorkbookService workbooks,
                          DeliveryPortalProperties portalProperties, JobLinkEnricher jobLinks,
-                         PermissionEnforcer permissionEnforcer) {
+                         PermissionEnforcer permissionEnforcer, JobVisionSummaryService visionSummary) {
         this.store = store;
         this.worker = worker;
         this.currentUser = currentUser;
@@ -68,6 +70,7 @@ public class JobController {
         this.portalProperties = portalProperties;
         this.jobLinks = jobLinks;
         this.permissionEnforcer = permissionEnforcer;
+        this.visionSummary = visionSummary;
     }
 
     @PostMapping("/projects/{projectId}/jobs")
@@ -286,6 +289,9 @@ public class JobController {
                         body.putIfAbsent("failureClassUserCorrected", Boolean.FALSE);
                     }
                     jobLinks.enrich(body, job.getJobId(), job.getJobKind(), job.getStatus().name());
+                    if (job.getJobKind() == JobRecord.JobKind.EXECUTE) {
+                        body.put("vision", visionSummary.summarize(job.getProjectId(), job.getJobId()));
+                    }
                     return ResponseEntity.ok(body);
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)

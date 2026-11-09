@@ -163,8 +163,8 @@ git commit -m "Scope the inner preferred hook under the unique menu row."
 **Files:**
 - Modify: `docs/PRODUCT.md` Execute click bullet
 - Modify: `src/main/resources/templates/guide.html` Execute howto item
-- Modify: `CHANGELOG.md`, `docs/ENGINEERING_HANDOFF.md`, `docs/handoff/README.md`, `docs/handoff/2026-10-19-nested-hook-and-quote-heading.md`
-- Create: `docs/handoff/2026-10-19-scoped-nested-hook.md`
+- Modify: `CHANGELOG.md`, `docs/ENGINEERING_HANDOFF.md`, `docs/handoff/README.md`, `docs/history/handoffs/2026-10/2026-10-19-nested-hook-and-quote-heading.md`
+- Create: `docs/history/handoffs/2026-10/2026-10-19-scoped-nested-hook.md`
 - Modify: `D:\priv\testpilot\handoffs\RESUME-2026-10-15.md` (outside git)
 
 - [x] **Step 1: Update copy**

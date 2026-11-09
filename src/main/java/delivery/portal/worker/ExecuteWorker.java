@@ -11,6 +11,8 @@ import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.JobRecord;
 import delivery.portal.service.JobUploadCleanup;
 import delivery.portal.service.PortalStore;
+import delivery.portal.service.RunMemoryJobBootstrap;
+import delivery.portal.tunnel.TunnelJobBaseUrlService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.core.env.Environment;
@@ -28,11 +30,21 @@ public class ExecuteWorker {
     private final DeliveryPortalProperties props;
     private final PortalStore portalStore;
     private final Environment env;
+    private final RunMemoryJobBootstrap runMemory;
+    private final TunnelJobBaseUrlService tunnelBaseUrl;
 
-    public ExecuteWorker(DeliveryPortalProperties props, PortalStore portalStore, Environment env) {
+    public ExecuteWorker(
+            DeliveryPortalProperties props,
+            PortalStore portalStore,
+            Environment env,
+            RunMemoryJobBootstrap runMemory,
+            TunnelJobBaseUrlService tunnelBaseUrl
+    ) {
         this.props = props;
         this.portalStore = portalStore;
         this.env = env;
+        this.runMemory = runMemory;
+        this.tunnelBaseUrl = tunnelBaseUrl;
     }
 
     @Async("executeExecutor")
@@ -53,13 +65,19 @@ public class ExecuteWorker {
                     job, lease.get().attemptId(), delivery.portal.jobs.DurableJobClaim.Stage.BROWSER);
         }
         portalStore.syncJobPersistence(job);
+        runMemory.attachApprovedSnapshot(job.getProjectId(), jobId);
+        // Suite runs: restore the context the starter persisted (it was a ThreadLocal on another thread, so the
+        // run used to execute without alerts or monitor target).
+        java.util.Optional<delivery.job.SuiteRunContext> suiteCtx = suiteContextFor(job);
+        suiteCtx.ifPresent(delivery.job.SuiteRunContext::activate);
         try {
             delivery.net.InstallNetworkBridge.apply(env);
             PrecisionJobConfig precisionConfig = portalStore.precisionConfigForJob(job);
+            String effectiveBaseUrl = tunnelBaseUrl.effectiveBaseUrl(job.getProjectId(), job.getBaseUrl());
             ConversionJobRequest request = new ConversionJobRequest(
                     job.getProjectId(),
                     job.getExcelPath(),
-                    job.getBaseUrl(),
+                    effectiveBaseUrl,
                     job.getUsername(),
                     job.getPassword(),
                     Path.of(props.getWorkDir()),
@@ -124,8 +142,51 @@ public class ExecuteWorker {
                 fail(job, "Execute failed", e);
             }
         } finally {
+            if (suiteCtx.isPresent()) {
+                finishSuiteRun(job, suiteCtx.get());
+                delivery.job.SuiteRunContext.clear();
+            }
             portalStore.clearCancelRequest(jobId);
             JobUploadCleanup.deleteIfTempUpload(job.getExcelPath());
+        }
+    }
+
+    private delivery.portal.service.SuiteService suiteService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSuiteService(delivery.portal.service.SuiteService suiteService) {
+        this.suiteService = suiteService;
+    }
+
+    private java.util.Optional<delivery.job.SuiteRunContext> suiteContextFor(JobRecord job) {
+        try {
+            Path runDir = delivery.job.AuthoringJobRequestFiles.requestPath(
+                    portalStore.projectDiskRoot(job.getProjectId()),
+                    delivery.portal.engine.InProcessJobContext.wire(JobRecord.JobKind.EXECUTE),
+                    job.getJobId()).getParent();
+            return delivery.job.SuiteRunContextFiles.read(runDir);
+        } catch (RuntimeException e) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    /** Record the suite/monitor outcome; alert when the run crashed before producing a result. */
+    private void finishSuiteRun(JobRecord job, delivery.job.SuiteRunContext ctx) {
+        JobRecord.Status st = job.getStatus();
+        boolean producedResult = st == JobRecord.Status.COMPLETED
+                || "ALL_CASES_TODO".equals(job.getError());
+        if (st == JobRecord.Status.FAILED && !producedResult) {
+            delivery.job.SuiteAlertNotifier.notifyError(ctx, delivery.job.SuiteAlertNotifier.RULE_SUITE_RUN_ERROR,
+                    (job.getError() == null ? "" : job.getError() + " — ")
+                            + (job.getMessage() == null ? "" : job.getMessage()) + " (job " + job.getJobId() + ")");
+        }
+        if (suiteService != null && ctx.suiteId() != null) {
+            try {
+                suiteService.recordRunOutcome(job.getProjectId(), ctx.suiteId(), job.getJobId(), st.name(),
+                        job.getPassedCount(), job.getTodoCount(), ctx.isMonitor());
+            } catch (Exception e) {
+                log.warn("Suite outcome not recorded for {}: {}", job.getJobId(), e.getMessage());
+            }
         }
     }
 

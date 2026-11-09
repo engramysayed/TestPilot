@@ -1,0 +1,24 @@
+{
+  "reason": "heal tier cursor",
+  "pageClass": "Page",
+  "locatorBefore": {
+    "strategy": "",
+    "value": ""
+  },
+  "promptsVersion": "2026.11.07",
+  "evidenceRel": null,
+  "proposalId": "a4cc37a8-7167-4d26-bd0a-5e5641cb33cd",
+  "jobId": "",
+  "createdAt": "2026-11-08T13:38:57.671554Z",
+  "stepIndex": 0,
+  "tier": "cursor",
+  "decidedAt": null,
+  "tcId": "TC_01",
+  "projectId": "p1",
+  "locatorAfter": {
+    "strategy": "css",
+    "value": "input[name='email']"
+  },
+  "patchKind": "locator",
+  "status": "pending"
+}

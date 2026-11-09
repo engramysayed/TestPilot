@@ -404,11 +404,12 @@ public class TcGenerateService {
     }
 
     private String buildSystemPrompt() throws IOException {
-        return loadPrompt("static/prompts/keel-tc-generate-from-stories-to-json.txt")
+        // Prompt catalog (Admin → Prompts, versioned, overridable): prompts/generate/*.md
+        return loadPrompt("generate/stories-to-json")
                 + "\n\n---\n\n"
-                + loadPrompt("static/prompts/keel-capability-manifest.txt")
+                + loadPrompt("generate/capability-manifest")
                 + "\n\n---\n\n"
-                + loadPrompt("static/prompts/keel-testing-techniques.txt");
+                + loadPrompt("generate/testing-techniques");
     }
 
     static ParsedLlmOutput parseLlmOutput(String raw) {
@@ -513,11 +514,11 @@ public class TcGenerateService {
         return sb.toString();
     }
 
-    private static String loadPrompt(String classpath) throws IOException {
-        ClassPathResource resource = new ClassPathResource(classpath);
-        if (!resource.exists()) {
-            throw new IOException("Missing prompt file: " + classpath);
+    private static String loadPrompt(String catalogId) throws IOException {
+        try {
+            return delivery.prompts.PromptCatalog.get(catalogId).trim();
+        } catch (RuntimeException e) {
+            throw new IOException("Missing prompt: " + catalogId, e);
         }
-        return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
     }
 }

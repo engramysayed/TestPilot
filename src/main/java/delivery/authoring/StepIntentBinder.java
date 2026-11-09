@@ -567,6 +567,8 @@ public final class StepIntentBinder {
     }
 
     static IntentKind classify(String lower) {
+        // Arabic steps: add the English verb keywords the rules below key on (اضغط → click, ادخل → enter…).
+        lower = IntentText.annotateArabicVerbs(lower);
         if (ExplicitAssertionOps.isExplicit(lower)) {
             return IntentKind.ASSERT_VISIBLE;
         }
@@ -1134,7 +1136,7 @@ public final class StepIntentBinder {
         if (raw == null) {
             return "";
         }
-        return raw.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "");
+        return IntentText.normalize(raw).replaceAll("[^\\p{L}\\p{N}]+", "");
     }
 
     /** Username/password inputs whose id contains "login" (e.g. basic_login) are not Sign in. */
@@ -2058,6 +2060,10 @@ public final class StepIntentBinder {
         if (hay == null || token == null || token.isBlank()) {
             return false;
         }
+        // Unicode whole-word match (Arabic, accented Latin) incl. camel/kebab/snake compounds.
+        if (IntentText.containsToken(hay, token)) {
+            return true;
+        }
         String t = token.toLowerCase(Locale.ROOT);
         Pattern word = Pattern.compile("(^|[^a-z0-9])" + Pattern.quote(t) + "([^a-z0-9]|$)");
         String h = hay.toLowerCase(Locale.ROOT);
@@ -2237,8 +2243,8 @@ public final class StepIntentBinder {
     }
 
     private static List<String> tokens(String text) {
-        return Arrays.stream(text.toLowerCase(Locale.ROOT).split("[^a-z0-9]+"))
-                .filter(t -> t.length() >= 3)
+        // Unicode tokens (Arabic ≥2, Latin ≥3), EN+AR stop words, Arabic article stripped.
+        return IntentText.tokens(text).stream()
                 .filter(t -> !STOP.contains(t))
                 .collect(Collectors.toList());
     }

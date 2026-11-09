@@ -56,9 +56,10 @@ public class SuiteService {
             String suiteId,
             String name,
             List<String> tags,
-            List<String> tcIds
+            List<String> tcIds,
+            String structuredPlanId
     ) throws IOException {
-        return disk.update(projectRoot(projectId), suiteId, name, tags, tcIds);
+        return disk.update(projectRoot(projectId), suiteId, name, tags, tcIds, structuredPlanId);
     }
 
     public void delete(String projectId, String suiteId) throws IOException {
@@ -85,6 +86,26 @@ public class SuiteService {
             Integer intervalMinutes
     ) throws IOException {
         return disk.putSchedule(projectRoot(projectId), suiteId, enabled, kind, cron, intervalMinutes);
+    }
+
+    public Map<String, Object> putSchedule(
+            String projectId,
+            String suiteId,
+            boolean enabled,
+            String kind,
+            String cron,
+            Integer intervalMinutes,
+            String timezone,
+            String credentialProfile
+    ) throws IOException {
+        return disk.putSchedule(projectRoot(projectId), suiteId, enabled, kind, cron, intervalMinutes,
+                timezone, credentialProfile);
+    }
+
+    /** Final state of a suite run (schedule last result, monitor status). */
+    public Map<String, Object> recordRunOutcome(String projectId, String suiteId, String jobId, String jobStatus,
+                                                int passed, int failed, boolean monitorRun) throws IOException {
+        return disk.recordRunOutcome(projectRoot(projectId), suiteId, jobId, jobStatus, passed, failed, monitorRun);
     }
 
     public Map<String, Object> clearSchedule(String projectId, String suiteId) throws IOException {
@@ -171,6 +192,41 @@ public class SuiteService {
 
     public Map<String, Object> recordFire(String projectId, String suiteId, String jobId) throws IOException {
         return disk.recordSuiteRunFire(projectRoot(projectId), suiteId, jobId);
+    }
+
+    public Optional<Map<String, Object>> tryClaimDue(String projectId, String suiteId, Instant now, int withinSeconds)
+            throws IOException {
+        return disk.tryClaimDue(projectRoot(projectId), suiteId, now, withinSeconds);
+    }
+
+    public void recordScheduleFailure(String projectId, String suiteId, String code, String message) throws IOException {
+        disk.recordScheduleFailure(projectRoot(projectId), suiteId, code, message);
+    }
+
+    public List<Map<String, Object>> listDueForAllProjects(int withinSeconds) throws IOException {
+        Instant now = Instant.now();
+        List<Map<String, Object>> due = new ArrayList<>();
+        for (var project : store.listProjectsForScheduleDispatch()) {
+            if (project.isArchived()) {
+                continue;
+            }
+            String projectId = project.getProjectId();
+            for (Map<String, Object> suite : disk.list(projectRoot(projectId), null)) {
+                if (disk.isDue(suite, now, withinSeconds)) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("projectId", projectId);
+                    row.put("ownerUserId", project.getOwnerUserId());
+                    row.put("suiteId", suite.get("suiteId"));
+                    row.put("schedule", suite.get("schedule"));
+                    row.put("tcIds", suite.get("tcIds"));
+                    row.put("alertChannelId", suite.get("alertChannelId"));
+                    row.put("alertMinSeverity", suite.get("alertMinSeverity"));
+                    row.put("monitor", suite.get("monitor"));
+                    due.add(row);
+                }
+            }
+        }
+        return due;
     }
 
     private void requireKnownChannel(String alertChannelId) {

@@ -4,7 +4,12 @@ import java.util.Locale;
 
 /**
  * Site-agnostic heuristics for preferring click/control locators over bare container ids.
+ *
+ * @deprecated not used by bind, prove or codegen. Ranking lives in
+ * {@link delivery.locator.LocatorStabilityPolicy} (hook → test id → unique id → name → role+name → …);
+ * this class penalised every id/name and must not be reintroduced into the ranking path.
  */
+@Deprecated
 public final class LocatorPreference {
     private LocatorPreference() {
     }

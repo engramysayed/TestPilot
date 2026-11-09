@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='LLM & API keys')}"></th:block>
 </head>
@@ -10,8 +10,8 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1>LLM &amp; API keys</h1>
-            <p class="lede">Install-wide Ollama models and heal API keys for this Keel portal. Only the account owner can change these. Values are stored encrypted on the portal host; environment variables still win when already set.</p>
+            <h1 th:text="#{page.admin-llm-settings.title}">LLM &amp; API keys</h1>
+            <p class="lede" th:text="#{page.admin-llm-settings.lede}">Install-wide Ollama models and heal API keys for this Keel portal. Only the account owner can change these. Values are stored encrypted on the portal host; environment variables still win when already set.</p>
         </div>
     </div>
     <section class="panel">

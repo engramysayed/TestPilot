@@ -20,6 +20,7 @@ import delivery.portal.service.ExecuteRunService;
 import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.PortalStore;
 import delivery.portal.service.ProjectCredentialService;
+import delivery.portal.tunnel.TunnelJobBaseUrlService;
 import delivery.portal.worker.ExecuteWorker;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -56,6 +57,7 @@ public class ExecuteRunController {
     private final PermissionEnforcer permissionEnforcer;
     private final ProjectCredentialService credentials;
     private final GeneratedWorkbookService workbooks;
+    private final TunnelJobBaseUrlService tunnelBaseUrl;
 
     public ExecuteRunController(
             PortalStore store,
@@ -66,7 +68,8 @@ public class ExecuteRunController {
             CurrentUserService currentUser,
             ProjectCredentialService credentials,
             GeneratedWorkbookService workbooks,
-            PermissionEnforcer permissionEnforcer
+            PermissionEnforcer permissionEnforcer,
+            TunnelJobBaseUrlService tunnelBaseUrl
     ) {
         this.store = store;
         this.worker = worker;
@@ -77,6 +80,7 @@ public class ExecuteRunController {
         this.credentials = credentials;
         this.workbooks = workbooks;
         this.permissionEnforcer = permissionEnforcer;
+        this.tunnelBaseUrl = tunnelBaseUrl;
     }
 
     @PostMapping("/projects/{projectId}/execute-runs")
@@ -100,10 +104,11 @@ public class ExecuteRunController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiError("PROJECT_ARCHIVED", "Cannot start execute runs on archived project").asMap());
         }
-        String baseUrl = project.getBaseUrl();
+        String baseUrl = tunnelBaseUrl.effectiveBaseUrl(projectId, project.getBaseUrl());
         if (baseUrl == null || baseUrl.isBlank()) {
             return ResponseEntity.badRequest()
-                    .body(new ApiError("MISSING_BASE_URL", "Project baseUrl is required").asMap());
+                    .body(new ApiError("MISSING_BASE_URL",
+                            "Project baseUrl or active cloud tunnel is required").asMap());
         }
         String username = "";
         String password = "";

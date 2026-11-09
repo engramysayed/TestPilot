@@ -112,7 +112,7 @@ public final class PreferredHooksStore {
             if (file.getParent() != null) {
                 Files.createDirectories(file.getParent());
             }
-            JSONObject root = new JSONObject();
+            JSONObject root = readRoot(file); // keep locatorMode and future keys
             JSONArray arr = new JSONArray();
             for (String hook : hooks) {
                 arr.put(hook);
@@ -121,6 +121,69 @@ public final class PreferredHooksStore {
             Files.writeString(file, root.toString(2), StandardCharsets.UTF_8);
         } catch (Exception ignored) {
             // Settings must not fail the project rename if disk write is best-effort.
+        }
+    }
+
+    // ------------------------------------------------------------------ locator mode (same file)
+
+    public static final String MODE_KEY = "locatorMode";
+
+    public static delivery.locator.LocatorMode loadMode(Path storeRoot, delivery.identity.TenantId tenant, String baseUrl) {
+        Path file = storeRoot == null ? null : file(storeRoot, tenant, baseUrl);
+        if (file == null || !Files.isRegularFile(file)) {
+            return delivery.locator.LocatorMode.STABLE_FIRST;
+        }
+        return delivery.locator.LocatorMode.parse(readRoot(file).optString(MODE_KEY, ""));
+    }
+
+    public static void saveMode(Path storeRoot, delivery.identity.TenantId tenant, String baseUrl, String raw) {
+        Path file = storeRoot == null ? null : file(storeRoot, tenant, baseUrl);
+        if (file == null) {
+            return;
+        }
+        try {
+            if (file.getParent() != null) {
+                Files.createDirectories(file.getParent());
+            }
+            JSONObject root = readRoot(file);
+            root.put(MODE_KEY, delivery.locator.LocatorMode.parse(raw).wire());
+            if (!root.has("attributes")) {
+                root.put("attributes", new JSONArray());
+            }
+            Files.writeString(file, root.toString(2), StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
+            // best effort, like hooks
+        }
+    }
+
+    private static JSONObject readRoot(Path file) {
+        try {
+            if (file != null && Files.isRegularFile(file)) {
+                return new JSONObject(Files.readString(file, StandardCharsets.UTF_8));
+            }
+        } catch (Exception ignored) {
+        }
+        return new JSONObject();
+    }
+
+    /** Activates hooks and the project's locator mode together (bind / prove / emit / hunt). */
+    public static CombinedScope activate(List<String> hooks, delivery.locator.LocatorMode mode) {
+        return new CombinedScope(activate(hooks), delivery.locator.LocatorStabilityPolicy.activate(mode));
+    }
+
+    public static final class CombinedScope implements AutoCloseable {
+        private final Scope hooks;
+        private final delivery.locator.LocatorStabilityPolicy.Scope mode;
+
+        private CombinedScope(Scope hooks, delivery.locator.LocatorStabilityPolicy.Scope mode) {
+            this.hooks = hooks;
+            this.mode = mode;
+        }
+
+        @Override
+        public void close() {
+            mode.close();
+            hooks.close();
         }
     }
 

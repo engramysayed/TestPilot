@@ -109,13 +109,15 @@ public class LocatorRankingLiveSmokeTest {
 
     @Test public void dynamicIdIsDemotedAndLabelTierUsed() {
         RankedLocators refresh = LocatorRanker.rank(driver, pick("orders/1", "Refresh"), HOOKS, "").orElseThrow();
-        assertEquals(refresh.main().score(), LocatorRanker.CSS_ID_DYNAMIC);
+        // Generated id is BRITTLE under the shared policy: it can only win when nothing else verifies.
+        assertEquals(refresh.main().score(), 0.0);
         driver.navigate().refresh();
         SnapshotCandidate search = PageSerializer.serialize(driver, List.of(), HOOKS).candidates().stream()
                 .filter(c -> "Search orders".equals(c.attrs().get("placeholder"))).findFirst().orElseThrow();
         RankedLocators r = LocatorRanker.rank(driver, search, HOOKS, "").orElseThrow();
-        assertEquals(r.main().value(), "css=input[placeholder=\"Search orders\"]");
-        assertEquals(r.fallbacks().get(0).value(), "css=input[name=\"q\"]");
+        // stable-first: unique human name beats placeholder copy (survives translation)
+        assertEquals(r.main().value(), "css=input[name=\"q\"]");
+        assertEquals(r.fallbacks().get(0).value(), "css=input[placeholder=\"Search orders\"]");
     }
 
     @Test public void contextPrefixKeptForFramesAndClosedShadow() {
@@ -131,7 +133,7 @@ public class LocatorRankingLiveSmokeTest {
         RankedLocators p = r.withProven("css=button[aria-label=\"Save order\"]");
         assertEquals(p.main().value(), "css=button[aria-label=\"Save order\"]");
         assertEquals(p.fallbacks().get(0).score(), 1.0);
-        assertEquals(p.fallbacks().get(1).score(), 0.95);
+        assertEquals(p.fallbacks().get(1).score(), 0.90);
     }
 
     @Test public void cacheHitMissRouteMismatchAndStale() throws Exception {

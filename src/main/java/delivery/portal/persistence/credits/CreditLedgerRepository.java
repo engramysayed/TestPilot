@@ -14,6 +14,9 @@ public interface CreditLedgerRepository extends JpaRepository<CreditLedgerEntry,
 
     List<CreditLedgerEntry> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    /** Every ledger row for one job (debits, add-on debits, refunds). */
+    List<CreditLedgerEntry> findByJobIdOrderByCreatedAtAsc(String jobId);
+
     @Query("""
             select e from CreditLedgerEntry e
             where e.userId = :userId

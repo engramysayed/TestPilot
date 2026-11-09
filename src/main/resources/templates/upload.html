@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
         <th:block th:replace="~{fragments :: pageHead(title='Automate')}"></th:block>
 </head>
@@ -10,8 +10,8 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1>Automate</h1>
-            <p class="lede">Upload your Excel workbook. Keel builds an automation package you can download when ready. The price is charged once for each test case, not once for the package.</p>
+            <h1 th:text="#{page.upload.title}">Automate</h1>
+            <p class="lede" th:text="#{page.upload.lede}">Upload your Excel workbook. Keel builds an automation package you can download when ready. The price is charged once for each test case, not once for the package.</p>
         </div>
     </div>
 
@@ -888,7 +888,7 @@
                 generatedWorkbookMeta.tcCount || 0,
                 generatedWorkbookMeta.keelPathCounts
             );
-            if (warn && !window.confirm(warn)) {
+            if (warn && !(await window.keelConfirm({ title: 'Build anyway?', message: warn, confirmLabel: 'Build' }))) {
                 return;
             }
         }

@@ -40,47 +40,22 @@ Supporting capabilities:
 
 Use this to pick **one primary path** (you can still run others later on the same project library).
 
-```text
-                    ┌─────────────────────────┐
-                    │  Project + base URL     │
-                    │  (+ credentials)        │
-                    └───────────┬─────────────┘
-                                │
-                                ▼
-                    ┌─────────────────────────┐
-                    │  Do you have TCs yet?   │
-                    └───────────┬─────────────┘
-                     no / thin  │           yes
-                                │
-              ┌─────────────────┴─────────────────┐
-              ▼                                   ▼
-     ┌────────────────┐                 ┌────────────────────┐
-     │   GENERATE     │                 │  Library already   │
-     │ stories / CSV  │                 │  on the project    │
-     │ → workbook     │                 └─────────┬──────────┘
-     └───────┬────────┘                           │
-             │ optional Review with AI            │
-             ▼                                    │
-     ┌────────────────┐                           │
-     │ Project library│◄──────────────────────────┘
-     └───────┬────────┘
-             │
-             ▼
-     ┌───────────────────────────────────────────┐
-     │           What do you need next?          │
-     └───────┬───────────────┬───────────────────┘
-             │               │                   │
-             ▼               ▼                   ▼
-      ┌────────────┐  ┌────────────┐     ┌─────────────┐
-      │  EXECUTE   │  │  AUTOMATE  │     │ BUG HUNTER  │
-      │ live proof │  │ Selenium   │     │ exploratory │
-      │ + evidence │  │ TestNG ZIP │     │ break+invent│
-      └─────┬──────┘  └─────┬──────┘     └──────┬──────┘
-            │               │                    │
-            ▼               ▼                    ▼
-      Results / bugs   Framework ZIP      Hunter pack ZIP
-                                              (review only —
-                                               no library write)
+```mermaid
+flowchart TD
+    P["Project + base URL<br/>(+ credentials)"] --> Q{Do you have TCs yet?}
+    Q -- "no / thin" --> GEN["GENERATE<br/>stories / CSV → workbook"]
+    Q -- yes --> LIB[(Project library)]
+    REC["RECORD<br/>click through the site"] --> LIB
+    GEN -- "optional Review with AI" --> LIB
+    LIB --> N{What do you need next?}
+    N --> EX["EXECUTE<br/>live proof + evidence"]
+    N --> AU["AUTOMATE<br/>Selenium TestNG ZIP"]
+    N --> HU["BUG HUNTER<br/>break + invent"]
+    N --> SU["SUITES<br/>run sets + schedules"]
+    EX --> R1[Results · failure pack · bug CSV]
+    AU --> R2[Framework ZIP]
+    HU --> R3["Hunter pack ZIP<br/>(review only — no library write)"]
+    SU --> EX
 ```
 
 ### Decision table
@@ -104,6 +79,77 @@ Use this to pick **one primary path** (you can still run others later on the sam
 5. **Bug Hunter** (optional) — same library TCs → download pack → human reviews bugs/scenarios; import candidates only if you choose.
 
 KeelPath reminder: **Automate** and **Execute** both run every row except `MANUAL` (including `EXECUTE`, `VISION_ONLY`, and blank). Use `MANUAL` to skip both surfaces.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Portal["Portal · Spring Boot :8080"]
+        UI[Web UI] --> API[REST API]
+        API --> W[Workers<br/>Automate · Execute · Hunt · Generate]
+        API --> CR[Credits + Refunds]
+        API --> TB[Tunnel broker<br/>dedicated host]
+        W --> LK[Lease keeper +<br/>reconciler]
+    end
+    W --> ENG
+    subgraph ENG["Engine"]
+        PR[Prove] --> BI[Bind] --> HE[Heal cascade]
+        PR --> RK[Live ranker]
+        PR --> EM[Emit] --> ZIP[[Framework ZIP]]
+    end
+    POL{{One locator policy}} -.-> BI & RK & EM & HE
+    ENG --> BR[Chrome / Edge]
+    ENG --> AI[Ollama · Cursor · Vision models]
+    CLI[keel CLI + tunnel agent] --> API
+```
+
+### How Keel picks a locator
+
+Every stage (bind, live proof, codegen, vision heal) uses the same ranking, `delivery.locator.LocatorStabilityPolicy`:
+
+```mermaid
+flowchart LR
+    H[Preferred hook] --> T[Test id] --> I[Unique id] --> N[Unique name] --> RN[Role + name] --> L[Label / placeholder] --> X[Visible text] --> C[Other CSS / XPath] --> O[Positional]
+```
+
+- A verified test id or hook is always the primary; text-based locators stay as fallbacks, so the framework survives copy
+  changes and Arabic ↔ English switches. Projects can choose **user-facing first** (role + label before test id).
+- Generated ids/classes (`ember123`, `css-1x2y3z`, ASP.NET `ctl00$…`, JSF `j_idt12:…`) are never primaries.
+- Steps can be written in **Arabic or English** (`اضغط على زر حفظ` binds like `Click the Save button`).
+- Generated fields fall back at runtime: `FirstOf.of(primary, fallback1, fallback2)` or `KeelBy.of(...)` for frame/shadow targets.
+
+### When a step does not bind: heal
+
+```mermaid
+flowchart LR
+    S[Step] --> B{Bind clear?}
+    B -- yes --> OK[Prove + record]
+    B -- tie / miss --> P1[Model picks from DOM shortlist] --> V{Found?}
+    V -- no --> P2[Vision: screenshot bbox → element → new locator] --> V2{Found?}
+    V2 -- no --> P3[Invent: model proposes steps<br/>intent-checked, budgeted] --> RC[Recovery plan]
+    V -- yes --> OK
+    V2 -- yes --> OK
+    RC --> OK
+```
+
+### Refunds
+
+```mermaid
+sequenceDiagram
+    participant J as Charged job
+    participant S as Refund sweep (2 min)
+    participant U as User (run page)
+    participant A as Account owner (Admin → Refunds)
+    participant L as Credit ledger
+    J->>S: FAILED with platform reason (browser, network, lease, model provider)
+    S->>A: PENDING request + evidence snapshot
+    U->>A: "Request refund" + note (any failed charged run)
+    A->>A: review user, project, run, failure, diagnostics, ledger, failure pack
+    A->>L: Approve (full / partial) → JOB_REFUND
+    A-->>U: Reject with reason (shown on the run page)
+```
 
 ---
 
@@ -202,15 +248,12 @@ Details: [`docs/ops/end-to-end-flow.md`](docs/ops/end-to-end-flow.md#authoring-e
 
 ## How Automate works
 
-```text
-Excel / generated workbook
-        │
-        ▼
-   ProvePhase  ──► bind intents to live DOM
-        │              │  (Keel bind OR Precision groundRank/solve)
-        │              └─ fail ► HealCascade (Ollama → Cursor → recovery)
-        ▼
-   IR (TcDraft) → Revise → Emit (pages + tests) → Framework ZIP
+```mermaid
+flowchart TD
+    X[Excel / generated workbook] --> PP[ProvePhase<br/>bind intents to live DOM<br/>Keel bind or Precision groundRank/solve]
+    PP -- fail --> HC[HealCascade<br/>model pick → vision → invent → recovery]
+    HC --> PP
+    PP --> IR[(IR · TcDraft)] --> RV[Revise] --> EMT[Emit pages + tests] --> Z[[Framework ZIP]]
 ```
 
 **Recovery** (when page state mismatches the intent, e.g. a field that should be empty is filled): Cursor/invent may return structured JSON (`mode: "recovery"`, `recoverySteps`, `automationNotes`). Keel validates locators on the live page, executes the plan, records evidence (`heal-recovery.json`), retries the same intent, and when recovery clears a field may patch the saved generated workbook (leave-empty Steps + blank TestData) plus coverage / meta notes for Automate.
@@ -255,14 +298,34 @@ customer-mobile-framework-template/  Android template inside a mobile ZIP
 start-keel.cmd              Portal + engine, and Ollama/Appium if they are down
 rebuild-portal.cmd          Package the portal fat jar (skip tests; does not start)
 tools/cursor-heal/          Cursor Auto heal (+ hunt) sidecar
-docs/                       Specs, plans, and ops guides
+docs/knowledge/             Current truth (CURRENT.md, review, contracts)
+docs/history/               Session history (HISTORY.md, handoffs/YYYY-MM/)
+docs/                       Specs (superpowers/), ops guides, reviews
 ```
 
-Engineering depth (flows, quality gates, historical workstream notes): [`docs/ENGINEERING_HANDOFF.md`](docs/ENGINEERING_HANDOFF.md).
+## Documentation
+
+| Read | For |
+|------|-----|
+| [`docs/knowledge/CURRENT.md`](docs/knowledge/CURRENT.md) | What is true now — architecture, flows, locator policy, jobs, refunds, tunnel, config |
+| [`docs/ENGINEERING_HANDOFF.md`](docs/ENGINEERING_HANDOFF.md) | Feature → code / spec index |
+| [`docs/PRODUCT.md`](docs/PRODUCT.md) | Every user-facing feature |
+| [`docs/history/HISTORY.md`](docs/history/HISTORY.md) | Every past session, newest first |
+| [`docs/knowledge/REVIEW-2026-11-07.md`](docs/knowledge/REVIEW-2026-11-07.md) | Open risks and recommended next work |
+| [`CHANGELOG.md`](CHANGELOG.md) | Dated releases |
+| [`docs/README.md`](docs/README.md) | Docs map and rules |
 
 ---
 
-## Where things stand (2026-10-15)
+## Where things stand (2026-11-07)
+
+- **Locators.** One shared ranking for bind, proof, codegen and vision; test ids first; Arabic steps supported; per-project
+  ranking mode. Build and tests for the 2026-11-07 changes still need a local run (see the latest session handoff).
+- **Admin.** Refund requests arrive in **Admin → Refunds** with the full failure evidence.
+- **Jobs.** Every worker renews its lease; hung or crashed jobs are reclaimed every minute, not only at restart.
+- **Tunnel.** Must run on its own host; restarts keep the same token.
+
+Earlier (2026-10-15):
 
 - **Web portal.** Quiet teal theme, dark by default. The Runs table and top bar stay on one row (`keel-layout.css`, commit `0bbee58` on `keel/main`).
 - **Start path.** `start-keel.cmd`, `start-portal.cmd`, and `start-engine.cmd`. Package the portal jar with `rebuild-portal.cmd` (does not start). The older `start-portal.bat` launcher is gone.

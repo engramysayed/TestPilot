@@ -15,7 +15,17 @@ public class PreferredHookRankerTest {
                 "css", "a[data-axis-test-id='side-nav-bill-payment-settlement-link']",
                 "", "", "", true, "x");
         try (var ignored = PreferredHooksStore.activate(List.of("data-axis-test-id"))) {
-            Assert.assertEquals(ProveWiring.currentScore(s), LocatorRanker.TEST_ID, 0.001);
+            // Preferred hook outranks every other tier (shared LocatorStabilityPolicy).
+            Assert.assertEquals(ProveWiring.currentScore(s), 1.0, 0.001);
         }
+    }
+
+    @Test
+    public void currentScore_testIdBeatsAriaLabel_stableFirst() {
+        ProvenStep tid = new ProvenStep("T", "P", "elementAction", "click",
+                "css", "button[data-testid='save']", "", "", "", true, "x");
+        ProvenStep aria = new ProvenStep("T", "P", "elementAction", "click",
+                "css", "button[aria-label='Save']", "", "", "", true, "x");
+        Assert.assertTrue(ProveWiring.currentScore(tid) > ProveWiring.currentScore(aria));
     }
 }

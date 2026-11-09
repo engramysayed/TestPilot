@@ -49,3 +49,10 @@ tmp/
 META-INF/
 patches/
 
+
+# Local workspaces, extracted build artifacts
+BOOT-INF/
+_backup/
+_scratch/
+hs_err_pid*.log
+replay_pid*.log

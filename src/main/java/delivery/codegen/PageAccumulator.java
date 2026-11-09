@@ -203,7 +203,12 @@ public class PageAccumulator {
         }
         String field = uniqueFieldName(page, CodegenNaming.locatorFieldName(step));
         page.fieldNames().add(field);
-        List<MultiLocatorBag.Entry> bagFalls = bag.fallbacks();
+        // Bag fallbacks become real Selenium By calls (By.cssSelector / id / name / xpath) folded into
+        // FirstOf for plain fields. Raw strategies like "css" / "keel" / "data-testid" used to emit
+        // By.css(...) which does not compile. Smart (KeelBy) fields already carry ranked fallbacks.
+        List<MultiLocatorBag.Entry> bagFalls = ranked.isEmpty()
+                ? emittableBag(bag.fallbacks(), strategy, locatorValue)
+                : List.of();
         if (ranked.isEmpty()) {
             page.fields().add(new FieldModel(field, strategy, locatorValue, List.of(), "", false, bagFalls, ""));
         } else {
@@ -517,6 +522,37 @@ public class PageAccumulator {
     /** Package-visible for unit tests. */
     static boolean isBodyTextAssertForTest(ProvenStep step) {
         return isBodyTextAssert(step);
+    }
+
+    /** Normalise bag entries to Selenium By factory names; drop non-plain keel targets and the primary twin. */
+    static List<MultiLocatorBag.Entry> emittableBag(
+            List<MultiLocatorBag.Entry> raw, String primaryStrategy, String primaryValue) {
+        List<MultiLocatorBag.Entry> out = new java.util.ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        seen.add(primaryStrategy + '\0' + primaryValue);
+        for (MultiLocatorBag.Entry e : raw == null ? List.<MultiLocatorBag.Entry>of() : raw) {
+            if (e == null || e.value().isBlank()) {
+                continue;
+            }
+            String st = e.strategy();
+            String val = e.value();
+            if (LocatorCandidate.KEEL.equalsIgnoreCase(st)) {
+                if (val.contains(">>") || !val.regionMatches(true, 0, "css=", 0, 4)) {
+                    continue; // frame/shadow/text targets need KeelBy, not a plain By
+                }
+                st = "css";
+                val = val.substring(4);
+            }
+            String by = normalizeByStrategy(st);
+            String v = normalizeLocatorValue(st, val);
+            if (seen.add(by + '\0' + v)) {
+                out.add(new MultiLocatorBag.Entry(by, v));
+            }
+            if (out.size() >= 2) {
+                break;
+            }
+        }
+        return out;
     }
 
     static String normalizeByStrategyForCandidates(String strategy) {

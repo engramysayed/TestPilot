@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Case guide')}"></th:block>
 </head>
@@ -11,8 +11,8 @@
     <header class="heading guide-hero guide-reveal">
         <div>
             <p class="eyebrow">Help</p>
-            <h1>How to write test cases</h1>
-            <p class="lede">
+            <h1 th:text="#{page.tc-guide.title}">How to write test cases</h1>
+            <p class="lede" th:text="#{page.tc-guide.lede}">
                 How to fill in the test case spreadsheet so Keel can run your tests and build automation code
                 without guessing. AI tools may reword your cases — just keep the column headers.
             </p>

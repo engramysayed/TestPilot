@@ -319,15 +319,12 @@ public final class RequiredControlFiller {
             return 0;
         }
         int score = 0;
-        for (String token : intentText.toLowerCase(Locale.ROOT).split("[^a-z0-9]+")) {
-            if (token.length() < 3) {
-                continue;
-            }
+        for (String token : IntentText.tokens(intentText)) {
             if ("enter".equals(token) || "type".equals(token) || "fill".equals(token)
                     || "input".equals(token) || "field".equals(token) || "the".equals(token)) {
                 continue;
             }
-            if (hay.contains(token)) {
+            if (IntentText.containsToken(hay, token)) {
                 score++;
             }
         }

@@ -11,7 +11,7 @@ public class GenerateJsonPromptResourceTest {
 
     @Test
     public void jsonPrompt_containsExecuteSafeLoginRules() throws Exception {
-        try (var in = GenerateJsonPromptResourceTest.class.getClassLoader().getResourceAsStream(PROMPT_PATH)) {
+        try (var in = new java.io.ByteArrayInputStream(delivery.prompts.PromptCatalog.get("generate/stories-to-json").getBytes(StandardCharsets.UTF_8))) {
             Assert.assertNotNull(in, "JSON prompt file missing on classpath");
             String body = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             Assert.assertTrue(body.contains("LOGIN & ASSERT AUTHORING"));
@@ -39,7 +39,7 @@ public class GenerateJsonPromptResourceTest {
 
     @Test
     public void jsonPrompt_mentionsImportAndBlankKeelPath() throws Exception {
-        try (var in = GenerateJsonPromptResourceTest.class.getClassLoader().getResourceAsStream(PROMPT_PATH)) {
+        try (var in = new java.io.ByteArrayInputStream(delivery.prompts.PromptCatalog.get("generate/stories-to-json").getBytes(StandardCharsets.UTF_8))) {
             Assert.assertNotNull(in, "JSON prompt file missing on classpath");
             String body = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             String lower = body.toLowerCase();

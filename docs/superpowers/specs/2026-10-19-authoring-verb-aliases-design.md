@@ -3,7 +3,7 @@
 **Date:** 2026-10-19  
 **Status:** Implemented  
 **Plan:** `docs/superpowers/plans/2026-10-19-authoring-verb-aliases.md`  
-**Handoff:** `docs/handoff/2026-10-19-authoring-verb-aliases.md`
+**Handoff:** `docs/history/handoffs/2026-10/2026-10-19-authoring-verb-aliases.md`
 
 ## Problem
 

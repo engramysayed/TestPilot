@@ -35,8 +35,7 @@ public class GuideAiCsvPromptResourceTest extends AbstractTestNGSpringContextTes
 
     @Test
     public void classpathPrompt_containsKeelHeaderAndFidelityRules() throws Exception {
-        try (var in = GuideAiCsvPromptResourceTest.class.getClassLoader()
-                .getResourceAsStream("static/prompts/keel-tc-rewrite-to-csv.txt")) {
+        try (var in = new java.io.ByteArrayInputStream(delivery.prompts.PromptCatalog.get("generate/rewrite-to-csv").getBytes(StandardCharsets.UTF_8))) {
             Assert.assertNotNull(in, "prompt file missing on classpath");
             String body = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             Assert.assertTrue(body.contains(HEADER), "missing exact CSV header");

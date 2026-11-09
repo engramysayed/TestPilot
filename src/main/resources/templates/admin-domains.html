@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Domains')}"></th:block>
 </head>
@@ -10,8 +10,8 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1>Domains</h1>
-            <p class="lede">Stored site data on this server. Deleting a domain removes the store folder and matching portal projects/jobs so the dashboard resets for that site.</p>
+            <h1 th:text="#{page.admin-domains.title}">Domains</h1>
+            <p class="lede" th:text="#{page.admin-domains.lede}">Stored site data on this server. Deleting a domain removes the store folder and matching portal projects/jobs so the dashboard resets for that site.</p>
         </div>
     </div>
 

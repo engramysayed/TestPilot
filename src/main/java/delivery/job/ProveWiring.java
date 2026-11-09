@@ -162,19 +162,12 @@ public final class ProveWiring {
         }
     }
 
-    /** Rough A3 score of a v1 locator so the ranker only replaces when it is clearly better. */
+    /**
+     * Score of a v1 locator on the same 0..1 scale as {@link LocatorRanker} (shared
+     * {@link delivery.locator.LocatorStabilityPolicy}), so the ranker only replaces it when clearly better.
+     */
     static double currentScore(ProvenStep s) {
-        String st = s.locatorStrategy() == null ? "" : s.locatorStrategy().toLowerCase(Locale.ROOT);
-        String v = s.locatorValue() == null ? "" : s.locatorValue();
-        if (PreferredHooksStore.matches(v, PreferredHooksStore.current())) return LocatorRanker.TEST_ID;
-        if (v.contains("data-axis-test-id")) return LocatorRanker.TEST_ID;
-        if (v.matches("(?s).*\\[(data-testid|data-test|data-qa|data-cy)=.*")) return LocatorRanker.TEST_ID;
-        if (st.equals("id")) return v.matches(".*\\d{3,}.*") ? LocatorRanker.CSS_ID_DYNAMIC : LocatorRanker.CSS_ID;
-        if (st.equals("name")) return LocatorRanker.LABEL;
-        if (st.equals("xpath") && v.matches(".*\\[\\d+\\].*")) return LocatorRanker.POSITION;
-        if (st.equals("xpath")) return LocatorRanker.CSS_CLASS;
-        if (st.equals("css") && v.contains(":nth-")) return LocatorRanker.POSITION;
-        return LocatorRanker.CSS_CLASS;
+        return delivery.locator.LocatorStabilityPolicy.rank(s.locatorStrategy(), s.locatorValue()) / 100.0;
     }
 
     // ---------------------------------------------------------------- A7 + A8: effect check

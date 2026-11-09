@@ -21,6 +21,7 @@ public final class SuiteRunContext {
     private final List<String> tcIds;
     private final String trigger;
     private final String alertChannelId;
+    private final String alertMinSeverity;
     private final String monitorTarget;
 
     public SuiteRunContext(
@@ -32,12 +33,26 @@ public final class SuiteRunContext {
             String alertChannelId,
             String monitorTarget
     ) {
+        this(projectId, suiteId, tag, tcIds, trigger, alertChannelId, null, monitorTarget);
+    }
+
+    public SuiteRunContext(
+            String projectId,
+            String suiteId,
+            String tag,
+            List<String> tcIds,
+            String trigger,
+            String alertChannelId,
+            String alertMinSeverity,
+            String monitorTarget
+    ) {
         this.projectId = projectId;
         this.suiteId = blankToNull(suiteId);
         this.tag = blankToNull(tag);
         this.tcIds = tcIds == null ? List.of() : List.copyOf(compact(tcIds));
         this.trigger = normalizeTrigger(trigger);
         this.alertChannelId = blankToNull(alertChannelId);
+        this.alertMinSeverity = blankToNull(alertMinSeverity);
         this.monitorTarget = blankToNull(monitorTarget);
     }
 
@@ -64,6 +79,7 @@ public final class SuiteRunContext {
         String tcIdsRaw = System.getProperty("keel.suite.tcIds", "");
         String trigger = System.getProperty("keel.suite.trigger", "");
         String alert = System.getProperty("keel.suite.alertChannelId", "");
+        String alertMin = System.getProperty("keel.suite.alertMinSeverity", "");
         String monitor = System.getProperty("keel.suite.monitorTarget", "");
         String projectId = System.getProperty("keel.suite.projectId", "");
         if (isBlank(suiteId) && isBlank(tag) && isBlank(tcIdsRaw) && isBlank(trigger)) {
@@ -77,7 +93,7 @@ public final class SuiteRunContext {
                 }
             }
         }
-        activate(new SuiteRunContext(projectId, suiteId, tag, tcIds, trigger, alert, monitor));
+        activate(new SuiteRunContext(projectId, suiteId, tag, tcIds, trigger, alert, alertMin, monitor));
         return true;
     }
 
@@ -103,6 +119,10 @@ public final class SuiteRunContext {
 
     public String alertChannelId() {
         return alertChannelId;
+    }
+
+    public String alertMinSeverity() {
+        return alertMinSeverity;
     }
 
     public String monitorTarget() {

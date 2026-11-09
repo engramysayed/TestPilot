@@ -6,27 +6,47 @@ Product overview and quick start live in the root [`README.md`](../README.md).
 
 This document points engineers at deeper material already in the tree.
 
+## Start here
+
+| Need | Go to |
+|------|-------|
+| Current architecture, flows, config, status | [`knowledge/CURRENT.md`](knowledge/CURRENT.md) |
+| Open risks / next work | [`knowledge/REVIEW-2026-11-07.md`](knowledge/REVIEW-2026-11-07.md) |
+| Session history (newest first) | [`history/HISTORY.md`](history/HISTORY.md) |
+| Docs map and rules | [`README.md`](README.md) |
+
 ## Core flows
 
 | Topic | Where to look |
 |-------|----------------|
+| **Shared locator ranking** (hook → test id → id → name → role+name → label → text → CSS → ordinal; per-project mode) | `delivery.locator.LocatorStabilityPolicy`, `CandidateScorer`, `LocatorRanker`, `SemanticLocatorLadder`, `MultiLocatorBag`, `ElementGrounder`; Projects → Settings → Locator ranking; tests `LocatorStabilityPolicyTest`, `CodegenW2EmitTest` |
+| **Arabic / Unicode step matching** | `delivery.authoring.IntentText`, `StepIntentBinder.classify`, `IntentTextTest` |
+| **Refund requests** (auto for platform failures, user request, Admin → Refunds) | `RefundRequestService`, `AdminRefundsController`, `JobRefundController`, `templates/admin-refunds.html`, `RefundRequestTest` |
+| **Durable leases** (renewal for all workers, periodic reclaim) | `portal/jobs/LeaseKeeper`, `JobLeaseReconciler`, `LeaseKeeperTest` |
+| **Tunnel host isolation + multi-value headers** | `TunnelHostPolicy`, `TunnelHostIsolationFilter`, `TunnelRelayService.completeMulti` |
+| Latest session (2026-11-07, Claude) | [`history/handoffs/2026-11/2026-11-07-claude-locator-policy-refunds.md`](history/handoffs/2026-11/2026-11-07-claude-locator-policy-refunds.md) |
+| Suites Slice E — TC picker + library adapter | `docs/knowledge/contracts/E-contract-map.md`, `docs/history/handoffs/2026-11/2026-11-07-slice-e-cursor.md`, `GET /api/projects/{projectId}/test-case-library`, `templates/suites.html` |
+| Suites Slice F — portal schedule dispatch (flagged) | `docs/knowledge/contracts/F-transaction-map.md`, `docs/history/handoffs/2026-11/2026-11-07-slice-f-cursor.md`, `delivery.suites.portal-schedule-worker.enabled` |
+| Adopt A1–A6 — what exists vs missing | `docs/history/handoffs/2026-11/2026-11-07-adopt-slices-inventory.md`, session `docs/history/handoffs/2026-11/2026-11-07-adopt-cursor-session.md` |
+| Adopt A5 — cloud tunnel broker | `docs/history/handoffs/2026-11/2026-11-07-adopt-a5-tunnel-broker.md`, `scripts/tunnel-live-smoke.ps1`, `-Dtest=TunnelBrokerApiTest` |
+| **Resume in Claude Code** — knowledge map + Graphify | `docs/handoff/CLAUDE-RESUME-KEEL-KNOWLEDGE.md` (resume entry), `graphify-out/GRAPH_REPORT.md`, `scripts/graphify-update.cmd` |
 | Record → framework (skip the browser prove pass) | `docs/superpowers/plans/2026-10-15-record-to-framework.md` |
-| Phase 2 failure replay + heal Accept/Reject proposals + flaky tags (AE disk emit) | docs/handoff/2026-11-02-phase2-ae.md, contract docs/handoff/2026-11-02-phase2-api-contract.md |
-| 2026-10-15 portal session (Record, alerts, layout, unit prices, owner-only admin, editable price copy, project tabs, Execute punctuation, compact credit bar, named-label clicks, overview restyle, screenshot occ folders, expected-per-step, page locator catalog, history copy, attention colors) | `docs/handoff/2026-10-15-portal-session.md` |
+| Phase 2 failure replay + heal Accept/Reject proposals + flaky tags (AE disk emit) | docs/history/handoffs/2026-11/2026-11-02-phase2-ae.md, contract docs/history/handoffs/2026-11/2026-11-02-phase2-api-contract.md |
+| 2026-10-15 portal session (Record, alerts, layout, unit prices, owner-only admin, editable price copy, project tabs, Execute punctuation, compact credit bar, named-label clicks, overview restyle, screenshot occ folders, expected-per-step, page locator catalog, history copy, attention colors) | `docs/history/handoffs/2026-10/2026-10-15-portal-session.md` |
 | Candidate scorer + DOM shortlist (bind before Ollama/vision; proof-gated catalog; fixture metrics) | spec `docs/superpowers/specs/2026-10-16-candidate-scorer-design.md`, plan `docs/superpowers/plans/2026-10-16-candidate-scorer.md` |
 | OutcomeKind confirm-line classify before score (enabled/disabled execute types; nameless skip-echo; toast tokens; OTP/Username/Logout without field/button) | `src/main/java/delivery/authoring/OutcomeKind.java`, `EnabledDisabledAssertBindTest` |
 | End-to-end conversion | `docs/ops/end-to-end-flow.md` |
 | Local Ollama | `docs/ops/ollama-local.md`, `docs/ops/local-live-ollama.md` (if present) |
 | Heal/LLM API keys (env wins then Settings publish props then DEV LocalApiKeyLoader; clear drops System props; env wins for URL/model props; optional Ollama Bearer) | `delivery.heal.ApiKeySource`, `LocalLlmClient`, Backend `/admin/llm-settings` |
-| Live Ollama models on Generate (chat tags + disk cache; Account vision radios unchanged) | `docs/handoff/2026-10-18-live-ollama-generate-models.md`, spec `docs/superpowers/specs/2026-10-18-live-ollama-generate-models-design.md` |
-| Add library TC + pre-run review (Cursor or Keel; Accept saves library then starts reviewed ids; review not charged) | `docs/handoff/2026-10-18-library-add-and-prerun-review.md`, spec `docs/superpowers/specs/2026-10-18-library-add-and-prerun-review-design.md`, plan `docs/superpowers/plans/2026-10-18-library-add-and-prerun-review.md` |
-| Admin review batch size + browser type (Owner N + Chrome/Chrome headless/Edge; split when selected > 5) | `docs/handoff/2026-10-19-admin-review-batch-and-browser.md`, spec `docs/superpowers/specs/2026-10-19-admin-review-batch-and-browser-design.md`, plan `docs/superpowers/plans/2026-10-19-admin-review-batch-and-browser.md` |
-| Portal delete version ZIPs (member) + live framework (owner/admin) | `docs/handoff/2026-10-21-portal-artifact-delete.md` (`7eb71ed`, codegen merge `b46c012`) |
-| Codegen UX emit (filter echo/html; login collapse; page-under-test `*_Page`/`*_Test`; merge same stem; PropertyReader; optional test data env on TARGET_* only) | `docs/handoff/2026-10-20-codegen-ux-emit.md`, spec `docs/superpowers/specs/2026-10-20-codegen-ux-emit-design.md` |
-| List-row-first grid click + extra Treat as (clear/select/drag/hover/double/right; first matching row; Execute actions) | `docs/handoff/2026-10-20-list-row-first-and-treat-as.md`, spec `docs/superpowers/specs/2026-10-20-list-row-first-and-treat-as-design.md`, plan `docs/superpowers/plans/2026-10-20-list-row-first-and-treat-as.md` |
-| Authoring verb aliases (Owner list; built-ins read-only; seed observe→assert; Guide `/guide#verbs`; Admin LLM page must not use `[[` in script — Thymeleaf aborts the HTML) | `docs/handoff/2026-10-19-authoring-verb-aliases.md`, spec `docs/superpowers/specs/2026-10-19-authoring-verb-aliases-design.md`, plan `docs/superpowers/plans/2026-10-19-authoring-verb-aliases.md` |
-| Nested preferred hook + leftover Expected quoting (inner unique hook on named bind and on remembered click/type/clear/select; review leftover quotes, dash rows, and quoted fillers; Execute unique live heading wait including the bound Confirm wrapper; vision keeps the hit node’s own hook; OutcomeKind unchanged) | `docs/handoff/2026-10-19-nested-hook-and-quote-heading.md`, spec `docs/superpowers/specs/2026-10-19-nested-hook-and-quote-heading-design.md`, plan `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md` |
-| Scoped inner hook when a submenu clones the link (unique row + one inner hook duplicated outside → scoped xpath under that row, not bare CSS) | `docs/handoff/2026-10-19-scoped-nested-hook.md`, spec `docs/superpowers/specs/2026-10-19-scoped-nested-hook-design.md`, plan `docs/superpowers/plans/2026-10-19-scoped-nested-hook.md` |
+| Live Ollama models on Generate (chat tags + disk cache; Account vision radios unchanged) | `docs/history/handoffs/2026-10/2026-10-18-live-ollama-generate-models.md`, spec `docs/superpowers/specs/2026-10-18-live-ollama-generate-models-design.md` |
+| Add library TC + pre-run review (Cursor or Keel; Accept saves library then starts reviewed ids; review not charged) | `docs/history/handoffs/2026-10/2026-10-18-library-add-and-prerun-review.md`, spec `docs/superpowers/specs/2026-10-18-library-add-and-prerun-review-design.md`, plan `docs/superpowers/plans/2026-10-18-library-add-and-prerun-review.md` |
+| Admin review batch size + browser type (Owner N + Chrome/Chrome headless/Edge; split when selected > 5) | `docs/history/handoffs/2026-10/2026-10-19-admin-review-batch-and-browser.md`, spec `docs/superpowers/specs/2026-10-19-admin-review-batch-and-browser-design.md`, plan `docs/superpowers/plans/2026-10-19-admin-review-batch-and-browser.md` |
+| Portal delete version ZIPs (member) + live framework (owner/admin) | `docs/history/handoffs/2026-10/2026-10-21-portal-artifact-delete.md` (`7eb71ed`, codegen merge `b46c012`) |
+| Codegen UX emit (filter echo/html; login collapse; page-under-test `*_Page`/`*_Test`; merge same stem; PropertyReader; optional test data env on TARGET_* only) | `docs/history/handoffs/2026-10/2026-10-20-codegen-ux-emit.md`, spec `docs/superpowers/specs/2026-10-20-codegen-ux-emit-design.md` |
+| List-row-first grid click + extra Treat as (clear/select/drag/hover/double/right; first matching row; Execute actions) | `docs/history/handoffs/2026-10/2026-10-20-list-row-first-and-treat-as.md`, spec `docs/superpowers/specs/2026-10-20-list-row-first-and-treat-as-design.md`, plan `docs/superpowers/plans/2026-10-20-list-row-first-and-treat-as.md` |
+| Authoring verb aliases (Owner list; built-ins read-only; seed observe→assert; Guide `/guide#verbs`; Admin LLM page must not use `[[` in script — Thymeleaf aborts the HTML) | `docs/history/handoffs/2026-10/2026-10-19-authoring-verb-aliases.md`, spec `docs/superpowers/specs/2026-10-19-authoring-verb-aliases-design.md`, plan `docs/superpowers/plans/2026-10-19-authoring-verb-aliases.md` |
+| Nested preferred hook + leftover Expected quoting (inner unique hook on named bind and on remembered click/type/clear/select; review leftover quotes, dash rows, and quoted fillers; Execute unique live heading wait including the bound Confirm wrapper; vision keeps the hit node’s own hook; OutcomeKind unchanged) | `docs/history/handoffs/2026-10/2026-10-19-nested-hook-and-quote-heading.md`, spec `docs/superpowers/specs/2026-10-19-nested-hook-and-quote-heading-design.md`, plan `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md` |
+| Scoped inner hook when a submenu clones the link (unique row + one inner hook duplicated outside → scoped xpath under that row, not bare CSS) | `docs/history/handoffs/2026-10/2026-10-19-scoped-nested-hook.md`, spec `docs/superpowers/specs/2026-10-19-scoped-nested-hook-design.md`, plan `docs/superpowers/plans/2026-10-19-scoped-nested-hook.md` |
 | Portal restart / Windows | `rebuild-portal.cmd` (package jar, skip tests, does not start), then `start-portal.cmd`; `docs/ops/portal-restart.md`, `docs/ops/windows-vps-setup.md` |
 | Architecture notes | `docs/ops/architecture-audit.md` |
 | Customer TAF template | `customer-framework-template/README.md` |
@@ -58,7 +78,7 @@ Matching plans/tasks/notes sit beside each spec under `docs/superpowers/plans/`.
    - Gaps backlog: `docs/superpowers/plans/2026-09-10-bug-hunter-phase12-gaps.md`
    - Deferred Phase 3: `docs/superpowers/plans/2026-09-10-bug-hunter-phase3-twopass-dom.md`
 6. Package: `delivery.hunt.*` under `src/main/java/delivery/hunt/`. Never put plaintext passwords in planner prompts or pack artifacts.
-7. **Knowledge packs (2026-11-02):** optional `knowledgePackIds` on Hunt → brief guidance via `KnowledgePackReader` (NoOp until Backend HTTP). Flag `delivery.hunt.knowledge-packs.enabled`. See `docs/handoff/2026-11-02-hunt-knowledge-ae.md`.
+7. **Knowledge packs (2026-11-02):** optional `knowledgePackIds` on Hunt → brief guidance via `KnowledgePackReader` (NoOp until Backend HTTP). Flag `delivery.hunt.knowledge-packs.enabled`. See `docs/history/handoffs/2026-11/2026-11-02-hunt-knowledge-ae.md`.
 
 ```bat
 mvn -q "-Dtest=HuntCoreTest,HuntBugDedupeTest,HuntBugTriageTest,HuntSecretResolverTest,HuntOracleLoginFeatureTest,HuntPlannerPromptCredsTest,JobLoginServiceHooksTest,HuntStopRulesTest,HuntOracleTest" test

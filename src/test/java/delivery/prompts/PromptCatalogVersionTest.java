@@ -23,7 +23,7 @@ public class PromptCatalogVersionTest {
         PromptCatalog.setOverrideDir(null);
         PromptCatalog.clearCache();
         String v = PromptCatalog.version();
-        Assert.assertEquals(v, "2026.11.02", v);
+        Assert.assertEquals(v, "2026.11.07", v);
     }
 
     @Test

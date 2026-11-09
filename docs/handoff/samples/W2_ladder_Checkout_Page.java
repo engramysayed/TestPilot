@@ -19,13 +19,9 @@ public class Checkout_Page {
 
     /** Keel targets (contract v1), main first then fallbacks. */
     protected final By place_Order_Btn_Locator = KeelBy.of("place_Order_Btn_Locator",
-            "css=button[role='button'][aria-label='Place order']",
             "css=button[data-testid='place-order']",
+            "css=button[role='button'][aria-label='Place order']",
             "css=button.submit");
-    /** Multi-locator bag fallback 1 for place_Order_Btn_Locator. */
-    protected final By place_Order_Btn_Locator_fb1 = By.css("button[data-testid='place-order']");
-    /** Multi-locator bag fallback 2 for place_Order_Btn_Locator. */
-    protected final By place_Order_Btn_Locator_fb2 = By.css("button.submit");
 
     public void click_Place_Order_Button() {
         SettledActions.click(driver, place_Order_Btn_Locator, "click", "click_Place_Order_Button");

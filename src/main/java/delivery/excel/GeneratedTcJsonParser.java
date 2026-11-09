@@ -121,7 +121,9 @@ public final class GeneratedTcJsonParser {
                 steps,
                 expectedResult,
                 textOrEmpty(firstField(node, "priority", "Priority")),
-                textOrEmpty(firstField(node, "tags", "Tags")),
+                RequirementTrace.withRequirementTags(
+                        textOrEmpty(firstField(node, "tags", "Tags")),
+                        textOrEmpty(firstField(node, "requirementRef", "RequirementRef", "requirement", "storyId"))),
                 visualAssertion,
                 testData,
                 keelStored,

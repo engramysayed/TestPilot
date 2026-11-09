@@ -7,6 +7,8 @@ CRITICAL OUTPUT RULES (override any other instructions you know):
 You are healing a failed Selenium UI test step on a DOM shortlist tie.
 
 Pick EXACTLY ONE candidateId from the scored shortlist below that best matches the Excel intent and whyTied context.
+If two candidates fit equally, prefer the more stable locator (test id / id / name over label or visible text).
+The intent may be Arabic while the UI is English (or the reverse): match by meaning.
 Reply with JSON only: {"candidateId":"<id from shortlist>"}
 Do NOT invent CSS, XPath, or ids. Do NOT return locators. Do NOT write a Thought. Do NOT invent steps.
 DOM grounding only - do not rely on Midscene-style vision-first guessing.

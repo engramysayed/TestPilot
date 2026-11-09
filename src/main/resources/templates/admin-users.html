@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Users')}"></th:block>
 </head>
@@ -10,8 +10,8 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1>Users &amp; invites</h1>
-            <p class="lede">Admin only — manage accounts.</p>
+            <h1 th:text="#{page.admin-users.title}">Users &amp; invites</h1>
+            <p class="lede" th:text="#{page.admin-users.lede}">Admin only — manage accounts.</p>
         </div>
     </div>
 
@@ -259,7 +259,7 @@
                     { title: 'Delete user', message: 'Delete this user and their projects/jobs from the portal DB?', confirmLabel: 'Delete', danger: true }))) return;
                 const r = await fetch('/api/admin/users/' + btn.getAttribute('data-del-user'), { method: 'DELETE', headers: { 'X-Keel-Requested-With': 'Keel' } });
                 const d = await r.json();
-                if (!r.ok) { await (window.keelAlert || function(m){alert(typeof m==='string'?m:m.message);return Promise.resolve();})(d.message || 'Delete failed'); return; }
+                if (!r.ok) { await window.keelAlert(d.message || 'Delete failed'); return; }
                 load();
             });
         });
@@ -276,7 +276,7 @@
         ib.querySelectorAll('[data-del-invite]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const r = await fetch('/api/admin/invites/' + btn.getAttribute('data-del-invite'), { method: 'DELETE', headers: { 'X-Keel-Requested-With': 'Keel' } });
-                if (!r.ok) { const d = await r.json(); await (window.keelAlert || function(m){alert(typeof m==='string'?m:m.message);return Promise.resolve();})(d.message || 'Failed'); return; }
+                if (!r.ok) { const d = await r.json(); await window.keelAlert(d.message || 'Failed'); return; }
                 load();
             });
         });
@@ -501,19 +501,19 @@
             return;
         }
         document.getElementById('keel-approve-modal').hidden = true;
-        await (window.keelAlert || function(m){alert(typeof m==='string'?m:m.message);return Promise.resolve();})(
+        await window.keelAlert(
             (data.message || 'User approved.') + ' Next: use Set credits if they should have a balance (manual — no free trial).');
         load();
     });
 
     async function setStatus(userId, status) {
-        const note = status === 'REJECTED' ? (prompt('Optional note for reject:') || '') : '';
+        const note = status === 'REJECTED' ? ((await window.keelPrompt({ title: 'Reject signup', message: 'Optional note for the person (they will see it):', confirmLabel: 'Reject' })) || '') : '';
         const res = await fetch('/api/admin/users/' + userId + '/approval', {
             method: 'POST', headers: HDR,
             body: JSON.stringify({ status: status, note: note || undefined })
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) { await (window.keelAlert || function(m){alert(typeof m==='string'?m:m.message);return Promise.resolve();})(data.message || 'Update failed'); return; }
+        if (!res.ok) { await window.keelAlert(data.message || 'Update failed'); return; }
         load();
     }
 
@@ -555,7 +555,7 @@
         document.getElementById('keel-usage-email').textContent = email;
         const res = await fetch('/api/admin/credits/' + userId + '/ledger', { credentials: 'same-origin', headers: HDR });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) { await (window.keelAlert || function(m){alert(typeof m==='string'?m:m.message);return Promise.resolve();})(data.message || 'Could not load usage'); return; }
+        if (!res.ok) { await window.keelAlert(data.message || 'Could not load usage'); return; }
         document.getElementById('keel-usage-balance').textContent = data.balance != null ? data.balance : 0;
         document.getElementById('keel-usage-spent').textContent = data.spentInRange != null ? data.spentInRange : 0;
         document.getElementById('keel-usage-granted').textContent = data.grantedInRange != null ? data.grantedInRange : 0;

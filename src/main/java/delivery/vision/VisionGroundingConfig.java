@@ -20,6 +20,14 @@ public final class VisionGroundingConfig {
         return booleanProp("delivery.vision.assertions.enabled", false);
     }
 
+    public static boolean domPostClickEnabled() {
+        return booleanProp("delivery.vision.dom-post-click.enabled", false);
+    }
+
+    public static boolean domPostClickStrict() {
+        return booleanProp("delivery.vision.dom-post-click.strict", false);
+    }
+
     public static boolean healHintsEnabled() {
         String p = firstProp("delivery.vision.heal-hints.enabled");
         if (p == null || p.isBlank()) {

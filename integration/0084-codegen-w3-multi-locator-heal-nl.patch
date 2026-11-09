@@ -1,0 +1,1321 @@
+diff --git a/customer-framework-template/templates/Page.java.ftl b/customer-framework-template/templates/Page.java.ftl
+index a1771bd..5f702cd 100644
+--- a/customer-framework-template/templates/Page.java.ftl
++++ b/customer-framework-template/templates/Page.java.ftl
+@@ -20,7 +20,7 @@ import project.utils.locators.SettledActions;
+ </#if>
+ 
+ /**
+- * Generated page for ${stem} (locators + actions + assertions in one class).
++ * Generated page for ${stem} (fields + actions + assertions + isLoaded in one class).
+  */
+ public class ${pageClassName} {
+ <#if maxContract gt 1>
+@@ -37,11 +37,31 @@ public class ${pageClassName} {
+     }
+ 
+ <#list fields as field>
+-<#if field.smart>
++<#if field.parameterized>
++    /** Parameterized row/list locator factory. */
++    protected By ${field.name}(String name) {
++        return By.${field.strategy}(${field.value});
++    }
++<#elseif field.smart>
+     /** Keel targets (contract v${field.contract}), main first then fallbacks. */
+     protected final By ${field.name} = ${field.smartExpr};
++<#if field.bag?has_content>
++<#list field.bag as fb>
++    /** Multi-locator bag fallback ${fb_index+1} for ${field.name}. */
++    protected final By ${field.name}_fb${fb_index+1} = By.${fb.strategy}("${fb.value?j_string}");
++</#list>
++</#if>
++<#elseif field.nlCached>
++    /** NL-cached validated By: ${field.nlPhrase?j_string} */
++    protected final By ${field.name} = By.${field.strategy}("${field.value?j_string}");
+ <#else>
+     protected final By ${field.name} = By.${field.strategy}("${field.value?j_string}");
++<#if field.bag?has_content>
++<#list field.bag as fb>
++    /** Multi-locator bag fallback ${fb_index+1} for ${field.name}. */
++    protected final By ${field.name}_fb${fb_index+1} = By.${fb.strategy}("${fb.value?j_string}");
++</#list>
++</#if>
+ </#if>
+ </#list>
+ 
+@@ -82,6 +102,17 @@ public class ${pageClassName} {
+ </#if>
+ 
+ </#list>
++<#if loadedMarker?has_content>
++    /** True when a stable page marker is visible (preferred hook / id / test id). */
++    public boolean isLoaded() {
++        try {
++            return driver.element().findElement(${loadedMarker}).isDisplayed();
++        } catch (RuntimeException e) {
++            return false;
++        }
++    }
++
++</#if>
+ <#if loginHelper??>
+     /** Preferred login API: type credentials then submit. */
+     public void login(String username, String password) {
+@@ -108,6 +139,16 @@ public class ${pageClassName} {
+             driver.validation().urlContains(expected);
+ <#elseif assertion.assertionType == "checked" || assertion.assertionType == "selected">
+             driver.validation().elementSelected(${assertion.fieldName}, expected);
++<#elseif assertion.assertionType == "value" || assertion.assertionType == "valueEquals">
++            driver.validation().elementValue(${assertion.fieldName}, expected);
++<#elseif assertion.assertionType == "textEquals">
++            driver.validation().elementTextEquals(${assertion.fieldName}, expected);
++<#elseif assertion.assertionType == "ariaRole">
++            driver.validation().elementAriaRole(${assertion.fieldName}, expected);
++<#elseif assertion.assertionType == "ariaLabel">
++            driver.validation().elementAriaLabel(${assertion.fieldName}, expected);
++<#elseif assertion.assertionType == "region">
++            driver.validation().elementRegion(${assertion.fieldName}, expected);
+ <#else>
+             LogsManager.error("unsupported assertionType: ${assertion.assertionType}");
+             driver.validation().softTrue(false, "unsupported assertionType: ${assertion.assertionType}");
+diff --git a/src/main/java/delivery/codegen/CodeWriter.java b/src/main/java/delivery/codegen/CodeWriter.java
+index 41c2f8c..bb6ddc1 100644
+--- a/src/main/java/delivery/codegen/CodeWriter.java
++++ b/src/main/java/delivery/codegen/CodeWriter.java
+@@ -47,8 +47,17 @@ public class CodeWriter {
+     }
+ 
+     public void write(Path projectRoot, List<TcOutcome> outcomes) throws Exception {
+-        List<TcOutcome> emitOutcomes = filterForEmit(outcomes);
++        write(projectRoot, outcomes, List.of());
++    }
++
++    /** W3: emit pages/tests and attach NL-cached validated By fields onto existing page classes. */
++    public void write(Path projectRoot, List<TcOutcome> outcomes, List<NlLocatorCache.CachedBy> nlCached)
++            throws Exception {
++        List<TcOutcome> emitOutcomes = EmitStepNormalizer.applyOutcomes(filterForEmit(outcomes));
+         CodegenEmitGate.Prepared prepared = CodegenEmitGate.prepare(emitOutcomes);
++        if (nlCached != null && !nlCached.isEmpty()) {
++            NlLocatorCache.apply(prepared.pages(), nlCached);
++        }
+         writeVerified(projectRoot, prepared.outcomes(), prepared.pages());
+     }
+ 
+@@ -61,7 +70,7 @@ public class CodeWriter {
+ 
+     public static PageAccumulator accumulate(List<TcOutcome> outcomes) {
+         PageAccumulator pages = new PageAccumulator();
+-        List<TcOutcome> emitOutcomes = filterForEmit(outcomes);
++        List<TcOutcome> emitOutcomes = EmitStepNormalizer.applyOutcomes(filterForEmit(outcomes));
+         if (emitOutcomes.isEmpty()) {
+             return pages;
+         }
+@@ -107,6 +116,7 @@ public class CodeWriter {
+             model.put("fields", page.fields());
+             model.put("methods", page.methods());
+             model.put("assertions", page.assertions());
++            model.put("loadedMarker", page.loadedMarkerRef());
+             var loginHelper = LoginPageHelper.detect(page);
+             if (loginHelper != null) {
+                 model.put("loginHelper", loginHelper);
+diff --git a/src/main/java/delivery/codegen/DomDiffAssertSuggestor.java b/src/main/java/delivery/codegen/DomDiffAssertSuggestor.java
+new file mode 100644
+index 0000000..977296a
+--- /dev/null
++++ b/src/main/java/delivery/codegen/DomDiffAssertSuggestor.java
+@@ -0,0 +1,138 @@
++package delivery.codegen;
++
++import java.util.ArrayList;
++import java.util.LinkedHashSet;
++import java.util.List;
++import java.util.Locale;
++import java.util.Set;
++
++/**
++ * W3: trimmed DOM-diff ??? assert suggestions for Automate emit.
++ * Suggests only stable kinds already supported by page emit (visible / notVisible /
++ * textContains / ariaRole / ariaLabel / region). Caps suggestions to avoid noisy pages.
++ */
++public final class DomDiffAssertSuggestor {
++    public static final int MAX_SUGGESTIONS = 4;
++
++    private DomDiffAssertSuggestor() {
++    }
++
++    /** One DOM-diff delta the AI / prove layer observed. */
++    public record DiffHint(
++            String change,
++            String strategy,
++            String value,
++            String assertionType,
++            String expected,
++            String rationale
++    ) {
++        public DiffHint {
++            change = change == null ? "" : change.trim().toLowerCase(Locale.ROOT);
++            strategy = strategy == null ? "" : strategy.trim();
++            value = value == null ? "" : value;
++            assertionType = assertionType == null ? "" : assertionType.trim();
++            expected = expected == null ? "" : expected;
++            rationale = rationale == null ? "" : rationale;
++        }
++    }
++
++    public record Suggestion(
++            String assertionType,
++            String strategy,
++            String locatorValue,
++            String expected,
++            String rationale
++    ) {
++        public ProvenStep toStep(String tcId, String pageName) {
++            return new ProvenStep(
++                    tcId == null ? "TC_DOMDIFF" : tcId,
++                    pageName == null || pageName.isBlank() ? "Page" : pageName,
++                    "elementAction",
++                    "assert",
++                    strategy,
++                    locatorValue,
++                    "",
++                    assertionType,
++                    expected,
++                    true,
++                    rationale == null || rationale.isBlank() ? "dom-diff:" + assertionType : rationale,
++                    "");
++        }
++    }
++
++    public static List<Suggestion> suggest(List<DiffHint> hints) {
++        if (hints == null || hints.isEmpty()) {
++            return List.of();
++        }
++        Set<String> seen = new LinkedHashSet<>();
++        List<Suggestion> out = new ArrayList<>();
++        for (DiffHint h : hints) {
++            if (h == null || h.value().isBlank()) {
++                continue;
++            }
++            Suggestion s = map(h);
++            if (s == null) {
++                continue;
++            }
++            String key = s.assertionType().toLowerCase(Locale.ROOT) + '\0'
++                    + s.strategy().toLowerCase(Locale.ROOT) + '\0'
++                    + s.locatorValue() + '\0' + s.expected();
++            if (!seen.add(key)) {
++                continue;
++            }
++            out.add(s);
++            if (out.size() >= MAX_SUGGESTIONS) {
++                break;
++            }
++        }
++        return List.copyOf(out);
++    }
++
++    public static void apply(PageAccumulator pages, String tcId, String pageName, List<DiffHint> hints) {
++        for (Suggestion s : suggest(hints)) {
++            pages.add(s.toStep(tcId, pageName));
++        }
++    }
++
++    static Suggestion map(DiffHint h) {
++        String type = h.assertionType();
++        String expected = h.expected();
++        String change = h.change();
++        if (type.isBlank()) {
++            type = switch (change) {
++                case "removed", "gone", "hidden" -> "notVisible";
++                case "added", "appeared", "shown" -> "visible";
++                case "text", "textchanged", "changed" -> "textContains";
++                case "role", "ariarole" -> "ariaRole";
++                case "label", "arialabel" -> "ariaLabel";
++                case "region", "landmark" -> "region";
++                default -> h.expected().isBlank() ? "visible" : "textContains";
++            };
++        }
++        type = switch (type.toLowerCase(Locale.ROOT)) {
++            case "text" -> "textContains";
++            case "textexact", "exacttext" -> "textEquals";
++            case "role", "hasrole" -> "ariaRole";
++            case "accessiblename", "accname" -> "ariaLabel";
++            case "landmark", "inregion" -> "region";
++            case "hidden", "gone" -> "notVisible";
++            case "shown", "appeared" -> "visible";
++            default -> type;
++        };
++        Set<String> allowed = Set.of(
++                "visible", "notVisible", "textContains", "textEquals",
++                "ariaRole", "ariaLabel", "region", "value");
++        if (!allowed.contains(type)) {
++            return null;
++        }
++        if (("textContains".equals(type) || "textEquals".equals(type) || "value".equals(type)
++                || "ariaRole".equals(type) || "ariaLabel".equals(type) || "region".equals(type))
++                && expected.isBlank()) {
++            return null;
++        }
++        String rationale = h.rationale().isBlank()
++                ? "dom-diff:" + change + "->" + type
++                : h.rationale();
++        return new Suggestion(type, h.strategy(), h.value(), expected, rationale);
++    }
++}
+diff --git a/src/main/java/delivery/codegen/HealAcceptPatcher.java b/src/main/java/delivery/codegen/HealAcceptPatcher.java
+new file mode 100644
+index 0000000..44354b4
+--- /dev/null
++++ b/src/main/java/delivery/codegen/HealAcceptPatcher.java
+@@ -0,0 +1,194 @@
++package delivery.codegen;
++
++import delivery.heal.HealProposal;
++import delivery.portal.service.HealJavaLocatorPatcher;
++
++import java.io.IOException;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.LinkedHashMap;
++import java.util.Locale;
++import java.util.Map;
++import java.util.regex.Pattern;
++
++/**
++ * Codegen-side alignment for Phase 2 heal Accept/Reject.
++ * Ensures Accept patches an <em>existing</em> generated page class only (never invents
++ * {@code LoginPage2} / never creates a missing class). Reuses {@link HealJavaLocatorPatcher}
++ * and the Phase 2 proposal store shape ??? does not fork a second proposal store.
++ */
++public final class HealAcceptPatcher {
++    private static final Pattern INVENTED_SUFFIX = Pattern.compile(
++            "^.+(Page)?[_]?2$", Pattern.CASE_INSENSITIVE);
++
++    private HealAcceptPatcher() {
++    }
++
++    public record AlignResult(
++            String pageClass,
++            Path pageFile,
++            boolean ok,
++            String detail
++    ) {
++    }
++
++    /**
++     * Collapse Login aliases onto the emitted page class name and reject invented *2 names.
++     */
++    public static String alignPageClass(String pageClass) {
++        if (pageClass == null || pageClass.isBlank()) {
++            throw new HealJavaLocatorPatcher.MissingPageException("pageClass required");
++        }
++        String raw = pageClass.trim();
++        int dot = raw.lastIndexOf('.');
++        String simple = dot >= 0 ? raw.substring(dot + 1) : raw;
++        if (looksInvented(simple)) {
++            throw new HealJavaLocatorPatcher.BadPatchException(
++                    "Refusing invented page class (no LoginPage2): " + simple);
++        }
++        String stem = simple;
++        if (stem.endsWith("_Page")) {
++            stem = stem.substring(0, stem.length() - "_Page".length());
++        } else if (stem.endsWith("Page") && stem.length() > 4) {
++            stem = stem.substring(0, stem.length() - "Page".length());
++        }
++        ProvenStep probe = new ProvenStep(
++                "TC_HEAL", stem, "elementAction", "click",
++                "id", "x", "", "", "", true, "heal-align");
++        String key = PageAccumulator.pageKey(probe);
++        return CodegenNaming.pageClassName(key);
++    }
++
++    public static boolean looksInvented(String pageClass) {
++        if (pageClass == null || pageClass.isBlank()) {
++            return true;
++        }
++        String simple = pageClass.trim();
++        int dot = simple.lastIndexOf('.');
++        if (dot >= 0) {
++            simple = simple.substring(dot + 1);
++        }
++        String lower = simple.toLowerCase(Locale.ROOT);
++        if (lower.contains("loginpage2") || lower.contains("login_page2") || lower.contains("login_2_page")) {
++            return true;
++        }
++        return INVENTED_SUFFIX.matcher(simple).matches()
++                && lower.contains("login");
++    }
++
++    public static String simpleName(String pageClass) {
++        if (pageClass == null || pageClass.isBlank()) {
++            return "";
++        }
++        String raw = pageClass.trim();
++        int dot = raw.lastIndexOf('.');
++        return dot >= 0 ? raw.substring(dot + 1) : raw;
++    }
++
++    /**
++     * Resolve existing page file under {@code src/main/java/project/pages}; 409-equivalent if missing.
++     */
++    public static AlignResult resolveExisting(Path projectRoot, String pageClass) {
++        String aligned = alignPageClass(pageClass);
++        try {
++            Path file = HealJavaLocatorPatcher.resolveExistingPageFile(projectRoot, aligned);
++            return new AlignResult(aligned, file, true, "ok");
++        } catch (HealJavaLocatorPatcher.MissingPageException ex) {
++            try {
++                Path file = HealJavaLocatorPatcher.resolveExistingPageFile(projectRoot, pageClass);
++                return new AlignResult(simpleName(pageClass), file, true, "ok-raw");
++            } catch (RuntimeException ignored) {
++                return new AlignResult(aligned, null, false,
++                        "409: generated page class not found: " + aligned);
++            }
++        }
++    }
++
++    /**
++     * Accept: patch locator in the named existing page class only.
++     */
++    public static HealJavaLocatorPatcher.PatchOutcome accept(
++            Path projectRoot,
++            HealProposal proposal
++    ) throws IOException {
++        if (proposal == null) {
++            throw new HealJavaLocatorPatcher.BadPatchException("proposal required");
++        }
++        if (looksInvented(proposal.pageClass())) {
++            throw new HealJavaLocatorPatcher.BadPatchException(
++                    "Refusing inventing page class on Accept: " + proposal.pageClass());
++        }
++        AlignResult align = resolveExisting(projectRoot, proposal.pageClass());
++        if (!align.ok()) {
++            throw new HealJavaLocatorPatcher.MissingPageException(align.detail());
++        }
++        Map<String, Object> before = locatorMap(proposal.locatorBefore());
++        Map<String, Object> after = locatorMap(proposal.locatorAfter());
++        return HealJavaLocatorPatcher.applyLocatorPatch(
++                projectRoot, align.pageClass(), before, after);
++    }
++
++    /**
++     * Build a Phase 2 proposal map for AE emit (status=pending). Never rewrites Java.
++     */
++    public static Map<String, Object> proposalShell(
++            String proposalId,
++            String projectId,
++            String jobId,
++            String tcId,
++            int stepIndex,
++            String pageClass,
++            String beforeStrategy,
++            String beforeValue,
++            String afterStrategy,
++            String afterValue,
++            String reason
++    ) {
++        String aligned;
++        try {
++            aligned = alignPageClass(pageClass);
++        } catch (RuntimeException ex) {
++            aligned = pageClass == null ? "" : pageClass;
++        }
++        Map<String, Object> m = new LinkedHashMap<>();
++        m.put("proposalId", proposalId == null ? "" : proposalId);
++        m.put("projectId", projectId == null ? "" : projectId);
++        m.put("jobId", jobId == null ? "" : jobId);
++        m.put("tcId", tcId == null ? "" : tcId);
++        m.put("stepIndex", stepIndex);
++        m.put("pageClass", aligned);
++        Map<String, Object> before = new LinkedHashMap<>();
++        before.put("strategy", beforeStrategy == null ? "" : beforeStrategy);
++        before.put("value", beforeValue == null ? "" : beforeValue);
++        Map<String, Object> after = new LinkedHashMap<>();
++        after.put("strategy", afterStrategy == null ? "" : afterStrategy);
++        after.put("value", afterValue == null ? "" : afterValue);
++        m.put("locatorBefore", before);
++        m.put("locatorAfter", after);
++        m.put("patchKind", "locator");
++        m.put("tier", "codegen-align");
++        m.put("reason", reason == null ? "" : reason);
++        m.put("status", "pending");
++        m.put("createdAt", java.time.Instant.now().toString());
++        m.put("decidedAt", null);
++        m.put("evidenceRel", null);
++        return m;
++    }
++
++    public static boolean pageClassExists(Path projectRoot, String pageClass) {
++        AlignResult r = resolveExisting(projectRoot, pageClass);
++        return r.ok() && r.pageFile() != null && Files.isRegularFile(r.pageFile());
++    }
++
++    private static Map<String, Object> locatorMap(HealProposal.LocatorRef ref) {
++        Map<String, Object> m = new LinkedHashMap<>();
++        if (ref == null) {
++            m.put("strategy", "");
++            m.put("value", "");
++            return m;
++        }
++        m.put("strategy", ref.strategy());
++        m.put("value", ref.value());
++        return m;
++    }
++}
+diff --git a/src/main/java/delivery/codegen/MultiLocatorBag.java b/src/main/java/delivery/codegen/MultiLocatorBag.java
+new file mode 100644
+index 0000000..4f599af
+--- /dev/null
++++ b/src/main/java/delivery/codegen/MultiLocatorBag.java
+@@ -0,0 +1,134 @@
++package delivery.codegen;
++
++import delivery.store.PreferredHooksStore;
++
++import java.util.ArrayList;
++import java.util.LinkedHashSet;
++import java.util.List;
++import java.util.Locale;
++import java.util.Set;
++
++/**
++ * W3 multi-locator bag: primary + ordered fallbacks per element.
++ * Honors W1 preferred-hook-first (empty hooks keep proven primary ??? never promote)
++ * and W2 semantic ladder / uniqueness / text-drop rules.
++ */
++public final class MultiLocatorBag {
++    /** Primary + up to {@link LocatorCandidate#MAX_FALLBACKS} - 1 fallbacks. */
++    public static final int MAX_ENTRIES = LocatorCandidate.MAX_FALLBACKS;
++
++    private MultiLocatorBag() {
++    }
++
++    public record Entry(String strategy, String value) {
++        public Entry {
++            strategy = strategy == null ? "" : strategy.trim();
++            value = value == null ? "" : value;
++        }
++
++        public String key() {
++            return strategy.toLowerCase(Locale.ROOT) + '\0' + value;
++        }
++    }
++
++    public record Bag(Entry primary, List<Entry> fallbacks) {
++        public Bag {
++            if (primary == null) {
++                primary = new Entry("", "");
++            }
++            fallbacks = fallbacks == null ? List.of() : List.copyOf(fallbacks);
++        }
++
++        public boolean hasFallbacks() {
++            return !fallbacks.isEmpty();
++        }
++
++        public List<Entry> all() {
++            List<Entry> out = new ArrayList<>(1 + fallbacks.size());
++            out.add(primary);
++            out.addAll(fallbacks);
++            return List.copyOf(out);
++        }
++    }
++
++    /**
++     * Build an ordered bag from a proven locator + candidates.
++     * Empty preferred hooks: proven stays primary; candidates may only appear as fallbacks.
++     * Non-empty hooks: ladder may promote preferred/role/label/testid over proven.
++     */
++    public static Bag build(
++            String strategy,
++            String value,
++            List<LocatorCandidate> candidates,
++            List<String> hooks
++    ) {
++        List<String> activeHooks = hooks == null ? PreferredHooksStore.current() : hooks;
++        if (activeHooks == null) {
++            activeHooks = List.of();
++        }
++        boolean promote = !activeHooks.isEmpty();
++        SemanticLocatorLadder.Pick pick = SemanticLocatorLadder.pick(
++                strategy, value, candidates, activeHooks, promote);
++        Entry primary;
++        List<LocatorCandidate> orderedRest;
++        if (pick.rejected() || pick.strategy() == null || pick.strategy().isBlank()) {
++            primary = new Entry(strategy, value);
++            orderedRest = candidates == null ? List.of() : candidates;
++        } else {
++            primary = new Entry(pick.strategy(), pick.value());
++            orderedRest = new ArrayList<>();
++            if (pick.fallbacks() != null) {
++                orderedRest.addAll(pick.fallbacks());
++            }
++            if (candidates != null) {
++                orderedRest.addAll(candidates);
++            }
++            if (strategy != null && value != null && !value.isBlank()) {
++                orderedRest.add(LocatorCandidate.of(strategy, value));
++            }
++        }
++
++        Set<String> seen = new LinkedHashSet<>();
++        seen.add(primary.key());
++        List<Entry> fallbacks = new ArrayList<>();
++        for (LocatorCandidate c : orderedRest) {
++            if (c == null || c.value() == null || c.value().isBlank()) {
++                continue;
++            }
++            if (SemanticLocatorLadder.isNonUnique(c.strategy(), c.value())) {
++                continue;
++            }
++            EmitStepNormalizer.Loc loc = EmitStepNormalizer.Loc.plain(c.strategy(), c.value());
++            if (EmitStepNormalizer.isTextLocator(loc)) {
++                continue;
++            }
++            Entry e = new Entry(c.strategy(), c.value());
++            if (!seen.add(e.key())) {
++                continue;
++            }
++            fallbacks.add(e);
++            if (fallbacks.size() >= MAX_ENTRIES - 1) {
++                break;
++            }
++        }
++        if (promote && fallbacks.size() > 1) {
++            List<String> hooksFinal = activeHooks;
++            fallbacks.sort((a, b) -> Integer.compare(
++                    SemanticLocatorLadder.rank(b.strategy(), b.value(), hooksFinal),
++                    SemanticLocatorLadder.rank(a.strategy(), a.value(), hooksFinal)));
++        }
++        return new Bag(primary, List.copyOf(fallbacks));
++    }
++
++    public static Bag build(ProvenStep step) {
++        if (step == null) {
++            return new Bag(new Entry("", ""), List.of());
++        }
++        ProvenStep normalized = EmitStepNormalizer.apply(step);
++        return build(
++                normalized.locatorStrategy(),
++                normalized.locatorValue(),
++                normalized.locatorCandidates(),
++                PreferredHooksStore.current());
++    }
++}
+diff --git a/src/main/java/delivery/codegen/NlLocatorCache.java b/src/main/java/delivery/codegen/NlLocatorCache.java
+new file mode 100644
+index 0000000..4136736
+--- /dev/null
++++ b/src/main/java/delivery/codegen/NlLocatorCache.java
+@@ -0,0 +1,117 @@
++package delivery.codegen;
++
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Locale;
++import java.util.Map;
++import java.util.regex.Pattern;
++
++/**
++ * W3: natural-language / intent step ??? validated {@code By} cached as a field on the page class.
++ * Resolves a short NL phrase against a proven locator (already validated by prove) and emits a
++ * stable field name such as {@code nl_click_login_button}.
++ */
++public final class NlLocatorCache {
++    private static final Pattern SAFE = Pattern.compile("[^a-zA-Z0-9]+");
++    private static final int MAX_TOKEN = 40;
++
++    private NlLocatorCache() {
++    }
++
++    public record CachedBy(
++            String fieldName,
++            String nlPhrase,
++            String strategy,
++            String value,
++            String pageName
++    ) {
++        public CachedBy {
++            fieldName = fieldName == null ? "" : fieldName;
++            nlPhrase = nlPhrase == null ? "" : nlPhrase.trim();
++            strategy = strategy == null ? "" : strategy.trim();
++            value = value == null ? "" : value;
++            pageName = pageName == null ? "" : pageName.trim();
++        }
++    }
++
++    public static java.util.Optional<CachedBy> resolve(
++            String pageName,
++            String nlPhrase,
++            String strategy,
++            String value
++    ) {
++        if (nlPhrase == null || nlPhrase.isBlank()) {
++            return java.util.Optional.empty();
++        }
++        if (value == null || value.isBlank()) {
++            return java.util.Optional.empty();
++        }
++        String rawStrategy = strategy == null ? "" : strategy.trim();
++        String st;
++        if ("xpath".equalsIgnoreCase(rawStrategy)) {
++            st = "xpath";
++        } else if ("id".equalsIgnoreCase(rawStrategy)) {
++            st = "id";
++        } else if ("name".equalsIgnoreCase(rawStrategy)) {
++            st = "name";
++        } else if ("css".equalsIgnoreCase(rawStrategy) || "cssSelector".equalsIgnoreCase(rawStrategy)) {
++            st = "cssSelector";
++        } else {
++            st = PageAccumulator.normalizeByStrategyForCandidates(
++                    rawStrategy.isBlank() ? "css" : rawStrategy);
++            if (st == null || st.isBlank()) {
++                st = "cssSelector";
++            }
++        }
++        String field = fieldNameFor(nlPhrase);
++        return java.util.Optional.of(new CachedBy(field, nlPhrase.trim(), st, value, pageName));
++    }
++
++    public static String fieldNameFor(String nlPhrase) {
++        String raw = nlPhrase == null ? "" : nlPhrase.trim().toLowerCase(Locale.ROOT);
++        String[] parts = SAFE.split(raw);
++        StringBuilder sb = new StringBuilder("nl");
++        int used = 0;
++        for (String p : parts) {
++            if (p == null || p.isBlank()) {
++                continue;
++            }
++            if (p.length() > MAX_TOKEN) {
++                p = p.substring(0, MAX_TOKEN);
++            }
++            sb.append('_').append(p);
++            used++;
++            if (used >= 6) {
++                break;
++            }
++        }
++        if (used == 0) {
++            sb.append("_step");
++        }
++        String name = sb.toString();
++        if (!Character.isJavaIdentifierStart(name.charAt(0))) {
++            name = "nl_" + name;
++        }
++        return name;
++    }
++
++    public static void apply(PageAccumulator pages, List<CachedBy> cached) {
++        if (pages == null || cached == null || cached.isEmpty()) {
++            return;
++        }
++        Map<String, List<CachedBy>> byPage = new LinkedHashMap<>();
++        for (CachedBy c : cached) {
++            if (c == null || c.value().isBlank()) {
++                continue;
++            }
++            String key = c.pageName() == null || c.pageName().isBlank() ? "Page" : c.pageName();
++            byPage.computeIfAbsent(key, k -> new ArrayList<>()).add(c);
++        }
++        for (Map.Entry<String, List<CachedBy>> e : byPage.entrySet()) {
++            for (CachedBy c : e.getValue()) {
++                pages.addNlCachedField(e.getKey(), c);
++            }
++        }
++    }
++}
+diff --git a/src/main/java/delivery/codegen/PageAccumulator.java b/src/main/java/delivery/codegen/PageAccumulator.java
+index 478e599..13a051d 100644
+--- a/src/main/java/delivery/codegen/PageAccumulator.java
++++ b/src/main/java/delivery/codegen/PageAccumulator.java
+@@ -19,6 +19,10 @@ public class PageAccumulator {
+     }
+ 
+     public void add(ProvenStep step) {
++        if (step == null) {
++            return;
++        }
++        step = EmitStepNormalizer.apply(step);
+         if (isBodyTextAssert(step)) {
+             PageModel page = pageFor(step);
+             allocateAssertion(page, step, null);
+@@ -40,6 +44,47 @@ public class PageAccumulator {
+         }
+     }
+ 
++    /**
++     * W3: cache a validated NL->By on the existing page class (never invents a second class).
++     */
++    public void addNlCachedField(String pageName, NlLocatorCache.CachedBy cached) {
++        if (cached == null || cached.value() == null || cached.value().isBlank()) {
++            return;
++        }
++        ProvenStep probe = new ProvenStep(
++                "TC_NL",
++                pageName == null || pageName.isBlank() ? "Page" : pageName,
++                "elementAction",
++                "click",
++                cached.strategy(),
++                cached.value(),
++                "",
++                "",
++                "",
++                true,
++                "nl-cache:" + cached.nlPhrase());
++        PageModel page = pageFor(probe);
++        String base = cached.fieldName() == null || cached.fieldName().isBlank()
++                ? NlLocatorCache.fieldNameFor(cached.nlPhrase())
++                : cached.fieldName();
++        String field = uniqueFieldName(page, base);
++        page.fieldNames().add(field);
++        page.fields().add(new FieldModel(
++                field,
++                cached.strategy(),
++                cached.value(),
++                List.of(),
++                "",
++                false,
++                List.of(),
++                cached.nlPhrase()));
++    }
++
++    /** W3: merge trimmed DOM-diff assert suggestions into the named page. */
++    public void addDomDiffSuggestions(String tcId, String pageName, List<DomDiffAssertSuggestor.DiffHint> hints) {
++        DomDiffAssertSuggestor.apply(this, tcId, pageName, hints);
++    }
++
+     public Map<String, PageModel> pages() {
+         return pages;
+     }
+@@ -93,18 +138,37 @@ public class PageAccumulator {
+         String key = pageKey(step);
+         return pages.computeIfAbsent(key, name -> {
+             String titleStem = CodegenNaming.pageTitleStem(name);
++            // Distinct page identities that share a stem still get unique stems (Order-Details
++            // vs OrderDetails ??? OrderDetails + OrderDetails_2). Login aliases share one key.
+             String uniqueStem = CodegenNaming.allocateUnique(usedStems, titleStem);
+             return PageModel.withStem(uniqueStem);
+         });
+     }
+ 
++    /**
++     * Merge identity for re-generate: Login / LoginPage / LoginForm / TargetLogin collapse
++     * onto one page key so emit never writes {@code Login_Page2}. Other names keep their
++     * raw key (colliding stems still get allocateUnique suffixes).
++     */
+     static String pageKey(ProvenStep step) {
+-        return step.pageName() == null || step.pageName().isBlank() ? "Page" : step.pageName().trim();
++        String raw = step.pageName() == null || step.pageName().isBlank() ? "Page" : step.pageName().trim();
++        if ("Login".equalsIgnoreCase(raw)
++                || "LoginForm".equalsIgnoreCase(raw)
++                || "LoginPage".equalsIgnoreCase(raw)
++                || "TargetLogin".equals(raw)) {
++            return "Login";
++        }
++        return raw;
+     }
+ 
+     private String allocateField(PageModel page, ProvenStep step) {
++        step = EmitStepNormalizer.apply(step);
+         String strategy = normalizeByStrategy(step.locatorStrategy());
+         String locatorValue = normalizeLocatorValue(step.locatorStrategy(), step.locatorValue());
++        String rowRef = rowFactoryRef(page, step, strategy, locatorValue);
++        if (rowRef != null) {
++            return rowRef;
++        }
+         List<String> ranked = rankedFor(step);
+         if (ranked.isEmpty() && LocatorCandidate.KEEL.equalsIgnoreCase(
+                 step.locatorStrategy() == null ? "" : step.locatorStrategy().trim())) {
+@@ -117,17 +181,34 @@ public class PageAccumulator {
+             locatorValue = LocatorCandidate.terminalCss(ranked.get(0));
+             ranked = List.of();
+         }
++        MultiLocatorBag.Bag bag = MultiLocatorBag.build(
++                step.locatorStrategy(), step.locatorValue(), step.locatorCandidates(),
++                delivery.store.PreferredHooksStore.current());
++        // Keep proven/ladder primary for the field; bag fallbacks are plain By companions (W3).
++        if (bag.primary() != null && bag.primary().value() != null && !bag.primary().value().isBlank()) {
++            strategy = normalizeByStrategy(bag.primary().strategy());
++            locatorValue = normalizeLocatorValue(bag.primary().strategy(), bag.primary().value());
++            ProvenStep primaryStep = step.withLocator(bag.primary().strategy(), bag.primary().value())
++                    .withLocatorCandidates(step.locatorCandidates());
++            ranked = rankedFor(primaryStep);
++            if (ranked.size() == 1 && LocatorCandidate.isPlainCss(ranked.get(0))) {
++                strategy = "cssSelector";
++                locatorValue = LocatorCandidate.terminalCss(ranked.get(0));
++                ranked = List.of();
++            }
++        }
+         String existing = findFieldForLocator(page, strategy, locatorValue, ranked);
+         if (existing != null) {
+             return existing;
+         }
+         String field = uniqueFieldName(page, CodegenNaming.locatorFieldName(step));
+         page.fieldNames().add(field);
++        List<MultiLocatorBag.Entry> bagFalls = bag.fallbacks();
+         if (ranked.isEmpty()) {
+-            page.fields().add(new FieldModel(field, strategy, locatorValue));
++            page.fields().add(new FieldModel(field, strategy, locatorValue, List.of(), "", false, bagFalls, ""));
+         } else {
+             page.fields().add(new FieldModel(field, strategy, locatorValue, ranked,
+-                    LocatorCandidate.keelByExpression(field, ranked)));
++                    LocatorCandidate.keelByExpression(field, ranked), false, bagFalls, ""));
+         }
+         return field;
+     }
+@@ -145,6 +226,12 @@ public class PageAccumulator {
+         if (step.locatorCandidates().isEmpty() && !keel) {
+             return List.of();
+         }
++        // Preferred-hook-first only: with no active hooks, keep the proven primary as a plain By
++        // (do not let the candidate ladder promote a css/id fallback over it).
++        List<String> hooks = delivery.store.PreferredHooksStore.current();
++        if (!keel && (hooks == null || hooks.isEmpty())) {
++            return List.of();
++        }
+         return LocatorCandidate.rankedTargets(step.locatorStrategy(), step.locatorValue(), step.locatorCandidates());
+     }
+ 
+@@ -289,7 +376,57 @@ public class PageAccumulator {
+         return "textContains".equalsIgnoreCase(type)
+                 || "urlContains".equalsIgnoreCase(type)
+                 || "selected".equalsIgnoreCase(type)
+-                || "checked".equalsIgnoreCase(type);
++                || "checked".equalsIgnoreCase(type)
++                || "value".equalsIgnoreCase(type)
++                || "valueEquals".equalsIgnoreCase(type)
++                || "textEquals".equalsIgnoreCase(type)
++                || "ariaRole".equalsIgnoreCase(type)
++                || "ariaLabel".equalsIgnoreCase(type)
++                || "region".equalsIgnoreCase(type);
++    }
++
++    /**
++     * List/row selector ??? shared {@code By} factory. Returns the call expression
++     * ({@code productRow("Sauce Labs Backpack")}) or null when the locator stays a static field.
++     */
++    private String rowFactoryRef(PageModel page, ProvenStep step, String strategy, String locatorValue) {
++        RowLocator row = RowLocator.parse(pageKey(step), strategy, locatorValue);
++        if (row == null) {
++            return null;
++        }
++        String arg = row.literal();
++        if (row.placeholder()) {
++            arg = firstNonBlank(step.value(), step.assertionExpected());
++            if (arg.isBlank()) {
++                return null;
++            }
++        }
++        String factory = ensureRowFactory(page, row);
++        return factory + "(" + LocatorCandidate.javaString(arg) + ")";
++    }
++
++    private static String ensureRowFactory(PageModel page, RowLocator row) {
++        String existing = page.rowFactory(row.key());
++        if (existing != null) {
++            return existing;
++        }
++        java.util.Set<String> used = new java.util.LinkedHashSet<>();
++        used.addAll(page.fieldNames());
++        used.addAll(page.methodNames());
++        used.addAll(page.assertNames());
++        String name = CodegenNaming.allocateUnique(used, row.factoryBase());
++        page.fieldNames().add(name);
++        page.methodNames().add(name);
++        page.rememberRowFactory(row.key(), name);
++        page.fields().add(new FieldModel(name, row.strategy(), row.expr(), List.of(), "", true));
++        return name;
++    }
++
++    private static String firstNonBlank(String a, String b) {
++        if (a != null && !a.isBlank()) {
++            return a;
++        }
++        return b == null ? "" : b.trim();
+     }
+ 
+     private static String slotOf(ProvenStep step) {
+@@ -423,14 +560,27 @@ public class PageAccumulator {
+      * @param smartExpr  Java {@code KeelBy.of(...)} expression emitted for keel fields
+      */
+     public record FieldModel(String name, String strategy, String value,
+-                             List<String> candidates, String smartExpr) {
++                             List<String> candidates, String smartExpr, boolean parameterized,
++                             List<MultiLocatorBag.Entry> bag, String nlPhrase) {
+         public FieldModel(String name, String strategy, String value) {
+-            this(name, strategy, value, List.of(), "");
++            this(name, strategy, value, List.of(), "", false, List.of(), "");
++        }
++
++        public FieldModel(String name, String strategy, String value,
++                          List<String> candidates, String smartExpr) {
++            this(name, strategy, value, candidates, smartExpr, false, List.of(), "");
++        }
++
++        public FieldModel(String name, String strategy, String value,
++                          List<String> candidates, String smartExpr, boolean parameterized) {
++            this(name, strategy, value, candidates, smartExpr, parameterized, List.of(), "");
+         }
+ 
+         public FieldModel {
+             candidates = candidates == null ? List.of() : List.copyOf(candidates);
+             smartExpr = smartExpr == null ? "" : smartExpr;
++            bag = bag == null ? List.of() : List.copyOf(bag);
++            nlPhrase = nlPhrase == null ? "" : nlPhrase;
+         }
+ 
+         /** FreeMarker: {@code field.smart}. */
+@@ -438,6 +588,24 @@ public class PageAccumulator {
+             return !candidates.isEmpty();
+         }
+ 
++        /** W3 multi-locator bag fallbacks (plain By companions). */
++        public boolean hasBag() {
++            return bag != null && !bag.isEmpty();
++        }
++
++        public boolean isBag() {
++            return hasBag();
++        }
++
++        /** NL-cached validated By (W3). */
++        public boolean nlCached() {
++            return nlPhrase != null && !nlPhrase.isBlank();
++        }
++
++        public boolean isNlCached() {
++            return nlCached();
++        }
++
+         /** Any target with a v2 provider=/point= modifier: actions click at an offset. */
+         public boolean pointer() {
+             return candidates.stream().anyMatch(LocatorCandidate::hasPointer);
+@@ -455,6 +623,11 @@ public class PageAccumulator {
+         public boolean isSmart() {
+             return smart();
+         }
++
++        /** FreeMarker: {@code field.parameterized}. Repeating row/list {@code By} factory. */
++        public boolean isParameterized() {
++            return parameterized;
++        }
+     }
+ 
+     public record MethodModel(String name, String action, String fieldName, boolean needsValue, boolean smart,
+@@ -531,10 +704,14 @@ public class PageAccumulator {
+         private final Set<String> assertNames = new LinkedHashSet<>();
+         private final Map<String, String> actionByIdentity = new LinkedHashMap<>();
+         private final Map<String, String> assertByIdentity = new LinkedHashMap<>();
++        private final Map<String, String> rowFactories = new LinkedHashMap<>();
+ 
+         private PageModel(String stem, String pageClassName) {
+             this.stem = stem;
+             this.pageClassName = pageClassName;
++            // Template always emits isLoaded(); keep action/assert names off that method.
++            methodNames.add("isLoaded");
++            fieldNames.add("isLoaded");
+         }
+ 
+         public static PageModel fromPageName(String pageName) {
+@@ -583,6 +760,56 @@ public class PageAccumulator {
+             return assertions;
+         }
+ 
++        String rowFactory(String patternKey) {
++            return rowFactories.get(patternKey);
++        }
++
++        void rememberRowFactory(String patternKey, String methodName) {
++            rowFactories.put(patternKey, methodName);
++        }
++
++        /**
++         * Field used by {@code isLoaded()}: preferred hook, then id, test id, name, then any static field.
++         */
++        public String loadedMarkerRef() {
++            FieldModel best = null;
++            int bestScore = -1;
++            List<String> hooks = delivery.store.PreferredHooksStore.current();
++            for (FieldModel f : fields) {
++                if (f.parameterized()) {
++                    continue;
++                }
++                int score = markerScore(f, hooks);
++                if (score > bestScore) {
++                    bestScore = score;
++                    best = f;
++                }
++            }
++            return best == null ? "" : best.name();
++        }
++
++        private static int markerScore(FieldModel f, List<String> hooks) {
++            String value = f.value() == null ? "" : f.value();
++            String strategy = f.strategy() == null ? "" : f.strategy();
++            String smart = f.smartExpr() == null ? "" : f.smartExpr();
++            if (delivery.store.PreferredHooksStore.matches(value, hooks)
++                    || delivery.store.PreferredHooksStore.matches(strategy, hooks)
++                    || delivery.store.PreferredHooksStore.matches(smart, hooks)) {
++                return 100;
++            }
++            if ("id".equals(strategy)) {
++                return 80;
++            }
++            String low = (value + " " + smart).toLowerCase(java.util.Locale.ROOT);
++            if (low.contains("data-testid") || low.contains("data-test=") || low.contains("data-qa=")) {
++                return 70;
++            }
++            if ("name".equals(strategy)) {
++                return 60;
++            }
++            return 10;
++        }
++
+         Set<String> fieldNames() {
+             return fieldNames;
+         }
+diff --git a/src/test/java/delivery/codegen/CodegenW3EmitTest.java b/src/test/java/delivery/codegen/CodegenW3EmitTest.java
+new file mode 100644
+index 0000000..75533eb
+--- /dev/null
++++ b/src/test/java/delivery/codegen/CodegenW3EmitTest.java
+@@ -0,0 +1,237 @@
++package delivery.codegen;
++
++import delivery.heal.HealProposal;
++import delivery.job.TcOutcome;
++import delivery.job.TcStatus;
++import delivery.portal.service.HealJavaLocatorPatcher;
++import delivery.store.PreferredHooksStore;
++import org.testng.Assert;
++import org.testng.annotations.Test;
++
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.List;
++import java.util.Map;
++
++/**
++ * W3 Automate emit: multi-locator bag, DOM-diff asserts, heal Accept existing-only, NL???By cache.
++ * Also locks W1/W2 regressions (empty hooks, ladder, merge, isLoaded/productRow).
++ */
++public class CodegenW3EmitTest {
++    private static final Path TEMPLATES = Path.of("customer-framework-template/templates");
++
++    @Test
++    public void multiLocatorBagPrimaryThenOrderedFallbacks() throws Exception {
++        Path dir = Files.createTempDirectory("w3-bag");
++        ProvenStep step = new ProvenStep(
++                "TC_BAG", "Checkout", "elementAction", "click",
++                "css", "button.submit", "",
++                "", "", true, "bag", "",
++                List.of(
++                        LocatorCandidate.of("css", "button[data-testid='place-order']"),
++                        LocatorCandidate.of("css",
++                                "button[role='button'][aria-label='Place order']")));
++        try (PreferredHooksStore.Scope ignored = PreferredHooksStore.activate(List.of("data-axis-test-id"))) {
++            MultiLocatorBag.Bag bag = MultiLocatorBag.build(step);
++            Assert.assertTrue(bag.primary().value().contains("role=")
++                    || bag.primary().value().contains("aria-label"), bag.primary().value());
++            Assert.assertTrue(bag.hasFallbacks(), "expected fallbacks: " + bag);
++            new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_BAG", step)));
++        }
++        String page = Files.readString(dir.resolve("src/main/java/project/pages/Checkout_Page.java"));
++        Assert.assertTrue(page.contains("role=") || page.contains("Place order"), page);
++        // Bag fallbacks as _fbN and/or KeelBy targets
++        boolean hasFb = page.contains("_fb1") || page.contains("KeelBy.of") || page.contains("button.submit")
++                || page.contains("data-testid");
++        Assert.assertTrue(hasFb, "expected bag fallbacks in emit:\n" + page);
++        int roleAt = Math.max(page.indexOf("role="), page.indexOf("aria-label"));
++        int bareCss = page.indexOf("button.submit");
++        if (roleAt >= 0 && bareCss >= 0) {
++            Assert.assertTrue(roleAt < bareCss, "primary must precede bare css:\n" + page);
++        }
++        Path sample = Path.of("docs/handoff/samples/W3_bag_Checkout_Page.java");
++        Files.createDirectories(sample.getParent());
++        Files.writeString(sample, page);
++    }
++
++    @Test
++    public void emptyHooksBagKeepsProvenPrimaryAddsFallbacks() throws Exception {
++        Path dir = Files.createTempDirectory("w3-bag-empty");
++        ProvenStep step = new ProvenStep(
++                "TC_BAG0", "Otp", "elementAction", "click",
++                "xpath", "//button[@id='verify-otp']", "",
++                "", "", true, "", "",
++                List.of(LocatorCandidate.of("css", "button[data-axis-test-id='verify_Otp_Button']")));
++        try (PreferredHooksStore.Scope ignored = PreferredHooksStore.activate(List.of())) {
++            MultiLocatorBag.Bag bag = MultiLocatorBag.build(step);
++            Assert.assertTrue(bag.primary().value().contains("verify-otp"), bag.primary().toString());
++            Assert.assertTrue(bag.hasFallbacks(), bag.toString());
++            new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_BAG0", step)));
++        }
++        String page = Files.readString(dir.resolve("src/main/java/project/pages/Otp_Page.java"));
++        Assert.assertTrue(page.contains("//button[@id='verify-otp']") || page.contains("By.xpath"), page);
++        Assert.assertTrue(page.contains("_fb1") || page.contains("data-axis-test-id"), page);
++    }
++
++    @Test
++    public void domDiffSuggestsTrimmedAssertsIntoEmit() throws Exception {
++        Path dir = Files.createTempDirectory("w3-domdiff");
++        PageAccumulator acc = new PageAccumulator();
++        ProvenStep base = new ProvenStep(
++                "TC_DD", "Cart", "elementAction", "click",
++                "id", "checkout", "", "", "", true, "base");
++        acc.add(base);
++        List<DomDiffAssertSuggestor.DiffHint> hints = List.of(
++                new DomDiffAssertSuggestor.DiffHint(
++                        "added", "css", "[data-test='complete-header']", "", "", "banner appeared"),
++                new DomDiffAssertSuggestor.DiffHint(
++                        "text", "css", ".summary_total_label", "textContains", "Total: $", "total text"),
++                new DomDiffAssertSuggestor.DiffHint(
++                        "removed", "id", "spinner", "", "", "spinner gone"),
++                new DomDiffAssertSuggestor.DiffHint(
++                        "noise", "css", "div", "customWeird", "x", "should drop"));
++        List<DomDiffAssertSuggestor.Suggestion> suggestions = DomDiffAssertSuggestor.suggest(hints);
++        Assert.assertTrue(suggestions.size() <= DomDiffAssertSuggestor.MAX_SUGGESTIONS, "" + suggestions.size());
++        Assert.assertTrue(suggestions.stream().anyMatch(s -> "visible".equals(s.assertionType())));
++        Assert.assertTrue(suggestions.stream().anyMatch(s -> "textContains".equals(s.assertionType())));
++        Assert.assertTrue(suggestions.stream().anyMatch(s -> "notVisible".equals(s.assertionType())));
++        Assert.assertTrue(suggestions.stream().noneMatch(s -> "customWeird".equals(s.assertionType())));
++        acc.addDomDiffSuggestions("TC_DD", "Cart", hints);
++        // Emit via CodeWriter from outcomes that include suggested steps
++        List<ProvenStep> steps = new java.util.ArrayList<>();
++        steps.add(base);
++        for (DomDiffAssertSuggestor.Suggestion s : suggestions) {
++            steps.add(s.toStep("TC_DD", "Cart"));
++        }
++        new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_DD", steps.toArray(ProvenStep[]::new))));
++        String page = Files.readString(dir.resolve("src/main/java/project/pages/Cart_Page.java"));
++        Assert.assertTrue(page.contains("elementVisable(") || page.contains("complete-header"), page);
++        Assert.assertTrue(page.contains("textContains(") || page.contains("Total"), page);
++        Assert.assertTrue(page.contains("elementNotVisible(") || page.contains("spinner"), page);
++        Assert.assertTrue(page.contains("isLoaded()"), page);
++        Path sample = Path.of("docs/handoff/samples/W3_domdiff_Cart_Page.java");
++        Files.createDirectories(sample.getParent());
++        Files.writeString(sample, page);
++    }
++
++    @Test
++    public void healAcceptPatchesExistingPageOnlyRejectsLoginPage2() throws Exception {
++        Path dir = Files.createTempDirectory("w3-heal");
++        ProvenStep a = new ProvenStep("TC1", "Login", "elementAction", "type",
++                "id", "user-name", "u", "", "", true, "ok");
++        ProvenStep b = new ProvenStep("TC1", "Login", "elementAction", "type",
++                "id", "password", "p", "", "", true, "ok");
++        new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC1", a, b)));
++        Path pageFile = dir.resolve("src/main/java/project/pages/Login_Page.java");
++        Assert.assertTrue(Files.isRegularFile(pageFile));
++        String before = Files.readString(pageFile);
++        Assert.assertTrue(before.contains("user-name"), before);
++
++        Assert.assertTrue(HealAcceptPatcher.looksInvented("LoginPage2"));
++        Assert.assertTrue(HealAcceptPatcher.looksInvented("Login_Page2"));
++        Assert.assertFalse(HealAcceptPatcher.looksInvented("Login_Page"));
++        Assert.assertEquals(HealAcceptPatcher.alignPageClass("LoginPage"), "Login_Page");
++        Assert.assertEquals(HealAcceptPatcher.alignPageClass("LoginForm"), "Login_Page");
++
++        Map<String, Object> shell = HealAcceptPatcher.proposalShell(
++                "prop-1", "proj", "job", "TC1", 0, "LoginPage",
++                "id", "user-name", "css", "[data-test='username']", "heal username");
++        Assert.assertEquals(shell.get("pageClass"), "Login_Page");
++        Assert.assertEquals(shell.get("status"), "pending");
++        Assert.assertEquals(shell.get("patchKind"), "locator");
++
++        HealProposal proposal = new HealProposal(
++                "prop-1", "proj", "job", "TC1", 0, "Login_Page",
++                new HealProposal.LocatorRef("id", "user-name"),
++                new HealProposal.LocatorRef("cssSelector", "[data-test='username']"),
++                "locator", "t1", "heal", "pending", null, null, null);
++        HealJavaLocatorPatcher.PatchOutcome out = HealAcceptPatcher.accept(dir, proposal);
++        Assert.assertTrue(out.changed(), out.detail());
++        String after = Files.readString(pageFile);
++        Assert.assertTrue(after.contains("[data-test='username']") || after.contains("data-test"), after);
++        Assert.assertFalse(Files.exists(dir.resolve("src/main/java/project/pages/Login_Page2.java")));
++        Assert.assertFalse(Files.exists(dir.resolve("src/main/java/project/pages/LoginPage2.java")));
++
++        try {
++            HealAcceptPatcher.accept(dir, new HealProposal(
++                    "bad", "proj", "job", "TC1", 0, "LoginPage2",
++                    new HealProposal.LocatorRef("id", "password"),
++                    new HealProposal.LocatorRef("id", "password2"),
++                    "locator", "", "", "pending", null, null, null));
++            Assert.fail("must refuse LoginPage2");
++        } catch (HealJavaLocatorPatcher.BadPatchException | HealJavaLocatorPatcher.MissingPageException expected) {
++            Assert.assertTrue(expected.getMessage().toLowerCase().contains("login")
++                    || expected.getMessage().contains("2")
++                    || expected.getMessage().contains("invent"), expected.getMessage());
++        }
++
++        // Missing page ??? 409-style MissingPageException (do not create)
++        Path empty = Files.createTempDirectory("w3-heal-miss");
++        Files.createDirectories(empty.resolve("src/main/java/project/pages"));
++        try {
++            HealAcceptPatcher.accept(empty, new HealProposal(
++                    "miss", "proj", "job", "TC1", 0, "Login_Page",
++                    new HealProposal.LocatorRef("id", "x"),
++                    new HealProposal.LocatorRef("id", "y"),
++                    "locator", "", "", "pending", null, null, null));
++            Assert.fail("missing page must 409");
++        } catch (HealJavaLocatorPatcher.MissingPageException expected) {
++            Assert.assertTrue(expected.getMessage().contains("409")
++                    || expected.getMessage().toLowerCase().contains("not found"), expected.getMessage());
++        }
++
++        Path sample = Path.of("docs/handoff/samples/W3_heal_accept_Login_Page.java");
++        Files.createDirectories(sample.getParent());
++        Files.writeString(sample, after);
++    }
++
++    @Test
++    public void nlStepCachesValidatedByOnPageClass() throws Exception {
++        Path dir = Files.createTempDirectory("w3-nl");
++        ProvenStep click = new ProvenStep(
++                "TC_NL", "Login", "elementAction", "click",
++                "id", "login-button", "", "", "", true, "ok");
++        var cached = NlLocatorCache.resolve("Login", "click the login button", "id", "login-button");
++        Assert.assertTrue(cached.isPresent());
++        Assert.assertTrue(cached.get().fieldName().startsWith("nl_"));
++        Assert.assertTrue(cached.get().fieldName().contains("login"));
++        new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_NL", click)), List.of(cached.get()));
++        String page = Files.readString(dir.resolve("src/main/java/project/pages/Login_Page.java"));
++        Assert.assertTrue(page.contains("nl_") && page.contains("login"), page);
++        Assert.assertTrue(page.contains("login-button"), page);
++        Assert.assertTrue(page.contains("NL-cached") || page.contains("nl_click"), page);
++        Assert.assertFalse(page.contains("Login_Page2"));
++        Path sample = Path.of("docs/handoff/samples/W3_nl_Login_Page.java");
++        Files.createDirectories(sample.getParent());
++        Files.writeString(sample, page);
++    }
++
++    @Test
++    public void w1EmptyHooksAndW2MergeRegression() throws Exception {
++        Path dir = Files.createTempDirectory("w3-reg");
++        ProvenStep empty = new ProvenStep(
++                "TC_NOHOOK", "Otp", "elementAction", "click",
++                "xpath", "//button[@id='verify-otp']", "",
++                "", "", true, "", "",
++                List.of(LocatorCandidate.of("css", "button[data-axis-test-id='verify_Otp_Button']")));
++        try (PreferredHooksStore.Scope ignored = PreferredHooksStore.activate(List.of())) {
++            new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_NOHOOK", empty)));
++        }
++        String otp = Files.readString(dir.resolve("src/main/java/project/pages/Otp_Page.java"));
++        Assert.assertTrue(otp.contains("verify-otp"), otp);
++
++        Path dir2 = Files.createTempDirectory("w3-merge");
++        ProvenStep a = new ProvenStep("TC1", "Login", "elementAction", "type",
++                "id", "username", "u", "", "", true, "ok");
++        ProvenStep b = new ProvenStep("TC2", "LoginPage", "elementAction", "type",
++                "id", "password", "p", "", "", true, "ok");
++        new CodeWriter(TEMPLATES).write(dir2, List.of(outcome("TC1", a), outcome("TC2", b)));
++        Path pages = dir2.resolve("src/main/java/project/pages");
++        Assert.assertTrue(Files.isRegularFile(pages.resolve("Login_Page.java")));
++        Assert.assertFalse(Files.exists(pages.resolve("Login_Page2.java")));
++    }
++
++    private static TcOutcome outcome(String id, ProvenStep... steps) {
++        return new TcOutcome(id, TcStatus.PASSED, List.of(steps), "", null);
++    }
++}

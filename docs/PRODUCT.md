@@ -280,6 +280,26 @@ Stop reasons: planner `finish`, cycle ceiling, **STUCK**, or **COMPLETE** (strat
 
 ---
 
+## Suites (test packs)
+
+On **`/suites`**, group library test cases into tagged packs (smoke / regression / nightly built-ins plus your own). Search the project library, multi-select cases in order, save membership, and **Run pack now** uses the saved workbook `TC_ID`s. Plain-English case IDs may appear in the picker for reference; pack runs still require workbook library IDs. Schedules, alerts, and monitor panels are unchanged. Live portal validation of the picker: **pending** (jar refresh + Ctrl+F5 when you turn the portal on).
+
+---
+
+## Cloud tunnel (private app URL)
+
+When the site under test is only reachable on your machine (localhost/VPN), enable **`delivery.tunnel.enabled=true`** on the portal and set **`delivery.tunnel.public-base-url`** to the portal’s HTTPS origin.
+
+1. On the dev machine: `keel tunnel start --project <id> --target http://127.0.0.1:<app-port>` (see agent skill **keel-portal-cli** or fat jar `-Pkeel-cli`).
+2. Execute badge shows **Tunnel: active**; jobs use `{public-base-url}/tunnel/p/{token}/` as **base URL** instead of the project URL.
+   - Restarting `keel tunnel start` keeps the same token (credentials cached under `~/.keel/tunnel/`, override with `KEEL_HOME`); add `--re-enroll` to rotate it.
+   - If the agent stops sending heartbeats for `delivery.tunnel.heartbeat-ttl-seconds` (default 60), the badge shows **offline** and jobs go back to the project base URL.
+3. Cloud browsers reach your app through the portal relay; the agent forwards to your local target.
+
+**Smoke test:** `powershell -File scripts/tunnel-live-smoke.ps1` (local jar + python upstream). Not a substitute for production TLS/mTLS.
+
+---
+
 ## Execute & verify
 
 Run cases on the live site **without** building a customer ZIP.

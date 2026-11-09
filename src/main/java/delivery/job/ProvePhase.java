@@ -32,6 +32,7 @@ import delivery.net.TargetNetworkPolicy;
 import delivery.net.WorkerNetworkGuard;
 import delivery.store.DomainLocatorMemory;
 import delivery.store.PreferredHooksStore;
+import delivery.store.RunMemoryHintsStore;
 import delivery.store.ProjectStore;
 import delivery.visual.VisualBaselinePaths;
 import delivery.visual.VisualDiffComparer;
@@ -269,6 +270,9 @@ public class ProvePhase {
         List<String> preferredHooks = request == null
                 ? List.of()
                 : PreferredHooksStore.load(request.storeRoot(), request.tenantId(), request.baseUrl());
+        delivery.locator.LocatorMode locatorMode = request == null
+                ? delivery.locator.LocatorMode.STABLE_FIRST
+                : PreferredHooksStore.loadMode(request.storeRoot(), request.tenantId(), request.baseUrl());
 
         
         Path visualProjectRoot = null;
@@ -284,7 +288,11 @@ public class ProvePhase {
             }
         }
 
-        try (delivery.vision.VisionMissJournal.Scope journal = delivery.vision.VisionMissJournal.activate(evidence, request.password()); PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks); VisualDiffSession.Scope ignoredVisual = VisualDiffSession.activate(visualProjectRoot, visualRunId, visualProjectId); Phase2Session.Scope ignoredPhase2 =
+        final RunMemoryHintsStore.Scope runMemScope =
+                visualProjectRoot != null && request != null && request.jobId() != null && !request.jobId().isBlank()
+                        ? RunMemoryHintsStore.activate(visualProjectRoot, request.jobId())
+                        : RunMemoryHintsStore.noop();
+        try (delivery.vision.VisionMissJournal.Scope journal = delivery.vision.VisionMissJournal.activate(evidence, request.password()); PreferredHooksStore.CombinedScope ignoredHooks = PreferredHooksStore.activate(preferredHooks, locatorMode); runMemScope; VisualDiffSession.Scope ignoredVisual = VisualDiffSession.activate(visualProjectRoot, visualRunId, visualProjectId); Phase2Session.Scope ignoredPhase2 =
                 Phase2Session.activate(visualProjectRoot, visualRunId,
                         request == null ? null : request.projectId(), "prove")) {
             int index = 0;

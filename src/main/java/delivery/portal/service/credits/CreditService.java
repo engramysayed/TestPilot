@@ -334,6 +334,68 @@ public class CreditService {
         return credits.saveAndFlush(row);
     }
 
+    /**
+     * Credits charged for a job: sum of its {@code JOB_DEBIT} entries (positive number). Add-on debits are
+     * keyed by their own stable id and are not included.
+     */
+    @Transactional(readOnly = true)
+    public long chargedForJob(String jobId) {
+        if (jobId == null || jobId.isBlank()) {
+            return 0L;
+        }
+        long sum = 0L;
+        for (CreditLedgerEntry e : ledger.findByJobIdOrderByCreatedAtAsc(jobId)) {
+            if (REASON_JOB_DEBIT.equals(e.getReason()) && e.getDelta() < 0) {
+                sum += -e.getDelta();
+            }
+        }
+        return sum;
+    }
+
+    /** Ledger rows for one job (debits + refunds), oldest first. */
+    @Transactional(readOnly = true)
+    public java.util.List<CreditLedgerEntry> ledgerForJob(String jobId) {
+        return jobId == null ? java.util.List.of() : ledger.findByJobIdOrderByCreatedAtAsc(jobId);
+    }
+
+    /**
+     * Return credits for a failed job. Idempotent on {@code refund:job:{jobId}}; never refunds more than
+     * was charged for the job.
+     */
+    @Transactional
+    public CreditLedgerEntry refundForJob(
+            Long userId, String jobId, String jobKind, long amount, Long actorUserId, String note) {
+        if (userId == null || jobId == null || jobId.isBlank()) {
+            throw new IllegalArgumentException("Refund needs a user and a job.");
+        }
+        String key = "refund:job:" + jobId;
+        Optional<CreditLedgerEntry> existing = ledger.findByIdempotencyKey(key);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        long charged = chargedForJob(jobId);
+        if (amount <= 0L) {
+            throw new IllegalArgumentException("Refund amount must be positive.");
+        }
+        if (amount > charged) {
+            throw new IllegalArgumentException("Refund " + amount + " exceeds the " + charged + " credits charged for this job.");
+        }
+        UserCredits row = credits.findByIdForUpdate(userId).orElseGet(() -> newZero(userId));
+        Optional<CreditLedgerEntry> raced = ledger.findByIdempotencyKey(key);
+        if (raced.isPresent()) {
+            return raced.get();
+        }
+        long newBal = row.getBalance() + amount;
+        row.setBalance(newBal);
+        row.setLifetimeSpent(Math.max(0L, row.getLifetimeSpent() - amount));
+        row.setUpdatedAt(Instant.now());
+        credits.save(row);
+        String safeNote = note == null ? "" : (note.length() > 500 ? note.substring(0, 500) : note);
+        CreditLedgerEntry entry = newLedger(
+                userId, amount, newBal, REASON_JOB_REFUND, jobId, jobKind, actorUserId, key, safeNote);
+        return ledger.save(entry);
+    }
+
     private static CreditLedgerEntry newLedger(
             Long userId, long delta, long balanceAfter, String reason,
             String jobId, String jobKind, Long actorUserId, String idempotencyKey, String note) {

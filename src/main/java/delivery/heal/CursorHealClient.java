@@ -127,6 +127,7 @@ public class CursorHealClient {
         req.put("slimHtmlExcerpt", "");
         req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
         putVisionAttempts(req);
+        putRunMemoryHints(req);
         String shot = "";
         if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
             shot = screenshotPathOrNull.toAbsolutePath().toString();
@@ -156,6 +157,7 @@ public class CursorHealClient {
         req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
         req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
         putVisionAttempts(req);
+        putRunMemoryHints(req);
         if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
             req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
         }
@@ -204,6 +206,7 @@ public class CursorHealClient {
         req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
         req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
         putVisionAttempts(req);
+        putRunMemoryHints(req);
         putExcelOpenPath(req, failureReason);
         HealSafety safety = pendingSafety;
         pendingSafety = null;
@@ -245,6 +248,7 @@ public class CursorHealClient {
         req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
         req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
         putVisionAttempts(req);
+        putRunMemoryHints(req);
         putExcelOpenPath(req, failureReason);
         HealSafety safety = pendingSafety;
         pendingSafety = null;
@@ -321,6 +325,7 @@ public class CursorHealClient {
         req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
         req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
         putVisionAttempts(req);
+        putRunMemoryHints(req);
         if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
             req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
         }
@@ -354,6 +359,7 @@ public class CursorHealClient {
         req.put("slimHtmlExcerpt", slimHtmlExcerpt == null ? "" : slimHtmlExcerpt);
         req.put("priorSteps", priorSteps == null ? List.of() : priorSteps);
         putVisionAttempts(req);
+        putRunMemoryHints(req);
         if (screenshotPathOrNull != null && Files.isRegularFile(screenshotPathOrNull)) {
             req.put("screenshotPath", screenshotPathOrNull.toAbsolutePath().toString());
         }
@@ -416,6 +422,17 @@ public class CursorHealClient {
         List<String> lines = delivery.vision.VisionAttemptLog.linesForHeal();
         if (!lines.isEmpty()) {
             req.put("visionAttempts", lines);
+        }
+    }
+
+    static void putRunMemoryHints(JSONObject req) {
+        if (req == null) {
+            return;
+        }
+        List<String> lines = delivery.store.RunMemoryHintsStore.currentLines();
+        if (!lines.isEmpty()) {
+            req.put("runMemoryHints", lines);
+            delivery.store.RunMemoryHintsStore.markUsedOnHeal();
         }
     }
 

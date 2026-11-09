@@ -105,8 +105,10 @@
     if (errEl) {
       errEl.hidden = false;
       errEl.textContent = msg;
-    } else {
-      alert(msg);
+    } else if (window.keelAlert) {
+      window.keelAlert({ title: 'Account', message: msg });
+    } else if (window.keelToast) {
+      window.keelToast(msg, 'error');
     }
     return true;
   }

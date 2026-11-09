@@ -69,17 +69,35 @@ public final class LocatorRanker {
             else add(out, c, tag + "[aria-label=\"" + esc(lbl) + "\"]", LABEL, "aria-label");
         }
         if (has(a, "placeholder")) add(out, c, attrCss(tag, "placeholder", a.get("placeholder")), LABEL, "placeholder");
-        if (has(a, "name") && Set.of("input", "select", "textarea", "button").contains(tag))
-            add(out, c, attrCss(tag, "name", a.get("name")), LABEL, "name");
+        if (has(a, "name") && Set.of("input", "select", "textarea", "button").contains(tag)) {
+            String nm = a.get("name");
+            if (!delivery.authoring.GeneratedIdDetector.looksGeneratedName(nm)) {
+                add(out, c, attrCss(tag, "name", nm), LABEL, "name");
+            } else {
+                // ASP.NET / JSF composed name: anchor on the human tail (ctl00$Main$txtUser -> [name$="$txtUser"])
+                String tail = delivery.authoring.GeneratedIdDetector.humanTailSegment(nm);
+                if (!tail.isBlank()) {
+                    String sep = nm.contains("$") ? "$" : ":";
+                    add(out, c, tag + "[name$=\"" + esc(sep + tail) + "\"]", CSS_CLASS, "name-tail");
+                }
+            }
+        }
         if (has(a, "title")) add(out, c, attrCss(tag, "title", a.get("title")), TITLE_ALT, "title");
         if (has(a, "alt")) add(out, c, attrCss(tag, "alt", a.get("alt")), TITLE_ALT, "alt");
         if (has(a, "id")) add(out, c, "[id=\"" + esc(a.get("id")) + "\"]",
-                looksDynamic(a.get("id")) ? CSS_ID_DYNAMIC : CSS_ID, "css-id");
+                looksDynamic(a.get("id")) || delivery.authoring.GeneratedIdDetector.looksGenerated(a.get("id"))
+                        ? CSS_ID_DYNAMIC : CSS_ID, "css-id");
         if (has(a, "class"))
             for (String cls : a.get("class").trim().split("\\s+"))
-                if (!cls.isBlank() && !looksDynamic(cls)) add(out, c, tag + "." + cssIdent(cls), CSS_CLASS, "css-class");
-        if (!c.css().isBlank()) add(out, c, c.css(), c.css().contains(":nth-of-type") ? POSITION : CSS_CLASS, "serializer");
-        return new ArrayList<>(out.values());
+                if (!cls.isBlank() && !looksDynamic(cls)
+                        && !delivery.authoring.GeneratedIdDetector.looksGeneratedClass(cls))
+                    add(out, c, tag + "." + cssIdent(cls), CSS_CLASS, "css-class");
+        if (!c.css().isBlank() && !delivery.locator.LocatorStabilityPolicy.hasGeneratedClass(c.css()))
+            add(out, c, c.css(), c.css().contains(":nth-of-type") ? POSITION : CSS_CLASS, "serializer");
+        List<ScoredLocator> list = new ArrayList<>(out.values());
+        // One shared ranking (bind / prove / codegen): order by the project's LocatorMode.
+        list.sort(java.util.Comparator.comparingDouble(ScoredLocator::score).reversed());
+        return list;
     }
 
     /**
@@ -145,7 +163,7 @@ public final class LocatorRanker {
         }
         if (!TextLocatorSanitizer.allowed(literal)) return java.util.Optional.empty();
         KeelTarget t = c.target().withLocator(new KeelTarget.Hop(KeelTarget.Kind.TEXT, literal));
-        return java.util.Optional.of(ScoredLocator.keel(t, TEXT, "text"));
+        return java.util.Optional.of(ScoredLocator.keel(t, policyScore("text", literal, TEXT), "text"));
     }
 
     /** True when target matches exactly one element in its root and (if given) it is {@code expected}. */
@@ -166,7 +184,30 @@ public final class LocatorRanker {
         List<KeelTarget.Hop> hops = new ArrayList<>(c.target().hops());
         hops.set(hops.size() - 1, new KeelTarget.Hop(KeelTarget.Kind.CSS, terminalCss));
         KeelTarget t = new KeelTarget(hops);
-        out.putIfAbsent(t.format(), ScoredLocator.keel(t, score, tier));
+        out.putIfAbsent(t.format(), ScoredLocator.keel(t, policyScore(tier, terminalCss, score), tier));
+    }
+
+    /**
+     * Score from the shared {@link delivery.locator.LocatorStabilityPolicy} (0..1). The legacy constant is only
+     * used when the tier tag is unknown.
+     */
+    static double policyScore(String tierTag, String terminalCss, double legacy) {
+        delivery.locator.LocatorTier tier = switch (tierTag == null ? "" : tierTag) {
+            case "role+name" -> delivery.locator.LocatorTier.ROLE_NAME;
+            case "aria-label", "placeholder", "title", "alt" -> delivery.locator.LocatorTier.LABEL;
+            case "name" -> delivery.locator.LocatorTier.NAME;
+            case "css-id" -> legacy >= CSS_ID ? delivery.locator.LocatorTier.ID : delivery.locator.LocatorTier.BRITTLE;
+            case "text" -> delivery.locator.LocatorTier.TEXT;
+            case "css-class", "name-tail" -> delivery.locator.LocatorTier.CSS_ATTR;
+            case "serializer" -> legacy <= POSITION ? delivery.locator.LocatorTier.ORDINAL : delivery.locator.LocatorTier.CSS_ATTR;
+            default -> tierTag.startsWith("hook:") ? delivery.locator.LocatorTier.PREFERRED_HOOK
+                    : tierTag.startsWith("testid:") ? delivery.locator.LocatorTier.TEST_ID
+                    : null;
+        };
+        if (tier == null) {
+            return legacy;
+        }
+        return delivery.locator.LocatorStabilityPolicy.rank(tier) / 100.0;
     }
 
     private static boolean has(Map<String, String> a, String k) {

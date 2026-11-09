@@ -1,0 +1,24 @@
+{
+  "reason": "heal tier recovery",
+  "pageClass": "Page",
+  "locatorBefore": {
+    "strategy": "",
+    "value": ""
+  },
+  "promptsVersion": "2026.11.07",
+  "evidenceRel": null,
+  "proposalId": "66b47847-c8b2-4eba-81dc-83be5e01cd17",
+  "jobId": "",
+  "createdAt": "2026-11-08T14:17:25.605475800Z",
+  "stepIndex": 0,
+  "tier": "recovery",
+  "decidedAt": null,
+  "tcId": "TC_01",
+  "projectId": "p1",
+  "locatorAfter": {
+    "strategy": "css",
+    "value": "input[name='email']"
+  },
+  "patchKind": "locator",
+  "status": "pending"
+}

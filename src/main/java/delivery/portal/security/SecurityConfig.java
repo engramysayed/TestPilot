@@ -85,7 +85,8 @@ public class SecurityConfig {
                                 "/css/**", "/js/**", "/img/**", "/prompts/**",
                                 "/favicon.ico", "/favicon.svg",
                                 "/login", "/request-access", "/invite/**", "/error",
-                                "/api/health", "/api/ready").permitAll()
+                                "/api/health", "/api/ready",
+                                "/tunnel/p/**", "/api/tunnel/agent/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/invite/**", "/api/access-requests").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/access-requests").denyAll()
                         .requestMatchers("/api/admin/**", "/admin/**").hasRole("ADMIN")
@@ -114,7 +115,7 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
                 )
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/tunnel/**"))
                 .addFilterAfter(apiHeaderFilter, CsrfFilter.class)
                 .addFilterAfter(new ServiceIdentityFilter(props), CsrfFilter.class)
                 .addFilterAfter(new PrivateRunnerFilter(props, runnerRequestVerifier), CsrfFilter.class)

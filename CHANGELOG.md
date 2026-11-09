@@ -2,12 +2,84 @@
 
 # Keel changelog
 
+## 2026-11-08 - Real alert senders, per-suite min severity, early-start fix
+
+- Slack, Email and Telegram suite/system alerts now really send (webhook POST, `JavaMailSender`, Telegram bot `sendMessage`). The old stubs only logged. Each channel is off until its enabled flag is true and the address is set.
+- Admin → `GET /api/admin/alerts/channels` reports readiness; `POST /api/admin/alerts/channels/{id}/test` fires a synthetic alert to confirm the wiring.
+- Per-suite `alertMinSeverity` now actually filters alerts (it can only RAISE the channel floor, never lower it).
+- Scheduled runs no longer start 1–2 minutes early: the portal worker and API claim windows are both 0; a slot is due only once `nextRunAt <= now`.
+- `scripts/check-mobile-toolchain.cmd` verifies adb and Appium on the portal machine. `scripts/install-dev-tools.cmd` installs Agent Skills, Context7, Ponytail, Graphify, spec-kit and superpowers.
+
+## 2026-11-08 - Scheduled suites: alerts that actually fire, no duplicate or piled-up runs
+
+- Suite runs now alert their channel (the context was lost on the worker thread and channels were never registered). Any failing case alerts (all failed = critical, some = warning); crashed runs and refused scheduled starts (no credits, no workbook…) alert too.
+- A schedule slot starts exactly one run: the engine claim API claims the slot, `suites.json` is locked and written atomically, and a slot is skipped while the previous scheduled run is still going.
+- Manual runs no longer move the schedule. Slots missed while Keel was down are skipped (`MISSED`) instead of firing late. Cron limited to every 5 minutes.
+- Schedules have a time zone and a login profile; the Suites page shows next run, last result, problems, and monitor status (green/degraded/red).
+
+## 2026-11-07 - Mobile runs end to end, story traceability, Arabic UI, page scripts
+
+- **Mobile:** Project → Mobile → *Run on a phone* reserves the phone, starts Appium, hands the session to a mobile runner (`scripts\mobile-runner.cmd`), and frees the phone when the run ends, the runner goes silent (45 s), or nobody claims it (5 min). Lease maintenance frees stuck devices every 30 s. Fixed a start race and the runner launch script.
+- **Generation:** prompts moved into the prompt catalog (Admin → Prompts, versioned); every case links to its story (`requirementRef` → `req:` tag) with a *Story coverage* panel on Generate; Arabic/English rules; examples fixed.
+- **UI:** Arabic interface (top bar → العربية, right to left, generated `keel-rtl.css`, page headings and top bar translated); browser pop-ups replaced with in-page dialogs; large inline scripts moved to `/js/pages/*.js` (also fixes the Suites page never pre-selecting the project from the URL).
+- **Guide:** What's new, story coverage, language, and *Run on a phone*.
+
+## 2026-11-07 - Shared locator policy, Arabic steps, refunds, durable leases, tunnel isolation
+
+- **One locator ranking** (`delivery.locator.LocatorStabilityPolicy`) for bind, live proof, codegen and vision: preferred hook → test id → unique id → unique name → role + name → label → text → CSS/XPath → positional. Per-project **Locator ranking** setting (`stable-first` default, `user-facing-first`). A verified test id is always the primary, even without preferred hooks.
+- **Arabic / Unicode steps:** `IntentText` normalizes Arabic (alef/teh-marbuta/yeh, tashkeel, Arabic-Indic digits), strips the article, splits any script, and maps Arabic verbs (اضغط، أدخل، اختر، تحقق…) to intents.
+- **Matching:** whole-word matching (no "add" in "Address"), text XPath scored as a real option, O(1) attribute-uniqueness index, ASP.NET/JSF names and build-tool class names treated as brittle and dropped from fallbacks.
+- **Codegen fix:** fallbacks were emitted as unused `_fbN` fields calling `By.css(...)` (does not exist in Selenium). Now one `FirstOf.of(...)` field (template `utils/locators/FirstOf.java`), first match wins, fallback wins logged.
+- **Vision grounding:** new locators follow the policy; a generated id no longer aborts grounding.
+- **Refund requests → Admin → Refunds:** charged jobs that fail for platform reasons open a request automatically; owners can request from the run page. The account owner sees user, project, run, charge, failure category/code/message, diagnostics, timeline, ledger and links (run, evidence, failure pack), then refunds in full/part or rejects with a reason. Idempotent `JOB_REFUND`.
+- **Durable jobs:** `LeaseKeeper` renews leases for every worker kind; `JobLeaseReconciler` runs every 60 s; job error codes persist (`error_code`).
+- **Tunnel:** relay only on a dedicated host (`TunnelHostIsolationFilter`); all `Set-Cookie` headers survive the relay (`multiHeaders`).
+- **Prompts** `2026.11.07`: locator-policy and heal pick describe the new order and bilingual matching.
+- **Docs:** `docs/knowledge/` (current truth), `docs/history/` (timeline + dated handoffs), README diagrams.
+- Tests added/updated: `LocatorStabilityPolicyTest`, `IntentTextTest`, `RefundRequestTest`, `LeaseKeeperTest`, `TunnelHostPolicyTest`, `TunnelPublicProxyCookieTest`, codegen W2/W3, ranker, prompt version. **Not yet run** — see the session handoff.
+
+## 2026-11-07 - A5 tunnel hardening (follow-up)
+
+- **Enrollment reuse:** `keel tunnel start` caches `token` + `agentSecret` in `KEEL_HOME/tunnel/` (default `~/.keel`) and sends them as `reuseToken`/`agentSecret` to `POST .../tunnel/enroll`; the portal returns the same token (`reused: true`) so the relay URL is stable across restarts. `--re-enroll` forces a new token.
+- **Stale index cleanup:** a new enrollment deletes the superseded `tunnel-index/{oldToken}.json` and drops its relay queue.
+- **Heartbeat TTL:** `delivery.tunnel.heartbeat-ttl-seconds` (default 60). A tunnel with no recent heartbeat is `stale`: execute jobs fall back to project `baseUrl`, public proxy returns 503, badge says offline.
+- **Relay fixes:** waiter registered before enqueue (fast agent completion no longer lost); timed-out requests removed from queue; query string forwarded through `/tunnel/p/{token}/…`; 504 on agent timeout and 503 + `Retry-After` when the queue is full (were 500).
+- **Agent fixes:** poll/complete network errors back off instead of killing the loop; local target failures answer 502; `Expect`/hop-by-hop headers stripped (java.net.http rejected them); Basic auth no longer sent as `Bearer Basic …`; loop honors interrupt; 401 stops with a re-enroll hint. `tunnel start` exits 0 instead of falling through to help (2).
+- **Local proxy:** empty/204/304/HEAD responses sent without a chunked body.
+- Tests: `TunnelEnrollmentDiskStoreTest` (new), `TunnelRelayServiceTest`, `TunnelJobBaseUrlServiceTest`, `TunnelBrokerApiTest` (reuse + query string).
+
+## 2026-11-07 - Adopt A5 (full broker) + heal memory text + CLI jar
+
+- **Tunnel broker:** `GET/POST /tunnel/p/{token}/**` queues HTTP; agent `POST /api/tunnel/agent/poll|complete` with `agentSecret`; enrollment returns `agentSecret` + token index on disk.
+- **Execute binding:** `TunnelJobBaseUrlService` overrides project `baseUrl` with `{delivery.tunnel.public-base-url}/tunnel/p/{token}/` when tunnel heartbeat is **active** (`ExecuteRunController`, `SuiteRunService`, `ExecuteWorker`).
+- **CLI:** `keel tunnel start` runs local proxy, heartbeats, and relay loop (`TunnelAgentExecutor`).
+- **Heal:** `RunMemoryHealHints` in Ollama heal user text + `heal-pick-payload.md` mentions approved run memory.
+- **Packaging:** Maven profile `-Pkeel-cli` → `keel-portal/target/keel-cli.jar`.
+- Tests: `TunnelRelayServiceTest`, `TunnelJobBaseUrlServiceTest` (plus prior adopt API tests).
+- **Enable prod:** `delivery.tunnel.enabled=true`, set `delivery.tunnel.public-base-url` to portal HTTPS origin; run `keel tunnel start --project … --target http://localhost:APP`.
+- **Bug fixes:** agent poll `X-Keel-Requested-With`; hop-by-hop headers in `TunnelLocalProxy` + public proxy response.
+- **Live smoke:** `scripts/tunnel-live-smoke.ps1` — **PASS** on 2026-11-07 (local jar + python upstream).
+- **Known gaps:** no mTLS; long-poll only (no WebSocket); token-in-URL auth (rate-limit at edge); no native `keel.exe`. (Re-enroll on each `tunnel start` fixed in the hardening follow-up above.)
+
+## 2026-11-07 - Slice F: portal schedule dispatch (feature-flagged)
+
+- `SuiteRunService` extracted; `SuitePortalScheduleWorker` + `SuiteScheduleDispatchService` claim due suites and enqueue schedule runs (`delivery.suites.portal-schedule-worker.enabled`, default false).
+- `SuiteDiskStore.tryClaimDue` prevents double-claim; `schedule.lastFailure` / `lastClaimedAt` preserved in normalize.
+- Handoff: `docs/knowledge/contracts/F-transaction-map.md`, `docs/history/handoffs/2026-11/2026-11-07-slice-f-cursor.md`.
+
+## 2026-11-07 - Slice E: Suites test-case picker
+
+- `/suites` replaces CSV TC entry with a searchable multi-select picker, ordered selection, save/reload membership, and Run disabled when empty or non-workbook IDs.
+- New read-only `GET /api/projects/{projectId}/test-case-library` merges workbook + plain-case listings for the picker (`SuiteTestCaseLibraryService`).
+- Contract map: `docs/knowledge/contracts/E-contract-map.md`. Handoff: `docs/history/handoffs/2026-11/2026-11-07-slice-e-cursor.md`.
+- Offline tests: `SuiteSliceEApiTest`, `SuiteTestCaseLibraryServiceTest`. HOME live picker smoke: **PASS** (2026-11-07, `/suites` picker + structured plan panel).
+
 ## 2026-11-02 - Phase 3 AE: suite tag filter + schedule claim hook
 
 - Runner honors suite `tcIds` / tag / suiteId via `SuiteCaseFilter` + read-only `SuiteStore` (`{projectRoot}/suites.json`, Backend SoT).
 - Schedule claim: `ScheduleClaimClient` GET `/api/schedules/due` → POST `.../suites/{suiteId}/runs`; `EngineAgent` ticks via `ScheduleClaimPoller`.
 - Monitor target → base URL via `MonitorTargetResolver`; fail/flake via bound `AlertChannel` (`SuiteAlertNotifier`, unbound = log only).
-- Handoff: docs/handoff/2026-11-02-phase3-ae.md.
+- Handoff: docs/history/handoffs/2026-11/2026-11-02-phase3-ae.md.
 
 
 ## 2026-11-02 - Phase 2 AE: failure replay + heal proposals + flaky tags
@@ -16,19 +88,19 @@
 - Heal emits pending heal-proposals/{id}.json only (propose-only default); never silent Java rewrite.
 - Append laky-tags.json signals (timeout / heal_retry / intermittent / other).
 - Flags: keel.phase2.failure.evidence, keel.phase2.heal.proposeOnly, keel.phase2.flaky.emit (defaults on).
-- Handoff: docs/handoff/2026-11-02-phase2-ae.md.
+- Handoff: docs/history/handoffs/2026-11/2026-11-02-phase2-ae.md.
 
 ## 2026-11-02 - Hunt: KnowledgePackReader HTTP (local service) swap
 
 - Prod `KnowledgePackConfig` bean: `NoOpKnowledgePackReader` → `HttpKnowledgePackReader.local` against `KnowledgePackService` (same store as live pack GETs). Missing packs log+skip.
 - `HttpKnowledgePackReader.http(baseUrl)` implemented for out-of-process; tests in `HttpKnowledgePackReaderTest`.
-- Restart portal after deploy. Handoff: `docs/handoff/2026-11-02-hunt-knowledge-ae.md`.
+- Restart portal after deploy. Handoff: `docs/history/handoffs/2026-11/2026-11-02-hunt-knowledge-ae.md`.
 ## 2026-11-02 - Hunt: optional KnowledgePack guidance
 
 - Bug Hunter accepts optional `knowledgePackIds` on start (`HuntRequest` / `POST .../hunt-runs`). Empty ids keep legacy Hunt.
 - Pack markdown is composed into the hunt brief for planner sequencing; invent-extras stay evidence-gated. Preferred-hook binding unchanged.
 - `KnowledgePackReader` + NoOp/HTTP stub (no second FS store). Flag: `delivery.hunt.knowledge-packs.enabled` (default true).
-- Handoff: `docs/handoff/2026-11-02-hunt-knowledge-ae.md`.
+- Handoff: `docs/history/handoffs/2026-11/2026-11-02-hunt-knowledge-ae.md`.
 ## 2026-10-27 - Repo hygiene
 
 - Ignore accidental root `META-INF/` (jar extract) and local `patches/` scratch; handoff notes tied to commit hashes.
@@ -117,7 +189,7 @@
 - **Execute bind:** after a named click or type binds a wrapper row (for example an Ant Design `li`), Keel looks inside that node. When **exactly one** site preferred hook from project Settings matches one node in the whole document (for example `a[data-axis-test-id='…']`), the step uses that CSS; zero or two-or-more hooks keep the xpath. Twin Settings buttons stay AMBIGUOUS. Vision grounding uses the same preferred-hook list, including a unique child.
 - **Review cases:** a deterministic pass after Cursor or Keel review strips filler words from leftover Expected (`area`, `button`, `label`, `title`, `page`, `section`, `field`, `menu`, `item`, `list`, `visible`, `shown`, `displayed`) and quotes the distinctive name (for example `the Upload Transactions list area is visible` → `'Upload Transactions'`). **Accept & run** still saves the library. **OutcomeKind** is unchanged: quoted text in Steps/Expected still means visible text at runtime.
 - **Execute asserts:** before binding a leftover Expected check, Keel may upgrade **unquoted** page-shown leftover (filler stripped first) or a **quoted** leftover (library or review) to a wait on the **live** page title when **exactly one** visible heading or card title contains those tokens (for example `the Upload Transactions list area is visible` or `'Upload Transactions'` → `'Upload Transactions List'`). Zero or two-or-more matches leave the clause unchanged. Asserts still never heal; Execute does not write the library.
-- Rebuild the portal jar and Ctrl+F5 after pulling. Spec: `docs/superpowers/specs/2026-10-19-nested-hook-and-quote-heading-design.md`. Plan: `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md`. Handoff: `docs/handoff/2026-10-19-nested-hook-and-quote-heading.md`.
+- Rebuild the portal jar and Ctrl+F5 after pulling. Spec: `docs/superpowers/specs/2026-10-19-nested-hook-and-quote-heading-design.md`. Plan: `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md`. Handoff: `docs/history/handoffs/2026-10/2026-10-19-nested-hook-and-quote-heading.md`.
 
 ## 2026-10-18 - Add test case and review cases before run
 

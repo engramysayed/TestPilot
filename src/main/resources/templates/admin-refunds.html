@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Refunds')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1 th:text="#{page.admin-refunds.title}">Refunds</h1>
+            <p class="lede" th:text="#{page.admin-refunds.lede}">Runs that were charged and then failed. Platform failures (browser crash, network, lost worker,
+                model provider down) open a request automatically; users can also ask from the run page.
+                Review the evidence, then refund in full, in part, or reject with a reason the user will see.</p>
+        </div>
+    </div>
+
+    <div class="refund-tabs" role="group" aria-label="Filter by status">
+        <button type="button" class="button ghost" data-status="PENDING" aria-pressed="true">Pending <span data-count="PENDING"></span></button>
+        <button type="button" class="button ghost" data-status="APPROVED" aria-pressed="false">Approved <span data-count="APPROVED"></span></button>
+        <button type="button" class="button ghost" data-status="REJECTED" aria-pressed="false">Rejected <span data-count="REJECTED"></span></button>
+        <button type="button" class="button ghost" data-status="ALL" aria-pressed="false">All</button>
+    </div>
+
+    <div class="refund-layout">
+        <section class="panel">
+            <table class="table">
+                <thead>
+                <tr><th>Opened</th><th>User</th><th>Run</th><th>Reason</th><th>Credits</th></tr>
+                </thead>
+                <tbody id="refund-rows"><tr><td colspan="5" class="hint">Loading…</td></tr></tbody>
+            </table>
+        </section>
+
+        <section class="panel" id="refund-detail">
+            <p class="hint">Select a request to see the failed run, what was charged, and the evidence.</p>
+        </section>
+    </div>
+</main>
+</div>
+<script>
+(function () {
+    const H = {'Accept': 'application/json', 'X-Keel-Requested-With': 'Keel'};
+    const rows = document.getElementById('refund-rows');
+    const detail = document.getElementById('refund-detail');
+    let status = 'PENDING';
+    let selected = null;
+
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const when = (iso) => iso ? new Date(iso).toLocaleString() : '';
+    const cat = (c) => '<span class="refund-cat ' + esc(c) + '">' + esc(c || '?') + '</span>';
+
+    async function load() {
+        const res = await fetch('/api/admin/refunds?status=' + encodeURIComponent(status), {credentials: 'same-origin', headers: H});
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { rows.innerHTML = '<tr><td colspan="5" class="error">' + esc(data.message || 'Could not load refunds') + '</td></tr>'; return; }
+        Object.entries(data.counts || {}).forEach(([k, v]) => {
+            const el = document.querySelector('[data-count="' + k + '"]');
+            if (el) el.textContent = v ? '(' + v + ')' : '';
+        });
+        const items = data.items || [];
+        if (!items.length) { rows.innerHTML = '<tr><td colspan="5" class="hint">Nothing here.</td></tr>'; return; }
+        rows.innerHTML = items.map(r =>
+            '<tr class="refund-row" data-id="' + r.id + '">'
+            + '<td>' + esc(when(r.createdAt)) + '<br><span class="hint">' + esc(r.source === 'AUTO' ? 'Automatic' : 'Asked by user') + '</span></td>'
+            + '<td>' + esc(r.userEmail) + '<br><span class="hint">' + esc(r.projectName) + '</span></td>'
+            + '<td><code class="mono">' + esc(r.jobId) + '</code><br><span class="hint">' + esc(r.jobKind) + '</span></td>'
+            + '<td>' + cat(r.failureCategory) + '<br><span class="hint">' + esc((r.failureError || r.failureMessage || '').slice(0, 80)) + '</span></td>'
+            + '<td>' + esc(r.chargedAmount) + (r.status === 'APPROVED' ? '<br><span class="hint">refunded ' + esc(r.refundedAmount) + '</span>' : '') + '</td>'
+            + '</tr>').join('');
+        rows.querySelectorAll('tr[data-id]').forEach(tr => tr.addEventListener('click', () => open(tr.dataset.id)));
+        if (selected) { const tr = rows.querySelector('tr[data-id="' + selected + '"]'); if (tr) tr.classList.add('selected'); }
+    }
+
+    function kv(pairs) {
+        return '<dl class="refund-kv">' + pairs.filter(p => p[1] !== '' && p[1] != null)
+            .map(p => '<dt>' + esc(p[0]) + '</dt><dd>' + p[1] + '</dd>').join('') + '</dl>';
+    }
+
+    async function open(id) {
+        selected = id;
+        rows.querySelectorAll('tr').forEach(t => t.classList.toggle('selected', t.dataset.id === String(id)));
+        detail.innerHTML = '<p class="hint">Loading…</p>';
+        const res = await fetch('/api/admin/refunds/' + encodeURIComponent(id), {credentials: 'same-origin', headers: H});
+        const r = await res.json().catch(() => ({}));
+        if (!res.ok) { detail.innerHTML = '<p class="error">' + esc(r.message || 'Could not load') + '</p>'; return; }
+        const ev = r.evidence || {};
+        const diag = ev.diagnostics || {};
+        const links = r.links || {};
+        const linkHtml = Object.entries(links).map(([k, href]) =>
+            '<a class="button ghost" href="' + esc(href) + '" target="_blank" rel="noopener">'
+            + esc({run: 'Open run', evidence: 'Evidence', failurePack: 'Failure pack (ZIP)'}[k] || k) + '</a>').join(' ');
+        const ledger = (r.ledger || []).map(e =>
+            '<tr><td>' + esc(when(e.createdAt)) + '</td><td>' + esc(e.reason) + '</td><td>' + esc(e.delta) + '</td><td>' + esc(e.balanceAfter) + '</td><td>' + esc(e.note || '') + '</td></tr>').join('');
+        const pending = r.status === 'PENDING';
+        detail.innerHTML =
+            '<h2>Request #' + esc(r.id) + ' · ' + esc(r.status) + '</h2>'
+            + '<p class="refund-hint">' + esc(r.recommendation) + '</p>'
+            + '<h3>Who and what</h3>'
+            + kv([
+                ['User', esc(r.userEmail)],
+                ['Current balance', esc(r.userBalance)],
+                ['Project', esc(r.projectName || r.projectId)],
+                ['Run', '<code class="mono">' + esc(r.jobId) + '</code> (' + esc(r.jobKind) + ')'],
+                ['Run status now', esc(r.currentJobStatus || (r.jobStillExists ? '' : 'deleted'))],
+                ['Opened', esc(when(r.createdAt)) + ' · ' + esc(r.source === 'AUTO' ? 'automatic (platform failure)' : 'asked by user')],
+                ['User note', esc(r.userNote)],
+                ['Charged', esc(r.chargedNow) + ' credits'],
+            ])
+            + '<h3>Why the run failed</h3>'
+            + kv([
+                ['Category', cat(r.failureCategory)],
+                ['Error code', esc(r.failureError)],
+                ['Message', esc(r.failureMessage)],
+                ['Failure class', esc(diag.failureClass)],
+                ['Stage', esc(diag.claimStage)],
+                ['Attempt', esc(diag.attemptId)],
+                ['Providers used', esc(Array.isArray(diag.providersUsed) ? diag.providersUsed.join(', ') : diag.providersUsed)],
+                ['Model fallback', diag.fallbackUsed ? esc((diag.fallbackFrom || '') + ' → ' + (diag.fallbackTo || '') + ' (' + (diag.fallbackReason || '') + ')') : ''],
+                ['Next action', esc(diag.nextAction)],
+            ])
+            + '<h3>Run timeline</h3>'
+            + kv([
+                ['Started', esc(when(ev.createdAt))],
+                ['Ended', esc(when(ev.completedAt))],
+                ['Duration', ev.durationSeconds != null ? esc(ev.durationSeconds + ' s') : ''],
+                ['Progress', esc((ev.progressCurrent || 0) + ' / ' + (ev.progressTotal || 0))],
+                ['Passed / TODO', esc((ev.passed || 0) + ' / ' + (ev.todo || 0))],
+                ['Target URL', esc(ev.baseUrl)],
+            ])
+            + '<p>' + linkHtml + '</p>'
+            + '<h3>Credits for this run</h3>'
+            + (ledger ? '<table class="table"><thead><tr><th>When</th><th>Entry</th><th>Credits</th><th>Balance after</th><th>Note</th></tr></thead><tbody>' + ledger + '</tbody></table>' : '<p class="hint">No ledger entries.</p>')
+            + '<details><summary>Raw evidence snapshot</summary><pre class="refund-pre">' + esc(JSON.stringify(ev, null, 2)) + '</pre></details>'
+            + (pending
+                ? '<div class="refund-actions">'
+                + '<label>Credits to return<input type="number" id="refund-amount" min="1" max="' + esc(r.chargedNow) + '" value="' + esc(r.chargedNow) + '"></label>'
+                + '<label style="flex:1">Note to the user<input type="text" id="refund-note" maxlength="1000" placeholder="Required when rejecting"></label>'
+                + '<button type="button" class="button" id="refund-approve">Refund</button>'
+                + '<button type="button" class="button ghost" id="refund-reject">Reject</button>'
+                + '</div><p class="error" id="refund-err" hidden></p>'
+                : kv([['Decided', esc(when(r.decidedAt)) + ' by ' + esc(r.decidedBy)], ['Refunded', esc(r.refundedAmount)], ['Admin note', esc(r.adminNote)]]));
+        if (pending) {
+            document.getElementById('refund-approve').addEventListener('click', () => decide(id, 'approve'));
+            document.getElementById('refund-reject').addEventListener('click', () => decide(id, 'reject'));
+        }
+    }
+
+    async function decide(id, action) {
+        const err = document.getElementById('refund-err');
+        const amount = Number(document.getElementById('refund-amount').value);
+        const note = document.getElementById('refund-note').value;
+        if (action === 'reject' && !note.trim()) { err.hidden = false; err.textContent = 'Write a short reason for the user.'; return; }
+        const res = await fetch('/api/admin/refunds/' + encodeURIComponent(id) + '/' + action, {
+            method: 'POST', credentials: 'same-origin',
+            headers: Object.assign({'Content-Type': 'application/json'}, H),
+            body: JSON.stringify(action === 'approve' ? {amount: amount, note: note} : {note: note})
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { err.hidden = false; err.textContent = data.message || 'Failed'; return; }
+        await load();
+        open(id);
+    }
+
+    document.querySelectorAll('.refund-tabs button').forEach(b => b.addEventListener('click', () => {
+        status = b.dataset.status;
+        document.querySelectorAll('.refund-tabs button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        selected = null;
+        detail.innerHTML = '<p class="hint">Select a request to see the failed run, what was charged, and the evidence.</p>';
+        load();
+    }));
+    const q = new URLSearchParams(location.search).get('id');
+    load().then(() => { if (q) open(q); });
+})();
+</script>
+</body>
+</html>

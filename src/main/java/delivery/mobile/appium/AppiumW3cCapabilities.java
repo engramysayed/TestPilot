@@ -21,7 +21,11 @@ public final class AppiumW3cCapabilities {
                 + "\"alwaysMatch\":{"
                 + "\"platformName\":\"Android\","
                 + "\"appium:automationName\":\"UiAutomator2\","
-                + "\"appium:udid\":\"" + jsonEscape(serial) + "\""
+                + "\"appium:udid\":\"" + jsonEscape(serial) + "\","
+                // The session waits for a mobile runner to claim it; keep it alive between runner commands.
+                + "\"appium:newCommandTimeout\":600,"
+                // Do not reinstall / clear app data on attach; the run decides (launch / restart steps).
+                + "\"appium:noReset\":true"
                 + "}"
                 + "}"
                 + "}";

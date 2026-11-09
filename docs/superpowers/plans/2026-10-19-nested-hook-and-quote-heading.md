@@ -721,7 +721,7 @@ git commit -m "Rewrite leftover Expected from a unique live heading."
 **Files:**
 - Modify: `docs/PRODUCT.md` (Execute bind / Review cases — user-visible: inner test hooks; leftover Expected quotes; unique heading wait)
 - Modify: `CHANGELOG.md` — replace “spec only” with shipped behavior after the code tasks
-- Modify: `docs/handoff/2026-10-19-nested-hook-and-quote-heading.md` — Status Implemented
+- Modify: `docs/history/handoffs/2026-10/2026-10-19-nested-hook-and-quote-heading.md` — Status Implemented
 - Modify: `docs/superpowers/specs/2026-10-19-nested-hook-and-quote-heading-design.md` — Status Implemented; Plan path
 - Modify: `docs/ENGINEERING_HANDOFF.md` / `D:\priv\testpilot\handoffs\RESUME-2026-10-15.md` — implemented
 

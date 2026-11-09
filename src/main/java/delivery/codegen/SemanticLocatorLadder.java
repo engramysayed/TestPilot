@@ -112,18 +112,37 @@ public final class SemanticLocatorLadder {
         return Kind.OTHER;
     }
 
+    /**
+     * Rank under the shared {@link delivery.locator.LocatorStabilityPolicy} and the project's active
+     * {@link delivery.locator.LocatorMode} (stable-first by default: hook → test id → id → name → role+name → …).
+     * The legacy {@code RANK_*} constants and {@link #kindOf} remain for callers that only need the family.
+     */
     public static int rank(String strategy, String value, List<String> hooks) {
-        return switch (kindOf(strategy, value, hooks)) {
-            case PREFERRED_HOOK -> RANK_PREFERRED_HOOK;
-            case ROLE -> RANK_ROLE;
-            case LABEL -> RANK_LABEL;
-            case TESTID -> RANK_TESTID;
-            case CSS -> RANK_CSS;
-            case ID -> RANK_ID;
-            case NAME -> RANK_NAME;
-            case XPATH -> RANK_XPATH;
-            case OTHER -> RANK_OTHER;
-        };
+        return delivery.locator.LocatorStabilityPolicy.rank(
+                strategy, value, hooks, delivery.locator.LocatorStabilityPolicy.currentMode());
+    }
+
+    /**
+     * Verified candidate that should replace the proven primary even without preferred hooks:
+     * a test id (or hook) always; in stable-first mode also a human id/name when the proven primary
+     * depends on visible copy (breaks when the UI language changes).
+     */
+    static boolean safePromotion(Loc primary, Loc candidate, List<String> hooks) {
+        delivery.locator.LocatorTier pt = delivery.locator.LocatorStabilityPolicy.tier(primary.strategy, primary.value, hooks);
+        delivery.locator.LocatorTier ct = delivery.locator.LocatorStabilityPolicy.tier(candidate.strategy, candidate.value, hooks);
+        if (rank(candidate.strategy, candidate.value, hooks) <= rank(primary.strategy, primary.value, hooks)) {
+            return false;
+        }
+        if (ct == delivery.locator.LocatorTier.PREFERRED_HOOK || ct == delivery.locator.LocatorTier.TEST_ID) {
+            return true;
+        }
+        boolean stable = delivery.locator.LocatorStabilityPolicy.currentMode() == delivery.locator.LocatorMode.STABLE_FIRST;
+        if (stable && (ct == delivery.locator.LocatorTier.ID || ct == delivery.locator.LocatorTier.NAME)
+                && (delivery.locator.LocatorStabilityPolicy.languageDependent(pt)
+                || pt == delivery.locator.LocatorTier.ORDINAL || pt == delivery.locator.LocatorTier.BRITTLE)) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -236,8 +255,23 @@ public final class SemanticLocatorLadder {
         }
 
         if (!promote) {
-            // W1: empty hooks keep proven primary even if a higher ladder candidate exists.
-            Loc primary = Loc.of(strategy, value);
+            // W1: empty hooks keep proven primary … except a verified test id / hook (and, stable-first,
+            // a human id/name over a copy-dependent primary) — those must never sit in a fallback slot.
+            Loc proven = Loc.of(strategy, value);
+            Optional<Loc> better = unique.stream()
+                    .filter(l -> !l.same(proven))
+                    .filter(l -> safePromotion(proven, l, hooks))
+                    .max(Comparator.comparingInt((Loc l) -> rank(l.strategy, l.value, hooks)));
+            if (better.isPresent()) {
+                Loc won = better.get();
+                List<LocatorCandidate> falls = new ArrayList<>();
+                unique.stream()
+                        .filter(l -> !l.same(won))
+                        .sorted(Comparator.comparingInt((Loc l) -> rank(l.strategy, l.value, hooks)).reversed())
+                        .forEach(l -> falls.add(LocatorCandidate.of(l.strategy, l.value)));
+                return Pick.of(won.strategy, won.value, falls);
+            }
+            Loc primary = proven;
             if (isNonUnique(primary.strategy, primary.value)
                     && kindOf(primary.strategy, primary.value, hooks) != Kind.PREFERRED_HOOK) {
                 // Proven itself ambiguous — still keep it (runtime / heal owns that), but

@@ -126,7 +126,9 @@ public class EmitPhase {
         // Preferred portal hooks win at Automate emit (not only DomCandidateExtractor rank).
         java.util.List<String> preferredHooks = PreferredHooksStore.load(
                 request.storeRoot(), request.tenantId(), request.baseUrl());
-        try (PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks)) {
+        delivery.locator.LocatorMode locatorMode = PreferredHooksStore.loadMode(
+                request.storeRoot(), request.tenantId(), request.baseUrl());
+        try (PreferredHooksStore.CombinedScope ignoredHooks = PreferredHooksStore.activate(preferredHooks, locatorMode)) {
             // Demote dump/blank Page stems to TODO; smell-gate remaining; no dump Page class in ZIP.
             CodegenEmitGate.Prepared prepared = CodegenEmitGate.prepare(outcomes);
             outcomes = new ArrayList<>(prepared.outcomes());

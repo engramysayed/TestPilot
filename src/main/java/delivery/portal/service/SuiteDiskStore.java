@@ -27,6 +27,8 @@ import java.util.regex.Pattern;
 public final class SuiteDiskStore {
     public static final String FILE_NAME = "suites.json";
     public static final Set<String> RESERVED_TAGS = Set.of("smoke", "regression", "nightly");
+    /** @deprecated use {@link #defaultZone()} / per-schedule {@code timezone}. */
+    @Deprecated
     public static final ZoneId SCHEDULE_ZONE = ZoneId.of("Africa/Cairo");
 
     private static final Pattern ID = Pattern.compile(
@@ -80,36 +82,38 @@ public final class SuiteDiskStore {
             List<String> tags,
             List<String> tcIds
     ) throws IOException {
-        if (name == null || name.isBlank()) {
-            throw new BadRequestException("name is required");
-        }
-        List<String> normalizedTags = normalizeTags(tags, true);
-        if (normalizedTags.isEmpty()) {
-            throw new BadRequestException("tags must contain at least one tag");
-        }
-        for (String t : normalizedTags) {
-            if (RESERVED_TAGS.contains(t.toLowerCase(Locale.ROOT))) {
-                throw new BadRequestException("Reserved built-in tag not allowed for user packs: " + t);
+        synchronized (lockFor(projectRoot)) {
+            if (name == null || name.isBlank()) {
+                throw new BadRequestException("name is required");
             }
-        }
-        String now = Instant.now().toString();
-        Map<String, Object> row = new LinkedHashMap<>();
-        row.put("suiteId", UUID.randomUUID().toString());
-        row.put("name", name.trim());
-        row.put("tags", normalizedTags);
-        row.put("tcIds", normalizeTcIds(tcIds));
-        row.put("builtIn", false);
-        row.put("alertChannelId", null);
-        row.put("alertMinSeverity", null);
-        row.put("schedule", null);
-        row.put("monitor", null);
-        row.put("createdAt", now);
-        row.put("updatedAt", now);
+            List<String> normalizedTags = normalizeTags(tags, true);
+            if (normalizedTags.isEmpty()) {
+                throw new BadRequestException("tags must contain at least one tag");
+            }
+            for (String t : normalizedTags) {
+                if (RESERVED_TAGS.contains(t.toLowerCase(Locale.ROOT))) {
+                    throw new BadRequestException("Reserved built-in tag not allowed for user packs: " + t);
+                }
+            }
+            String now = Instant.now().toString();
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("suiteId", UUID.randomUUID().toString());
+            row.put("name", name.trim());
+            row.put("tags", normalizedTags);
+            row.put("tcIds", normalizeTcIds(tcIds));
+            row.put("builtIn", false);
+            row.put("alertChannelId", null);
+            row.put("alertMinSeverity", null);
+            row.put("schedule", null);
+            row.put("monitor", null);
+            row.put("createdAt", now);
+            row.put("updatedAt", now);
 
-        List<Map<String, Object>> all = new ArrayList<>(ensureSeeded(projectRoot));
-        all.add(row);
-        writeAll(projectRoot, all);
-        return normalize(row);
+            List<Map<String, Object>> all = new ArrayList<>(ensureSeeded(projectRoot));
+            all.add(row);
+            writeAll(projectRoot, all);
+            return normalize(row);
+        }
     }
 
     public Map<String, Object> update(
@@ -119,85 +123,103 @@ public final class SuiteDiskStore {
             List<String> tags,
             List<String> tcIds
     ) throws IOException {
-        validateId(suiteId, "suiteId");
-        List<Map<String, Object>> all = new ArrayList<>(ensureSeeded(projectRoot));
-        boolean found = false;
-        Map<String, Object> updated = null;
-        for (int i = 0; i < all.size(); i++) {
-            Map<String, Object> row = new LinkedHashMap<>(all.get(i));
-            if (!suiteId.trim().equals(str(row.get("suiteId")))) {
-                continue;
-            }
-            boolean builtIn = bool(row.get("builtIn"));
-            if (builtIn) {
-                if (name != null && !name.trim().equals(str(row.get("name")))) {
-                    throw new BadRequestException("Built-in suite name is immutable");
+        return update(projectRoot, suiteId, name, tags, tcIds, null);
+    }
+
+    public Map<String, Object> update(
+            Path projectRoot,
+            String suiteId,
+            String name,
+            List<String> tags,
+            List<String> tcIds,
+            String structuredPlanId
+    ) throws IOException {
+        synchronized (lockFor(projectRoot)) {
+            validateId(suiteId, "suiteId");
+            List<Map<String, Object>> all = new ArrayList<>(ensureSeeded(projectRoot));
+            boolean found = false;
+            Map<String, Object> updated = null;
+            for (int i = 0; i < all.size(); i++) {
+                Map<String, Object> row = new LinkedHashMap<>(all.get(i));
+                if (!suiteId.trim().equals(str(row.get("suiteId")))) {
+                    continue;
                 }
-                if (tags != null) {
-                    List<String> incoming = normalizeTags(tags, false);
-                    List<String> current = tagsOf(row);
-                    if (!sameTagSet(incoming, current)) {
-                        throw new BadRequestException("Built-in suite tags are immutable");
+                boolean builtIn = bool(row.get("builtIn"));
+                if (builtIn) {
+                    if (name != null && !name.trim().equals(str(row.get("name")))) {
+                        throw new BadRequestException("Built-in suite name is immutable");
                     }
-                }
-                if (tcIds != null) {
-                    row.put("tcIds", normalizeTcIds(tcIds));
-                }
-            } else {
-                if (name != null) {
-                    if (name.isBlank()) {
-                        throw new BadRequestException("name is required");
-                    }
-                    row.put("name", name.trim());
-                }
-                if (tags != null) {
-                    List<String> normalizedTags = normalizeTags(tags, true);
-                    if (normalizedTags.isEmpty()) {
-                        throw new BadRequestException("tags must contain at least one tag");
-                    }
-                    for (String t : normalizedTags) {
-                        if (RESERVED_TAGS.contains(t.toLowerCase(Locale.ROOT))) {
-                            throw new BadRequestException("Reserved built-in tag not allowed for user packs: " + t);
+                    if (tags != null) {
+                        List<String> incoming = normalizeTags(tags, false);
+                        List<String> current = tagsOf(row);
+                        if (!sameTagSet(incoming, current)) {
+                            throw new BadRequestException("Built-in suite tags are immutable");
                         }
                     }
-                    row.put("tags", normalizedTags);
+                    if (tcIds != null) {
+                        row.put("tcIds", normalizeTcIds(tcIds));
+                    }
+                } else {
+                    if (name != null) {
+                        if (name.isBlank()) {
+                            throw new BadRequestException("name is required");
+                        }
+                        row.put("name", name.trim());
+                    }
+                    if (tags != null) {
+                        List<String> normalizedTags = normalizeTags(tags, true);
+                        if (normalizedTags.isEmpty()) {
+                            throw new BadRequestException("tags must contain at least one tag");
+                        }
+                        for (String t : normalizedTags) {
+                            if (RESERVED_TAGS.contains(t.toLowerCase(Locale.ROOT))) {
+                                throw new BadRequestException("Reserved built-in tag not allowed for user packs: " + t);
+                            }
+                        }
+                        row.put("tags", normalizedTags);
+                    }
+                    if (tcIds != null) {
+                        row.put("tcIds", normalizeTcIds(tcIds));
+                    }
+                    if (structuredPlanId != null) {
+                        row.put("structuredPlanId", structuredPlanId.isBlank() ? null : structuredPlanId.trim());
+                    }
                 }
-                if (tcIds != null) {
-                    row.put("tcIds", normalizeTcIds(tcIds));
-                }
+                row.put("updatedAt", Instant.now().toString());
+                all.set(i, row);
+                updated = normalize(row);
+                found = true;
+                break;
             }
-            row.put("updatedAt", Instant.now().toString());
-            all.set(i, row);
-            updated = normalize(row);
-            found = true;
-            break;
+            if (!found) {
+                throw new NotFoundException("Suite not found: " + suiteId);
+            }
+            writeAll(projectRoot, all);
+            return updated;
         }
-        if (!found) {
-            throw new NotFoundException("Suite not found: " + suiteId);
-        }
-        writeAll(projectRoot, all);
-        return updated;
     }
 
     public void delete(Path projectRoot, String suiteId) throws IOException {
-        validateId(suiteId, "suiteId");
-        List<Map<String, Object>> all = new ArrayList<>(ensureSeeded(projectRoot));
-        int idx = -1;
-        for (int i = 0; i < all.size(); i++) {
-            Map<String, Object> row = all.get(i);
-            if (suiteId.trim().equals(str(row.get("suiteId")))) {
-                if (bool(row.get("builtIn"))) {
-                    throw new ConflictException("Built-in suites cannot be deleted");
+        synchronized (lockFor(projectRoot)) {
+            validateId(suiteId, "suiteId");
+            List<Map<String, Object>> all = new ArrayList<>(ensureSeeded(projectRoot));
+            int idx = -1;
+            for (int i = 0; i < all.size(); i++) {
+                Map<String, Object> row = all.get(i);
+                if (suiteId.trim().equals(str(row.get("suiteId")))) {
+                    if (bool(row.get("builtIn"))) {
+                        throw new ConflictException("Built-in suites cannot be deleted");
+                    }
+                    idx = i;
+                    break;
                 }
-                idx = i;
-                break;
             }
+            if (idx < 0) {
+                throw new NotFoundException("Suite not found: " + suiteId);
+            }
+            all.remove(idx);
+            writeAll(projectRoot, all);
         }
-        if (idx < 0) {
-            throw new NotFoundException("Suite not found: " + suiteId);
-        }
-        all.remove(idx);
-        writeAll(projectRoot, all);
     }
 
     public Map<String, Object> putSchedule(
@@ -207,6 +229,23 @@ public final class SuiteDiskStore {
             String kind,
             String cron,
             Integer intervalMinutes
+    ) throws IOException {
+        return putSchedule(projectRoot, suiteId, enabled, kind, cron, intervalMinutes, null, null);
+    }
+
+    /**
+     * @param timezone          IANA zone for cron (blank = {@code delivery.suites.schedule-zone})
+     * @param credentialProfile login profile scheduled runs use (blank = keep previous / first profile by name)
+     */
+    public Map<String, Object> putSchedule(
+            Path projectRoot,
+            String suiteId,
+            boolean enabled,
+            String kind,
+            String cron,
+            Integer intervalMinutes,
+            String timezone,
+            String credentialProfile
     ) throws IOException {
         validateId(suiteId, "suiteId");
         String k = kind == null ? "" : kind.trim().toLowerCase(Locale.ROOT);
@@ -228,12 +267,25 @@ public final class SuiteDiskStore {
             }
             schedule.put("cron", expr);
             schedule.put("intervalMinutes", null);
+            String tz = timezone == null ? "" : timezone.trim();
+            if (!tz.isBlank()) {
+                try {
+                    ZoneId.of(tz);
+                } catch (Exception e) {
+                    throw new BadRequestException("Unknown timezone: " + tz);
+                }
+                schedule.put("timezone", tz);
+            }
+            requireCronGap(expr, zoneOf(schedule));
         } else {
             if (intervalMinutes == null || intervalMinutes < 5) {
                 throw new BadRequestException("intervalMinutes must be >= 5");
             }
             schedule.put("cron", null);
             schedule.put("intervalMinutes", intervalMinutes);
+        }
+        if (credentialProfile != null && !credentialProfile.isBlank()) {
+            schedule.put("credentialProfile", credentialProfile.trim());
         }
         Instant now = Instant.now();
         schedule.put("nextRunAt", enabled ? computeNextRunAt(schedule, now).toString() : null);
@@ -247,6 +299,9 @@ public final class SuiteDiskStore {
                 Object lastFired = prev.get("lastFiredAt");
                 Object lastJob = prev.get("lastJobId");
                 schedule.put("lastFiredAt", lastFired == null || str(lastFired).isBlank() ? null : str(lastFired));
+                if (!schedule.containsKey("credentialProfile") && prev.get("credentialProfile") != null) {
+                    schedule.put("credentialProfile", str(prev.get("credentialProfile")));
+                }
                 schedule.put("lastJobId", lastJob == null || str(lastJob).isBlank() ? null : str(lastJob));
                 if (enabled) {
                     schedule.put("nextRunAt", computeNextRunAt(schedule, now).toString());
@@ -308,6 +363,80 @@ public final class SuiteDiskStore {
         return mutateSuite(projectRoot, suiteId, row -> row.put("monitor", null));
     }
 
+    /**
+     * Reserve a due schedule slot by advancing {@code nextRunAt} before enqueue (prevents double-claim).
+     */
+    public Optional<Map<String, Object>> tryClaimDue(
+            Path projectRoot,
+            String suiteId,
+            Instant now,
+            int withinSeconds
+    ) throws IOException {
+        synchronized (lockFor(projectRoot)) {
+            validateId(suiteId, "suiteId");
+            List<Map<String, Object>> all = new ArrayList<>(ensureSeeded(projectRoot));
+            for (int i = 0; i < all.size(); i++) {
+                Map<String, Object> row = all.get(i);
+                if (!suiteId.trim().equals(str(row.get("suiteId")))) {
+                    continue;
+                }
+                if (!isDue(row, now, withinSeconds)) {
+                    return Optional.empty();
+                }
+                Object schedObj = row.get("schedule");
+                if (!(schedObj instanceof Map<?, ?>)) {
+                    return Optional.empty();
+                }
+                @SuppressWarnings("unchecked")
+                Map<String, Object> schedule = new LinkedHashMap<>((Map<String, Object>) schedObj);
+                Instant slot = parseInstant(str(schedule.get("nextRunAt")));
+                if (slot != null && slot.isBefore(now.minus(misfireGrace))) {
+                    // Keel was down past the slot: skip instead of firing the nightly run at a random hour.
+                    schedule.put("nextRunAt", computeNextRunAt(schedule, now.plusSeconds(1)).toString());
+                    schedule.put("lastFailure", Map.of(
+                            "code", "MISSED",
+                            "message", "Scheduled for " + slot + " but Keel was not running; skipped. Next: "
+                                    + schedule.get("nextRunAt"),
+                            "at", now.toString()));
+                    row.put("schedule", schedule);
+                    all.set(i, row);
+                    writeAll(projectRoot, all);
+                    return Optional.empty();
+                }
+                schedule.put("lastClaimedAt", now.toString());
+                schedule.put("nextRunAt", computeNextRunAt(schedule, now.plusSeconds(1)).toString());
+                row.put("schedule", schedule);
+                row.put("updatedAt", now.toString());
+                all.set(i, row);
+                writeAll(projectRoot, all);
+                return Optional.of(normalize(row));
+            }
+            return Optional.empty();
+        }
+    }
+
+    public Map<String, Object> recordScheduleFailure(
+            Path projectRoot,
+            String suiteId,
+            String code,
+            String message
+    ) throws IOException {
+        validateId(suiteId, "suiteId");
+        return mutateSuite(projectRoot, suiteId, row -> {
+            Object schedObj = row.get("schedule");
+            if (!(schedObj instanceof Map<?, ?>)) {
+                return;
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> schedule = new LinkedHashMap<>((Map<String, Object>) schedObj);
+            schedule.put("lastFailure", Map.of(
+                    "code", code == null ? "ERROR" : code,
+                    "message", message == null ? "" : message,
+                    "at", Instant.now().toString()));
+            row.put("schedule", schedule);
+        });
+    }
+
     public Map<String, Object> recordSuiteRunFire(
             Path projectRoot,
             String suiteId,
@@ -323,10 +452,44 @@ public final class SuiteDiskStore {
             Map<String, Object> schedule = new LinkedHashMap<>((Map<String, Object>) schedObj);
             schedule.put("lastFiredAt", now.toString());
             schedule.put("lastJobId", jobId);
-            if (bool(schedule.get("enabled"))) {
-                schedule.put("nextRunAt", computeNextRunAt(schedule, now.plusSeconds(1)).toString());
-            }
+            schedule.put("lastJobStatus", "QUEUED");
+            // nextRunAt was already advanced when the slot was claimed (tryClaimDue); do not move it again.
+            schedule.put("lastFailure", null); // a successful fire supersedes the previous failure
             row.put("schedule", schedule);
+        });
+    }
+
+    /** Final state of a suite run: schedule last result and, for monitor runs, monitor status. */
+    public Map<String, Object> recordRunOutcome(
+            Path projectRoot,
+            String suiteId,
+            String jobId,
+            String jobStatus,
+            int passed,
+            int failed,
+            boolean monitorRun
+    ) throws IOException {
+        Instant now = Instant.now();
+        return mutateSuite(projectRoot, suiteId, row -> {
+            Object schedObj = row.get("schedule");
+            if (schedObj instanceof Map<?, ?> sm && jobId != null && jobId.equals(str(sm.get("lastJobId")))) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> schedule = new LinkedHashMap<>((Map<String, Object>) schedObj);
+                schedule.put("lastJobStatus", jobStatus);
+                schedule.put("lastResult", Map.of("passed", passed, "failed", failed, "at", now.toString()));
+                row.put("schedule", schedule);
+            }
+            Object monObj = row.get("monitor");
+            if (monitorRun && monObj instanceof Map<?, ?>) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> monitor = new LinkedHashMap<>((Map<String, Object>) monObj);
+                String st = "COMPLETED".equals(jobStatus) && failed == 0 ? "green"
+                        : "COMPLETED".equals(jobStatus) ? "degraded" : "red";
+                monitor.put("lastStatus", st);
+                monitor.put("lastCheckedAt", now.toString());
+                monitor.put("lastJobId", jobId);
+                row.put("monitor", monitor);
+            }
         });
     }
 
@@ -379,12 +542,29 @@ public final class SuiteDiskStore {
         }
         String cron = str(schedule.get("cron"));
         CronExpression expr = CronExpression.parse(toSpringCron(cron));
-        ZonedDateTime zdt = from.atZone(SCHEDULE_ZONE);
+        ZonedDateTime zdt = from.atZone(zoneOf(schedule));
         ZonedDateTime next = expr.next(zdt);
         if (next == null) {
             return from.plusSeconds(3600);
         }
         return next.toInstant();
+    }
+
+    /** Reject crons that fire more often than {@link #MIN_CRON_GAP} (checks the next 50 firings). */
+    static void requireCronGap(String cron, ZoneId zone) {
+        CronExpression expr = CronExpression.parse(toSpringCron(cron));
+        ZonedDateTime prev = expr.next(ZonedDateTime.now(zone));
+        for (int i = 0; i < 50 && prev != null; i++) {
+            ZonedDateTime next = expr.next(prev);
+            if (next == null) {
+                return;
+            }
+            if (java.time.Duration.between(prev, next).compareTo(MIN_CRON_GAP) < 0) {
+                throw new BadRequestException("Cron fires more often than every "
+                        + MIN_CRON_GAP.toMinutes() + " minutes: " + cron);
+            }
+            prev = next;
+        }
     }
 
     /** Convert 5-field unix cron to Spring 6-field (seconds + rest). */
@@ -405,65 +585,69 @@ public final class SuiteDiskStore {
             String suiteId,
             SuiteMutator mutator
     ) throws IOException {
-        validateId(suiteId, "suiteId");
-        List<Map<String, Object>> all = new ArrayList<>(ensureSeeded(projectRoot));
-        boolean found = false;
-        Map<String, Object> updated = null;
-        for (int i = 0; i < all.size(); i++) {
-            Map<String, Object> row = new LinkedHashMap<>(all.get(i));
-            if (!suiteId.trim().equals(str(row.get("suiteId")))) {
-                continue;
+        synchronized (lockFor(projectRoot)) {
+            validateId(suiteId, "suiteId");
+            List<Map<String, Object>> all = new ArrayList<>(ensureSeeded(projectRoot));
+            boolean found = false;
+            Map<String, Object> updated = null;
+            for (int i = 0; i < all.size(); i++) {
+                Map<String, Object> row = new LinkedHashMap<>(all.get(i));
+                if (!suiteId.trim().equals(str(row.get("suiteId")))) {
+                    continue;
+                }
+                mutator.apply(row);
+                row.put("updatedAt", Instant.now().toString());
+                all.set(i, row);
+                updated = normalize(row);
+                found = true;
+                break;
             }
-            mutator.apply(row);
-            row.put("updatedAt", Instant.now().toString());
-            all.set(i, row);
-            updated = normalize(row);
-            found = true;
-            break;
+            if (!found) {
+                throw new NotFoundException("Suite not found: " + suiteId);
+            }
+            writeAll(projectRoot, all);
+            return updated;
         }
-        if (!found) {
-            throw new NotFoundException("Suite not found: " + suiteId);
-        }
-        writeAll(projectRoot, all);
-        return updated;
     }
 
     private List<Map<String, Object>> ensureSeeded(Path projectRoot) throws IOException {
-        List<Map<String, Object>> all = readAll(projectRoot);
-        boolean changed = false;
-        Set<String> haveBuiltin = new LinkedHashSet<>();
-        for (Map<String, Object> row : all) {
-            if (bool(row.get("builtIn"))) {
-                for (String t : tagsOf(row)) {
-                    haveBuiltin.add(t.toLowerCase(Locale.ROOT));
+        synchronized (lockFor(projectRoot)) {
+            List<Map<String, Object>> all = readAll(projectRoot);
+            boolean changed = false;
+            Set<String> haveBuiltin = new LinkedHashSet<>();
+            for (Map<String, Object> row : all) {
+                if (bool(row.get("builtIn"))) {
+                    for (String t : tagsOf(row)) {
+                        haveBuiltin.add(t.toLowerCase(Locale.ROOT));
+                    }
                 }
             }
-        }
-        String now = Instant.now().toString();
-        for (String tag : List.of("smoke", "regression", "nightly")) {
-            if (haveBuiltin.contains(tag)) {
-                continue;
+            String now = Instant.now().toString();
+            for (String tag : List.of("smoke", "regression", "nightly")) {
+                if (haveBuiltin.contains(tag)) {
+                    continue;
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("suiteId", UUID.randomUUID().toString());
+                row.put("name", Character.toUpperCase(tag.charAt(0)) + tag.substring(1));
+                row.put("tags", List.of(tag));
+                row.put("tcIds", List.of());
+                row.put("builtIn", true);
+                row.put("alertChannelId", null);
+                row.put("alertMinSeverity", null);
+                row.put("schedule", null);
+                row.put("monitor", null);
+                row.put("createdAt", now);
+                row.put("updatedAt", now);
+                all.add(row);
+                changed = true;
             }
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("suiteId", UUID.randomUUID().toString());
-            row.put("name", Character.toUpperCase(tag.charAt(0)) + tag.substring(1));
-            row.put("tags", List.of(tag));
-            row.put("tcIds", List.of());
-            row.put("builtIn", true);
-            row.put("alertChannelId", null);
-            row.put("alertMinSeverity", null);
-            row.put("schedule", null);
-            row.put("monitor", null);
-            row.put("createdAt", now);
-            row.put("updatedAt", now);
-            all.add(row);
-            changed = true;
+            if (changed || !Files.isRegularFile(file(projectRoot))) {
+                writeAll(projectRoot, all);
+                return readAll(projectRoot);
+            }
+            return all;
         }
-        if (changed || !Files.isRegularFile(file(projectRoot))) {
-            writeAll(projectRoot, all);
-            return readAll(projectRoot);
-        }
-        return all;
     }
 
     @SuppressWarnings("unchecked")
@@ -492,7 +676,69 @@ public final class SuiteDiskStore {
         for (Map<String, Object> row : rows) {
             normalized.add(normalize(row));
         }
-        mapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), normalized);
+        // Atomic replace: a crash mid-write must not leave a truncated suites.json (schedules would vanish).
+        Path tmp = path.resolveSibling(path.getFileName() + ".tmp");
+        mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), normalized);
+        try {
+            Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                    java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+        } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+            Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    // ------------------------------------------------------------------ concurrency + schedule policy
+
+    /** One lock per suites.json: UI edits, the portal schedule worker and the engine claim API share it. */
+    private static final java.util.concurrent.ConcurrentHashMap<String, Object> LOCKS =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    static Object lockFor(Path projectRoot) {
+        String key = projectRoot == null ? "" : projectRoot.toAbsolutePath().normalize().toString();
+        return LOCKS.computeIfAbsent(key, k -> new Object());
+    }
+
+    /** Default zone for cron schedules without their own {@code timezone} ({@code delivery.suites.schedule-zone}). */
+    private static volatile ZoneId defaultZone = ZoneId.of("Africa/Cairo");
+    /**
+     * A slot older than this when the scheduler sees it (portal was down) is skipped and recorded as
+     * {@code MISSED} instead of firing at an unexpected time ({@code delivery.suites.misfire-grace-minutes}).
+     */
+    private static volatile java.time.Duration misfireGrace = java.time.Duration.ofMinutes(60);
+    /** Same floor as interval schedules: a cron that fires more often than this is rejected. */
+    public static final java.time.Duration MIN_CRON_GAP = java.time.Duration.ofMinutes(5);
+
+    public static void configure(String zone, long misfireGraceMinutes) {
+        if (zone != null && !zone.isBlank()) {
+            defaultZone = ZoneId.of(zone.trim());
+        }
+        if (misfireGraceMinutes > 0) {
+            misfireGrace = java.time.Duration.ofMinutes(misfireGraceMinutes);
+        }
+    }
+
+    public static ZoneId defaultZone() {
+        return defaultZone;
+    }
+
+    static ZoneId zoneOf(Map<String, Object> schedule) {
+        String tz = schedule == null ? "" : str(schedule.get("timezone"));
+        if (!tz.isBlank()) {
+            try {
+                return ZoneId.of(tz);
+            } catch (Exception ignored) {
+                // fall back to default
+            }
+        }
+        return defaultZone;
+    }
+
+    private static Instant parseInstant(String v) {
+        try {
+            return v == null || v.isBlank() ? null : Instant.parse(v);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -519,6 +765,8 @@ public final class SuiteDiskStore {
         } else {
             m.put("monitor", null);
         }
+        Object planId = raw.get("structuredPlanId");
+        m.put("structuredPlanId", planId == null || str(planId).isBlank() ? null : str(planId).trim());
         m.put("createdAt", str(raw.get("createdAt")));
         m.put("updatedAt", str(raw.get("updatedAt")));
         return m;
@@ -549,6 +797,26 @@ public final class SuiteDiskStore {
         s.put("lastFiredAt", last == null || str(last).isBlank() ? null : str(last));
         Object job = raw.get("lastJobId");
         s.put("lastJobId", job == null || str(job).isBlank() ? null : str(job));
+        Object claimed = raw.get("lastClaimedAt");
+        s.put("lastClaimedAt", claimed == null || str(claimed).isBlank() ? null : str(claimed));
+        Object tz = raw.get("timezone");
+        s.put("timezone", tz == null || str(tz).isBlank() ? null : str(tz));
+        Object profile = raw.get("credentialProfile");
+        s.put("credentialProfile", profile == null || str(profile).isBlank() ? null : str(profile));
+        Object jobStatus = raw.get("lastJobStatus");
+        s.put("lastJobStatus", jobStatus == null || str(jobStatus).isBlank() ? null : str(jobStatus));
+        Object result = raw.get("lastResult");
+        s.put("lastResult", result instanceof Map<?, ?> rm ? new LinkedHashMap<>(rm) : null);
+        Object failure = raw.get("lastFailure");
+        if (failure instanceof Map<?, ?> fm) {
+            Map<String, Object> lf = new LinkedHashMap<>();
+            lf.put("code", str(fm.get("code")));
+            lf.put("message", str(fm.get("message")));
+            lf.put("at", str(fm.get("at")));
+            s.put("lastFailure", lf);
+        } else {
+            s.put("lastFailure", null);
+        }
         return s;
     }
 
@@ -564,6 +832,8 @@ public final class SuiteDiskStore {
         m.put("lastStatus", status == null || str(status).isBlank() ? "unknown" : str(status));
         Object checked = raw.get("lastCheckedAt");
         m.put("lastCheckedAt", checked == null || str(checked).isBlank() ? null : str(checked));
+        Object lastJob = raw.get("lastJobId");
+        m.put("lastJobId", lastJob == null || str(lastJob).isBlank() ? null : str(lastJob));
         return m;
     }
 

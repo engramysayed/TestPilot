@@ -65,6 +65,14 @@ public final class DomCandidateExtractor {
     }
 
     public static List<DomCandidate> extract(String html, int max) {
+        try {
+            return extractIndexed(html, max);
+        } finally {
+            ATTR_INDEX.remove(); // do not pin a large DOM to a pooled worker thread
+        }
+    }
+
+    private static List<DomCandidate> extractIndexed(String html, int max) {
         List<DomCandidate> out = new ArrayList<>();
         if (html == null || html.isBlank() || max <= 0) {
             return out;
@@ -841,11 +849,48 @@ public final class DomCandidateExtractor {
         return false;
     }
 
+    /**
+     * attr → value → count for the last document seen on this thread. Previously every check scanned
+     * {@code doc.getAllElements()} (O(n²) per snapshot: 5–10k-node SPAs took seconds per step).
+     */
+    private static final ThreadLocal<AttrIndex> ATTR_INDEX = new ThreadLocal<>();
+
+    private record AttrIndex(Document doc, Map<String, Map<String, Integer>> counts) {
+        int count(String attr, String value) {
+            Map<String, Integer> byValue = counts.get(attr.toLowerCase(Locale.ROOT));
+            if (byValue == null) {
+                return 0;
+            }
+            Integer n = byValue.get(value);
+            return n == null ? 0 : n;
+        }
+
+        static AttrIndex build(Document doc) {
+            Map<String, Map<String, Integer>> counts = new java.util.HashMap<>();
+            for (Element n : doc.getAllElements()) {
+                for (org.jsoup.nodes.Attribute a : n.attributes()) {
+                    counts.computeIfAbsent(a.getKey().toLowerCase(Locale.ROOT), k -> new java.util.HashMap<>())
+                            .merge(a.getValue(), 1, Integer::sum);
+                }
+            }
+            return new AttrIndex(doc, counts);
+        }
+    }
+
+    private static AttrIndex attrIndex(Document doc) {
+        AttrIndex ix = ATTR_INDEX.get();
+        if (ix == null || ix.doc() != doc) {
+            ix = AttrIndex.build(doc);
+            ATTR_INDEX.set(ix);
+        }
+        return ix;
+    }
+
     private static boolean uniqueAttribute(Element el, String attr, String value) {
         if (List.of(el.attr("data-keel-ambiguous-attrs").split(" ")).contains(attr)) return false;
         Document doc = el.ownerDocument();
         if (doc == null) return false;
-        return doc.getAllElements().stream().filter(n -> n.hasAttr(attr) && value.equals(n.attr(attr))).limit(2).count() == 1;
+        return attrIndex(doc).count(attr, value) == 1;
     }
 
     private static boolean actionableKind(String kind) {

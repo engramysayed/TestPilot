@@ -3,7 +3,7 @@
 **Date:** 2026-10-19  
 **Status:** Implemented (portal authoring + Execute; rebuild jar + Ctrl+F5 to pick up)  
 **Plan:** `docs/superpowers/plans/2026-10-19-scoped-nested-hook.md`  
-**Handoff:** `docs/handoff/2026-10-19-scoped-nested-hook.md`
+**Handoff:** `docs/history/handoffs/2026-10/2026-10-19-scoped-nested-hook.md`
 
 ## Problem
 

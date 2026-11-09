@@ -124,34 +124,40 @@ public final class ElementGrounder {
         return false;
     }
 
+    /**
+     * Locator for a node the vision model pointed at, in the shared stable-first order
+     * (hook → test id → human id → name → aria-label → text). Each option is validated; a generated id
+     * ({@code ember123}) no longer aborts grounding — the next stable option is tried instead.
+     */
     static Optional<LocatorCandidate> buildLocator(GroundedNode node) {
+        List<LocatorCandidate> options = new ArrayList<>();
+        String tag = safe(node.tag());
         if (!safe(node.preferredAttribute()).isBlank() && !safe(node.preferredValue()).isBlank()) {
-            return Optional.of(new LocatorCandidate("css", preferredCss(node), safe(node.tag()), ""));
-        }
-        if (!safe(node.id()).isBlank()) {
-            return Optional.of(new LocatorCandidate("id", node.id(), safe(node.tag()), ""));
+            options.add(new LocatorCandidate("css", preferredCss(node), tag, ""));
         }
         if (!safe(node.dataTest()).isBlank()) {
-            return Optional.of(new LocatorCandidate(node.dataTestAttribute(), node.dataTest(), safe(node.tag()), ""));
+            options.add(new LocatorCandidate(node.dataTestAttribute(), node.dataTest(), tag, ""));
+        }
+        if (!safe(node.id()).isBlank()) {
+            options.add(new LocatorCandidate("id", node.id(), tag, ""));
         }
         if (!safe(node.name()).isBlank()) {
-            return Optional.of(new LocatorCandidate("name", node.name(), safe(node.tag()), ""));
+            options.add(new LocatorCandidate("name", node.name(), tag, ""));
         }
         if (!safe(node.ariaLabel()).isBlank()) {
-            String tag = safe(node.tag());
-            if (tag.isBlank()) {
-                tag = "div";
-            }
-            return Optional.of(new LocatorCandidate("css", cssAriaLabel(tag, node.ariaLabel()), tag, ""));
+            String t = tag.isBlank() ? "div" : tag;
+            options.add(new LocatorCandidate("css", cssAriaLabel(t, node.ariaLabel()), t, ""));
         }
         String text = safe(node.visibleText());
         if (!text.isBlank() && text.length() <= 80) {
-            String tag = safe(node.tag());
-            if (tag.isBlank()) {
-                tag = "button";
+            String t = tag.isBlank() ? "button" : tag;
+            String xpath = delivery.authoring.DomCandidateExtractor.innermostTextXpath(t, text);
+            options.add(new LocatorCandidate("xpath", xpath, t, text));
+        }
+        for (LocatorCandidate lc : options) {
+            if (VALIDATOR.validate(lc).valid()) {
+                return Optional.of(lc);
             }
-            String xpath = delivery.authoring.DomCandidateExtractor.innermostTextXpath(tag, text);
-            return Optional.of(new LocatorCandidate("xpath", xpath, tag, text));
         }
         return Optional.empty();
     }

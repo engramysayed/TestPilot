@@ -1,7 +1,7 @@
 # Architecture audit — flow, defects, enhancements
 
 **Date:** 2026-10-13  
-**Graphify:** `graphify update . --force` → 11046 nodes / 28557 edges / 530 communities (`graphify-out/`, refreshed 2026-10-13, commit `de7f579`).  
+**Graphify:** `scripts\graphify-update.cmd` or `py -3.12 -m graphify update . --force` → 30420 nodes / 105506 edges / 1142 communities (`graphify-out/`, refreshed 2026-11-07). Use Python **3.12** (3.15 lacks wheels for tree-sitter on this machine).  
 **Diagnose:** re-run `graphify diagnose multigraph` after major refactors; graph.html uses aggregated community view above 5000 nodes.
 
 ## Flow to lowest nodes (runtime)

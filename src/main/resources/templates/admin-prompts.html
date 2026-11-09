@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Prompts')}"></th:block>
     <style>
@@ -45,7 +45,7 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1>Prompts</h1>
+            <h1 th:text="#{page.admin-prompts.title}">Prompts</h1>
             <p class="lede">Edit the prompt pack text Keel uses for generate and heal. Built-in text ships with the product; your overrides live in the host override folder. The owner sets that folder with <code>keel.prompts.dir</code> or <code>KEEL_PROMPTS_DIR</code>.</p>
         </div>
     </div>
@@ -104,6 +104,11 @@
     let selectedId = null;
     let overrideConfigured = true;
 
+    function promptApiPath(id, suffix) {
+        var parts = String(id).split('/').map(encodeURIComponent).join('/');
+        return '/api/admin/prompts/' + parts + (suffix ? suffix : '');
+    }
+
     function showError(msg) {
         if (!errEl) return;
         if (!msg) {
@@ -148,7 +153,7 @@
     }
     function normalizeListPayload(body) {
         if (Array.isArray(body)) {
-            return { items: body, overrideConfigured: true, message: null };
+            return { items: body, overrideConfigured: true, message: null, promptsVersion: null };
         }
         if (body && typeof body === 'object') {
             const items = Array.isArray(body.items) ? body.items
@@ -161,17 +166,24 @@
             if (body.overrideConfigured === false || body.overrideDirConfigured === false || body.configured === false) {
                 overrideOk = false;
             }
-            return { items: items, overrideConfigured: overrideOk, message: message };
+            const promptsVersion = body.promptsVersion != null ? String(body.promptsVersion) : null;
+            return { items: items, overrideConfigured: overrideOk, message: message, promptsVersion: promptsVersion };
         }
-        return { items: [], overrideConfigured: true, message: null };
+        return { items: [], overrideConfigured: true, message: null, promptsVersion: null };
     }
-    function renderList(items) {
+    function renderList(items, promptsVersion) {
         listEl.innerHTML = '';
         if (!items.length) {
-            listHint.textContent = 'No prompts found.';
+            listHint.textContent = promptsVersion
+                ? ('No prompts found. Prompt pack version: ' + promptsVersion)
+                : 'No prompts found.';
             return;
         }
-        listHint.textContent = items.length + ' prompt' + (items.length === 1 ? '' : 's');
+        var hint = items.length + ' prompt' + (items.length === 1 ? '' : 's');
+        if (promptsVersion) {
+            hint += ' — Prompt pack version: ' + promptsVersion;
+        }
+        listHint.textContent = hint;
         items.forEach(function (item) {
             const id = item && item.id ? String(item.id) : '';
             if (!id) return;
@@ -208,16 +220,24 @@
             return data;
         }
         if (data && typeof data === 'object') {
-            if (typeof data.unified === 'string') return data.unified;
+            if (data.identical === true) {
+                return 'Same as classpath';
+            }
+            if (typeof data.unified === 'string' && data.unified.length) return data.unified;
             if (typeof data.diff === 'string') return data.diff;
             if (typeof data.text === 'string') return data.text;
             if (Array.isArray(data.lines)) {
                 return data.lines.map(function (line) {
                     if (typeof line === 'string') return line;
                     if (line && typeof line === 'object') {
-                        const prefix = line.type || line.op || line.kind || '';
+                        const op = line.op || line.type || line.kind || '';
+                        if (line.classpath != null || line.override != null) {
+                            const left = line.classpath != null ? String(line.classpath) : '';
+                            const right = line.override != null ? String(line.override) : '';
+                            return (op ? (op + ' | ') : '') + left + ' | ' + right;
+                        }
                         const body = line.text != null ? line.text : (line.line != null ? line.line : JSON.stringify(line));
-                        return (prefix ? (prefix + ' ') : '') + body;
+                        return (op ? (op + ' ') : '') + body;
                     }
                     return String(line);
                 }).join('\n');
@@ -253,14 +273,14 @@
         } else {
             setBanner(null, true);
         }
-        renderList(normalized.items);
+        renderList(normalized.items, normalized.promptsVersion);
     }
     async function selectPrompt(id) {
         showError('');
         hideDiff();
         selectedId = id;
         setActiveListButton(id);
-        const res = await fetch('/api/admin/prompts/' + encodeURIComponent(id), {
+        const res = await fetch(promptApiPath(id), {
             credentials: 'same-origin', headers: HDR
         });
         const known = statusMessage(res.status);
@@ -282,7 +302,7 @@
             showError('Choose a prompt first.');
             return;
         }
-        const res = await fetch('/api/admin/prompts/' + encodeURIComponent(selectedId), {
+        const res = await fetch(promptApiPath(selectedId), {
             method: 'PUT',
             credentials: 'same-origin',
             headers: HDR,
@@ -291,7 +311,12 @@
         const body = await res.json().catch(function () { return {}; });
         const known = statusMessage(res.status);
         if (!res.ok) {
-            const msg = known || body.message || body.error || ('Save failed (' + res.status + ').');
+            var msg;
+            if (res.status === 400 && body.error === 'PROMPTS_DIR_UNSET') {
+                msg = body.message || 'Override folder is not set. Set keel.prompts.dir or KEEL_PROMPTS_DIR on the portal host to save.';
+            } else {
+                msg = known || body.message || body.error || ('Save failed (' + res.status + ').');
+            }
             showError(msg);
             if (res.status === 400) {
                 setBanner(msg, false);
@@ -310,7 +335,7 @@
             showError('Choose a prompt first.');
             return;
         }
-        const res = await fetch('/api/admin/prompts/' + encodeURIComponent(selectedId) + '/diff', {
+        const res = await fetch(promptApiPath(selectedId, '/diff'), {
             credentials: 'same-origin', headers: HDR
         });
         const known = statusMessage(res.status);

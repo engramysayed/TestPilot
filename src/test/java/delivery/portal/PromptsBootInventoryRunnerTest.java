@@ -22,6 +22,11 @@ public class PromptsBootInventoryRunnerTest {
             "authoring/authoring-service",
             "authoring/heal-pick-payload",
             "codegen/test-method-naming",
+            "generate/capability-manifest",
+            "generate/rewrite-to-csv",
+            "generate/stories-to-csv",
+            "generate/stories-to-json",
+            "generate/testing-techniques",
             "grounding/free-invent",
             "grounding/hunt-planner",
             "grounding/locator-policy",
@@ -69,7 +74,7 @@ public class PromptsBootInventoryRunnerTest {
             Assert.assertEquals(e.sha256().length(), 12, e.id());
         }
         Assert.assertEquals(scanned, new TreeSet<>(GOLDEN_IDS));
-        Assert.assertEquals(PromptCatalog.version(), "2026.11.02");
+        Assert.assertEquals(PromptCatalog.version(), "2026.11.07");
     }
 
     @Test

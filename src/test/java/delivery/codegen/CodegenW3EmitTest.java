@@ -33,21 +33,20 @@ public class CodegenW3EmitTest {
                                 "button[role='button'][aria-label='Place order']")));
         try (PreferredHooksStore.Scope ignored = PreferredHooksStore.activate(List.of("data-axis-test-id"))) {
             MultiLocatorBag.Bag bag = MultiLocatorBag.build(step);
-            Assert.assertTrue(bag.primary().value().contains("role=")
-                    || bag.primary().value().contains("aria-label"), bag.primary().value());
+            Assert.assertTrue(bag.primary().value().contains("data-testid"), bag.primary().value());
             Assert.assertTrue(bag.hasFallbacks(), "expected fallbacks: " + bag);
             new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_BAG", step)));
         }
         String page = Files.readString(dir.resolve("src/main/java/project/pages/Checkout_Page.java"));
-        Assert.assertTrue(page.contains("role=") || page.contains("Place order"), page);
-        // Bag fallbacks as _fbN and/or KeelBy targets
-        boolean hasFb = page.contains("_fb1") || page.contains("KeelBy.of") || page.contains("button.submit")
-                || page.contains("data-testid");
-        Assert.assertTrue(hasFb, "expected bag fallbacks in emit:\n" + page);
-        int roleAt = Math.max(page.indexOf("role="), page.indexOf("aria-label"));
-        int bareCss = page.indexOf("button.submit");
-        if (roleAt >= 0 && bareCss >= 0) {
-            Assert.assertTrue(roleAt < bareCss, "primary must precede bare css:\n" + page);
+        Assert.assertTrue(page.contains("data-testid='place-order'"), page);
+        // Fallbacks are folded into one FirstOf / KeelBy field — no dead _fbN fields, no By.css(...)
+        Assert.assertTrue(page.contains("FirstOf.of(") || page.contains("KeelBy.of"), page);
+        Assert.assertFalse(page.contains("_fb1"), page);
+        Assert.assertFalse(page.contains("By.css("), page);
+        int primaryAt = page.indexOf("data-testid='place-order'");
+        int roleAt = page.indexOf("role=");
+        if (roleAt >= 0) {
+            Assert.assertTrue(primaryAt < roleAt, "test id primary must precede role fallback:\n" + page);
         }
         Path sample = Path.of("docs/handoff/samples/W3_bag_Checkout_Page.java");
         Files.createDirectories(sample.getParent());
@@ -64,13 +63,15 @@ public class CodegenW3EmitTest {
                 List.of(LocatorCandidate.of("css", "button[data-axis-test-id='verify_Otp_Button']")));
         try (PreferredHooksStore.Scope ignored = PreferredHooksStore.activate(List.of())) {
             MultiLocatorBag.Bag bag = MultiLocatorBag.build(step);
-            Assert.assertTrue(bag.primary().value().contains("verify-otp"), bag.primary().toString());
-            Assert.assertTrue(bag.hasFallbacks(), bag.toString());
+            // verified test id (data-axis-test-id) is promoted even without hooks; proven xpath becomes fallback
+            Assert.assertTrue(bag.primary().value().contains("verify_Otp_Button"), bag.primary().toString());
+            Assert.assertTrue(bag.fallbacks().stream().anyMatch(e -> e.value().contains("verify-otp")), bag.toString());
             new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_BAG0", step)));
         }
         String page = Files.readString(dir.resolve("src/main/java/project/pages/Otp_Page.java"));
         Assert.assertTrue(page.contains("//button[@id='verify-otp']") || page.contains("By.xpath"), page);
-        Assert.assertTrue(page.contains("_fb1") || page.contains("data-axis-test-id"), page);
+        Assert.assertTrue(page.contains("data-axis-test-id"), page);
+        Assert.assertTrue(page.contains("FirstOf.of("), page);
     }
 
     @Test

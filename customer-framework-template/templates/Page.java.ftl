@@ -7,6 +7,9 @@ import project.utils.reports.AllureSteps;
 <#if fields?filter(f -> f.smart)?has_content>
 import project.utils.locators.KeelBy;
 </#if>
+<#if fields?filter(f -> !f.smart && !f.parameterized && !f.nlCached && f.bag?has_content)?has_content>
+import project.utils.locators.FirstOf;
+</#if>
 <#assign maxContract = 1>
 <#list fields as f><#if f.contract gt maxContract><#assign maxContract = f.contract></#if></#list>
 <#if maxContract gt 1 || assertions?filter(a -> a.smart)?has_content>
@@ -45,23 +48,16 @@ public class ${pageClassName} {
 <#elseif field.smart>
     /** Keel targets (contract v${field.contract}), main first then fallbacks. */
     protected final By ${field.name} = ${field.smartExpr};
-<#if field.bag?has_content>
-<#list field.bag as fb>
-    /** Multi-locator bag fallback ${fb_index+1} for ${field.name}. */
-    protected final By ${field.name}_fb${fb_index+1} = By.${fb.strategy}("${fb.value?j_string}");
-</#list>
-</#if>
 <#elseif field.nlCached>
     /** NL-cached validated By: ${field.nlPhrase?j_string} */
     protected final By ${field.name} = By.${field.strategy}("${field.value?j_string}");
+<#elseif field.bag?has_content>
+    /** Primary first, then verified fallbacks (first locator that matches wins; fallback wins are logged). */
+    protected final By ${field.name} = FirstOf.of("${field.name}",
+            By.${field.strategy}("${field.value?j_string}")<#list field.bag as fb>,
+            By.${fb.strategy}("${fb.value?j_string}")</#list>);
 <#else>
     protected final By ${field.name} = By.${field.strategy}("${field.value?j_string}");
-<#if field.bag?has_content>
-<#list field.bag as fb>
-    /** Multi-locator bag fallback ${fb_index+1} for ${field.name}. */
-    protected final By ${field.name}_fb${fb_index+1} = By.${fb.strategy}("${fb.value?j_string}");
-</#list>
-</#if>
 </#if>
 </#list>
 

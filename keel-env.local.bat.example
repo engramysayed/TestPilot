@@ -15,3 +15,23 @@ set "OLLAMA_MODELS=D:\Ollama\models"
 REM Android SDK (Scoop android-clt) — mobile APK inspect when product profile is on
 set "ANDROID_HOME=%USERPROFILE%\scoop\apps\android-clt\current"
 set "PATH=%ANDROID_HOME%\cmdline-tools\latest\bin;%ANDROID_HOME%\platform-tools;%PATH%"
+
+REM --- AL-1 alert channels (secrets; keep in the .local file, not here). ---
+REM Toggle a channel with KEEL_ALERT_{TELEGRAM,SLACK,EMAIL}_ENABLED=true|false.
+
+REM Telegram: bot token from BotFather, chat id from https://api.telegram.org/bot<TOKEN>/getUpdates
+REM set "KEEL_TELEGRAM_BOT_TOKEN=123456:AAE..."
+REM set "KEEL_TELEGRAM_CHAT_IDS=111111111"
+
+REM Slack: incoming webhook from https://api.slack.com/apps -> Incoming Webhooks
+REM set "KEEL_SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T.../B.../..."
+
+REM Gmail SMTP (needs 2FA + app password at https://myaccount.google.com/apppasswords)
+REM set "KEEL_ALERT_EMAIL_ENABLED=true"
+REM set "KEEL_MAIL_ENABLED=true"
+REM set "KEEL_MAIL_HOST=smtp.gmail.com"
+REM set "KEEL_MAIL_PORT=587"
+REM set "KEEL_MAIL_USERNAME=you@gmail.com"
+REM set "KEEL_MAIL_PASSWORD=16charAppPassword"
+REM set "KEEL_MAIL_FROM=you@gmail.com"
+REM set "KEEL_ALERT_EMAIL_RECIPIENTS=you@gmail.com,ops@company.com"

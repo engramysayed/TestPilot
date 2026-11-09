@@ -98,6 +98,11 @@ public final class MultiLocatorBag {
             if (SemanticLocatorLadder.isNonUnique(c.strategy(), c.value())) {
                 continue;
             }
+            // Generated ids / build-tool class names (css-1x2y3z, Button_root__a8f3k) die on the next deploy.
+            if (delivery.locator.LocatorStabilityPolicy.tier(c.strategy(), c.value(), activeHooks)
+                    == delivery.locator.LocatorTier.BRITTLE) {
+                continue;
+            }
             EmitStepNormalizer.Loc loc = EmitStepNormalizer.Loc.plain(c.strategy(), c.value());
             if (EmitStepNormalizer.isTextLocator(loc)) {
                 continue;
@@ -111,7 +116,7 @@ public final class MultiLocatorBag {
                 break;
             }
         }
-        if (promote && fallbacks.size() > 1) {
+        if (fallbacks.size() > 1) {
             List<String> hooksFinal = activeHooks;
             fallbacks.sort((a, b) -> Integer.compare(
                     SemanticLocatorLadder.rank(b.strategy(), b.value(), hooksFinal),

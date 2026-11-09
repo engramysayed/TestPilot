@@ -37,7 +37,7 @@ public class GeneratePromptResourceTest extends AbstractTestNGSpringContextTests
 
     @Test
     public void classpathPrompt_containsKeelHeaderAndGenerateRules() throws Exception {
-        try (var in = GeneratePromptResourceTest.class.getClassLoader().getResourceAsStream(PROMPT_PATH)) {
+        try (var in = new java.io.ByteArrayInputStream(delivery.prompts.PromptCatalog.get("generate/stories-to-csv").getBytes(StandardCharsets.UTF_8))) {
             Assert.assertNotNull(in, "prompt file missing on classpath");
             String body = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             assertGeneratePromptContent(body);

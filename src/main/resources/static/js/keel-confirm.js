@@ -36,6 +36,7 @@
         '<div class="keel-modal" role="dialog" aria-modal="true" aria-labelledby="keel-confirm-title">'
         + '<h3 id="keel-confirm-title"></h3>'
         + '<p class="lede" id="keel-confirm-msg"></p>'
+        + '<input type="text" id="keel-confirm-input" hidden style="width:100%;margin:.25rem 0 .5rem"/>'
         + '<div class="keel-modal-actions">'
         + '<button type="button" class="button ghost" id="keel-confirm-cancel">Cancel</button>'
         + '<button type="button" class="button primary" id="keel-confirm-ok">OK</button>'
@@ -52,6 +53,10 @@
     var msg = root.querySelector('#keel-confirm-msg');
     var ok = root.querySelector('#keel-confirm-ok');
     var cancel = root.querySelector('#keel-confirm-cancel');
+    var input = root.querySelector('#keel-confirm-input');
+    input.hidden = !opts.withInput;
+    input.value = opts.defaultValue || '';
+    input.placeholder = opts.placeholder || '';
     title.textContent = opts.title || 'Confirm';
     msg.textContent = opts.message || '';
     ok.textContent = opts.confirmLabel || (opts.alertOnly ? 'OK' : 'Confirm');
@@ -69,18 +74,18 @@
         document.removeEventListener('keydown', onKey);
         resolve(val);
       }
-      function onOk() { finish(true); }
-      function onCancel() { finish(false); }
-      function onBackdrop(e) { if (e.target === root) finish(false); }
+      function onOk() { finish(opts.withInput ? input.value : true); }
+      function onCancel() { finish(opts.withInput ? null : false); }
+      function onBackdrop(e) { if (e.target === root) onCancel(); }
       function onKey(e) {
-        if (e.key === 'Escape') finish(false);
-        if (e.key === 'Enter') finish(true);
+        if (e.key === 'Escape') onCancel();
+        if (e.key === 'Enter') onOk();
       }
       ok.addEventListener('click', onOk);
       cancel.addEventListener('click', onCancel);
       root.addEventListener('click', onBackdrop);
       document.addEventListener('keydown', onKey);
-      setTimeout(function () { ok.focus(); }, 0);
+      setTimeout(function () { (opts.withInput ? input : ok).focus(); }, 0);
     });
   }
 
@@ -96,5 +101,34 @@
     opts.title = opts.title || 'Notice';
     opts.confirmLabel = opts.confirmLabel || 'OK';
     return openDialog(opts).then(function () { return true; });
+  };
+  /** Text input dialog. Resolves to the string, or null when cancelled (native prompt semantics). */
+  global.keelPrompt = function (opts) {
+    if (typeof opts === 'string') opts = { message: opts };
+    opts = opts || {};
+    opts.withInput = true;
+    opts.title = opts.title || 'Input';
+    opts.confirmLabel = opts.confirmLabel || 'OK';
+    return openDialog(opts);
+  };
+
+  /** Non-blocking notice in the corner (replaces alert() for info messages). */
+  global.keelToast = function (message, kind) {
+    var host = document.getElementById('keel-toast-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'keel-toast-host';
+      host.setAttribute('role', 'status');
+      host.setAttribute('aria-live', 'polite');
+      host.style.cssText = 'position:fixed;inset-inline-end:1rem;inset-block-end:1rem;display:flex;flex-direction:column;gap:.5rem;z-index:95';
+      document.body.appendChild(host);
+    }
+    var t = document.createElement('div');
+    t.textContent = String(message == null ? '' : message);
+    t.style.cssText = 'max-width:min(420px,90vw);padding:.6rem .9rem;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);'
+      + 'background:' + (kind === 'error' ? 'var(--calm-bad,#b23b3b)' : 'var(--surface,#fff)') + ';'
+      + 'color:' + (kind === 'error' ? '#fff' : 'var(--calm-ink,inherit)') + ';border:1px solid var(--calm-line,#d0d7de)';
+    host.appendChild(t);
+    setTimeout(function () { t.remove(); }, 6000);
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -261,6 +261,7 @@ public class AuthoringService {
                 + formatPriorSteps(priorStepSummaries)
                 + "\n"
                 + delivery.vision.VisionHealHints.ollamaSection()
+                + delivery.store.RunMemoryHealHints.ollamaSection()
                 + (hasImage ? "\n(Screenshot of current page is attached as an image.)" : "");
         try {
             String raw = hasImage

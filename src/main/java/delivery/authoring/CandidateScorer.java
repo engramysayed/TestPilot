@@ -24,45 +24,31 @@ public final class CandidateScorer {
 
     private CandidateScorer() {}
 
+    /**
+     * Bind-time stability points. Ordering comes from the shared {@link delivery.locator.LocatorStabilityPolicy}
+     * (same tiers as prove + codegen); this table only keeps the bind scale that MIN_TOTAL / MARGIN were tuned on.
+     */
     public static int stability(DomCandidate c) {
         if (c == null) return 0;
-        String s = c.strategy() == null ? "" : c.strategy().toLowerCase(Locale.ROOT);
-        String v = c.value() == null ? "" : c.value();
-        if (PreferredHooksStore.matches(v, PreferredHooksStore.current())
-                || PreferredHooksStore.matches(s, PreferredHooksStore.current())) {
-            return 50;
-        }
-        if (("css".equals(s) || "cssselector".equals(s) || "xpath".equals(s))
-                && (v.contains("data-axis-test-id") || containsPreferredHook(v))) {
-            return 50;
-        }
-        if ("data-testid".equals(s) || "data-test".equals(s) || "data-qa".equals(s) || "testid".equals(s)) {
-            return 45;
-        }
-        if (v.contains("data-testid") || v.contains("data-test=") || v.contains("data-qa=")) {
-            return 45;
-        }
-        if (v.contains("[role=") && (v.contains("aria-label") || v.contains("name="))) {
-            return 40;
-        }
-        if (v.contains("aria-label") || s.contains("aria")) {
-            return 36;
-        }
-        if ("name".equals(s)) {
-            return 30;
-        }
-        if ("id".equals(s)) {
-            return GeneratedIdDetector.looksGenerated(v) ? 0 : 24;
-        }
-        if ("css".equals(s) || "cssselector".equals(s)) {
-            if (v.contains(":nth-")) return 2;
-            return 12;
-        }
-        if ("xpath".equals(s)) {
-            if (v.matches(".*\\[\\d+\\].*")) return 2;
-            return 8;
-        }
-        return 0;
+        delivery.locator.LocatorTier tier = delivery.locator.LocatorStabilityPolicy.tier(c.strategy(), c.value());
+        return stabilityPoints(tier, delivery.locator.LocatorStabilityPolicy.currentMode());
+    }
+
+    static int stabilityPoints(delivery.locator.LocatorTier tier, delivery.locator.LocatorMode mode) {
+        boolean userFacing = mode == delivery.locator.LocatorMode.USER_FACING_FIRST;
+        return switch (tier) {
+            case PREFERRED_HOOK -> 50;
+            case TEST_ID -> userFacing ? 40 : 45;
+            case ID -> userFacing ? 30 : 40;
+            case NAME -> userFacing ? 28 : 38;
+            case ROLE_NAME -> userFacing ? 45 : 36;
+            case LABEL -> userFacing ? 42 : 33;
+            case TEXT -> userFacing ? 34 : 30;
+            case CSS_ATTR -> 12;
+            case XPATH_ATTR -> 8;
+            case ORDINAL -> 2;
+            case BRITTLE -> 0;
+        };
     }
 
     public static List<CandidateScore> score(
@@ -155,12 +141,13 @@ public final class CandidateScorer {
         String label = normalizeLabel(c);
         String valueHay = c.value() == null ? "" : c.value().toLowerCase(Locale.ROOT);
         if (quoted != null && !quoted.isBlank()) {
-            String q = quoted.trim().toLowerCase(Locale.ROOT);
+            String q = IntentText.normalize(quoted);
             String qSlug = q.replace(' ', '-');
+            // Whole-word/phrase match: "Save" must not hit "Unsaved changes".
             if (label.equals(q)
-                    || label.contains(q)
-                    || valueHay.contains(q)
-                    || (!qSlug.isBlank() && (label.contains(qSlug) || valueHay.contains(qSlug)))) {
+                    || IntentText.containsPhrase(label, q)
+                    || IntentText.containsPhrase(c.value(), q)
+                    || (!qSlug.isBlank() && (valueHay.contains("'" + qSlug + "'") || valueHay.contains("\"" + qSlug + "\"")))) {
                 return 40;
             }
         }
@@ -168,8 +155,8 @@ public final class CandidateScorer {
         int onLabel = 0;
         int onValue = 0;
         for (String t : toks) {
-            if (label.contains(t)) onLabel++;
-            if (valueHay.contains(t)) onValue++;
+            if (IntentText.containsToken(label, t)) onLabel++;
+            if (IntentText.containsToken(c.value(), t)) onValue++;
         }
         return Math.min(30, onLabel * 6) + Math.min(10, onValue * 2);
     }
@@ -213,7 +200,7 @@ public final class CandidateScorer {
         String label = normalizeLabel(c);
         String valueHay = c.value() == null ? "" : c.value().toLowerCase(Locale.ROOT);
         if (quoted != null && !quoted.isBlank()
-                && label.equals(quoted.trim().toLowerCase(Locale.ROOT))) {
+                && label.equals(IntentText.normalize(quoted))) {
             return 10;
         }
         List<String> toks = distinctiveTokens(tokens(intent.text()));
@@ -222,12 +209,12 @@ public final class CandidateScorer {
         boolean anyOnLabel = false;
         boolean anyOnValue = false;
         for (String t : toks) {
-            if (label.contains(t)) {
+            if (IntentText.containsToken(label, t)) {
                 anyOnLabel = true;
             } else {
                 allOnLabel = false;
             }
-            if (valueHay.contains(t)) anyOnValue = true;
+            if (IntentText.containsToken(c.value(), t)) anyOnValue = true;
         }
         if (allOnLabel && anyOnLabel) return 10;
         if (anyOnLabel) return 6;
@@ -237,32 +224,21 @@ public final class CandidateScorer {
 
     private static List<String> distinctiveTokens(List<String> toks) {
         return toks.stream()
-                .filter(t -> t.length() >= 4)
+                .filter(t -> t.length() >= (IntentText.hasArabic(t) ? 3 : 4))
                 .filter(t -> !STOP.contains(t))
                 .toList();
     }
 
     private static List<String> tokens(String text) {
         if (text == null || text.isBlank()) return List.of();
-        return Arrays.stream(text.toLowerCase(Locale.ROOT).split("[^a-z0-9]+"))
-                .filter(t -> t.length() >= 3)
+        return IntentText.tokens(text).stream()
                 .filter(t -> !STOP.contains(t))
                 .collect(Collectors.toList());
     }
 
     private static String normalizeLabel(DomCandidate c) {
         if (c == null || c.label() == null) return "";
-        return c.label().trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+        return IntentText.normalize(c.label());
     }
 
-    private static boolean containsPreferredHook(String value) {
-        if (value == null || value.isBlank()) return false;
-        String hay = value.toLowerCase(Locale.ROOT);
-        for (String hook : PreferredHooksStore.current()) {
-            if (hook != null && !hook.isBlank() && hay.contains(hook.toLowerCase(Locale.ROOT))) {
-                return true;
-            }
-        }
-        return false;
-    }
 }

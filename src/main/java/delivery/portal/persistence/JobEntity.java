@@ -47,6 +47,10 @@ public class JobEntity {
     @Column(length = 1024)
     private String message;
 
+    /** Machine error code / reason (e.g. ALL_CASES_TODO, INTERRUPTED_UNCERTAIN). Was memory-only before. */
+    @Column(name = "error_code", length = 1024)
+    private String error;
+
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -152,6 +156,8 @@ public class JobEntity {
     public void setProgressTotal(int progressTotal) { this.progressTotal = progressTotal; }
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
+    public String getError() { return error; }
+    public void setError(String error) { this.error = error; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getCompletedAt() { return completedAt; }

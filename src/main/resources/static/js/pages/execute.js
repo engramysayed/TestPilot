@@ -1,0 +1,1939 @@
+/* Extracted from templates/execute.html. Server values arrive via window.KEEL_PAGE (set inline by the template). */
+(function () {
+    const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+    const STORAGE_KEY = 'keel.executeProjectId';
+    const LAST_JOB_KEY = 'keel.lastExecuteJobId';
+    const TERMINAL = new Set(['COMPLETED', 'COMPLETED_WITH_BLOCK', 'FAILED', 'CANCELLED']);
+    const initialProjectId = (window.KEEL_PAGE && window.KEEL_PAGE.initialProjectId !== undefined && window.KEEL_PAGE.initialProjectId !== null) ? window.KEEL_PAGE.initialProjectId : '';
+    const urlParams = new URLSearchParams(window.location.search);
+    const deepLinkJobId = urlParams.get('jobId');
+    const deepLinkProjectId = urlParams.get('projectId') || initialProjectId || '';
+    let pendingDeepLinkTcId = urlParams.get('tcId');
+
+    const workspaceLauncher = document.getElementById('workspace-launcher');
+    const workspaceConfig = document.getElementById('workspace-config');
+    const launcherSel = document.getElementById('launcher-project-select');
+    const launcherContinue = document.getElementById('launcher-continue');
+    const launcherErr = document.getElementById('launcher-err');
+    const launcherNoProjects = document.getElementById('launcher-no-projects');
+    const pinnedName = document.getElementById('pinned-project-name');
+    const changeProjectBtn = document.getElementById('change-project');
+
+    const projectSel = document.getElementById('project-select');
+    const projectErr = document.getElementById('project-err');
+    const noProjects = document.getElementById('no-projects');
+    const formPanel = document.getElementById('execute-form-panel');
+    const executeForm = document.getElementById('execute-form');
+    const baseUrlRow = document.getElementById('base-url-row');
+    const baseUrlDisplay = document.getElementById('base-url-display');
+    const baseUrlMissing = document.getElementById('base-url-missing');
+    const settingsLink = document.getElementById('settings-link');
+    const credLabel = document.getElementById('credential-label');
+    const credSel = document.getElementById('credentialProfile');
+    const submitBtn = document.getElementById('submit-btn');
+    const formError = document.getElementById('form-error');
+    const generatedPanel = document.getElementById('generated-workbook-panel');
+    const generatedMeta = document.getElementById('generated-workbook-meta');
+    const excelLabel = document.getElementById('excel-upload-label');
+    const excelInput = document.getElementById('excel-input');
+    const preRunReview = document.getElementById('pre-run-review');
+    const preRunReviewPanel = document.getElementById('pre-run-review-panel');
+    const preRunReviewStatus = document.getElementById('pre-run-review-status');
+    const preRunReviewFindings = document.getElementById('pre-run-review-findings');
+    const preRunReviewErrors = document.getElementById('pre-run-review-errors');
+    const preRunReviewCsv = document.getElementById('pre-run-review-csv');
+    const preRunReviewAccept = document.getElementById('pre-run-review-accept');
+    const preRunReviewProgress = document.getElementById('pre-run-review-progress');
+    const preRunReviewResult = document.getElementById('pre-run-review-result');
+    const preRunReviewCases = document.getElementById('pre-run-review-cases');
+    const preRunReviewHint = document.getElementById('pre-run-review-hint');
+    const preRunReviewConfig = document.getElementById('pre-run-review-config');
+    const preRunReviewProgressLabel = document.getElementById('pre-run-review-progress-label');
+    const PRE_RUN_REVIEW_PROVIDER_KEY = 'keel.preRunReview.provider';
+    let preRunReviewedCsv = null;
+    let preRunReviewedCases = [];
+    let preRunReviewApproved = false;
+
+    function selectedPreRunReviewProvider() {
+        const radio = document.querySelector('input[name="pre-run-review-provider"]:checked');
+        return radio ? radio.value : 'keel';
+    }
+
+    function preRunReviewProviderLabel() {
+        return selectedPreRunReviewProvider() === 'cursor' ? 'Cursor' : 'Keel';
+    }
+
+    function initPreRunReviewProviderRadios() {
+        const saved = sessionStorage.getItem(PRE_RUN_REVIEW_PROVIDER_KEY) || 'keel';
+        document.querySelectorAll('input[name="pre-run-review-provider"]').forEach(function (radio) {
+            radio.checked = radio.value === saved;
+            radio.addEventListener('change', function () {
+                if (radio.checked) {
+                    sessionStorage.setItem(PRE_RUN_REVIEW_PROVIDER_KEY, radio.value);
+                }
+            });
+        });
+    }
+    initPreRunReviewProviderRadios();
+
+    function syncPreRunReviewOptionVisibility() {
+        const on = preRunReview && preRunReview.checked;
+        if (preRunReviewHint) preRunReviewHint.hidden = !on;
+        if (preRunReviewConfig) preRunReviewConfig.hidden = !on;
+    }
+    let hasGeneratedWorkbook = false;
+    let generatedWorkbookMeta = null;
+
+    function setPreRunReviewBusy(busy) {
+        preRunReviewPanel.setAttribute('aria-busy', busy ? 'true' : 'false');
+        preRunReviewProgress.hidden = !busy;
+        if (busy) {
+            preRunReviewResult.hidden = true;
+            preRunReviewAccept.disabled = true;
+            preRunReviewedCsv = null;
+            preRunReviewedCases = [];
+            preRunReviewApproved = false;
+            preRunReviewFindings.innerHTML = '';
+            preRunReviewErrors.innerHTML = '';
+            preRunReviewCsv.textContent = '';
+            if (preRunReviewCases) preRunReviewCases.innerHTML = '';
+        }
+    }
+
+    function renderProposedCases(cases) {
+        if (!preRunReviewCases) return;
+        preRunReviewCases.innerHTML = '';
+        if (!Array.isArray(cases) || !cases.length) {
+            preRunReviewCases.innerHTML = '<p class="muted">No proposed cases in this review.</p>';
+            return;
+        }
+        cases.forEach(function (tc) {
+            const card = document.createElement('article');
+            card.className = 'review-case';
+            const steps = String(tc.steps || '').split(/\n+/).filter(Boolean);
+            const expected = String(tc.expectedResult || '').split(/\n+/).filter(Boolean);
+            const data = String(tc.testData || '').split(/\n+/).filter(Boolean);
+            card.innerHTML =
+                '<header class="review-case-head">' +
+                    '<span class="mono">' + escapeHtml(tc.tcId || '') + '</span>' +
+                    '<strong>' + escapeHtml(tc.title || '') + '</strong>' +
+                    (tc.keelPath ? '<span class="badge muted">' + escapeHtml(tc.keelPath) + '</span>' : '') +
+                '</header>' +
+                '<div class="review-case-grid">' +
+                    '<section><h5>Steps</h5><ol>' + steps.map(function (s) {
+                        return '<li>' + escapeHtml(s.replace(/^\d+\.\s*/, '')) + '</li>';
+                    }).join('') + '</ol></section>' +
+                    '<section><h5>Expected</h5><ol>' + expected.map(function (s) {
+                        return '<li>' + escapeHtml(s.replace(/^\d+\.\s*/, '')) + '</li>';
+                    }).join('') + '</ol></section>' +
+                    '<section><h5>Test data</h5>' +
+                        (data.length
+                            ? '<ol>' + data.map(function (s) { return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ol>'
+                            : '<p class="muted">None</p>') +
+                    '</section>' +
+                '</div>';
+            preRunReviewCases.appendChild(card);
+        });
+    }
+
+    function clearPreRunReview() {
+        preRunReviewedCsv = null;
+        preRunReviewedCases = [];
+        preRunReviewApproved = false;
+        preRunReviewPanel.hidden = true;
+        preRunReviewPanel.setAttribute('aria-busy', 'false');
+        preRunReviewProgress.hidden = true;
+        preRunReviewResult.hidden = true;
+        preRunReviewStatus.textContent = '';
+        preRunReviewFindings.innerHTML = '';
+        preRunReviewErrors.innerHTML = '';
+        preRunReviewCsv.textContent = '';
+        if (preRunReviewCases) preRunReviewCases.innerHTML = '';
+        preRunReviewAccept.disabled = true;
+    }
+
+    function reviewBatchSize() {
+        const n = parseInt((preRunReviewPanel && preRunReviewPanel.dataset.reviewBatchSize) || '50', 10);
+        return (n >= 1 && n <= 50) ? n : 50;
+    }
+
+    function chunkReviewIds(ids, n) {
+        const list = ids || [];
+        if (list.length <= 5) return [list];
+        const out = [];
+        for (let i = 0; i < list.length; i += n) out.push(list.slice(i, i + n));
+        return out;
+    }
+
+    function mergeReviewCsv(existing, next) {
+        if (!next) return existing || null;
+        if (!existing) return next;
+        const nl = next.indexOf('\n');
+        if (nl < 0 || nl + 1 >= next.length) return existing;
+        return existing + next.substring(nl);
+    }
+
+    function buildPreRunReviewInput(useGenerated, idChunk) {
+        const body = new FormData();
+        const provider = selectedPreRunReviewProvider();
+        body.append('provider', provider);
+        if (useGenerated) {
+            body.append('useGenerated', 'true');
+            (idChunk || selectedLibraryTcIds()).forEach(id => body.append('tcIds', id));
+        }
+        if (excelInput.files && excelInput.files[0]) {
+            body.append('excel', excelInput.files[0]);
+        }
+        return body;
+    }
+
+    async function requestPreRunReview(projectId, useGenerated) {
+        clearPreRunReview();
+        preRunReviewPanel.hidden = false;
+        setPreRunReviewBusy(true);
+        const reviewer = preRunReviewProviderLabel();
+        preRunReviewStatus.textContent = reviewer + ' is reviewing the exact selected cases…';
+        if (preRunReviewProgressLabel) {
+            preRunReviewProgressLabel.textContent = reviewer + ' is reviewing…';
+        }
+        submitBtn.disabled = true;
+        try {
+            const ids = useGenerated ? selectedLibraryTcIds() : [];
+            const batches = useGenerated ? chunkReviewIds(ids, reviewBatchSize()) : [null];
+            let previewOk = true;
+            for (let i = 0; i < batches.length; i++) {
+                preRunReviewStatus.textContent = batches.length > 1
+                    ? ('Reviewing batch ' + (i + 1) + ' of ' + batches.length)
+                    : (reviewer + ' is reviewing the exact selected cases…');
+                if (preRunReviewProgressLabel) {
+                    preRunReviewProgressLabel.textContent = batches.length > 1
+                        ? ('Reviewing batch ' + (i + 1) + ' of ' + batches.length)
+                        : (reviewer + ' is reviewing…');
+                }
+                const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
+                    + '/pre-run-authoring-review', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: API_HEADERS,
+                    body: buildPreRunReviewInput(useGenerated, batches[i])
+                });
+                let data = {};
+                try { data = await res.json(); } catch (ignore) { /* show generic error */ }
+                if (!res.ok) {
+                    setPreRunReviewBusy(false);
+                    preRunReviewAccept.disabled = true;
+                    preRunReviewStatus.textContent =
+                        (data.error || 'REVIEW_FAILED') + ': batch ' + (i + 1) + ' of '
+                        + batches.length + ' — ' + (data.message || 'Cursor review failed');
+                    return;
+                }
+                (data.findings || []).forEach(finding => {
+                    const li = document.createElement('li');
+                    li.textContent = '[' + (finding.severity || 'info') + '] '
+                        + (finding.tcId ? finding.tcId + ': ' : '') + (finding.message || '');
+                    preRunReviewFindings.appendChild(li);
+                });
+                (data.gateErrors || []).forEach(message => {
+                    const li = document.createElement('li');
+                    li.textContent = message;
+                    preRunReviewErrors.appendChild(li);
+                });
+                preRunReviewedCsv = mergeReviewCsv(preRunReviewedCsv, data.csv || null);
+                preRunReviewedCases = preRunReviewedCases.concat(data.cases || []);
+                previewOk = previewOk && !!data.previewOk;
+            }
+            setPreRunReviewBusy(false);
+            preRunReviewResult.hidden = false;
+            preRunReviewCsv.textContent = preRunReviewedCsv || '';
+            renderProposedCases(preRunReviewedCases);
+            preRunReviewAccept.disabled = !previewOk || !preRunReviewedCases.length;
+            preRunReviewStatus.textContent = previewOk
+                ? 'Review complete. Inspect the cases, then accept to save the library and start the run.'
+                : 'Review found blocking quality-gate errors. The run has not started.';
+            preRunReviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (error) {
+            setPreRunReviewBusy(false);
+            preRunReviewStatus.textContent = 'Network error while running pre-run review.';
+        } finally {
+            submitBtn.disabled = false;
+        }
+    }
+
+    preRunReviewAccept.addEventListener('click', async () => {
+        if (!preRunReviewedCases.length) return;
+        const projectId = projectSel.value;
+        if (!projectId) return;
+        preRunReviewAccept.disabled = true;
+        preRunReviewStatus.textContent = 'Saving reviewed cases to the library…';
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId)
+                + '/generated-workbook/apply-review', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({}, API_HEADERS, { 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ cases: preRunReviewedCases })
+            });
+            let data = {};
+            try { data = await res.json(); } catch (ignore) { /* show generic error */ }
+            if (!res.ok) {
+                preRunReviewStatus.textContent = data.message || 'Could not save reviewed cases to the library.';
+                preRunReviewAccept.disabled = false;
+                return;
+            }
+            if (excelInput) excelInput.value = '';
+            preRunReviewApproved = true;
+            executeForm.requestSubmit();
+        } catch (error) {
+            preRunReviewStatus.textContent = 'Network error while saving reviewed cases to the library.';
+            preRunReviewAccept.disabled = false;
+        }
+    });
+    document.getElementById('pre-run-review-cancel').addEventListener('click', () => {
+        preRunReview.checked = false;
+        syncPreRunReviewOptionVisibility();
+        clearPreRunReview();
+    });
+    preRunReview.addEventListener('change', () => {
+        syncPreRunReviewOptionVisibility();
+        if (!preRunReview.checked) clearPreRunReview();
+    });
+    syncPreRunReviewOptionVisibility();
+    executeForm.addEventListener('change', (event) => {
+        if (event.target !== preRunReview && preRunReviewedCsv) {
+            clearPreRunReview();
+        }
+    });
+
+    function automateRunnable(counts) {
+        if (!counts) return 0;
+        return (counts.AUTOMATE || 0) + (counts.EXECUTE || 0)
+                + (counts.VISION_ONLY || 0) + (counts.BLANK || 0);
+    }
+
+    function executeRunnable(counts) {
+        if (!counts) return 0;
+        return (counts.AUTOMATE || 0) + (counts.EXECUTE || 0)
+                + (counts.VISION_ONLY || 0) + (counts.BLANK || 0);
+    }
+
+    function surfaceSoftWarn(surface, tcCount, counts) {
+        const runnable = surface === 'AUTOMATE' ? automateRunnable(counts) : executeRunnable(counts);
+        if (runnable <= 0 || tcCount <= 0 || runnable * 2 >= tcCount) return null;
+        const label = surface === 'AUTOMATE' ? 'Automate' : 'Execute';
+        return 'Only ' + runnable + ' of ' + tcCount
+            + ' test cases are eligible for ' + label
+            + '. Most rows are marked for the other surface or MANUAL. Continue anyway?';
+    }
+
+    function formatKeelPathCounts(counts) {
+        if (!counts || typeof counts !== 'object') return '';
+        const parts = [];
+        if (counts.AUTOMATE) parts.push('Automate ' + counts.AUTOMATE);
+        if (counts.EXECUTE) parts.push('Execute ' + counts.EXECUTE);
+        if (counts.VISION_ONLY) parts.push('Vision ' + counts.VISION_ONLY);
+        if (counts.MANUAL) parts.push('Manual ' + counts.MANUAL);
+        if (counts.BLANK) parts.push('blank ' + counts.BLANK);
+        return parts.length ? ' · paths: ' + parts.join(', ') : '';
+    }
+
+    function workbookSource() {
+        const picked = document.querySelector('input[name="workbookSource"]:checked');
+        return picked ? picked.value : 'upload';
+    }
+
+    function syncWorkbookSourceUi() {
+        const useGenerated = hasGeneratedWorkbook && workbookSource() === 'generated';
+        const pick = document.getElementById('library-pick-panel');
+        if (pick) pick.hidden = !useGenerated;
+        // Library mode: upload optional (mix). Upload-only: required.
+        excelLabel.hidden = false;
+        excelInput.required = !useGenerated;
+        paintRunPrice();
+    }
+
+    document.querySelectorAll('input[name="workbookSource"]').forEach(function (el) {
+        el.addEventListener('change', syncWorkbookSourceUi);
+    });
+
+    let runUnit = null;
+    function creditDigits(n) {
+        return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    function billableCaseCount() {
+        const boxes = Array.from(document.querySelectorAll('.lib-pick-check'));
+        if (!boxes.length && generatedWorkbookMeta && generatedWorkbookMeta.keelPathCounts) {
+            return executeRunnable(generatedWorkbookMeta.keelPathCounts);
+        }
+        const chosen = boxes.filter(b => b.checked);
+        const use = chosen.length ? chosen : boxes;
+        return use.filter(b => String(b.dataset.keelPath || '').toUpperCase() !== 'MANUAL').length;
+    }
+    function paintRunPrice() {
+        const card = document.getElementById('execute-price-hint');
+        const detail = document.getElementById('execute-price-detail');
+        const totalEl = document.getElementById('execute-price-total');
+        const unitEl = document.getElementById('execute-price-unit');
+        if (!card || !detail || !totalEl || runUnit == null) return;
+        card.hidden = false;
+        const library = hasGeneratedWorkbook && workbookSource() === 'generated';
+        if (!library) {
+            detail.textContent = 'Each test case in the workbook × ' + creditDigits(runUnit);
+            totalEl.textContent = creditDigits(runUnit);
+            if (unitEl) unitEl.textContent = 'credits each';
+            return;
+        }
+        const count = billableCaseCount();
+        detail.textContent = count + (count === 1 ? ' test case × ' : ' test cases × ') + creditDigits(runUnit);
+        totalEl.textContent = creditDigits(count * runUnit);
+        if (unitEl) unitEl.textContent = 'credits';
+    }
+    fetch('/api/account/credits', { credentials: 'same-origin', headers: API_HEADERS })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (data) {
+            if (data && data.enabled && data.costs && typeof data.costs.execute === 'number') {
+                runUnit = data.costs.execute;
+                paintRunPrice();
+            }
+        })
+        .catch(function () { /* price card stays hidden */ });
+
+    async function loadLibraryPickList(projectId) {
+        const list = document.getElementById('library-pick-list');
+        if (!list) return;
+        list.innerHTML = '';
+        closeTcMultiselect();
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        (data.cases || []).forEach(tc => {
+            const label = document.createElement('label');
+            label.className = 'tc-ms-option generate-check';
+            label.dataset.search = ((tc.tcId || '') + ' ' + (tc.title || '')).toLowerCase();
+            label.innerHTML = '<input type="checkbox" class="lib-pick-check" value="'
+                + escapeHtml(tc.tcId) + '"/> <span class="mono">'
+                + escapeHtml(tc.tcId) + '</span> '
+                + '<span class="tc-ms-option-title">' + escapeHtml(tc.title || '') + '</span>';
+            const pick = label.querySelector('input');
+            pick.dataset.keelPath = tc.keelPath || '';
+            pick.addEventListener('change', refreshTcMultiselectSummary);
+            list.appendChild(label);
+        });
+        refreshTcMultiselectSummary();
+    }
+
+    function selectedLibraryTcIds() {
+        return Array.from(document.querySelectorAll('.lib-pick-check:checked')).map(el => el.value);
+    }
+
+    function refreshTcMultiselectSummary() {
+        const chips = document.getElementById('tc-ms-chips');
+        const summary = document.getElementById('tc-ms-summary');
+        if (!chips || !summary) return;
+        const selected = Array.from(document.querySelectorAll('.lib-pick-check:checked'));
+        const total = document.querySelectorAll('.lib-pick-check').length;
+        chips.innerHTML = '';
+        if (selected.length === 0) {
+            summary.textContent = total ? 'All cases (' + total + ')' : 'All cases';
+            summary.hidden = false;
+            paintRunPrice();
+            return;
+        }
+        const show = selected.slice(0, 4);
+        show.forEach(cb => {
+            const chip = document.createElement('span');
+            chip.className = 'tc-ms-chip';
+            chip.textContent = cb.value;
+            chips.appendChild(chip);
+        });
+        if (selected.length > 4) {
+            const more = document.createElement('span');
+            more.className = 'tc-ms-chip tc-ms-chip-more';
+            more.textContent = '+' + (selected.length - 4);
+            chips.appendChild(more);
+        }
+        summary.textContent = selected.length + ' of ' + total;
+        summary.hidden = false;
+        paintRunPrice();
+    }
+
+    function openTcMultiselect() {
+        const drop = document.getElementById('tc-ms-dropdown');
+        const trigger = document.getElementById('tc-ms-trigger');
+        if (!drop || !trigger) return;
+        drop.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        document.getElementById('tc-ms')?.classList.add('is-open');
+        const search = document.getElementById('tc-ms-search');
+        if (search) {
+            search.value = '';
+            filterTcMultiselect('');
+            search.focus();
+        }
+    }
+
+    function closeTcMultiselect() {
+        const drop = document.getElementById('tc-ms-dropdown');
+        const trigger = document.getElementById('tc-ms-trigger');
+        if (drop) drop.hidden = true;
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        document.getElementById('tc-ms')?.classList.remove('is-open');
+    }
+
+    function filterTcMultiselect(q) {
+        const needle = (q || '').trim().toLowerCase();
+        document.querySelectorAll('#library-pick-list .tc-ms-option').forEach(el => {
+            const hay = el.dataset.search || '';
+            el.hidden = needle !== '' && !hay.includes(needle);
+        });
+    }
+
+    document.getElementById('tc-ms-trigger')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const drop = document.getElementById('tc-ms-dropdown');
+        if (drop && drop.hidden) openTcMultiselect();
+        else closeTcMultiselect();
+    });
+    document.getElementById('tc-ms-search')?.addEventListener('input', (e) => {
+        filterTcMultiselect(e.target.value);
+    });
+    document.getElementById('lib-pick-all')?.addEventListener('click', () => {
+        document.querySelectorAll('.lib-pick-check').forEach(cb => {
+            if (!cb.closest('.tc-ms-option')?.hidden) cb.checked = true;
+        });
+        refreshTcMultiselectSummary();
+    });
+    document.getElementById('lib-pick-none')?.addEventListener('click', () => {
+        document.querySelectorAll('.lib-pick-check').forEach(cb => { cb.checked = false; });
+        refreshTcMultiselectSummary();
+    });
+    document.addEventListener('click', (e) => {
+        const root = document.getElementById('tc-ms');
+        if (root && !root.contains(e.target)) closeTcMultiselect();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeTcMultiselect();
+    });
+
+    const jobPanel = document.getElementById('job-panel');
+    const jobIdDisplay = document.getElementById('job-id-display');
+    const statusLink = document.getElementById('status-link');
+    const jobStatusEl = document.getElementById('job-status');
+    const jobProgressEl = document.getElementById('job-progress');
+    const jobMessageEl = document.getElementById('job-message');
+    const jobPassedEl = document.getElementById('job-passed');
+    const jobTodoEl = document.getElementById('job-todo');
+    const cancelWrap = document.getElementById('cancel-wrap');
+    const cancelBtn = document.getElementById('cancel-btn');
+    let cancelRequested = false;
+    const jobErrorEl = document.getElementById('job-error');
+
+    const resultsPanel = document.getElementById('results-panel');
+    const resultsBody = document.getElementById('results-body');
+    const resultsEmpty = document.getElementById('results-empty');
+    const resultsErr = document.getElementById('results-err');
+    const bugReportActions = document.getElementById('bug-report-actions');
+    const bugReportJson = document.getElementById('bug-report-json');
+    const bugReportCsv = document.getElementById('bug-report-csv');
+    const resultsExcelBtn = document.getElementById('results-excel');
+    const designRefForm = document.getElementById('design-ref-form');
+    const designRefMsg = document.getElementById('design-ref-msg');
+    const designRefErr = document.getElementById('design-ref-err');
+    const recentExecutePanel = document.getElementById('recent-execute-panel');
+    const recentExecuteBody = document.getElementById('recent-execute-body');
+    const recentExecuteEmpty = document.getElementById('recent-execute-empty');
+    const recentExecuteErr = document.getElementById('recent-execute-err');
+
+    const visualDiffsPanel = document.getElementById('visual-diffs-panel');
+    const visualDiffsBody = document.getElementById('visual-diffs-body');
+    const visualDiffsTable = document.getElementById('visual-diffs-table');
+    const visualDiffsEmpty = document.getElementById('visual-diffs-empty');
+    const visualDiffsWaiting = document.getElementById('visual-diffs-waiting');
+    const visualDiffsErr = document.getElementById('visual-diffs-err');
+    const visualDiffsDetail = document.getElementById('visual-diffs-detail');
+    const visualDiffsDetailMeta = document.getElementById('visual-diffs-detail-meta');
+    const visualDiffsApproveBtn = document.getElementById('visual-diffs-approve-btn');
+    const visualDiffsApproveMsg = document.getElementById('visual-diffs-approve-msg');
+    const visualDiffsApproveErr = document.getElementById('visual-diffs-approve-err');
+    const visualDiffsReplaceFile = document.getElementById('visual-diffs-replace-file');
+    const visualDiffsImgBaseline = document.getElementById('visual-diffs-img-baseline');
+    const visualDiffsImgActual = document.getElementById('visual-diffs-img-actual');
+    const visualDiffsImgDiff = document.getElementById('visual-diffs-img-diff');
+    const visualDiffsDiffMissing = document.getElementById('visual-diffs-diff-missing');
+    let visualDiffsSelected = null;
+    let visualDiffsProjectId = '';
+
+    function resetVisualDiffsUi() {
+        visualDiffsSelected = null;
+        if (visualDiffsBody) visualDiffsBody.innerHTML = '';
+        if (visualDiffsTable) visualDiffsTable.hidden = true;
+        if (visualDiffsEmpty) visualDiffsEmpty.hidden = true;
+        if (visualDiffsWaiting) visualDiffsWaiting.hidden = true;
+        if (visualDiffsErr) visualDiffsErr.hidden = true;
+        if (visualDiffsDetail) visualDiffsDetail.hidden = true;
+        if (visualDiffsApproveMsg) visualDiffsApproveMsg.hidden = true;
+        if (visualDiffsApproveErr) visualDiffsApproveErr.hidden = true;
+        [visualDiffsImgBaseline, visualDiffsImgActual, visualDiffsImgDiff].forEach(function (img) {
+            if (!img) return;
+            img.removeAttribute('src');
+            img.hidden = true;
+        });
+        if (visualDiffsDiffMissing) visualDiffsDiffMissing.hidden = true;
+    }
+
+    function formatChangedFraction(row) {
+        const frac = row.changedFraction;
+        const max = row.maxChangedFraction;
+        if (frac == null && max == null) return '—';
+        const a = (typeof frac === 'number') ? (frac * 100).toFixed(2) + '%' : String(frac == null ? '—' : frac);
+        const b = (typeof max === 'number') ? (max * 100).toFixed(2) + '%' : '';
+        return b ? (a + ' / max ' + b) : a;
+    }
+
+    function visualDiffUrls(projectId, row) {
+        const base = '/api/projects/' + encodeURIComponent(projectId);
+        const ck = encodeURIComponent(row.caseKey);
+        const vp = encodeURIComponent(row.viewport);
+        const rid = encodeURIComponent(row.runId);
+        return {
+            baseline: base + '/visual-baselines/' + ck + '/' + vp + '/image',
+            actual: base + '/visual-diffs/' + rid + '/' + ck + '/' + vp + '/actual',
+            diff: base + '/visual-diffs/' + rid + '/' + ck + '/' + vp + '/diff',
+            meta: base + '/visual-diffs/' + rid + '/' + ck + '/' + vp,
+            approve: base + '/visual-baselines/' + ck + '/' + vp + '/approve',
+            replace: base + '/visual-baselines/' + ck + '/' + vp
+        };
+    }
+
+    function selectVisualDiffRow(projectId, row, tr) {
+        visualDiffsSelected = row;
+        if (visualDiffsBody) {
+            visualDiffsBody.querySelectorAll('tr').forEach(function (el) { el.classList.remove('is-selected'); });
+        }
+        if (tr) tr.classList.add('is-selected');
+        if (visualDiffsDetail) visualDiffsDetail.hidden = false;
+        if (visualDiffsApproveMsg) visualDiffsApproveMsg.hidden = true;
+        if (visualDiffsApproveErr) visualDiffsApproveErr.hidden = true;
+        const urls = visualDiffUrls(projectId, row);
+        if (visualDiffsDetailMeta) {
+            visualDiffsDetailMeta.textContent = (row.caseKey || '') + ' · ' + (row.viewport || '')
+                + ' · run ' + (row.runId || '')
+                + (row.passed === true ? ' · passed' : ' · failed');
+        }
+        function setImg(el, url) {
+            if (!el) return;
+            el.hidden = false;
+            el.onerror = function () { el.hidden = true; };
+            el.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
+        }
+        setImg(visualDiffsImgBaseline, urls.baseline);
+        setImg(visualDiffsImgActual, urls.actual);
+        if (visualDiffsImgDiff) {
+            visualDiffsImgDiff.hidden = false;
+            if (visualDiffsDiffMissing) visualDiffsDiffMissing.hidden = true;
+            visualDiffsImgDiff.onerror = function () {
+                visualDiffsImgDiff.hidden = true;
+                if (visualDiffsDiffMissing) visualDiffsDiffMissing.hidden = false;
+            };
+            visualDiffsImgDiff.src = urls.diff + '?v=' + Date.now();
+        }
+    }
+
+    function renderVisualDiffs(projectId, rows) {
+        resetVisualDiffsUi();
+        if (!visualDiffsBody) return;
+        if (!rows || !rows.length) {
+            if (visualDiffsEmpty) visualDiffsEmpty.hidden = false;
+            return;
+        }
+        if (visualDiffsTable) visualDiffsTable.hidden = false;
+        rows.forEach(function (row) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td>' + escapeHtml(row.caseKey || '') + '</td>'
+                + '<td>' + escapeHtml(row.viewport || '') + '</td>'
+                + '<td class="visual-diffs-frac muted">' + escapeHtml(formatChangedFraction(row)) + '</td>'
+                + '<td class="mono">' + escapeHtml(row.runId || '') + '</td>';
+            tr.addEventListener('click', function () { selectVisualDiffRow(projectId, row, tr); });
+            visualDiffsBody.appendChild(tr);
+        });
+    }
+
+    async function loadVisualDiffs(projectId) {
+        visualDiffsProjectId = projectId || '';
+        resetVisualDiffsUi();
+        if (!visualDiffsPanel) return;
+        if (!projectId) {
+            visualDiffsPanel.hidden = true;
+            return;
+        }
+        visualDiffsPanel.hidden = false;
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/visual-diffs?pending=true', {
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Accept': 'application/json' }, API_HEADERS)
+            });
+            if (res.status === 404 || res.status === 501) {
+                if (visualDiffsWaiting) visualDiffsWaiting.hidden = false;
+                return;
+            }
+            if (!res.ok) {
+                if (visualDiffsErr) {
+                    visualDiffsErr.hidden = false;
+                    visualDiffsErr.textContent = 'Could not load screenshot diffs (' + res.status + ').';
+                }
+                return;
+            }
+            const data = await res.json().catch(function () { return []; });
+            const rows = Array.isArray(data) ? data : (data.items || data.diffs || data.results || []);
+            renderVisualDiffs(projectId, rows);
+        } catch (e) {
+            if (visualDiffsWaiting) visualDiffsWaiting.hidden = false;
+        } finally {
+            focusVisualDiffsPanelFromHash();
+        }
+    }
+
+    function focusVisualDiffsPanelFromHash() {
+        const hash = (location.hash || '').replace(/^#/, '');
+        if (hash !== 'visual-diffs-panel') return;
+        if (!visualDiffsPanel || visualDiffsPanel.hidden) return;
+        try {
+            visualDiffsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (typeof visualDiffsPanel.focus === 'function') {
+                if (!visualDiffsPanel.hasAttribute('tabindex')) {
+                    visualDiffsPanel.setAttribute('tabindex', '-1');
+                }
+                visualDiffsPanel.focus({ preventScroll: true });
+            }
+        } catch (_) { /* ignore */ }
+    }
+
+    async function approveSelectedVisualBaseline() {
+        if (!visualDiffsSelected || !visualDiffsProjectId) return;
+        if (visualDiffsApproveMsg) visualDiffsApproveMsg.hidden = true;
+        if (visualDiffsApproveErr) visualDiffsApproveErr.hidden = true;
+        if (visualDiffsApproveBtn) visualDiffsApproveBtn.disabled = true;
+        try {
+            const urls = visualDiffUrls(visualDiffsProjectId, visualDiffsSelected);
+            const res = await fetch(urls.approve, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }, API_HEADERS),
+                body: JSON.stringify({ runId: visualDiffsSelected.runId })
+            });
+            const data = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                if (visualDiffsApproveErr) {
+                    visualDiffsApproveErr.hidden = false;
+                    visualDiffsApproveErr.textContent = data.message || data.error || ('Approve failed (' + res.status + ')');
+                }
+                return;
+            }
+            if (visualDiffsApproveMsg) {
+                visualDiffsApproveMsg.hidden = false;
+                visualDiffsApproveMsg.textContent = 'Saved good screenshot approved from run ' + (visualDiffsSelected.runId || '') + '.';
+            }
+            await loadVisualDiffs(visualDiffsProjectId);
+        } catch (e) {
+            if (visualDiffsApproveErr) {
+                visualDiffsApproveErr.hidden = false;
+                visualDiffsApproveErr.textContent = 'Approve failed (network).';
+            }
+        } finally {
+            if (visualDiffsApproveBtn) visualDiffsApproveBtn.disabled = false;
+        }
+    }
+
+    async function replaceSelectedVisualBaseline(file) {
+        if (!visualDiffsSelected || !visualDiffsProjectId || !file) return;
+        if (visualDiffsApproveMsg) visualDiffsApproveMsg.hidden = true;
+        if (visualDiffsApproveErr) visualDiffsApproveErr.hidden = true;
+        try {
+            const urls = visualDiffUrls(visualDiffsProjectId, visualDiffsSelected);
+            const fd = new FormData();
+            fd.append('file', file);
+            if (visualDiffsSelected.runId) fd.append('sourceRunId', visualDiffsSelected.runId);
+            const res = await fetch(urls.replace, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Accept': 'application/json' }, API_HEADERS),
+                body: fd
+            });
+            const data = await res.json().catch(function () { return {}; });
+            if (res.status === 404 || res.status === 501) {
+                if (visualDiffsApproveErr) {
+                    visualDiffsApproveErr.hidden = false;
+                    visualDiffsApproveErr.textContent = 'Waiting on Backend saved-good-screenshot upload.';
+                }
+                return;
+            }
+            if (!res.ok) {
+                if (visualDiffsApproveErr) {
+                    visualDiffsApproveErr.hidden = false;
+                    visualDiffsApproveErr.textContent = data.message || data.error || ('Replace failed (' + res.status + ')');
+                }
+                return;
+            }
+            if (visualDiffsApproveMsg) {
+                visualDiffsApproveMsg.hidden = false;
+                visualDiffsApproveMsg.textContent = 'Saved good screenshot replaced with uploaded image.';
+            }
+            await loadVisualDiffs(visualDiffsProjectId);
+        } catch (e) {
+            if (visualDiffsApproveErr) {
+                visualDiffsApproveErr.hidden = false;
+                visualDiffsApproveErr.textContent = 'Replace failed (network).';
+            }
+        } finally {
+            if (visualDiffsReplaceFile) visualDiffsReplaceFile.value = '';
+        }
+    }
+
+    if (visualDiffsApproveBtn) {
+        visualDiffsApproveBtn.addEventListener('click', function () { approveSelectedVisualBaseline(); });
+    }
+    if (visualDiffsReplaceFile) {
+        visualDiffsReplaceFile.addEventListener('change', function () {
+            const f = visualDiffsReplaceFile.files && visualDiffsReplaceFile.files[0];
+            if (f) replaceSelectedVisualBaseline(f);
+        });
+    }
+
+
+    let expandedRunId = null;
+    const runDetailHost = document.createElement('div');
+    runDetailHost.id = 'run-detail-host';
+    runDetailHost.hidden = true;
+    document.querySelector('main.shell')?.appendChild(runDetailHost);
+
+    let projectHasBaseUrl = false;
+    let credentialsRequired = false;
+    let activeJobId = null;
+    let pollTimer = null;
+    let expandedTcId = null;
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function qaBadgeClass(qaStatus) {
+        return qaStatus === 'PASS' ? 'badge ok' : 'badge err';
+    }
+
+    function designBadgeClass(status) {
+        if (status === 'MATCH') return 'badge ok';
+        if (status === 'MISMATCH') return 'badge err';
+        if (status === 'UNCERTAIN') return 'badge warn';
+        if (status === 'SKIPPED') return 'badge muted';
+        return 'badge muted';
+    }
+
+    function renderDesignBadge(status) {
+        if (!status) {
+            return '<span class="muted">—</span>';
+        }
+        return '<span class="' + designBadgeClass(status) + '">' + escapeHtml(status) + '</span>';
+    }
+
+    function stateClass(state) {
+        if (state === 'passed') return 'step-ok';
+        if (state === 'failed') return 'step-fail';
+        return 'step-pending';
+    }
+
+    function resetProjectConfig() {
+        projectHasBaseUrl = false;
+        credentialsRequired = false;
+        baseUrlDisplay.textContent = '';
+        baseUrlRow.hidden = true;
+        baseUrlMissing.hidden = true;
+        credLabel.hidden = true;
+        credSel.innerHTML = '<option value="">— Select profile —</option>';
+        credSel.required = false;
+        submitBtn.disabled = false;
+        hasGeneratedWorkbook = false;
+        generatedWorkbookMeta = null;
+        if (generatedPanel) generatedPanel.hidden = true;
+        const uploadRadio = document.querySelector('input[name="workbookSource"][value="upload"]');
+        if (uploadRadio) uploadRadio.checked = true;
+        syncWorkbookSourceUi();
+    }
+
+    async function loadGeneratedWorkbook(projectId) {
+        hasGeneratedWorkbook = false;
+        generatedWorkbookMeta = null;
+        if (generatedPanel) generatedPanel.hidden = true;
+        const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.available) {
+            syncWorkbookSourceUi();
+            return;
+        }
+        hasGeneratedWorkbook = true;
+        generatedWorkbookMeta = data;
+        if (generatedPanel) generatedPanel.hidden = false;
+        const when = data.createdAt ? new Date(data.createdAt).toLocaleString() : 'recently';
+        const ref = data.sourceRef ? ' · ' + data.sourceRef : '';
+        if (generatedMeta) {
+            const model = data.model ? ' · model ' + data.model : '';
+            const keel = formatKeelPathCounts(data.keelPathCounts);
+            generatedMeta.textContent = data.tcCount + ' test cases · saved ' + when + ref + model + keel;
+        }
+        await loadLibraryPickList(projectId);
+        syncWorkbookSourceUi();
+    }
+
+    async function loadProjectConfig(projectId) {
+        resetProjectConfig();
+        if (!projectId) {
+            formPanel.hidden = true;
+            return;
+        }
+        formPanel.hidden = false;
+        settingsLink.href = '/projects/' + encodeURIComponent(projectId) + '?tab=settings';
+
+        const projRes = await fetch('/api/projects/' + encodeURIComponent(projectId), {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!projRes.ok) {
+            formError.hidden = false;
+            formError.textContent = 'Could not load project settings.';
+            return;
+        }
+        const project = await projRes.json();
+        if (typeof window.keelLoadMobileRunDevices === 'function') {
+            window.keelLoadMobileRunDevices(projectId);
+        }
+        const baseUrl = (project.baseUrl || '').trim();
+        // For ANDROID, website address is optional — base URL missing should not block the form when mobile is on
+        const isAndroid = (project.platform || 'WEB').toUpperCase() === 'ANDROID';
+        projectHasBaseUrl = baseUrl.length > 0;
+        if (projectHasBaseUrl) {
+            baseUrlRow.hidden = false;
+            baseUrlDisplay.textContent = baseUrl;
+            baseUrlMissing.hidden = true;
+        } else if (isAndroid) {
+            baseUrlRow.hidden = true;
+            baseUrlMissing.hidden = true;
+        } else {
+            baseUrlRow.hidden = true;
+            baseUrlMissing.hidden = false;
+            submitBtn.disabled = true;
+        }
+
+        const credRes = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/credentials', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!credRes.ok) return;
+        const profiles = await credRes.json();
+        credSel.innerHTML = '<option value="">— Select profile —</option>';
+        profiles.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.profileName;
+            opt.textContent = c.profileName + ' (' + c.username + ')';
+            credSel.appendChild(opt);
+        });
+        credentialsRequired = profiles.length > 0;
+        if (credentialsRequired) {
+            credLabel.hidden = false;
+            credSel.required = true;
+        }
+        await loadGeneratedWorkbook(projectId);
+    }
+
+    async function loadProjects() {
+        projectErr.hidden = true;
+        const res = await fetch('/api/projects', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            projectErr.hidden = false;
+            projectErr.textContent = 'Could not load projects.';
+            return;
+        }
+        const projects = await res.json();
+        projectSel.innerHTML = '';
+        if (launcherSel) launcherSel.innerHTML = '';
+        if (projects.length === 0) {
+            noProjects.hidden = false;
+            if (launcherNoProjects) launcherNoProjects.hidden = false;
+            formPanel.hidden = true;
+            return;
+        }
+        noProjects.hidden = true;
+        if (launcherNoProjects) launcherNoProjects.hidden = true;
+        projects.forEach(p => {
+            const label = (p.name || p.projectId) + ' (' + p.projectId + ')';
+            const opt = document.createElement('option');
+            opt.value = p.projectId;
+            opt.textContent = label;
+            projectSel.appendChild(opt);
+            if (launcherSel) {
+                const lopt = document.createElement('option');
+                lopt.value = p.projectId;
+                lopt.textContent = label;
+                launcherSel.appendChild(lopt);
+            }
+        });
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const urlProject = deepLinkProjectId && projects.some(p => p.projectId === deepLinkProjectId)
+            ? deepLinkProjectId : null;
+        const match = saved && projects.some(p => p.projectId === saved);
+        const pinned = urlProject || (match ? saved : null);
+        if (pinned) {
+            pinWorkspaceProject(pinned, projects);
+        } else {
+            showWorkspaceLauncher();
+        }
+        if (deepLinkJobId && pinned) {
+            await bootstrapDeepLinkJob(deepLinkJobId);
+            return;
+        }
+        if (pinned) {
+            const lastJob = sessionStorage.getItem(LAST_JOB_KEY);
+            if (lastJob && lastJob.startsWith('exec_')) {
+                openExecuteRun(lastJob);
+            }
+        }
+    }
+
+    function showWorkspaceLauncher() {
+        if (workspaceLauncher) workspaceLauncher.hidden = false;
+        if (workspaceConfig) workspaceConfig.hidden = true;
+    }
+
+    function pinWorkspaceProject(projectId, projects) {
+        projectSel.value = projectId;
+        if (launcherSel) launcherSel.value = projectId;
+        const proj = (projects || []).find(p => p.projectId === projectId);
+        if (pinnedName) {
+            if (proj) {
+                pinnedName.textContent = (proj.name || proj.projectId) + ' (' + proj.projectId + ')';
+            } else if (launcherSel && launcherSel.selectedIndex >= 0) {
+                pinnedName.textContent = launcherSel.options[launcherSel.selectedIndex].textContent;
+            } else {
+                pinnedName.textContent = projectId;
+            }
+        }
+        if (workspaceLauncher) workspaceLauncher.hidden = true;
+        if (workspaceConfig) workspaceConfig.hidden = false;
+        onProjectChange();
+    }
+
+    launcherContinue?.addEventListener('click', () => {
+        if (launcherErr) launcherErr.hidden = true;
+        const projectId = launcherSel ? launcherSel.value : '';
+        if (!projectId) {
+            if (launcherErr) {
+                launcherErr.hidden = false;
+                launcherErr.textContent = 'Select a project to continue.';
+            }
+            return;
+        }
+        sessionStorage.setItem(STORAGE_KEY, projectId);
+        pinWorkspaceProject(projectId, []);
+    });
+
+    changeProjectBtn?.addEventListener('click', () => {
+        showWorkspaceLauncher();
+    });
+
+    async function bootstrapDeepLinkJob(jobId) {
+        try {
+            const res = await fetch('/api/jobs/' + encodeURIComponent(jobId), {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.projectId && Array.from(projectSel.options).some(o => o.value === data.projectId)) {
+                    projectSel.value = data.projectId;
+                    onProjectChange();
+                }
+                if (!pendingDeepLinkTcId && data.primaryTcId) {
+                    pendingDeepLinkTcId = data.primaryTcId;
+                }
+            }
+        } catch (e) { /* ignore */ }
+        expandedTcId = pendingDeepLinkTcId || null;
+        await openExecuteRun(jobId);
+    }
+
+    async function loadTunnelBadge(projectId) {
+        const el = document.getElementById('tunnel-badge');
+        if (!el || !projectId) return;
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/tunnel/badge', {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            const data = await res.json();
+            el.hidden = false;
+            el.textContent = data.label || 'Tunnel';
+        } catch (e) {
+            el.hidden = true;
+        }
+    }
+
+    function onProjectChange() {
+        formError.hidden = true;
+        const projectId = projectSel.value;
+        if (projectId) {
+            sessionStorage.setItem(STORAGE_KEY, projectId);
+        }
+        loadProjectConfig(projectId);
+        loadRecentExecuteRuns(projectId);
+        loadVisualDiffs(projectId);
+        loadTunnelBadge(projectId);
+    }
+
+    function jobBadgeClass(status) {
+        if (status === 'COMPLETED') return 'badge ok';
+        if (status === 'COMPLETED_WITH_BLOCK') return 'badge warn';
+        if (status === 'FAILED') return 'badge err';
+        return 'badge muted';
+    }
+
+    function mountRunPanelsInto(container) {
+        if (!container) return;
+        container.appendChild(jobPanel);
+        container.appendChild(resultsPanel);
+        jobPanel.hidden = false;
+        // results shown after load
+    }
+
+    function collapseAllRunDetails() {
+        recentExecuteBody.querySelectorAll('tr.exec-run-detail').forEach(function (row) {
+            row.hidden = true;
+            row.classList.remove('is-open');
+        });
+        recentExecuteBody.querySelectorAll('tr.exec-run-row').forEach(function (row) {
+            row.classList.remove('is-expanded');
+        });
+        expandedRunId = null;
+        runDetailHost.appendChild(jobPanel);
+        runDetailHost.appendChild(resultsPanel);
+        jobPanel.hidden = true;
+        resultsPanel.hidden = true;
+    }
+
+    function renderRecentExecuteRuns(jobs) {
+        collapseAllRunDetails();
+        recentExecuteBody.innerHTML = '';
+        const recent = jobs.slice(0, 5);
+        recentExecuteEmpty.hidden = recent.length > 0;
+        document.getElementById('recent-execute-table').hidden = recent.length === 0;
+        recent.forEach(j => {
+            const tr = document.createElement('tr');
+            tr.className = 'exec-run-row';
+            tr.dataset.jobId = j.jobId;
+            const active = j.status === 'QUEUED' || j.status === 'RUNNING';
+            tr.innerHTML =
+                '<td><code class="mono">' + escapeHtml(j.jobId) + '</code></td>' +
+                '<td><span class="' + jobBadgeClass(j.status) + '">' + escapeHtml(j.status) + '</span></td>' +
+                '<td>' + (j.progressCurrent ?? 0) + ' / ' + (j.progressTotal ?? 0) + '</td>' +
+                '<td class="actions exec-run-actions">' +
+                '<button type="button" class="button ghost reopen-run-btn">Open</button> ' +
+                (active
+                    ? '<button type="button" class="button ghost force-stop-run-btn">Force stop</button> '
+                    : '') +
+                '<button type="button" class="button danger delete-run-btn">Delete</button>' +
+                '</td>';
+            const detail = document.createElement('tr');
+            detail.className = 'exec-run-detail';
+            detail.hidden = true;
+            detail.innerHTML = '<td colspan="4"><div class="exec-run-detail-mount"></div></td>';
+            const open = () => openExecuteRun(j.jobId, tr, detail);
+            tr.querySelector('.reopen-run-btn').addEventListener('click', function (e) {
+                e.stopPropagation();
+                open();
+            });
+            const forceBtnRow = tr.querySelector('.force-stop-run-btn');
+            if (forceBtnRow) {
+                forceBtnRow.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    requestForceStop(j.jobId, forceBtnRow);
+                });
+            }
+            tr.querySelector('.delete-run-btn').addEventListener('click', function (e) {
+                e.stopPropagation();
+                openDeleteExecuteModal(j.jobId);
+            });
+            tr.addEventListener('click', function (e) {
+                if (e.target.closest('button')) return;
+                open();
+            });
+            recentExecuteBody.appendChild(tr);
+            recentExecuteBody.appendChild(detail);
+        });
+    }
+
+    let pendingDeleteJobId = null;
+
+    function openDeleteExecuteModal(jobId) {
+        pendingDeleteJobId = jobId;
+        const body = document.getElementById('execDeleteBody');
+        const err = document.getElementById('execDeleteError');
+        if (body) {
+            body.textContent = 'Permanently delete '
+                + jobId
+                + ' and its stored results? This cannot be undone.';
+        }
+        if (err) {
+            err.classList.add('hidden');
+            err.textContent = '';
+        }
+        document.getElementById('execDeleteModal')?.classList.remove('hidden');
+    }
+
+    function closeDeleteExecuteModal() {
+        pendingDeleteJobId = null;
+        document.getElementById('execDeleteModal')?.classList.add('hidden');
+    }
+
+    document.getElementById('execDeleteCancel')?.addEventListener('click', closeDeleteExecuteModal);
+    document.getElementById('execDeleteModal')?.addEventListener('click', function (e) {
+        if (e.target === this) closeDeleteExecuteModal();
+    });
+    document.getElementById('execDeleteConfirm')?.addEventListener('click', async function () {
+        if (!pendingDeleteJobId) return;
+        await deleteExecuteRun(pendingDeleteJobId);
+    });
+
+    async function deleteExecuteRun(jobId) {
+        recentExecuteErr.hidden = true;
+        const modalErr = document.getElementById('execDeleteError');
+        if (modalErr) {
+            modalErr.classList.add('hidden');
+            modalErr.textContent = '';
+        }
+        const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: { ...API_HEADERS, 'Accept': 'application/json' }
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            const msg = (data && data.message) || 'Delete failed';
+            if (modalErr) {
+                modalErr.classList.remove('hidden');
+                modalErr.textContent = msg;
+            }
+            recentExecuteErr.hidden = false;
+            recentExecuteErr.textContent = msg;
+            return;
+        }
+        closeDeleteExecuteModal();
+        if (activeJobId === jobId) {
+            stopPoll();
+            activeJobId = null;
+            collapseAllRunDetails();
+        }
+        await loadRecentExecuteRuns(projectSel.value);
+    }
+
+    async function loadRecentExecuteRuns(projectId) {
+        recentExecuteErr.hidden = true;
+        if (!projectId) {
+            recentExecutePanel.hidden = true;
+            return;
+        }
+        recentExecutePanel.hidden = false;
+        const res = await fetch('/api/jobs?projectId=' + encodeURIComponent(projectId) + '&kind=EXECUTE', {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            recentExecuteErr.hidden = false;
+            recentExecuteErr.textContent = 'Could not load execute history.';
+            return;
+        }
+        renderRecentExecuteRuns(await res.json());
+    }
+
+    async function openExecuteRun(jobId, rowEl, detailEl) {
+        try {
+            sessionStorage.setItem(LAST_JOB_KEY, jobId);
+        } catch (e) { /* ignore */ }
+
+        if (!rowEl || !detailEl) {
+            rowEl = recentExecuteBody.querySelector('tr.exec-run-row[data-job-id="' + String(jobId).replace(/"/g, '') + '"]');
+            detailEl = rowEl ? rowEl.nextElementSibling : null;
+        }
+        if (expandedRunId === jobId && detailEl && detailEl.classList.contains('is-open')) {
+            collapseAllRunDetails();
+            return;
+        }
+        collapseAllRunDetails();
+        if (rowEl && detailEl) {
+            rowEl.classList.add('is-expanded');
+            detailEl.hidden = false;
+            detailEl.classList.add('is-open');
+            const mount = detailEl.querySelector('.exec-run-detail-mount');
+            mountRunPanelsInto(mount);
+            expandedRunId = jobId;
+        } else {
+            runDetailHost.hidden = false;
+            mountRunPanelsInto(runDetailHost);
+            jobPanel.hidden = false;
+        }
+
+        activeJobId = jobId;
+        cancelRequested = false;
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = 'Force stop';
+        }
+        const cancelHint = document.getElementById('cancel-hint');
+        if (cancelHint) {
+            cancelHint.textContent = 'Stops after the current test case finishes.';
+        }
+        jobIdDisplay.textContent = jobId;
+        if (statusLink) statusLink.href = '/status?jobId=' + encodeURIComponent(jobId);
+        jobErrorEl.hidden = true;
+        resultsPanel.hidden = true;
+        resultsBody.innerHTML = '';
+        bugReportActions.hidden = true;
+        stopPoll();
+        if (detailEl) {
+            detailEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId), {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            jobErrorEl.hidden = false;
+            jobErrorEl.textContent = (data.message || 'Could not load execute run') + ' (HTTP ' + res.status + ')';
+            return;
+        }
+        const done = renderJob(data);
+        if (done) {
+            if (data.status === 'FAILED') {
+                jobErrorEl.hidden = false;
+                jobErrorEl.textContent = data.message || 'Execute run failed';
+            }
+            await loadResults(jobId, true);
+        } else {
+            pollJob(jobId);
+        }
+    }
+
+    function findResultRow(tcId) {
+        return Array.from(resultsBody.querySelectorAll('tr.execute-row'))
+            .find(tr => tr.dataset.tcId === tcId) || null;
+    }
+
+    function renderJob(data) {
+        jobStatusEl.textContent = data.status || '—';
+        const cur = data.progressCurrent || 0;
+        const tot = data.progressTotal || 0;
+        jobProgressEl.textContent = cur + ' / ' + tot;
+        jobMessageEl.textContent = data.message || '—';
+        jobPassedEl.textContent = data.passedCount != null ? data.passedCount : 0;
+        jobTodoEl.textContent = data.todoCount != null ? data.todoCount : 0;
+        if (cancelWrap) {
+            const active = data.status === 'QUEUED' || data.status === 'RUNNING';
+            cancelWrap.hidden = !active;
+            if (cancelBtn && !cancelRequested) {
+                cancelBtn.disabled = false;
+                cancelBtn.textContent = 'Force stop';
+            }
+        }
+        syncRecentRunRow(data);
+        return TERMINAL.has(data.status);
+    }
+
+    /** Keep the summary row in sync with live poll (avoids stuck QUEUED 0/0). */
+    function syncRecentRunRow(data) {
+        if (!data || !data.jobId || !recentExecuteBody) return;
+        const tr = recentExecuteBody.querySelector(
+            'tr.exec-run-row[data-job-id="' + String(data.jobId).replace(/"/g, '') + '"]');
+        if (!tr) return;
+        const cells = tr.querySelectorAll('td');
+        if (cells.length < 3) return;
+        const status = data.status || '—';
+        cells[1].innerHTML = '<span class="' + jobBadgeClass(status) + '">' + escapeHtml(status) + '</span>';
+        cells[2].textContent = (data.progressCurrent ?? 0) + ' / ' + (data.progressTotal ?? 0);
+        const actions = tr.querySelector('.exec-run-actions');
+        if (!actions) return;
+        const active = status === 'QUEUED' || status === 'RUNNING';
+        let forceBtnRow = actions.querySelector('.force-stop-run-btn');
+        if (active && !forceBtnRow) {
+            forceBtnRow = document.createElement('button');
+            forceBtnRow.type = 'button';
+            forceBtnRow.className = 'button ghost force-stop-run-btn';
+            forceBtnRow.textContent = 'Force stop';
+            forceBtnRow.addEventListener('click', function (e) {
+                e.stopPropagation();
+                requestForceStop(data.jobId, forceBtnRow);
+            });
+            const del = actions.querySelector('.delete-run-btn');
+            if (del) actions.insertBefore(forceBtnRow, del);
+            else actions.appendChild(forceBtnRow);
+        } else if (!active && forceBtnRow) {
+            forceBtnRow.remove();
+        }
+    }
+
+    async function requestForceStop(jobId, sourceBtn) {
+        const id = jobId || activeJobId;
+        if (!id) return;
+        const buttons = [];
+        if (cancelBtn) buttons.push(cancelBtn);
+        if (sourceBtn) buttons.push(sourceBtn);
+        document.querySelectorAll('.force-stop-run-btn').forEach(b => buttons.push(b));
+        buttons.forEach(b => {
+            b.disabled = true;
+            b.textContent = 'Stopping…';
+        });
+        if (cancelWrap && id === activeJobId) cancelWrap.hidden = false;
+        const hint = document.getElementById('cancel-hint');
+        if (hint) {
+            hint.textContent = 'Force-stopping — job will show as CANCELLED.';
+        }
+        if (jobMessageEl && id === activeJobId) {
+            jobMessageEl.textContent = 'Force-stopping…';
+        }
+        try {
+            const res = await fetch('/api/jobs/' + encodeURIComponent(id) + '/force-stop', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            if (!res.ok) {
+                buttons.forEach(b => {
+                    b.disabled = false;
+                    b.textContent = b.id === 'cancel-btn' ? 'Force stop' : 'Force stop';
+                });
+                if (hint) {
+                    hint.textContent = 'Marks the job cancelled now so you can delete it.';
+                }
+                let data = {};
+                try { data = await res.json(); } catch (e) { /* ignore */ }
+                jobErrorEl.hidden = false;
+                jobErrorEl.textContent = (data.message || 'Force stop failed') + ' (HTTP ' + res.status + ')';
+                recentExecuteErr.hidden = false;
+                recentExecuteErr.textContent = (data.message || 'Force stop failed');
+            } else {
+                cancelRequested = false;
+                if (projectSel.value) {
+                    await loadRecentExecuteRuns(projectSel.value);
+                }
+                if (id === activeJobId) {
+                    await pollOnce();
+                }
+            }
+        } catch (e) {
+            buttons.forEach(b => {
+                b.disabled = false;
+                b.textContent = 'Force stop';
+            });
+            if (hint) {
+                hint.textContent = 'Marks the job cancelled now so you can delete it.';
+            }
+            jobErrorEl.hidden = false;
+            jobErrorEl.textContent = 'Network error while force-stopping.';
+        }
+    }
+
+    async function requestCancel(jobId, sourceBtn) {
+        return requestForceStop(jobId, sourceBtn);
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => requestCancel(activeJobId, cancelBtn));
+    }
+
+    function showBugReportActions(jobId) {
+        bugReportActions.hidden = false;
+        bugReportJson.onclick = function () { downloadBugReportJson(jobId); };
+        bugReportCsv.onclick = function () { downloadBugReportCsv(jobId); };
+        if (resultsExcelBtn) {
+            resultsExcelBtn.onclick = function () { downloadResultsExcel(jobId); };
+        }
+    }
+
+    async function downloadBugReportBlob(jobId, pathSuffix, fileName) {
+        const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId) + pathSuffix, {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        if (!res.ok) {
+            let msg = 'Could not download file.';
+            try {
+                const data = await res.json();
+                if (data.message) msg = data.message;
+            } catch (e) { /* ignore */ }
+            resultsErr.hidden = false;
+            resultsErr.textContent = msg;
+            return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    async function downloadBugReportJson(jobId) {
+        await downloadBugReportBlob(jobId, '/bug-report', 'bug-report-' + jobId + '.json');
+    }
+
+    async function downloadBugReportCsv(jobId) {
+        await downloadBugReportBlob(jobId, '/bug-report.csv', 'bug-report-' + jobId + '.csv');
+    }
+
+    async function downloadResultsExcel(jobId) {
+        await downloadBugReportBlob(jobId, '/results.xlsx', 'execute-results-' + jobId + '.xlsx');
+    }
+
+    async function loadResults(jobId, jobTerminal) {
+        resultsErr.hidden = true;
+        try {
+            const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId) + '/tcs', {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            if (!res.ok) {
+                resultsPanel.hidden = false;
+                resultsErr.hidden = false;
+                resultsErr.textContent = 'Could not load results (HTTP ' + res.status + ').';
+                resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                return;
+            }
+            const tcs = await res.json();
+            const keepExpanded = expandedTcId;
+            resultsPanel.hidden = false;
+            resultsBody.innerHTML = '';
+            resultsEmpty.hidden = tcs.length > 0;
+            if (tcs.length === 0) {
+                resultsEmpty.hidden = false;
+                resultsEmpty.textContent = 'No saved case results for this run (run details missing or empty).';
+            } else {
+                resultsEmpty.textContent = 'No results yet.';
+            }
+            document.getElementById('results-table').hidden = tcs.length === 0;
+            if (jobTerminal) {
+                showBugReportActions(jobId);
+            } else {
+                bugReportActions.hidden = true;
+            }
+            tcs.forEach(tc => {
+                const tr = document.createElement('tr');
+                tr.className = 'execute-row';
+                tr.dataset.tcId = tc.tcId;
+                tr.innerHTML =
+                    '<td class="mono">' + escapeHtml(tc.tcId) + '</td>' +
+                    '<td>' + escapeHtml(tc.title || '') + '</td>' +
+                    '<td><span class="' + qaBadgeClass(tc.qaStatus) + '">' + escapeHtml(tc.qaStatus || 'FAIL') + '</span></td>' +
+                    '<td>' + renderVerdictBadge(tc) + '</td>' +
+                    '<td>' + renderDesignBadge(tc.designCompareStatus) + '</td>';
+                tr.addEventListener('click', () => toggleTcDetail(jobId, tc.tcId, tr));
+                resultsBody.appendChild(tr);
+            });
+            if (typeof window.keelLoadMobileJobResult === 'function' && projectSel && projectSel.value) {
+                window.keelLoadMobileJobResult(projectSel.value, jobId);
+            }
+            loadRetryMetrics(jobId, tcs.length > 0);
+            const tcToExpand = pendingDeepLinkTcId || keepExpanded;
+            if (tcToExpand && tcs.some(tc => tc.tcId === tcToExpand)) {
+                pendingDeepLinkTcId = null;
+                const row = findResultRow(tcToExpand);
+                if (row) {
+                    await toggleTcDetail(jobId, tcToExpand, row);
+                }
+            } else if (keepExpanded) {
+                expandedTcId = null;
+            }
+        } catch (e) {
+            resultsPanel.hidden = false;
+            resultsErr.hidden = false;
+            resultsErr.textContent = 'Network error loading results.';
+            resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    const VERDICT_KEYS = ['passed', 'flaky', 'healed', 'failed', 'infra', 'config', 'reused', 'legacy'];
+
+    function renderVerdictBadge(tc) {
+        const key = VERDICT_KEYS.includes(tc.verdictKey) ? tc.verdictKey : 'legacy';
+        let title = '';
+        if (tc.testRetries) title += tc.testRetries + ' test retr' + (tc.testRetries === 1 ? 'y' : 'ies') + '. ';
+        if (tc.infraRetries) title += tc.infraRetries + ' infra retr' + (tc.infraRetries === 1 ? 'y' : 'ies') + '. ';
+        let html = '<span class="keel-verdict keel-verdict--' + key + '"'
+            + (title ? ' title="' + escapeHtml(title.trim()) + '"' : '') + '>'
+            + escapeHtml(tc.verdictLabel || key) + '</span>';
+        if (tc.reusedFlaky) {
+            html += ' <span class="keel-verdict__flag" title="Reused from a run where this case sometimes failed for no clear reason">sometimes failed before</span>';
+        }
+        return html;
+    }
+
+    async function loadRetryMetrics(jobId, show) {
+        const tiles = document.getElementById('retry-metrics-tiles');
+        const note = document.getElementById('retry-metrics-note');
+        const legend = document.getElementById('retry-verdict-legend');
+        if (!tiles) return;
+        if (!show) {
+            tiles.hidden = true; note.hidden = true; legend.hidden = true;
+            return;
+        }
+        try {
+            const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId) + '/retry-metrics', {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            if (!res.ok) { tiles.hidden = true; return; }
+            const m = await res.json();
+            document.getElementById('rm-first-pass').textContent = m.firstPassLabel || 'n/a';
+            document.getElementById('rm-final-pass').textContent = m.finalPassLabel || 'n/a';
+            document.getElementById('rm-flaky').textContent = m.flaky || 0;
+            document.getElementById('rm-healed').textContent = m.healed || 0;
+            document.getElementById('rm-infra').textContent = m.infraError || 0;
+            document.getElementById('rm-config').textContent = m.configError || 0;
+            const rf = document.getElementById('rm-reused-flaky');
+            rf.hidden = !m.reusedFlaky;
+            rf.textContent = m.reusedFlaky ? '+' + m.reusedFlaky + ' reused sometimes-failing' : '';
+            tiles.classList.toggle('keel-retry-tiles--warn', (m.infraError || 0) + (m.configError || 0) > 0);
+            tiles.hidden = false; note.hidden = false; legend.hidden = false;
+        } catch (e) {
+            tiles.hidden = true;
+        }
+    }
+
+
+    function renderTimeline(timeline) {
+        let html = '<ol class="step-timeline execute-timeline">';
+        (timeline || []).forEach(step => {
+            html += '<li class="' + stateClass(step.state) + '">';
+            html += '<div class="step-main">';
+            html += '<span class="step-state">' + escapeHtml(step.state) + '</span> ';
+            html += '<span>' + escapeHtml(step.label || '') + '</span>';
+            if (step.pageName) {
+                html += ' <span class="mono muted">@' + escapeHtml(step.pageName) + '</span>';
+            }
+            if (step.reason) {
+                html += '<div class="error">' + escapeHtml(step.reason) + '</div>';
+                if (step.reasonTechnical && step.reasonTechnical !== step.reason) {
+                    html += '<details class="panel-details" open><summary class="muted">Technical detail</summary>'
+                        + '<pre class="generate-coverage-text">' + escapeHtml(step.reasonTechnical) + '</pre></details>';
+                }
+            }
+            if (step.screenshotUrl) {
+                html += '<div class="step-shot"><img src="' + escapeHtml(step.screenshotUrl) + '" alt="Step screenshot" loading="lazy"/></div>';
+            }
+            html += '</div></li>';
+        });
+        html += '</ol>';
+        return html;
+    }
+
+    function renderDesignCompare(projectId, jobId, tcId, status) {
+        if (!status) return '';
+        const refUrl = '/api/projects/' + encodeURIComponent(projectId)
+            + '/design-references/' + encodeURIComponent(tcId);
+        const actualUrl = '/api/execute-runs/' + encodeURIComponent(jobId)
+            + '/tcs/' + encodeURIComponent(tcId) + '/screenshots/design-actual.png?v=design-actual.png';
+        let html = '<div class="design-compare-panel">';
+        html += '<p class="hint"><strong>Design compare:</strong> ';
+        html += renderDesignBadge(status);
+        html += '</p>';
+        html += '<div class="design-compare-shots">';
+        html += '<figure><figcaption>Reference</figcaption>';
+        html += '<img src="' + escapeHtml(refUrl) + '" alt="Design reference" loading="lazy" class="design-ref-shot"/>';
+        html += '</figure>';
+        html += '<figure><figcaption>Actual</figcaption>';
+        html += '<img src="' + escapeHtml(actualUrl) + '" alt="Actual screenshot" loading="lazy" class="design-actual-shot"/>';
+        html += '</figure>';
+        html += '</div></div>';
+        return html;
+    }
+
+    function timelineDesignCompareStatus(timeline) {
+        if (!timeline || !timeline.length) return null;
+        for (const step of timeline) {
+            if (step.designCompareStatus) return step.designCompareStatus;
+            if (step.designCompare && step.designCompare.status) return step.designCompare.status;
+        }
+        return null;
+    }
+
+    async function toggleTcDetail(jobId, tcId, row) {
+        const existing = row.nextElementSibling;
+        if (existing && existing.classList.contains('execute-detail-row')) {
+            existing.remove();
+            expandedTcId = null;
+            return;
+        }
+        document.querySelectorAll('.execute-detail-row').forEach(r => r.remove());
+        expandedTcId = tcId;
+
+        const detailTr = document.createElement('tr');
+        detailTr.className = 'execute-detail-row';
+        const detailTd = document.createElement('td');
+        detailTd.colSpan = 4;
+        detailTd.innerHTML = '<p class="muted">Loading timeline…</p>';
+        detailTr.appendChild(detailTd);
+        row.after(detailTr);
+
+        const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId) + '/tcs/' + encodeURIComponent(tcId), {
+            credentials: 'same-origin',
+            headers: API_HEADERS
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+            detailTd.innerHTML = '<p class="error">' + escapeHtml((data && data.message) || 'Failed to load case detail') + '</p>';
+            return;
+        }
+        let html = '';
+        if (data.failureReasonUser || data.failureReason) {
+            html += '<p class="hint"><strong>What went wrong:</strong> '
+                + escapeHtml(data.failureReasonUser || data.failureReason) + '</p>';
+            if (data.failureReasonUser && data.failureReason
+                    && data.failureReasonUser !== data.failureReason) {
+                html += '<details class="panel-details" open><summary class="muted">Technical detail</summary>'
+                    + '<pre class="generate-coverage-text">' + escapeHtml(data.failureReason) + '</pre></details>';
+            }
+        }
+        if (data.expectedResult) {
+            html += '<p class="muted"><strong>Expected:</strong> ' + escapeHtml(data.expectedResult) + '</p>';
+        }
+        const designStatus = data.designCompareStatus || timelineDesignCompareStatus(data.timeline);
+        const projectId = projectSel.value;
+        if (designStatus && projectId) {
+            html += renderDesignCompare(projectId, jobId, tcId, designStatus);
+        }
+        html += renderTimeline(data.timeline);
+        detailTd.innerHTML = html;
+    }
+
+    function stopPoll() {
+        if (pollTimer) {
+            clearTimeout(pollTimer);
+            pollTimer = null;
+        }
+    }
+
+    async function pollJob(jobId) {
+        try {
+            const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId), {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            let data = {};
+            try { data = await res.json(); } catch (e) { /* ignore */ }
+            if (!res.ok) {
+                jobErrorEl.hidden = false;
+                jobErrorEl.textContent = (data.message || 'Poll failed') + ' (HTTP ' + res.status + ')';
+                pollTimer = setTimeout(() => pollJob(jobId), 2000);
+                return;
+            }
+            jobErrorEl.hidden = true;
+            const done = renderJob(data);
+            if (done) {
+                stopPoll();
+                if (data.status === 'FAILED') {
+                    jobErrorEl.hidden = false;
+                    jobErrorEl.textContent = data.message || 'Execute run failed';
+                } else if (data.status === 'CANCELLED') {
+                    jobErrorEl.hidden = false;
+                    jobErrorEl.textContent = data.message || 'Execute run cancelled';
+                }
+                await loadResults(jobId, true);
+            } else {
+                await loadResults(jobId, false);
+                pollTimer = setTimeout(() => pollJob(jobId), 2000);
+            }
+        } catch (e) {
+            jobErrorEl.hidden = false;
+            jobErrorEl.textContent = 'Network error while polling';
+            pollTimer = setTimeout(() => pollJob(jobId), 2000);
+        }
+    }
+
+    function startJob(jobId) {
+        try {
+            sessionStorage.setItem(LAST_JOB_KEY, jobId);
+        } catch (e) { /* ignore */ }
+        activeJobId = jobId;
+        cancelRequested = false;
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = 'Force stop';
+        }
+        if (cancelWrap) cancelWrap.hidden = false;
+        jobIdDisplay.textContent = jobId;
+        if (statusLink) statusLink.href = '/status?jobId=' + encodeURIComponent(jobId);
+        jobErrorEl.hidden = true;
+        resultsPanel.hidden = true;
+        resultsBody.innerHTML = '';
+        bugReportActions.hidden = true;
+        stopPoll();
+        loadRecentExecuteRuns(projectSel.value).then(function () {
+            openExecuteRun(jobId);
+        });
+    }
+
+    document.getElementById('design-ref-submit')?.addEventListener('click', async () => {
+        designRefMsg.hidden = true;
+        designRefErr.hidden = true;
+        const projectId = projectSel.value;
+        if (!projectId) {
+            designRefErr.hidden = false;
+            designRefErr.textContent = 'Select a project first.';
+            return;
+        }
+        const tcId = document.getElementById('design-ref-tcId').value.trim();
+        const fileInput = document.getElementById('design-ref-file');
+        if (!tcId || !fileInput.files || !fileInput.files[0]) {
+            designRefErr.hidden = false;
+            designRefErr.textContent = 'Enter a Case ID and select a PNG file.';
+            return;
+        }
+        const body = new FormData();
+        body.append('tcId', tcId);
+        body.append('file', fileInput.files[0]);
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/design-references', {
+                method: 'POST',
+                headers: API_HEADERS,
+                credentials: 'same-origin',
+                body
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                designRefErr.hidden = false;
+                designRefErr.textContent = (data.error || 'ERROR') + ': ' + (data.message || 'Upload failed');
+                return;
+            }
+            designRefMsg.hidden = false;
+            designRefMsg.textContent = 'Uploaded design for ' + (data.tcId || tcId) + ' as ' + (data.storedAs || tcId + '.png') + '.';
+            document.getElementById('design-ref-tcId').value = '';
+            fileInput.value = '';
+        } catch (err) {
+            designRefErr.hidden = false;
+            designRefErr.textContent = 'Network error uploading reference.';
+        }
+    });
+
+    executeForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        formError.hidden = true;
+        const projectId = projectSel.value;
+        if (!projectId) {
+            formError.hidden = false;
+            formError.textContent = 'Select a project';
+            return;
+        }
+        if (!projectHasBaseUrl) {
+            formError.hidden = false;
+            formError.textContent = 'Configure a base URL in project Settings before executing.';
+            return;
+        }
+        if (credentialsRequired && !credSel.value) {
+            formError.hidden = false;
+            formError.textContent = 'Select a credential profile';
+            return;
+        }
+        const excelInput = executeForm.excel;
+        const reviewedTcIds = preRunReviewApproved
+            ? preRunReviewedCases.map(tc => (tc.tcId || '').trim()).filter(Boolean)
+            : [];
+        if (preRunReviewApproved && reviewedTcIds.length === 0) {
+            formError.hidden = false;
+            formError.textContent = 'Accepted review has no test case ids to run.';
+            return;
+        }
+        const useGenerated = preRunReviewApproved || (hasGeneratedWorkbook && workbookSource() === 'generated');
+        if (!preRunReviewApproved && useGenerated && generatedWorkbookMeta && selectedLibraryTcIds().length === 0) {
+            const warn = surfaceSoftWarn(
+                'EXECUTE',
+                generatedWorkbookMeta.tcCount || 0,
+                generatedWorkbookMeta.keelPathCounts
+            );
+            if (warn && !(await window.keelConfirm({ title: 'Run anyway?', message: warn, confirmLabel: 'Run' }))) {
+                return;
+            }
+        }
+        if (!preRunReviewApproved && !useGenerated && (!excelInput.files || !excelInput.files[0])) {
+            formError.hidden = false;
+            formError.textContent = 'Select an Excel/CSV file or use the project library';
+            return;
+        }
+        if (preRunReview.checked && !preRunReviewApproved) {
+            await requestPreRunReview(projectId, useGenerated);
+            return;
+        }
+        if (window.KeelCredits && KeelCredits.blockIfNotApproved(formError)) {
+            return;
+        }
+        submitBtn.disabled = true;
+        const body = new FormData();
+        if (useGenerated) {
+            body.append('useGenerated', 'true');
+            if (preRunReviewApproved) {
+                reviewedTcIds.forEach(id => body.append('tcIds', id));
+            } else {
+                selectedLibraryTcIds().forEach(id => body.append('tcIds', id));
+            }
+        }
+        if (!preRunReviewApproved && excelInput.files && excelInput.files[0]) {
+            body.append('excel', excelInput.files[0]);
+        }
+        if (credSel.value) {
+            body.append('credentialProfile', credSel.value);
+        }
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/execute-runs', {
+                method: 'POST',
+                headers: API_HEADERS,
+                body
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                formError.hidden = false;
+                var gate = window.KeelCredits && KeelCredits.gateMessage(data);
+                formError.textContent = gate || ((data.error || 'ERROR') + ': ' + (data.message || 'failed'));
+                submitBtn.disabled = false;
+                return;
+            }
+            clearPreRunReview();
+            startJob(data.jobId);
+        } catch (err) {
+            formError.hidden = false;
+            formError.textContent = 'Network error starting execute run';
+        }
+        submitBtn.disabled = false;
+    });
+
+    projectSel.addEventListener('change', onProjectChange);
+    window.addEventListener('hashchange', focusVisualDiffsPanelFromHash);
+    // Deep-link from sidebar / Evidence: /execute#visual-diffs-panel
+    focusVisualDiffsPanelFromHash();
+    loadProjects();
+})();

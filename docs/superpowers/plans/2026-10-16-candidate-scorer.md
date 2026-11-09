@@ -714,7 +714,7 @@ Message: `Measure bind decisions on a frozen sidebar fixture.`
 **Files:**
 - Modify: `src/main/java/delivery/job/ProvePhase.java` (after successful `attempt.ok()`, before/with `rememberSuccessfulLocator`, `pageCatalog.commitAfterProof` on each proven step’s locator; call `metrics.writeJson` if Task 7 did not already hook the evidence dir)
 - Modify: vision path that calls `stabilizeSteps` — must not grow catalog (Task 5 already); still rewrite xpath → hook
-- Modify: `docs/handoff/locator-and-split-roadmap.md` (P0/P1 now “scorer shipped / in progress”)
+- Modify: `docs/history/legacy-grok/locator-and-split-roadmap.md` (P0/P1 now “scorer shipped / in progress”)
 - Modify: `docs/ENGINEERING_HANDOFF.md` (link spec+plan)
 - Modify: `docs/PRODUCT.md` one line under Execute: bind prefers test-id / role+name; Ollama only on a close shortlist
 - Modify: `CHANGELOG.md` dated section when this task’s code is in (not for the plan-only commit)

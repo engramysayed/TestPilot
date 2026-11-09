@@ -18,35 +18,44 @@ public class CodegenW2EmitTest {
     private static final Path TEMPLATES = Path.of("customer-framework-template/templates");
 
     @Test
-    public void semanticLadderPrefersRoleThenLabelThenTestidThenCss() {
+    public void stableFirstLadderPrefersTestIdThenIdThenRoleThenLabelThenCss() {
         List<LocatorCandidate> cands = List.of(
                 LocatorCandidate.of("css", "button.submit"),
                 LocatorCandidate.of("css", "button[data-testid='save']"),
                 LocatorCandidate.of("css", "button[aria-label='Save changes']"),
                 LocatorCandidate.of("css", "button[role='button'][aria-label='Save changes']"));
-        // Non-empty hooks that match nothing → promote via ladder (not empty-hooks lock).
         try (PreferredHooksStore.Scope ignored = PreferredHooksStore.activate(List.of("data-axis-test-id"))) {
             SemanticLocatorLadder.Pick pick = SemanticLocatorLadder.pick(
                     "css", "button.submit", cands, PreferredHooksStore.current(), true);
             Assert.assertTrue(pick.ok(), pick.rejectReason());
-            Assert.assertTrue(pick.value().contains("role="), pick.value());
-            Assert.assertTrue(pick.value().contains("aria-label"), pick.value());
-            Assert.assertEquals(
-                    SemanticLocatorLadder.kindOf(pick.strategy(), pick.value(), PreferredHooksStore.current()),
-                    SemanticLocatorLadder.Kind.ROLE);
+            Assert.assertEquals(pick.value(), "button[data-testid='save']", "test id must be primary when present");
+        }
+        // shared policy order (stable-first, default)
+        Assert.assertTrue(SemanticLocatorLadder.rank("css", "button[data-testid='save']", List.of())
+                > SemanticLocatorLadder.rank("id", "save-button", List.of()));
+        Assert.assertTrue(SemanticLocatorLadder.rank("id", "save-button", List.of())
+                > SemanticLocatorLadder.rank("css", "button[role='button'][aria-label='Save']", List.of()));
+        Assert.assertTrue(SemanticLocatorLadder.rank("css", "button[role='button'][aria-label='Save']", List.of())
+                > SemanticLocatorLadder.rank("css", "div[aria-label='Save']", List.of()));
+        Assert.assertTrue(SemanticLocatorLadder.rank("css", "div[aria-label='Save']", List.of())
+                > SemanticLocatorLadder.rank("css", "button.submit", List.of()));
+        Assert.assertTrue(SemanticLocatorLadder.rank("css", "button[data-axis-test-id='x']", List.of("data-axis-test-id"))
+                > SemanticLocatorLadder.rank("css", "button[data-testid='save']", List.of("data-axis-test-id")),
+                "preferred hook always first");
+    }
 
-            Assert.assertTrue(SemanticLocatorLadder.rank("css",
-                    "button[role='button'][aria-label='Save']", List.of())
-                    > SemanticLocatorLadder.rank("css", "button[aria-label='Save']", List.of()));
-            Assert.assertTrue(SemanticLocatorLadder.rank("css", "button[aria-label='Save']", List.of())
+    @Test
+    public void userFacingModeKeepsRoleThenLabelThenTestId() {
+        try (var mode = delivery.locator.LocatorStabilityPolicy.activate(delivery.locator.LocatorMode.USER_FACING_FIRST)) {
+            Assert.assertTrue(SemanticLocatorLadder.rank("css", "button[role='button'][aria-label='Save']", List.of())
+                    > SemanticLocatorLadder.rank("css", "div[aria-label='Save']", List.of()));
+            Assert.assertTrue(SemanticLocatorLadder.rank("css", "div[aria-label='Save']", List.of())
                     > SemanticLocatorLadder.rank("css", "button[data-testid='save']", List.of()));
-            Assert.assertTrue(SemanticLocatorLadder.rank("css", "button[data-testid='save']", List.of())
-                    > SemanticLocatorLadder.rank("css", "button.submit", List.of()));
         }
     }
 
     @Test
-    public void ladderEmitWritesRolePrimaryOverCss() throws Exception {
+    public void ladderEmitWritesTestIdPrimaryOverRoleAndCss() throws Exception {
         Path dir = Files.createTempDirectory("w2-ladder");
         ProvenStep step = new ProvenStep(
                 "TC_LADDER", "Checkout", "elementAction", "click",
@@ -60,14 +69,13 @@ public class CodegenW2EmitTest {
             new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_LADDER", step)));
         }
         String page = Files.readString(dir.resolve("src/main/java/project/pages/Checkout_Page.java"));
-        Assert.assertTrue(page.contains("role="), page);
-        Assert.assertTrue(page.contains("Place order") || page.contains("aria-label"), page);
+        int testIdAt = page.indexOf("data-testid='place-order'");
         int roleAt = page.indexOf("role=");
-        int cssBare = page.indexOf("button.submit");
-        Assert.assertTrue(roleAt >= 0, page);
-        if (cssBare >= 0) {
-            Assert.assertTrue(roleAt < cssBare, "role primary must precede bare css fallback:\n" + page);
+        Assert.assertTrue(testIdAt >= 0, page);
+        if (roleAt >= 0) {
+            Assert.assertTrue(testIdAt < roleAt, "test id primary must precede role fallback:\n" + page);
         }
+        Assert.assertFalse(page.contains("By.css("), "By.css does not exist in Selenium:\n" + page);
         Path sample = Path.of("docs/handoff/samples/W2_ladder_Checkout_Page.java");
         Files.createDirectories(sample.getParent());
         Files.writeString(sample, page);
@@ -183,8 +191,9 @@ public class CodegenW2EmitTest {
         Assert.assertEquals(EmitStepNormalizer.apply(landmark).assertionType(), "region");
     }
 
+    /** Empty hooks: a verified test id is still promoted over the proven xpath; the xpath stays as fallback. */
     @Test
-    public void w1EmptyHooksKeepProvenPrimaryRegression() throws Exception {
+    public void w1EmptyHooksPromoteTestIdKeepProvenAsFallback() throws Exception {
         Path dir = Files.createTempDirectory("w2-w1-empty");
         ProvenStep step = new ProvenStep(
                 "TC_NOHOOK", "Otp", "elementAction", "click",

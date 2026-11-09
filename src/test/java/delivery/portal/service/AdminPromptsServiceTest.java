@@ -29,7 +29,7 @@ public class AdminPromptsServiceTest {
         List<Map<String, Object>> items = (List<Map<String, Object>>) list.get("items");
         Assert.assertNotNull(items);
         Assert.assertTrue(items.size() >= 5, "expected classpath prompts, got " + items.size());
-        Assert.assertEquals(list.get("promptsVersion"), "2026.11.02");
+        Assert.assertEquals(list.get("promptsVersion"), "2026.11.07");
         Assert.assertEquals(list.get("overrideDirConfigured"), Boolean.FALSE);
         boolean sawPick = items.stream().anyMatch(r -> "heal/pick".equals(r.get("id")));
         Assert.assertTrue(sawPick);

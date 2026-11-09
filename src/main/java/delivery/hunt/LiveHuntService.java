@@ -94,6 +94,12 @@ public final class LiveHuntService {
                         storeRoot,
                         loginRequest == null ? null : loginRequest.tenantId(),
                         request.getBaseUrl());
+        delivery.locator.LocatorMode locatorMode = storeRoot == null
+                ? delivery.locator.LocatorMode.STABLE_FIRST
+                : PreferredHooksStore.loadMode(
+                        storeRoot,
+                        loginRequest == null ? null : loginRequest.tenantId(),
+                        request.getBaseUrl());
         String preferredHooksLine = PreferredHooksStore.join(preferredHooks);
         boolean loginFeature = HuntFeatureHints.looksLikeLoginFeature(
                 request.getBaseUrl(), request.getUserStory(), brief);
@@ -137,7 +143,7 @@ public final class LiveHuntService {
             coverage.seedLoginGaps();
         }
 
-        try (PreferredHooksStore.Scope ignoredHooks = PreferredHooksStore.activate(preferredHooks);
+        try (PreferredHooksStore.CombinedScope ignoredHooks = PreferredHooksStore.activate(preferredHooks, locatorMode);
              HuntBrowserSession session = HuntBrowserSession.open(
                 request.getBaseUrl(), loginRequest, hasLoginUsername, preferredHooks)) {
             networkStatus = session.networkStatus();

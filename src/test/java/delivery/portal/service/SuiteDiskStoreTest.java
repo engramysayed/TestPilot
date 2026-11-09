@@ -24,6 +24,45 @@ public class SuiteDiskStoreTest {
     }
 
     @Test
+    public void tryClaimDue_advancesNextRunAt() throws Exception {
+        Path root = Files.createTempDirectory("suites-claim-");
+        SuiteDiskStore disk = new SuiteDiskStore();
+        Map<String, Object> created = disk.create(root, "Sched pack", List.of("ops"), List.of("TC_1"));
+        String suiteId = String.valueOf(created.get("suiteId"));
+        disk.putSchedule(root, suiteId, true, "interval", null, 5);
+        Map<String, Object> suite = disk.get(root, suiteId).orElseThrow();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> schedule = new java.util.LinkedHashMap<>((Map<String, Object>) suite.get("schedule"));
+        schedule.put("nextRunAt", Instant.now().minusSeconds(10).toString());
+        suite.put("schedule", schedule);
+        java.util.List<Map<String, Object>> patched = new java.util.ArrayList<>();
+        for (Map<String, Object> row : disk.list(root, null)) {
+            if (suiteId.equals(String.valueOf(row.get("suiteId")))) {
+                patched.add(suite);
+            } else {
+                patched.add(row);
+            }
+        }
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        mapper.writerWithDefaultPrettyPrinter().writeValue(root.resolve(SuiteDiskStore.FILE_NAME).toFile(), patched);
+
+        Assert.assertTrue(disk.tryClaimDue(root, suiteId, Instant.now(), 60).isPresent());
+        Assert.assertTrue(disk.tryClaimDue(root, suiteId, Instant.now(), 60).isEmpty());
+        Map<String, Object> after = disk.get(root, suiteId).orElseThrow();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> schedAfter = (Map<String, Object>) after.get("schedule");
+        Assert.assertNotNull(schedAfter.get("lastClaimedAt"));
+        Instant next = Instant.parse(String.valueOf(schedAfter.get("nextRunAt")));
+        Assert.assertTrue(next.isAfter(Instant.now()));
+    }
+
+    @Test
+    public void normalizeTcIds_dedupesPreservesOrder() {
+        List<String> out = SuiteDiskStore.normalizeTcIds(List.of("A", "A", "B"));
+        Assert.assertEquals(out, List.of("A", "B"));
+    }
+
+    @Test
     public void createUserPack_rejectsReservedTags() throws Exception {
         Path root = Files.createTempDirectory("suites-reserved-");
         SuiteDiskStore disk = new SuiteDiskStore();
@@ -135,5 +174,124 @@ public class SuiteDiskStoreTest {
         Instant next = SuiteDiskStore.computeNextRunAt(schedule, Instant.parse("2026-11-02T06:00:00Z"));
         Assert.assertNotNull(next);
         Assert.assertTrue(next.isAfter(Instant.parse("2026-11-02T06:00:00Z")));
+    }
+
+    @Test
+    public void cron_moreOftenThanFiveMinutes_rejected() throws Exception {
+        Path root = Files.createTempDirectory("suites-cron-gap-");
+        SuiteDiskStore disk = new SuiteDiskStore();
+        String suiteId = String.valueOf(disk.create(root, "Gap", List.of("ops"), List.of("TC_1")).get("suiteId"));
+        Assert.assertThrows(SuiteDiskStore.BadRequestException.class,
+                () -> disk.putSchedule(root, suiteId, true, "cron", "* * * * *", null));
+        Assert.assertThrows(SuiteDiskStore.BadRequestException.class,
+                () -> disk.putSchedule(root, suiteId, true, "cron", "*/2 * * * *", null));
+        disk.putSchedule(root, suiteId, true, "cron", "*/5 * * * *", null); // allowed
+    }
+
+    @Test
+    public void cron_usesScheduleTimezone() {
+        Map<String, Object> cairo = new java.util.LinkedHashMap<>(Map.of("kind", "cron", "cron", "0 9 * * *", "enabled", true));
+        Map<String, Object> utc = new java.util.LinkedHashMap<>(cairo);
+        utc.put("timezone", "UTC");
+        Instant from = Instant.parse("2026-11-02T00:00:00Z");
+        Assert.assertEquals(SuiteDiskStore.computeNextRunAt(utc, from), Instant.parse("2026-11-02T09:00:00Z"));
+        Assert.assertNotEquals(SuiteDiskStore.computeNextRunAt(cairo, from), SuiteDiskStore.computeNextRunAt(utc, from));
+    }
+
+    @Test
+    public void putSchedule_rejectsUnknownTimezone_keepsProfile() throws Exception {
+        Path root = Files.createTempDirectory("suites-tz-");
+        SuiteDiskStore disk = new SuiteDiskStore();
+        String suiteId = String.valueOf(disk.create(root, "Tz", List.of("ops"), List.of("TC_1")).get("suiteId"));
+        Assert.assertThrows(SuiteDiskStore.BadRequestException.class,
+                () -> disk.putSchedule(root, suiteId, true, "cron", "0 2 * * *", null, "Mars/Olympus", null));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sched = (Map<String, Object>) disk.putSchedule(
+                root, suiteId, true, "cron", "0 2 * * *", null, "Asia/Riyadh", "qa-user").get("schedule");
+        Assert.assertEquals(sched.get("timezone"), "Asia/Riyadh");
+        Assert.assertEquals(sched.get("credentialProfile"), "qa-user");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> again = (Map<String, Object>) disk.putSchedule(
+                root, suiteId, true, "cron", "0 3 * * *", null, "Asia/Riyadh", null).get("schedule");
+        Assert.assertEquals(again.get("credentialProfile"), "qa-user", "profile kept when not resent");
+    }
+
+    @Test
+    public void missedSlotIsSkippedNotFired() throws Exception {
+        Path root = Files.createTempDirectory("suites-misfire-");
+        SuiteDiskStore disk = new SuiteDiskStore();
+        String suiteId = String.valueOf(disk.create(root, "Nightly", List.of("ops"), List.of("TC_1")).get("suiteId"));
+        disk.putSchedule(root, suiteId, true, "cron", "0 2 * * *", null);
+        forceNextRunAt(disk, root, suiteId, Instant.now().minusSeconds(5 * 3600));
+        Assert.assertTrue(disk.tryClaimDue(root, suiteId, Instant.now(), 60).isEmpty(), "5h-old slot must not fire");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sched = (Map<String, Object>) disk.get(root, suiteId).orElseThrow().get("schedule");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> failure = (Map<String, Object>) sched.get("lastFailure");
+        Assert.assertEquals(failure.get("code"), "MISSED");
+        Assert.assertTrue(Instant.parse(String.valueOf(sched.get("nextRunAt"))).isAfter(Instant.now()));
+    }
+
+    @Test
+    public void concurrentClaims_onlyOneWins() throws Exception {
+        Path root = Files.createTempDirectory("suites-race-");
+        SuiteDiskStore disk = new SuiteDiskStore();
+        String suiteId = String.valueOf(disk.create(root, "Race", List.of("ops"), List.of("TC_1")).get("suiteId"));
+        disk.putSchedule(root, suiteId, true, "interval", null, 30);
+        forceNextRunAt(disk, root, suiteId, Instant.now().minusSeconds(5));
+        java.util.concurrent.atomic.AtomicInteger wins = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(8);
+        java.util.List<java.util.concurrent.Future<?>> fs = new java.util.ArrayList<>();
+        for (int i = 0; i < 16; i++) {
+            fs.add(pool.submit(() -> {
+                try {
+                    if (new SuiteDiskStore().tryClaimDue(root, suiteId, Instant.now(), 60).isPresent()) {
+                        wins.incrementAndGet();
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }));
+        }
+        for (var f : fs) f.get();
+        pool.shutdown();
+        Assert.assertEquals(wins.get(), 1, "exactly one claimer may start the slot");
+    }
+
+    @Test
+    public void fireClearsFailure_outcomeRecordsMonitor() throws Exception {
+        Path root = Files.createTempDirectory("suites-outcome-");
+        SuiteDiskStore disk = new SuiteDiskStore();
+        String suiteId = String.valueOf(disk.create(root, "Mon", List.of("ops"), List.of("TC_1")).get("suiteId"));
+        disk.putSchedule(root, suiteId, true, "interval", null, 30);
+        disk.recordScheduleFailure(root, suiteId, "HTTP_402", "no credits");
+        disk.recordSuiteRunFire(root, suiteId, "exec_1");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sched = (Map<String, Object>) disk.get(root, suiteId).orElseThrow().get("schedule");
+        Assert.assertNull(sched.get("lastFailure"));
+        disk.promoteMonitor(root, suiteId, "prod", "exec_0");
+        disk.recordRunOutcome(root, suiteId, "exec_1", "COMPLETED", 9, 1, true);
+        Map<String, Object> after = disk.get(root, suiteId).orElseThrow();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> mon = (Map<String, Object>) after.get("monitor");
+        Assert.assertEquals(mon.get("lastStatus"), "degraded");
+        Assert.assertNotNull(mon.get("lastCheckedAt"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> s2 = (Map<String, Object>) after.get("schedule");
+        Assert.assertEquals(s2.get("lastJobStatus"), "COMPLETED");
+    }
+
+    /** Test helper: rewrite nextRunAt directly in suites.json. */
+    @SuppressWarnings("unchecked")
+    private static void forceNextRunAt(SuiteDiskStore disk, Path root, String suiteId, Instant at) throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper m = new com.fasterxml.jackson.databind.ObjectMapper();
+        Path file = disk.file(root);
+        List<Map<String, Object>> rows = m.readValue(file.toFile(), List.class);
+        for (Map<String, Object> r : rows) {
+            if (suiteId.equals(String.valueOf(r.get("suiteId")))) {
+                ((Map<String, Object>) r.get("schedule")).put("nextRunAt", at.toString());
+            }
+        }
+        m.writeValue(file.toFile(), rows);
     }
 }

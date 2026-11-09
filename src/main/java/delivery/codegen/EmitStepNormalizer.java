@@ -131,8 +131,9 @@ public final class EmitStepNormalizer {
     private static Chosen choose(
             String strategy, String value, List<LocatorCandidate> candidates, List<String> hooks) {
         List<String> activeHooks = hooks == null ? List.of() : hooks;
-        // Empty preferred hooks: W1 keeps proven primary (no candidate promotion).
-        // Non-empty hooks: preferred-hook-first, then semantic ladder role→label→testid→CSS.
+        // Empty preferred hooks: proven primary stays unless a verified test id / hook (or, stable-first,
+        // a human id/name over copy-dependent text) exists — see SemanticLocatorLadder.safePromotion.
+        // Non-empty hooks: full ladder from the shared LocatorStabilityPolicy.
         boolean promote = !activeHooks.isEmpty();
         SemanticLocatorLadder.Pick pick = SemanticLocatorLadder.pick(
                 strategy, value, candidates, activeHooks, promote);
@@ -146,6 +147,10 @@ public final class EmitStepNormalizer {
             }
             Loc loc = Loc.plain(c.strategy(), c.value());
             if (isTextLocator(loc) || SemanticLocatorLadder.isNonUnique(c.strategy(), c.value())) {
+                continue;
+            }
+            if (delivery.locator.LocatorStabilityPolicy.tier(c.strategy(), c.value(), activeHooks)
+                    == delivery.locator.LocatorTier.BRITTLE) {
                 continue;
             }
             fallbacks.add(c);

@@ -27,7 +27,7 @@ public class AdminOpsController {
         body.put("cancelling", counts.getOrDefault("CANCELLING", 0));
         body.put("interruptedUncertain", counts.getOrDefault("FAILED", 0));
         body.put("runbook", Map.of(
-                "stuckLeases", "Restart the portal so JobLeaseReconciler reclaims expired RUNNING leases.",
+                "stuckLeases", "JobLeaseReconciler runs every delivery.jobs.lease-reconcile-ms (60s); workers renew leases every 15s, so only crashed/hung jobs (past -Ddelivery.jobs.max-runtime-minutes, default 180) are reclaimed.",
                 "isolationErrors", "Do not treat application-layer navigation checks as worker-network isolation.",
                 "storagePressure", "Check delivery-store free space and retention sweeper logs.",
                 "subprocessTimeouts", "Inspect ProcessSupervisor deadlines; force-stop CANCELLING jobs if the worker is gone.",
