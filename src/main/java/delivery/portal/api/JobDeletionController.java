@@ -43,6 +43,12 @@ public class JobDeletionController {
                     .body(new ApiError("NOT_FOUND", "Unknown run").asMap());
         }
         JobRecord job = owned.get();
+        // Ownership alone isn't enough: a user who created a job and then lost `operate` on
+        // the project should not be able to purge runs afterwards.
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, job.getProjectId(), ownerId);
+        if (denied != null) {
+            return denied;
+        }
         if (job.getStatus() == JobRecord.Status.QUEUED || job.getStatus() == JobRecord.Status.RUNNING) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiError("JOB_ACTIVE", "Cancel the run before deleting it").asMap());

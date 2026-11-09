@@ -9,6 +9,9 @@ public final class EvidencePaths {
     }
 
     public static Path resolve(Path evidenceRoot, String tcId) {
+        // Defence-in-depth: every caller SHOULD validate upstream, but the fallback branch
+        // below calls evidenceRoot.resolve(tcId) on raw text — reject traversal here too.
+        TcIdentity.requireValid(tcId);
         if (evidenceRoot == null) {
             return Path.of("evidence", TcIdentity.storageKey(tcId));
         }

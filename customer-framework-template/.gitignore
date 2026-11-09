@@ -5,6 +5,10 @@ target/
 .kotlin
 test-output/
 
+# Local, user-supplied credentials written by FrameworkPackager — never commit
+delivery-target.local.properties
+webapp.properties
+
 
 ### IntelliJ IDEA ###
 .idea/modules.xml

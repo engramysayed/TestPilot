@@ -38,4 +38,10 @@ public class EvidencePathsTest {
         Files.write(plain.resolve("failure.png"), new byte[] { 9 });
         Assert.assertEquals(EvidencePaths.resolve(root, "TC_01"), plain);
     }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void rejectsPathTraversalTcId() throws Exception {
+        Path root = Files.createTempDirectory("ev4");
+        EvidencePaths.resolve(root, "../../etc/hosts");
+    }
 }

@@ -180,7 +180,7 @@ public class HuntWorker {
                     lastSync = now;
                 }
                 try {
-                    Thread.sleep(200L);
+                    Thread.sleep(1000L);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     return;

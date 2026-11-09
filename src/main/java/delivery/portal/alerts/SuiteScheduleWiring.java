@@ -5,6 +5,7 @@ import delivery.portal.service.AccountAlertService;
 import delivery.portal.service.PortalStore;
 import delivery.portal.service.SuiteDiskStore;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -55,5 +56,12 @@ public class SuiteScheduleWiring {
         SuiteDiskStore.configure(zone, misfireGraceMinutes);
         log.info("Suite schedules: {} alert channel(s), default zone {}, misfire grace {} min",
                 channels.size(), SuiteDiskStore.defaultZone(), misfireGraceMinutes);
+    }
+
+    @PreDestroy
+    void unwire() {
+        // Drop the hook so a context rebuild (e.g. a @DirtiesContext test) doesn't leave an
+        // old AccountAlertService wired into the static notifier.
+        SuiteAlertNotifier.registerMemberAlerts(null);
     }
 }

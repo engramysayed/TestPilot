@@ -68,6 +68,9 @@ public class AsyncConfig {
         executor.setMaxPoolSize(4);
         executor.setQueueCapacity(200);
         executor.setThreadNamePrefix("webhook-");
+        // Overflow: run the task on the calling thread instead of dropping it silently.
+        executor.setRejectedExecutionHandler(
+                new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
         return executor;
     }
