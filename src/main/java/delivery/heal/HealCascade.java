@@ -146,8 +146,55 @@ public class HealCascade {
     }
 
     /**
-     * @param tryOllama when false, skip Ollama (e.g. authorIntent already healed with vision)
+     * One-shot heal input; prefer this over the parameter-cascade overloads for new callers.
+     * Pass {@code null}/missing collections for fields you don't need — the record normalises them.
+     *
+     * <p>Equivalent to the old
+     * {@code heal(tcId, intent, slimHtml, png, reason, screenshot, tryOllama,
+     * priorSteps, allowInvent, spent, failed, probe)} 12-arg form.</p>
      */
+    public record HealCall(
+            String tcId,
+            StepIntentBinder.IntentLine intent,
+            String slimHtml,
+            byte[] png,
+            String failureReason,
+            Path screenshotPath,
+            boolean tryOllama,
+            List<String> priorStepSummaries,
+            boolean allowInvent,
+            List<ProvenStep> spent,
+            List<FailedLocator> failed,
+            CandidateLivenessProbe probe
+    ) {
+        public HealCall {
+            priorStepSummaries = priorStepSummaries == null ? List.of() : priorStepSummaries;
+            spent = spent == null ? List.of() : spent;
+            failed = failed == null ? List.of() : failed;
+        }
+
+        /** Minimal call with defaults for everything optional. */
+        public static HealCall of(
+                String tcId, StepIntentBinder.IntentLine intent, String slimHtml,
+                byte[] png, String failureReason, Path screenshotPath, boolean tryOllama
+        ) {
+            return new HealCall(tcId, intent, slimHtml, png, failureReason, screenshotPath,
+                    tryOllama, List.of(), true, List.of(), List.of(), null);
+        }
+    }
+
+    /** Preferred entry point: pass a {@link HealCall} record instead of chaining overloads. */
+    public HealResult heal(HealCall call) {
+        return heal(call.tcId(), call.intent(), call.slimHtml(), call.png(), call.failureReason(),
+                call.screenshotPath(), call.tryOllama(), call.priorStepSummaries(),
+                call.allowInvent(), call.spent(), call.failed(), call.probe());
+    }
+
+    /**
+     * @param tryOllama when false, skip Ollama (e.g. authorIntent already healed with vision)
+     * @deprecated prefer {@link #heal(HealCall)} with {@link HealCall#of}; this overload will stay for callers that have not migrated.
+     */
+    @Deprecated
     public HealResult heal(
             String tcId,
             StepIntentBinder.IntentLine intent,
@@ -161,6 +208,8 @@ public class HealCascade {
                 screenshotPathOrNull, tryOllama, List.of(), true);
     }
 
+    /** @deprecated prefer {@link #heal(HealCall)}. */
+    @Deprecated
     public HealResult heal(
             String tcId,
             StepIntentBinder.IntentLine intent,
@@ -175,6 +224,8 @@ public class HealCascade {
                 screenshotPathOrNull, tryOllama, priorStepSummaries, true);
     }
 
+    /** @deprecated prefer {@link #heal(HealCall)}. */
+    @Deprecated
     public HealResult heal(
             String tcId,
             StepIntentBinder.IntentLine intent,
@@ -190,6 +241,8 @@ public class HealCascade {
                 screenshotPathOrNull, tryOllama, priorStepSummaries, allowInvent, List.of());
     }
 
+    /** @deprecated prefer {@link #heal(HealCall)}. */
+    @Deprecated
     public HealResult heal(
             String tcId,
             StepIntentBinder.IntentLine intent,
@@ -207,6 +260,8 @@ public class HealCascade {
                 List.of(), null);
     }
 
+    /** @deprecated prefer {@link #heal(HealCall)}. */
+    @Deprecated
     public HealResult heal(
             String tcId,
             StepIntentBinder.IntentLine intent,
