@@ -221,13 +221,6 @@ public class HealCascade {
                     ? invented
                     : HealResult.fail("HEAL_EXHAUSTED: missing intent or HTML");
         }
-        if (slimHtml == null || slimHtml.isBlank()) {
-            HealResult invented = tryInvent(tcId, intent, "", pngOrNull,
-                    failureReason, priorSteps, "empty_html", screenshotPathOrNull, allowInvent, se);
-            return invented != null
-                    ? invented
-                    : HealResult.fail("HEAL_EXHAUSTED: missing intent or HTML");
-        }
         String reason = failureReason == null ? "" : failureReason;
         if (!failedLocators.isEmpty()) {
             reason = reason + bannedBlock(failedLocators);
@@ -364,38 +357,62 @@ public class HealCascade {
                 && tieDecision.shortlist().size() >= 2;
 
         if (tiePick) {
-            if (!allowPrecisionCursorCall("pick")) {
-                return HealResult.fail("HEAL_EXHAUSTED: precision call cap exceeded");
-            }
-            LoopGuard.Verdict beforePick = guardBefore("pick");
-            if (beforePick != null && beforePick.stop()) {
-                return HealResult.fail("HEAL_STOPPED: " + beforePick.reason());
-            }
-            HealPickPayload payload = HealPickPayload.from(intent, tieDecision, slimHtml);
-            if (screenshotPathOrNull != null && java.nio.file.Files.isRegularFile(screenshotPathOrNull)) {
-                payload = payload.withScreenshotPath(screenshotPathOrNull.toAbsolutePath().toString());
-            }
-            String chosen = cursor.pickCandidateId(
-                    intent.text(), solveReason, payload, screenshotPathOrNull, priorSteps);
-            if (!chosen.isBlank() && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(chosen))) {
-                List<ProvenStep> cursorSteps =
-                        authoring.stepsPreferringCandidate(tcId, intent, candidates, chosen, widened);
-                if (validHealSteps(intent, candidates, cursorSteps, widened, spentSteps)) {
-                    LogsManager.info("HEAL_CURSOR_PICK: resolved " + tcId + " candidateId=" + chosen);
-                    LoopGuard.Verdict gv = guardRecord("pick:" + chosen, true, 1, se);
-                    return stoppedOr(gv, HealResult.success(cursorSteps, "cursor"));
-                }
-            }
-            guardRecord("pick:miss", false, 1, se);
-            // Invent stays a later call — never acceptWrittenLocator on the TIE pick path.
-            HealResult invented = tryInvent(tcId, intent, slimHtml, pngOrNull, reason, priorSteps,
-                    "post_pick", screenshotPathOrNull, allowInvent);
-            return invented != null
-                    ? invented
-                    : HealResult.fail("HEAL_EXHAUSTED: Cursor pick path exhausted; id="
-                    + chosen + " reason=" + reason);
+            return tryCursorPick(tcId, intent, slimHtml, pngOrNull, reason, solveReason,
+                    priorSteps, screenshotPathOrNull, allowInvent, spentSteps,
+                    candidates, shortlist, widened, tieDecision, se);
         }
 
+        return tryCursorSolve(tcId, intent, slimHtml, pngOrNull, reason, solveReason,
+                priorSteps, screenshotPathOrNull, allowInvent, spentSteps,
+                candidates, shortlist, widened, table, htmlExcerpt, se);
+    }
+
+    /** Audit C3 #30 — TIE/pick branch extracted from {@link #heal}. Behaviour unchanged. */
+    private HealResult tryCursorPick(
+            String tcId, StepIntentBinder.IntentLine intent, String slimHtml, byte[] pngOrNull,
+            String reason, String solveReason, List<String> priorSteps,
+            Path screenshotPathOrNull, boolean allowInvent, List<ProvenStep> spentSteps,
+            List<DomCandidate> candidates, List<DomCandidate> shortlist, boolean widened,
+            BindDecision tieDecision, SettlePolicy.SideEffects se) {
+        if (!allowPrecisionCursorCall("pick")) {
+            return HealResult.fail("HEAL_EXHAUSTED: precision call cap exceeded");
+        }
+        LoopGuard.Verdict beforePick = guardBefore("pick");
+        if (beforePick != null && beforePick.stop()) {
+            return HealResult.fail("HEAL_STOPPED: " + beforePick.reason());
+        }
+        HealPickPayload payload = HealPickPayload.from(intent, tieDecision, slimHtml);
+        if (screenshotPathOrNull != null && java.nio.file.Files.isRegularFile(screenshotPathOrNull)) {
+            payload = payload.withScreenshotPath(screenshotPathOrNull.toAbsolutePath().toString());
+        }
+        String chosen = cursor.pickCandidateId(
+                intent.text(), solveReason, payload, screenshotPathOrNull, priorSteps);
+        if (!chosen.isBlank() && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(chosen))) {
+            List<ProvenStep> cursorSteps =
+                    authoring.stepsPreferringCandidate(tcId, intent, candidates, chosen, widened);
+            if (validHealSteps(intent, candidates, cursorSteps, widened, spentSteps)) {
+                LogsManager.info("HEAL_CURSOR_PICK: resolved " + tcId + " candidateId=" + chosen);
+                LoopGuard.Verdict gv = guardRecord("pick:" + chosen, true, 1, se);
+                return stoppedOr(gv, HealResult.success(cursorSteps, "cursor"));
+            }
+        }
+        guardRecord("pick:miss", false, 1, se);
+        // Invent stays a later call — never acceptWrittenLocator on the TIE pick path.
+        HealResult invented = tryInvent(tcId, intent, slimHtml, pngOrNull, reason, priorSteps,
+                "post_pick", screenshotPathOrNull, allowInvent);
+        return invented != null
+                ? invented
+                : HealResult.fail("HEAL_EXHAUSTED: Cursor pick path exhausted; id="
+                + chosen + " reason=" + reason);
+    }
+
+    /** Audit C3 #30 — auto-solve branch extracted from {@link #heal}. Behaviour unchanged. */
+    private HealResult tryCursorSolve(
+            String tcId, StepIntentBinder.IntentLine intent, String slimHtml, byte[] pngOrNull,
+            String reason, String solveReason, List<String> priorSteps,
+            Path screenshotPathOrNull, boolean allowInvent, List<ProvenStep> spentSteps,
+            List<DomCandidate> candidates, List<DomCandidate> shortlist, boolean widened,
+            String table, String htmlExcerpt, SettlePolicy.SideEffects se) {
         if (!allowPrecisionCursorCall("solve")) {
             return HealResult.fail("HEAL_EXHAUSTED: precision call cap exceeded");
         }
