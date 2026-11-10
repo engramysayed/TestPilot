@@ -41,7 +41,7 @@ public class HealNamedRetryTest {
         HealResult result = cascade.heal(
                 "TC", intent, html, null, "zero size", null, true,
                 List.of(), true, List.of(),
-                List.of(new FailedLocator("css", "a[href='/upstream']", "zero size")));
+                List.of(new FailedLocator("css", "a[href='/upstream']", "zero size")), null);
         Assert.assertTrue(result.ok(), result.reason());
         Assert.assertEquals(result.tierUsed(), "retry");
         Assert.assertEquals(ollama.get(), 0);

@@ -109,7 +109,7 @@ public class LabelAnchoredExtractionTest {
                 "1. Enter Ahmed in the First name field",
                 "Value accepted", "P1", "");
 
-        StepIntentBinder.BindResult result = StepIntentBinder.bind(tc, candidates);
+        StepIntentBinder.BindResult result = StepIntentBinder.bind(StepIntentBinder.BindRequest.of(tc, candidates));
 
         assertTrue(result.ok(), "expected a bind, got: " + result.rejectReason());
         assertEquals(result.steps().get(0).locatorValue(),
@@ -155,7 +155,7 @@ public class LabelAnchoredExtractionTest {
                 "1. Confirm the Password field is visible",
                 "Password shown", "P1", "");
 
-        StepIntentBinder.BindResult result = StepIntentBinder.bind(tc, candidates);
+        StepIntentBinder.BindResult result = StepIntentBinder.bind(StepIntentBinder.BindRequest.of(tc, candidates));
         assertTrue(result.ok(), result.rejectReason());
         assertEquals(result.steps().get(0).locatorValue(), "input[type='password']");
     }

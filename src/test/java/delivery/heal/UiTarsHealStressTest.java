@@ -78,7 +78,8 @@ public class UiTarsHealStressTest {
                     "TC_UITARS_STRESS",
                     new StepIntentBinder.IntentLine(
                             StepIntentBinder.IntentKind.CLICK, "Click Hyperdrive"),
-                    WEAK_HTML, new byte[]{1}, "bind failed", null, true, List.of());
+                    WEAK_HTML, new byte[]{1}, "bind failed", null, true, List.of(),
+                    true, List.of(), List.of(), null);
             long ms = (System.nanoTime() - started) / 1_000_000L;
 
             Assert.assertTrue(result.ok(), result.reason());

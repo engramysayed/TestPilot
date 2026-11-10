@@ -80,7 +80,8 @@ public class HealVisionBboxWidenTest {
             HealResult result = cascade.heal(
                     "TC_BBOX",
                     new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, "Click Hyperdrive"),
-                    WEAK_HTML, new byte[]{1}, "bind failed", null, true, List.of());
+                    WEAK_HTML, new byte[]{1}, "bind failed", null, true, List.of(),
+                    true, List.of(), List.of(), null);
 
             Assert.assertTrue(result.ok(), result.reason());
             Assert.assertEquals(result.tierUsed(), "vision");
@@ -117,7 +118,8 @@ public class HealVisionBboxWidenTest {
             HealResult result = cascade.heal(
                     "TC_BBOX",
                     new StepIntentBinder.IntentLine(StepIntentBinder.IntentKind.CLICK, "Click Hyperdrive"),
-                    WEAK_HTML, new byte[]{1}, "bind failed", null, true, List.of());
+                    WEAK_HTML, new byte[]{1}, "bind failed", null, true, List.of(),
+                    true, List.of(), List.of(), null);
 
             Assert.assertTrue(result.ok(), result.reason());
             Assert.assertTrue(supplierCalls.get() >= 1, "supplier must run on bbox heal");

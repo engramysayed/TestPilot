@@ -201,18 +201,6 @@ public final class StepIntentBinder {
         return bind(request.tc(), request.candidates(), request.preferOnTie(), request.slimHtml());
     }
 
-    /** @deprecated prefer {@link #bind(BindRequest)}. */
-    @Deprecated
-    public static BindResult bind(ManualTestCase tc, List<DomCandidate> candidates) {
-        return bind(tc, candidates, List.of());
-    }
-
-    /** @deprecated prefer {@link #bind(BindRequest)}. */
-    @Deprecated
-    public static BindResult bind(ManualTestCase tc, List<DomCandidate> candidates, List<String> preferOnTie) {
-        return bind(tc, candidates, preferOnTie, null);
-    }
-
     public static BindResult bind(ManualTestCase tc, List<DomCandidate> candidates, List<String> preferOnTie,
                                   String slimHtml) {
         List<IntentLine> intents = parseIntents(tc);
@@ -584,7 +572,7 @@ public final class StepIntentBinder {
 
     public static BindResult bindPreferring(ManualTestCase tc, List<DomCandidate> candidates,
                                             List<String> preferredIds) {
-        return bind(tc, candidates, preferredIds == null ? List.of() : preferredIds);
+        return bind(tc, candidates, preferredIds == null ? List.of() : preferredIds, null);
     }
 
     /** Ranked DOM candidates for heal shortlists (highest score first). */

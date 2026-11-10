@@ -29,7 +29,7 @@ public class AnonymousInputBindingTest {
                 "TC_ANON", "Register", "",
                 "1. Enter Test in the First name field",
                 "Value accepted", "P1", "");
-        StepIntentBinder.BindResult r = StepIntentBinder.bind(tc, ANONYMOUS_FORM);
+        StepIntentBinder.BindResult r = StepIntentBinder.bind(StepIntentBinder.BindRequest.of(tc, ANONYMOUS_FORM));
         Assert.assertFalse(r.ok(),
                 "Anonymous inputs must not absorb a named field intent: " + r.steps());
     }
@@ -40,7 +40,7 @@ public class AnonymousInputBindingTest {
                 "TC_NAMED", "Register", "",
                 "1. Enter Test in the First name field",
                 "Value accepted", "P1", "");
-        StepIntentBinder.BindResult r = StepIntentBinder.bind(tc, LABELLED_FORM);
+        StepIntentBinder.BindResult r = StepIntentBinder.bind(StepIntentBinder.BindRequest.of(tc, LABELLED_FORM));
         Assert.assertTrue(r.ok(), r.rejectReason());
         Assert.assertEquals(r.steps().get(0).locatorValue(), "firstName");
         // "Test" is unspecified placeholder language — do not invent faker TestData.
@@ -53,7 +53,7 @@ public class AnonymousInputBindingTest {
                 "TC_SURNAME", "Register", "",
                 "1. Enter User in the Surname field",
                 "Value accepted", "P1", "");
-        StepIntentBinder.BindResult r = StepIntentBinder.bind(tc, LABELLED_FORM);
+        StepIntentBinder.BindResult r = StepIntentBinder.bind(StepIntentBinder.BindRequest.of(tc, LABELLED_FORM));
         Assert.assertTrue(r.ok(), r.rejectReason());
         Assert.assertEquals(r.steps().get(0).locatorValue(), "lastName");
     }

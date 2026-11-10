@@ -81,7 +81,7 @@ public class NearTieAmbiguousTest {
         Assert.assertTrue(candidates.size() >= 2, candidates.toString());
         ManualTestCase tc = new ManualTestCase(
                 "TC", "Settings", "", "1. Click Settings", "Settings open", "P1", "");
-        StepIntentBinder.BindResult bind = StepIntentBinder.bind(tc, candidates);
+        StepIntentBinder.BindResult bind = StepIntentBinder.bind(StepIntentBinder.BindRequest.of(tc, candidates));
         Assert.assertFalse(bind.ok(), bind.rejectReason());
         Assert.assertTrue(bind.rejectReason().startsWith("AMBIGUOUS:"), bind.rejectReason());
     }
@@ -90,7 +90,7 @@ public class NearTieAmbiguousTest {
     public void ambiguousLlmFailure_doesNotBindFirstId() throws Exception {
         ManualTestCase tc = new ManualTestCase(
                 "TC", "Settings", "", "1. Click Settings", "Settings open", "P1", "");
-        StepIntentBinder.BindResult bind = StepIntentBinder.bind(tc, TWIN_SETTINGS_BUTTONS);
+        StepIntentBinder.BindResult bind = StepIntentBinder.bind(StepIntentBinder.BindRequest.of(tc, TWIN_SETTINGS_BUTTONS));
         Assert.assertFalse(bind.ok());
         Assert.assertTrue(bind.rejectReason().startsWith("AMBIGUOUS:"));
 

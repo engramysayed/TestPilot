@@ -113,7 +113,7 @@ public class CheckboxBindAndAssertTest {
                         5. Confirm checkbox 2 is unchecked
                         """,
                 "ok", "P1", "");
-        StepIntentBinder.BindResult r = StepIntentBinder.bind(tc, DomCandidateExtractor.extract(CHECKBOX_HTML));
+        StepIntentBinder.BindResult r = StepIntentBinder.bind(StepIntentBinder.BindRequest.of(tc, DomCandidateExtractor.extract(CHECKBOX_HTML)));
         Assert.assertTrue(r.ok(), r.rejectReason());
         Assert.assertEquals(r.steps().size(), 5);
         Assert.assertEquals(r.steps().get(0).assertionType(), "unchecked");
