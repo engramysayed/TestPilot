@@ -2,14 +2,13 @@ package delivery.portal.worker;
 
 import delivery.job.JobCancelledException;
 import delivery.portal.DeliveryPortalProperties;
+import delivery.portal.jobs.DurableJobClaim;
 import delivery.portal.model.JobRecord;
 import delivery.portal.model.ProjectRecord;
 import delivery.portal.service.CompareJobFiles;
 import delivery.portal.service.JobUploadCleanup;
 import delivery.portal.service.PortalStore;
 import delivery.portal.service.TcGenerateService;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -17,11 +16,9 @@ import java.nio.file.Path;
 import java.util.Map;
 
 @Component
-public class CompareGenerateWorker {
-    private static final Logger log = LogManager.getLogger(CompareGenerateWorker.class);
+public class CompareGenerateWorker extends AbstractJobWorker {
 
     private final DeliveryPortalProperties props;
-    private final PortalStore portalStore;
     private final TcGenerateService generate;
 
     public CompareGenerateWorker(
@@ -29,23 +26,28 @@ public class CompareGenerateWorker {
             PortalStore portalStore,
             TcGenerateService generate
     ) {
+        super(portalStore);
         this.props = props;
-        this.portalStore = portalStore;
         this.generate = generate;
+    }
+
+    @Override
+    protected JobRecord.JobKind kind() {
+        return JobRecord.JobKind.GENERATE_COMPARE;
     }
 
     @Async("generateBatchExecutor")
     public void submit(String jobId) {
-        JobRecord job = portalStore.getJob(jobId).orElse(null);
-        if (job == null || job.getJobKind() != JobRecord.JobKind.GENERATE_COMPARE) {
-            return;
+        try {
+            dispatch(jobId);
+        } catch (Exception e) {
+            log.error("CompareGenerateWorker dispatch failed for {}: {}", jobId, e.getMessage(), e);
         }
-        var lease = portalStore.beginWork(jobId);
-        if (lease.isEmpty()) {
-            log.info("Job {} not claimed", jobId);
-            return;
-        }
-        job = portalStore.getJob(jobId).orElse(job);
+    }
+
+    @Override
+    protected void runOne(JobRecord job, DurableJobClaim.Lease lease) {
+        String jobId = job.getJobId();
         job.setProgressTotal(2);
         job.setProgressCurrent(0);
         job.setMessage("Starting model comparison");
@@ -85,7 +87,7 @@ public class CompareGenerateWorker {
             CompareJobFiles.writeResult(resultFile, compareResult);
             job.setZipPath(resultFile);
             job.setMessage("Comparison ready — open Generate to pick a model");
-            if (!delivery.portal.jobs.DurableJobClaim.sameAttempt(job, lease.get())) {
+            if (!DurableJobClaim.sameAttempt(job, lease)) {
                 log.info("Compare job {} fenced; skipping publish", jobId);
             } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);

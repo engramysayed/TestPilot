@@ -44,10 +44,11 @@ public abstract class AbstractJobWorker {
 
     /**
      * Shared entry point. A concrete subclass calls this from its {@code @Async} method.
-     * Returns the lease only if it was claimed; empty means the job was wrong-kind or
-     * already claimed by another worker.
+     * Returns the claim only if lease + kind-check passed; empty means the job was wrong-kind
+     * or already claimed by another worker. The subclass owns its own error handling inside
+     * {@link #runOne} — this method does not catch.
      */
-    public final Optional<DurableJobClaim.Lease> dispatch(String jobId) {
+    public final Optional<Claim> dispatch(String jobId) throws Exception {
         JobRecord job = portalStore.getJob(jobId).orElse(null);
         if (job == null || job.getJobKind() != kind()) {
             return Optional.empty();
@@ -57,19 +58,11 @@ public abstract class AbstractJobWorker {
             log.info("Job {} not claimed by {}", jobId, kind());
             return Optional.empty();
         }
-        try {
-            JobRecord refreshed = portalStore.getJob(jobId).orElse(job);
-            runOne(refreshed, lease.get());
-        } catch (Exception e) {
-            // Subclass normally handles its own error reporting inside runOne. This catch is a
-            // safety net so an unexpected throw still marks the job FAILED and releases the lease.
-            log.error("Unhandled failure in {} for job {}: {}", kind(), jobId, e.getMessage(), e);
-            portalStore.getJob(jobId).ifPresent(j -> {
-                j.setStatus(JobRecord.Status.FAILED);
-                j.setMessage("Worker error: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
-                portalStore.syncJobPersistence(j);
-            });
-        }
-        return lease;
+        JobRecord refreshed = portalStore.getJob(jobId).orElse(job);
+        runOne(refreshed, lease.get());
+        return Optional.of(new Claim(refreshed, lease.get()));
     }
+
+    /** Result of a successful dispatch — subclasses usually ignore this, but tests may inspect it. */
+    public record Claim(JobRecord job, DurableJobClaim.Lease lease) {}
 }
