@@ -6,14 +6,13 @@ import delivery.job.GenerateBatchJobRunner;
 import delivery.job.JobCancelledException;
 import delivery.job.JobProgressTracker;
 import delivery.portal.DeliveryPortalProperties;
+import delivery.portal.jobs.DurableJobClaim;
 import delivery.portal.model.JobRecord;
 import delivery.portal.model.ProjectRecord;
 import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.JobUploadCleanup;
 import delivery.portal.service.PortalStore;
 import delivery.portal.service.TcGenerateService;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -22,11 +21,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 @Component
-public class GenerateBatchWorker {
-    private static final Logger log = LogManager.getLogger(GenerateBatchWorker.class);
+public class GenerateBatchWorker extends AbstractJobWorker {
 
     private final DeliveryPortalProperties props;
-    private final PortalStore portalStore;
     private final TcGenerateService generate;
     private final GeneratedWorkbookService workbooks;
 
@@ -36,24 +33,29 @@ public class GenerateBatchWorker {
             TcGenerateService generate,
             GeneratedWorkbookService workbooks
     ) {
+        super(portalStore);
         this.props = props;
-        this.portalStore = portalStore;
         this.generate = generate;
         this.workbooks = workbooks;
     }
 
+    @Override
+    protected JobRecord.JobKind kind() {
+        return JobRecord.JobKind.GENERATE_BATCH;
+    }
+
     @Async("generateBatchExecutor")
     public void submit(String jobId) {
-        JobRecord job = portalStore.getJob(jobId).orElse(null);
-        if (job == null || job.getJobKind() != JobRecord.JobKind.GENERATE_BATCH) {
-            return;
+        try {
+            dispatch(jobId);
+        } catch (Exception e) {
+            log.error("GenerateBatchWorker dispatch failed for {}: {}", jobId, e.getMessage(), e);
         }
-        var lease = portalStore.beginWork(jobId);
-        if (lease.isEmpty()) {
-            log.info("Job {} not claimed", jobId);
-            return;
-        }
-        job = portalStore.getJob(jobId).orElse(job);
+    }
+
+    @Override
+    protected void runOne(JobRecord job, DurableJobClaim.Lease lease) {
+        String jobId = job.getJobId();
         job.setMessage("Starting generate batch");
         portalStore.syncJobPersistence(job);
         try {
@@ -82,7 +84,7 @@ public class GenerateBatchWorker {
             job.setTodoCount(result.failedStoryCount());
             job.setZipPath(result.outputCsv());
             job.setMessage(result.message());
-            if (!delivery.portal.jobs.DurableJobClaim.sameAttempt(job, lease.get())) {
+            if (!DurableJobClaim.sameAttempt(job, lease)) {
                 log.info("Generate batch {} fenced; skipping publish", jobId);
             } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);

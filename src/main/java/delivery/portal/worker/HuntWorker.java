@@ -15,12 +15,11 @@ import delivery.knowledge.KnowledgePackReader;
 import delivery.job.JobCancelledException;
 import delivery.job.JobProgressTracker;
 import delivery.portal.DeliveryPortalProperties;
+import delivery.portal.jobs.DurableJobClaim;
 import delivery.portal.model.JobRecord;
 import delivery.portal.service.FailureReasonHumanizer;
 import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.PortalStore;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -32,12 +31,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 @Component
-public class HuntWorker {
-    private static final Logger log = LogManager.getLogger(HuntWorker.class);
+public class HuntWorker extends AbstractJobWorker {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final DeliveryPortalProperties props;
-    private final PortalStore portalStore;
     private final GeneratedWorkbookService workbooks;
     private final Environment env;
     private final KnowledgePackReader knowledgePackReader;
@@ -45,29 +42,34 @@ public class HuntWorker {
     public HuntWorker(DeliveryPortalProperties props, PortalStore portalStore,
                       GeneratedWorkbookService workbooks, Environment env,
                       KnowledgePackReader knowledgePackReader) {
+        super(portalStore);
         this.props = props;
-        this.portalStore = portalStore;
         this.workbooks = workbooks;
         this.env = env;
         this.knowledgePackReader = knowledgePackReader;
     }
 
+    @Override
+    protected JobRecord.JobKind kind() {
+        return JobRecord.JobKind.HUNT;
+    }
+
     @Async("huntExecutor")
     public void submit(String jobId) {
-        JobRecord queued = portalStore.getJob(jobId).orElse(null);
-        if (queued == null || queued.getJobKind() != JobRecord.JobKind.HUNT) {
-            return;
+        try {
+            dispatch(jobId);
+        } catch (Exception e) {
+            log.error("HuntWorker dispatch failed for {}: {}", jobId, e.getMessage(), e);
         }
-        var lease = portalStore.beginWork(jobId);
-        if (lease.isEmpty()) {
-            log.info("Job {} not claimed", jobId);
-            return;
-        }
-        JobRecord job = portalStore.getJob(jobId).orElse(queued);
+    }
+
+    @Override
+    protected void runOne(JobRecord job, DurableJobClaim.Lease lease) {
+        String jobId = job.getJobId();
         job.setMessage(props.isDryRun() ? "Dry-run Bug Hunter" : "Starting Bug Hunter");
         if (!props.isDryRun()) {
-            delivery.portal.jobs.DurableJobClaim.markStage(
-                    job, lease.get().attemptId(), delivery.portal.jobs.DurableJobClaim.Stage.BROWSER);
+            DurableJobClaim.markStage(
+                    job, lease.attemptId(), DurableJobClaim.Stage.BROWSER);
         }
         portalStore.syncJobPersistence(job);
         try {
@@ -129,7 +131,7 @@ public class HuntWorker {
                 );
             });
 
-            if (!delivery.portal.jobs.DurableJobClaim.sameAttempt(job, lease.get())) {
+            if (!DurableJobClaim.sameAttempt(job, lease)) {
                 log.info("Hunt job {} fenced; skipping publish", jobId);
                 return;
             }

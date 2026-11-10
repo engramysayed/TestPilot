@@ -8,13 +8,12 @@ import delivery.job.ExecuteJobRunner;
 import delivery.job.JobCancelledException;
 import delivery.job.JobProgressTracker;
 import delivery.portal.DeliveryPortalProperties;
+import delivery.portal.jobs.DurableJobClaim;
 import delivery.portal.model.JobRecord;
 import delivery.portal.service.JobUploadCleanup;
 import delivery.portal.service.PortalStore;
 import delivery.portal.service.RunMemoryJobBootstrap;
 import delivery.portal.tunnel.TunnelJobBaseUrlService;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -24,11 +23,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 @Component
-public class ExecuteWorker {
-    private static final Logger log = LogManager.getLogger(ExecuteWorker.class);
+public class ExecuteWorker extends AbstractJobWorker {
 
     private final DeliveryPortalProperties props;
-    private final PortalStore portalStore;
     private final Environment env;
     private final RunMemoryJobBootstrap runMemory;
     private final TunnelJobBaseUrlService tunnelBaseUrl;
@@ -40,29 +37,34 @@ public class ExecuteWorker {
             RunMemoryJobBootstrap runMemory,
             TunnelJobBaseUrlService tunnelBaseUrl
     ) {
+        super(portalStore);
         this.props = props;
-        this.portalStore = portalStore;
         this.env = env;
         this.runMemory = runMemory;
         this.tunnelBaseUrl = tunnelBaseUrl;
     }
 
+    @Override
+    protected JobRecord.JobKind kind() {
+        return JobRecord.JobKind.EXECUTE;
+    }
+
     @Async("executeExecutor")
     public void submit(String jobId) {
-        JobRecord job = portalStore.getJob(jobId).orElse(null);
-        if (job == null || job.getJobKind() != JobRecord.JobKind.EXECUTE) {
-            return;
+        try {
+            dispatch(jobId);
+        } catch (Exception e) {
+            log.error("ExecuteWorker dispatch failed for {}: {}", jobId, e.getMessage(), e);
         }
-        var lease = portalStore.beginWork(jobId);
-        if (lease.isEmpty()) {
-            log.info("Job {} not claimed", jobId);
-            return;
-        }
-        job = portalStore.getJob(jobId).orElse(job);
+    }
+
+    @Override
+    protected void runOne(JobRecord job, DurableJobClaim.Lease lease) {
+        String jobId = job.getJobId();
         job.setMessage(props.isDryRun() ? "Dry-run execute" : "Starting execute");
         if (!props.isDryRun()) {
-            delivery.portal.jobs.DurableJobClaim.markStage(
-                    job, lease.get().attemptId(), delivery.portal.jobs.DurableJobClaim.Stage.BROWSER);
+            DurableJobClaim.markStage(
+                    job, lease.attemptId(), DurableJobClaim.Stage.BROWSER);
         }
         portalStore.syncJobPersistence(job);
         runMemory.attachApprovedSnapshot(job.getProjectId(), jobId);
@@ -111,7 +113,7 @@ public class ExecuteWorker {
             job.setPassedCount(result.passed());
             job.setTodoCount(result.todo());
             job.setMessage(result.message());
-            if (!delivery.portal.jobs.DurableJobClaim.sameAttempt(job, lease.get())) {
+            if (!DurableJobClaim.sameAttempt(job, lease)) {
                 log.info("Execute job {} fenced; skipping publish", jobId);
             } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);

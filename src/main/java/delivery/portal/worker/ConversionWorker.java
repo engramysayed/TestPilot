@@ -9,11 +9,10 @@ import delivery.job.DryRunConversionService;
 import delivery.job.JobCancelledException;
 import delivery.job.JobProgressTracker;
 import delivery.portal.DeliveryPortalProperties;
+import delivery.portal.jobs.DurableJobClaim;
 import delivery.portal.model.JobRecord;
 import delivery.portal.service.JobUploadCleanup;
 import delivery.portal.service.PortalStore;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -24,42 +23,45 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 @Component
-public class ConversionWorker {
-    private static final Logger log = LogManager.getLogger(ConversionWorker.class);
+public class ConversionWorker extends AbstractJobWorker {
 
     private final DeliveryPortalProperties props;
-    private final PortalStore portalStore;
     private final Environment env;
 
     public ConversionWorker(DeliveryPortalProperties props, PortalStore portalStore, Environment env) {
+        super(portalStore);
         this.props = props;
-        this.portalStore = portalStore;
         this.env = env;
+    }
+
+    @Override
+    protected JobRecord.JobKind kind() {
+        return JobRecord.JobKind.CONVERT;
     }
 
     @Async("conversionExecutor")
     public void submit(String jobId) {
-        JobRecord job = portalStore.getJob(jobId).orElse(null);
-        if (job == null) {
-            return;
+        try {
+            dispatch(jobId);
+        } catch (Exception e) {
+            log.error("ConversionWorker dispatch failed for {}: {}", jobId, e.getMessage(), e);
         }
-        var lease = portalStore.beginWork(jobId);
-        if (lease.isEmpty()) {
-            log.info("Job {} not claimed", jobId);
-            return;
-        }
-        job = portalStore.getJob(jobId).orElse(job);
+    }
+
+    @Override
+    protected void runOne(JobRecord job, DurableJobClaim.Lease lease) {
+        String jobId = job.getJobId();
         Path recordedFile = RecordedCaptureFile.path(Path.of(props.getWorkDir()), jobId);
         boolean fromRecording = Files.isRegularFile(recordedFile);
         job.setMessage(fromRecording
                 ? "Building the framework from the recording"
                 : (props.isDryRun() ? "Dry-run packaging" : "Starting conversion"));
         if (!props.isDryRun()) {
-            delivery.portal.jobs.DurableJobClaim.markStage(
-                    job, lease.get().attemptId(),
+            DurableJobClaim.markStage(
+                    job, lease.attemptId(),
                     fromRecording
-                            ? delivery.portal.jobs.DurableJobClaim.Stage.EMIT
-                            : delivery.portal.jobs.DurableJobClaim.Stage.BROWSER);
+                            ? DurableJobClaim.Stage.EMIT
+                            : DurableJobClaim.Stage.BROWSER);
         }
         portalStore.syncJobPersistence(job);
         try {
@@ -101,24 +103,24 @@ public class ConversionWorker {
 
             ConversionJobResult result;
             BooleanSupplier cancelCheck = () -> !portalStore.ownsAttempt(
-                    portalStore.getJob(jobId).orElse(null), lease.get());
+                    portalStore.getJob(jobId).orElse(null), lease);
             delivery.job.PublicationGuard guard = new delivery.job.PublicationGuard() {
                 public <T> T publish(java.util.concurrent.Callable<T> action) throws Exception {
-                    return portalStore.publishAttempt(jobId, lease.get(), action);
+                    return portalStore.publishAttempt(jobId, lease, action);
                 }
             };
             if (fromRecording) {
                 var captures = RecordedCaptureFile.read(recordedFile);
                 ConversionJobRunner runner = new ConversionJobRunner();
-                result = runWithProgressMirror(job, runner.progress(), lease.get(),
+                result = runWithProgressMirror(job, runner.progress(), lease,
                         () -> runner.runRecorded(request, captures, cancelCheck, guard));
             } else if (props.isDryRun()) {
                 JobProgressTracker tracker = new JobProgressTracker();
-                result = runWithProgressMirror(job, tracker, lease.get(),
+                result = runWithProgressMirror(job, tracker, lease,
                         () -> new DryRunConversionService().run(request, tracker, cancelCheck, guard));
             } else {
                 ConversionJobRunner runner = new ConversionJobRunner();
-                result = runWithProgressMirror(job, runner.progress(), lease.get(),
+                result = runWithProgressMirror(job, runner.progress(), lease,
                         () -> runner.run(request, cancelCheck, guard));
             }
 
@@ -126,7 +128,7 @@ public class ConversionWorker {
             job.setTodoCount(result.todo());
             job.setZipPath(result.zipFile());
             job.setMessage(result.message());
-            if (!sameAttempt(job, lease.get()) || JobRecord.isTerminal(job.getStatus())) {
+            if (!sameAttempt(job, lease) || JobRecord.isTerminal(job.getStatus())) {
                 log.info("Job {} fenced; skipping publish", jobId);
             } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
@@ -147,7 +149,7 @@ public class ConversionWorker {
             }
             if (!portalStore.shouldAbortCompletion(job)
                     && job.getStatus() != JobRecord.Status.CANCELLED
-                    && sameAttempt(job, lease.get())) {
+                    && sameAttempt(job, lease)) {
                 try {
                     int version = portalStore.filesystemStore().load(job.getProjectId()).version();
                     portalStore.updateProjectVersion(job.getProjectId(), version);
@@ -157,12 +159,12 @@ public class ConversionWorker {
             }
             log.info("Job {} completed passed={} todo={}", jobId, result.passed(), result.todo());
         } catch (JobCancelledException e) {
-            if (sameAttempt(job, lease.get()) && !JobRecord.isTerminal(job.getStatus())) {
+            if (sameAttempt(job, lease) && !JobRecord.isTerminal(job.getStatus())) {
                 if (portalStore.shouldAbortCompletion(job)) cancel(job);
                 else portalStore.reconcileExpiredLeases();
             }
         } catch (IllegalStateException e) {
-            if (!sameAttempt(job, lease.get()) || JobRecord.isTerminal(job.getStatus())) {
+            if (!sameAttempt(job, lease) || JobRecord.isTerminal(job.getStatus())) {
                 log.info("Job {} fenced after error; skipping fail", jobId);
             } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
@@ -170,7 +172,7 @@ public class ConversionWorker {
                 fail(job, e.getMessage(), e);
             }
         } catch (Exception e) {
-            if (!sameAttempt(job, lease.get()) || JobRecord.isTerminal(job.getStatus())) {
+            if (!sameAttempt(job, lease) || JobRecord.isTerminal(job.getStatus())) {
                 log.info("Job {} fenced after error; skipping fail", jobId);
             } else if (portalStore.shouldAbortCompletion(job)) {
                 cancel(job);
@@ -191,7 +193,7 @@ public class ConversionWorker {
     private ConversionJobResult runWithProgressMirror(
             JobRecord job,
             JobProgressTracker tracker,
-            delivery.portal.jobs.DurableJobClaim.Lease lease,
+            DurableJobClaim.Lease lease,
             ConversionCallable callable
     ) throws Exception {
         AtomicBoolean running = new AtomicBoolean(true);
@@ -224,7 +226,7 @@ public class ConversionWorker {
         }
     }
 
-    private static boolean sameAttempt(JobRecord job, delivery.portal.jobs.DurableJobClaim.Lease lease) {
+    private static boolean sameAttempt(JobRecord job, DurableJobClaim.Lease lease) {
         return job != null && lease != null && lease.attemptId().equals(job.getAttemptId());
     }
 
