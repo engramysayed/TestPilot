@@ -689,14 +689,14 @@ public class ProvePhase {
                 Path shot = writeHealScreenshot(evidence, tc.tcId(), 0, failPng);
                 CandidateLivenessProbe probe = new SeleniumCandidateLivenessProbe(driverFactory);
                 prepareHealPresence(healCascade, driverFactory);
-                HealResult healed = healCascade.heal(
+                HealResult healed = healCascade.heal(new HealCascade.HealCall(
                         tc.tcId(), healIntent, freshHtml, failPng,
                         outcome.failureReason(), shot, true,
                         priorStepSummaries(outcome.provenSteps()), false,
                         outcome.provenSteps(),
                         recordFailures(outcome.provenSteps().isEmpty() ? steps : outcome.provenSteps(),
                                 outcome.failureReason()),
-                        probe);
+                        probe));
                 if (healed.ok()) {
                     healTier = healed.tierUsed();
                     emitPhase2HealProposal(null, tc.tcId(), 0,
@@ -965,9 +965,9 @@ public class ProvePhase {
                     }
                     Path shot = writeHealScreenshot(evidence, tc.tcId(), intentIndex, healPng);
                     prepareHealPresence(healCascade, driverFactory);
-                    HealResult healed = healCascade.heal(
+                    HealResult healed = healCascade.heal(new HealCascade.HealCall(
                             tc.tcId(), intent, html, healPng, lastReason, shot, !precisionPath, priorSteps,
-                            true, provenSoFar, failedThisIntent, probe);
+                            true, provenSoFar, failedThisIntent, probe));
                     if (!healed.ok()) {
                         lastPartial = autoFillSteps;
                         lastReason = healed.reason().isBlank() ? lastReason : healed.reason();
@@ -1026,9 +1026,9 @@ public class ProvePhase {
                         byte[] failPng = execution.capturePngBytes();
                         Path shot = writeHealScreenshot(evidence, tc.tcId(), intentIndex, failPng);
                         prepareHealPresence(healCascade, driverFactory);
-                        HealResult healed = healCascade.heal(
+                        HealResult healed = healCascade.heal(new HealCascade.HealCall(
                                 tc.tcId(), intent, freshHtml, failPng, lastReason, shot, !precisionPath,
-                                priorSteps, true, provenSoFar, failedThisIntent, probe);
+                                priorSteps, true, provenSoFar, failedThisIntent, probe));
                         RecoveryOutcome recovery = tryRecoveryHeal(
                                 healed, tc, execution, evidence, recoveryAttemptsThisIntent, recoveredActions,
                                 request);
@@ -1089,10 +1089,10 @@ public class ProvePhase {
                         byte[] png2 = execution.capturePngBytes();
                         Path shot2 = writeHealScreenshot(evidence, tc.tcId(), intentIndex, png2);
                         prepareHealPresence(healCascade, driverFactory);
-                        HealResult cursorHeal = healCascade.heal(
+                        HealResult cursorHeal = healCascade.heal(new HealCascade.HealCall(
                                 tc.tcId(), intent, html2, png2,
                                 "re-execute after Ollama heal failed: " + lastReason,
-                                shot2, false, priorSteps, true, provenSoFar, failedThisIntent, probe);
+                                shot2, false, priorSteps, true, provenSoFar, failedThisIntent, probe));
                         EscalateHealDecision escalate = decideEscalateHeal(
                                 cursorHeal, recoveryAttemptsThisIntent);
                         if (escalate == EscalateHealDecision.RUN_RECOVERY_AND_RETRY_INTENT
