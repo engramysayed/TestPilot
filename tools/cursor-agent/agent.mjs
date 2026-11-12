@@ -123,20 +123,15 @@ async function waitForExistingRun(runId, workspacePath, storePath, agentId, apiK
   if (!run) {
     throw new Error("getRun unavailable");
   }
-  if (run.status === "running") {
-    try {
-      await Agent.cancelRun(runId, { runtime: "local", cwd: workspacePath, store });
-    } catch {
-      /* ignore */
-    }
-    for (let i = 0; i < 20; i++) {
-      await new Promise((r) => setTimeout(r, 500));
-      run = await Agent.getRun(runId, { runtime: "local", cwd: workspacePath, store });
-      if (run && run.status !== "running") break;
-    }
-  }
   if (!run || run.status === "running") {
-    throw new Error("reconcile poll timeout while run still active");
+    emit({
+      type: "result",
+      status: "INTERRUPTED",
+      summary: "reconcile poll budget exhausted while run still active",
+      payload: { status: "INTERRUPTED", runStatus: "running", recovered: false },
+      modifiedFiles: [],
+    });
+    return;
   }
   emit({ type: "run.started", agentId: run.agentId, runId: run.id });
   let lastStatus = run.status;

@@ -20,7 +20,7 @@ public class AgentHarnessCoordinatorTest {
         props.setMaxConcurrentRuns(2);
 
         AgentHarnessCoordinator coordinator = AgentHarnessCoordinator.forTests(props);
-        NewAgentTaskRequest req = new NewAgentTaskRequest(
+        NewAgentTaskRequest req = NewAgentTaskRequest.simple(
                 "job_convert_1",
                 "proj1",
                 AgentTaskType.FRAMEWORK_VALIDATION_V1,
@@ -56,7 +56,7 @@ public class AgentHarnessCoordinatorTest {
         AgentHarnessProperties props = new AgentHarnessProperties();
         props.setEnabled(false);
         AgentHarnessCoordinator coordinator = AgentHarnessCoordinator.forTests(props);
-        AgentTask task = coordinator.createTask(project, new NewAgentTaskRequest(
+        AgentTask task = coordinator.createTask(project, NewAgentTaskRequest.simple(
                 "job1", "p1", AgentTaskType.BUG_INVESTIGATION_V1, "x", List.of(), ""));
         coordinator.execute(project, task.parentJobId(), task.taskId());
     }
@@ -69,7 +69,7 @@ public class AgentHarnessCoordinatorTest {
         AgentHarnessProperties props = new AgentHarnessProperties();
         props.setEnabled(true);
         AgentHarnessCoordinator coordinator = AgentHarnessCoordinator.forTests(props);
-        AgentTask task = coordinator.createTask(project, new NewAgentTaskRequest(
+        AgentTask task = coordinator.createTask(project, NewAgentTaskRequest.simple(
                 "job1", "p1", AgentTaskType.EXECUTION_FAILURE_INVESTIGATION_V1, "investigate",
                 List.of(), workspace.toString()));
         AgentRunStore store = new AgentRunStore();
@@ -77,9 +77,29 @@ public class AgentHarnessCoordinatorTest {
                 task.taskId(), task.parentJobId(), task.projectId(), task.taskType(), task.taskStatus(),
                 task.objective(), task.contextReferences(), outsider.toString(), task.createdAt(), task.startedAt(),
                 task.completedAt(), task.agentId(), task.agentRunId(), task.attempt(), task.budget(),
-                task.resultReference(), task.providerId(), task.schemaVersion());
+                task.resultReference(), task.providerId(), task.inputFingerprint(), task.stageKey(),
+                task.schemaVersion());
         store.saveTask(project, tampered);
         coordinator.execute(project, task.parentJobId(), task.taskId());
+    }
+
+    @Test
+    public void interrupted_withIds_reconciles() throws Exception {
+        Path project = Files.createTempDirectory("agent-harness-int-");
+        Path workspace = Files.createTempDirectory("ws-int");
+        AgentHarnessProperties props = new AgentHarnessProperties();
+        props.setEnabled(true);
+        AgentHarnessCoordinator coordinator = AgentHarnessCoordinator.forTests(props);
+        AgentTask task = coordinator.createTask(project, NewAgentTaskRequest.simple(
+                "job_int", "p1", AgentTaskType.FRAMEWORK_VALIDATION_V1, "v", List.of(), workspace.toString()));
+        AgentRunStore store = new AgentRunStore();
+        AgentTask interrupted = task.withStatus(AgentTaskStatus.INTERRUPTED)
+                .withRun(new AgentRunHandle("fake-agent-" + task.taskId(), "run_i", java.time.Instant.now()));
+        store.saveTask(project, interrupted);
+        AgentRunResult result = coordinator.execute(project, task.parentJobId(), task.taskId());
+        Assert.assertEquals(result.terminalStatus(), AgentTaskStatus.COMPLETED);
+        AgentTask loaded = store.loadTask(project, task.parentJobId(), task.taskId()).orElseThrow();
+        Assert.assertEquals(loaded.agentRunId(), "run_i");
     }
 
     @Test
@@ -89,7 +109,7 @@ public class AgentHarnessCoordinatorTest {
         AgentHarnessProperties props = new AgentHarnessProperties();
         props.setEnabled(true);
         AgentHarnessCoordinator coordinator = AgentHarnessCoordinator.forTests(props);
-        AgentTask task = coordinator.createTask(project, new NewAgentTaskRequest(
+        AgentTask task = coordinator.createTask(project, NewAgentTaskRequest.simple(
                 "job_resume", "p1", AgentTaskType.GENERATED_TEST_REVIEW_V1, "review", List.of(), workspace.toString()));
 
         AgentRunStore store = new AgentRunStore();

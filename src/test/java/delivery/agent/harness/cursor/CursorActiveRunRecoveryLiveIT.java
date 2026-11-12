@@ -63,7 +63,7 @@ public class CursorActiveRunRecoveryLiveIT {
         System.setProperty("delivery.provider.allowlist", "cursor");
         try {
             var coordinator = delivery.agent.harness.AgentHarnessCoordinator.forTests(props);
-            var created = coordinator.createTask(project, new NewAgentTaskRequest(
+            var created = coordinator.createTask(project, NewAgentTaskRequest.simple(
                     "job_live_recover",
                     "p1",
                     delivery.agent.harness.AgentTaskType.FRAMEWORK_VALIDATION_V1,

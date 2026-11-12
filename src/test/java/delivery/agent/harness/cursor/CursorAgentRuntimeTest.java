@@ -36,7 +36,7 @@ public class CursorAgentRuntimeTest {
         System.setProperty("CURSOR_API_KEY", "test-key-not-real");
         try {
             AgentHarnessCoordinator coordinator = AgentHarnessCoordinator.forTests(props);
-            var task = coordinator.createTask(project, new NewAgentTaskRequest(
+            var task = coordinator.createTask(project, NewAgentTaskRequest.simple(
                     "job_c1", "p1", delivery.agent.harness.AgentTaskType.FRAMEWORK_VALIDATION_V1,
                     "validate", List.of(), sourceWs.toString()));
             Assert.assertEquals(task.providerId(), AgentProviderId.CURSOR);
@@ -73,7 +73,7 @@ public class CursorAgentRuntimeTest {
         System.setProperty("CURSOR_API_KEY", "test-key-not-real");
         try {
             AgentHarnessCoordinator coordinator = AgentHarnessCoordinator.forTests(props);
-            var task = coordinator.createTask(project, new NewAgentTaskRequest(
+            var task = coordinator.createTask(project, NewAgentTaskRequest.simple(
                     "job_r1", "p1", delivery.agent.harness.AgentTaskType.FRAMEWORK_VALIDATION_V1,
                     "validate", List.of(), sourceWs.toString()));
 
@@ -122,7 +122,7 @@ public class CursorAgentRuntimeTest {
         System.setProperty("CURSOR_API_KEY", "test-key-not-real");
         try {
             AgentHarnessCoordinator coordinator = AgentHarnessCoordinator.forTests(props);
-            var task = coordinator.createTask(project, new NewAgentTaskRequest(
+            var task = coordinator.createTask(project, NewAgentTaskRequest.simple(
                     "job_i1", "p1", delivery.agent.harness.AgentTaskType.EXECUTION_FAILURE_INVESTIGATION_V1,
                     "x", List.of(), sourceWs.toString()));
             Path taskDir = new delivery.agent.harness.AgentRunStore()

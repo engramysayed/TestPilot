@@ -102,7 +102,7 @@ public class AgentStoreLockCrossProcessIT {
                     AgentTaskStatus.RUNNING, "", List.of(),
                     taskDir.resolve("workspace").toAbsolutePath().toString(),
                     Instant.now(), null, null, "agent-x", "run-y", 1,
-                    AgentPolicy.disabled(), "", AgentProviderId.CURSOR, 2);
+                    AgentPolicy.disabled(), "", AgentProviderId.CURSOR, "", "", 3);
 
             CursorSidecarClient client = new CursorSidecarClient(props);
             AgentHarnessException blocked = null;
@@ -124,7 +124,7 @@ public class AgentStoreLockCrossProcessIT {
                     AgentTaskStatus.RUNNING, "", List.of(),
                     taskDir.resolve("workspace").toAbsolutePath().toString(),
                     Instant.now(), null, null, "agent-x", "run-y", 1,
-                    AgentPolicy.disabled(), "", AgentProviderId.CURSOR, 2);
+                    AgentPolicy.disabled(), "", AgentProviderId.CURSOR, "", "", 3);
             AgentHarnessException reconcileBlocked = null;
             try {
                 client.execute(reconcileTask, taskDir, repoRoot, "reconcile", () -> false);

@@ -42,6 +42,10 @@ public final class AgentHarnessCoordinator {
         }
     }
 
+    public static AgentHarnessCoordinator forProduction(AgentHarnessProperties properties) {
+        return forTests(properties);
+    }
+
     public static AgentHarnessCoordinator forTests(AgentHarnessProperties properties) {
         Map<AgentProviderId, AgentRuntime> map = new EnumMap<>(AgentProviderId.class);
         map.put(AgentProviderId.FAKE, new FakeAgentRuntime());
@@ -64,7 +68,9 @@ public final class AgentHarnessCoordinator {
         if (workspace != null && !plan.policy().isWorkspaceAllowed(workspace)) {
             throw new AgentHarnessException("workspace outside allowed roots: " + workspace);
         }
-        String taskId = UUID.randomUUID().toString().replace("-", "");
+        String taskId = request.explicitTaskId() != null && !request.explicitTaskId().isBlank()
+                ? request.explicitTaskId().trim()
+                : UUID.randomUUID().toString().replace("-", "");
         AgentTask task = new AgentTask(
                 taskId,
                 request.parentJobId(),
@@ -83,7 +89,9 @@ public final class AgentHarnessCoordinator {
                 plan.policy(),
                 "",
                 plan.providerId(),
-                2);
+                request.inputFingerprint(),
+                request.stageKey(),
+                3);
         store.saveTask(projectRoot, task);
         store.appendEvent(projectRoot, task.parentJobId(), task.taskId(),
                 new AgentEvent(Instant.now(), "TASK_CREATED", "Agent task persisted", Map.of(
@@ -106,7 +114,15 @@ public final class AgentHarnessCoordinator {
             throw new AgentHarnessException("task already cancelled");
         }
         if (task.taskStatus() == AgentTaskStatus.INTERRUPTED) {
-            throw new AgentHarnessException("task interrupted — reconcile manually");
+            boolean hasIds = task.agentId() != null && !task.agentId().isBlank()
+                    && task.agentRunId() != null && !task.agentRunId().isBlank();
+            if (!hasIds) {
+                throw new AgentHarnessException("task interrupted — reconcile manually");
+            }
+        }
+        if (task.taskStatus() == AgentTaskStatus.FAILED
+                || task.taskStatus() == AgentTaskStatus.TIMED_OUT) {
+            throw new AgentHarnessException("task terminal: " + task.taskStatus());
         }
         enforceConcurrency(projectRoot, parentJobId, taskId);
 
@@ -139,16 +155,22 @@ public final class AgentHarnessCoordinator {
 
         AgentRunHandle handle;
         boolean recovering =
-                task.taskStatus() == AgentTaskStatus.RUNNING
+                (task.taskStatus() == AgentTaskStatus.RUNNING
+                        || task.taskStatus() == AgentTaskStatus.INTERRUPTED)
                         && task.agentId() != null
                         && !task.agentId().isBlank()
                         && task.agentRunId() != null
                         && !task.agentRunId().isBlank();
         if (recovering) {
+            String eventType = task.taskStatus() == AgentTaskStatus.INTERRUPTED ? "RECONCILE_BEGIN" : "RECOVER";
             store.appendEvent(projectRoot, parentJobId, taskId,
-                    new AgentEvent(Instant.now(), "RECOVER", "Reconcile sidecar for existing run", Map.of(
+                    new AgentEvent(Instant.now(), eventType, "Reconcile sidecar for existing run", Map.of(
                             "agentId", task.agentId(),
                             "runId", task.agentRunId())));
+            if (task.taskStatus() == AgentTaskStatus.INTERRUPTED) {
+                task = task.withStatus(AgentTaskStatus.RUNNING);
+                store.saveTask(projectRoot, task);
+            }
             handle = runtime.start(task);
         } else {
             task = task.withStatus(AgentTaskStatus.STARTING);
@@ -175,6 +197,13 @@ public final class AgentHarnessCoordinator {
             throw e;
         }
         AgentTaskStatus terminal = result.terminalStatus();
+        if (terminal == AgentTaskStatus.INTERRUPTED) {
+            AgentTask interrupted = task.withStatus(AgentTaskStatus.INTERRUPTED);
+            store.saveTask(projectRoot, interrupted);
+            store.appendEvent(projectRoot, parentJobId, taskId,
+                    new AgentEvent(Instant.now(), "TERMINAL", "INTERRUPTED", Map.of("summary", result.summary())));
+            throw new AgentHarnessException("INTERRUPTED");
+        }
         if (terminal == AgentTaskStatus.RUNNING) {
             terminal = AgentTaskStatus.COMPLETED;
         }

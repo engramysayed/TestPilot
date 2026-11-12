@@ -2,9 +2,20 @@
 
 # Keel changelog
 
+## 2026-11-12 — Agent harness Phase 3 (Convert pre-publish integration)
+
+- Convert: `PublicationGuard.beforeLockedPublish`, `AgentAwarePublicationGuard`, `AgentHarnessJobBridge`, zip-extract workspace, `stage-index.json`, SHA-256 `package.zip` identity, locked zip re-check (`ArtifactIntegrityException` on mismatch).
+- Coordinator: `INTERRUPTED` + agent/run ids reconcile; sidecar reconcile poll → `INTERRUPTED` (no default `cancelRun`).
+- Hardening tests (focused suite **25** pass): lease IT on `ConversionWorker`, double report-persist fail-open, ZIP symlink-as-regular-file, stage-index resilience.
+- Flags unchanged default **false** (`delivery.agent-harness.*`, `framework-validation.enabled=false`).
+
+## 2026-11-12 — Agent harness Phase 3 plan revision (architecture only)
+
+- Revised `docs/handoff/2026-11-12-agent-harness-phase3-plan.md`: deterministic task identity, `INTERRUPTED` reconcile transitions, lease remaining-budget mapping, advisory validation, **`PublicationGuard` pre-publish hook** (not post-`EmitPhase`). **No code wiring.**
+
 ## 2026-11-12 — Agent harness Phase 3 plan (architecture only)
 
-- `docs/handoff/2026-11-12-agent-harness-phase3-plan.md` — worker integration, lease renewal, recovery policy (no cancel-on-poll default), rollout flags. **No code wiring.**
+- Initial `docs/handoff/2026-11-12-agent-harness-phase3-plan.md` — worker integration sketch. Superseded by revision above for hook point and identity model.
 
 ## 2026-11-12 — Agent harness Phase 2 finalize (pushed to keel)
 

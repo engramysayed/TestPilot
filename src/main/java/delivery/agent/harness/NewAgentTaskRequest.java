@@ -9,7 +9,10 @@ public record NewAgentTaskRequest(
         AgentTaskType taskType,
         String objective,
         List<AgentContextReference> contextReferences,
-        String workspacePath
+        String workspacePath,
+        String explicitTaskId,
+        String inputFingerprint,
+        String stageKey
 ) {
     public NewAgentTaskRequest {
         if (parentJobId == null || parentJobId.isBlank()) {
@@ -24,5 +27,19 @@ public record NewAgentTaskRequest(
         objective = objective == null ? "" : objective;
         contextReferences = contextReferences == null ? List.of() : List.copyOf(contextReferences);
         workspacePath = workspacePath == null ? "" : workspacePath;
+        explicitTaskId = explicitTaskId == null ? "" : explicitTaskId;
+        inputFingerprint = inputFingerprint == null ? "" : inputFingerprint;
+        stageKey = stageKey == null ? "" : stageKey;
+    }
+
+    public static NewAgentTaskRequest simple(
+            String parentJobId,
+            String projectId,
+            AgentTaskType taskType,
+            String objective,
+            List<AgentContextReference> contextReferences,
+            String workspacePath) {
+        return new NewAgentTaskRequest(
+                parentJobId, projectId, taskType, objective, contextReferences, workspacePath, "", "", "");
     }
 }

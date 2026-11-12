@@ -62,8 +62,16 @@ public class ProjectStore {
     public StoredProject saveVersion(String projectId, Path frameworkDir, Path zipFile,
                                     Path stagedState, delivery.job.PublicationGuard guard) throws Exception {
         Path root = projectRoot(projectId);
+        guard.beforeLockedPublish(frameworkDir, zipFile);
+        java.util.Optional<String> expectedZip = guard.expectedZipFingerprint();
         Path lockFile = root.resolve(".publish.lock");
         return delivery.identity.PublicationLock.call(lockFile, () -> guard.publish(() -> {
+            if (expectedZip.isPresent()) {
+                String actual = sha256(zipFile);
+                if (!expectedZip.get().equals(actual)) {
+                    throw new delivery.job.ArtifactIntegrityException("zip fingerprint mismatch");
+                }
+            }
             Path framework = root.resolve("framework");
             Files.createDirectories(root.resolve("versions"));
             if (Files.exists(framework)) {

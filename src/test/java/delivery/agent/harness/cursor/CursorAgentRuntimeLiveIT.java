@@ -52,7 +52,7 @@ public class CursorAgentRuntimeLiveIT {
         System.setProperty("delivery.provider.allowlist", "cursor");
         try {
         AgentHarnessCoordinator coordinator = AgentHarnessCoordinator.forTests(props);
-        var task = coordinator.createTask(project, new NewAgentTaskRequest(
+        var task = coordinator.createTask(project, NewAgentTaskRequest.simple(
                 "job_live_java",
                 "p1",
                 delivery.agent.harness.AgentTaskType.FRAMEWORK_VALIDATION_V1,

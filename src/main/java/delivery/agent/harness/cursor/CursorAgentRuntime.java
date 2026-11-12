@@ -101,6 +101,6 @@ public final class CursorAgentRuntime implements AgentRuntime {
                 "cancel", "cancel", "cancel", delivery.agent.harness.AgentTaskType.BUG_INVESTIGATION_V1,
                 delivery.agent.harness.AgentTaskStatus.RUNNING, "", java.util.List.of(), "",
                 Instant.now(), null, null, agentId, runId, 1,
-                delivery.agent.harness.AgentPolicy.disabled(), "", AgentProviderId.CURSOR, 2);
+                delivery.agent.harness.AgentPolicy.disabled(), "", AgentProviderId.CURSOR, "", "", 3);
     }
 }

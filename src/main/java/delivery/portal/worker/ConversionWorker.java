@@ -8,11 +8,20 @@ import delivery.job.RecordedCaptureFile;
 import delivery.job.DryRunConversionService;
 import delivery.job.JobCancelledException;
 import delivery.job.JobProgressTracker;
+import delivery.agent.harness.AgentHarnessCoordinator;
+import delivery.agent.harness.AgentRunStore;
+import delivery.agent.harness.convert.AgentHarnessJobBridge;
+import delivery.agent.harness.convert.AgentStageIndexStore;
+import delivery.identity.TenantId;
+import delivery.portal.AgentHarnessProperties;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.jobs.DurableJobClaim;
 import delivery.portal.model.JobRecord;
 import delivery.portal.service.JobUploadCleanup;
 import delivery.portal.service.PortalStore;
+import delivery.portal.worker.AgentAwarePublicationGuard;
+import delivery.portal.worker.JobAttemptPublicationGuard;
+import delivery.store.ProjectStore;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -27,11 +36,17 @@ public class ConversionWorker extends AbstractJobWorker {
 
     private final DeliveryPortalProperties props;
     private final Environment env;
+    private final AgentHarnessProperties harnessProps;
 
-    public ConversionWorker(DeliveryPortalProperties props, PortalStore portalStore, Environment env) {
+    public ConversionWorker(
+            DeliveryPortalProperties props,
+            PortalStore portalStore,
+            Environment env,
+            AgentHarnessProperties harnessProps) {
         super(portalStore);
         this.props = props;
         this.env = env;
+        this.harnessProps = harnessProps == null ? new AgentHarnessProperties() : harnessProps;
     }
 
     @Override
@@ -104,11 +119,9 @@ public class ConversionWorker extends AbstractJobWorker {
             ConversionJobResult result;
             BooleanSupplier cancelCheck = () -> !portalStore.ownsAttempt(
                     portalStore.getJob(jobId).orElse(null), lease);
-            delivery.job.PublicationGuard guard = new delivery.job.PublicationGuard() {
-                public <T> T publish(java.util.concurrent.Callable<T> action) throws Exception {
-                    return portalStore.publishAttempt(jobId, lease, action);
-                }
-            };
+            java.time.Duration harnessBudget = harnessBudget(job, lease);
+            delivery.job.PublicationGuard guard = buildPublicationGuard(
+                    job, lease, cancelCheck, harnessBudget, request);
             if (fromRecording) {
                 var captures = RecordedCaptureFile.read(recordedFile);
                 ConversionJobRunner runner = new ConversionJobRunner();
@@ -188,6 +201,49 @@ public class ConversionWorker extends AbstractJobWorker {
             }
             JobUploadCleanup.deleteIfTempUpload(job.getExcelPath());
         }
+    }
+
+    private delivery.job.PublicationGuard buildPublicationGuard(
+            JobRecord job,
+            DurableJobClaim.Lease lease,
+            BooleanSupplier cancelCheck,
+            java.time.Duration harnessBudget,
+            ConversionJobRequest request) {
+        if (harnessProps.isEnabled() && harnessProps.isFrameworkValidationEnabled()) {
+            TenantId tenant = request.tenantId();
+            ProjectStore projectStore = new ProjectStore(
+                    Path.of(props.getStoreRoot()), request.baseUrl(), tenant);
+            Path projectRoot = projectStore.projectRoot(job.getProjectId());
+            AgentHarnessCoordinator coordinator = AgentHarnessCoordinator.forProduction(harnessProps);
+            AgentHarnessJobBridge bridge = new AgentHarnessJobBridge(
+                    harnessProps,
+                    coordinator,
+                    new AgentRunStore(),
+                    new AgentStageIndexStore());
+            return new AgentAwarePublicationGuard(
+                    portalStore,
+                    job.getJobId(),
+                    lease,
+                    harnessProps,
+                    bridge,
+                    projectRoot,
+                    job.getProjectId(),
+                    cancelCheck,
+                    harnessBudget);
+        }
+        return new JobAttemptPublicationGuard(portalStore, job.getJobId(), lease);
+    }
+
+    private static java.time.Duration harnessBudget(JobRecord job, DurableJobClaim.Lease lease) {
+        java.time.Instant until = job == null ? null : job.getLeaseUntil();
+        if (until == null) {
+            return java.time.Duration.ofMinutes(15);
+        }
+        java.time.Duration remaining = java.time.Duration.between(java.time.Instant.now(), until);
+        if (remaining.isNegative() || remaining.isZero()) {
+            return java.time.Duration.ofSeconds(30);
+        }
+        return remaining.minusSeconds(30);
     }
 
     private ConversionJobResult runWithProgressMirror(

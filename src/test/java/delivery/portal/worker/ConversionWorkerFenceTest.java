@@ -1,5 +1,6 @@
 package delivery.portal.worker;
 
+import delivery.portal.AgentHarnessProperties;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.JobRecord;
 import delivery.portal.service.PortalStore;
@@ -39,7 +40,8 @@ public class ConversionWorkerFenceTest {
         when(store.reconcileExpiredLeases()).thenAnswer(call->{
             job.setStatus(JobRecord.Status.FAILED);job.setError(DurableJobClaim.INTERRUPTED_UNCERTAIN);return 1;
         });
-        new ConversionWorker(props,store,new MockEnvironment()).submit(job.getJobId());
+        new ConversionWorker(props, store, new MockEnvironment(), new AgentHarnessProperties())
+                .submit(job.getJobId());
         Assert.assertEquals(job.getStatus(),requested?JobRecord.Status.CANCELLED:JobRecord.Status.FAILED);
         if(!requested)Assert.assertEquals(job.getError(),DurableJobClaim.INTERRUPTED_UNCERTAIN);
     }
