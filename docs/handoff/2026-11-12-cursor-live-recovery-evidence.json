@@ -1,0 +1,61 @@
+{
+  "verifiedAt": "2026-11-12T20:00+02:00",
+  "baselineCommit": "a1c9c4d",
+  "policyAFixCommit": "3f7a89e",
+  "productionHarnessFlags": "unchanged (false)",
+  "tier0": {
+    "command": "cd keel-portal && mvn test -Dtest=AgentStoreLockCrossProcessIT,AgentStoreLockTest",
+    "testsRun": 3,
+    "result": "pass"
+  },
+  "tier2_CursorActiveRunRecoveryLiveIT_preFix": {
+    "verifiedAt": "2026-11-12T19:34+02:00",
+    "command": "call api-keys.local.bat && cd keel-portal && mvn test -Dkeel.agent.cursor.live=true -Dtest=CursorActiveRunRecoveryLiveIT",
+    "durationSec": 134.3,
+    "result": "fail",
+    "failure": "recovery child JVM exit 1",
+    "childLog": "AgentHarnessException: sidecar did not emit run.started at CursorAgentRuntime.start (reconcile path)",
+    "interpretation": "Detached Cursor run still running after reconcileMaxPollMs (~120s). Policy A sidecar returns result INTERRUPTED without run.started. Pre-fix CursorAgentRuntime.start() required run.started before getResult."
+  },
+  "tier2_CursorActiveRunRecoveryLiveIT_postFix": {
+    "verifiedAt": "2026-11-12T19:59+02:00",
+    "command": "call api-keys.local.bat && cd keel-portal && mvn test -Dkeel.agent.cursor.live=true -Dtest=CursorActiveRunRecoveryLiveIT",
+    "durationSec": 139.8,
+    "mavenExit": 0,
+    "result": "pass",
+    "terminalStatus": "INTERRUPTED",
+    "childJvmExit": 0,
+    "agentId": "agent-7dfd24d1-1145-41db-86c8-7671949263e3",
+    "runId": "run-f0a92414-72ad-45bf-a93d-6587f925badd",
+    "idsUnchangedAfterRecovery": true,
+    "agentsNdjsonBeforeKill": 1,
+    "agentsNdjsonAfterRecovery": 1,
+    "cancelLifecycleSeen": false,
+    "cancelRequestedAt": null,
+    "resultJsonWritten": false,
+    "coordinatorMessage": "INTERRUPTED",
+    "terminalSummary": "reconcile poll budget exhausted while run still active",
+    "tempEvidenceRoot": "%TEMP%\\live-recover-project-15736437010215030322",
+    "interpretation": "Expected Policy A outcome when detached SDK run outlives reconcile poll budget: coordinator persists INTERRUPTED, throws AgentHarnessException(INTERRUPTED) by design; no cancel op, no duplicate agent row."
+  },
+  "tier3_CursorReconcilePollBudgetLiveIT": {
+    "command": "call api-keys.local.bat && cd keel-portal && mvn test -Dkeel.agent.cursor.live=true -Dtest=CursorReconcilePollBudgetLiveIT",
+    "durationSec": 24.6,
+    "result": "pass",
+    "evidence": {
+      "reconcileMaxPollMs": 15000,
+      "reconcilePollEvents": 20,
+      "resultStatus": "INTERRUPTED",
+      "cancelLifecycleSeen": false,
+      "cancelOpInvoked": false,
+      "agentsNdjsonAfterExecute": 1,
+      "agentsNdjsonAfterReconcile": 1,
+      "sampleNdjsonResult": {
+        "type": "result",
+        "status": "INTERRUPTED",
+        "summary": "reconcile poll budget exhausted while run still active",
+        "payload": { "status": "INTERRUPTED", "runStatus": "running", "recovered": false }
+      }
+    }
+  }
+}

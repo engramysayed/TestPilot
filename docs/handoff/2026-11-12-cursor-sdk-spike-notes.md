@@ -64,7 +64,17 @@ cd keel-portal
 mvn test -Dkeel.agent.cursor.live=true -Dtest=CursorActiveRunRecoveryLiveIT
 ```
 
-Kills real `agent.mjs` after `run.started`, persists `RUNNING` + ids, runs **`CursorActiveRunRecoveryRunner` in a fresh JVM** → coordinator `execute` with `op=reconcile`.
+Kills real `agent.mjs` after `run.started`, persists `RUNNING` + ids, runs **`CursorActiveRunRecoveryRunner` in a fresh JVM** → coordinator `execute` with `op=reconcile`. **Pre-fix 2026-11-12:** failed (Java required `run.started`). **Post-fix:** **PASS** (~140s) — terminal `INTERRUPTED` is valid when poll budget exhausts while SDK run still `running` (see evidence JSON).
+
+### Reconcile poll budget → INTERRUPTED (opt-in live, Scenario B)
+
+```bat
+call api-keys.local.bat
+cd keel-portal
+mvn test -Dkeel.agent.cursor.live=true -Dtest=CursorReconcilePollBudgetLiveIT
+```
+
+Direct `op=reconcile` only (no cancel sidecar); writes `reconcile-poll-evidence.json` under temp project dir during run.
 
 ---
 
@@ -81,7 +91,8 @@ Kills real `agent.mjs` after `run.started`, persists `RUNNING` + ids, runs **`Cu
 | 7 | Two-process shared store | **Partial** | Spike `7` — concurrent `Agent.create` without lock: 2 NDJSON lines, valid JSON; **no SDK-level lock** |
 | 8 | Java store lock (in-process) | **PASS** | `AgentStoreLockTest.secondAcquireTimesOut` |
 | 9 | Cross-process store lock | **PASS** | `AgentStoreLockCrossProcessIT` (2026-11-12) |
-| 10 | Active run recovery (live) | **PASS** | `CursorActiveRunRecoveryLiveIT` ~132s (2026-11-12) |
+| 10 | Active run recovery (live, coordinator JVM) | **PASS** (post-fix) | `CursorActiveRunRecoveryLiveIT` ~140s (2026-11-12 post-fix) — historical pre-fix fail preserved in evidence JSON |
+| 11 | Reconcile poll → INTERRUPTED (live, direct sidecar) | **PASS** | `CursorReconcilePollBudgetLiveIT` ~25s (2026-11-12) |
 
 ---
 
@@ -112,10 +123,18 @@ After execute sidecar death while the SDK run is still **detached/running**:
 1. **Do not** call `Agent.create` again (coordinator uses `RUNNING` + persisted `agentId`/`runId`).
 2. **Do not** rely on `Agent.listRuns` (still fails after resume in spike 2b).
 3. **Do not** call `Run.wait()` on a detached handle from `Agent.getRun` — SDK error: `Cannot wait on a detached running run`.
-4. **Working path:** sidecar `op=reconcile` with `runId` → `Agent.getRun` **poll** until terminal (bounded by `reconcileMaxPollMs`) → if still running, `Agent.cancelRun` → poll again → emit terminal `result`. Coordinator fix: `RUNNING` retry uses reconcile sidecar (`runtime.start`), not `resume()` only.
+4. **Working path (Policy A, verified live 2026-11-12):** sidecar `op=reconcile` with `runId` → `Agent.getRun` poll until terminal or budget → if still `running`, emit **`result` `INTERRUPTED`** (no default `Agent.cancelRun`). `cancelRun` remains on explicit `op=cancel` only.
 5. Java holds `AgentStoreLock` for entire sidecar session (`CursorSidecarClient`).
 
-Live IT outcome: same `agentId`/`runId`, no extra `agents.ndjson` row, `result.json` persisted; terminal **COMPLETED** or **CANCELLED** (after poll timeout + cancel fallback) in ~132s.
+**Live re-verification (baseline commit `a1c9c4d`, full evidence in `2026-11-12-cursor-live-recovery-evidence.json`):**
+
+- **`CursorReconcilePollBudgetLiveIT`** (opt-in): **PASS** ~25s — 15s budget, 20 poll events, terminal `INTERRUPTED`, no cancel lifecycle in NDJSON, one `agents.ndjson` line before/after reconcile. Same execute `agentId`/`runId` passed into reconcile request.
+- **`CursorActiveRunRecoveryLiveIT` (pre-fix, historical):** **FAIL** ~134s — execute + kill + fresh JVM `coordinator.execute`: child log `sidecar did not emit run.started`. Cause: reconcile emitted terminal `INTERRUPTED` without `run.started` while pre-fix `CursorAgentRuntime.start()` required `run.started` even when the sidecar session was already terminal. **Superseded** by post-fix run below after `CursorAgentRuntime` Policy A reconcile contract fix.
+- **`CursorActiveRunRecoveryLiveIT` (post-fix):** **PASS** ~140s — child JVM exit `0`, terminal `INTERRUPTED`, persisted `agentId`/`runId` unchanged, `agents.ndjson` 1→1, no `cancel.confirmed`, no `result.json`. Coordinator `events.jsonl` records `RECOVER` then `TERMINAL` / `INTERRUPTED`.
+
+### Why `INTERRUPTED` is a valid Policy A outcome
+
+When the execute sidecar dies but the cloud SDK run is still **`running`**, reconcile polls `Agent.getRun` until `reconcileMaxPollMs`. If the run never reaches a terminal SDK state within that budget, `agent.mjs` emits a sidecar **`result` with `status: INTERRUPTED`** (poll exhausted, `recovered: false`) **without** calling `Agent.cancelRun` and **without** re-emitting `run.started`. That is intentional: the harness must not invent a new agent/run or silently cancel. Java accepts the terminal reconcile response using **persisted** ids, persists task status `INTERRUPTED`, and surfaces `AgentHarnessException("INTERRUPTED")` to the caller — not a production defect when ids are stable and no duplicate store row appears.
 
 ## Limitations (not claimed as verified)
 

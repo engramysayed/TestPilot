@@ -53,14 +53,24 @@ public final class CursorAgentRuntime implements AgentRuntime {
             while (!session.isTerminal() && session.agentId() == null) {
                 Thread.sleep(20);
             }
-            if (session.agentId() == null || session.runId() == null) {
-                if (session.isTerminal()) {
-                    session.resultOrThrow();
+            String sidecarAgentId = session.agentId();
+            String sidecarRunId = session.runId();
+            boolean reconcile = isReconcileOp(task);
+            if (sidecarAgentId != null && sidecarRunId != null) {
+                if (reconcile) {
+                    verifyReconcileIds(task, sidecarAgentId, sidecarRunId);
                 }
-                throw new AgentHarnessException("sidecar did not emit run.started");
+                handle = new AgentRunHandle(sidecarAgentId, sidecarRunId, Instant.now());
+                return handle;
             }
-            handle = new AgentRunHandle(session.agentId(), session.runId(), Instant.now());
-            return handle;
+            if (reconcile && session.isTerminal()) {
+                handle = new AgentRunHandle(task.agentId(), task.agentRunId(), Instant.now());
+                return handle;
+            }
+            if (session.isTerminal()) {
+                session.resultOrThrow();
+            }
+            throw new AgentHarnessException("sidecar did not emit run.started");
         } catch (AgentHarnessException e) {
             throw e;
         } catch (Exception e) {
@@ -94,6 +104,25 @@ public final class CursorAgentRuntime implements AgentRuntime {
             return session.resultOrThrow();
         }
         throw new AgentHarnessException("no active sidecar session");
+    }
+
+    private static boolean isReconcileOp(AgentTask task) {
+        return task.agentId() != null && !task.agentId().isBlank()
+                && task.agentRunId() != null && !task.agentRunId().isBlank();
+    }
+
+    private static void verifyReconcileIds(AgentTask task, String agentId, String runId) {
+        if (!task.agentId().equals(agentId) || !task.agentRunId().equals(runId)) {
+            throw new AgentHarnessException(
+                    "reconcile id mismatch: expected agentId="
+                            + task.agentId()
+                            + " runId="
+                            + task.agentRunId()
+                            + " got agentId="
+                            + agentId
+                            + " runId="
+                            + runId);
+        }
     }
 
     private static AgentTask stubTask(String agentId, String runId) {

@@ -42,6 +42,27 @@ if (req.op === "cancel") {
 atomicMarker(taskDir, { sdkTouched: false, phase: "sidecar_started" });
 
 if (req.op === "reconcile" && req.runId) {
+  if (req.objective === "__SIMULATE_RECONCILE_POLL_INTERRUPT__") {
+    emit({
+      type: "result",
+      status: "INTERRUPTED",
+      summary: "fake poll budget exhausted",
+      payload: { status: "INTERRUPTED", runStatus: "running", recovered: false },
+      modifiedFiles: [],
+    });
+    process.exit(0);
+  }
+  if (req.objective === "__SIMULATE_RECONCILE_ID_MISMATCH__") {
+    emit({ type: "run.started", agentId: "wrong-agent-id", runId: req.runId });
+    emit({
+      type: "result",
+      status: "COMPLETED",
+      summary: "fake reconcile id mismatch",
+      payload: {},
+      modifiedFiles: [],
+    });
+    process.exit(0);
+  }
   emit({
     type: "run.started",
     agentId: req.agentId || "fake-agent-resume",
@@ -52,6 +73,17 @@ if (req.op === "reconcile" && req.runId) {
     status: "COMPLETED",
     summary: "fake reconcile getRun",
     payload: { provider: "FAKE_SIDECAR", recovered: true },
+    modifiedFiles: [],
+  });
+  process.exit(0);
+}
+
+if (req.op === "execute" && req.objective === "__EXECUTE_NO_RUN_STARTED__") {
+  emit({
+    type: "result",
+    status: "COMPLETED",
+    summary: "malformed execute",
+    payload: {},
     modifiedFiles: [],
   });
   process.exit(0);

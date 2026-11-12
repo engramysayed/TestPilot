@@ -162,21 +162,35 @@ public class CursorActiveRunRecoveryLiveIT {
 
             JsonNode child = new ObjectMapper().readTree(Files.readString(evidence));
             String terminal = child.path("terminalStatus").asText();
+            String childLogText = childLogMessage(childLog);
+            Assert.assertFalse(
+                    childLogText.contains("cancel.confirmed"),
+                    "recovery must not invoke cancel sidecar");
             Assert.assertTrue(
                     AgentTaskStatus.COMPLETED.name().equals(terminal)
-                            || AgentTaskStatus.CANCELLED.name().equals(terminal),
+                            || AgentTaskStatus.CANCELLED.name().equals(terminal)
+                            || AgentTaskStatus.INTERRUPTED.name().equals(terminal),
                     "terminal=" + terminal);
 
             int agentsAfter = countNdjsonAgents(taskDir.resolve("cursor-sdk-state/agents.ndjson"));
             Assert.assertEquals(agentsAfter, Math.max(1, agentsBefore), "unexpected extra agent row in store");
 
-            Assert.assertTrue(Files.isRegularFile(taskDir.resolve("result.json")));
             AgentTask done = store.loadTask(project, created.parentJobId(), created.taskId()).orElseThrow();
-            Assert.assertTrue(
-                    done.taskStatus() == AgentTaskStatus.COMPLETED
-                            || done.taskStatus() == AgentTaskStatus.CANCELLED);
             Assert.assertEquals(done.agentId(), agentId);
             Assert.assertEquals(done.agentRunId(), runId);
+
+            if (AgentTaskStatus.INTERRUPTED.name().equals(terminal)) {
+                Assert.assertEquals(done.taskStatus(), AgentTaskStatus.INTERRUPTED);
+                Assert.assertEquals(child.path("coordinatorMessage").asText(), "INTERRUPTED");
+                Assert.assertFalse(
+                        Files.isRegularFile(taskDir.resolve("result.json")),
+                        "INTERRUPTED reconcile must not write result.json");
+            } else {
+                Assert.assertTrue(Files.isRegularFile(taskDir.resolve("result.json")));
+                Assert.assertTrue(
+                        done.taskStatus() == AgentTaskStatus.COMPLETED
+                                || done.taskStatus() == AgentTaskStatus.CANCELLED);
+            }
         } finally {
             if (prevAllow == null) {
                 System.clearProperty("delivery.provider.allowlist");

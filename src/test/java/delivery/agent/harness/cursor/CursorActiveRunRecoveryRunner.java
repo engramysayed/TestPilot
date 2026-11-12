@@ -1,7 +1,9 @@
 package delivery.agent.harness.cursor;
 
 import delivery.agent.harness.AgentHarnessCoordinator;
+import delivery.agent.harness.AgentHarnessException;
 import delivery.agent.harness.AgentRunResult;
+import delivery.agent.harness.AgentRunStore;
 import delivery.agent.harness.AgentTaskStatus;
 import delivery.portal.AgentHarnessProperties;
 import org.json.JSONObject;
@@ -44,6 +46,23 @@ public final class CursorActiveRunRecoveryRunner {
                     && result.terminalStatus() != AgentTaskStatus.CANCELLED) {
                 System.exit(2);
             }
+        } catch (AgentHarnessException e) {
+            JSONObject body = new JSONObject();
+            if ("INTERRUPTED".equals(e.getMessage())) {
+                var task = new AgentRunStore()
+                        .loadTask(project, parentJobId, taskId)
+                        .orElseThrow();
+                body.put("terminalStatus", AgentTaskStatus.INTERRUPTED.name());
+                body.put("coordinatorMessage", e.getMessage());
+                body.put("agentId", task.agentId());
+                body.put("runId", task.agentRunId());
+                body.put("taskStatus", task.taskStatus().name());
+                Files.writeString(out, body.toString(2), StandardCharsets.UTF_8);
+                System.exit(0);
+            }
+            body.put("error", e.getClass().getSimpleName() + ": " + e.getMessage());
+            Files.writeString(out, body.toString(2), StandardCharsets.UTF_8);
+            throw e;
         } catch (Exception e) {
             JSONObject body = new JSONObject();
             body.put("error", e.getClass().getSimpleName() + ": " + e.getMessage());

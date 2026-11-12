@@ -2,6 +2,12 @@
 
 # Keel changelog
 
+## 2026-11-12 — Cursor reconcile Policy A (`INTERRUPTED` without `run.started`)
+
+- `CursorAgentRuntime.start()`: reconcile with persisted `agentId`/`runId` accepts terminal sidecar response without `run.started` (Policy A poll-budget `INTERRUPTED`); verify ids when `run.started` is present.
+- Tests: `CursorAgentRuntimeTest` (+fake-sidecar hooks), live harness `CursorActiveRunRecoveryLiveIT` / `CursorReconcilePollBudgetLiveIT` (opt-in; evidence in `docs/handoff/2026-11-12-cursor-live-recovery-evidence.json`).
+- Production harness flags unchanged default **false**.
+
 ## 2026-11-12 — Agent harness Phase 3 (Convert pre-publish integration)
 
 - Convert: `PublicationGuard.beforeLockedPublish`, `AgentAwarePublicationGuard`, `AgentHarnessJobBridge`, zip-extract workspace, `stage-index.json`, SHA-256 `package.zip` identity, locked zip re-check (`ArtifactIntegrityException` on mismatch).

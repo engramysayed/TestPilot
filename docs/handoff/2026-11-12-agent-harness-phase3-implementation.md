@@ -49,8 +49,20 @@ mvn test -Dtest=PackageZipExtractorTest,ProjectStorePublicationGuardTest,AgentHa
 - `PackageZipExtractorTest.symlinkEntry_extractedAsRegularFile_notSymlink` + `SymlinkZipFixtures` — ZIP external-attribute symlink entry written as regular file under dest root (no OS symlink, no escape).
 - `AgentStageIndexResilienceTest` — A active / B deferred / C evicts B; promotion on A terminal; disk restart; concurrent registry updates; fingerprint dedup.
 
+## Live Cursor verification (2026-11-12, opt-in)
+
+Machine evidence: `docs/handoff/2026-11-12-cursor-live-recovery-evidence.json`
+
+| Tier | Test | Observed |
+|------|------|----------|
+| 0 | `AgentStoreLockCrossProcessIT`, `AgentStoreLockTest` | **Pass** (3 tests) |
+| 2 | `CursorActiveRunRecoveryLiveIT` | **Pass** (~140s, post-fix): execute + kill + fresh JVM `coordinator.execute` → terminal `INTERRUPTED`, child exit 0, ids stable, `agents.ndjson` 1→1, no auto-cancel. Pre-fix fail (~134s, `run.started` required) recorded in evidence JSON. |
+| 3 | `CursorReconcilePollBudgetLiveIT` (opt-in) | **Pass** (~25s): direct `op=reconcile`, 15s budget → `INTERRUPTED`, 20 `reconcile.poll` events, no cancel lifecycle, `agents.ndjson` count unchanged (1). |
+
+**Policy A Java fix (committed with this handoff):** `CursorAgentRuntime.start()` — on reconcile with persisted ids, accept terminal sidecar without `run.started` (use task ids); when sidecar emits `run.started`, verify ids match. Unit: `CursorAgentRuntimeTest`; live Tier 2 re-verified.
+
 ## Known gaps
 
-- Live Cursor poll-budget `INTERRUPTED` — verify with opt-in `CursorActiveRunRecoveryLiveIT` after policy A sidecar change.
+- Poll-budget `INTERRUPTED` does not write `result.json` or complete the agent task as success — callers must treat `INTERRUPTED` as a first-class terminal (retries / human follow-up per product policy).
 - Job **message** warning when both report paths fail — not wired in bridge today; persistence fail-open is tested at `ValidationReportWriter` only.
 - D10 staged `agent-validation.json` — not implemented (product optional).

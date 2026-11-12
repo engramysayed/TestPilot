@@ -19,7 +19,7 @@ This document points engineers at deeper material already in the tree.
 
 | Topic | Where to look |
 |-------|----------------|
-| **Unified agent harness (off by default)** | Phase 3 Convert integration implemented (flags off). Plan: `docs/handoff/2026-11-12-agent-harness-phase3-plan.md`. Implementation: `docs/handoff/2026-11-12-agent-harness-phase3-implementation.md`. |
+| **Unified agent harness (off by default)** | Phase 3 Convert integration on `keel/main` (`a1c9c4d`+). Policy A reconcile fix: `CursorAgentRuntime` accepts terminal `INTERRUPTED` without `run.started` when ids persisted; live evidence `docs/handoff/2026-11-12-cursor-live-recovery-evidence.json`. Plan: `docs/handoff/2026-11-12-agent-harness-phase3-plan.md`. Implementation: `docs/handoff/2026-11-12-agent-harness-phase3-implementation.md`. |
 | **Shared locator ranking** (hook → test id → id → name → role+name → label → text → CSS → ordinal; per-project mode) | `delivery.locator.LocatorStabilityPolicy`, `CandidateScorer`, `LocatorRanker`, `SemanticLocatorLadder`, `MultiLocatorBag`, `ElementGrounder`; Projects → Settings → Locator ranking; tests `LocatorStabilityPolicyTest`, `CodegenW2EmitTest` |
 | **Arabic / Unicode step matching** | `delivery.authoring.IntentText`, `StepIntentBinder.classify`, `IntentTextTest` |
 | **Refund requests** (auto for platform failures, user request, Admin → Refunds) | `RefundRequestService`, `AdminRefundsController`, `JobRefundController`, `templates/admin-refunds.html`, `RefundRequestTest` |
