@@ -2,6 +2,14 @@
 
 # Keel changelog
 
+## 2026-11-12 — Agent harness Phase 3 plan (architecture only)
+
+- `docs/handoff/2026-11-12-agent-harness-phase3-plan.md` — worker integration, lease renewal, recovery policy (no cancel-on-poll default), rollout flags. **No code wiring.**
+
+## 2026-11-12 — Agent harness Phase 2 finalize (pushed to keel)
+
+- Phase 2 stack through `89479e6` pushed to `keel/main` (implementation, live validation, cross-process lock, active-run recovery).
+
 ## 2026-11-12 — Agent harness Phase 2 reliability (cross-process lock + recovery)
 
 - `AgentStoreLockCrossProcessIT` + helper JVM mains prove OS file lock across processes; sidecar execute/cancel/reconcile acquire lock via `CursorSidecarClient`.

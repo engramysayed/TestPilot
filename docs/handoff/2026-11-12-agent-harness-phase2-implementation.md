@@ -27,7 +27,11 @@ Recorded in **`docs/handoff/2026-11-12-cursor-sdk-spike-notes.md`**. All opt-in 
 
 ## Phase 3 readiness
 
-**No** — workflow integration (EmitPhase) not wired; harness still default off.
+**Plan only** — see [`2026-11-12-agent-harness-phase3-plan.md`](./2026-11-12-agent-harness-phase3-plan.md). No worker wiring yet; harness default off.
+
+## Push (2026-11-12)
+
+Stack on `keel/main`: `09bc616` → `c97c7ad` → `735102f` → `89479e6`.
 
 ## Known limitations
 
