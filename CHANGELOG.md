@@ -2,6 +2,12 @@
 
 # Keel changelog
 
+## 2026-11-12 — Agent harness Phase 2 live Cursor SDK validation
+
+- Opt-in live spike (`tools/cursor-agent/live-spike.mjs`) and `CursorAgentRuntimeLiveIT` (`-Dkeel.agent.cursor.live=true`) run against real `@cursor/sdk` 1.0.27; results in `docs/handoff/2026-11-12-cursor-sdk-spike-notes.md` and `cursor-sdk-live-spike-output.json`.
+- Fixes from spike: first-run reconcile (no `INTERRUPTED` on missing marker + `PENDING`), tolerate non-JSON sidecar stdout lines, sidecar refuses create when `sdkTouched: true`.
+- `AgentStoreLockTest` verifies exclusive `cursor-sdk-state.store.lock`. Harness flags still default **off**; no worker / EmitPhase integration.
+
 ## 2026-11-12 — Agent harness Phase 2 (Cursor runtime spike)
 
 - `tools/cursor-agent/agent.mjs` — local `@cursor/sdk` sidecar (NDJSON protocol, isolated `taskDir/workspace`, `sdk-touch.marker` before create, no `shell`).

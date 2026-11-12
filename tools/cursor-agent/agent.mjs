@@ -97,7 +97,21 @@ async function runExecute(req) {
     emitError("MISSING_API_KEY", "CURSOR_API_KEY not set");
   }
 
-  atomicMarker(taskDir, { sdkTouched: false, phase: "sidecar_started" });
+  const markerPath = join(taskDir, "sdk-touch.marker");
+  if (!req.agentId && existsSync(markerPath)) {
+    try {
+      const existing = JSON.parse(readFileSync(markerPath, "utf8"));
+      if (existing.sdkTouched === true) {
+        emitError("RECONCILE_FAILED", "sdk-touch.marker sdkTouched=true — create refused");
+      }
+    } catch {
+      emitError("RECONCILE_FAILED", "sdk-touch.marker unreadable");
+    }
+  }
+
+  if (!existsSync(markerPath)) {
+    atomicMarker(taskDir, { sdkTouched: false, phase: "sidecar_started" });
+  }
   emit({ type: "ack", protocolVersion: 1 });
 
   const store = new JsonlLocalAgentStore(storePath);

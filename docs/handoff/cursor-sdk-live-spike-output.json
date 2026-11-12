@@ -1,0 +1,102 @@
+{
+  "startedAt": "2026-11-12T15:12:10.953Z",
+  "sdkVersion": "1.0.27",
+  "results": [
+    {
+      "id": "precheck.api_key",
+      "pass": true,
+      "detail": "CURSOR_API_KEY present",
+      "at": "2026-11-12T15:12:10.954Z"
+    },
+    {
+      "id": "1.execute_real_sidecar",
+      "pass": true,
+      "detail": "{\"code\":0,\"started\":true,\"resultStatus\":\"COMPLETED\",\"marker\":{\"sdkTouched\":true,\"phase\":\"create_returned\",\"agentId\":\"agent-0061794d-5ddc-4fc7-9fba-929851b64bbd\"}}",
+      "at": "2026-11-12T15:12:28.785Z",
+      "agentId": "agent-0061794d-5ddc-4fc7-9fba-929851b64bbd",
+      "runId": "run-0849ad9a-d326-498b-86b0-525a8026177a",
+      "layout": {
+        "taskDir": "C:\\Users\\PC\\AppData\\Local\\Temp\\keel-live-spike-A6ntbU",
+        "workspace": "C:\\Users\\PC\\AppData\\Local\\Temp\\keel-live-spike-A6ntbU\\workspace",
+        "storePath": "C:\\Users\\PC\\AppData\\Local\\Temp\\keel-live-spike-A6ntbU\\cursor-sdk-state",
+        "taskId": "live1794496330956"
+      }
+    },
+    {
+      "id": "2a.Agent.list_after_exit",
+      "pass": true,
+      "detail": "items=1 found=true",
+      "at": "2026-11-12T15:12:28.789Z",
+      "agentIds": [
+        "agent-0061794d-5ddc-4fc7-9fba-929851b64bbd"
+      ]
+    },
+    {
+      "id": "2b.Agent.resume_second_process",
+      "pass": true,
+      "detail": "resume=true listRuns=false listRunsErr=Agent agent-0061794d-5ddc-4fc7-9fba-929851b64bbd not found",
+      "at": "2026-11-12T15:12:32.152Z",
+      "runIds": [],
+      "listRunsOk": false,
+      "listRunsError": "Agent agent-0061794d-5ddc-4fc7-9fba-929851b64bbd not found"
+    },
+    {
+      "id": "2c.Agent.getRun_after_exit",
+      "pass": true,
+      "detail": "status=finished",
+      "at": "2026-11-12T15:12:32.154Z",
+      "runId": "run-0849ad9a-d326-498b-86b0-525a8026177a"
+    },
+    {
+      "id": "3.cancel_in_process",
+      "pass": true,
+      "detail": "exit=0 result=CANCELLED",
+      "at": "2026-11-12T15:12:38.321Z",
+      "events": [
+        "ack",
+        "parse_skip",
+        "run.started",
+        "sdk.event",
+        "sdk.event",
+        "result"
+      ]
+    },
+    {
+      "id": "4.cancel_after_kill",
+      "pass": true,
+      "detail": "cancelOp code=0",
+      "at": "2026-11-12T15:12:50.023Z",
+      "killCode": null
+    },
+    {
+      "id": "5.marker_blocks_blind_create",
+      "pass": true,
+      "detail": "sidecar refused create",
+      "at": "2026-11-12T15:12:50.349Z",
+      "code": 1,
+      "error": {
+        "type": "error",
+        "code": "RECONCILE_FAILED",
+        "message": "sdk-touch.marker sdkTouched=true — create refused"
+      }
+    },
+    {
+      "id": "6.idempotency_duplicate_send",
+      "pass": true,
+      "detail": "r1=run-1c8cf57f-8d06-40aa-a82d-846d11904225 r2status=not_attempted r2error=Agent agent-7075247d-0030-49b5-bda3-2323f552f48e already has active run",
+      "at": "2026-11-12T15:12:54.829Z",
+      "note": "Document observed behavior; pass means test completed without crash",
+      "r1": "run-1c8cf57f-8d06-40aa-a82d-846d11904225",
+      "r2status": "not_attempted",
+      "r2error": "Agent agent-7075247d-0030-49b5-bda3-2323f552f48e already has active run"
+    },
+    {
+      "id": "7.concurrent_store_unsynchronized",
+      "pass": true,
+      "detail": "lines=2 allValidJson=true",
+      "at": "2026-11-12T15:12:57.195Z",
+      "verdict": "no_line_corruption_observed",
+      "lines": 2
+    }
+  ]
+}

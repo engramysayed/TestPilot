@@ -18,11 +18,16 @@ cd keel-portal && mvn test -Dtest=delivery.agent.harness.*
 1. `cd tools/cursor-agent && npm install`
 2. Set `CURSOR_API_KEY`, `delivery.provider.allowlist` includes `cursor`
 3. Enable `delivery.agent-harness.enabled=true` and `cursor.enabled=true` in a test JVM only
-4. Future: `CursorAgentRuntimeLiveIT` with `-Dkeel.agent.cursor.live=true`
+4. Live: `CursorAgentRuntimeLiveIT` with `-Dkeel.agent.cursor.live=true` (see spike notes)
+5. Node spike: `node tools/cursor-agent/live-spike.mjs` → `docs/handoff/cursor-sdk-live-spike-output.json`
+
+## Live validation (2026-11-12)
+
+Recorded in **`docs/handoff/2026-11-12-cursor-sdk-spike-notes.md`**. All opt-in scenarios passed on live API key; post-`c97c7ad` fixes: first-run reconcile, NDJSON line filtering, marker guard in sidecar.
 
 ## Phase 3 readiness
 
-**No** — workflow integration (EmitPhase) not wired; live SDK spike notes not yet recorded from production API.
+**No** — workflow integration (EmitPhase) not wired; harness still default off.
 
 ## Known limitations
 

@@ -1,5 +1,6 @@
 package delivery.agent.harness;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /** Pre-flight reconcile before a new {@code Agent.create}. */
@@ -29,7 +30,16 @@ public final class AgentHarnessReconcile {
             return false;
         }
         SdkTouchMarker.State state = marker.readState(taskDir);
-        return state == SdkTouchMarker.State.DEFINITELY_SAFE_TO_CREATE;
+        if (state == SdkTouchMarker.State.DEFINITELY_SAFE_TO_CREATE) {
+            return true;
+        }
+        // First launch: no sidecar marker yet — safe to start execute (not a crashed LAUNCHING retry).
+        if (state == SdkTouchMarker.State.AMBIGUOUS
+                && !Files.isRegularFile(SdkTouchMarker.markerPath(taskDir))
+                && task.taskStatus() == AgentTaskStatus.PENDING) {
+            return true;
+        }
+        return false;
     }
 
     public void assertMayCreateOrThrow(Path taskDir, AgentTask task) {
@@ -46,6 +56,15 @@ public final class AgentHarnessReconcile {
         SdkTouchMarker.State state = marker.readState(taskDir);
         if (state == SdkTouchMarker.State.SDK_TOUCHED && (task.agentId() == null || task.agentId().isBlank())) {
             return true;
+        }
+        boolean markerPresent = Files.isRegularFile(SdkTouchMarker.markerPath(taskDir));
+        if (!markerPresent) {
+            // Missing marker on a never-started task is not an interruption.
+            if (task.taskStatus() == AgentTaskStatus.PENDING) {
+                return false;
+            }
+            return task.taskStatus() == AgentTaskStatus.STARTING
+                    && (task.agentId() == null || task.agentId().isBlank());
         }
         return state == SdkTouchMarker.State.AMBIGUOUS
                 && (task.taskStatus() == AgentTaskStatus.PENDING || task.taskStatus() == AgentTaskStatus.STARTING)

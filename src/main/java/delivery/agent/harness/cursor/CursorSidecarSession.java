@@ -92,10 +92,16 @@ public final class CursorSidecarSession implements AutoCloseable {
                 new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             while ((line = r.readLine()) != null) {
-                if (line.isBlank()) {
+                line = line.trim();
+                if (line.isBlank() || !line.startsWith("{")) {
                     continue;
                 }
-                SidecarNdjsonLine parsed = SidecarNdjsonLine.parse(line, mapper);
+                SidecarNdjsonLine parsed;
+                try {
+                    parsed = SidecarNdjsonLine.parse(line, mapper);
+                } catch (Exception skip) {
+                    continue;
+                }
                 synchronized (lines) {
                     lines.add(parsed);
                 }
