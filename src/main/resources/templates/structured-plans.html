@@ -10,12 +10,10 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1 th:text="#{page.structured-plans.title}">Structured plans</h1>
+            <h1>Shared step recipes</h1>
             <p class="lede">
-                A reusable list of steps you can pin on many test cases.
-                <br>
-                <strong>Difference from a test case:</strong> a test case runs once end-to-end. A plan is the
-                step recipe you share between cases — change it once, every case picks it up.
+                Save a ordered list of steps once (e.g. “open login → sign in → check dashboard”) and link it to many tests.
+                When you update the recipe, every linked test sees the new steps.
             </p>
         </div>
     </div>
@@ -35,9 +33,9 @@
             <p id="plan-empty" class="muted">No plans yet.</p>
         </section>
         <section class="panel">
-            <h2 id="editor-title">New / edit plan</h2>
-            <label>Plan id <input type="text" id="plan-id" pattern="[A-Za-z0-9][A-Za-z0-9_-]*" placeholder="login-happy"/></label>
-            <label style="display:block;margin-top:0.5rem">Name <input type="text" id="plan-name" maxlength="200"/></label>
+            <h2 id="editor-title">Create or edit a recipe</h2>
+            <label>Short id (no spaces) <input type="text" id="plan-id" pattern="[A-Za-z0-9][A-Za-z0-9_-]*" placeholder="login-happy"/></label>
+            <label style="display:block;margin-top:0.5rem">Display name <input type="text" id="plan-name" maxlength="200" placeholder="Login happy path"/></label>
             <div id="steps" style="margin-top:0.75rem"></div>
             <p style="margin-top:0.5rem">
                 <button type="button" class="button ghost" id="add-step">Add step</button>

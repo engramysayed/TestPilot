@@ -11,11 +11,11 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1 th:text="#{page.generate-from-knowledge.title}">Generate from case packs</h1>
+            <h1>Write tests from feature notes</h1>
             <p class="lede">
-                A case pack is a saved bundle of test ideas for a feature. Pick one or more, say how many cases
-                you want, and Keel writes them. Use this when you have packs ready — otherwise start from
-                <a href="/generate">Generate</a>.
+                Turn saved notes about a feature (a <strong>pack</strong>) into real test cases in your library.
+                Pick packs, choose how many cases to write, then start. No packs yet? Add one below, or use
+                <a href="/generate">Generate</a> for a one-off run.
             </p>
         </div>
     </div>
@@ -54,25 +54,35 @@
             </p>
         </section>
 
-        <section class="panel" id="packs-panel">
-            <h2>Case packs <span class="muted">(test knowledge files)</span></h2>
-            <p class="panel-intro">Select one or more packs to guide generation. Multi-select checklist.</p>
+        <section class="panel gfk-one-panel" id="packs-panel">
+            <h2 style="margin-top:0">Your packs &amp; run</h2>
+            <p class="panel-intro" style="margin-bottom:1rem">
+                <strong>1)</strong> Tick the packs Keel should read.
+                <strong>2)</strong> Say how many cases to write.
+                <strong>3)</strong> Start.
+            </p>
+
+            <p id="packs-status" class="muted" role="status">Loading packs…</p>
+            <div id="packs-list" class="generate-options" hidden></div>
+            <p id="packs-empty" class="muted" hidden>
+                No packs in this project yet — add one below.
+            </p>
+
+            <hr class="gfk-divider"/>
 
             <div id="ingest-strip" class="gfk-ingest">
-                <h3 style="margin-top:0">Add pack</h3>
-                <p class="panel-intro" style="margin-bottom:0.5rem">Add from the project library, a case workbook, or a markdown pack.</p>
+                <h3 class="gfk-subhead">Add a new pack</h3>
+                <p class="panel-intro" style="margin-bottom:0.5rem">From library cases, an Excel/CSV workbook, or a markdown file.</p>
                 <div class="gfk-ingest-tabs" role="tablist" aria-label="Add pack source">
                     <button type="button" class="button ghost gfk-ingest-tab is-active" data-ingest-tab="library" role="tab" aria-selected="true">Library</button>
                     <button type="button" class="button ghost gfk-ingest-tab" data-ingest-tab="upload-tc" role="tab" aria-selected="false">Upload cases</button>
                     <button type="button" class="button ghost gfk-ingest-tab" data-ingest-tab="upload-md" role="tab" aria-selected="false">Upload .md</button>
                 </div>
                 <div class="gfk-ingest-fields" style="margin-top:0.75rem;display:grid;gap:0.65rem;max-width:36rem">
-                    <label>Title (optional)
-                        <input type="text" id="ingest-title" placeholder="Checkout pack"/>
+                    <label>Pack name (optional)
+                        <input type="text" id="ingest-title" placeholder="Checkout flow"/>
                     </label>
-                    <label>Batch size
-                        <input type="number" id="ingest-batch-size" min="1" max="500" value="30"/>
-                    </label>
+                    <input type="hidden" id="ingest-batch-size" value="30"/>
                 </div>
                 <div id="ingest-pane-library" class="gfk-ingest-pane" data-ingest-pane="library" style="margin-top:0.75rem">
                     <p class="field-hint muted">Multi-select project library TCs (same source as Execute / Bug Hunter).</p>
@@ -96,36 +106,25 @@
                 </div>
             </div>
 
-            <hr style="margin:1.1rem 0;border:none;border-top:1px solid var(--border, #334)"/>
-            <p id="packs-status" class="muted" role="status">Loading packs…</p>
-            <div id="packs-list" class="generate-options" hidden></div>
-            <p id="packs-empty" class="muted" hidden>
-                Packs API not on tip yet — Backend Phase 1. You can still explore this page; Start stays disabled until packs are available.
-            </p>
-        </section>
+            <hr class="gfk-divider"/>
 
-        <section class="panel" id="batch-panel">
-            <h2>Batch size</h2>
-            <p class="panel-intro">How many cases to aim for in this run (overrides pack metadata for the job).</p>
-            <label>Cases per run
-                <input type="number" id="batch-size" min="1" max="500" value="30"/>
-            </label>
-            <p class="field-hint muted" style="margin-top:0.35rem">
-                Presets hint: Ollama 20–40 · stronger models 50–100 · default 30
-            </p>
-        </section>
-
-        <section class="panel" id="run-panel">
-            <h2>Start run</h2>
-            <div class="generate-actions">
-                <button type="button" class="button" id="start-run" disabled>Start generate from knowledge packs</button>
-                <span id="run-status" class="muted" role="status"></span>
+            <div class="gfk-run-bar">
+                <label class="gfk-run-count">How many cases to write?
+                    <input type="number" id="batch-size" min="1" max="500" value="30" lang="en" dir="ltr" inputmode="numeric"/>
+                </label>
+                <div class="generate-actions">
+                    <button type="button" class="button" id="start-run" disabled>Write test cases</button>
+                    <span id="run-status" class="muted" role="status"></span>
+                </div>
             </div>
+            <p class="field-hint muted" style="margin:0.35rem 0 0">
+                Typical: 20–40 on a local model, 50–100 on a stronger model.
+            </p>
         </section>
 
         <section class="panel" id="plan-preview-panel">
-            <h2>Plan preview</h2>
-            <p id="plan-preview-empty" class="muted">Plan preview will appear here after the run starts.</p>
+            <h2>Run progress</h2>
+            <p id="plan-preview-empty" class="muted">Status shows here after you start.</p>
             <div id="plan-preview-detail" hidden>
                 <p><strong id="plan-title"></strong>
                     <span id="plan-meta" class="muted"></span>
@@ -420,7 +419,7 @@
     const ingestFileMd = document.getElementById('ingest-file-md');
 
     function ingestBatchSize() {
-        const n = parseInt(ingestBatchInput && ingestBatchInput.value, 10);
+        const n = parseInt(batchSizeInput && batchSizeInput.value, 10);
         if (!Number.isFinite(n) || n < 1) return 30;
         return Math.min(500, n);
     }

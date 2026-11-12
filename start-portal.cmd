@@ -10,8 +10,12 @@ if exist "%~dp0keel-env.local.bat" call "%~dp0keel-env.local.bat"
 if exist "%~dp0api-keys.local.bat" call "%~dp0api-keys.local.bat"
 REM LD-01: product profile keeps delivery.mobile.enabled=true for live devices.
 REM CI reads base application.properties (false) and never sets this profile.
-REM Override: set SPRING_PROFILES_ACTIVE= before calling this script (e.g. empty/ci).
-if "%SPRING_PROFILES_ACTIVE%"=="" set "SPRING_PROFILES_ACTIVE=product"
+REM Local http://localhost (no HTTPS guard): in keel-env.local.bat set KEEL_DEV_PORTAL=1
+REM   and KEEL_EXTRA_ARGS=--delivery.mobile.enabled=true for Android without product profile.
+REM Or set SPRING_PROFILES_ACTIVE explicitly (any value except empty) before this script runs.
+if "%KEEL_DEV_PORTAL%"=="1" (
+  if "%SPRING_PROFILES_ACTIVE%"=="" set "SPRING_PROFILES_ACTIVE=local"
+) else if "%SPRING_PROFILES_ACTIVE%"=="" set "SPRING_PROFILES_ACTIVE=product"
 if "%KEEL_DB_PASSWORD%"=="" echo NOTE: KEEL_DB_PASSWORD is not set; the dev profile runs with a warning (see docs\ops\backup-restore.md).
 
 set "KEEL_PORT=8080"
@@ -20,6 +24,7 @@ if not "%KEEL_PORTAL_HOME%"=="" (
   if not exist "%KEEL_PORTAL_HOME%" mkdir "%KEEL_PORTAL_HOME%"
   set "KEEL_ARGS=%KEEL_ARGS% --delivery.store-root=%KEEL_PORTAL_HOME%\delivery-store --delivery.work-dir=%KEEL_PORTAL_HOME%\delivery-work"
 )
+if not "%KEEL_EXTRA_ARGS%"=="" set "KEEL_ARGS=%KEEL_ARGS% %KEEL_EXTRA_ARGS%"
 
 REM Free port 8080 only if a previous Keel (java.exe) still holds it; never kill other programs.
 REM netstat often lists the same PID twice (0.0.0.0 + [::]); after the first taskkill the second

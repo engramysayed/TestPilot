@@ -225,9 +225,49 @@ html[data-theme="dark"] button.ghost:hover {
     border-color: var(--calm-accent) !important;
 }
 
+/* Checkboxes/radios must not pick up full-width field chrome */
+.keel-page input[type="checkbox"],
+.keel-page input[type="radio"],
+input[type="checkbox"],
+input[type="radio"] {
+    width: 1.05rem !important;
+    height: 1.05rem !important;
+    min-width: 1.05rem !important;
+    min-height: 1.05rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex-shrink: 0;
+    vertical-align: middle;
+    accent-color: var(--calm-accent, #2c8d81);
+    border-radius: 4px !important;
+    box-shadow: none !important;
+}
+.keel-page label.keel-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0.75rem 0 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.keel-page .keel-option-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin: 0.5rem 0 1rem;
+}
+.keel-page .keel-option-row label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+
 /* Fields — match panel theme; auth always white paper */
 input, select, textarea,
-.keel-page input, .keel-page select, .keel-page textarea,
+.keel-page input:not([type="checkbox"]):not([type="radio"]),
+.keel-page select, .keel-page textarea,
 #globalSearch {
     border-radius: 12px !important;
     border: 1px solid var(--calm-line) !important;

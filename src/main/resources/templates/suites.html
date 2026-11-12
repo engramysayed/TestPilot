@@ -101,10 +101,9 @@
     <div class="page-title">
         <div>
             <h1>Suites <span class="muted">(test packs)</span></h1>
-            <p class="lede" th:text="#{page.suites.lede}">
-                Pack test cases into tagged test packs (smoke / regression / nightly + your packs),
-                attach a schedule and alert channel, and promote a green pack to an always-on monitor.
-                Tags can filter Run tests / step checks once Backend wires the filter — display only until then.
+            <p class="lede">
+                Group tests into <strong>packs</strong> (smoke, regression, or your own).
+                You can run them on a timer, get an email when they fail, or keep watching a pack after a good run.
             </p>
         </div>
     </div>
@@ -239,22 +238,22 @@
             </section>
 
             <section class="panel" id="schedule-panel">
-                <h2>Schedule</h2>
+                <h2>Automatic runs</h2>
                 <p class="panel-intro">
-                    Run this test pack on a cron or a fixed interval (at least every 5 minutes). A run is skipped — not queued — while the previous scheduled run is still going, and slots missed while Keel was down are skipped and shown below.
+                    Run this pack on a timer. If a run is still going when the next slot is due, Keel skips that slot (it does not queue another run on top).
                 </p>
-                <label style="display:inline-flex;align-items:center;gap:0.4rem">
-                    <input type="checkbox" id="schedule-enabled"/> Enable schedule
+                <label class="keel-check">
+                    <input type="checkbox" id="schedule-enabled"/> Turn on automatic runs
                 </label>
-                <div class="kind-row" role="radiogroup" aria-label="Schedule kind">
-                    <label><input type="radio" name="schedule-kind" value="cron" checked/> Cron</label>
-                    <label><input type="radio" name="schedule-kind" value="interval"/> Interval</label>
+                <div class="keel-option-row kind-row" role="radiogroup" aria-label="How often to run">
+                    <label class="keel-check"><input type="radio" name="schedule-kind" value="cron" checked/> At set times (advanced)</label>
+                    <label class="keel-check"><input type="radio" name="schedule-kind" value="interval"/> Every X minutes (simple)</label>
                 </div>
                 <div class="field-row" id="cron-row">
-                    <label>Cron expression (5-field schedule)
+                    <label>When to run (cron pattern — for experts)
                         <input type="text" id="schedule-cron" placeholder="0 2 * * *" autocomplete="off"/>
                     </label>
-                    <p class="field-hint muted">Example: <code>0 2 * * *</code> = 02:00 daily, <code>0 9 * * 1-5</code> = 09:00 on weekdays.</p>
+                    <p class="field-hint muted">Examples: <code>0 2 * * *</code> = 2:00 AM every day · <code>0 9 * * 1-5</code> = 9:00 AM on weekdays.</p>
                     <label>Time zone
                         <input type="text" id="schedule-timezone" placeholder="Africa/Cairo" list="schedule-tz-list" autocomplete="off"/>
                     </label>
@@ -265,12 +264,12 @@
                     </datalist>
                 </div>
                 <div class="field-row">
-                    <label>Login profile for scheduled runs <span class="muted">(blank = first profile by name)</span>
+                    <label>Login to use <span class="muted">(leave blank for the default login on the project)</span>
                         <input type="text" id="schedule-profile" placeholder="default" autocomplete="off"/>
                     </label>
                 </div>
                 <div class="field-row" id="interval-row" hidden>
-                    <label>Interval minutes (min 5)
+                    <label>Run every how many minutes? <span class="muted">(minimum 5)</span>
                         <input type="number" id="schedule-interval" min="5" step="1" placeholder="60"/>
                     </label>
                 </div>
@@ -283,60 +282,60 @@
             </section>
 
             <section class="panel" id="alerts-panel">
-                <h2>Alert channel</h2>
+                <h2>Notify me when it fails</h2>
                 <p class="panel-intro">
-                    Uses the portal’s alert channels (Email / Telegram / Stub) — no second channel setup.
+                    Choose email or Telegram (set those up once under admin alerts). Keel will message you when a scheduled run fails.
                 </p>
                 <div class="field-row">
-                    <label>Channel
+                    <label>Send alerts to
                         <select id="alert-channel">
-                            <option value="">- None -</option>
+                            <option value="">— Off —</option>
                         </select>
                     </label>
                 </div>
                 <div class="field-row">
-                    <label>Min severity (optional)
+                    <label>Only if problem is at least this serious <span class="muted">(optional)</span>
                         <select id="alert-severity">
-                            <option value="">- Channel default -</option>
-                            <option value="INFO">INFO</option>
-                            <option value="WARN">WARN</option>
-                            <option value="ERROR">ERROR</option>
+                            <option value="">Use channel default</option>
+                            <option value="INFO">Info (everything)</option>
+                            <option value="WARN">Warning or worse</option>
+                            <option value="ERROR">Errors only</option>
                         </select>
                     </label>
                 </div>
                 <div class="panel-actions">
-                    <button type="button" class="button" id="save-alerts">Save alerts</button>
-                    <button type="button" class="button ghost" id="clear-alerts">Clear channel link</button>
+                    <button type="button" class="button" id="save-alerts">Save notifications</button>
+                    <button type="button" class="button ghost" id="clear-alerts">Turn off notifications</button>
                     <span id="alerts-status" class="muted" role="status"></span>
                 </div>
             </section>
 
             <section class="panel" id="monitor-panel">
-                <h2>Promote to always-on monitor</h2>
+                <h2>Keep watching after a good run</h2>
                 <p class="panel-intro">
-                    Green test pack → always-on monitor; alerts on fail or sometimes-fails. Target picks prod or staging for the runner.
+                    After this pack passes once, Keel can keep re-running it and alert you if it starts failing (flaky or broken).
                 </p>
-                <label style="display:inline-flex;align-items:center;gap:0.4rem">
-                    <input type="checkbox" id="monitor-enabled"/> Always-on monitor
+                <label class="keel-check">
+                    <input type="checkbox" id="monitor-enabled"/> Keep this pack on watch
                 </label>
                 <div class="field-row">
-                    <label>Target
+                    <label>Which site to test against
                         <select id="monitor-target">
-                            <option value="prod">prod</option>
-                            <option value="staging">staging</option>
+                            <option value="prod">Production (live)</option>
+                            <option value="staging">Staging (test)</option>
                         </select>
                     </label>
                 </div>
                 <div class="field-row">
-                    <label>From a green run id (optional)
-                        <input type="text" id="monitor-from-job" maxlength="80" placeholder="e.g. exec_…"/>
+                    <label>Start from a successful run id <span class="muted">(optional)</span>
+                        <input type="text" id="monitor-from-job" maxlength="80" placeholder="e.g. exec_abc123"/>
                     </label>
                 </div>
                 <p id="monitor-meta" class="muted"></p>
                 <div class="panel-actions">
-                    <button type="button" class="button" id="save-monitor">Save / promote to monitor</button>
-                    <button type="button" class="button ghost" id="demote-monitor">Remove from monitor</button>
-                    <button type="button" class="button ghost" id="run-suite">Run test pack now</button>
+                    <button type="button" class="button" id="save-monitor">Save watch settings</button>
+                    <button type="button" class="button ghost" id="demote-monitor">Stop watching</button>
+                    <button type="button" class="button ghost" id="run-suite">Run this pack now</button>
                     <span id="monitor-status" class="muted" role="status"></span>
                 </div>
             </section>

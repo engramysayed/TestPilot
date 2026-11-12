@@ -292,6 +292,32 @@ body.login-body {
     font-size: 0.75rem;
     letter-spacing: 0.04em;
 }
+.loginbrand-highlights {
+    margin: 1.25rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.6rem;
+    max-width: 26rem;
+}
+.loginbrand-highlights li {
+    color: rgba(193, 208, 215, 0.95);
+    font-size: 0.95rem;
+    line-height: 1.45;
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+}
+.loginbrand-highlights li::before {
+    content: "";
+    width: 0.55rem;
+    height: 0.55rem;
+    margin-top: 0.45rem;
+    border-radius: 50%;
+    background: rgba(14, 165, 160, 0.35);
+    border: 1.5px solid #0ea5a0;
+    flex: 0 0 auto;
+}
 .loginform {
     display: flex;
     flex-direction: column;
@@ -922,6 +948,18 @@ button.ghost:hover {
 button.small {
     padding: 0.35rem 0.65rem;
     font-size: 0.72rem;
+}
+
+/* Native type=date follows OS locale; dashboard uses .keel-date-input text fields instead. */
+body.app-body input.keel-date-input {
+    direction: ltr;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+    min-width: 9.5rem;
+}
+body.app-body input.keel-date-input::placeholder {
+    color: var(--muted, #5d6678);
+    opacity: 1;
 }
 
 /* Responsive */

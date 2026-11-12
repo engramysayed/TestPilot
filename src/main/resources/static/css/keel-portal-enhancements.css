@@ -113,3 +113,36 @@ html[data-theme="dark"] .hunt-triage-card {
 #quality-gate-warnings {
     margin: 0.45rem 0 0;
 }
+
+/* Generate from knowledge — one workspace panel */
+.gfk-one-panel .gfk-divider {
+    margin: 1.1rem 0;
+    border: none;
+    border-top: 1px solid var(--calm-line, #3a4454);
+}
+.gfk-one-panel .gfk-subhead {
+    margin: 0 0 0.35rem;
+    font-size: 1.05rem;
+}
+.gfk-run-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem 1.25rem;
+    margin-top: 0.25rem;
+}
+.gfk-run-bar .gfk-run-count {
+    margin: 0;
+    font-weight: 600;
+}
+.gfk-run-bar .gfk-run-count input {
+    display: block;
+    margin-top: 0.35rem;
+    width: 6.5rem;
+    direction: ltr;
+    text-align: left;
+    font-variant-numeric: lining-nums;
+}
+.gfk-run-bar .generate-actions {
+    margin-top: 0;
+}

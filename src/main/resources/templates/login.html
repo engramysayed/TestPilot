@@ -4,50 +4,26 @@
     <th:block th:replace="~{fragments :: authPageHead(title='Sign in')}"></th:block>
     <style>
         /* Scoped login polish — does not leak out because of .login-body. */
-        .login-body {
-            background:
-                radial-gradient(circle at 15% 20%, rgba(8, 127, 120, 0.22), transparent 55%),
-                radial-gradient(circle at 85% 0%, rgba(17, 42, 53, 0.4), transparent 60%),
-                #0b1620;
-            min-height: 100vh;
-        }
-        .loginpage { min-height: 100vh; }
         .loginbrand {
             padding: 3rem clamp(1.25rem, 5vw, 4rem);
             color: #e7f1ef;
             display: flex; flex-direction: column; gap: 1.1rem;
-            background: transparent;
+            /* Must stay dark: transparent + light text on var(--paper) body is unreadable (keel-reskin). */
+            background: var(--nav, #112a35);
         }
         .loginbrand-logo {
-            font-weight: 800; font-size: 1.35rem; letter-spacing: 0.02em; color: #e3f3ef;
-            display: inline-flex; align-items: center; gap: 0.5rem;
+            font-weight: 700; font-size: 1.7rem; letter-spacing: 0.02em; color: #ffffff;
+            display: inline-flex; align-items: center; gap: 0.65rem;
+            text-transform: lowercase; margin-bottom: 0.25rem;
         }
-        .loginbrand-logo::before {
-            content: ""; display: inline-block; width: 1.5rem; height: 1.5rem; border-radius: 6px;
-            background: linear-gradient(135deg, #087f78, #0ea5a0);
+        .loginbrand-logo img {
+            width: 2.75rem; height: 2.75rem; display: block; flex: 0 0 auto;
         }
         .loginbrand h1 {
             font-size: clamp(1.75rem, 2.6vw, 2.4rem);
             line-height: 1.12; letter-spacing: -0.015em; margin: 0.75rem 0 0;
         }
         .loginbrand > p { max-width: 36ch; color: #a3b8c0; margin: 0; }
-        .loginbrand-highlights {
-            margin-top: 1.5rem; padding: 0; list-style: none;
-            display: grid; gap: 0.6rem;
-        }
-        .loginbrand-highlights li {
-            color: #c8d6dc; font-size: 0.95rem;
-            display: flex; gap: 0.6rem; align-items: center;
-        }
-        .loginbrand-highlights li::before {
-            content: ""; width: 1rem; height: 1rem; border-radius: 50%;
-            background: rgba(8, 127, 120, 0.25);
-            border: 1.5px solid #0ea5a0; flex: 0 0 auto;
-        }
-        .loginbrand-foot {
-            margin-top: auto; padding-top: 1.5rem;
-            font-size: 0.72rem; letter-spacing: 0.22em; color: #5d6678;
-        }
 
         .loginform {
             margin: 2rem clamp(1rem, 4vw, 3rem);
@@ -89,12 +65,15 @@
 <body class="login-body">
 <main class="loginpage" aria-label="Sign in">
     <section class="loginbrand" aria-label="Keel">
-        <div class="loginbrand-logo">keel</div>
+        <div class="loginbrand-logo">
+            <img th:src="@{/img/keel-logo.svg}" width="44" height="44" alt=""/>
+            <span>keel</span>
+        </div>
         <h1>From test intent,<br/>to trusted evidence.</h1>
         <p>Your test library, execution runs, and automation — in one workspace.</p>
         <ul class="loginbrand-highlights">
-            <li>Write cases in plain English; run the same ones on web and mobile.</li>
-            <li>Evidence for every run — screenshots, diffs, retries.</li>
+            <li>Write cases in plain English, run the same ones on web and mobile.</li>
+            <li>Evidence for every run, screenshots, diffs, retries.</li>
             <li>Alerts to email or Telegram when a suite fails.</li>
         </ul>
         <p class="loginbrand-foot">WEB &amp; MOBILE AUTOMATION</p>
@@ -102,7 +81,6 @@
     <section class="loginform">
         <p class="eyebrow">Welcome back</p>
         <h1 th:text="#{page.login.title}">Sign in to Keel</h1>
-        <p class="loginform-intro">Continue to your testing workspace.</p>
         <p th:if="${param.registered}" class="ok">Account created. Please sign in.</p>
         <p th:if="${param.pending}" class="ok">Your account is pending approval. An admin will review it soon — you cannot start jobs until then.</p>
         <p th:if="${param.logout}" class="muted">Signed out.</p>

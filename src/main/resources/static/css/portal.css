@@ -2650,7 +2650,8 @@ body:not(.app-body) .shell {
     .app-body .shell { padding: 1.2rem 1rem 3rem; }
     .table { display: block; overflow-x: auto; }
     .table--runs,
-    .table--hunt-recent {
+    .table--hunt-recent,
+    .table.refund-table {
         display: table;
         overflow: visible;
     }

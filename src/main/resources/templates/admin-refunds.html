@@ -26,12 +26,14 @@
 
     <div class="refund-layout">
         <section class="panel">
-            <table class="table">
+            <div class="table-scroll">
+            <table class="table refund-table">
                 <thead>
                 <tr><th>Opened</th><th>User</th><th>Run</th><th>Reason</th><th>Credits</th></tr>
                 </thead>
                 <tbody id="refund-rows"><tr><td colspan="5" class="hint">Loading…</td></tr></tbody>
             </table>
+            </div>
         </section>
 
         <section class="panel" id="refund-detail">
@@ -40,7 +42,7 @@
     </div>
 </main>
 </div>
-<script>
+<script th:inline="none">
 (function () {
     const H = {'Accept': 'application/json', 'X-Keel-Requested-With': 'Keel'};
     const rows = document.getElementById('refund-rows');
@@ -49,8 +51,20 @@
     let selected = null;
 
     const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const when = (iso) => iso ? new Date(iso).toLocaleString() : '';
-    const cat = (c) => '<span class="refund-cat ' + esc(c) + '">' + esc(c || '?') + '</span>';
+    const when = (iso) => iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', hour12: true }) : '';
+    const catNames = {INFRA: 'Platform', CONFIG: 'Settings', TEST: 'Test', RECOVERY: 'Retry'};
+    const kindNames = {EXECUTE: 'Run tests', PROVE: 'Prove', GENERATE: 'Generate', HUNT: 'Hunt'};
+    const prettyErr = (code, msg) => {
+        if (msg && String(msg).trim()) return String(msg).trim().slice(0, 120);
+        if (!code) return '';
+        const friendly = {
+            INTERRUPTED_UNCERTAIN: 'Run was interrupted',
+            BROWSER_CRASH: 'Browser crashed',
+            NETWORK: 'Network problem'
+        };
+        return friendly[code] || String(code).replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+    };
+    const cat = (c) => '<span class="refund-cat ' + esc(c) + '">' + esc(catNames[c] || c || '?') + '</span>';
 
     async function load() {
         const res = await fetch('/api/admin/refunds?status=' + encodeURIComponent(status), {credentials: 'same-origin', headers: H});
@@ -64,11 +78,11 @@
         if (!items.length) { rows.innerHTML = '<tr><td colspan="5" class="hint">Nothing here.</td></tr>'; return; }
         rows.innerHTML = items.map(r =>
             '<tr class="refund-row" data-id="' + r.id + '">'
-            + '<td>' + esc(when(r.createdAt)) + '<br><span class="hint">' + esc(r.source === 'AUTO' ? 'Automatic' : 'Asked by user') + '</span></td>'
-            + '<td>' + esc(r.userEmail) + '<br><span class="hint">' + esc(r.projectName) + '</span></td>'
-            + '<td><code class="mono">' + esc(r.jobId) + '</code><br><span class="hint">' + esc(r.jobKind) + '</span></td>'
-            + '<td>' + cat(r.failureCategory) + '<br><span class="hint">' + esc((r.failureError || r.failureMessage || '').slice(0, 80)) + '</span></td>'
-            + '<td>' + esc(r.chargedAmount) + (r.status === 'APPROVED' ? '<br><span class="hint">refunded ' + esc(r.refundedAmount) + '</span>' : '') + '</td>'
+            + '<td>' + esc(when(r.createdAt)) + '<span class="refund-cell-sub">' + esc(r.source === 'AUTO' ? 'Automatic' : 'User asked') + '</span></td>'
+            + '<td>' + esc(r.userEmail) + '<span class="refund-cell-sub">' + esc(r.projectName) + '</span></td>'
+            + '<td><code class="mono refund-run-id">' + esc(r.jobId) + '</code><span class="refund-cell-sub">' + esc(kindNames[r.jobKind] || r.jobKind) + '</span></td>'
+            + '<td>' + cat(r.failureCategory) + '<span class="refund-cell-sub">' + esc(prettyErr(r.failureError, r.failureMessage)) + '</span></td>'
+            + '<td>' + esc(r.chargedAmount) + (r.status === 'APPROVED' ? '<span class="refund-cell-sub">Refunded ' + esc(r.refundedAmount) + '</span>' : '') + '</td>'
             + '</tr>').join('');
         rows.querySelectorAll('tr[data-id]').forEach(tr => tr.addEventListener('click', () => open(tr.dataset.id)));
         if (selected) { const tr = rows.querySelector('tr[data-id="' + selected + '"]'); if (tr) tr.classList.add('selected'); }

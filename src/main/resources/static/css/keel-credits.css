@@ -93,3 +93,66 @@
 .refund-hint { padding: 0.6rem 0.8rem; border-left: 3px solid var(--accent, #087f78); background: var(--surface-2, #f6f7f9); border-radius: 4px; }
 .refund-cat { font-size: 0.72rem; padding: 0.1rem 0.45rem; border-radius: 999px; border: 1px solid currentColor; }
 .refund-cat.INFRA { color: #b42318; } .refund-cat.CONFIG { color: #b54708; } .refund-cat.TEST { color: #475467; } .refund-cat.RECOVERY { color: #6941c6; }
+.refund-layout .table-scroll {
+    width: 100%;
+    overflow-x: auto;
+}
+.refund-table {
+    display: table !important;
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+.refund-table thead th:nth-child(1) { width: 16%; }
+.refund-table thead th:nth-child(2) { width: 22%; }
+.refund-table thead th:nth-child(3) { width: 20%; }
+.refund-table thead th:nth-child(4) { width: 32%; }
+.refund-table thead th:nth-child(5) { width: 10%; }
+.refund-table td,
+.refund-table th {
+    vertical-align: top;
+    line-height: 1.45;
+    direction: ltr;
+    text-align: left;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--calm-line, #3a4454) !important;
+    padding: 0.65rem 0.55rem !important;
+    font-size: 0.82rem;
+}
+.refund-table thead th {
+    border-bottom: 1px solid var(--calm-line, #3a4454) !important;
+    background: var(--table-head, #232933) !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+}
+.refund-table tbody tr:hover td {
+    background: var(--table-hover, #1a1f28) !important;
+}
+.refund-table .refund-cell-sub {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.78rem;
+    color: var(--muted, #8b98a8);
+}
+.refund-table .refund-run-id {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.85em;
+    padding: 0.15rem 0.4rem;
+    border-radius: 6px;
+}
+html[data-theme="dark"] .refund-table .refund-run-id {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+html[data-theme="light"] .refund-table .refund-run-id {
+    background: #f0f4f7;
+    border: 1px solid #e2e8ee;
+}
+.refund-table .refund-cat { display: inline-block; margin-bottom: 0.2rem; vertical-align: middle; }
