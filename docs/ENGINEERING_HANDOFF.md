@@ -19,7 +19,7 @@ This document points engineers at deeper material already in the tree.
 
 | Topic | Where to look |
 |-------|----------------|
-| **Unified agent harness (Phase 1 — off by default)** | `delivery.agent.harness.*`, `AgentHarnessProperties`, artifacts under `{projectRoot}/agent-runs/{parentJobId}/{taskId}/`; tests `delivery.agent.harness.*`. Phase 2 will add Cursor SDK adapter — not wired yet. |
+| **Unified agent harness (off by default)** | `delivery.agent.harness.*`, `CursorAgentRuntime`, `tools/cursor-agent/`, `sdk-touch.marker`, `docs/handoff/2026-11-12-agent-harness-phase2-plan.md`; tests `delivery.agent.harness.*`. No job worker wiring yet. |
 | **Shared locator ranking** (hook → test id → id → name → role+name → label → text → CSS → ordinal; per-project mode) | `delivery.locator.LocatorStabilityPolicy`, `CandidateScorer`, `LocatorRanker`, `SemanticLocatorLadder`, `MultiLocatorBag`, `ElementGrounder`; Projects → Settings → Locator ranking; tests `LocatorStabilityPolicyTest`, `CodegenW2EmitTest` |
 | **Arabic / Unicode step matching** | `delivery.authoring.IntentText`, `StepIntentBinder.classify`, `IntentTextTest` |
 | **Refund requests** (auto for platform failures, user request, Admin → Refunds) | `RefundRequestService`, `AdminRefundsController`, `JobRefundController`, `templates/admin-refunds.html`, `RefundRequestTest` |

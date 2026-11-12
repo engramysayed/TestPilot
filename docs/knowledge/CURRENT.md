@@ -53,7 +53,7 @@ flowchart LR
 | `src/main/resources/prompts/` | Runtime prompt catalog (`PromptCatalog`, Admin → Prompts, `VERSION`) |
 | `src/main/resources/static/js/pages/` | Page scripts extracted from templates (server values via `window.KEEL_PAGE`) |
 | `tools/cursor-heal/` | Cursor sidecar for heal/hunt |
-| `delivery.agent.harness` | Unified agent harness **Phase 1** (tasks, policy, disk `agent-runs/`; `FakeAgentRuntime` only; flag `delivery.agent-harness.enabled=false`) |
+| `delivery.agent.harness` + `tools/cursor-agent/` | Agent harness (Phase 2 spike): `CursorAgentRuntime`, isolated `taskDir/workspace`, `sdk-touch.marker`; still `delivery.agent-harness.enabled=false` by default |
 
 ### Key packages
 

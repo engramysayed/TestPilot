@@ -24,8 +24,6 @@ public final class AgentTaskRouter {
         AgentProviderId provider = properties.isEnabled() && properties.isCursorEnabled()
                 ? AgentProviderId.CURSOR
                 : AgentProviderId.FAKE;
-        // Phase 1: never start CURSOR even when flagged — no runtime bean wired yet.
-        provider = AgentProviderId.FAKE;
 
         Duration maxRuntime = Duration.ofMinutes(Math.max(1, properties.getMaxRuntimeMinutes()));
         int maxAttempts = Math.max(1, properties.getMaxRetries() + 1);

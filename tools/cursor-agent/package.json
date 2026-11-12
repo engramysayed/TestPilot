@@ -1,0 +1,10 @@
+{
+  "name": "cursor-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Keel unified agent harness — Cursor SDK sidecar",
+  "dependencies": {
+    "@cursor/sdk": "^1.0.27"
+  }
+}

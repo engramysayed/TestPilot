@@ -2,6 +2,13 @@
 
 # Keel changelog
 
+## 2026-11-12 — Agent harness Phase 2 (Cursor runtime spike)
+
+- `tools/cursor-agent/agent.mjs` — local `@cursor/sdk` sidecar (NDJSON protocol, isolated `taskDir/workspace`, `sdk-touch.marker` before create, no `shell`).
+- `CursorAgentRuntime` + `CursorSidecarClient`; coordinator: workspace copy, reconcile/`INTERRUPTED`, cancel request file, per-parent-job concurrency unchanged.
+- Tests: `fake-sidecar.mjs` + `delivery.agent.harness.*` (incl. SDK touch marker). Live Cursor IT disabled by default.
+- Flags still default **off**; no worker / EmitPhase integration.
+
 ## 2026-11-12 — Agent harness Phase 1 (foundation only)
 
 - Added `delivery.agent.harness.*`: task types, policy, tool registry, context builder, disk `agent-runs/` store, `FakeAgentRuntime`, and `AgentHarnessCoordinator`. **No Cursor SDK wiring** and no job-worker hooks yet.

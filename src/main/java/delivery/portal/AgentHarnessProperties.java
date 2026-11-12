@@ -15,6 +15,7 @@ public class AgentHarnessProperties {
     private int maxRetries = 1;
     private boolean frameworkValidationEnabled = false;
     private boolean failureInvestigationEnabled = false;
+    private String cursorCommand = "node tools/cursor-agent/agent.mjs";
 
     public boolean isEnabled() {
         return enabled;
@@ -70,5 +71,15 @@ public class AgentHarnessProperties {
 
     public void setFailureInvestigationEnabled(boolean failureInvestigationEnabled) {
         this.failureInvestigationEnabled = failureInvestigationEnabled;
+    }
+
+    public String getCursorCommand() {
+        return cursorCommand;
+    }
+
+    public void setCursorCommand(String cursorCommand) {
+        this.cursorCommand = cursorCommand == null || cursorCommand.isBlank()
+                ? "node tools/cursor-agent/agent.mjs"
+                : cursorCommand.trim();
     }
 }

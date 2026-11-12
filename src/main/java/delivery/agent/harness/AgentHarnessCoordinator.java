@@ -1,5 +1,6 @@
 package delivery.agent.harness;
 
+import delivery.agent.harness.cursor.CursorAgentRuntime;
 import delivery.portal.AgentHarnessProperties;
 
 import java.io.IOException;
@@ -13,7 +14,6 @@ import java.util.UUID;
 
 /**
  * Orchestrates harness lifecycle: persist task, build context, delegate to {@link AgentRuntime}, store results.
- * No Keel job worker wiring in Phase 1.
  */
 public final class AgentHarnessCoordinator {
     private final AgentRunStore store;
@@ -21,6 +21,8 @@ public final class AgentHarnessCoordinator {
     private final AgentContextBuilder contextBuilder;
     private final AgentHarnessProperties properties;
     private final Map<AgentProviderId, AgentRuntime> runtimes;
+    private final AgentWorkspacePreparer workspacePreparer;
+    private final AgentHarnessReconcile reconcile;
 
     public AgentHarnessCoordinator(
             AgentRunStore store,
@@ -33,6 +35,8 @@ public final class AgentHarnessCoordinator {
         this.contextBuilder = contextBuilder == null ? new AgentContextBuilder() : contextBuilder;
         this.properties = properties == null ? new AgentHarnessProperties() : properties;
         this.runtimes = runtimes == null ? new EnumMap<>(AgentProviderId.class) : new EnumMap<>(runtimes);
+        this.workspacePreparer = new AgentWorkspacePreparer();
+        this.reconcile = new AgentHarnessReconcile();
         if (!this.runtimes.containsKey(AgentProviderId.FAKE)) {
             this.runtimes.put(AgentProviderId.FAKE, new FakeAgentRuntime());
         }
@@ -78,7 +82,8 @@ public final class AgentHarnessCoordinator {
                 1,
                 plan.policy(),
                 "",
-                plan.providerId());
+                plan.providerId(),
+                2);
         store.saveTask(projectRoot, task);
         store.appendEvent(projectRoot, task.parentJobId(), task.taskId(),
                 new AgentEvent(Instant.now(), "TASK_CREATED", "Agent task persisted", Map.of(
@@ -100,13 +105,26 @@ public final class AgentHarnessCoordinator {
         if (task.taskStatus() == AgentTaskStatus.CANCELLED) {
             throw new AgentHarnessException("task already cancelled");
         }
+        if (task.taskStatus() == AgentTaskStatus.INTERRUPTED) {
+            throw new AgentHarnessException("task interrupted — reconcile manually");
+        }
         enforceConcurrency(projectRoot, parentJobId, taskId);
 
-        AgentRuntime runtime = runtimes.get(task.providerId());
-        if (runtime == null) {
-            throw new AgentHarnessException("no runtime for provider " + task.providerId());
+        Path taskDir = store.taskDir(projectRoot, parentJobId, taskId);
+        if (task.providerId() == AgentProviderId.CURSOR) {
+            task = prepareCursorWorkspace(task, taskDir);
+            store.saveTask(projectRoot, task);
+            if (reconcile.shouldMarkInterrupted(taskDir, task)) {
+                markInterrupted(projectRoot, parentJobId, taskId, task);
+            }
+            if (task.taskStatus() != AgentTaskStatus.RUNNING
+                    || task.agentId() == null
+                    || task.agentRunId() == null) {
+                reconcile.assertMayCreateOrThrow(taskDir, task);
+            }
         }
 
+        AgentRuntime runtime = resolveRuntime(task, projectRoot, taskDir);
         Path workspace = task.workspacePath().isBlank() ? null : Path.of(task.workspacePath());
         if (workspace != null && !task.budget().isWorkspaceAllowed(workspace)) {
             throw new AgentHarnessException("workspace forbidden by policy");
@@ -114,6 +132,10 @@ public final class AgentHarnessCoordinator {
 
         AgentContextManifest manifest = contextBuilder.build(task, List.of(), Map.of());
         store.saveContextManifest(projectRoot, parentJobId, taskId, manifest);
+
+        store.saveLaunchState(projectRoot, parentJobId, taskId, new AgentLaunchState(
+                "LAUNCHING", task.agentId(), task.agentRunId(), null, null,
+                task.parentJobId() + ":" + taskId + ":a" + task.attempt(), task.attempt()));
 
         AgentRunHandle handle;
         if (task.taskStatus() == AgentTaskStatus.RUNNING
@@ -128,13 +150,24 @@ public final class AgentHarnessCoordinator {
             handle = runtime.start(task);
             task = task.withRun(handle).withStatus(AgentTaskStatus.RUNNING);
             store.saveTask(projectRoot, task);
+            store.saveLaunchState(projectRoot, parentJobId, taskId, new AgentLaunchState(
+                    "RUNNING", handle.agentId(), handle.runId(), null, null,
+                    task.parentJobId() + ":" + taskId + ":a" + task.attempt(), task.attempt()));
             store.appendEvent(projectRoot, parentJobId, taskId,
                     new AgentEvent(Instant.now(), "START", "Provider run started", Map.of(
                             "agentId", handle.agentId(),
                             "runId", handle.runId())));
         }
 
-        AgentRunResult result = runtime.getResult(handle.agentId(), handle.runId());
+        AgentRunResult result;
+        try {
+            result = runtime.getResult(handle.agentId(), handle.runId());
+        } catch (AgentHarnessException e) {
+            if ("SIDECAR_TIMEOUT".equals(e.getMessage()) || e.getMessage().startsWith("CANCEL")) {
+                markTimedOutOrInterrupted(projectRoot, parentJobId, taskId, task, e);
+            }
+            throw e;
+        }
         AgentTaskStatus terminal = result.terminalStatus();
         if (terminal == AgentTaskStatus.RUNNING) {
             terminal = AgentTaskStatus.COMPLETED;
@@ -143,6 +176,10 @@ public final class AgentHarnessCoordinator {
         task = task.withStatus(terminal).withCompleted(Instant.now(), resultRef);
         store.saveTask(projectRoot, task);
         store.saveResult(projectRoot, parentJobId, taskId, result);
+        store.saveLaunchState(projectRoot, parentJobId, taskId, new AgentLaunchState(
+                terminal.name(), handle.agentId(), handle.runId(), null, null,
+                task.parentJobId() + ":" + taskId + ":a" + task.attempt(), task.attempt()));
+        store.clearCancelRequest(taskDir);
         store.appendEvent(projectRoot, parentJobId, taskId,
                 new AgentEvent(Instant.now(), "TERMINAL", terminal.name(), Map.of("summary", result.summary())));
         return result;
@@ -151,16 +188,92 @@ public final class AgentHarnessCoordinator {
     public void cancel(Path projectRoot, String parentJobId, String taskId) throws IOException {
         AgentTask task = store.loadTask(projectRoot, parentJobId, taskId)
                 .orElseThrow(() -> new AgentHarnessException("task not found: " + taskId));
-        if (task.agentId() != null && task.agentRunId() != null) {
+        Path taskDir = store.taskDir(projectRoot, parentJobId, taskId);
+        store.requestCancel(projectRoot, parentJobId, taskId);
+        store.saveLaunchState(projectRoot, parentJobId, taskId, new AgentLaunchState(
+                "CANCEL_REQUESTED", task.agentId(), task.agentRunId(), null, Instant.now(),
+                task.parentJobId() + ":" + taskId + ":a" + task.attempt(), task.attempt()));
+
+        boolean confirmed = false;
+        if (task.providerId() == AgentProviderId.CURSOR
+                && task.agentId() != null
+                && task.agentRunId() != null) {
+            try {
+                AgentRuntime runtime = resolveRuntime(task, projectRoot, taskDir);
+                runtime.cancel(task.agentId(), task.agentRunId());
+                confirmed = true;
+            } catch (AgentHarnessException e) {
+                store.appendEvent(projectRoot, parentJobId, taskId,
+                        new AgentEvent(Instant.now(), "CANCEL", "unconfirmed", Map.of("error", e.getMessage())));
+            }
+        } else if (task.agentId() != null && task.agentRunId() != null) {
             AgentRuntime runtime = runtimes.get(task.providerId());
             if (runtime != null) {
                 runtime.cancel(task.agentId(), task.agentRunId());
+                confirmed = true;
             }
         }
-        AgentTask cancelled = task.withStatus(AgentTaskStatus.CANCELLED).withCompleted(Instant.now(), "");
-        store.saveTask(projectRoot, cancelled);
+
+        AgentTaskStatus terminal = confirmed ? AgentTaskStatus.CANCELLED : AgentTaskStatus.INTERRUPTED;
+        AgentTask done = task.withStatus(terminal).withCompleted(Instant.now(), "");
+        store.saveTask(projectRoot, done);
         store.appendEvent(projectRoot, parentJobId, taskId,
-                new AgentEvent(Instant.now(), "CANCEL", "Task cancelled", Map.of()));
+                new AgentEvent(Instant.now(), "CANCEL", terminal.name(), Map.of()));
+    }
+
+    private AgentTask prepareCursorWorkspace(AgentTask task, Path taskDir) throws IOException {
+        if (task.workspacePath() == null || task.workspacePath().isBlank()) {
+            throw new AgentHarnessException("cursor task requires workspacePath");
+        }
+        Path source = Path.of(task.workspacePath());
+        Path isolated = AgentWorkspacePaths.isolatedWorkspace(taskDir);
+        if (source.toAbsolutePath().normalize().startsWith(isolated.toAbsolutePath().normalize())
+                && Files.isDirectory(isolated)) {
+            return task;
+        }
+        Path copied = workspacePreparer.ensureIsolatedCopy(taskDir, source);
+        AgentPolicy policy = new AgentPolicy(
+                task.budget().maxRuntime(),
+                task.budget().maxAttempts(),
+                task.budget().allowedTools(),
+                List.of(copied.toAbsolutePath().normalize().toString()),
+                task.budget().networkAllowed(),
+                task.budget().requireHumanApproval());
+        return task.withWorkspacePath(copied.toAbsolutePath().normalize().toString()).withPolicy(policy);
+    }
+
+    private AgentRuntime resolveRuntime(AgentTask task, Path projectRoot, Path taskDir) {
+        if (task.providerId() == AgentProviderId.CURSOR) {
+            Path cancelFlag = AgentWorkspacePaths.cancelRequestedFile(taskDir);
+            return new CursorAgentRuntime(properties, projectRoot, taskDir, () -> Files.exists(cancelFlag));
+        }
+        AgentRuntime rt = runtimes.get(task.providerId());
+        if (rt == null) {
+            throw new AgentHarnessException("no runtime for provider " + task.providerId());
+        }
+        return rt;
+    }
+
+    private void markInterrupted(Path projectRoot, String parentJobId, String taskId, AgentTask task)
+            throws IOException {
+        AgentTask interrupted = task.withStatus(AgentTaskStatus.INTERRUPTED).withCompleted(Instant.now(), "");
+        store.saveTask(projectRoot, interrupted);
+        store.appendEvent(projectRoot, parentJobId, taskId,
+                new AgentEvent(Instant.now(), "TERMINAL", "INTERRUPTED", Map.of()));
+        throw new AgentHarnessException("INTERRUPTED");
+    }
+
+    private void markTimedOutOrInterrupted(
+            Path projectRoot, String parentJobId, String taskId, AgentTask task, AgentHarnessException e)
+            throws IOException {
+        AgentTaskStatus terminal = "SIDECAR_TIMEOUT".equals(e.getMessage())
+                ? AgentTaskStatus.TIMED_OUT
+                : AgentTaskStatus.INTERRUPTED;
+        AgentTask done = task.withStatus(terminal).withCompleted(Instant.now(), "");
+        store.saveTask(projectRoot, done);
+        store.appendEvent(projectRoot, parentJobId, taskId,
+                new AgentEvent(Instant.now(), "TERMINAL", terminal.name(), Map.of("reason", e.getMessage())));
+        throw e;
     }
 
     private void enforceConcurrency(Path projectRoot, String parentJobId, String currentTaskId) throws IOException {

@@ -83,6 +83,33 @@ public final class AgentRunStore {
         return Optional.of(mapper.readValue(file.toFile(), AgentRunResult.class));
     }
 
+    public void saveLaunchState(Path projectRoot, String parentJobId, String taskId, AgentLaunchState state)
+            throws IOException {
+        Path dir = taskDir(projectRoot, parentJobId, taskId);
+        Files.createDirectories(dir);
+        String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(state);
+        Atomic.writeString(dir.resolve("launch-state.json"), json, StandardCharsets.UTF_8);
+    }
+
+    public Optional<AgentLaunchState> loadLaunchState(Path projectRoot, String parentJobId, String taskId)
+            throws IOException {
+        Path file = taskDir(projectRoot, parentJobId, taskId).resolve("launch-state.json");
+        if (!Files.isRegularFile(file)) {
+            return Optional.empty();
+        }
+        return Optional.of(mapper.readValue(file.toFile(), AgentLaunchState.class));
+    }
+
+    public void requestCancel(Path projectRoot, String parentJobId, String taskId) throws IOException {
+        Path file = AgentWorkspacePaths.cancelRequestedFile(taskDir(projectRoot, parentJobId, taskId));
+        Files.createDirectories(file.getParent());
+        Atomic.writeString(file, "requested", StandardCharsets.UTF_8);
+    }
+
+    public void clearCancelRequest(Path taskDir) throws IOException {
+        Files.deleteIfExists(AgentWorkspacePaths.cancelRequestedFile(taskDir));
+    }
+
     private static void validateId(String id, String label) {
         if (id == null || id.isBlank() || !SAFE_ID.matcher(id.trim()).matches()) {
             throw new IllegalArgumentException(label + " must match " + SAFE_ID.pattern());

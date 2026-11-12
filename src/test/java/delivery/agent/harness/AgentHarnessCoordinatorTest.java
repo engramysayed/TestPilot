@@ -77,7 +77,7 @@ public class AgentHarnessCoordinatorTest {
                 task.taskId(), task.parentJobId(), task.projectId(), task.taskType(), task.taskStatus(),
                 task.objective(), task.contextReferences(), outsider.toString(), task.createdAt(), task.startedAt(),
                 task.completedAt(), task.agentId(), task.agentRunId(), task.attempt(), task.budget(),
-                task.resultReference(), task.providerId());
+                task.resultReference(), task.providerId(), task.schemaVersion());
         store.saveTask(project, tampered);
         coordinator.execute(project, task.parentJobId(), task.taskId());
     }
