@@ -41,17 +41,17 @@ if (req.op === "cancel") {
 
 atomicMarker(taskDir, { sdkTouched: false, phase: "sidecar_started" });
 
-if (req.op === "reconcile" && req.agentId) {
+if (req.op === "reconcile" && req.runId) {
   emit({
     type: "run.started",
-    agentId: req.agentId,
-    runId: req.runId || "fake-run-resume",
+    agentId: req.agentId || "fake-agent-resume",
+    runId: req.runId,
   });
   emit({
     type: "result",
     status: "COMPLETED",
-    summary: "fake reconcile",
-    payload: { provider: "FAKE_SIDECAR" },
+    summary: "fake reconcile getRun",
+    payload: { provider: "FAKE_SIDECAR", recovered: true },
     modifiedFiles: [],
   });
   process.exit(0);

@@ -4,6 +4,7 @@
  * stdin: one JSON request; stdout: NDJSON events.
  */
 import { Agent, Cursor, JsonlLocalAgentStore } from "@cursor/sdk";
+/** @typedef {import("@cursor/sdk").Run} SdkRun */
 import { mkdirSync, writeFileSync, renameSync, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { createHash } from "node:crypto";
@@ -85,6 +86,80 @@ function snapshotBefore(workspacePath) {
   writeFileSync(file, JSON.stringify(hashes), "utf8");
 }
 
+async function waitForExistingRun(runId, workspacePath, storePath, agentId, apiKey, maxPollMs) {
+  const store = new JsonlLocalAgentStore(storePath);
+  Cursor.configure({ local: { store } });
+  if (agentId) {
+    try {
+      const agent = await Agent.resume(agentId, {
+        local: { cwd: workspacePath, store },
+        tools: ["read"],
+        disallowedTools: ["shell", "mcp", "task", "webFetch", "webSearch", "delete"],
+        model: { id: "auto" },
+        apiKey,
+      });
+      agent.close();
+    } catch {
+      /* resume optional — getRun is authoritative */
+    }
+  }
+  const pollBudget = Number(maxPollMs) > 0 ? Number(maxPollMs) : 120_000;
+  const deadline = Date.now() + pollBudget;
+  /** @type {SdkRun | null} */
+  let run = null;
+  while (Date.now() < deadline) {
+    run = await Agent.getRun(runId, {
+      runtime: "local",
+      cwd: workspacePath,
+      store,
+    });
+    if (!run) {
+      throw new Error("getRun returned null");
+    }
+    emit({ type: "sdk.event", stream: "reconcile.poll", payload: { status: run.status } });
+    if (run.status !== "running") break;
+    await new Promise((r) => setTimeout(r, 750));
+  }
+  if (!run) {
+    throw new Error("getRun unavailable");
+  }
+  if (run.status === "running") {
+    try {
+      await Agent.cancelRun(runId, { runtime: "local", cwd: workspacePath, store });
+    } catch {
+      /* ignore */
+    }
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      run = await Agent.getRun(runId, { runtime: "local", cwd: workspacePath, store });
+      if (run && run.status !== "running") break;
+    }
+  }
+  if (!run || run.status === "running") {
+    throw new Error("reconcile poll timeout while run still active");
+  }
+  emit({ type: "run.started", agentId: run.agentId, runId: run.id });
+  let lastStatus = run.status;
+  let resultText = run.result;
+  const modifiedFiles = await collectModified(workspacePath);
+  const terminal =
+    lastStatus === "cancelled"
+      ? "CANCELLED"
+      : lastStatus === "error"
+        ? "FAILED"
+        : "COMPLETED";
+  const summary =
+    resultText ||
+    (lastStatus === "finished" ? "run finished" : `run ${lastStatus}`);
+  emit({
+    type: "result",
+    status: terminal,
+    summary,
+    payload: { status: terminal, runStatus: lastStatus, recovered: true },
+    modifiedFiles,
+  });
+}
+
 async function runExecute(req) {
   const taskDir = req.taskDir;
   const workspacePath = resolve(req.workspacePath);
@@ -93,6 +168,26 @@ async function runExecute(req) {
   mkdirSync(storePath, { recursive: true });
 
   const apiKey = process.env.CURSOR_API_KEY;
+  if (req.op === "reconcile" && req.runId) {
+    if (!apiKey) {
+      emitError("MISSING_API_KEY", "CURSOR_API_KEY not set");
+    }
+    emit({ type: "ack", protocolVersion: 1 });
+    try {
+      await waitForExistingRun(
+        req.runId,
+        workspacePath,
+        storePath,
+        req.agentId,
+        apiKey || process.env.CURSOR_API_KEY,
+        req.reconcileMaxPollMs
+      );
+    } catch (e) {
+      emitError("RECONCILE_FAILED", e && e.message ? e.message : String(e));
+    }
+    return;
+  }
+
   if (!apiKey) {
     emitError("MISSING_API_KEY", "CURSOR_API_KEY not set");
   }

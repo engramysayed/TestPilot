@@ -41,14 +41,30 @@ mvn test -Dkeel.agent.cursor.live=true -Dtest=CursorAgentRuntimeLiveIT
 
 Requires `tools/cursor-agent/agent.mjs` on disk (walks up from `keel-portal` cwd). Sets `delivery.provider.allowlist=cursor` in-test only.
 
-### Store lock (two-process semantics, Java-owned)
+### Cross-process store lock (required before push)
 
 ```bat
 cd keel-portal
+mvn test -Dtest=AgentStoreLockCrossProcessIT
+```
+
+Spawns separate JVMs (`AgentStoreLockHold`, `AgentStoreLockTryMain`): peer holds `cursor-sdk-state.store.lock` → second process `TIMEOUT`; after kill → `ACQUIRED`. Also verifies `CursorSidecarClient` **cancel/reconcile** ops block with `store lock timeout` while peer holds lock (fake sidecar).
+
+In-process thread test (not sufficient alone):
+
+```bat
 mvn test -Dtest=AgentStoreLockTest
 ```
 
-Verifies second JVM thread times out on `cursor-sdk-state.store.lock` while the first holds `AgentStoreLock`.
+### Active-run recovery after sidecar kill (opt-in live)
+
+```bat
+call api-keys.local.bat
+cd keel-portal
+mvn test -Dkeel.agent.cursor.live=true -Dtest=CursorActiveRunRecoveryLiveIT
+```
+
+Kills real `agent.mjs` after `run.started`, persists `RUNNING` + ids, runs **`CursorActiveRunRecoveryRunner` in a fresh JVM** → coordinator `execute` with `op=reconcile`.
 
 ---
 
@@ -63,7 +79,9 @@ Verifies second JVM thread times out on `cursor-sdk-state.store.lock` while the 
 | 5 | Reconcile after interrupted execution | **PASS** | Spike `5.marker_blocks_blind_create` → `RECONCILE_FAILED`; Java reconcile allows first `PENDING` launch |
 | 6 | Duplicate / idempotency | **Observed, not dedup** | Spike `6` — second `send` errors: *already has active run* |
 | 7 | Two-process shared store | **Partial** | Spike `7` — concurrent `Agent.create` without lock: 2 NDJSON lines, valid JSON; **no SDK-level lock** |
-| 8 | Java store lock | **PASS** | `AgentStoreLockTest.secondAcquireTimesOut` |
+| 8 | Java store lock (in-process) | **PASS** | `AgentStoreLockTest.secondAcquireTimesOut` |
+| 9 | Cross-process store lock | **PASS** | `AgentStoreLockCrossProcessIT` (2026-11-12) |
+| 10 | Active run recovery (live) | **PASS** | `CursorActiveRunRecoveryLiveIT` ~132s (2026-11-12) |
 
 ---
 
@@ -86,6 +104,18 @@ Verifies second JVM thread times out on `cursor-sdk-state.store.lock` while the 
 | Blind create after SDK touch | Marker reset on sidecar start | `agent.mjs`: refuse create when `sdkTouched: true`; do not clobber existing marker |
 
 ---
+
+## Active-run recovery path (verified live, 2026-11-12)
+
+After execute sidecar death while the SDK run is still **detached/running**:
+
+1. **Do not** call `Agent.create` again (coordinator uses `RUNNING` + persisted `agentId`/`runId`).
+2. **Do not** rely on `Agent.listRuns` (still fails after resume in spike 2b).
+3. **Do not** call `Run.wait()` on a detached handle from `Agent.getRun` — SDK error: `Cannot wait on a detached running run`.
+4. **Working path:** sidecar `op=reconcile` with `runId` → `Agent.getRun` **poll** until terminal (bounded by `reconcileMaxPollMs`) → if still running, `Agent.cancelRun` → poll again → emit terminal `result`. Coordinator fix: `RUNNING` retry uses reconcile sidecar (`runtime.start`), not `resume()` only.
+5. Java holds `AgentStoreLock` for entire sidecar session (`CursorSidecarClient`).
+
+Live IT outcome: same `agentId`/`runId`, no extra `agents.ndjson` row, `result.json` persisted; terminal **COMPLETED** or **CANCELLED** (after poll timeout + cancel fallback) in ~132s.
 
 ## Limitations (not claimed as verified)
 

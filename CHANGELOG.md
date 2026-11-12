@@ -2,6 +2,12 @@
 
 # Keel changelog
 
+## 2026-11-12 — Agent harness Phase 2 reliability (cross-process lock + recovery)
+
+- `AgentStoreLockCrossProcessIT` + helper JVM mains prove OS file lock across processes; sidecar execute/cancel/reconcile acquire lock via `CursorSidecarClient`.
+- Live `CursorActiveRunRecoveryLiveIT`: kill execute sidecar after `run.started`, recover via `Agent.getRun` poll (not `listRuns` / detached `wait()`).
+- Coordinator `RUNNING` retry spawns reconcile sidecar; `agent.mjs` `reconcile`+`runId` path documented in spike notes.
+
 ## 2026-11-12 — Agent harness Phase 2 live Cursor SDK validation
 
 - Opt-in live spike (`tools/cursor-agent/live-spike.mjs`) and `CursorAgentRuntimeLiveIT` (`-Dkeel.agent.cursor.live=true`) run against real `@cursor/sdk` 1.0.27; results in `docs/handoff/2026-11-12-cursor-sdk-spike-notes.md` and `cursor-sdk-live-spike-output.json`.

@@ -9,6 +9,7 @@ import delivery.privacy.ProviderPolicy;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import delivery.agent.harness.AgentStoreLock;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -44,7 +45,9 @@ public final class CursorSidecarClient {
         env.put("CURSOR_API_KEY", ApiKeySource.resolve(ApiKeySource.CURSOR_API_KEY));
         env.putAll(delivery.runner.EngineProxy.fromSystem().nodeEnv());
         Duration deadline = task.budget() == null ? Duration.ofMinutes(properties.getMaxRuntimeMinutes()) : task.budget().maxRuntime();
-        return new CursorSidecarSession(cmd, req.toString(), repoRoot, deadline, cancel, env, mapper);
+        long lockMs = Long.getLong("delivery.agent-harness.store-lock-ms", 30_000L);
+        AgentStoreLock storeLock = AgentStoreLock.acquire(taskDir, Duration.ofMillis(Math.max(100L, lockMs)));
+        return new CursorSidecarSession(cmd, req.toString(), repoRoot, deadline, cancel, env, mapper, storeLock);
     }
 
     private void assertRuntimeReady() {
@@ -57,7 +60,7 @@ public final class CursorSidecarClient {
         }
     }
 
-    private JSONObject buildRequest(AgentTask task, Path taskDir, String op) {
+    JSONObject buildRequest(AgentTask task, Path taskDir, String op) {
         AgentToolPolicyMapper.MappedTools tools = AgentToolPolicyMapper.map(task.budget());
         JSONObject req = new JSONObject();
         req.put("protocolVersion", 1);
@@ -78,6 +81,10 @@ public final class CursorSidecarClient {
         if (task.agentRunId() != null && !task.agentRunId().isBlank()) {
             req.put("runId", task.agentRunId());
         }
+        Duration maxRuntime = task.budget() == null
+                ? Duration.ofMinutes(properties.getMaxRuntimeMinutes())
+                : task.budget().maxRuntime();
+        req.put("reconcileMaxPollMs", Math.min(120_000L, Math.max(15_000L, maxRuntime.toMillis())));
         return req;
     }
 

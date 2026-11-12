@@ -55,6 +55,59 @@ public class CursorAgentRuntimeTest {
         }
     }
 
+    @Test
+    public void coordinatorRecoverRunningTask_usesReconcileNotCreate() throws Exception {
+        Path project = Files.createTempDirectory("cursor-recover-");
+        Path sourceWs = Files.createTempDirectory("source-ws-recover-");
+        Files.writeString(sourceWs.resolve("readme.txt"), "hello");
+
+        Path fakeScript = Path.of("src/test/resources/cursor-agent/fake-sidecar.mjs").toAbsolutePath();
+        AgentHarnessProperties props = new AgentHarnessProperties();
+        props.setEnabled(true);
+        props.setCursorEnabled(true);
+        props.setCursorCommand("node " + fakeScript);
+
+        String prevAllow = System.getProperty("delivery.provider.allowlist");
+        String prevKey = System.getProperty("CURSOR_API_KEY");
+        System.setProperty("delivery.provider.allowlist", "cursor");
+        System.setProperty("CURSOR_API_KEY", "test-key-not-real");
+        try {
+            AgentHarnessCoordinator coordinator = AgentHarnessCoordinator.forTests(props);
+            var task = coordinator.createTask(project, new NewAgentTaskRequest(
+                    "job_r1", "p1", delivery.agent.harness.AgentTaskType.FRAMEWORK_VALIDATION_V1,
+                    "validate", List.of(), sourceWs.toString()));
+
+            var store = new delivery.agent.harness.AgentRunStore();
+            Path taskDir = store.taskDir(project, task.parentJobId(), task.taskId());
+            Path iso = new delivery.agent.harness.AgentWorkspacePreparer()
+                    .ensureIsolatedCopy(taskDir, sourceWs);
+            var running = store.loadTask(project, task.parentJobId(), task.taskId()).orElseThrow();
+            String isoPath = iso.toAbsolutePath().normalize().toString();
+            var policy = new delivery.agent.harness.AgentPolicy(
+                    running.budget().maxRuntime(),
+                    running.budget().maxAttempts(),
+                    running.budget().allowedTools(),
+                    List.of(isoPath),
+                    running.budget().networkAllowed(),
+                    running.budget().requireHumanApproval());
+            running = running
+                    .withWorkspacePath(isoPath)
+                    .withPolicy(policy)
+                    .withStatus(AgentTaskStatus.RUNNING)
+                    .withRun(new delivery.agent.harness.AgentRunHandle("fake-agent-r1", "fake-run-r1", java.time.Instant.now()));
+            Files.writeString(taskDir.resolve("sdk-touch.marker"),
+                    "{\"sdkTouched\":true,\"phase\":\"create_returned\",\"agentId\":\"fake-agent-r1\"}");
+            store.saveTask(project, running);
+
+            AgentRunResult result = coordinator.execute(project, task.parentJobId(), task.taskId());
+            Assert.assertEquals(result.terminalStatus(), AgentTaskStatus.COMPLETED);
+            Assert.assertTrue(result.summary().contains("fake reconcile"));
+        } finally {
+            restore("delivery.provider.allowlist", prevAllow);
+            restore("CURSOR_API_KEY", prevKey);
+        }
+    }
+
     @Test(expectedExceptions = delivery.agent.harness.AgentHarnessException.class)
     public void sdkTouchedMarker_blocksSecondCreate() throws Exception {
         Path project = Files.createTempDirectory("cursor-interrupted-");

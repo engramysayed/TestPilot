@@ -138,12 +138,18 @@ public final class AgentHarnessCoordinator {
                 task.parentJobId() + ":" + taskId + ":a" + task.attempt(), task.attempt()));
 
         AgentRunHandle handle;
-        if (task.taskStatus() == AgentTaskStatus.RUNNING
-                && task.agentId() != null
-                && task.agentRunId() != null) {
-            handle = runtime.resume(task.agentId(), task.agentRunId());
+        boolean recovering =
+                task.taskStatus() == AgentTaskStatus.RUNNING
+                        && task.agentId() != null
+                        && !task.agentId().isBlank()
+                        && task.agentRunId() != null
+                        && !task.agentRunId().isBlank();
+        if (recovering) {
             store.appendEvent(projectRoot, parentJobId, taskId,
-                    new AgentEvent(Instant.now(), "RESUME", "Resumed provider run", Map.of()));
+                    new AgentEvent(Instant.now(), "RECOVER", "Reconcile sidecar for existing run", Map.of(
+                            "agentId", task.agentId(),
+                            "runId", task.agentRunId())));
+            handle = runtime.start(task);
         } else {
             task = task.withStatus(AgentTaskStatus.STARTING);
             store.saveTask(projectRoot, task);

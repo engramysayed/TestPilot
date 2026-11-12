@@ -19,7 +19,7 @@ This document points engineers at deeper material already in the tree.
 
 | Topic | Where to look |
 |-------|----------------|
-| **Unified agent harness (off by default)** | `delivery.agent.harness.*`, `CursorAgentRuntime`, `tools/cursor-agent/`, `sdk-touch.marker`, Phase 2 plan + **`docs/handoff/2026-11-12-cursor-sdk-spike-notes.md`** (live SDK validation); tests `delivery.agent.harness.*`, opt-in `CursorAgentRuntimeLiveIT`. No job worker wiring yet. |
+| **Unified agent harness (off by default)** | `delivery.agent.harness.*`, `CursorAgentRuntime`, `tools/cursor-agent/`, `sdk-touch.marker`, store lock on sidecar sessions, Phase 2 plan + **`docs/handoff/2026-11-12-cursor-sdk-spike-notes.md`**; CI `AgentStoreLockCrossProcessIT`; opt-in `CursorAgentRuntimeLiveIT`, `CursorActiveRunRecoveryLiveIT`. No job worker wiring yet. |
 | **Shared locator ranking** (hook → test id → id → name → role+name → label → text → CSS → ordinal; per-project mode) | `delivery.locator.LocatorStabilityPolicy`, `CandidateScorer`, `LocatorRanker`, `SemanticLocatorLadder`, `MultiLocatorBag`, `ElementGrounder`; Projects → Settings → Locator ranking; tests `LocatorStabilityPolicyTest`, `CodegenW2EmitTest` |
 | **Arabic / Unicode step matching** | `delivery.authoring.IntentText`, `StepIntentBinder.classify`, `IntentTextTest` |
 | **Refund requests** (auto for platform failures, user request, Admin → Refunds) | `RefundRequestService`, `AdminRefundsController`, `JobRefundController`, `templates/admin-refunds.html`, `RefundRequestTest` |

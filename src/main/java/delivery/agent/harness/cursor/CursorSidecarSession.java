@@ -3,6 +3,7 @@ package delivery.agent.harness.cursor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import delivery.agent.harness.AgentHarnessException;
 import delivery.agent.harness.AgentRunResult;
+import delivery.agent.harness.AgentStoreLock;
 import delivery.agent.harness.AgentTaskStatus;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -29,6 +30,7 @@ public final class CursorSidecarSession implements AutoCloseable {
     private volatile AgentHarnessException terminalError;
     private volatile String agentId;
     private volatile String runId;
+    private final AgentStoreLock storeLock;
 
     public CursorSidecarSession(
             List<String> command,
@@ -37,7 +39,9 @@ public final class CursorSidecarSession implements AutoCloseable {
             Duration deadline,
             BooleanSupplier cancel,
             Map<String, String> extraEnv,
-            ObjectMapper mapper) throws Exception {
+            ObjectMapper mapper,
+            AgentStoreLock storeLock) throws Exception {
+        this.storeLock = storeLock;
         this.mapper = mapper == null ? new ObjectMapper() : mapper;
         ProcessBuilder pb = new ProcessBuilder(command);
         if (repoRoot != null) {
@@ -166,9 +170,15 @@ public final class CursorSidecarSession implements AutoCloseable {
     }
 
     @Override
-    public void close() {
-        if (process.isAlive()) {
-            process.destroyForcibly();
+    public void close() throws java.io.IOException {
+        try {
+            if (process.isAlive()) {
+                process.destroyForcibly();
+            }
+        } finally {
+            if (storeLock != null) {
+                storeLock.close();
+            }
         }
     }
 }
