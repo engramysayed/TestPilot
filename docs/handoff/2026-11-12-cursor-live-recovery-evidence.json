@@ -1,7 +1,7 @@
 {
   "verifiedAt": "2026-11-12T20:00+02:00",
   "baselineCommit": "a1c9c4d",
-  "policyAFixCommit": "3f7a89e",
+  "policyAFixCommit": "4f61a14c4986e77c1954b1523bfc9d4479197705",
   "productionHarnessFlags": "unchanged (false)",
   "tier0": {
     "command": "cd keel-portal && mvn test -Dtest=AgentStoreLockCrossProcessIT,AgentStoreLockTest",
