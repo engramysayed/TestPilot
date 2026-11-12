@@ -2,6 +2,13 @@
 
 # Keel changelog
 
+## 2026-11-12 — Agent harness Phase 1 (foundation only)
+
+- Added `delivery.agent.harness.*`: task types, policy, tool registry, context builder, disk `agent-runs/` store, `FakeAgentRuntime`, and `AgentHarnessCoordinator`. **No Cursor SDK wiring** and no job-worker hooks yet.
+- Feature flags default off: `delivery.agent-harness.enabled=false` (plus cursor, framework-validation, failure-investigation toggles). Existing Convert/Execute/Hunt/Generate flows unchanged.
+- Tests: `delivery.agent.harness.*` (fake runtime end-to-end, routing, policy). Run: `cd keel-portal && mvn test -Dtest=delivery.agent.harness.*`.
+- Repo sync: merged `alerts-members-and-cleanup` → `main` and pushed; portal UI polish (login, dashboard, refunds, suites, GFK, local `start-portal.cmd`).
+
 ## 2026-11-08 - Real alert senders, per-suite min severity, early-start fix
 
 - Slack, Email and Telegram suite/system alerts now really send (webhook POST, `JavaMailSender`, Telegram bot `sendMessage`). The old stubs only logged. Each channel is off until its enabled flag is true and the address is set.

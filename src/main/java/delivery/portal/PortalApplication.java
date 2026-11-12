@@ -14,7 +14,11 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @SpringBootApplication(scanBasePackages = {"delivery.portal", "delivery.mobile"})
 @EntityScan(basePackages = {"delivery.portal.persistence", "delivery.mobile.persistence"})
 @EnableJpaRepositories(basePackages = {"delivery.portal.persistence", "delivery.mobile.persistence"})
-@EnableConfigurationProperties({DeliveryPortalProperties.class, MobileProperties.class, DeliveryCreditsProperties.class})
+@EnableConfigurationProperties({
+        DeliveryPortalProperties.class,
+        MobileProperties.class,
+        DeliveryCreditsProperties.class,
+        AgentHarnessProperties.class})
 @EnableAsync
 public class PortalApplication {
     private static final Logger log = LoggerFactory.getLogger(PortalApplication.class);

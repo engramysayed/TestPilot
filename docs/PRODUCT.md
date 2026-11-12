@@ -3,7 +3,7 @@
 This is the **full feature list** for people who will use or review Keel.  
 It describes the portal as it exists now (October 2026), not only the last commit.
 
-- **What just shipped** (dated notes): [`CHANGELOG.md`](../CHANGELOG.md)
+- **What just shipped** (dated notes): [`CHANGELOG.md`](../CHANGELOG.md) — includes 2026-11-12 agent harness Phase 1 (developer-only; all harness flags default off; no user-visible workflow change yet).
 - **How to run it**: [`README.md`](../README.md)
 - **Engineer pointers**: [`ENGINEERING_HANDOFF.md`](ENGINEERING_HANDOFF.md)
 

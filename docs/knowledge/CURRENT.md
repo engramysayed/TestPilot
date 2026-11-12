@@ -1,6 +1,6 @@
 # Keel — current project knowledge
 
-> **What is true now.** Updated 2026-11-08. When something changes, edit this page in the same commit.
+> **What is true now.** Updated 2026-11-12. When something changes, edit this page in the same commit.
 > History (what was true on a given day) is in [`../history/HISTORY.md`](../history/HISTORY.md).
 > Engineer entry point: [`../ENGINEERING_HANDOFF.md`](../ENGINEERING_HANDOFF.md). User-facing features: [`../PRODUCT.md`](../PRODUCT.md).
 
@@ -53,11 +53,13 @@ flowchart LR
 | `src/main/resources/prompts/` | Runtime prompt catalog (`PromptCatalog`, Admin → Prompts, `VERSION`) |
 | `src/main/resources/static/js/pages/` | Page scripts extracted from templates (server values via `window.KEEL_PAGE`) |
 | `tools/cursor-heal/` | Cursor sidecar for heal/hunt |
+| `delivery.agent.harness` | Unified agent harness **Phase 1** (tasks, policy, disk `agent-runs/`; `FakeAgentRuntime` only; flag `delivery.agent-harness.enabled=false`) |
 
 ### Key packages
 
 | Package | What lives there |
 |---------|------------------|
+| `delivery.agent.harness` | Bounded agent tasks (`AgentHarnessCoordinator`, `AgentRunStore`); not wired to Convert/Execute yet |
 | `delivery.locator` | **`LocatorStabilityPolicy`, `LocatorTier`, `LocatorMode`** — the one locator ranking |
 | `delivery.authoring` | DOM candidate extraction, `CandidateScorer`, `StepIntentBinder`, `IntentText` (Unicode/Arabic), `GeneratedIdDetector`, `LocatorValidator` |
 | `delivery.snapshot` | `LocatorRanker` (runtime uniqueness), `KeelTarget` (frame/shadow hops) |
