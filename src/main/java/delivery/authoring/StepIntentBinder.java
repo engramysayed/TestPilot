@@ -583,8 +583,6 @@ public final class StepIntentBinder {
     }
 
     static IntentKind classify(String lower) {
-        // Arabic steps: add the English verb keywords the rules below key on (اضغط → click, ادخل → enter…).
-        lower = IntentText.annotateArabicVerbs(lower);
         if (ExplicitAssertionOps.isExplicit(lower)) {
             return IntentKind.ASSERT_VISIBLE;
         }

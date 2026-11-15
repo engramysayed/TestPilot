@@ -15,9 +15,9 @@ public final class TextLocatorSanitizer {
     private static final Pattern IBAN = Pattern.compile("\\b[A-Z]{2}\\d{2}[A-Z0-9]{10,30}\\b");
     private static final Pattern MONEY = Pattern.compile("(?i)(?:[$€£¥]|\\b(?:egp|usd|eur|sar|aed)\\b)\\s?\\d");
     private static final Pattern DATE_TIME = Pattern.compile("\\b\\d{1,4}[/-]\\d{1,2}[/-]\\d{1,4}\\b|\\b\\d{1,2}:\\d{2}\\b");
-    private static final Pattern GREETING = Pattern.compile("(?i)^(hi|hello|welcome|مرحبا)[ ,]");
+    private static final Pattern GREETING = Pattern.compile("(?i)^(hi|hello|welcome)[ ,]");
 
-    private static final Pattern GREETING_NAME = Pattern.compile("(?i)\\b(hi|hello|welcome|مرحبا)([ ,]+)[^\\s,!.]+");
+    private static final Pattern GREETING_NAME = Pattern.compile("(?i)\\b(hi|hello|welcome)([ ,]+)[^\\s,!.]+");
 
     private TextLocatorSanitizer() {
     }

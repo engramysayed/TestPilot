@@ -41,7 +41,6 @@ TC_01,Valid login,"1. Open the Login Page at /login
 
 After these instructions, the user will paste their rough test cases. Rewrite that batch into CSV matching the header above.
 
-LANGUAGE (Arabic / English)
-- Keep each case in the language it was written in. Do not translate steps, quoted UI labels, or messages.
-- Quote UI text exactly as it appears in the app's own language (e.g. Click the "تسجيل الدخول" button).
+LANGUAGE
+- Write cases in English. Do not translate quoted UI labels or messages — keep them as they appear.
 - If the source cases carry story ids, keep them as req:<id> in the Tags column.

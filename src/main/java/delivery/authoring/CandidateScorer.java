@@ -224,7 +224,7 @@ public final class CandidateScorer {
 
     private static List<String> distinctiveTokens(List<String> toks) {
         return toks.stream()
-                .filter(t -> t.length() >= (IntentText.hasArabic(t) ? 3 : 4))
+                .filter(t -> t.length() >= 4)
                 .filter(t -> !STOP.contains(t))
                 .toList();
     }

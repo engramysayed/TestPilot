@@ -117,7 +117,7 @@ public class CodegenReviewFixesTest {
     @Test
     public void unicodeAndWhitespaceRoundTripThroughUtf8Properties() throws Exception {
         Path dir = Files.createTempDirectory("cg06-props");
-        ProvenStep unicode = step("TC_UNICODE", "Profile", "type", "id", "name", "مرحبا café");
+        ProvenStep unicode = step("TC_UNICODE", "Profile", "type", "id", "name", "crème café résumé");
         ProvenStep spaces = new ProvenStep("TC_SPACES", "Profile", "elementAction", "type",
                 "id", "note", "  leading\rnext", "", "", true, "");
         new CodeWriter(TEMPLATES).write(dir, List.of(
@@ -129,8 +129,8 @@ public class CodegenReviewFixesTest {
             loaded.load(reader);
         }
         Assert.assertEquals(
-                loaded.getProperty(findKey(loaded, "مرحبا café")),
-                "مرحبا café");
+                loaded.getProperty(findKey(loaded, "crème café résumé")),
+                "crème café résumé");
         Assert.assertEquals(
                 loaded.getProperty(findKey(loaded, "leading")),
                 "  leading\rnext");

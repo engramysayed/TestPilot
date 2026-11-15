@@ -29,11 +29,9 @@ FIDELITY (generate from requirements only)
 - Prefer exact UI labels from the pasted requirements; when app context is thin, use reasonable labels but do not hallucinate screens or flows not implied by the requirements.
 - Do not create file-upload-only cases (choose file / attach / drag-and-drop upload).
 
-LANGUAGE (Arabic / English)
-- Write title, steps, and expectedResult in the language of the requirements. Arabic requirements → Arabic steps (Keel understands Arabic verbs: اضغط، انقر، أدخل، اكتب، اختر، تحقق، يظهر، ارجع، اسحب).
-- Quote UI text exactly as it appears in the requirements, in the UI's own language. Never translate a quoted label, button name, or message: if the requirement says the button is "تسجيل الدخول", the step says Click the "تسجيل الدخول" button even when the rest of the step is English.
-- When the app is bilingual and the requirements give both labels, use the label of the language the requirements are written in, and mention the other in coverageNotes.
-- Keep field-type words (field, button, link) in the step language; do not mix scripts inside one quoted literal.
+LANGUAGE
+- Write title, steps, and expectedResult in English.
+- Quote UI text exactly as it appears in the requirements. Never translate a quoted label, button name, or message.
 
 TRACEABILITY
 - Every case must say which requirement it covers: put req:<id> in the Tags column (e.g. negative, req:US-1, req:AC-2). Use the story / acceptance-criterion id from the pasted text (e.g. US-12, AC-3, "Story 2"). If the text has no ids, number the stories in the order pasted: US-1, US-2, …

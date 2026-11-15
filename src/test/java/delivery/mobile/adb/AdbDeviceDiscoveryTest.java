@@ -118,18 +118,18 @@ public class AdbDeviceDiscoveryTest {
 
     @Test
     public void unicodeDisplayNamePreservedAndDisplayOnly() throws Exception {
-        String arabicModel = "هاتف_اختبار";
+        String unicodeModel = "Prüfgerät_Modèle";
         String raw = ""
                 + "List of devices attached\n"
-                + "SERIALUNICODE          device product:p model:" + arabicModel + " device:d transport_id:9\n"
+                + "SERIALUNICODE          device product:p model:" + unicodeModel + " device:d transport_id:9\n"
                 + "emulator-5554          device product:sdk model:emu device:e transport_id:1\n";
         backend.on("devices -l", raw);
         AdbDeviceInfo info = discovery.requireDevice("SERIALUNICODE");
-        Assert.assertEquals(info.getDisplayName(), arabicModel);
-        Assert.assertEquals(info.getModel(), arabicModel);
+        Assert.assertEquals(info.getDisplayName(), unicodeModel);
+        Assert.assertEquals(info.getModel(), unicodeModel);
         // Selection is by serial, not by Unicode display name
         try {
-            discovery.requireDevice(arabicModel);
+            discovery.requireDevice(unicodeModel);
             Assert.fail("display name must not be accepted as serial");
         } catch (AdbInventoryException e) {
             Assert.assertEquals(e.getCode(), AdbErrorCode.INVALID_SERIAL);
@@ -211,13 +211,13 @@ public class AdbDeviceDiscoveryTest {
                 "Packages:\n"
                         + "  Package [com.example.app]\n"
                         + "    versionCode=42 minSdk=26 targetSdk=34\n"
-                        + "    versionName=1.2.3-عربي\n");
+                        + "    versionName=1.2.3-ünïcode\n");
 
         InstalledPackageMetadata meta = discovery.resolveInstalledPackage("emulator-5554", "com.example.app");
         Assert.assertEquals(meta.getSerial(), "emulator-5554");
         Assert.assertEquals(meta.getPackageName(), "com.example.app");
         Assert.assertEquals(meta.getVersionCode(), Long.valueOf(42L));
-        Assert.assertEquals(meta.getVersionName(), "1.2.3-عربي");
+        Assert.assertEquals(meta.getVersionName(), "1.2.3-ünïcode");
         Assert.assertEquals(meta.getVerification(), MobileVerification.OBSERVED.name());
         // All device-scoped calls must include exact -s serial
         boolean sawPm = false;
