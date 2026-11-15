@@ -526,7 +526,7 @@ public class PortalUiController {
 
     @GetMapping("/admin/invites")
     public String adminInvites() {
-        return "redirect:/admin/users";
+        return "redirect:/admin/users/invite";
     }
 
     @GetMapping("/pricing")

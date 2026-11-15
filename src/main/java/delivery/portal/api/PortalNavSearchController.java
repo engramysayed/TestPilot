@@ -34,7 +34,8 @@ public class PortalNavSearchController {
             new NavEntry("/guide", "Guide", "guide help authoring test case tc-guide how to how to write how to write test cases"),
             new NavEntry("/account", "Account", "account settings profile password"),
             new NavEntry("/admin/pricing", "Prices", "admin pricing edit prices costs"),
-            new NavEntry("/admin/users", "Administration", "admin users invites"),
+            new NavEntry("/admin/users", "Administration", "admin users"),
+            new NavEntry("/admin/users/invite", "Invite user", "admin invite invites user email new"),
             new NavEntry("/admin/domains", "Domains", "admin domains allowlist"),
             new NavEntry("/admin/llm-settings", "LLM & API keys", "admin llm ollama api keys cursor agentrouter heal settings")
     );
@@ -83,7 +84,8 @@ public class PortalNavSearchController {
     }
 
     private static boolean isHeadOnlyPage(String url) {
-        return "/admin/pricing".equals(url) || "/admin/users".equals(url) || "/admin/llm-settings".equals(url);
+        return "/admin/pricing".equals(url) || "/admin/users".equals(url)
+                || "/admin/users/invite".equals(url) || "/admin/llm-settings".equals(url);
     }
 
     private static boolean isAdminOnlyPage(String url) {
