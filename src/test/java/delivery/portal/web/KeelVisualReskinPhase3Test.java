@@ -37,8 +37,8 @@ public class KeelVisualReskinPhase3Test extends AbstractTestNGSpringContextTests
                 .getResponse()
                 .getContentAsString();
 
-        Assert.assertTrue(body.contains("class=\"heading\""));
-        Assert.assertTrue(body.contains("Your quality workspace"));
+        Assert.assertTrue(body.contains("heading dash-heading"));
+        Assert.assertTrue(body.contains("kpi-row"));
         Assert.assertTrue(body.contains("grid--overview"));
         Assert.assertTrue(body.contains("panel--keel"));
         Assert.assertTrue(body.contains("panelhead"));
