@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Invite user')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <p class="muted" style="margin:0 0 .35rem"><a href="/admin/users">← Users</a></p>
+            <h1>Invite someone</h1>
+        </div>
+    </div>
+
+    <section class="panel">
+        <form id="invite-form">
+            <label>Email address
+                <input type="email" name="email" required placeholder="colleague@company.com"/>
+            </label>
+            <label class="check">
+                <input type="checkbox" name="sendEmail" checked/>
+                Send invite email now (needs SMTP configured)
+            </label>
+            <div style="margin-top:.85rem;display:flex;gap:.5rem">
+                <button type="submit" class="button">Create invite</button>
+                <a class="button ghost" href="/admin/users">Cancel</a>
+            </div>
+        </form>
+        <p id="invite-out" class="ok" hidden style="margin-top:.75rem"></p>
+        <p id="invite-err" class="error" hidden style="margin-top:.75rem"></p>
+    </section>
+</main>
+</div>
+<script>
+    document.getElementById('invite-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = e.target.email.value;
+        const sendEmail = e.target.sendEmail.checked;
+        const out = document.getElementById('invite-out');
+        const ierr = document.getElementById('invite-err');
+        out.hidden = true; ierr.hidden = true;
+        const res = await fetch('/api/admin/invites', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel'},
+            body: JSON.stringify({ email, sendEmail })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            ierr.hidden = false;
+            ierr.textContent = data.message || 'Invite failed';
+            return;
+        }
+        out.hidden = false;
+        out.textContent = (data.message || 'Invite created.') + (data.acceptUrl ? ' Link: ' + data.acceptUrl : '');
+        e.target.reset();
+        e.target.sendEmail.checked = true;
+    });
+</script>
+</body>
+</html>

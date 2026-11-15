@@ -38,23 +38,8 @@
     </section>
 
     <section class="panel">
-        <h2>Invite someone by email</h2>
-        <form id="invite-form">
-            <label>Email address
-                <input type="email" name="email" required placeholder="colleague@company.com"/>
-            </label>
-            <label class="check">
-                <input type="checkbox" name="sendEmail" checked/>
-                Send invite email now (needs SMTP configured)
-            </label>
-            <button type="submit">Create invite</button>
-        </form>
-        <p id="invite-out" class="ok" hidden></p>
-        <p id="invite-err" class="error" hidden></p>
-    </section>
-
-    <section class="panel">
         <h2>Registered users</h2>
+        <p style="margin:0 0 .75rem"><a class="button" href="/admin/users/invite">+ Invite someone</a></p>
         <table class="table keel-users-table" id="users-table">
             <thead>
             <tr><th>Email</th><th>Role</th><th>Status</th><th>Credits</th><th>Last active</th><th>Enabled</th><th>Projects</th><th></th></tr>
@@ -278,31 +263,6 @@
             });
         });
     }
-
-    document.getElementById('invite-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = e.target.email.value;
-        const sendEmail = e.target.sendEmail.checked;
-        const out = document.getElementById('invite-out');
-        const ierr = document.getElementById('invite-err');
-        out.hidden = true; ierr.hidden = true;
-        const res = await fetch('/api/admin/invites', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel'},
-            body: JSON.stringify({ email, sendEmail })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-            ierr.hidden = false;
-            ierr.textContent = data.message || 'Invite failed';
-            return;
-        }
-        out.hidden = false;
-        out.textContent = data.message + (data.acceptUrl ? ' Link: ' + data.acceptUrl : '');
-        e.target.reset();
-        e.target.sendEmail.checked = true;
-        load();
-    });
 
     load();
 </script>

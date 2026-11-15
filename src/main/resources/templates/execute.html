@@ -327,9 +327,13 @@
                   th:text="${v.label}">Result</span>
         </p>
         <div id="bug-report-actions" class="bug-report-actions" hidden>
-            <button type="button" class="button ghost" id="bug-report-json">Export bug report (JSON)</button>
-            <button type="button" class="button ghost" id="bug-report-csv">Export bug report (CSV)</button>
-            <button type="button" class="button ghost" id="results-excel">Export results (Excel + screenshots)</button>
+            <button type="button" class="button" id="results-excel">Export results (Excel)</button>
+            <details class="overflow"><summary aria-label="More export options">⋯</summary>
+                <div class="overflow-menu">
+                    <button type="button" class="button ghost" id="bug-report-json">Bug report (JSON)</button>
+                    <button type="button" class="button ghost" id="bug-report-csv">Bug report (CSV)</button>
+                </div>
+            </details>
         </div>
         <table class="table" id="results-table">
             <thead>

@@ -158,8 +158,12 @@
                 <p id="monitor-meta" class="muted"></p>
                 <div class="panel-actions">
                     <button type="button" class="button" id="save-monitor">Save watch settings</button>
-                    <button type="button" class="button ghost" id="demote-monitor">Stop watching</button>
                     <button type="button" class="button ghost" id="run-suite">Run now</button>
+                    <details class="overflow"><summary aria-label="More">⋯</summary>
+                        <div class="overflow-menu">
+                            <button type="button" class="button ghost" id="demote-monitor">Stop watching</button>
+                        </div>
+                    </details>
                     <span id="monitor-status" class="muted" role="status"></span>
                 </div>
             </section>

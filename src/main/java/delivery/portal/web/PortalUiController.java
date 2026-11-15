@@ -574,6 +574,13 @@ public class PortalUiController {
         return "admin-users";
     }
 
+    @GetMapping("/admin/users/invite")
+    public String adminUsersInvite(Model model) {
+        requireHeadPage();
+        addNav(model, "users");
+        return "admin-users-invite";
+    }
+
     @GetMapping("/admin/domains")
     public String adminDomains(Model model) {
         addNav(model, "domains");
