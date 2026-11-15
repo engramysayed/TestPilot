@@ -562,12 +562,12 @@
         copyBtn.disabled = !full;
         if (structuredIntakeOn) composeStoriesFromIntake();
         const hasStories = !!(storiesInput && storiesInput.value.trim());
-        generateBtn.disabled = !modelsReady || !projectSel.value || !hasStories;
-        compareBtn.disabled = !modelsReady || !projectSel.value || !hasStories
+        if (generateBtn) generateBtn.disabled = !modelsReady || !projectSel.value || !hasStories;
+        if (compareBtn) compareBtn.disabled = !modelsReady || !projectSel.value || !hasStories
             || !selectedGenerateModel() || !selectedCompareModelB();
-        runPipelineBtn.disabled = !projectSel.value;
+        if (runPipelineBtn) runPipelineBtn.disabled = !projectSel.value;
         updateBulkControls();
-        importBtn.disabled = !projectSel.value || !importRaw.value.trim();
+        if (importBtn) importBtn.disabled = !projectSel.value || !importRaw.value.trim();
     }
 
     function updateAutomateLink(projectId) {
@@ -2137,9 +2137,9 @@
         clearAuthoringReviewProposal();
         setAuthoringReviewStatus('Proposal discarded.', false);
     });
-    generateBtn.addEventListener('click', runGenerate);
-    compareBtn.addEventListener('click', runCompare);
-    runPipelineBtn.addEventListener('click', runPipeline);
+    generateBtn?.addEventListener('click', runGenerate);
+    compareBtn?.addEventListener('click', runCompare);
+    runPipelineBtn?.addEventListener('click', runPipeline);
     keelFilter.addEventListener('change', function () {
         if (lastResult) renderTable(lastResult.rows || []);
     });
@@ -2230,8 +2230,8 @@
     downloadCsvBtn.addEventListener('click', downloadCsv);
     bulkFile.addEventListener('change', updateBulkControls);
     bulkQueueBtn.addEventListener('click', queueBulkGenerate);
-    saveCompareABtn.addEventListener('click', function () { saveCompareSide('A'); });
-    saveCompareBBtn.addEventListener('click', function () { saveCompareSide('B'); });
+    saveCompareABtn?.addEventListener('click', function () { saveCompareSide('A'); });
+    saveCompareBBtn?.addEventListener('click', function () { saveCompareSide('B'); });
     generateModelSelect.addEventListener('change', function () {
         if (generateModelSelect.value) {
             sessionStorage.setItem(MODEL_STORAGE_KEY, generateModelSelect.value);
