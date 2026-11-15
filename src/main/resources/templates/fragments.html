@@ -179,14 +179,21 @@
             <span th:text="#{nav.projects}">Projects</span>
         </a>
         <p class="sidebar-label" data-features-label>Author tests</p>
-        <a href="/generate" data-feature-perm="feature.generate" th:classappend="${navActive == 'generate'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18 M5 5l14 14 M5 19 19 5"/></svg>
-            <span>Generate with AI</span>
-        </a>
-        <a href="/generate/compare" data-feature-perm="feature.generate" class="sidebar-child" th:classappend="${navActive == 'generate-compare'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7v12H4z"/><path d="M13 6h7v12h-7z"/></svg>
-            <span>Compare models</span>
-        </a>
+        <div class="nav-group" data-feature-perm="feature.generate" th:classappend="${navActive == 'generate' or navActive == 'generate-compare'} ? 'is-open'">
+            <a href="/generate" class="nav-main" th:classappend="${navActive == 'generate'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18 M5 5l14 14 M5 19 19 5"/></svg>
+                <span>Generate with AI</span>
+            </a>
+            <button type="button" class="nav-toggle" aria-label="Toggle children" onclick="this.closest('.nav-group').classList.toggle('is-open')">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <div class="nav-children">
+                <a href="/generate/compare" class="sidebar-child" th:classappend="${navActive == 'generate-compare'} ? 'active'">
+                    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7v12H4z"/><path d="M13 6h7v12h-7z"/></svg>
+                    <span>Compare models</span>
+                </a>
+            </div>
+        </div>
         <a href="/generate-from-knowledge" data-feature-perm="feature.generate" th:classappend="${navActive == 'generate-from-knowledge'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z"/><path d="M13 5h7v12a2 2 0 0 1-2 2h-7a2 2 0 0 0 2-2z"/><path d="M7 9h2 M7 12h2"/></svg>
             <span>From case packs</span>
@@ -205,14 +212,21 @@
         </a>
 
         <p class="sidebar-label">Run</p>
-        <a href="/suites" data-feature-perm="feature.execute" th:classappend="${navActive == 'suites'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v4H4z"/><path d="M4 11h16v4H4z"/><path d="M4 17h10v2H4z"/></svg>
-            <span>Suites</span>
-        </a>
-        <a href="/suites/schedule" data-feature-perm="feature.execute" class="sidebar-child" th:classappend="${navActive == 'suites-schedule'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 9v4l3 2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
-            <span>Scheduling</span>
-        </a>
+        <div class="nav-group" data-feature-perm="feature.execute" th:classappend="${navActive == 'suites' or navActive == 'suites-schedule'} ? 'is-open'">
+            <a href="/suites" class="nav-main" th:classappend="${navActive == 'suites'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v4H4z"/><path d="M4 11h16v4H4z"/><path d="M4 17h10v2H4z"/></svg>
+                <span>Suites</span>
+            </a>
+            <button type="button" class="nav-toggle" aria-label="Toggle children" onclick="this.closest('.nav-group').classList.toggle('is-open')">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <div class="nav-children">
+                <a href="/suites/schedule" class="sidebar-child" th:classappend="${navActive == 'suites-schedule'} ? 'active'">
+                    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 9v4l3 2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                    <span>Scheduling</span>
+                </a>
+            </div>
+        </div>
         <a href="/execute" data-feature-perm="feature.execute" th:classappend="${navActive == 'execute'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l12 8-12 8z"/></svg>
             <span>Execute</span>
