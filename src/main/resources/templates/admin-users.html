@@ -11,7 +11,6 @@
     <div class="page-title">
         <div>
             <h1 th:text="#{page.admin-users.title}">Users &amp; invites</h1>
-            <p class="lede" th:text="#{page.admin-users.lede}">Admin only — manage accounts.</p>
         </div>
     </div>
 
@@ -26,7 +25,6 @@
         <header class="access-panel-head">
             <div>
                 <h2>Access requests</h2>
-                <p class="panel-intro">From the login page. Approve emails a set-password link.</p>
             </div>
             <span class="access-badge" id="accessBadge" hidden>0 waiting</span>
         </header>
@@ -41,7 +39,6 @@
 
     <section class="panel">
         <h2>Invite someone by email</h2>
-        <p class="panel-intro">Creates a token link; optionally emails it when SMTP is configured.</p>
         <form id="invite-form">
             <label>Email address
                 <input type="email" name="email" required placeholder="colleague@company.com"/>
@@ -313,7 +310,6 @@
 <div id="keel-approve-modal" class="keel-modal-backdrop" hidden>
   <div class="keel-modal" role="dialog" aria-labelledby="keel-approve-title">
     <h3 id="keel-approve-title">Approve user</h3>
-    <p class="lede">Pick a role for <strong id="keel-approve-email"></strong>. Credits stay at 0 until you set them — nothing is added automatically.</p>
     <label for="keel-approve-role">Role <span aria-hidden="true">*</span></label>
     <select id="keel-approve-role" required>
       <option value="">Select a role…</option>
@@ -332,7 +328,6 @@
 <div id="keel-role-modal" class="keel-modal-backdrop" hidden>
   <div class="keel-modal" role="dialog" aria-labelledby="keel-role-title">
     <h3 id="keel-role-title">Edit role</h3>
-    <p class="lede">Choose a role for <strong id="keel-role-email"></strong>. Credits are not changed.</p>
     <label for="keel-role-select">Role <span aria-hidden="true">*</span></label>
     <select id="keel-role-select" required>
       <option value="">Select a role…</option>
@@ -349,7 +344,6 @@
 <div id="keel-credits-modal" class="keel-modal-backdrop" hidden>
   <div class="keel-modal" role="dialog" aria-labelledby="keel-credits-title">
     <h3 id="keel-credits-title">Set credits</h3>
-    <p class="lede">Update credits for <strong id="keel-credits-email"></strong>. Current balance: <span id="keel-credits-current">0</span>.</p>
     <label for="keel-credits-mode">How to update</label>
     <select id="keel-credits-mode">
       <option value="GRANT_DELTA">Add credits (grant)</option>
@@ -372,7 +366,6 @@
 <div id="keel-usage-modal" class="keel-modal-backdrop" hidden>
   <div class="keel-modal" role="dialog" aria-labelledby="keel-usage-title" style="width:min(720px,94vw)">
     <h3 id="keel-usage-title">Credit usage</h3>
-    <p class="lede" id="keel-usage-email"></p>
     <div class="keel-usage-summary">
       <div class="stat-card"><span id="keel-usage-balance">0</span><label>Balance</label></div>
       <div class="stat-card"><span id="keel-usage-spent">0</span><label>Spent (range)</label></div>

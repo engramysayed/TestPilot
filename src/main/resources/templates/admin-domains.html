@@ -11,7 +11,6 @@
     <div class="page-title">
         <div>
             <h1 th:text="#{page.admin-domains.title}">Domains</h1>
-            <p class="lede" th:text="#{page.admin-domains.lede}">Stored site data on this server. Deleting a domain removes the store folder and matching portal projects/jobs so the dashboard resets for that site.</p>
         </div>
     </div>
 
@@ -21,10 +20,6 @@
                 <option value="">Select a domain…</option>
             </select>
         </label>
-        <p class="panel-intro" style="margin-top:0.85rem">
-            Legacy flat folders stay as-is until you choose to relocate them.
-            <button type="button" class="button ghost" id="migrateBtn" style="margin-top:0.5rem">Relocate legacy folders</button>
-        </p>
         <p id="migrateOut" class="ok hidden"></p>
         <div id="domainDetail" class="hidden" style="margin-top:1.25rem">
             <div class="admin-domain-stats">

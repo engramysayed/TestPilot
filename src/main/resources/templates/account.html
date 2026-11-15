@@ -11,13 +11,11 @@
     <div class="page-title">
         <div>
             <h1 th:text="#{page.account.title}">My account</h1>
-            <p class="lede">Signed in as <strong id="email">…</strong> (<span id="role">…</span>)</p>
         </div>
     </div>
 
     <section class="panel" id="account-credits-panel" th:if="${creditsEnabled}">
         <h2>Credits</h2>
-        <p class="panel-intro">Your Keel credits balance. Jobs use credits when they start.</p>
         <p class="keel-credits-balance-line">
             <span class="muted">Balance</span>
             <strong id="account-credits-balance" th:text="${creditsBalance} + ' credits'">0 credits</strong>
@@ -31,7 +29,6 @@
     <div class="dash-grid">
         <section class="panel">
             <h2>Change password</h2>
-            <p class="panel-intro">Use at least 8 characters.</p>
             <form id="password-form">
                 <label>Current password
                     <input type="password" name="currentPassword" required autocomplete="current-password"/>
@@ -47,7 +44,6 @@
 
         <section class="panel">
             <h2>Change email</h2>
-            <p class="panel-intro">You’ll sign in again after a successful change.</p>
             <form id="email-form">
                 <label>New email
                     <input type="email" name="newEmail" required/>
@@ -64,8 +60,6 @@
 
     <section class="panel" id="calm-preferences">
         <h2>How Keel works</h2>
-        <p class="panel-intro">The vision choice stays in this browser. Alerts are saved on your account.</p>
-
         <h3 style="margin-top:1.2rem">Vision model</h3>
         <p class="muted">This is only the model that looks at the screen. It does not write test cases. Writing uses Gemma (gemma4:e2b), chosen on Generate.</p>
         <div class="calm-seg" role="radiogroup" aria-label="Vision model" style="margin:0.75rem 0">

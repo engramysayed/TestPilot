@@ -12,13 +12,6 @@
     <div class="page-title">
         <div>
             <h1 th:text="#{page.status.title}">Run status</h1>
-            <p class="lede">Run <code class="mono" th:text="${jobId}">job_...</code>
-                <span th:if="${isExecuteJob}" class="badge muted">Execute</span>
-                <span th:if="${isGenerateBatchJob}" class="badge muted">Generate batch</span>
-                <span th:if="${isGenerateCompareJob}" class="badge muted">Model compare</span>
-                <span th:if="${isHuntJob}" class="badge muted">Bug Hunter</span>
-                <span th:if="${!isExecuteJob and !isGenerateBatchJob and !isGenerateCompareJob and !isHuntJob}" class="badge muted">Conversion</span>
-            </p>
         </div>
         <a class="button"
            th:href="${isExecuteJob} ? '/execute' : (${isHuntJob} ? '/bug-hunter' : (${isGenerateCompareJob or isGenerateBatchJob} ? '/generate' : '/runs'))"
@@ -32,11 +25,6 @@
                   aria-hidden="true"></span>
             <div>
                 <h2>Live progress</h2>
-                <p class="panel-intro" th:if="${isExecuteJob}">This page refreshes until the test run finishes.</p>
-                <p class="panel-intro" th:if="${isGenerateBatchJob}">This page refreshes while each user story is turned into cases one-by-one.</p>
-                <p class="panel-intro" th:if="${isGenerateCompareJob}">This page refreshes while both models write test cases in the background.</p>
-                <p class="panel-intro" th:if="${isHuntJob}">This page refreshes until Bug Hunter finishes (plan done, or a step/cycle limit).</p>
-                <p class="panel-intro" th:if="${!isExecuteJob and !isGenerateBatchJob and !isGenerateCompareJob and !isHuntJob}">This page refreshes until the job finishes.</p>
             </div>
         </div>
         <div id="progress-track" class="progress-track"
@@ -79,7 +67,6 @@
         </p>
         <section class="panel" id="run-compare-panel" th:if="${!isExecuteJob}">
             <h2>Attempts and compare</h2>
-            <p class="panel-intro">Reruns keep the original evidence and pin the same library, environment, and providers.</p>
             <p id="attempts-list" class="muted">—</p>
             <p>
                 <label>Compare with

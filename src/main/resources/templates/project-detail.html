@@ -13,7 +13,6 @@
         <div>
             <p class="muted" style="margin:0 0 0.35rem"><a href="/projects">← Projects</a></p>
             <h1 id="project-name-heading" th:text="${project.name}">Project</h1>
-            <p class="lede mono"><span th:text="${project.projectId}">prj_</span><span id="project-platform-badge" class="mobile-platform-badge" th:if="${mobileEnabled}" th:text="${projectPlatform}">WEB</span></p>
             <p class="muted" style="margin:0.35rem 0 0">
                 Last modified:
                 <span th:text="${project.lastModifiedLabel}">—</span>
@@ -53,10 +52,6 @@
         </div>
         <section class="panel">
             <h2>Recent activity</h2>
-            <p class="panel-intro">
-                Last 10 Automate, Execute, and Generate runs for this project.
-                Automate / Generate open Status; Execute expands here.
-            </p>
             <p id="summary-jobs-empty" class="muted" hidden>
                 No runs yet. Start Generate, Execute, or Automate from the sidebar.
             </p>
@@ -81,7 +76,6 @@
     <section id="tab-settings" class="tab-panel" th:classappend="${activeTab != 'settings'} ? ' hidden' : ''">
         <section class="panel">
             <h2>Project settings</h2>
-            <p class="panel-intro">Name, target URL, and preferred test-hook attributes for this site.</p>
             <form id="settings-form" class="settings-form">
                 <label>Project name
                     <input type="text" name="name" required id="settings-name"/>
@@ -108,9 +102,6 @@
                 <fieldset class="authoring-engine" id="settings-authoring-engine"
                           th:attr="data-precision-enabled=${precisionAuthoringEnabled},data-default-max-calls=${defaultPrecisionMaxCalls}">
                     <legend>Authoring engine</legend>
-                    <p class="muted panel-intro" style="margin-top:0">
-                        Applies to Automate, Execute, and All-in-one pipeline jobs for this project.
-                    </p>
                     <label class="check">
                         <input type="radio" name="authoringEngine" value="keel" checked/>
                         Keel engine — fast, deterministic DOM grounding
@@ -148,11 +139,6 @@
 
         <section class="panel" id="workspace-collab-panel" hidden>
             <h2>Workspace members</h2>
-            <p class="panel-intro">
-                MEMBER is read-only. OWNER and ADMIN may operate. Only OWNER can change membership,
-                transfer ownership, or manage service identities. Removing someone cancels their
-                queued and running jobs; completed results stay with the workspace.
-            </p>
             <p id="workspace-role-line" class="muted"></p>
             <div class="table-scroll">
                 <table class="table" id="workspace-members-table">
@@ -209,10 +195,6 @@
 
         <section class="panel" id="env-profiles-panel" hidden>
             <h2>Environment profiles</h2>
-            <p class="panel-intro">
-                Named origin, credential, and provider snapshots. Jobs pin a revision; comparing
-                environments does not rename this project’s storage identity.
-            </p>
             <p id="env-head" class="muted"></p>
             <p id="env-empty" class="muted" hidden>No environment revisions yet.</p>
             <p id="env-err" class="error" hidden></p>
@@ -254,10 +236,6 @@
 
         <section class="panel" id="usage-budget-panel">
             <h2>Usage and budget</h2>
-            <p class="panel-intro">
-                Reservations are atomic per tenant. Estimated and reconciled units stay in history.
-                OWNER and ADMIN can change the hard cap and warning threshold.
-            </p>
             <p id="usage-summary" class="muted"></p>
             <p id="usage-warn" class="error" hidden>Spend is at or above the warning threshold.</p>
             <p id="usage-empty" class="muted" hidden>No usage yet.</p>
@@ -284,10 +262,6 @@
 
         <section class="panel" id="webhook-panel" hidden>
             <h2>Job-status webhook</h2>
-            <p class="panel-intro">
-                Optional signed HTTP notifications when a job reaches a terminal status.
-                Retries are bounded and keyed by delivery id. This is not an issue tracker.
-            </p>
             <p id="webhook-summary" class="muted"></p>
             <p id="webhook-err" class="error" hidden></p>
             <p id="webhook-msg" class="muted" hidden></p>
@@ -307,7 +281,6 @@
         <section class="panel mobile-panel" id="mobile-app-panel" hidden
                  th:attr="data-mobile-enabled=${mobileEnabled},data-platform=${projectPlatform},data-can-edit=${mobileCanEdit}">
             <h2>Android app</h2>
-            <p class="panel-intro">Tell Keel which app to open on the phone. Choose an APK file or an app already installed.</p>
             <p id="mobile-app-err" class="error" hidden></p>
             <p id="mobile-app-msg" class="muted" hidden></p>
             <form id="mobile-app-form" class="settings-form">
@@ -332,7 +305,6 @@
                 </div>
                 <div id="mobile-launcher-pick" class="mobile-launcher-pick" hidden>
                     <h3>Choose the launch screen</h3>
-                    <p class="panel-intro">This APK can open more than one screen. Pick which one Keel should start, then confirm.</p>
                     <input type="hidden" id="mobile-pending-upload-id" value=""/>
                     <fieldset id="mobile-launcher-candidates" class="mobile-source-options"></fieldset>
                     <label>Wait for this screen <span class="muted">(optional — defaults to launch screen)</span>
@@ -369,7 +341,6 @@
 
         <section class="panel mobile-panel" id="mobile-devices-panel" hidden>
             <h2>Phones</h2>
-            <p class="panel-intro">Connected phones for this workspace. Device ID is shortened — full serial is never shown to members.</p>
             <p id="mobile-devices-err" class="error" hidden></p>
             <p id="mobile-devices-empty" class="muted" hidden>No phones registered yet.</p>
             <div id="mobile-devices-list" class="mobile-devices-list" aria-live="polite"></div>
@@ -378,7 +349,6 @@
         <section class="panel mobile-panel" id="mobile-run-panel" hidden
                  th:attr="data-mobile-enabled=${mobileEnabled},data-platform=${projectPlatform},data-can-edit=${mobileCanEdit}">
             <h2>Run on a phone</h2>
-            <p class="panel-intro">Keel reserves the phone, starts Appium, a mobile runner executes the cases, and the phone is released when the run ends (or if the runner stops responding).</p>
             <div class="mobile-run-row">
                 <button type="button" class="button ghost" id="mobile-discover-btn">Find connected phones</button>
                 <label>Phone
@@ -404,10 +374,6 @@
             <div class="panel-head-row">
                 <div>
                     <h2>Sign-in profiles</h2>
-                    <p class="panel-intro">
-                        How Keel signs into the phone app for a run. Profiles store login steps and credential
-                        <strong>references</strong> only — passwords, OTP codes, and PINs are never saved here.
-                    </p>
                 </div>
                 <button type="button" class="button" id="mobile-auth-create-btn">Add sign-in profile</button>
             </div>
@@ -473,10 +439,6 @@
 
         <section class="panel mobile-panel" id="mobile-case-req-panel" hidden data-api="/mobile/cases/{tcId}/requirements">
             <h2>Case sign-in requirements</h2>
-            <p class="panel-intro">
-                For each phone test case, choose how Keel should prepare sign-in, which profile revision to pin,
-                optional Call-before prerequisites, and an optional start-state test case.
-            </p>
             <p id="mobile-case-req-err" class="error" hidden></p>
             <label>Test case ID
                 <input type="text" id="mobile-case-req-tc" placeholder="e.g. TC-001" autocomplete="off"/>
@@ -533,7 +495,6 @@
             <div class="panel-head-row">
                 <div>
                     <h2>Credential profiles</h2>
-                    <p class="panel-intro">Named login profiles for uploads. Passwords are write-only.</p>
                 </div>
                 <button type="button" class="button" id="cred-add-btn">Add profile</button>
             </div>
@@ -554,12 +515,6 @@
 
         <section class="panel">
             <h2>Design mockups (Execute)</h2>
-            <p class="panel-intro">
-                Optional PNG of the final screen design per test case ID (e.g. export from Figma).
-                Execute compares that image to the live screenshot.
-                This is separate from the Excel <strong>VisualAssertion</strong> column,
-                which is text only — you cannot attach Figma or image files in the TC sheet.
-            </p>
             <ul id="design-ref-list" class="artifact-list"></ul>
             <p id="design-ref-empty" class="muted" hidden>No design mockups uploaded yet.</p>
             <form id="design-ref-settings-form" class="design-ref-form">
@@ -602,19 +557,16 @@
             <div class="auto-tree">
                 <section class="panel">
                     <h2>Packages</h2>
-                    <p class="panel-intro">Version ZIP archives from conversions. Open a version to browse its pages and tests.</p>
                     <ul id="auto-packages" class="artifact-list"></ul>
                     <p id="auto-packages-empty" class="muted">No packages yet.</p>
                 </section>
                 <section class="panel">
                     <h2>Pages</h2>
-                    <p id="auto-pages-intro" class="panel-intro">From current framework.</p>
                     <ul id="auto-pages" class="artifact-list"></ul>
                     <p id="auto-pages-empty" class="muted">No page classes yet.</p>
                 </section>
                 <section class="panel">
                     <h2>Tests</h2>
-                    <p id="auto-tests-intro" class="panel-intro">From current framework.</p>
                     <h3 class="auto-subhead">Generated</h3>
                     <ul id="auto-tests-gen" class="artifact-list"></ul>
                     <p id="auto-tests-gen-empty" class="muted">No generated tests yet.</p>
@@ -625,7 +577,6 @@
             </div>
             <aside class="panel auto-preview-panel">
                 <h2>Preview</h2>
-                <p class="panel-intro">Select a Java file to view source.</p>
                 <p id="auto-preview-path" class="mono muted">—</p>
                 <pre id="auto-preview-content" class="code-preview muted">No file selected.</pre>
             </aside>
@@ -633,12 +584,6 @@
 
         <section class="panel">
             <h2>Last Automate prove results (step checks)</h2>
-            <p class="panel-intro">
-                Pass / fail / partial from the <strong>last Automate run</strong> that wrote proven-case drafts under
-                <code class="mono">ir/</code>. This is not the editable library (that lives under Test cases).
-                Deleting an Automate job or ZIP does <em>not</em> remove these drafts.
-                <span id="run-at-label"></span>
-            </p>
             <div class="actions lib-toolbar">
                 <button type="button" class="button ghost" id="ir-clear-btn" hidden>Clear leftover proven cases</button>
             </div>
@@ -652,12 +597,6 @@
     <section id="tab-tcs" class="tab-panel" th:classappend="${activeTab != 'tcs'} ? ' hidden' : ''">
         <section class="panel">
             <h2>Generated library</h2>
-            <p class="panel-intro">
-                Test cases saved from Generate or Upload. This table is what Execute / Automate uses when you pick
-                the project library. Rows stay collapsed until you click them. Upload Excel/CSV merges by
-                TC_ID (same ID replaces; other cases stay). Edit Test data on the same row as its step —
-                blank cells are intentional (login uses your credential profile). See the <a href="/guide#tc-authoring">Guide</a> for spreadsheet rules.
-            </p>
             <p id="lib-empty" class="muted" hidden>No generated workbook yet — upload Excel/CSV, import, or generate TCs first.</p>
             <p id="lib-err" class="error" hidden></p>
             <p id="lib-msg" class="muted" hidden></p>
@@ -695,9 +634,6 @@
 
         <section class="panel" id="lib-history">
             <h2>Version history</h2>
-            <p class="panel-intro">
-                Every save is kept. Pick one to see what changed, or restore it as the latest version.
-            </p>
             <p id="lib-hist-empty" class="muted" hidden>No revisions yet.</p>
             <p id="lib-hist-err" class="error" hidden></p>
             <p id="lib-hist-msg" class="muted" hidden></p>

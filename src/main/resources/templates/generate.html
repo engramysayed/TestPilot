@@ -15,15 +15,12 @@ if (location.hash === '#record') location.replace('/record' + location.search);
     <div class="page-title">
         <div>
             <h1 th:text="#{page.generate.title}">Write test cases</h1>
-            <p class="lede">Describe what a visitor does, or let Keel write the steps from your stories. No code needed. To click through the site yourself, use <a href="/record">Record</a>.</p>
         </div>
     </div>
 
 
     <section class="panel workspace-launcher" id="workspace-launcher">
-        <p class="guide-kicker">Workspace</p>
         <h2>Choose a project</h2>
-        <p class="panel-intro">Generated cases save to the project library for Automate and Execute.</p>
         <label>Project
             <select id="launcher-project-select">
                 <option value="">— Loading projects —</option>
@@ -63,7 +60,6 @@ if (location.hash === '#record') location.replace('/record' + location.search);
     <section class="panel guide-promo" id="gen-just-saved-banner" hidden role="status">
         <div class="guide-promo-copy">
             <h2>Workbook saved</h2>
-            <p class="panel-intro">Your generated cases are in the project library. Next: run them, or build automation code.</p>
             <div class="guide-promo-actions">
                 <a class="button" id="gen-open-automate" href="/automate">Open Automate</a>
                 <button type="button" class="button ghost" id="gen-dismiss-saved">Dismiss</button>
@@ -76,7 +72,6 @@ if (location.hash === '#record') location.replace('/record' + location.search);
             <div class="generate-primary-head">
                 <div>
                     <h2>Write test cases from stories</h2>
-                    <p class="panel-intro">Paste user stories or acceptance criteria. Keel writes the test cases and saves them to this project, ready to run.</p>
                 </div>
             </div>
 
@@ -112,7 +107,6 @@ if (location.hash === '#record') location.replace('/record' + location.search);
 
             <div id="quality-gate-panel" class="quality-gate-panel" hidden role="region" aria-label="Quality checks">
                 <h3>Quality checks before import</h3>
-                <p class="panel-intro" id="quality-gate-lede">Fix these before importing into your library. Import asks you to confirm when checks have not passed.</p>
                 <ul id="quality-gate-failures" class="quality-gate-failures"></ul>
                 <p id="quality-gate-suggestions" class="muted" hidden></p>
                 <p id="quality-gate-alternatives" class="muted" hidden></p>
@@ -237,7 +231,6 @@ if (location.hash === '#record') location.replace('/record' + location.search);
             <div class="generate-primary-head">
                 <div>
                     <h2>Review with AI</h2>
-                    <p class="panel-intro">Available after Generate or Import saves a workbook. Nothing changes until you accept the proposal.</p>
                 </div>
             </div>
             <div class="review-config">
@@ -295,7 +288,6 @@ if (location.hash === '#record') location.replace('/record' + location.search);
             <div class="generate-primary-head">
                 <div>
                     <h2>Many stories at once</h2>
-                    <p class="panel-intro">Upload a CSV of user stories. Keel processes them <strong>one-by-one</strong> in a background job queue — like Automate jobs.</p>
                 </div>
             </div>
 
@@ -354,7 +346,6 @@ if (location.hash === '#record') location.replace('/record' + location.search);
             <div class="generate-primary-head">
                 <div>
                     <h2>Paste from external AI</h2>
-                    <p class="panel-intro">Paste CSV or JSON from ChatGPT, Claude, Cursor, or any AI. Keel detects the format and saves test cases to this project for Automate and Execute.</p>
                 </div>
             </div>
 
@@ -363,7 +354,6 @@ if (location.hash === '#record') location.replace('/record' + location.search);
 
             <div id="import-quality-gate-panel" class="quality-gate-panel" hidden role="region" aria-label="Import quality checks">
                 <h3>Quality checks</h3>
-                <p class="panel-intro">These need attention before Import saves to your library.</p>
                 <ul id="import-quality-gate-failures" class="quality-gate-failures"></ul>
                 <p id="import-quality-gate-meta" class="muted" hidden></p>
             </div>

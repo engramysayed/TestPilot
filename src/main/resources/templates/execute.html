@@ -11,19 +11,15 @@
     <div class="page-title">
         <div>
             <h1 th:text="#{page.execute.title}">Execute &amp; verify</h1>
-            <p class="lede" th:text="#{page.execute.lede}">Run manual test cases against your app with page structure and screen vision — find bugs before building automation code.</p>
         </div>
     </div>
 
     <section class="panel" id="account-scoped-picker-hint" th:if="${sidebarIaEnabled}">
         <h2>Choose a project</h2>
-        <p class="panel-intro">This page is account-wide. Pick which project to use before you start. Jobs can pin that project via the account job API.</p>
     </section>
 
     <section class="panel workspace-launcher" id="workspace-launcher">
-        <p class="guide-kicker">Workspace</p>
         <h2>Choose a project</h2>
-        <p class="panel-intro">Run test cases against one project's website URL and login profile.</p>
         <label>Project
             <select id="launcher-project-select">
                 <option value="">— Loading projects —</option>
@@ -58,7 +54,6 @@
     
     <section class="panel mobile-panel" id="mobile-run-devices-panel" hidden>
         <h2>Phone for this run</h2>
-        <p class="panel-intro">Pick a ready phone. Status chips explain authorization and whether another run is using it.</p>
         <p id="mobile-run-devices-err" class="error" hidden></p>
         <p id="mobile-run-devices-empty" class="muted" hidden>No phones available. Register one from project Settings.</p>
         <div id="mobile-run-devices-list" class="mobile-devices-list"></div>
@@ -71,7 +66,6 @@
 
 <section class="panel execute-start" id="execute-form-panel" hidden>
         <h2>Start an execute run</h2>
-        <p class="panel-intro">Choose credentials and cases, then run against the project base URL. The run price is charged once for each test case you include.</p>
         <form id="execute-form" class="execute-start-form">
             <div id="project-config" class="execute-start-meta">
                 <p class="muted" id="base-url-row" hidden>
@@ -210,7 +204,6 @@
 
     <section class="panel" id="recent-execute-panel" hidden>
         <h2>Recent execute runs</h2>
-        <p class="panel-intro">Last five runs — open a row for status and results, or delete permanently.</p>
         <table class="table" id="recent-execute-table">
             <thead>
             <tr>
@@ -229,7 +222,6 @@
 
     <section class="panel" id="visual-diffs-panel" hidden>
         <h2>Screenshot diffs <span class="muted">(visual)</span></h2>
-        <p class="panel-intro">Pending saved good screenshots after Run tests or Hunt — review differences, then approve intentional changes.</p>
         <div class="visual-diffs-layout">
             <div class="visual-diffs-list-wrap">
                 <table class="table" id="visual-diffs-table" hidden>
@@ -281,9 +273,6 @@
     <!-- Live run + results host (also reused inside expanded recent rows) -->
     <section class="panel" id="job-panel" hidden>
         <h2>Run progress</h2>
-        <p class="panel-intro">
-            Job <code class="mono" id="job-id-display"></code>
-        </p>
         <dl class="status">
             <dt>Status</dt><dd id="job-status">—</dd>
             <dt>Progress</dt><dd id="job-progress">0 / 0</dd>
@@ -301,7 +290,6 @@
 
     <section class="panel execute-results" id="results-panel" hidden>
         <h2>Results</h2>
-        <p class="panel-intro">Click a case row for timeline and screenshots.</p>
         <div class="keel-retry-tiles" id="retry-metrics-tiles" hidden aria-label="Retry metrics">
             <div class="keel-retry-tile keel-retry-tile--rate">
                 <span class="keel-retry-tile__value" id="rm-first-pass">n/a</span>
@@ -361,7 +349,6 @@
 
     <section class="panel mobile-panel" id="mobile-results-panel" hidden>
         <h2>Phone run results</h2>
-        <p class="panel-intro">How the phone run went — overall outcome, what was observed on the device, and each case.</p>
         <p id="mobile-results-err" class="error" hidden></p>
         <p id="mobile-results-empty" class="muted" hidden>No phone results for this run yet.</p>
         <div id="mobile-results-summary" class="mobile-results-summary" hidden>

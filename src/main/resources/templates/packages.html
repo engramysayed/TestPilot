@@ -11,7 +11,6 @@
     <div class="page-title">
         <div>
             <h1 th:text="#{page.packages.title}">Automation</h1>
-            <p class="lede" th:text="#{page.packages.lede}">Framework packages across all projects — inspect, download, delete, or clear leftover proven-case drafts.</p>
         </div>
         <a class="button" href="/automate">New Automate run</a>
     </div>
@@ -59,7 +58,6 @@
 
     <section class="panel">
         <h2>Proven-case cleanup</h2>
-        <p class="panel-intro">Clear leftover proven cases (<code>ir/</code>) after reviewing packages.</p>
         <ul class="artifact-list" id="ir-project-list">
             <li th:each="proj : ${projectRows}" class="artifact-item ir-project-row"
                 th:attr="data-project-id=${proj.projectId},data-can-operate=${proj.canOperate},data-job-running=${proj.jobRunning}">

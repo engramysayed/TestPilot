@@ -12,14 +12,12 @@
     <div class="page-title">
         <div>
             <h1 th:text="#{page.bug-hunter.title}">Bug Hunter</h1>
-            <p class="lede" th:text="#{page.bug-hunter.lede}">Explore your website in a real browser and look for bugs. You get a downloadable report — nothing is added to your test library automatically.</p>
             <p class="hint">An AI planner decides what to try next on each round (Ollama or Cursor).</p>
         </div>
     </div>
 
     <section class="panel" id="account-scoped-picker-hint" th:if="${sidebarIaEnabled}">
         <h2>Choose a project</h2>
-        <p class="panel-intro">This page is account-wide. Pick which project to use before you start. Jobs can pin that project via the account job API.</p>
     </section>
 
     <section class="panel">
@@ -37,11 +35,6 @@
 
     <section class="panel hunt-start-panel" id="hunt-form-panel" hidden>
         <h2>Start a hunt</h2>
-        <p class="panel-intro">
-            Pick a few related test cases, choose how the AI plans steps, then start.
-            Keel opens your website — the hunter signs in itself when you pick a credential profile (no server auto-login).
-        </p>
-
         <div class="hunt-base-card" id="base-url-row" hidden>
             <span class="hunt-base-label">Website</span>
             <code class="mono" id="base-url-display"></code>
@@ -192,7 +185,6 @@
 
     <section class="panel">
         <h2>Recent runs</h2>
-        <p class="panel-intro">Past hunts for this project. Open Status for progress, or download the report when ready.</p>
         <p id="recent-empty" class="muted" hidden>No Bug Hunter runs yet.</p>
         <div class="table-scroll table-scroll--hunt">
             <table class="table table--hunt-recent" id="recent-table" hidden>
@@ -215,10 +207,6 @@
     <section class="panel hunt-triage-panel" id="hunt-triage-panel" hidden
              th:attr="data-enabled=${huntTriageEnabled} ?: false">
         <h2>Review findings</h2>
-        <p class="panel-intro">
-            Decide what to do with Bug Hunter findings before anything enters your test library.
-            Marking <strong>Confirmed</strong> does not add a test case — use <strong>Promote</strong> for that.
-        </p>
         <label>Hunt run
             <select id="triage-job-select">
                 <option value="">— Pick a completed hunt —</option>
@@ -233,11 +221,6 @@
 
     <section class="panel" id="hunt-promote-panel" hidden>
         <h2>Review hunt candidates</h2>
-        <p class="panel-intro">
-            Nothing is added to the library until you explicitly accept. Edit steps and assertions,
-            check duplicates against the pinned revision, then promote. Automation ready stays false
-            until cases are proven normally.
-        </p>
         <p id="hunt-promote-job" class="mono muted"></p>
         <p id="hunt-promote-dups" class="muted"></p>
         <p id="hunt-promote-err" class="error" hidden></p>

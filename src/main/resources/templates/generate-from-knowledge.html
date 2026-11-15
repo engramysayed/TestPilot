@@ -12,18 +12,11 @@
     <div class="page-title">
         <div>
             <h1>Write tests from feature notes</h1>
-            <p class="lede">
-                Turn saved notes about a feature (a <strong>pack</strong>) into real test cases in your library.
-                Pick packs, choose how many cases to write, then start. No packs yet? Add one below, or use
-                <a href="/generate">Generate</a> for a one-off run.
-            </p>
         </div>
     </div>
 
     <section class="panel workspace-launcher" id="workspace-launcher">
-        <p class="guide-kicker">Workspace</p>
         <h2>Choose a project</h2>
-        <p class="panel-intro">Packs and runs are scoped to the project you pin here.</p>
         <label>Project
             <select id="launcher-project-select">
                 <option value="">— Loading projects —</option>
@@ -56,12 +49,6 @@
 
         <section class="panel gfk-one-panel" id="packs-panel">
             <h2 style="margin-top:0">Your packs &amp; run</h2>
-            <p class="panel-intro" style="margin-bottom:1rem">
-                <strong>1)</strong> Tick the packs Keel should read.
-                <strong>2)</strong> Say how many cases to write.
-                <strong>3)</strong> Start.
-            </p>
-
             <p id="packs-status" class="muted" role="status">Loading packs…</p>
             <div id="packs-list" class="generate-options" hidden></div>
             <p id="packs-empty" class="muted" hidden>
@@ -72,7 +59,6 @@
 
             <div id="ingest-strip" class="gfk-ingest">
                 <h3 class="gfk-subhead">Add a new pack</h3>
-                <p class="panel-intro" style="margin-bottom:0.5rem">From library cases, an Excel/CSV workbook, or a markdown file.</p>
                 <div class="gfk-ingest-tabs" role="tablist" aria-label="Add pack source">
                     <button type="button" class="button ghost gfk-ingest-tab is-active" data-ingest-tab="library" role="tab" aria-selected="true">Library</button>
                     <button type="button" class="button ghost gfk-ingest-tab" data-ingest-tab="upload-tc" role="tab" aria-selected="false">Upload cases</button>

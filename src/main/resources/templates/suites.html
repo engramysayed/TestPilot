@@ -101,10 +101,6 @@
     <div class="page-title">
         <div>
             <h1>Suites <span class="muted">(test packs)</span></h1>
-            <p class="lede">
-                Group tests into <strong>packs</strong> (smoke, regression, or your own).
-                You can run them on a timer, get an email when they fail, or keep watching a pack after a good run.
-            </p>
         </div>
     </div>
 
@@ -113,9 +109,7 @@
     </p>
 
     <section class="panel workspace-launcher" id="workspace-launcher">
-        <p class="guide-kicker">Workspace</p>
         <h2>Choose a project</h2>
-        <p class="panel-intro">Test packs (Suites) are scoped to the project you pin here.</p>
         <label>Project
             <select id="launcher-project-select">
                 <option value="">- Loading projects -</option>
@@ -147,9 +141,6 @@
 
         <section class="panel" id="suites-list-panel">
             <h2>Suites <span class="muted">(test packs)</span></h2>
-            <p class="panel-intro">
-                Built-in packs (smoke, regression, nightly) start on the server. Create your own pack with a name and at least one tag.
-            </p>
             <div class="field-row">
                 <label>Name
                     <input type="text" id="create-name" maxlength="200" placeholder="e.g. Checkout happy path"/>
@@ -182,11 +173,6 @@
         <div id="suite-detail" hidden>
             <section class="panel" id="tags-panel">
                 <h2>Tags</h2>
-                <p class="panel-intro">
-                    Tags group test cases into packs you can run together. <strong>Smoke</strong> is the
-                    quick must-pass set, <strong>Regression</strong> is the full what-broke set, and
-                    <strong>Nightly</strong> is the overnight run. Click a tag to add it to this pack.
-                </p>
                 <p class="muted" style="margin:0 0 0.35rem">Built-in tags</p>
                 <div class="tag-built-ins" id="builtin-chips"></div>
                 <p class="muted" style="margin:0.75rem 0 0.35rem">Your own tags</p>
@@ -205,10 +191,6 @@
 
             <section class="panel" id="cases-panel">
                 <h2>Test cases</h2>
-                <p class="panel-intro">
-                    Search the project library and build membership for this pack. Selection order is preserved.
-                    Plain-English cases appear for reference; suite run uses workbook library IDs only.
-                </p>
                 <div class="field-row">
                     <label class="sr-only" for="detail-library-search">Search library</label>
                     <input type="search" id="detail-library-search" placeholder="Search by id or title" autocomplete="off"
@@ -227,7 +209,6 @@
 
             <section class="panel" id="plan-panel">
                 <h2>Structured plan</h2>
-                <p class="panel-intro">Optional plan id pinned on each suite run as <code>structured-plan-snapshot.json</code> on the job.</p>
                 <label>Plan id
                     <input type="text" id="detail-structured-plan-id" placeholder="login-happy" autocomplete="off"/>
                 </label>
@@ -239,9 +220,6 @@
 
             <section class="panel" id="schedule-panel">
                 <h2>Automatic runs</h2>
-                <p class="panel-intro">
-                    Run this pack on a timer. If a run is still going when the next slot is due, Keel skips that slot (it does not queue another run on top).
-                </p>
                 <label class="keel-check">
                     <input type="checkbox" id="schedule-enabled"/> Turn on automatic runs
                 </label>
@@ -283,9 +261,6 @@
 
             <section class="panel" id="alerts-panel">
                 <h2>Notify me when it fails</h2>
-                <p class="panel-intro">
-                    Choose email or Telegram (set those up once under admin alerts). Keel will message you when a scheduled run fails.
-                </p>
                 <div class="field-row">
                     <label>Send alerts to
                         <select id="alert-channel">
@@ -312,9 +287,6 @@
 
             <section class="panel" id="monitor-panel">
                 <h2>Keep watching after a good run</h2>
-                <p class="panel-intro">
-                    After this pack passes once, Keel can keep re-running it and alert you if it starts failing (flaky or broken).
-                </p>
                 <label class="keel-check">
                     <input type="checkbox" id="monitor-enabled"/> Keep this pack on watch
                 </label>

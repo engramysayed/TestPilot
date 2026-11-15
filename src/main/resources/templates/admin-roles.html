@@ -11,14 +11,12 @@
     <div class="page-title">
         <div>
             <h1 th:text="#{page.admin-roles.title}">Roles &amp; permissions</h1>
-            <p class="lede" th:text="#{page.admin-roles.lede}">Create custom roles and choose what each role can do. Approving a user still happens on Users — pick a role there every time.</p>
         </div>
         <button type="button" class="button primary" id="btn-new-role">New role</button>
     </div>
 
     <section class="panel keel-role-editor" id="role-editor" hidden>
         <h2 id="role-editor-title">New role</h2>
-        <p class="panel-intro">Open the list and tick only what this role needs.</p>
         <label class="f">Name
             <input type="text" id="role-name" placeholder="e.g. QA lead" autocomplete="off"/>
         </label>
