@@ -113,35 +113,26 @@ if (location.hash === '#record') location.replace('/record' + location.search);
                 <p id="quality-gate-warnings" class="muted" hidden></p>
             </div>
 
-            <details class="more-options" id="generate-more-options" open>
-                <summary>More options</summary>
             <div class="generate-model-row">
                 <label for="generate-model-select">AI model
-                    <select id="generate-model-select" aria-describedby="generate-model-hint">
+                    <select id="generate-model-select">
                         <option value="">Loading models…</option>
                     </select>
                 </label>
-                <p class="muted generate-option-hint" id="generate-model-hint">The default works for most projects.</p>
             </div>
 
             <div class="generate-options">
                 <label class="generate-check">
                     <input type="checkbox" id="review-pass"/>
-                    <span>Double-check the results (about twice as long)</span>
+                    <span>Double-check the results (takes about twice as long)</span>
                 </label>
-                <p class="muted generate-option-hint">The AI reviews its own test cases, fixes mistakes and fills gaps against your stories. Takes about twice as long.</p>
             </div>
-            </details>
 
             <div class="generate-actions">
-                <button type="button" class="button" id="generate-btn" disabled
-                        title="Write test cases from your stories. Progress opens on the next page.">Generate</button>
-                <span id="generate-status" class="generate-status" role="status" aria-live="polite"></span>
-            </div>
-            <p class="muted generate-option-hint">Writing test cases can take a few minutes; we show progress on the next page.</p>
-            <div class="generate-actions">
+                <button type="button" class="button" id="generate-btn" disabled>Generate</button>
                 <button type="button" class="button ghost btn-all-in-one" id="run-pipeline-btn" disabled
                         title="Generate, Automate, then Execute — slower but complete.">All in one</button>
+                <span id="generate-status" class="generate-status" role="status" aria-live="polite"></span>
             </div>
             <section class="pipeline-status panel" id="pipeline-status" hidden aria-live="polite">
                 <h3>Progress</h3>
