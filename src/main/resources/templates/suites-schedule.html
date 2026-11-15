@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Suite scheduling')}"></th:block>
+    <style>
+        .suite-chip{display:inline-flex;align-items:center;gap:.25rem;margin:.2rem .25rem .2rem 0;padding:.2rem .55rem;border-radius:999px;border:1px solid rgba(15,118,110,.35);background:rgba(15,118,110,.08);font-size:.85rem;cursor:pointer;user-select:none}
+        .suite-chip.active{background:rgba(15,118,110,.22);border-color:rgba(15,118,110,.65);font-weight:600}
+        .suite-list{list-style:none;margin:0;padding:0}
+        .suite-list li{display:flex;align-items:center;gap:.5rem;margin:.35rem 0;flex-wrap:wrap}
+        .suite-list li.active-suite button.suite-pick{font-weight:600}
+        .kind-row{display:flex;gap:1rem;flex-wrap:wrap;margin:.5rem 0}
+        .kind-row label{display:inline-flex;align-items:center;gap:.35rem}
+        .field-row{margin-top:.75rem}
+        .field-row label{display:block}
+        .field-row input[type=text],.field-row input[type=number],.field-row select,.field-row textarea{width:min(100%,28rem);max-width:100%}
+        .panel-actions{margin-top:.85rem;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+    </style>
+</head>
+<body class="app-body">
+<link rel="stylesheet" th:href="@{/css/keel-portal-enhancements.css}"/>
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1>Scheduling</h1>
+        </div>
+    </div>
+
+    <section class="panel workspace-launcher" id="workspace-launcher">
+        <h2>Choose a project</h2>
+        <label>Project
+            <select id="launcher-project-select">
+                <option value="">— Loading projects —</option>
+            </select>
+        </label>
+        <p id="launcher-err" class="error" hidden></p>
+        <p id="launcher-no-projects" class="muted" hidden>
+            No projects yet — <a href="/projects">create one</a>.
+        </p>
+        <p style="margin-top:.75rem">
+            <button type="button" class="button" id="launcher-continue">Continue</button>
+        </p>
+    </section>
+
+    <div id="workspace-config" hidden>
+        <section class="panel workspace-pinned">
+            <p class="muted" style="margin:0">
+                Project: <strong id="pinned-project-name">—</strong>
+                <button type="button" class="button ghost" id="change-project" style="margin-left:.5rem">Change</button>
+            </p>
+            <select id="project-select" hidden aria-hidden="true">
+                <option value="">— Loading projects —</option>
+            </select>
+            <p id="project-err" class="error" hidden></p>
+            <p id="no-projects" class="muted" hidden>
+                No projects yet — <a href="/projects">create one</a>.
+            </p>
+        </section>
+
+        <section class="panel" id="suites-list-panel">
+            <h2>Pick a suite</h2>
+            <div class="panel-actions">
+                <button type="button" class="button ghost" id="refresh-suites">Refresh</button>
+                <a class="button ghost" href="/suites">Create or edit suites →</a>
+            </div>
+            <p id="suites-empty" class="muted" style="margin-top:.85rem">No test packs yet — <a href="/suites">create one</a>.</p>
+            <ul id="suites-list" class="suite-list" hidden></ul>
+            <p id="suites-meta" class="muted" style="margin-top:.5rem"></p>
+        </section>
+
+        <div id="suite-detail" hidden>
+            <section class="panel" id="schedule-panel">
+                <h2>Automatic runs</h2>
+                <label class="keel-check">
+                    <input type="checkbox" id="schedule-enabled"/> Turn on automatic runs
+                </label>
+                <div class="keel-option-row kind-row" role="radiogroup" aria-label="How often to run">
+                    <label class="keel-check"><input type="radio" name="schedule-kind" value="cron" checked/> At set times (advanced)</label>
+                    <label class="keel-check"><input type="radio" name="schedule-kind" value="interval"/> Every X minutes (simple)</label>
+                </div>
+                <div class="field-row" id="cron-row">
+                    <label>When to run (cron pattern)
+                        <input type="text" id="schedule-cron" placeholder="0 2 * * *" autocomplete="off"/>
+                    </label>
+                    <label>Time zone
+                        <input type="text" id="schedule-timezone" placeholder="UTC" list="schedule-tz-list" autocomplete="off"/>
+                    </label>
+                    <datalist id="schedule-tz-list">
+                        <option value="UTC"></option>
+                        <option value="Europe/London"></option><option value="Europe/Berlin"></option>
+                        <option value="America/New_York"></option>
+                    </datalist>
+                </div>
+                <div class="field-row">
+                    <label>Login to use <span class="muted">(optional)</span>
+                        <input type="text" id="schedule-profile" placeholder="default" autocomplete="off"/>
+                    </label>
+                </div>
+                <div class="field-row" id="interval-row" hidden>
+                    <label>Run every how many minutes? <span class="muted">(min 5)</span>
+                        <input type="number" id="schedule-interval" min="5" step="1" placeholder="60"/>
+                    </label>
+                </div>
+                <p id="schedule-meta" class="muted"></p>
+                <div class="panel-actions">
+                    <button type="button" class="button" id="save-schedule">Save schedule</button>
+                    <button type="button" class="button ghost" id="clear-schedule">Clear schedule</button>
+                    <span id="schedule-status" class="muted" role="status"></span>
+                </div>
+            </section>
+
+            <section class="panel" id="alerts-panel">
+                <h2>Notify me when it fails</h2>
+                <div class="field-row">
+                    <label>Send alerts to
+                        <select id="alert-channel">
+                            <option value="">— Off —</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="field-row">
+                    <label>Minimum severity <span class="muted">(optional)</span>
+                        <select id="alert-severity">
+                            <option value="">Channel default</option>
+                            <option value="INFO">Info</option>
+                            <option value="WARN">Warning or worse</option>
+                            <option value="ERROR">Errors only</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="panel-actions">
+                    <button type="button" class="button" id="save-alerts">Save notifications</button>
+                    <button type="button" class="button ghost" id="clear-alerts">Turn off</button>
+                    <span id="alerts-status" class="muted" role="status"></span>
+                </div>
+            </section>
+
+            <section class="panel" id="monitor-panel">
+                <h2>Keep watching after a good run</h2>
+                <label class="keel-check">
+                    <input type="checkbox" id="monitor-enabled"/> Keep this pack on watch
+                </label>
+                <div class="field-row">
+                    <label>Target
+                        <select id="monitor-target">
+                            <option value="prod">Production</option>
+                            <option value="staging">Staging</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="field-row">
+                    <label>Start from run id <span class="muted">(optional)</span>
+                        <input type="text" id="monitor-from-job" maxlength="80" placeholder="e.g. exec_abc123"/>
+                    </label>
+                </div>
+                <p id="monitor-meta" class="muted"></p>
+                <div class="panel-actions">
+                    <button type="button" class="button" id="save-monitor">Save watch settings</button>
+                    <button type="button" class="button ghost" id="demote-monitor">Stop watching</button>
+                    <button type="button" class="button ghost" id="run-suite">Run now</button>
+                    <span id="monitor-status" class="muted" role="status"></span>
+                </div>
+            </section>
+        </div>
+    </div>
+</main>
+</div>
+
+<script th:inline="javascript">window.KEEL_PAGE = Object.assign(window.KEEL_PAGE || {}, { initialProjectId: /*[[${projectId}]]*/ '' });</script>
+<script th:src="@{/js/pages/suites.js}"></script>
+</body>
+</html>

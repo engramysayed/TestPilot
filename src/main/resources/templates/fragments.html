@@ -209,6 +209,10 @@
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v4H4z"/><path d="M4 11h16v4H4z"/><path d="M4 17h10v2H4z"/></svg>
             <span>Suites</span>
         </a>
+        <a href="/suites/schedule" data-feature-perm="feature.execute" class="sidebar-child" th:classappend="${navActive == 'suites-schedule'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 9v4l3 2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+            <span>Scheduling</span>
+        </a>
         <a href="/execute" data-feature-perm="feature.execute" th:classappend="${navActive == 'execute'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l12 8-12 8z"/></svg>
             <span>Execute</span>

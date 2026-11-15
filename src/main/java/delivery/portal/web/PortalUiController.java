@@ -262,6 +262,14 @@ public class PortalUiController {
         return "generate";
     }
 
+    @GetMapping("/suites/schedule")
+    public String suitesSchedule(@RequestParam(value = "projectId", required = false) String projectId,
+                                 Model model) {
+        addNav(model, "suites-schedule");
+        model.addAttribute("projectId", projectId == null ? "" : projectId);
+        return "suites-schedule";
+    }
+
     @GetMapping("/generate/compare")
     public String generateCompare(@RequestParam(value = "projectId", required = false) String projectId,
                                   Model model) {
