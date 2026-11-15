@@ -7,11 +7,7 @@ import org.springframework.web.servlet.i18n.FixedLocaleResolver;
 
 import java.util.Locale;
 
-/**
- * Portal language: English only. Earlier a cookie-backed resolver let {@code ?lang=ar}
- * flip the UI; it picked Arabic up from the browser's Accept-Language too, which showed
- * Arabic date pickers even when the chrome stayed English. Pinned to English for now.
- */
+/** Portal language: English only. */
 @Configuration
 public class I18nConfig {
 

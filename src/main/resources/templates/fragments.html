@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:fragment="portalStyles">
         <link rel="stylesheet" th:href="@{/css/portal.css}"/>
@@ -9,7 +9,6 @@
         <link rel="stylesheet" th:href="@{/css/keel-credits.css}"/>
         <link rel="stylesheet" th:href="@{/css/keel-sidebar-roles.css}"/>
         <link rel="stylesheet" th:href="@{/css/keel-layout.css}"/>
-        <link rel="stylesheet" th:href="@{/css/keel-rtl.css}"/>
     </th:block>
     <th:block th:fragment="authFonts">
         <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -84,7 +83,7 @@
 <body>
 <header class="topbar" th:fragment="topbar">
     <div class="crumb">
-        <span th:text="${pageCrumb != null and #locale.language == 'ar' ? (#messages.msgOrNull('crumb.' + #strings.replace(pageCrumb, ' ', '')) ?: pageCrumb) : pageCrumb}">Workspace</span> / <b th:text="${navActive != null and #locale.language == 'ar' ? (#messages.msgOrNull('title.' + navActive) ?: pageTitle) : pageTitle}">Overview</b>
+        <span th:text="${pageCrumb}">Workspace</span> / <b th:text="${pageTitle}">Overview</b>
     </div>
     <div class="topbar-search">
         <label class="global-search-label" for="globalSearch" th:text="#{top.search}">Search</label>
@@ -105,7 +104,7 @@
         </button>
         <div class="topbar-en" data-keel-menu>
             <button type="button" class="topbar-en-btn" id="keel-en-btn" aria-haspopup="menu"
-                    aria-expanded="false" aria-controls="keel-en-menu" th:text="${#locale.language == 'ar'} ? 'ع' : 'EN'">EN</button>
+                    aria-expanded="false" aria-controls="keel-en-menu">EN</button>
             <div class="topbar-en-menu" id="keel-en-menu" role="menu" hidden>
                 <a role="menuitem" href="/account" class="topbar-en-item" th:text="#{top.account}">Account</a>
                 <form th:action="@{/logout}" method="post" class="topbar-en-logout" role="none">
@@ -183,6 +182,10 @@
         <a href="/generate" data-feature-perm="feature.generate" th:classappend="${navActive == 'generate'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18 M5 5l14 14 M5 19 19 5"/></svg>
             <span>Generate with AI</span>
+        </a>
+        <a href="/generate/compare" data-feature-perm="feature.generate" class="sidebar-child" th:classappend="${navActive == 'generate-compare'} ? 'active'">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7v12H4z"/><path d="M13 6h7v12h-7z"/></svg>
+            <span>Compare models</span>
         </a>
         <a href="/generate-from-knowledge" data-feature-perm="feature.generate" th:classappend="${navActive == 'generate-from-knowledge'} ? 'active'">
             <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z"/><path d="M13 5h7v12a2 2 0 0 1-2 2h-7a2 2 0 0 0 2-2z"/><path d="M7 9h2 M7 12h2"/></svg>

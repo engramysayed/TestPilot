@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Generate')}"></th:block>
 </head>
@@ -130,15 +130,6 @@ if (location.hash === '#record') location.replace('/record' + location.search);
                 <p class="muted generate-option-hint" id="generate-model-hint">The default works for most projects.</p>
             </div>
 
-            <div class="generate-model-row">
-                <label for="compare-model-b-select">Second AI model to compare (optional)
-                    <select id="compare-model-b-select" aria-describedby="compare-model-hint">
-                        <option value="">Loading models…</option>
-                    </select>
-                </label>
-                <p class="muted generate-option-hint" id="compare-model-hint">Used by “Compare two AI models”. Nothing is saved until you pick the better result.</p>
-            </div>
-
             <div class="generate-options">
                 <label class="generate-check">
                     <input type="checkbox" id="review-pass"/>
@@ -154,19 +145,10 @@ if (location.hash === '#record') location.replace('/record' + location.search);
                 <span id="generate-status" class="generate-status" role="status" aria-live="polite"></span>
             </div>
             <p class="muted generate-option-hint">Writing test cases can take a few minutes; we show progress on the next page.</p>
-            <details class="more-options" id="generate-other-ways" open>
-                <summary>Other ways to write test cases</summary>
-                <div class="generate-actions">
-                <button type="button" class="button btn-compare" id="compare-btn" disabled
-                        title="Run two models side by side, then pick which workbook to keep.">Compare two AI models</button>
-                <button type="button" class="button btn-all-in-one" id="run-pipeline-btn" disabled
-                        title="All in one: Generate with a second coverage pass (revise), then Automate, then Execute. Slower but more complete — confirm before starting.">All in one</button>
-                </div>
-                <p class="muted generate-option-hint" id="generate-actions-hint">
-                <strong>Compare two AI models</strong> writes the cases twice so you can keep the better set.
-                <strong>All in one</strong> writes the cases (double-checked), builds the code, then runs the tests — this takes a while.
-            </p>
-            </details>
+            <div class="generate-actions">
+                <button type="button" class="button ghost btn-all-in-one" id="run-pipeline-btn" disabled
+                        title="Generate, Automate, then Execute — slower but complete.">All in one</button>
+            </div>
             <section class="pipeline-status panel" id="pipeline-status" hidden aria-live="polite">
                 <h3>Progress</h3>
                 <p class="muted" id="pipeline-status-summary">Nothing running.</p>
@@ -303,33 +285,6 @@ if (location.hash === '#record') location.replace('/record' + location.search);
                 <div class="ai-tip-actions">
                     <button type="button" class="button" id="authoring-review-accept" disabled>Accept proposal</button>
                     <button type="button" class="button ghost" id="authoring-review-discard">Discard</button>
-                </div>
-            </div>
-        </section>
-
-        <section class="generate-results" id="compare-results" hidden>
-            <div class="generate-results-head">
-                <h3>Model comparison</h3>
-                <p class="muted">Same stories, two AI models. Read the test cases side by side, then save the better one as this project’s generated workbook.</p>
-            </div>
-            <div class="compare-grid" id="compare-grid">
-                <div class="compare-pane good" id="compare-pane-a">
-                    <div class="compare-head">
-                        <h3 id="compare-title-a">Model A</h3>
-                        <div class="generate-counts" id="compare-counts-a"></div>
-                    </div>
-                    <p class="compare-summary" id="compare-summary-a"></p>
-                    <div class="compare-preview" id="compare-preview-a" aria-label="Model A preview rows"></div>
-                    <button type="button" class="button" id="save-compare-a-btn">Save model A</button>
-                </div>
-                <div class="compare-pane good" id="compare-pane-b">
-                    <div class="compare-head">
-                        <h3 id="compare-title-b">Model B</h3>
-                        <div class="generate-counts" id="compare-counts-b"></div>
-                    </div>
-                    <p class="compare-summary" id="compare-summary-b"></p>
-                    <div class="compare-preview" id="compare-preview-b" aria-label="Model B preview rows"></div>
-                    <button type="button" class="button" id="save-compare-b-btn">Save model B</button>
                 </div>
             </div>
         </section>

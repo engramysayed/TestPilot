@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:dir="${#locale.language == 'ar'} ? 'rtl' : 'ltr'">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Overview')}"></th:block>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
@@ -9,57 +9,56 @@
 <div class="app-main">
 <header th:replace="~{fragments :: topbar}"></header>
 <main class="shell wide overview-page">
-    <header class="heading">
-        <div>
-            <p class="eyebrow">Your quality workspace</p>
-            <h1 th:text="#{page.dashboard.title}">A clearer view of every run.</h1>
-            <p class="sub">Review what passed, understand what failed, and decide what runs next.</p>
-        </div>
+    <header class="heading dash-heading">
+        <h1>Dashboard</h1>
         <div class="actions">
-            <a class="button ghost" href="/projects">View projects</a>
-            
-            <a class="button" href="/record">Record a new test</a>
+            <a class="button ghost" href="/projects">Projects</a>
             <a class="button primary" href="/execute">+ New run</a>
         </div>
     </header>
 
     <p th:if="${!stats.hasProjects}" class="muted overview-empty-hint">
-        No projects yet. Create one from <strong>Projects</strong> in the sidebar.
+        No projects yet — <a href="/projects">create one</a>.
     </p>
 
-    <section class="stats stats--bar" aria-label="Workspace KPIs">
-        <div class="stat">
-            <label>Active projects</label>
-            <strong th:text="${stats.activeProjectCount}">0</strong>
-            <small th:text="|${stats.activeProjectCount} active workspace project${stats.activeProjectCount == 1 ? '' : 's'}|">0 active</small>
+    <section class="kpi-row" aria-label="Workspace KPIs">
+        <div class="kpi kpi--projects">
+            <div class="kpi-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 7h7l2 2h7v10H4z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+            </div>
+            <div class="kpi-body">
+                <span class="kpi-label">Active projects</span>
+                <strong class="kpi-value" th:text="${stats.activeProjectCount}">0</strong>
+            </div>
         </div>
-        <div class="stat">
-            <label>Proven pass rate</label>
-            <strong th:if="${stats.hasProvenSample}" th:text="${stats.passRate} + '%'">—</strong>
-            <strong th:unless="${stats.hasProvenSample}">—</strong>
-            <small th:classappend="${stats.hasProvenSample} ? ' good' : ''"
-                   th:text="${stats.passRateNote}">No proven cases yet</small>
+        <div class="kpi kpi--pass" th:classappend="${stats.hasProvenSample and stats.passRate >= 80} ? ' kpi--good' : (${stats.hasProvenSample and stats.passRate < 50} ? ' kpi--bad' : '')">
+            <div class="kpi-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            </div>
+            <div class="kpi-body">
+                <span class="kpi-label">Pass rate</span>
+                <strong class="kpi-value" th:if="${stats.hasProvenSample}" th:text="${stats.passRate} + '%'">—</strong>
+                <strong class="kpi-value" th:unless="${stats.hasProvenSample}">—</strong>
+                <span class="kpi-sub" th:text="${stats.passRateNote}">No data yet</span>
+            </div>
         </div>
-        <div class="stat">
-            <label>Needs attention</label>
-            <strong th:text="${stats.attentionCount}">0</strong>
-            <small th:text="|${stats.statusFailed} need a look · ${stats.statusBlocked} blocked|">0 failed · 0 blocked</small>
+        <div class="kpi kpi--attn" th:classappend="${stats.attentionCount > 0} ? ' kpi--warn' : ''">
+            <div class="kpi-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 3l10 18H2z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 10v5 M12 17v.5" stroke="currentColor" stroke-width="2"/></svg>
+            </div>
+            <div class="kpi-body">
+                <span class="kpi-label">Needs attention</span>
+                <strong class="kpi-value" th:text="${stats.attentionCount}">0</strong>
+                <span class="kpi-sub" th:text="|${stats.statusFailed} failed · ${stats.statusBlocked} blocked|">0 failed · 0 blocked</span>
+            </div>
         </div>
-        <div class="stat">
-            <label>Running now</label>
-            <strong th:text="${stats.runningJobs}">0</strong>
-            <small th:text="|${stats.runningJobs} active job${stats.runningJobs == 1 ? '' : 's'}|">0 active jobs</small>
-        </div>
-    </section>
-
-    <section class="panel guide-promo guide-promo--dash">
-        <div class="guide-promo-copy">
-            <p class="eyebrow">Authoring</p>
-            <h2>Test case guide</h2>
-            <p class="panel-intro">Column rules, TestData alignment, and what Keel invents when a cell is blank.</p>
-            <div class="guide-promo-actions">
-                <a class="button small" href="/guide#testdata">Test data rules</a>
-                <a class="button ghost small" href="/guide#tc-authoring">Full guide</a>
+        <div class="kpi kpi--running" th:classappend="${stats.runningJobs > 0} ? ' kpi--live' : ''">
+            <div class="kpi-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+            </div>
+            <div class="kpi-body">
+                <span class="kpi-label">Running now</span>
+                <strong class="kpi-value" th:text="${stats.runningJobs}">0</strong>
             </div>
         </div>
     </section>

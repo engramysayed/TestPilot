@@ -262,6 +262,15 @@ public class PortalUiController {
         return "generate";
     }
 
+    @GetMapping("/generate/compare")
+    public String generateCompare(@RequestParam(value = "projectId", required = false) String projectId,
+                                  Model model) {
+        addNav(model, "generate-compare");
+        model.addAttribute("projectId", projectId == null ? "" : projectId);
+        model.addAttribute("generateStructuredIntake", portalProperties.isGenerateStructuredIntake());
+        return "generate-compare";
+    }
+
     @GetMapping("/generate-from-knowledge")
     public String generateFromKnowledge(@RequestParam(value = "projectId", required = false) String projectId,
                                         Model model) {

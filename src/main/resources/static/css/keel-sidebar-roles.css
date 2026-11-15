@@ -39,3 +39,33 @@
 .keel-role-unassigned{color:var(--amber,#8a5a12);font-weight:650}
 html[data-theme="dark"] .keel-perm-chips li{background:var(--calm-accent-soft,#1a3330);color:var(--calm-ink,#e7eaf0);border-color:var(--calm-line,#2d3440)}
 html[data-theme="dark"] .keel-perm-grid label{background:transparent;border-color:var(--calm-line,#2d3440)}
+
+/* Sidebar child items — one level of indent under a parent nav link. */
+.sidebar-nav a.sidebar-child{padding-left:2.1rem;font-size:.82rem;opacity:.85}
+.sidebar-nav a.sidebar-child .nav-ico{width:14px;height:14px}
+.sidebar-nav a.sidebar-child.active{opacity:1}
+
+/* Dashboard KPI tiles — colored, iconized, less boring than flat text stats. */
+.dash-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:0 0 1.25rem}
+.dash-heading h1{margin:0;font-size:1.5rem;letter-spacing:-.01em}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.75rem;margin:0 0 1.5rem}
+.kpi{display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;border:1px solid var(--calm-line,#e5e7eb);border-radius:12px;background:var(--calm-paper,#fff);transition:transform .15s ease, box-shadow .15s ease}
+.kpi:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.05)}
+.kpi-ico{flex:0 0 auto;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:9px;background:var(--calm-accent-soft,#eef2ff);color:var(--calm-accent,#4f46e5)}
+.kpi-ico svg{width:20px;height:20px}
+.kpi-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi-label{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--calm-muted,#6b7280);font-weight:600}
+.kpi-value{font-size:1.65rem;line-height:1.1;font-weight:700;color:var(--calm-ink,#111827)}
+.kpi-sub{font-size:.72rem;color:var(--calm-muted,#6b7280)}
+.kpi--good .kpi-ico{background:#dcfce7;color:#15803d}
+.kpi--bad  .kpi-ico{background:#fee2e2;color:#b91c1c}
+.kpi--warn .kpi-ico{background:#fef3c7;color:#b45309}
+.kpi--live .kpi-ico{background:#dbeafe;color:#1d4ed8}
+.kpi--live .kpi-ico svg circle:first-child{animation:kpi-pulse 1.2s ease-in-out infinite}
+@keyframes kpi-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+html[data-theme="dark"] .kpi{background:var(--calm-paper,#121820);border-color:var(--calm-line,#2d3440)}
+html[data-theme="dark"] .kpi-value{color:var(--calm-ink,#e7eaf0)}
+html[data-theme="dark"] .kpi--good .kpi-ico{background:#064e3b;color:#86efac}
+html[data-theme="dark"] .kpi--bad  .kpi-ico{background:#450a0a;color:#fca5a5}
+html[data-theme="dark"] .kpi--warn .kpi-ico{background:#451a03;color:#fcd34d}
+html[data-theme="dark"] .kpi--live .kpi-ico{background:#1e3a8a;color:#93c5fd}

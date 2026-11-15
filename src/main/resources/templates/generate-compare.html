@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Compare models')}"></th:block>
+</head>
+<body class="app-body" th:attr="data-structured-intake=${generateStructuredIntake} ?: true">
+<link rel="stylesheet" th:href="@{/css/keel-portal-enhancements.css}"/>
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1>Compare models</h1>
+        </div>
+    </div>
+
+    <section class="panel workspace-launcher" id="workspace-launcher">
+        <h2>Choose a project</h2>
+        <label>Project
+            <select id="launcher-project-select">
+                <option value="">— Loading projects —</option>
+            </select>
+        </label>
+        <p id="launcher-err" class="error" hidden></p>
+        <p id="launcher-no-projects" class="muted" hidden>
+            No projects yet — <a href="/projects">create one</a>.
+        </p>
+        <p style="margin-top:0.75rem">
+            <button type="button" class="button" id="launcher-continue">Continue</button>
+        </p>
+    </section>
+
+    <div id="workspace-config" hidden>
+    <section class="panel workspace-pinned">
+        <p class="muted" style="margin:0">
+            Project: <strong id="pinned-project-name">—</strong>
+            <button type="button" class="button ghost" id="change-project" style="margin-left:0.5rem">Change</button>
+        </p>
+        <select id="project-select" hidden aria-hidden="true">
+            <option value="">— Loading projects —</option>
+        </select>
+        <p id="project-err" class="error" hidden></p>
+    </section>
+
+    <section class="panel" id="generate-workflow" hidden>
+        <div class="generate-primary">
+            <div class="generate-primary-head">
+                <div>
+                    <h2>Stories</h2>
+                </div>
+            </div>
+
+            <div id="structured-intake" class="structured-intake" data-testid="structured-intake">
+                <label for="intake-title">Story title
+                    <input type="text" id="intake-title" placeholder="e.g. Apply a coupon at checkout"/>
+                </label>
+                <label for="intake-ac">Acceptance criteria
+                    <textarea id="intake-ac" rows="5" placeholder="One criterion per line"></textarea>
+                </label>
+                <div class="structured-intake-row">
+                    <label for="intake-role">Role
+                        <input type="text" id="intake-role" placeholder="e.g. Shopper"/>
+                    </label>
+                    <label for="intake-surface">Surface
+                        <input type="text" id="intake-surface" placeholder="e.g. Web checkout"/>
+                    </label>
+                </div>
+            </div>
+
+            <label for="stories-input" id="stories-input-label" class="structured-intake-fallback-label" hidden>Stories</label>
+            <textarea id="stories-input" rows="10" hidden></textarea>
+
+            <details class="more-options" id="generate-free-text-more">
+                <summary>Paste free-text story instead</summary>
+                <label for="intake-freetext">Free-text story
+                    <textarea id="intake-freetext" rows="6"></textarea>
+                </label>
+            </details>
+
+            <div class="generate-model-row">
+                <label for="generate-model-select">Model A
+                    <select id="generate-model-select">
+                        <option value="">Loading models…</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="generate-model-row">
+                <label for="compare-model-b-select">Model B
+                    <select id="compare-model-b-select">
+                        <option value="">Loading models…</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="generate-options">
+                <label class="generate-check">
+                    <input type="checkbox" id="review-pass"/>
+                    <span>Double-check the results (about twice as long)</span>
+                </label>
+            </div>
+
+            <div class="generate-actions">
+                <button type="button" class="button btn-compare" id="compare-btn" disabled
+                        title="Run both models on the same stories.">Compare models</button>
+                <span id="generate-status" class="generate-status" role="status" aria-live="polite"></span>
+            </div>
+
+            <section class="generate-loading panel" id="generate-loading" hidden aria-live="polite" aria-busy="false">
+                <div class="generate-loading-head">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <div>
+                        <h3 id="generate-loading-title">Running both models…</h3>
+                        <p class="muted" id="generate-loading-detail">Writing test cases with each model.</p>
+                    </div>
+                </div>
+                <div class="progress-track progress-track--indeterminate" aria-hidden="true">
+                    <div class="progress-fill progress-fill--indeterminate" id="generate-progress-bar"></div>
+                </div>
+                <p class="generate-loading-elapsed muted" id="generate-elapsed"></p>
+            </section>
+        </div>
+
+        <section class="generate-results" id="compare-results" hidden>
+            <div class="generate-results-head">
+                <h3>Pick the better set</h3>
+            </div>
+            <div class="compare-grid" id="compare-grid">
+                <div class="compare-pane good" id="compare-pane-a">
+                    <div class="compare-head">
+                        <h3 id="compare-title-a">Model A</h3>
+                        <div class="generate-counts" id="compare-counts-a"></div>
+                    </div>
+                    <p class="compare-summary" id="compare-summary-a"></p>
+                    <div class="compare-preview" id="compare-preview-a" aria-label="Model A preview rows"></div>
+                    <button type="button" class="button" id="save-compare-a-btn">Save model A</button>
+                </div>
+                <div class="compare-pane good" id="compare-pane-b">
+                    <div class="compare-head">
+                        <h3 id="compare-title-b">Model B</h3>
+                        <div class="generate-counts" id="compare-counts-b"></div>
+                    </div>
+                    <p class="compare-summary" id="compare-summary-b"></p>
+                    <div class="compare-preview" id="compare-preview-b" aria-label="Model B preview rows"></div>
+                    <button type="button" class="button" id="save-compare-b-btn">Save model B</button>
+                </div>
+            </div>
+        </section>
+    </section>
+    </div>
+</main>
+</div>
+
+<script th:inline="javascript">window.KEEL_PAGE = Object.assign(window.KEEL_PAGE || {}, { initialProjectId: /*[[${projectId}]]*/ '' });</script>
+<script th:src="@{/js/pages/generate.js}"></script>
+</body>
+</html>
