@@ -458,12 +458,11 @@
                     <li><strong>Locator ranking</strong> (Projects → Settings): <em>Stable first</em> uses the order above. <em>User-facing first</em> puts role and label before test ids, if your team prefers tests that read like the page. Your preferred hook is first in both.</li>
                     <li>When a test id exists on the element, it becomes the main locator even if the step was proven on a label.</li>
                     <li>Generated pages keep up to two fallbacks per element. During a customer run, the first one that matches wins, and the run log says when a fallback was used.</li>
-                    <li><strong>Arabic and English.</strong> Steps can be in either language. Keel understands Arabic verbs (اضغط، انقر، أدخل، اكتب، اختر، تحقق، مرر، اسحب) and ignores spelling differences such as أ / إ / ا and ة / ه.</li>
                 </ul>
                 <div class="guide-callouts">
                     <div class="callout ok">
-                        <strong>Best practice for Arabic/English apps</strong>
-                        <p>Ask your developers to add one test id to every button, link, and field. It is the only locator that keeps working when users switch language.</p>
+                        <strong>Best practice</strong>
+                        <p>Ask your developers to add one test id to every button, link, and field. Test ids are the most stable locator.</p>
                     </div>
                 </div>
             </section>
@@ -858,7 +857,6 @@
                     <li><strong>Check visible</strong> — <code>confirm</code>, <code>verify</code>, <code>shown</code>, <code>visible</code>, <code>see</code>, <code>displays</code>, is shown, are visible.</li>
                     <li><strong>Skip the line</strong> — <code>post-login…</code>, <code>do not …</code> at the start of a step.</li>
                     <li><strong>List rows:</strong> a click that names a shared cell (<code>with Pending edit status</code> or <code>"Pending Edit"</code>) uses the <strong>first</strong> matching table/grid row. Quote a person name when you need that person: <code>Click on "Sara Ali"</code>. Two Login buttons on a page (not in a grid) stay unresolved.</li>
-                    <li><strong>Arabic</strong> — Click: <code>اضغط</code>, <code>انقر</code>, <code>افتح</code>, <code>اذهب إلى</code>. Type: <code>أدخل</code>, <code>اكتب</code>, <code>املأ</code>. Select: <code>اختر</code>, <code>حدد</code>. Clear: <code>امسح</code>. Check visible: <code>تحقق</code>, <code>تأكد</code>, <code>يظهر</code>. Hover: <code>مرر</code>. Drag: <code>اسحب</code>. Login words: <code>تسجيل الدخول</code>, <code>اسم المستخدم</code>, <code>كلمة المرور</code>.</li>
                     <li>Login / password / “click the login button” stay in code. They are listed on Admin as code-only specials and cannot be remapped.</li>
                 </ul>
                 <ol class="guide-howto">
