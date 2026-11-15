@@ -69,3 +69,25 @@ html[data-theme="dark"] .kpi--good .kpi-ico{background:#064e3b;color:#86efac}
 html[data-theme="dark"] .kpi--bad  .kpi-ico{background:#450a0a;color:#fca5a5}
 html[data-theme="dark"] .kpi--warn .kpi-ico{background:#451a03;color:#fcd34d}
 html[data-theme="dark"] .kpi--live .kpi-ico{background:#1e3a8a;color:#93c5fd}
+
+/* Overflow menu — rule 4 pattern. Usage:
+   <div class="actions">
+     <button class="button">Primary</button>
+     <details class="overflow"><summary aria-label="More">⋯</summary>
+       <div class="overflow-menu">
+         <button class="button ghost">Secondary A</button>
+         <button class="button ghost">Secondary B</button>
+       </div>
+     </details>
+   </div>
+   Native disclosure; no JS needed. */
+.overflow{position:relative;display:inline-block}
+.overflow > summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;border:1px solid var(--calm-line,#e5e7eb);background:transparent;font-size:1.2rem;line-height:1;color:var(--calm-ink,#111827);user-select:none}
+.overflow > summary::-webkit-details-marker{display:none}
+.overflow > summary::marker{content:""}
+.overflow > summary:hover{background:var(--calm-accent-soft,#eef2ff)}
+.overflow[open] > summary{background:var(--calm-accent-soft,#eef2ff);border-color:var(--calm-accent,#4f46e5)}
+.overflow-menu{position:absolute;right:0;top:calc(100% + 4px);min-width:180px;background:var(--calm-paper,#fff);border:1px solid var(--calm-line,#e5e7eb);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:.35rem;display:flex;flex-direction:column;gap:2px;z-index:50}
+.overflow-menu .button,.overflow-menu button{justify-content:flex-start;text-align:left;width:100%;margin:0;border-radius:6px}
+html[data-theme="dark"] .overflow > summary{border-color:var(--calm-line,#2d3440);color:var(--calm-ink,#e7eaf0)}
+html[data-theme="dark"] .overflow-menu{background:var(--calm-paper,#121820);border-color:var(--calm-line,#2d3440)}
