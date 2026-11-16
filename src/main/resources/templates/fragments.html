@@ -8,6 +8,9 @@
         <link rel="stylesheet" th:href="@{/css/keel-mobile-ui.css}"/>
         <link rel="stylesheet" th:href="@{/css/keel-credits.css}"/>
         <link rel="stylesheet" th:href="@{/css/keel-sidebar-roles.css}"/>
+        <link rel="stylesheet" th:href="@{/css/keel-feature-help.css}"/>
+        <link rel="stylesheet" th:href="@{/css/keel-dashboard.css}"/>
+        <link rel="stylesheet" th:href="@{/css/keel-file-input.css}"/>
         <link rel="stylesheet" th:href="@{/css/keel-layout.css}"/>
     </th:block>
     <th:block th:fragment="authFonts">
@@ -24,7 +27,7 @@
         <meta charset="UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <title th:text="${title} + ' — Keel'">Keel</title>
-        <link rel="icon" type="image/svg+xml" th:href="@{/img/favicon.svg}"/>
+        <link rel="icon" type="image/svg+xml" th:href="@{/img/favicon.svg(v=2)}"/>
         <script>
             (function () {
                 try {
@@ -42,7 +45,7 @@
         <meta charset="UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <title th:text="${title} + ' — Keel'">Keel</title>
-        <link rel="icon" type="image/svg+xml" th:href="@{/img/favicon.svg}"/>
+        <link rel="icon" type="image/svg+xml" th:href="@{/img/favicon.svg(v=2)}"/>
         <script>
             (function () {
                 try {
@@ -59,6 +62,10 @@
         <script defer th:src="@{/js/keel-theme.js}"></script>
         <script defer th:src="@{/js/keel-credits.js}"></script>
         <script defer th:src="@{/js/keel-sidebar-ia.js}"></script>
+        <script defer th:src="@{/js/keel-project-picker.js}"></script>
+        <script defer th:src="@{/js/keel-tc-multiselect.js}"></script>
+        <script defer th:src="@{/js/keel-feature-help.js}"></script>
+        <script defer th:src="@{/js/keel-file-input.js}"></script>
         <script defer th:src="@{/js/keel-confirm.js}"></script>
         <meta id="keel-approval-meta" th:attr="data-approval-status=${approvalStatus}, data-credits-enabled=${creditsEnabled}"/>
         <script>
@@ -104,7 +111,7 @@
         </button>
         <div class="topbar-en" data-keel-menu>
             <button type="button" class="topbar-en-btn" id="keel-en-btn" aria-haspopup="menu"
-                    aria-expanded="false" aria-controls="keel-en-menu">EN</button>
+                    aria-expanded="false" aria-controls="keel-en-menu" th:text="#{top.account}">Account</button>
             <div class="topbar-en-menu" id="keel-en-menu" role="menu" hidden>
                 <a role="menuitem" href="/account" class="topbar-en-item" th:text="#{top.account}">Account</a>
                 <form th:action="@{/logout}" method="post" class="topbar-en-logout" role="none">
@@ -142,13 +149,15 @@
     </script>
 </header>
 
+<button type="button" class="keel-feature-help-btn" th:fragment="featureHelpBtn(id)"
+        th:attr="aria-label=${#messages.msg('feature.help.' + id + '.title')},
+                 data-help=${#messages.msg('feature.help.' + id + '.short')}"
+        th:data-guide="${#messages.msgOrNull('feature.help.' + id + '.guide')}">?</button>
+
 <aside class="sidebar" th:fragment="sidebar">
     <div class="sidebar-brand">
         <a href="/dashboard" class="brand-link" aria-label="Keel home">
-            <svg class="brand-logo-svg" width="27" height="31" viewBox="0 0 30 34" fill="none" aria-hidden="true">
-                <path d="M4 4v23l11 5 11-5V4L15 9 4 4Z" stroke="currentColor" stroke-width="2"/>
-                <path d="m8 11 7 4 7-4M15 15v11" stroke="currentColor" stroke-width="2"/>
-            </svg>
+            <img class="brand-logo-svg" th:src="@{/img/keel-mark.svg}" width="27" height="31" alt=""/>
             <span class="brand-mark">keel</span>
         </a>
     </div>
@@ -170,95 +179,157 @@
     </div>
 
     <nav class="sidebar-nav" aria-label="Main" th:attr="data-sidebar-ia=${sidebarIaEnabled} ?: false">
-        <a href="/dashboard" th:classappend="${navActive == 'dashboard'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"/></svg>
-            <span th:text="#{nav.overview}">Overview</span>
-        </a>
-        <a href="/projects" th:classappend="${navActive == 'projects'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 3h9v12H3z"/></svg>
-            <span th:text="#{nav.projects}">Projects</span>
-        </a>
-        <p class="sidebar-label" data-features-label>Author tests</p>
-        <div class="nav-group" data-feature-perm="feature.generate" th:classappend="${navActive == 'generate' or navActive == 'generate-compare'} ? 'is-open'">
-            <a href="/generate" class="nav-main" th:classappend="${navActive == 'generate'} ? 'active'">
-                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18 M5 5l14 14 M5 19 19 5"/></svg>
-                <span>Generate with AI</span>
+        <div class="sidebar-nav-item">
+            <a href="/dashboard" class="sidebar-nav-item__link" th:classappend="${navActive == 'dashboard'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"/></svg>
+                <span th:text="#{nav.overview}">Overview</span>
             </a>
-            <button type="button" class="nav-toggle" aria-label="Toggle children" onclick="this.closest('.nav-group').classList.toggle('is-open')">
+            <th:block th:replace="~{fragments :: featureHelpBtn('overview')}"></th:block>
+        </div>
+        <div class="sidebar-nav-item">
+            <a href="/projects" class="sidebar-nav-item__link" th:classappend="${navActive == 'projects'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 3h9v12H3z"/></svg>
+                <span th:text="#{nav.projects}">Projects</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('projects')}"></th:block>
+        </div>
+
+        <p class="sidebar-label" data-features-label th:text="#{nav.section.designTests}">Design tests</p>
+        <div class="nav-group" data-feature-perm="feature.generate" data-nav-group-id="tcs-generation"
+             th:classappend="${navActive == 'generate' or navActive == 'generate-compare' or navActive == 'generate-from-knowledge'} ? 'is-open'">
+            <div class="nav-main-wrap">
+                <a href="/generate" class="nav-main sidebar-nav-item__link" th:classappend="${navActive == 'generate'} ? 'active'">
+                    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18 M5 5l14 14 M5 19 19 5"/></svg>
+                    <span th:text="#{nav.tcsGeneration}">TCs Generation</span>
+                </a>
+                <th:block th:replace="~{fragments :: featureHelpBtn('tcs-generation')}"></th:block>
+            </div>
+            <button type="button" class="nav-toggle" aria-label="Toggle TCs Generation menu">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </button>
             <div class="nav-children">
-                <a href="/generate/compare" class="sidebar-child" th:classappend="${navActive == 'generate-compare'} ? 'active'">
-                    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7v12H4z"/><path d="M13 6h7v12h-7z"/></svg>
-                    <span>Compare models</span>
-                </a>
+                <div class="sidebar-nav-item">
+                    <a href="/generate/compare" class="sidebar-child sidebar-nav-item__link" th:classappend="${navActive == 'generate-compare'} ? 'active'">
+                        <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7v12H4z"/><path d="M13 6h7v12h-7z"/></svg>
+                        <span th:text="#{nav.multiModelGenerate}">Multi-model generate</span>
+                    </a>
+                    <th:block th:replace="~{fragments :: featureHelpBtn('multi-model-generate')}"></th:block>
+                </div>
+                <div class="sidebar-nav-item">
+                    <a href="/generate-from-knowledge" class="sidebar-child sidebar-nav-item__link" th:classappend="${navActive == 'generate-from-knowledge'} ? 'active'">
+                        <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z"/><path d="M13 5h7v12a2 2 0 0 1-2 2h-7a2 2 0 0 0 2-2z"/><path d="M7 9h2 M7 12h2"/></svg>
+                        <span th:text="#{nav.generateFromKnowledge}">Generate from knowledge</span>
+                    </a>
+                    <th:block th:replace="~{fragments :: featureHelpBtn('generate-from-knowledge')}"></th:block>
+                </div>
             </div>
         </div>
-        <a href="/generate-from-knowledge" data-feature-perm="feature.generate" th:classappend="${navActive == 'generate-from-knowledge'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z"/><path d="M13 5h7v12a2 2 0 0 1-2 2h-7a2 2 0 0 0 2-2z"/><path d="M7 9h2 M7 12h2"/></svg>
-            <span>From case packs</span>
-        </a>
-        <a href="/record" data-feature-perm="feature.generate" th:classappend="${navActive == 'record'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>
-            <span>Record browser</span>
-        </a>
-        <a href="/plain-cases" data-feature-perm="feature.execute" th:classappend="${navActive == 'plain-cases'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h14"/><path d="M18 10l2 2-2 2"/></svg>
-            <span>Plain cases</span>
-        </a>
-        <a href="/structured-plans" data-feature-perm="feature.execute" th:classappend="${navActive == 'structured-plans'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h2v2h-2z"/><path d="M18 14h2v6h-2z"/></svg>
-            <span>Structured plans</span>
-        </a>
-
-        <p class="sidebar-label">Run</p>
-        <div class="nav-group" data-feature-perm="feature.execute" th:classappend="${navActive == 'suites' or navActive == 'suites-schedule'} ? 'is-open'">
-            <a href="/suites" class="nav-main" th:classappend="${navActive == 'suites'} ? 'active'">
-                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v4H4z"/><path d="M4 11h16v4H4z"/><path d="M4 17h10v2H4z"/></svg>
-                <span>Suites</span>
+        <div class="sidebar-nav-item" data-feature-perm="feature.generate">
+            <a href="/playback" class="sidebar-nav-item__link" th:classappend="${navActive == 'record'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>
+                <span th:text="#{nav.playback}">Playback</span>
             </a>
-            <button type="button" class="nav-toggle" aria-label="Toggle children" onclick="this.closest('.nav-group').classList.toggle('is-open')">
+            <th:block th:replace="~{fragments :: featureHelpBtn('playback')}"></th:block>
+        </div>
+        <div class="sidebar-nav-item" data-feature-perm="feature.execute">
+            <a href="/plain-cases" class="sidebar-nav-item__link" th:classappend="${navActive == 'plain-cases'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h14"/><path d="M18 10l2 2-2 2"/></svg>
+                <span th:text="#{nav.plainCases}">Plain cases</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('plain-cases')}"></th:block>
+        </div>
+        <div class="sidebar-nav-item" data-feature-perm="feature.execute">
+            <a href="/test-blueprints" class="sidebar-nav-item__link" th:classappend="${navActive == 'structured-plans'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h2v2h-2z"/><path d="M18 14h2v6h-2z"/></svg>
+                <span th:text="#{nav.testBlueprints}">Test blueprints</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('test-blueprints')}"></th:block>
+        </div>
+
+        <p class="sidebar-label" th:text="#{nav.section.executeAutomate}">Execute &amp; automate</p>
+        <div class="nav-group" data-feature-perm="feature.execute" data-nav-group-id="test-suites"
+             th:classappend="${navActive == 'suites' or navActive == 'suites-schedule'} ? 'is-open'">
+            <div class="nav-main-wrap">
+                <a href="/suites" class="nav-main sidebar-nav-item__link" th:classappend="${navActive == 'suites'} ? 'active'">
+                    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v4H4z"/><path d="M4 11h16v4H4z"/><path d="M4 17h10v2H4z"/></svg>
+                    <span th:text="#{nav.testSuites}">Test suites</span>
+                </a>
+                <th:block th:replace="~{fragments :: featureHelpBtn('test-suites')}"></th:block>
+            </div>
+            <button type="button" class="nav-toggle" aria-label="Toggle Test suites menu">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </button>
             <div class="nav-children">
-                <a href="/suites/schedule" class="sidebar-child" th:classappend="${navActive == 'suites-schedule'} ? 'active'">
-                    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 9v4l3 2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
-                    <span>Scheduling</span>
-                </a>
+                <div class="sidebar-nav-item">
+                    <a href="/suites/schedule" class="sidebar-child sidebar-nav-item__link" th:classappend="${navActive == 'suites-schedule'} ? 'active'">
+                        <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 9v4l3 2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                        <span th:text="#{nav.scheduling}">Scheduling</span>
+                    </a>
+                    <th:block th:replace="~{fragments :: featureHelpBtn('scheduling')}"></th:block>
+                </div>
             </div>
         </div>
-        <a href="/execute" data-feature-perm="feature.execute" th:classappend="${navActive == 'execute'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l12 8-12 8z"/></svg>
-            <span>Execute</span>
-        </a>
-        <a href="/run-memory" data-feature-perm="feature.execute" th:classappend="${navActive == 'run-memory'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a5 5 0 0 1 5 5c0 2-1 3.5-2.5 4.5L12 22l-2.5-10.5C8 10 7 8.5 7 7a5 5 0 0 1 5-5z"/></svg>
-            <span>Run memory</span>
-        </a>
-        <a href="/automate" data-feature-perm="feature.automate" th:classappend="${navActive == 'automate'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>
-            <span>Convert to code</span>
-        </a>
+        <div class="sidebar-nav-item" data-feature-perm="feature.execute">
+            <a href="/execute" class="sidebar-nav-item__link" th:classappend="${navActive == 'execute'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l12 8-12 8z"/></svg>
+                <span th:text="#{nav.tcsExecution}">TCs execution</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('tcs-execution')}"></th:block>
+        </div>
+        <div class="sidebar-nav-item" data-feature-perm="feature.automate">
+            <a href="/automate" class="sidebar-nav-item__link" th:classappend="${navActive == 'automate'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>
+                <span th:text="#{nav.tcsAutomation}">TCs automation</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('tcs-automation')}"></th:block>
+        </div>
+        <div class="sidebar-nav-item" data-feature-perm="feature.hunt">
+            <a href="/bug-hunter" class="sidebar-nav-item__link" th:classappend="${navActive == 'bug-hunter'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8 11h6"/><path d="M11 8v6"/></svg>
+                <span th:text="#{nav.hunt}">Bug Hunter</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('bug-hunter')}"></th:block>
+        </div>
 
-        <p class="sidebar-label">Review</p>
-        <a href="/runs" th:classappend="${navActive == 'runs'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l12 8-12 8z"/></svg>
-            <span>Runs &amp; evidence</span>
-        </a>
-        <a href="/bug-hunter" data-feature-perm="feature.hunt" th:classappend="${navActive == 'bug-hunter'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8 11h6"/><path d="M11 8v6"/></svg>
-            <span>Bug Hunter</span>
-        </a>
+        <p class="sidebar-label" th:text="#{nav.section.history}">History</p>
+        <div class="nav-group" data-nav-group-id="history"
+             th:classappend="${navActive == 'runs' or navActive == 'run-memory'} ? 'is-open'">
+            <div class="nav-main-wrap">
+                <a href="/history" class="nav-main sidebar-nav-item__link" th:classappend="${navActive == 'runs'} ? 'active'">
+                    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v2H8z"/><path d="M6 6h12v14H6z"/><path d="M9 11h6 M9 15h4"/></svg>
+                    <span th:text="#{nav.history}">History</span>
+                </a>
+                <th:block th:replace="~{fragments :: featureHelpBtn('history')}"></th:block>
+            </div>
+            <button type="button" class="nav-toggle" aria-label="Toggle History menu">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <div class="nav-children">
+                <div class="sidebar-nav-item" data-feature-perm="feature.execute">
+                    <a href="/run-memory" class="sidebar-child sidebar-nav-item__link" th:classappend="${navActive == 'run-memory'} ? 'active'">
+                        <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a5 5 0 0 1 5 5c0 2-1 3.5-2.5 4.5L12 22l-2.5-10.5C8 10 7 8.5 7 7a5 5 0 0 1 5-5z"/></svg>
+                        <span th:text="#{nav.runMemory}">Run memory</span>
+                    </a>
+                    <th:block th:replace="~{fragments :: featureHelpBtn('run-memory')}"></th:block>
+                </div>
+            </div>
+        </div>
 
-        <p class="sidebar-label">Workspace</p>
-        <a href="/pricing" th:classappend="${navActive == 'pricing'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            <span>Pricing</span>
-        </a>
-        <a href="/guide" th:classappend="${navActive == 'guide'} ? 'active'">
-            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4z"/><path d="M13 4h7v14a2 2 0 0 1-2 2h-7a2 2 0 0 0 2-2z"/><path d="M9 8h1 M9 12h1"/></svg>
-            <span>Guide</span>
-        </a>
+        <p class="sidebar-label" th:text="#{nav.section.resources}">Resources</p>
+        <div class="sidebar-nav-item">
+            <a href="/pricing" class="sidebar-nav-item__link" th:classappend="${navActive == 'pricing'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span th:text="#{nav.pricing}">Pricing</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('pricing')}"></th:block>
+        </div>
+        <div class="sidebar-nav-item">
+            <a href="/guide" class="sidebar-nav-item__link" th:classappend="${navActive == 'guide'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4z"/><path d="M13 4h7v14a2 2 0 0 1-2 2h-7a2 2 0 0 0 2-2z"/><path d="M9 8h1 M9 12h1"/></svg>
+                <span th:text="#{nav.guide}">Guide</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('guide')}"></th:block>
+        </div>
 
         <!-- Account under EN menu (pack 11) -->
         <th:block th:if="${isAdmin}">

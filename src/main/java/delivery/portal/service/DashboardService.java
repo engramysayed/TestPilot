@@ -151,7 +151,7 @@ public class DashboardService {
         }
 
         List<Map<String, Object>> recentRuns = allJobs.stream()
-                .limit(10)
+                .limit(5)
                 .map(j -> recentRunRow(j, projectNames))
                 .toList();
 

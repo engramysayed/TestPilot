@@ -1,0 +1,108 @@
+/* Phase 6 — Generate page: stacked workflow cards */
+
+.generate-workflow-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+  margin-top: 0.25rem;
+}
+
+.generate-page .generate-card {
+  border-radius: 14px;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.generate-page .generate-card--primary {
+  border-color: rgba(13, 154, 168, 0.22);
+  background: linear-gradient(180deg, rgba(13, 154, 168, 0.04) 0%, var(--panel, #fff) 48%);
+}
+
+.generate-page .generate-card--secondary {
+  border-color: var(--line, #e8ecef);
+  background: var(--panel, #fff);
+}
+
+.generate-page .generate-card--tertiary {
+  border-style: dashed;
+  border-color: var(--line, #d5dde3);
+  background: rgba(105, 123, 136, 0.04);
+}
+
+.generate-page .panelhead {
+  margin-bottom: 0.85rem;
+}
+
+.generate-page .panelhead--compact {
+  margin-bottom: 0.5rem;
+}
+
+.generate-page .panelhead-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.generate-page .panelhead-title h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.1rem;
+}
+
+.generate-page .generate-primary {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.generate-page .generate-bulk,
+.generate-page .generate-import {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.generate-page .generate-results {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line, #e8ecef);
+}
+
+.generate-page .generate-results--review {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--line, #e8ecef);
+}
+
+.generate-page .generate-batch-jobs {
+  margin-top: 1.5rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid var(--line, #e8ecef);
+}
+
+.generate-page .generate-copy-steps {
+  margin: 0 0 1rem;
+  padding-left: 1.25rem;
+}
+
+.generate-page .generate-copy-prompt .ai-prompt-card {
+  margin-top: 0.25rem;
+}
+
+.generate-page .panelhead:hover .keel-feature-help-btn,
+.generate-page .keel-feature-help-btn.is-open {
+  opacity: 1;
+  color: var(--accent-2, #0d9aa8);
+  border-color: rgba(13, 154, 168, 0.35);
+}
+
+.generate-page .keel-feature-help-btn {
+  opacity: 0.55;
+}
+
+html[data-theme="dark"] .generate-page .generate-card--primary {
+  background: linear-gradient(180deg, rgba(13, 154, 168, 0.08) 0%, var(--panel, #1a1f24) 55%);
+}
+
+html[data-theme="dark"] .generate-page .generate-card--tertiary {
+  background: rgba(255, 255, 255, 0.03);
+}

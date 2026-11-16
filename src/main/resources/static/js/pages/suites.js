@@ -4,6 +4,11 @@
     const STORAGE_KEY = 'keel.suitesProjectId';
     const LAST_SUITE_KEY = 'keel.suitesLastSuiteId';
     const BUILTIN_TAGS = ['smoke', 'regression', 'nightly'];
+    const SCHEDULE_CRON_PRESETS = {
+        'daily-2am': '0 2 * * *',
+        'weekly-mon-2am': '0 2 * * 1'
+    };
+    const schedulePage = document.body.classList.contains('suites-schedule-page');
     const FALLBACK_CHANNELS = [
         { id: 'email', enabled: true, minSeverity: null },
         { id: 'telegram', enabled: true, minSeverity: null },
@@ -62,8 +67,15 @@
     const scheduleInterval = document.getElementById('schedule-interval');
     const scheduleTimezone = document.getElementById('schedule-timezone');
     const scheduleProfile = document.getElementById('schedule-profile');
+    const schedulePreset = document.getElementById('schedule-preset');
+    const scheduleCredential = document.getElementById('schedule-credential');
+    const timezoneRow = document.getElementById('timezone-row');
     const cronRow = document.getElementById('cron-row');
     const intervalRow = document.getElementById('interval-row');
+    const alertUseAccount = document.getElementById('alert-use-account');
+    const alertAccountSummary = document.getElementById('alert-account-summary');
+    const saveAllScheduleBtn = document.getElementById('save-schedule-settings');
+    const scheduleSaveStatus = document.getElementById('schedule-save-status');
     const scheduleMeta = document.getElementById('schedule-meta');
     const saveScheduleBtn = document.getElementById('save-schedule');
     const clearScheduleBtn = document.getElementById('clear-schedule');
@@ -134,6 +146,98 @@
     function suiteIdOf(row) {
         if (!row) return null;
         return row.suiteId || row.id || null;
+    }
+
+    function suiteDisplayLabel(row) {
+        const tags = Array.isArray(row && row.tags) ? row.tags : [];
+        for (let i = 0; i < BUILTIN_TAGS.length; i++) {
+            const key = BUILTIN_TAGS[i];
+            if (tags.some(function (t) { return String(t).toLowerCase() === key; })) {
+                return key.charAt(0).toUpperCase() + key.slice(1);
+            }
+        }
+        const name = (row && row.name || '').trim();
+        if (name) return name;
+        return 'Test pack';
+    }
+
+    function suiteTagLine(row) {
+        const tags = Array.isArray(row && row.tags) ? row.tags : [];
+        if (!tags.length) return '';
+        return tags.map(function (t) { return String(t); }).join(', ');
+    }
+
+    function statusOut() {
+        return scheduleSaveStatus || scheduleStatus;
+    }
+
+    function inferSchedulePreset(sched) {
+        if (!sched) return 'daily-2am';
+        if (sched.kind === 'interval') return 'interval';
+        const cron = (sched.cron || '').trim();
+        if (cron === SCHEDULE_CRON_PRESETS['daily-2am']) return 'daily-2am';
+        if (cron === SCHEDULE_CRON_PRESETS['weekly-mon-2am']) return 'weekly-mon-2am';
+        if (cron) return 'custom';
+        return 'daily-2am';
+    }
+
+    function syncSchedulePresetUi() {
+        if (!schedulePreset) return;
+        const preset = schedulePreset.value || 'daily-2am';
+        if (intervalRow) intervalRow.hidden = preset !== 'interval';
+        if (cronRow) cronRow.hidden = preset !== 'custom';
+        if (timezoneRow) timezoneRow.hidden = preset === 'interval';
+    }
+
+    async function loadScheduleCredentials(projectId) {
+        const sel = scheduleCredential || scheduleProfile;
+        if (!sel || !projectId) return;
+        const prev = sel.value || '';
+        if (sel.tagName === 'SELECT') {
+            sel.innerHTML = '<option value="">— Open site only (no auto-login) —</option>';
+        }
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/credentials', {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            const list = res.ok ? await res.json() : [];
+            if (sel.tagName === 'SELECT') {
+                list.forEach(function (c) {
+                    const opt = document.createElement('option');
+                    opt.value = c.profileName || '';
+                    opt.textContent = (c.profileName || '') + (c.username ? (' (' + c.username + ')') : '');
+                    sel.appendChild(opt);
+                });
+                if (prev && Array.prototype.some.call(sel.options, function (o) { return o.value === prev; })) {
+                    sel.value = prev;
+                }
+            }
+        } catch (_) { /* ignore */ }
+    }
+
+    async function loadAccountAlertSummary() {
+        if (!alertAccountSummary) return;
+        try {
+            const res = await fetch('/api/account/alerts', { credentials: 'same-origin', headers: API_HEADERS });
+            if (!res.ok) {
+                alertAccountSummary.textContent = 'Could not load Account alert settings.';
+                return;
+            }
+            const data = await res.json();
+            const bits = [];
+            if (data.email && data.email.on) {
+                bits.push('Email' + (data.email.target ? ' → ' + data.email.target : ''));
+            }
+            if (data.telegram && data.telegram.on) {
+                bits.push('Telegram' + (data.telegram.target ? ' → ' + data.telegram.target : ''));
+            }
+            alertAccountSummary.textContent = bits.length
+                ? ('On Account: ' + bits.join('; ') + '.')
+                : 'No alert channels enabled on Account yet.';
+        } catch (_) {
+            alertAccountSummary.textContent = 'Could not load Account alert settings.';
+        }
     }
 
     function normalizeList(data) {
@@ -411,7 +515,35 @@
         updateCreateEnabled();
     }
 
+    function afterProjectPinned(projectId) {
+        selectedSuiteId = sessionStorage.getItem(LAST_SUITE_KEY + '.' + projectId) || null;
+        selectedSuite = null;
+        draftTags = [];
+        apiAvailable = false;
+        showApiWait(false);
+        if (createStatus) createStatus.textContent = '';
+        clearDetailStatuses();
+        if (schedulePage) {
+            loadAccountAlertSummary();
+            loadScheduleCredentials(projectId);
+        } else {
+            loadChannels();
+        }
+        loadSuites(projectId);
+        if (libraryLoadedForProject !== projectId) {
+            loadTestCaseLibrary(projectId);
+        } else {
+            refreshPickerViews();
+        }
+        updateCreateEnabled();
+    }
+
     function pinWorkspaceProject(projectId, projectList) {
+        if (suitesProjectPicker) {
+            suitesProjectPicker.pinWorkspaceProject(projectId, projectList);
+            return;
+        }
+        if (!projectSel) return;
         projectSel.value = projectId;
         if (launcherSel) launcherSel.value = projectId;
         const proj = (projectList || []).find(function (p) { return p.projectId === projectId; });
@@ -427,26 +559,13 @@
         if (workspaceLauncher) workspaceLauncher.hidden = true;
         if (workspaceConfig) workspaceConfig.hidden = false;
         sessionStorage.setItem(STORAGE_KEY, projectId);
-        selectedSuiteId = sessionStorage.getItem(LAST_SUITE_KEY + '.' + projectId) || null;
-        selectedSuite = null;
-        draftTags = [];
-        apiAvailable = false;
-        showApiWait(false);
-        if (createStatus) createStatus.textContent = '';
-        clearDetailStatuses();
-        loadChannels();
-        loadSuites(projectId);
-        if (libraryLoadedForProject !== projectId) {
-            loadTestCaseLibrary(projectId);
-        } else {
-            refreshPickerViews();
-        }
-        updateCreateEnabled();
+        afterProjectPinned(projectId);
     }
 
     function clearDetailStatuses() {
         if (tagsStatus) tagsStatus.textContent = '';
         if (scheduleStatus) scheduleStatus.textContent = '';
+        if (scheduleSaveStatus) scheduleSaveStatus.textContent = '';
         if (alertsStatus) alertsStatus.textContent = '';
         if (monitorStatus) monitorStatus.textContent = '';
     }
@@ -463,6 +582,7 @@
     }
 
     function renderChannelSelect(selectedId) {
+        if (!alertChannel) return;
         const prev = selectedId != null ? selectedId : (alertChannel.value || '');
         alertChannel.innerHTML = '<option value="">- None -</option>';
         channels.forEach(function (c) {
@@ -513,24 +633,44 @@
         suitesList.hidden = false;
         suitesList.innerHTML = suites.map(function (row) {
             const id = suiteIdOf(row) || '';
-            const name = (row.name || '').trim() || '(unnamed)';
+            const label = suiteDisplayLabel(row);
             const tags = Array.isArray(row.tags) ? row.tags : [];
             const builtIn = !!row.builtIn;
             const active = id && id === selectedSuiteId;
-            const tagBits = tags.map(function (t) { return escapeHtml(t); }).join(', ');
+            const tagBits = suiteTagLine(row);
+            if (schedulePage) {
+                return '<li class="' + (active ? 'active-suite' : '') + '">'
+                    + '<button type="button" class="button ghost suite-pick" data-suite-id="' + escapeHtml(id) + '"'
+                    + ' style="padding:0;text-align:left;width:100%">'
+                    + '<span class="suite-pick-label">' + escapeHtml(label) + '</span>'
+                    + (tagBits ? '<span class="suite-pick-tags muted">' + escapeHtml(tagBits) + '</span>' : '')
+                    + (builtIn ? '<span class="suite-pick-tags muted">Built-in pack</span>' : '')
+                    + '<details class="suite-id-details"><summary>Technical id</summary><code class="mono">'
+                    + escapeHtml(id) + '</code></details>'
+                    + '</button></li>';
+            }
+            const name = (row.name || '').trim() || '(unnamed)';
+            const tagCsv = tags.map(function (t) { return escapeHtml(t); }).join(', ');
             return '<li class="' + (active ? 'active-suite' : '') + '">'
                 + '<button type="button" class="button ghost suite-pick" data-suite-id="' + escapeHtml(id) + '"'
                 + ' style="padding:0.15rem 0.4rem">'
                 + escapeHtml(name) + '</button>'
                 + ' <span class="muted">' + escapeHtml(id)
                 + (builtIn ? ' | built-in' : '')
-                + (tagBits ? ' | ' + tagBits : '')
+                + (tagCsv ? ' | ' + tagCsv : '')
                 + '</span>'
                 + '</li>';
         }).join('');
         if (suitesMeta) {
-            suitesMeta.textContent = suites.length + (suites.length === 1 ? ' test pack' : ' test packs')
-                + (selectedSuiteId ? ' | selected ' + selectedSuiteId : '');
+            const selected = suites.find(function (s) { return suiteIdOf(s) === selectedSuiteId; });
+            const selLabel = selected ? suiteDisplayLabel(selected) : '';
+            if (schedulePage) {
+                suitesMeta.textContent = suites.length + (suites.length === 1 ? ' test pack' : ' test packs')
+                    + (selLabel ? (' · Selected: ' + selLabel) : '');
+            } else {
+                suitesMeta.textContent = suites.length + (suites.length === 1 ? ' test pack' : ' test packs')
+                    + (selectedSuiteId ? ' | selected ' + selectedSuiteId : '');
+            }
         }
         Array.prototype.forEach.call(suitesList.querySelectorAll('[data-suite-id]'), function (btn) {
             btn.addEventListener('click', function () {
@@ -634,12 +774,22 @@
         refreshPickerViews();
 
         const sched = suite.schedule || null;
-        scheduleEnabled.checked = !!(sched && sched.enabled);
-        setScheduleKind(sched && sched.kind === 'interval' ? 'interval' : 'cron');
-        scheduleCron.value = (sched && sched.cron) || '';
-        scheduleInterval.value = (sched && sched.intervalMinutes != null) ? sched.intervalMinutes : '';
+        if (scheduleEnabled) scheduleEnabled.checked = !!(sched && sched.enabled);
+        const credProfile = (sched && sched.credentialProfile) || '';
+        if (schedulePreset) {
+            const preset = inferSchedulePreset(sched);
+            schedulePreset.value = preset;
+            scheduleCron.value = (sched && sched.cron) || '';
+            scheduleInterval.value = (sched && sched.intervalMinutes != null) ? sched.intervalMinutes : '';
+            syncSchedulePresetUi();
+        } else if (typeof setScheduleKind === 'function') {
+            setScheduleKind(sched && sched.kind === 'interval' ? 'interval' : 'cron');
+            scheduleCron.value = (sched && sched.cron) || '';
+            scheduleInterval.value = (sched && sched.intervalMinutes != null) ? sched.intervalMinutes : '';
+        }
         if (scheduleTimezone) scheduleTimezone.value = (sched && sched.timezone) || '';
-        if (scheduleProfile) scheduleProfile.value = (sched && sched.credentialProfile) || '';
+        if (scheduleCredential) scheduleCredential.value = credProfile;
+        else if (scheduleProfile) scheduleProfile.value = credProfile;
         const when = (iso) => { try { return iso ? new Date(iso).toLocaleString() : ''; } catch (e) { return iso; } };
         const metaBits = [];
         if (sched && sched.enabled && sched.nextRunAt) metaBits.push('Next run: ' + when(sched.nextRunAt));
@@ -655,11 +805,16 @@
         if (schedMonitor && schedMonitor.enabled) metaBits.push('Monitor (' + schedMonitor.target + '): '
             + (schedMonitor.lastStatus || 'unknown')
             + (schedMonitor.lastCheckedAt ? ' at ' + when(schedMonitor.lastCheckedAt) : ''));
-        scheduleMeta.textContent = metaBits.join(' · ');
+        if (scheduleMeta) scheduleMeta.textContent = metaBits.join(' · ');
 
-        renderChannelSelect(suite.alertChannelId || '');
-        alertChannel.value = suite.alertChannelId || '';
-        alertSeverity.value = suite.alertMinSeverity || '';
+        if (alertUseAccount) {
+            alertUseAccount.checked = !suite.alertChannelId;
+            loadAccountAlertSummary();
+        } else {
+            renderChannelSelect(suite.alertChannelId || '');
+            if (alertChannel) alertChannel.value = suite.alertChannelId || '';
+            if (alertSeverity) alertSeverity.value = suite.alertMinSeverity || '';
+        }
 
         const mon = suite.monitor || null;
         monitorEnabled.checked = !!(mon && mon.enabled);
@@ -920,27 +1075,51 @@
         }
     }
 
-    async function saveSchedule() {
+    async function saveSchedule(opts) {
+        opts = opts || {};
         const projectId = projectSel.value;
         const suiteId = selectedSuiteId;
+        const status = opts.statusEl || statusOut();
         if (!projectId || !suiteId) {
-            scheduleStatus.textContent = 'Select a test pack first.';
-            return;
+            if (status) status.textContent = 'Select a test pack first.';
+            return false;
         }
-        const kind = (document.querySelector('input[name="schedule-kind"]:checked') || {}).value || 'cron';
-        const body = {
-            enabled: !!scheduleEnabled.checked,
-            kind: kind
-        };
-        if (scheduleProfile && scheduleProfile.value.trim()) body.credentialProfile = scheduleProfile.value.trim();
-        if (kind === 'cron') {
-            body.cron = (scheduleCron.value || '').trim() || null;
-            if (scheduleTimezone && scheduleTimezone.value.trim()) body.timezone = scheduleTimezone.value.trim();
+        let kind = 'cron';
+        const body = { enabled: scheduleEnabled ? !!scheduleEnabled.checked : false, kind: kind };
+        const credEl = scheduleCredential || scheduleProfile;
+        if (credEl && credEl.value && String(credEl.value).trim()) {
+            body.credentialProfile = String(credEl.value).trim();
+        }
+        if (schedulePreset) {
+            const preset = schedulePreset.value || 'daily-2am';
+            if (preset === 'interval') {
+                kind = 'interval';
+                body.kind = kind;
+                const n = parseInt(scheduleInterval.value, 10);
+                body.intervalMinutes = isNaN(n) ? null : n;
+            } else {
+                body.kind = 'cron';
+                if (preset === 'custom') {
+                    body.cron = (scheduleCron.value || '').trim() || null;
+                } else {
+                    body.cron = SCHEDULE_CRON_PRESETS[preset] || SCHEDULE_CRON_PRESETS['daily-2am'];
+                }
+                if (scheduleTimezone && scheduleTimezone.value.trim()) {
+                    body.timezone = scheduleTimezone.value.trim();
+                }
+            }
         } else {
-            const n = parseInt(scheduleInterval.value, 10);
-            body.intervalMinutes = isNaN(n) ? null : n;
+            kind = (document.querySelector('input[name="schedule-kind"]:checked') || {}).value || 'cron';
+            body.kind = kind;
+            if (kind === 'cron') {
+                body.cron = (scheduleCron.value || '').trim() || null;
+                if (scheduleTimezone && scheduleTimezone.value.trim()) body.timezone = scheduleTimezone.value.trim();
+            } else {
+                const n = parseInt(scheduleInterval.value, 10);
+                body.intervalMinutes = isNaN(n) ? null : n;
+            }
         }
-        scheduleStatus.textContent = 'Saving schedule...';
+        if (status && !opts.quiet) status.textContent = 'Saving schedule…';
         try {
             const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/schedule', {
                 method: 'PUT',
@@ -949,32 +1128,35 @@
                 body: JSON.stringify(body)
             });
             if (isStubStatus(res.status)) {
-                scheduleStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
+                if (status) status.textContent = 'Waiting on Backend test-pack / schedule APIs.';
                 showApiWait(true);
-                return;
+                return false;
             }
             if (!res.ok) {
                 const msg = await readErrorMessage(res);
-                scheduleStatus.textContent = msg || ('Save failed (HTTP ' + res.status + ')');
-                return;
+                if (status) status.textContent = msg || ('Save failed (HTTP ' + res.status + ')');
+                return false;
             }
-            scheduleStatus.textContent = 'Schedule saved.';
+            if (status && !opts.quiet && !opts.batch) status.textContent = 'Schedule saved.';
             showApiWait(false);
-            await selectSuite(suiteId);
+            if (!opts.skipReload) await selectSuite(suiteId);
+            return true;
         } catch (_) {
-            scheduleStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
+            if (status) status.textContent = 'Waiting on Backend test-pack / schedule APIs.';
             showApiWait(true);
+            return false;
         }
     }
 
     async function clearSchedule() {
         const projectId = projectSel.value;
         const suiteId = selectedSuiteId;
+        const status = statusOut();
         if (!projectId || !suiteId) {
-            scheduleStatus.textContent = 'Select a test pack first.';
+            if (status) status.textContent = 'Select a test pack first.';
             return;
         }
-        scheduleStatus.textContent = 'Clearing schedule...';
+        if (status) status.textContent = 'Clearing schedule…';
         try {
             const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/schedule', {
                 method: 'DELETE',
@@ -982,40 +1164,45 @@
                 headers: API_HEADERS
             });
             if (isStubStatus(res.status)) {
-                scheduleStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
+                if (status) status.textContent = 'Waiting on Backend test-pack / schedule APIs.';
                 showApiWait(true);
                 return;
             }
             if (!res.ok) {
                 const msg = await readErrorMessage(res);
-                scheduleStatus.textContent = msg || ('Clear failed (HTTP ' + res.status + ')');
+                if (status) status.textContent = msg || ('Clear failed (HTTP ' + res.status + ')');
                 return;
             }
-            scheduleStatus.textContent = 'Schedule cleared.';
+            if (status) status.textContent = 'Schedule cleared.';
             showApiWait(false);
             await selectSuite(suiteId);
         } catch (_) {
-            scheduleStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
+            if (status) status.textContent = 'Waiting on Backend test-pack / schedule APIs.';
             showApiWait(true);
         }
     }
 
-    async function saveAlerts() {
+    async function saveAlerts(opts) {
+        opts = opts || {};
         const projectId = projectSel.value;
         const suiteId = selectedSuiteId;
+        const status = opts.statusEl || alertsStatus || statusOut();
         if (!projectId || !suiteId) {
-            alertsStatus.textContent = 'Select a test pack first.';
-            return;
+            if (status) status.textContent = 'Select a test pack first.';
+            return false;
         }
-        const channelId = (alertChannel.value || '').trim();
+        if (alertUseAccount) {
+            return clearAlerts(Object.assign({}, opts, { quiet: true }));
+        }
+        const channelId = alertChannel ? (alertChannel.value || '').trim() : '';
         if (!channelId) {
-            alertsStatus.textContent = 'Pick a channel, or use Clear channel link.';
-            return;
+            if (status) status.textContent = 'Pick a channel, or use Clear channel link.';
+            return false;
         }
         const body = { alertChannelId: channelId };
-        const sev = (alertSeverity.value || '').trim();
+        const sev = alertSeverity ? (alertSeverity.value || '').trim() : '';
         if (sev) body.alertMinSeverity = sev;
-        alertsStatus.textContent = 'Saving alerts...';
+        if (status && !opts.quiet) status.textContent = 'Saving alerts…';
         try {
             const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/alerts', {
                 method: 'PUT',
@@ -1024,32 +1211,36 @@
                 body: JSON.stringify(body)
             });
             if (isStubStatus(res.status)) {
-                alertsStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
+                if (status) status.textContent = 'Waiting on Backend test-pack / schedule APIs.';
                 showApiWait(true);
-                return;
+                return false;
             }
             if (!res.ok) {
                 const msg = await readErrorMessage(res);
-                alertsStatus.textContent = msg || ('Save failed (HTTP ' + res.status + ')');
-                return;
+                if (status) status.textContent = msg || ('Save failed (HTTP ' + res.status + ')');
+                return false;
             }
-            alertsStatus.textContent = 'Alerts saved.';
+            if (status && !opts.quiet && !opts.batch) status.textContent = 'Alerts saved.';
             showApiWait(false);
-            await selectSuite(suiteId);
+            if (!opts.skipReload) await selectSuite(suiteId);
+            return true;
         } catch (_) {
-            alertsStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
+            if (status) status.textContent = 'Waiting on Backend test-pack / schedule APIs.';
             showApiWait(true);
+            return false;
         }
     }
 
-    async function clearAlerts() {
+    async function clearAlerts(opts) {
+        opts = opts || {};
         const projectId = projectSel.value;
         const suiteId = selectedSuiteId;
+        const status = opts.statusEl || alertsStatus || statusOut();
         if (!projectId || !suiteId) {
-            alertsStatus.textContent = 'Select a test pack first.';
-            return;
+            if (status) status.textContent = 'Select a test pack first.';
+            return false;
         }
-        alertsStatus.textContent = 'Clearing channel link...';
+        if (status && !opts.quiet) status.textContent = 'Updating alert settings…';
         try {
             const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/alerts', {
                 method: 'DELETE',
@@ -1057,39 +1248,47 @@
                 headers: API_HEADERS
             });
             if (isStubStatus(res.status)) {
-                alertsStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
+                if (status) status.textContent = 'Waiting on Backend test-pack / schedule APIs.';
                 showApiWait(true);
-                return;
+                return false;
             }
             if (!res.ok) {
                 const msg = await readErrorMessage(res);
-                alertsStatus.textContent = msg || ('Clear failed (HTTP ' + res.status + ')');
-                return;
+                if (status) status.textContent = msg || ('Clear failed (HTTP ' + res.status + ')');
+                return false;
             }
-            alertsStatus.textContent = 'Channel link cleared.';
+            if (status && !opts.quiet && !opts.batch) status.textContent = 'Alert settings updated.';
             showApiWait(false);
-            await selectSuite(suiteId);
+            if (!opts.skipReload) await selectSuite(suiteId);
+            return true;
         } catch (_) {
-            alertsStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
+            if (status) status.textContent = 'Waiting on Backend test-pack / schedule APIs.';
             showApiWait(true);
+            return false;
         }
     }
 
-    async function saveMonitor() {
+    async function saveMonitor(opts) {
+        opts = opts || {};
         const projectId = projectSel.value;
         const suiteId = selectedSuiteId;
+        const status = opts.statusEl || monitorStatus || statusOut();
         if (!projectId || !suiteId) {
-            monitorStatus.textContent = 'Select a test pack first.';
-            return;
+            if (status) status.textContent = 'Select a test pack first.';
+            return false;
         }
-        if (!monitorEnabled.checked) {
-            monitorStatus.textContent = 'Turn on Always-on monitor, or use Demote.';
-            return;
+        const wantWatch = monitorEnabled && monitorEnabled.checked;
+        const hadWatch = selectedSuite && selectedSuite.monitor && selectedSuite.monitor.enabled;
+        if (!wantWatch) {
+            if (hadWatch) {
+                return demoteMonitor(Object.assign({}, opts, { quiet: true }));
+            }
+            return true;
         }
         const body = { target: monitorTarget.value === 'staging' ? 'staging' : 'prod' };
         const fromJob = (monitorFromJob.value || '').trim();
         if (fromJob) body.fromJobId = fromJob;
-        monitorStatus.textContent = 'Promoting...';
+        if (status && !opts.quiet) status.textContent = 'Saving watch settings…';
         try {
             const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/promote-monitor', {
                 method: 'POST',
@@ -1098,32 +1297,60 @@
                 body: JSON.stringify(body)
             });
             if (isStubStatus(res.status)) {
-                monitorStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
+                if (status) status.textContent = 'Waiting on Backend test-pack / schedule APIs.';
                 showApiWait(true);
-                return;
+                return false;
             }
             if (!res.ok) {
                 const msg = await readErrorMessage(res);
-                monitorStatus.textContent = msg || ('Promote failed (HTTP ' + res.status + ')');
-                return;
+                if (status) status.textContent = msg || ('Promote failed (HTTP ' + res.status + ')');
+                return false;
             }
-            monitorStatus.textContent = 'Promoted to always-on monitor.';
+            if (status && !opts.quiet && !opts.batch) status.textContent = 'Watch settings saved.';
             showApiWait(false);
-            await selectSuite(suiteId);
+            if (!opts.skipReload) await selectSuite(suiteId);
+            return true;
         } catch (_) {
-            monitorStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
+            if (status) status.textContent = 'Waiting on Backend test-pack / schedule APIs.';
             showApiWait(true);
+            return false;
         }
     }
 
-    async function demoteMonitor() {
-        const projectId = projectSel.value;
-        const suiteId = selectedSuiteId;
-        if (!projectId || !suiteId) {
-            monitorStatus.textContent = 'Select a test pack first.';
+    async function saveAllScheduleSettings() {
+        const status = statusOut();
+        if (!projectSel || !projectSel.value || !selectedSuiteId) {
+            if (status) status.textContent = 'Select a test pack first.';
             return;
         }
-        monitorStatus.textContent = 'Removing from monitor...';
+        if (status) status.textContent = 'Saving schedule settings…';
+        const batch = { skipReload: true, quiet: true, batch: true, statusEl: status };
+        const okSched = await saveSchedule(batch);
+        let okAlerts = true;
+        if (alertUseAccount) {
+            okAlerts = await clearAlerts(batch);
+        } else if (saveAlertsBtn || alertChannel) {
+            okAlerts = await saveAlerts(batch);
+        }
+        const okMon = await saveMonitor(batch);
+        if (okSched && okAlerts && okMon) {
+            if (status) status.textContent = 'Schedule settings saved.';
+            await selectSuite(selectedSuiteId);
+        } else if (status && status.textContent === 'Saving schedule settings…') {
+            status.textContent = 'Could not save all settings — check messages above.';
+        }
+    }
+
+    async function demoteMonitor(opts) {
+        opts = opts || {};
+        const projectId = projectSel.value;
+        const suiteId = selectedSuiteId;
+        const status = opts.statusEl || monitorStatus || statusOut();
+        if (!projectId || !suiteId) {
+            if (status) status.textContent = 'Select a test pack first.';
+            return false;
+        }
+        if (status && !opts.quiet) status.textContent = 'Removing from monitor…';
         try {
             const res = await fetch(suitesBase(projectId) + '/' + encodeURIComponent(suiteId) + '/monitor', {
                 method: 'DELETE',
@@ -1131,22 +1358,24 @@
                 headers: API_HEADERS
             });
             if (isStubStatus(res.status)) {
-                monitorStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
+                if (status) status.textContent = 'Waiting on Backend test-pack / schedule APIs.';
                 showApiWait(true);
-                return;
+                return false;
             }
             if (!res.ok) {
                 const msg = await readErrorMessage(res);
-                monitorStatus.textContent = msg || ('Demote failed (HTTP ' + res.status + ')');
-                return;
+                if (status) status.textContent = msg || ('Demote failed (HTTP ' + res.status + ')');
+                return false;
             }
-            monitorStatus.textContent = 'Removed from always-on monitor.';
-            monitorEnabled.checked = false;
+            if (status && !opts.quiet && !opts.batch) status.textContent = 'Removed from always-on monitor.';
+            if (monitorEnabled) monitorEnabled.checked = false;
             showApiWait(false);
-            await selectSuite(suiteId);
+            if (!opts.skipReload) await selectSuite(suiteId);
+            return true;
         } catch (_) {
-            monitorStatus.textContent = 'Waiting on Backend test-pack / schedule APIs.';
+            if (status) status.textContent = 'Waiting on Backend test-pack / schedule APIs.';
             showApiWait(true);
+            return false;
         }
     }
 
@@ -1195,8 +1424,38 @@
         }
     }
 
+    var suitesProjectPicker;
+    if (window.KeelProjectPicker && projectSel) {
+        suitesProjectPicker = window.KeelProjectPicker.bind({
+            storageKey: STORAGE_KEY,
+            initialProjectId: initialProjectId,
+            elements: {
+                workspaceLauncher: workspaceLauncher,
+                workspaceConfig: workspaceConfig,
+                launcherSel: launcherSel,
+                launcherContinue: launcherContinue,
+                launcherErr: launcherErr,
+                launcherNoProjects: launcherNoProjects,
+                projectSel: projectSel,
+                projectErr: projectErr,
+                noProjects: noProjects,
+                pinnedName: pinnedName,
+                changeProjectBtn: changeProjectBtn
+            },
+            onPinned: function (projectId) {
+                projects = suitesProjectPicker.getProjects();
+                afterProjectPinned(projectId);
+            }
+        });
+    }
+
     async function loadProjects() {
+        if (suitesProjectPicker) {
+            projects = await suitesProjectPicker.loadProjects();
+            return;
+        }
         if (projectErr) projectErr.hidden = true;
+        if (!projectSel) return;
         const res = await fetch('/api/projects', {
             credentials: 'same-origin',
             headers: API_HEADERS
@@ -1248,22 +1507,24 @@
         }
     }
 
-    launcherContinue && launcherContinue.addEventListener('click', function () {
-        if (launcherErr) launcherErr.hidden = true;
-        const projectId = launcherSel ? launcherSel.value : '';
-        if (!projectId) {
-            if (launcherErr) {
-                launcherErr.hidden = false;
-                launcherErr.textContent = 'Select a project to continue.';
+    if (!suitesProjectPicker) {
+        launcherContinue && launcherContinue.addEventListener('click', function () {
+            if (launcherErr) launcherErr.hidden = true;
+            const projectId = launcherSel ? launcherSel.value : '';
+            if (!projectId) {
+                if (launcherErr) {
+                    launcherErr.hidden = false;
+                    launcherErr.textContent = 'Select a project to continue.';
+                }
+                return;
             }
-            return;
-        }
-        pinWorkspaceProject(projectId, projects);
-    });
+            pinWorkspaceProject(projectId, projects);
+        });
 
-    changeProjectBtn && changeProjectBtn.addEventListener('click', function () {
-        showWorkspaceLauncher();
-    });
+        changeProjectBtn && changeProjectBtn.addEventListener('click', function () {
+            showWorkspaceLauncher();
+        });
+    }
 
     createName && createName.addEventListener('input', updateCreateEnabled);
     createTags && createTags.addEventListener('input', updateCreateEnabled);
@@ -1305,16 +1566,20 @@
     Array.prototype.forEach.call(document.querySelectorAll('input[name="schedule-kind"]'), function (el) {
         el.addEventListener('change', syncScheduleKindUi);
     });
-    saveScheduleBtn && saveScheduleBtn.addEventListener('click', saveSchedule);
+    schedulePreset && schedulePreset.addEventListener('change', syncSchedulePresetUi);
+    alertUseAccount && alertUseAccount.addEventListener('change', loadAccountAlertSummary);
+    saveAllScheduleBtn && saveAllScheduleBtn.addEventListener('click', saveAllScheduleSettings);
+    saveScheduleBtn && saveScheduleBtn.addEventListener('click', function () { saveSchedule(); });
     clearScheduleBtn && clearScheduleBtn.addEventListener('click', clearSchedule);
-    saveAlertsBtn && saveAlertsBtn.addEventListener('click', saveAlerts);
-    clearAlertsBtn && clearAlertsBtn.addEventListener('click', clearAlerts);
-    saveMonitorBtn && saveMonitorBtn.addEventListener('click', saveMonitor);
-    demoteMonitorBtn && demoteMonitorBtn.addEventListener('click', demoteMonitor);
+    saveAlertsBtn && saveAlertsBtn.addEventListener('click', function () { saveAlerts(); });
+    clearAlertsBtn && clearAlertsBtn.addEventListener('click', function () { clearAlerts(); });
+    saveMonitorBtn && saveMonitorBtn.addEventListener('click', function () { saveMonitor(); });
+    demoteMonitorBtn && demoteMonitorBtn.addEventListener('click', function () { demoteMonitor(); });
     runSuiteBtn && runSuiteBtn.addEventListener('click', runSuiteNow);
 
-    syncScheduleKindUi();
-    renderChannelSelect();
+    if (schedulePreset) syncSchedulePresetUi();
+    else syncScheduleKindUi();
+    if (alertChannel) renderChannelSelect();
     refreshPickerViews();
     loadProjects().catch(function () {
         if (projectErr) {

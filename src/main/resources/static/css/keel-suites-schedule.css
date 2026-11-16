@@ -1,0 +1,76 @@
+/* Phase 7 — Suite scheduling UX */
+
+.suites-schedule-page .suite-list--pick li {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line, #e8ecef);
+  border-radius: 10px;
+  background: var(--panel, #fff);
+}
+
+.suites-schedule-page .suite-list--pick li.active-suite {
+  border-color: rgba(13, 154, 168, 0.45);
+  background: rgba(13, 154, 168, 0.06);
+}
+
+.suites-schedule-page .suite-pick-label {
+  font-weight: 600;
+  font-family: var(--display);
+}
+
+.suites-schedule-page .suite-pick-tags {
+  display: block;
+  font-size: 0.82rem;
+  margin-top: 0.15rem;
+}
+
+.suites-schedule-page .suite-id-details {
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.suites-schedule-page .suite-id-details summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.suites-schedule-page .suite-schedule-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.suites-schedule-page .schedule-save-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line, #e8ecef);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.06);
+}
+
+html[data-theme="dark"] .suites-schedule-page .schedule-save-bar {
+  background: rgba(26, 31, 36, 0.94);
+}
+
+.suites-schedule-page .schedule-save-bar .button {
+  margin: 0;
+}
+
+.suites-schedule-page .field-hint a {
+  font-weight: 600;
+}
+
+.suites-schedule-page .monitor-watch-hint {
+  margin: 0 0 0.75rem;
+  max-width: 42rem;
+  line-height: 1.45;
+}

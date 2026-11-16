@@ -94,7 +94,6 @@
         document.getElementById('base-url-display').textContent = base;
         await loadCredentials(projectId);
         await loadLibrary(projectId);
-        await loadRecent(projectId);
         document.getElementById('hunt-promote-panel').hidden = true;
         updateStartEnabled();
     }
@@ -249,39 +248,6 @@
         startBtn.disabled = !(hasBase && selectedTcIds().length > 0);
     }
 
-    async function loadRecent(projectId) {
-        const res = await fetch('/api/jobs?projectId=' + encodeURIComponent(projectId) + '&kind=HUNT', {
-            credentials: 'same-origin', headers: API_HEADERS
-        });
-        const jobs = res.ok ? await res.json() : [];
-        const empty = document.getElementById('recent-empty');
-        const table = document.getElementById('recent-table');
-        const body = document.getElementById('recent-body');
-        body.innerHTML = '';
-        empty.hidden = jobs.length > 0;
-        table.hidden = jobs.length === 0;
-        jobs.slice(0, 10).forEach(j => {
-            const tr = document.createElement('tr');
-            const busy = (j.status === 'RUNNING' || j.status === 'QUEUED')
-                ? ' <span class="spinner spinner--badge" aria-hidden="true"></span>'
-                : '';
-            const dl = j.downloadable
-                ? ' <a href="/api/jobs/' + encodeURIComponent(j.jobId) + '/download">Download</a>'
-                : '';
-            const review = (j.status === 'COMPLETED' || j.status === 'COMPLETED_WITH_BLOCK')
-                ? ' <button type="button" class="button ghost hunt-review" data-job-id="'
-                    + escapeHtml(j.jobId) + '">Review</button>'
-                : '';
-            tr.innerHTML =
-                '<td><code class="mono" title="' + escapeHtml(j.jobId) + '">' + escapeHtml(j.jobId) + '</code></td>' +
-                '<td><span class="badge ' + badgeClass(j.status) + ' badge--busy">' + escapeHtml(j.status) + busy + '</span></td>' +
-                '<td>' + (j.passedCount != null ? j.passedCount : '—') + '</td>' +
-                '<td>' + (j.todoCount != null ? j.todoCount : '—') + '</td>' +
-                '<td class="clip muted" title="' + escapeHtml(j.message || '') + '">' + escapeHtml(shortMessage(j.message)) + '</td>' +
-                '<td class="actions"><a href="/status?jobId=' + encodeURIComponent(j.jobId) + '">Status</a>' + dl + review + '</td>';
-            body.appendChild(tr);
-        });
-    }
 
     startBtn.addEventListener('click', async () => {
         if (window.KeelCredits && KeelCredits.blockIfNotApproved(huntErr)) {
@@ -387,11 +353,6 @@
         }
     }
 
-    document.getElementById('recent-body')?.addEventListener('click', (e) => {
-        const btn = e.target.closest('.hunt-review');
-        if (!btn) return;
-        openHuntPromote(btn.getAttribute('data-job-id'));
-    });
     document.getElementById('hunt-promote-accept')?.addEventListener('change', (e) => {
         const canOperate = huntWorkspaceRole === 'OWNER' || huntWorkspaceRole === 'ADMIN';
         document.getElementById('hunt-promote-submit').disabled = !e.target.checked || !canOperate;
@@ -423,7 +384,6 @@
         msg.hidden = false;
         msg.textContent = 'Promoted ' + (data.caseCount || cases.length)
             + ' case(s). They still need normal proving before automation ready.';
-        loadRecent(projectSel.value);
     });
 
     document.getElementById('hunt-tc-ms-trigger')?.addEventListener('click', (e) => {
@@ -500,12 +460,6 @@
             if (res.ok) {
                 const data = await res.json();
                 jobs = Array.isArray(data) ? data : (data.jobs || data.items || []);
-            }
-            // Fallback: reuse recent table rows if jobs API shape differs
-            if (!jobs.length) {
-                document.querySelectorAll('#recent-body tr[data-job-id]').forEach(function (tr) {
-                    jobs.push({ jobId: tr.getAttribute('data-job-id'), status: tr.getAttribute('data-status') || '' });
-                });
             }
             jobs.filter(function (j) {
                 const st = String(j.status || j.jobStatus || '').toUpperCase();
@@ -675,23 +629,6 @@
             await loadTriageJobs(projectSel.value);
             await loadTriageBugs();
         };
-        // Tag recent rows for fallback job list
-        const _loadRecent = loadRecent;
-        if (typeof loadRecent === 'function') {
-            loadRecent = async function (projectId) {
-                await _loadRecent(projectId);
-                document.querySelectorAll('#recent-body tr').forEach(function (tr) {
-                    const link = tr.querySelector('a[href*="jobId="]');
-                    if (link) {
-                        const m = /jobId=([^&]+)/.exec(link.getAttribute('href') || '');
-                        if (m) tr.setAttribute('data-job-id', decodeURIComponent(m[1]));
-                    }
-                    const st = tr.querySelector('.badge, .chip, [data-status]');
-                    if (st) tr.setAttribute('data-status', (st.textContent || '').trim());
-                });
-                if (triageEnabled) await loadTriageJobs(projectId);
-            };
-        }
     } else if (triagePanel) {
         triagePanel.hidden = true;
     }

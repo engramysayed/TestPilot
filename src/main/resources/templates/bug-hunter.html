@@ -183,26 +183,12 @@
         </div>
     </section>
 
-    <section class="panel">
-        <h2>Recent runs</h2>
-        <p id="recent-empty" class="muted" hidden>No Bug Hunter runs yet.</p>
-        <div class="table-scroll table-scroll--hunt">
-            <table class="table table--hunt-recent" id="recent-table" hidden>
-                <thead>
-                <tr>
-                    <th>Run</th>
-                    <th>Status</th>
-                    <th>Bugs</th>
-                    <th>Scenarios</th>
-                    <th>Message</th>
-                    <th></th>
-                </tr>
-                </thead>
-                <tbody id="recent-body"></tbody>
-            </table>
-        </div>
+    <section class="panel keel-history-cta">
+        <p class="muted" style="margin:0">Past hunts, status pages, and downloads live in History.</p>
+        <p style="margin:0.75rem 0 0">
+            <a class="button ghost small" href="/history">View hunts in History →</a>
+        </p>
     </section>
-
 
     <section class="panel hunt-triage-panel" id="hunt-triage-panel" hidden
              th:attr="data-enabled=${huntTriageEnabled} ?: false">

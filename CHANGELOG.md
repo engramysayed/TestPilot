@@ -2,6 +2,104 @@
 
 # Keel changelog
 
+## 2026-11-16 — Portal UX Phase 7 (suites scheduling)
+
+- Scheduling page: friendly suite picker, cron presets, credential dropdown, Account-based failure alerts, sticky **Save schedule settings** for schedule + alerts + watch.
+- Handoff: `docs/handoff/2026-11-16-phase7-suites-schedule.md`.
+
+## 2026-11-16 — Portal UX Phase 6 (Generate layout)
+
+- **Generate** page split into stacked cards: story generate (primary), bulk CSV, paste external AI, copy prompt — each with section **`?`** help.
+- Removed nested “More ways…” disclosure; bulk **Recent jobs** table stays under the bulk card only.
+- Handoff: `docs/handoff/2026-11-16-phase6-generate-layout.md`.
+
+## 2026-11-16 — Portal UX Phase 5 (dedupe recent job tables)
+
+- **Execute** and **Bug Hunter** no longer show duplicate “recent runs” tables; both link to **History** for past jobs.
+- Live execute progress/results still mount on Execute when you start or resume a run (`execute.js` uses `#run-detail-host` only).
+- Generate **Recent bulk jobs** and dashboard top-5 recent activity unchanged.
+- Handoff: `docs/handoff/2026-11-16-phase5-dedupe-recent-tables.md`.
+
+## 2026-11-16 — Portal UX Phase 4 (English file inputs)
+
+- Custom English file picker chrome on all visible file inputs (`keel-file-input.js`); pin `lang="en"` on document.
+- Top bar language-looking **EN** control renamed to **Account** (account/logout menu only).
+- Handoff: `docs/handoff/2026-11-16-phase4-english-file-inputs.md`.
+
+## 2026-11-16 — Portal UX Phase 3 (shared picker + TC multiselect)
+
+- `keel-project-picker.js` and `keel-tc-multiselect.js` loaded on all portal pages.
+- Fixed Multi-model generate project dropdown (generate.js guarded listeners + shared picker).
+- Suites scheduling uses shared picker; Generate from knowledge library ingest uses TC multiselect.
+- Handoff: `docs/handoff/2026-11-16-phase3-shared-components.md`.
+
+## 2026-11-16 — Portal UX Phase 2 (overview dashboard)
+
+- Healthcare-inspired Overview: softer KPI cards, execution **trends** line/area chart (replaces stacked bars), card-style attention list.
+- Dashboard `?` help on overview, trends, attention, and recent activity; recent table capped at **5** rows with link to **History**.
+
+## 2026-11-16 — Portal UX Phase 1 (sidebar IA + feature help)
+
+- Sidebar navigation regrouped and renamed (TCs Generation, Playback, Test blueprints, Test suites, TCs execution/automation, History, Bug Hunter under Execute & automate).
+- Click **`?`** on any main nav item for a one-line feature description (popover + Guide link).
+- URL aliases: `/playback`, `/history`, `/test-blueprints` redirect to existing routes.
+- Unified brand mark: tab favicon and login logo match the sidebar keel icon (`keel-mark.svg` / `favicon.svg`).
+- Plan + revision: `docs/handoff/2026-11-16-ux-overhaul-master-plan.md`, `docs/handoff/2026-11-16-phase1-sidebar-ia.md`.
+
+## 2026-11-15 — Framework contract Phase 6.16 (production readiness audit)
+
+- Production execution-path audit, flag matrix, isolation and rollback assessment, controlled rollout plan: `docs/handoff/2026-11-15-phase6-16-production-readiness-audit.md`.
+- Verdict **READY AFTER SPECIFIED BLOCKERS** — no flags enabled; 6.15 staging artifacts are not production evidence.
+
+## 2026-11-15 — Framework contract Phase 6.15 (staging load qualification)
+
+- **Not executed** — preflight blocked (no staging host, no ops approval, `CURSOR_API_KEY` unset in run environment).
+- Execution checklist and gated runner (`FrameworkStagingLoadQualificationIT`) for approved staging only: `docs/handoff/2026-11-15-framework-contract-phase6-15-staging-load-qualification.md`.
+
+## 2026-11-15 — Framework contract Phase 6.14 (operational observability)
+
+- Wired `AutomateFrameworkRepairBridge` and `AutomateFrameworkAcceptanceGate` to emit `framework-acceptance/framework-repair-operational.json` with operator terminal reasons and bridge/timing fields (no timeout or Policy A changes).
+- Deterministic tests: `FrameworkRepairBridgeOperationalTest`, `FrameworkRepairTerminalReasonClassifierTest`; compile-on evidence may embed operational report.
+- Operator runbook and staging load plan: `docs/handoff/2026-11-15-framework-contract-phase6-14-operational-observability.md`.
+
+## 2026-11-15 — Framework contract Phase 6.7 (customer template compile baseline)
+
+- Fix duplicate `allure-environment-writer` in `customer-framework-template/pom.xml`; TestNG `compile` scope; `Assertion.java` multi-catch.
+- `CustomerFrameworkTemplatePomTest`; `FrameworkRepairCompileBaselineTest` passes with real packager + codegen.
+
+## 2026-11-15 — Framework contract Phase 6.6 (production readiness qualification)
+
+- Staged reconciliation with lock, backup/restore; `FrameworkRepairArchitectureAssessor`; compile-on live IT.
+- Compile-on matrix blocked by qualification fixture/template POM; promotion safety on `COMPILE_FAILED` verified.
+
+## 2026-11-15 — Framework contract Phase 6.5 (Cursor repair qualification)
+
+- Live matrix fixtures (`FrameworkRepairQualificationFixtures`), expanded `FrameworkAdaptationCursorLiveIT`, evidence `phase6-5-live-evidence-*.json`.
+- Reconciliation manifest persistence; repair objective lists mandatory rule IDs.
+- Resilience / acceptance / architecture qualification tests (deterministic).
+
+## 2026-11-15 — Framework contract Phase 6.4 (Cursor workspace reconciliation, D-6.3-01)
+
+- After Cursor `COMPLETED`, `FrameworkRepairWorkspaceReconciler` merges permitted generated changes from `taskDir/workspace/` into `framework-acceptance/repair-candidate/` before compile and inventory v2 revalidation (`RECONCILIATION_FAILED` on boundary errors).
+- FAKE repair unchanged. Tests: `FrameworkRepairWorkspaceReconcilerTest`, `FrameworkAdaptationCursorReconcileIT`.
+
+## 2026-11-15 — Framework contract Phase 6.3 (live Cursor repair verification)
+
+- Opt-in `FrameworkAdaptationCursorLiveIT`; live run scenario 1 (missing page): Cursor `COMPLETED`, gate `REVALIDATION_FAILED`, no promotion; inventory v2 context confirmed.
+- Documented limitation **D-6.3-01**: Cursor edits in `taskDir/workspace` not merged to `repair-candidate` before revalidation. See `docs/handoff/2026-11-15-framework-contract-phase6-3-live-cursor-verification.md`.
+
+## 2026-11-15 — Framework contract Phase 6.2 (inventory false-positive fixes)
+
+- `CodeWriter.expectedUnionPageImportsForGroup` shared with `FrameworkExpectedInventory`; `linkedPageClassNames` per test group; demotion-safe empty page lists; multi-page test validation.
+- Regression: `FrameworkContractPhase62RegressionTest`; gate test `inventoryV2_emitPath_acceptanceAndRepairUseSameInventory`.
+
+## 2026-11-15 — Framework contract Phase 6 (inventory-driven validation)
+
+- `FrameworkExpectedInventory.fromOutcomes` mirrors emit-time `PageAccumulator` and test class grouping; wired through `EmitPhase` into `AutomateFrameworkAcceptanceGate` (pre-zip acceptance unchanged).
+- `FrameworkContractValidator` inventory mode (`contractVersion=2`): expected page/test presence, orphans/duplicates, page locator/action/assert shape, meaningful test page usage, naming checks; `GeneratedJavaStructure` helper.
+- Tests: `FrameworkContractValidatorInventoryTest`, `GeneratedJavaStructureTest`; existing contract/acceptance tests green.
+- **Limitations:** regex-based Java structure (not full AST); see `docs/handoff/2026-11-15-framework-contract-phase6-completion.md`.
+
 ## 2026-11-12 — Cursor reconcile Policy A (`INTERRUPTED` without `run.started`)
 
 - `CursorAgentRuntime.start()`: reconcile with persisted `agentId`/`runId` accepts terminal sidecar response without `run.started` (Policy A poll-budget `INTERRUPTED`); verify ids when `run.started` is present.

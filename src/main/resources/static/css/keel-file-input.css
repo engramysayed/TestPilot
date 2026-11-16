@@ -1,0 +1,36 @@
+/* English file picker chrome — hides OS-localized native file button text */
+.keel-file-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+  margin-top: 0.35rem;
+  max-width: 36rem;
+}
+.keel-file-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.keel-file-choose {
+  margin: 0;
+  flex-shrink: 0;
+}
+.keel-file-chosen {
+  font-size: 0.88rem;
+  line-height: 1.35;
+  word-break: break-all;
+}
+.keel-file-chosen.has-file {
+  color: var(--text, inherit);
+  font-weight: 500;
+}
+html[lang="en"] .keel-file-wrap {
+  direction: ltr;
+}

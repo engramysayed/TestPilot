@@ -541,10 +541,7 @@
     const designRefForm = document.getElementById('design-ref-form');
     const designRefMsg = document.getElementById('design-ref-msg');
     const designRefErr = document.getElementById('design-ref-err');
-    const recentExecutePanel = document.getElementById('recent-execute-panel');
-    const recentExecuteBody = document.getElementById('recent-execute-body');
-    const recentExecuteEmpty = document.getElementById('recent-execute-empty');
-    const recentExecuteErr = document.getElementById('recent-execute-err');
+    const executeHistoryCta = document.getElementById('execute-history-cta');
 
     const visualDiffsPanel = document.getElementById('visual-diffs-panel');
     const visualDiffsBody = document.getElementById('visual-diffs-body');
@@ -1098,16 +1095,11 @@
             sessionStorage.setItem(STORAGE_KEY, projectId);
         }
         loadProjectConfig(projectId);
-        loadRecentExecuteRuns(projectId);
+        if (executeHistoryCta) {
+            executeHistoryCta.hidden = !projectId;
+        }
         loadVisualDiffs(projectId);
         loadTunnelBadge(projectId);
-    }
-
-    function jobBadgeClass(status) {
-        if (status === 'COMPLETED') return 'badge ok';
-        if (status === 'COMPLETED_WITH_BLOCK') return 'badge warn';
-        if (status === 'FAILED') return 'badge err';
-        return 'badge muted';
     }
 
     function mountRunPanelsInto(container) {
@@ -1119,69 +1111,12 @@
     }
 
     function collapseAllRunDetails() {
-        recentExecuteBody.querySelectorAll('tr.exec-run-detail').forEach(function (row) {
-            row.hidden = true;
-            row.classList.remove('is-open');
-        });
-        recentExecuteBody.querySelectorAll('tr.exec-run-row').forEach(function (row) {
-            row.classList.remove('is-expanded');
-        });
         expandedRunId = null;
         runDetailHost.appendChild(jobPanel);
         runDetailHost.appendChild(resultsPanel);
+        runDetailHost.hidden = true;
         jobPanel.hidden = true;
         resultsPanel.hidden = true;
-    }
-
-    function renderRecentExecuteRuns(jobs) {
-        collapseAllRunDetails();
-        recentExecuteBody.innerHTML = '';
-        const recent = jobs.slice(0, 5);
-        recentExecuteEmpty.hidden = recent.length > 0;
-        document.getElementById('recent-execute-table').hidden = recent.length === 0;
-        recent.forEach(j => {
-            const tr = document.createElement('tr');
-            tr.className = 'exec-run-row';
-            tr.dataset.jobId = j.jobId;
-            const active = j.status === 'QUEUED' || j.status === 'RUNNING';
-            tr.innerHTML =
-                '<td><code class="mono">' + escapeHtml(j.jobId) + '</code></td>' +
-                '<td><span class="' + jobBadgeClass(j.status) + '">' + escapeHtml(j.status) + '</span></td>' +
-                '<td>' + (j.progressCurrent ?? 0) + ' / ' + (j.progressTotal ?? 0) + '</td>' +
-                '<td class="actions exec-run-actions">' +
-                '<button type="button" class="button ghost reopen-run-btn">Open</button> ' +
-                (active
-                    ? '<button type="button" class="button ghost force-stop-run-btn">Force stop</button> '
-                    : '') +
-                '<button type="button" class="button danger delete-run-btn">Delete</button>' +
-                '</td>';
-            const detail = document.createElement('tr');
-            detail.className = 'exec-run-detail';
-            detail.hidden = true;
-            detail.innerHTML = '<td colspan="4"><div class="exec-run-detail-mount"></div></td>';
-            const open = () => openExecuteRun(j.jobId, tr, detail);
-            tr.querySelector('.reopen-run-btn').addEventListener('click', function (e) {
-                e.stopPropagation();
-                open();
-            });
-            const forceBtnRow = tr.querySelector('.force-stop-run-btn');
-            if (forceBtnRow) {
-                forceBtnRow.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    requestForceStop(j.jobId, forceBtnRow);
-                });
-            }
-            tr.querySelector('.delete-run-btn').addEventListener('click', function (e) {
-                e.stopPropagation();
-                openDeleteExecuteModal(j.jobId);
-            });
-            tr.addEventListener('click', function (e) {
-                if (e.target.closest('button')) return;
-                open();
-            });
-            recentExecuteBody.appendChild(tr);
-            recentExecuteBody.appendChild(detail);
-        });
     }
 
     let pendingDeleteJobId = null;
@@ -1217,7 +1152,6 @@
     });
 
     async function deleteExecuteRun(jobId) {
-        recentExecuteErr.hidden = true;
         const modalErr = document.getElementById('execDeleteError');
         if (modalErr) {
             modalErr.classList.add('hidden');
@@ -1236,8 +1170,8 @@
                 modalErr.classList.remove('hidden');
                 modalErr.textContent = msg;
             }
-            recentExecuteErr.hidden = false;
-            recentExecuteErr.textContent = msg;
+            jobErrorEl.hidden = false;
+            jobErrorEl.textContent = msg;
             return;
         }
         closeDeleteExecuteModal();
@@ -1246,54 +1180,22 @@
             activeJobId = null;
             collapseAllRunDetails();
         }
-        await loadRecentExecuteRuns(projectSel.value);
     }
 
-    async function loadRecentExecuteRuns(projectId) {
-        recentExecuteErr.hidden = true;
-        if (!projectId) {
-            recentExecutePanel.hidden = true;
-            return;
-        }
-        recentExecutePanel.hidden = false;
-        const res = await fetch('/api/jobs?projectId=' + encodeURIComponent(projectId) + '&kind=EXECUTE', {
-            credentials: 'same-origin',
-            headers: API_HEADERS
-        });
-        if (!res.ok) {
-            recentExecuteErr.hidden = false;
-            recentExecuteErr.textContent = 'Could not load execute history.';
-            return;
-        }
-        renderRecentExecuteRuns(await res.json());
-    }
-
-    async function openExecuteRun(jobId, rowEl, detailEl) {
+    async function openExecuteRun(jobId) {
         try {
             sessionStorage.setItem(LAST_JOB_KEY, jobId);
         } catch (e) { /* ignore */ }
 
-        if (!rowEl || !detailEl) {
-            rowEl = recentExecuteBody.querySelector('tr.exec-run-row[data-job-id="' + String(jobId).replace(/"/g, '') + '"]');
-            detailEl = rowEl ? rowEl.nextElementSibling : null;
-        }
-        if (expandedRunId === jobId && detailEl && detailEl.classList.contains('is-open')) {
+        if (expandedRunId === jobId && !runDetailHost.hidden) {
             collapseAllRunDetails();
             return;
         }
         collapseAllRunDetails();
-        if (rowEl && detailEl) {
-            rowEl.classList.add('is-expanded');
-            detailEl.hidden = false;
-            detailEl.classList.add('is-open');
-            const mount = detailEl.querySelector('.exec-run-detail-mount');
-            mountRunPanelsInto(mount);
-            expandedRunId = jobId;
-        } else {
-            runDetailHost.hidden = false;
-            mountRunPanelsInto(runDetailHost);
-            jobPanel.hidden = false;
-        }
+        runDetailHost.hidden = false;
+        mountRunPanelsInto(runDetailHost);
+        jobPanel.hidden = false;
+        expandedRunId = jobId;
 
         activeJobId = jobId;
         cancelRequested = false;
@@ -1312,9 +1214,7 @@
         resultsBody.innerHTML = '';
         bugReportActions.hidden = true;
         stopPoll();
-        if (detailEl) {
-            detailEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
+        runDetailHost.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         const res = await fetch('/api/execute-runs/' + encodeURIComponent(jobId), {
             credentials: 'same-origin',
             headers: API_HEADERS
@@ -1359,40 +1259,7 @@
                 cancelBtn.textContent = 'Force stop';
             }
         }
-        syncRecentRunRow(data);
         return TERMINAL.has(data.status);
-    }
-
-    /** Keep the summary row in sync with live poll (avoids stuck QUEUED 0/0). */
-    function syncRecentRunRow(data) {
-        if (!data || !data.jobId || !recentExecuteBody) return;
-        const tr = recentExecuteBody.querySelector(
-            'tr.exec-run-row[data-job-id="' + String(data.jobId).replace(/"/g, '') + '"]');
-        if (!tr) return;
-        const cells = tr.querySelectorAll('td');
-        if (cells.length < 3) return;
-        const status = data.status || '—';
-        cells[1].innerHTML = '<span class="' + jobBadgeClass(status) + '">' + escapeHtml(status) + '</span>';
-        cells[2].textContent = (data.progressCurrent ?? 0) + ' / ' + (data.progressTotal ?? 0);
-        const actions = tr.querySelector('.exec-run-actions');
-        if (!actions) return;
-        const active = status === 'QUEUED' || status === 'RUNNING';
-        let forceBtnRow = actions.querySelector('.force-stop-run-btn');
-        if (active && !forceBtnRow) {
-            forceBtnRow = document.createElement('button');
-            forceBtnRow.type = 'button';
-            forceBtnRow.className = 'button ghost force-stop-run-btn';
-            forceBtnRow.textContent = 'Force stop';
-            forceBtnRow.addEventListener('click', function (e) {
-                e.stopPropagation();
-                requestForceStop(data.jobId, forceBtnRow);
-            });
-            const del = actions.querySelector('.delete-run-btn');
-            if (del) actions.insertBefore(forceBtnRow, del);
-            else actions.appendChild(forceBtnRow);
-        } else if (!active && forceBtnRow) {
-            forceBtnRow.remove();
-        }
     }
 
     async function requestForceStop(jobId, sourceBtn) {
@@ -1432,13 +1299,10 @@
                 try { data = await res.json(); } catch (e) { /* ignore */ }
                 jobErrorEl.hidden = false;
                 jobErrorEl.textContent = (data.message || 'Force stop failed') + ' (HTTP ' + res.status + ')';
-                recentExecuteErr.hidden = false;
-                recentExecuteErr.textContent = (data.message || 'Force stop failed');
+                jobErrorEl.hidden = false;
+                jobErrorEl.textContent = (data.message || 'Force stop failed');
             } else {
                 cancelRequested = false;
-                if (projectSel.value) {
-                    await loadRecentExecuteRuns(projectSel.value);
-                }
                 if (id === activeJobId) {
                     await pollOnce();
                 }
@@ -1794,9 +1658,7 @@
         resultsBody.innerHTML = '';
         bugReportActions.hidden = true;
         stopPoll();
-        loadRecentExecuteRuns(projectSel.value).then(function () {
-            openExecuteRun(jobId);
-        });
+        openExecuteRun(jobId);
     }
 
     document.getElementById('design-ref-submit')?.addEventListener('click', async () => {

@@ -54,7 +54,8 @@ body.login-body {
     text-transform: lowercase;
 }
 .brand-logo-svg {
-    color: #7ddbc9;
+    display: block;
+    flex-shrink: 0;
 }
 .workspace-pill {
     margin: 0 0.65rem 1.1rem;

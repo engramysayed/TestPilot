@@ -109,9 +109,15 @@ html[data-theme="dark"] .overflow-menu{background:var(--calm-paper,#121820);bord
 .sidebar-nav .nav-group.is-open .nav-children{display:block}
 /* Inherit group a-styling from existing .sidebar-nav a rules — nav-main/sidebar-child are regular anchors. */
 
+.sidebar-nav .sidebar-nav-item{margin:1px 0;border-radius:8px;transition:background .12s ease}
+.sidebar-nav .sidebar-nav-item:hover{background:rgba(255,255,255,.04)}
+.sidebar-nav .nav-group .nav-main-wrap:hover{background:rgba(255,255,255,.04);border-radius:8px}
+.sidebar-nav .nav-children .sidebar-nav-item{padding-left:.35rem}
+
 /* Visual polish — better hover and active, snappier spacing. */
 .sidebar-nav a{transition:background .12s ease, color .12s ease}
-.sidebar-nav a:hover{background:rgba(255,255,255,.04)}
+.sidebar-nav a.sidebar-nav-item__link:hover{background:transparent}
+.sidebar-nav .sidebar-nav-item:hover>a.sidebar-nav-item__link{color:#fff}
 .sidebar-nav a.active{position:relative}
 .sidebar-nav a.active::before{
   content:"";position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 3px 3px 0;

@@ -10,10 +10,14 @@
 <header th:replace="~{fragments :: topbar}"></header>
 <main class="shell wide overview-page">
     <header class="heading dash-heading">
-        <h1>Dashboard</h1>
+        <div class="dash-heading__titles">
+            <h1 th:text="#{nav.overview}">Overview</h1>
+            <th:block th:replace="~{fragments :: featureHelpBtn('dashboard-overview')}"></th:block>
+            <p class="dash-heading__lede" th:text="#{page.dashboard.lede}">Snapshot of projects, quality, and recent runs.</p>
+        </div>
         <div class="actions">
-            <a class="button ghost" href="/projects">Projects</a>
-            <a class="button primary" href="/execute">+ New run</a>
+            <a class="button ghost" href="/projects" th:text="#{nav.projects}">Projects</a>
+            <a class="button primary" href="/execute">+ TCs execution</a>
         </div>
     </header>
 
@@ -63,16 +67,30 @@
         </div>
     </section>
 
-    <div class="grid grid--overview">
+    <div class="grid grid--overview dash-health-grid">
         <section class="panel panel--keel dash-chart-panel">
             <div class="panelhead">
-                <h2>Execution outcomes</h2>
+                <div class="panelhead-title">
+                    <h2>Execution trends</h2>
+                    <th:block th:replace="~{fragments :: featureHelpBtn('dashboard-trends')}"></th:block>
+                </div>
                 <span class="badge badge--pass" th:if="${stats.passedTotal > 0}"
                       th:text="|${stats.passedTotal} proven passes|">0 proven passes</span>
             </div>
             <div class="panelbody">
-                <div class="overview-chart-meta">
-                    <p class="sub">Cases per day · filter by project or date range</p>
+                <div class="dash-trend-summary" aria-hidden="false">
+                    <div class="dash-trend-stat" th:if="${stats.hasProvenSample}">
+                        <strong th:text="${stats.passRate} + '%'">—</strong>
+                        <span>Pass rate</span>
+                    </div>
+                    <div class="dash-trend-stat">
+                        <strong th:text="${stats.executeJobCount}">0</strong>
+                        <span>Execute jobs</span>
+                    </div>
+                    <div class="dash-trend-stat">
+                        <strong th:text="${stats.passedTotal}">0</strong>
+                        <span>Proven passes</span>
+                    </div>
                 </div>
                 <div class="panel-toolbar overview-filters">
                     <label class="field field--inline">
@@ -102,15 +120,18 @@
                     <canvas id="scoreChart" height="140"></canvas>
                 </div>
                 <div class="legend overview-legend">
-                    <span><i class="legend-pass"></i>Proven pass</span>
-                    <span><i class="legend-fail"></i>Blocked</span>
+                    <span><i class="legend-pass"></i>Proven passes (area)</span>
+                    <span><i class="legend-fail"></i>Blocked (line)</span>
                 </div>
             </div>
         </section>
 
-        <section class="panel panel--keel">
+        <section class="panel panel--keel dash-attention-panel">
             <div class="panelhead">
-                <h2>Needs your attention</h2>
+                <div class="panelhead-title">
+                    <h2>Needs your attention</h2>
+                    <th:block th:replace="~{fragments :: featureHelpBtn('dashboard-attention')}"></th:block>
+                </div>
             </div>
             <div class="panelbody" id="attention-panel">
                 <div id="attention-list"></div>
@@ -119,10 +140,13 @@
         </section>
     </div>
 
-    <section class="panel panel--keel">
+    <section class="panel panel--keel overview-recent">
         <div class="panelhead">
-            <h2>Recent runs</h2>
-            <a class="button ghost small" href="/runs">View all runs →</a>
+            <div class="panelhead-title">
+                <h2>Recent activity</h2>
+                <th:block th:replace="~{fragments :: featureHelpBtn('dashboard-recent')}"></th:block>
+            </div>
+            <a class="button ghost small" href="/history">View all in History →</a>
         </div>
         <div class="tablewrap">
             <table class="table table--runs" id="jobsTable">
@@ -180,84 +204,81 @@
 <script th:inline="javascript">
     const allJobs = /*[[${stats.recentJobs}]]*/ [];
     const attentionItems = /*[[${stats.attention}]]*/ [];
-    const chartLabels = /*[[${stats.chartLabels}]]*/ [];
-    const chartPassed = /*[[${stats.chartPassed}]]*/ [];
-    const chartTodo = /*[[${stats.chartTodo}]]*/ [];
+    let chartLabels = /*[[${stats.chartLabels}]]*/ [];
+    let chartPassed = /*[[${stats.chartPassed}]]*/ [];
+    let chartTodo = /*[[${stats.chartTodo}]]*/ [];
+
+    function sortChartSeries(labels, passed, todo) {
+        const rows = (labels || []).map(function (l, i) {
+            return { l: l, p: Number(passed[i] || 0), t: Number(todo[i] || 0) };
+        });
+        rows.sort(function (a, b) { return String(a.l).localeCompare(String(b.l)); });
+        return {
+            labels: rows.map(function (r) { return r.l; }),
+            passed: rows.map(function (r) { return r.p; }),
+            todo: rows.map(function (r) { return r.t; })
+        };
+    }
+    (function () {
+        const sorted = sortChartSeries(chartLabels, chartPassed, chartTodo);
+        chartLabels = sorted.labels;
+        chartPassed = sorted.passed;
+        chartTodo = sorted.todo;
+    })();
 
     const scoreCtx = document.getElementById('scoreChart');
     const dark = document.documentElement.getAttribute('data-theme') === 'dark';
     const tick = dark ? '#9aa7b5' : '#697b88';
-    const grid = dark ? 'rgba(255,255,255,0.05)' : '#eef2f6';
+    const grid = dark ? 'rgba(255,255,255,0.06)' : 'rgba(15, 35, 45, 0.08)';
 
-    // Gradient factory — vertical fade from solid at top to near-transparent at bottom.
-    function makeGradient(ctx, area, color) {
-        if (!area) return color;
+    function areaFill(ctx, area, rgb) {
+        if (!area) return rgb.replace('1)', '0.2)');
         const g = ctx.createLinearGradient(0, area.top, 0, area.bottom);
-        g.addColorStop(0, color);
-        g.addColorStop(1, color.replace(/,\s*[\d.]+\)$/, ', 0.25)').replace('#', 'rgba'));
+        g.addColorStop(0, rgb.replace('1)', '0.35)'));
+        g.addColorStop(1, rgb.replace('1)', '0.02)'));
         return g;
     }
     const passColor = dark ? 'rgba(94, 196, 184, 1)' : 'rgba(44, 141, 129, 1)';
     const failColor = dark ? 'rgba(232, 140, 132, 1)' : 'rgba(201, 120, 112, 1)';
 
-    // Draws the total on top of each stacked column (rule 3: less prose, more at-a-glance).
-    const totalLabelsPlugin = {
-        id: 'totalLabels',
-        afterDatasetsDraw(chart) {
-            const { ctx: c, chartArea, data } = chart;
-            if (!chartArea || !data.labels) return;
-            c.save();
-            c.fillStyle = dark ? '#cfd6dd' : '#334';
-            c.font = '600 11px -apple-system, Segoe UI, system-ui, sans-serif';
-            c.textAlign = 'center';
-            const ds0 = chart.getDatasetMeta(0).data;
-            const ds1 = chart.getDatasetMeta(1).data;
-            data.labels.forEach((_, i) => {
-                const passed = data.datasets[0].data[i] || 0;
-                const todo = data.datasets[1].data[i] || 0;
-                const total = passed + todo;
-                if (!total) return;
-                const bar = ds1[i] || ds0[i];
-                if (!bar) return;
-                const y = Math.min(ds0[i]?.y ?? bar.y, ds1[i]?.y ?? bar.y);
-                c.fillText(String(total), bar.x, y - 6);
-            });
-            c.restore();
-        }
-    };
-
     const scoreChart = new Chart(scoreCtx, {
-        type: 'bar',
+        type: 'line',
         data: {
             labels: chartLabels,
             datasets: [
                 {
                     label: 'Proven pass',
                     data: chartPassed,
-                    backgroundColor: (ctx) => makeGradient(ctx.chart.ctx, ctx.chart.chartArea, passColor),
-                    hoverBackgroundColor: passColor,
-                    borderRadius: 10,
-                    borderSkipped: false,
-                    maxBarThickness: 44,
-                    stack: 'day'
+                    borderColor: passColor,
+                    backgroundColor: function (ctx) {
+                        return areaFill(ctx.chart.ctx, ctx.chart.chartArea, passColor);
+                    },
+                    fill: true,
+                    tension: 0.38,
+                    borderWidth: 2.5,
+                    pointRadius: chartLabels.length <= 14 ? 4 : 2,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: passColor
                 },
                 {
                     label: 'Blocked',
                     data: chartTodo,
-                    backgroundColor: (ctx) => makeGradient(ctx.chart.ctx, ctx.chart.chartArea, failColor),
-                    hoverBackgroundColor: failColor,
-                    borderRadius: 10,
-                    borderSkipped: false,
-                    maxBarThickness: 44,
-                    stack: 'day'
+                    borderColor: failColor,
+                    backgroundColor: 'transparent',
+                    fill: false,
+                    tension: 0.38,
+                    borderWidth: 2,
+                    borderDash: [6, 4],
+                    pointRadius: chartLabels.length <= 14 ? 3 : 0,
+                    pointHoverRadius: 5
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { top: 24 } },
-            animation: { duration: 650, easing: 'easeOutQuart' },
+            layout: { padding: { top: 8, right: 4 } },
+            animation: { duration: 550, easing: 'easeOutQuart' },
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { display: false },
@@ -269,8 +290,8 @@
                     callbacks: {
                         afterTitle: function (items) {
                             const i = items[0].dataIndex;
-                            const p = chartPassed[i] || 0;
-                            const t = chartTodo[i] || 0;
+                            const p = scoreChart.data.datasets[0].data[i] || 0;
+                            const t = scoreChart.data.datasets[1].data[i] || 0;
                             const total = p + t;
                             if (!total) return '';
                             return 'Pass rate ' + Math.round((p / total) * 100) + '%';
@@ -280,33 +301,35 @@
             },
             scales: {
                 x: {
-                    stacked: true,
-                    ticks: { color: tick, maxRotation: 0, font: { size: 11 } },
+                    ticks: { color: tick, maxRotation: 0, font: { size: 11 }, maxTicksLimit: 8 },
                     grid: { display: false, drawBorder: false }
                 },
                 y: {
-                    stacked: true,
                     beginAtZero: true,
                     ticks: { precision: 0, color: tick, font: { size: 11 } },
                     grid: { color: grid, drawBorder: false }
                 }
             }
-        },
-        plugins: [totalLabelsPlugin]
+        }
     });
 
     function rebuildChart(jobs) {
         const byDay = {};
-        jobs.forEach(j => {
+        jobs.forEach(function (j) {
             if (!j.day) return;
             if (!byDay[j.day]) byDay[j.day] = { passed: 0, todo: 0 };
             byDay[j.day].passed += Number(j.passedCount || 0);
             byDay[j.day].todo += Number(j.todoCount || 0);
         });
-        const labels = Object.keys(byDay).sort();
-        scoreChart.data.labels = labels;
-        scoreChart.data.datasets[0].data = labels.map(d => byDay[d].passed);
-        scoreChart.data.datasets[1].data = labels.map(d => byDay[d].todo);
+        const dayKeys = Object.keys(byDay);
+        const sorted = sortChartSeries(
+            dayKeys,
+            dayKeys.map(function (d) { return byDay[d].passed; }),
+            dayKeys.map(function (d) { return byDay[d].todo; })
+        );
+        scoreChart.data.labels = sorted.labels;
+        scoreChart.data.datasets[0].data = sorted.passed;
+        scoreChart.data.datasets[1].data = sorted.todo;
         scoreChart.update();
     }
 

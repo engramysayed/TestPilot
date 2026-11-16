@@ -1,0 +1,97 @@
+/* In-context feature help (? control + popover) */
+.keel-feature-help-btn {
+  flex: 0 0 auto;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: 0 0.35rem 0 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(193, 208, 215, 0.55);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.sidebar-nav-item:hover .keel-feature-help-btn,
+.sidebar-nav-item:focus-within .keel-feature-help-btn,
+.keel-feature-help-btn:focus-visible,
+.keel-feature-help-btn.is-open {
+  opacity: 1;
+}
+.keel-feature-help-btn:hover,
+.keel-feature-help-btn.is-open {
+  color: #7ddbc9;
+  border-color: rgba(125, 219, 201, 0.35);
+  background: rgba(125, 219, 201, 0.08);
+}
+.sidebar-nav-item {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin: 0;
+  border-radius: 8px;
+}
+.sidebar-nav-item__link {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.sidebar-nav-item .keel-feature-help-btn {
+  align-self: center;
+}
+.sidebar-nav .nav-group .nav-main-wrap {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+.sidebar-nav .nav-group .nav-main-wrap .nav-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.keel-feature-help-popover {
+  position: fixed;
+  z-index: 120;
+  max-width: min(280px, calc(100vw - 1.5rem));
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--calm-line, #2d3440);
+  background: var(--calm-card, #121820);
+  color: var(--calm-ink, #e7eaf0);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.keel-feature-help-popover[hidden] {
+  display: none !important;
+}
+.keel-feature-help-popover p {
+  margin: 0;
+}
+.keel-feature-help-popover a {
+  display: inline-block;
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #7ddbc9;
+  text-decoration: none;
+}
+.keel-feature-help-popover a:hover {
+  text-decoration: underline;
+}
+html[data-theme="light"] .keel-feature-help-popover {
+  background: #fff;
+  color: #1a1d24;
+  border-color: #e3e6ec;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+html[data-theme="light"] .keel-feature-help-popover a {
+  color: #0d6b5c;
+}

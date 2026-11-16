@@ -1,6 +1,7 @@
 /* Extracted from templates/generate.html. Server values arrive via window.KEEL_PAGE (set inline by the template). */
 (function () {
     const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+    function bindEl(el, type, fn) { if (el) el.addEventListener(type, fn); }
     const STORAGE_KEY = 'keel.generateProjectId';
     const initialProjectId = (window.KEEL_PAGE && window.KEEL_PAGE.initialProjectId !== undefined && window.KEEL_PAGE.initialProjectId !== null) ? window.KEEL_PAGE.initialProjectId : '';
     const MODEL_STORAGE_KEY = 'keel.generateModel';
@@ -1292,10 +1293,11 @@
     }
 
     function onProjectChange() {
+        if (!projectSel) return;
         const projectId = projectSel.value;
         selectedProject = findProject(projectId);
         clearAuthoringReviewProposal();
-        authoringReviewBanner.hidden = true;
+        if (authoringReviewBanner) authoringReviewBanner.hidden = true;
         setAuthoringReviewStatus('', false);
         if (projectId) sessionStorage.setItem(STORAGE_KEY, projectId);
         updateAutomateLink(projectId);
@@ -1303,6 +1305,7 @@
         setPromptStatus('', false);
         loadAuthoringReviewAvailability(projectId);
         loadBatchJobs();
+        if (workflow) workflow.hidden = !projectId;
     }
 
     function loadPrompt() {
@@ -1325,104 +1328,69 @@
             });
     }
 
-    async function loadProjects() {
-        projectErr.hidden = true;
-        const res = await fetch('/api/projects', {
-            credentials: 'same-origin',
-            headers: API_HEADERS
-        });
-        if (!res.ok) {
-            projectErr.hidden = false;
-            projectErr.textContent = 'Could not load projects.';
-            workflow.hidden = true;
-            return;
-        }
-        projects = await res.json();
-        projectSel.innerHTML = '';
-        if (launcherSel) launcherSel.innerHTML = '';
-        if (projects.length === 0) {
-            noProjects.hidden = false;
-            if (launcherNoProjects) launcherNoProjects.hidden = false;
-            workflow.hidden = true;
-            return;
-        }
-        noProjects.hidden = true;
-        if (launcherNoProjects) launcherNoProjects.hidden = true;
-        workflow.hidden = false;
-
-        projects.forEach(function (p) {
-            const label = (p.name || p.projectId) + ' (' + p.projectId + ')';
-            const opt = document.createElement('option');
-            opt.value = p.projectId;
-            opt.textContent = label;
-            projectSel.appendChild(opt);
-            if (launcherSel) {
-                const lopt = document.createElement('option');
-                lopt.value = p.projectId;
-                lopt.textContent = label;
-                launcherSel.appendChild(lopt);
+    var projectPicker;
+    if (window.KeelProjectPicker && projectSel) {
+        projectPicker = window.KeelProjectPicker.bind({
+            storageKey: STORAGE_KEY,
+            initialProjectId: initialProjectId,
+            workflowEl: workflow,
+            elements: {
+                workspaceLauncher: workspaceLauncher,
+                workspaceConfig: workspaceConfig,
+                launcherSel: launcherSel,
+                launcherContinue: launcherContinue,
+                launcherErr: launcherErr,
+                launcherNoProjects: launcherNoProjects,
+                projectSel: projectSel,
+                projectErr: projectErr,
+                noProjects: noProjects,
+                pinnedName: pinnedName,
+                changeProjectBtn: changeProjectBtn
+            },
+            onPinned: function () {
+                projects = projectPicker.getProjects();
+                onProjectChange();
+            },
+            onProjectSelectChange: function () {
+                projects = projectPicker.getProjects();
+                onProjectChange();
             }
         });
+    }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlProjectId = urlParams.get('projectId');
-        const urlProject = (urlProjectId && projects.some(function (p) { return p.projectId === urlProjectId; }))
-            ? urlProjectId
-            : ((initialProjectId && projects.some(function (p) { return p.projectId === initialProjectId; }))
-                ? initialProjectId : null);
-        const saved = sessionStorage.getItem(STORAGE_KEY);
-        const match = saved && projects.some(function (p) { return p.projectId === saved; });
-        const pinned = urlProject || (match ? saved : null);
-        if (pinned) {
-            pinWorkspaceProject(pinned, projects);
-        } else {
-            showWorkspaceLauncher();
+    async function loadProjects() {
+        try {
+            if (projectPicker) {
+                projects = await projectPicker.loadProjects();
+            } else if (projectErr) {
+                projectErr.hidden = false;
+                projectErr.textContent = 'Could not load projects.';
+            }
+            loadBatchJobs();
+        } catch (_) {
+            if (projectErr) {
+                projectErr.hidden = false;
+                projectErr.textContent = 'Could not load projects.';
+            }
         }
-        loadBatchJobs();
     }
 
     function showWorkspaceLauncher() {
-        if (workspaceLauncher) workspaceLauncher.hidden = false;
-        if (workspaceConfig) workspaceConfig.hidden = true;
+        if (projectPicker) projectPicker.showWorkspaceLauncher();
+        else if (workspaceLauncher) workspaceLauncher.hidden = false;
+        if (!projectPicker && workspaceConfig) workspaceConfig.hidden = true;
     }
 
     function pinWorkspaceProject(projectId, projectList) {
-        projectSel.value = projectId;
-        if (launcherSel) launcherSel.value = projectId;
-        const proj = (projectList || []).find(function (p) { return p.projectId === projectId; });
-        if (pinnedName) {
-            if (proj) {
-                pinnedName.textContent = (proj.name || proj.projectId) + ' (' + proj.projectId + ')';
-            } else if (launcherSel && launcherSel.selectedIndex >= 0) {
-                pinnedName.textContent = launcherSel.options[launcherSel.selectedIndex].textContent;
-            } else {
-                pinnedName.textContent = projectId;
-            }
+        if (projectPicker) projectPicker.pinWorkspaceProject(projectId, projectList);
+        else if (projectSel) {
+            projectSel.value = projectId;
+            onProjectChange();
         }
-        if (workspaceLauncher) workspaceLauncher.hidden = true;
-        if (workspaceConfig) workspaceConfig.hidden = false;
-        onProjectChange();
     }
 
-    launcherContinue?.addEventListener('click', function () {
-        if (launcherErr) launcherErr.hidden = true;
-        const projectId = launcherSel ? launcherSel.value : '';
-        if (!projectId) {
-            if (launcherErr) {
-                launcherErr.hidden = false;
-                launcherErr.textContent = 'Select a project to continue.';
-            }
-            return;
-        }
-        sessionStorage.setItem(STORAGE_KEY, projectId);
-        pinWorkspaceProject(projectId, projects);
-    });
-
-    changeProjectBtn?.addEventListener('click', function () {
-        showWorkspaceLauncher();
-    });
-
     async function loadBatchJobs() {
+        if (!batchJobsBody || !batchJobsPanel || !projectSel) return;
         const projectId = projectSel.value;
         if (!projectId) return;
         try {
@@ -2079,7 +2047,7 @@
         return current ? current + '\n\n' + reviewBlock : reviewBlock;
     }
 
-    copyBtn.addEventListener('click', function () {
+    bindEl(copyBtn, 'click', function () {
         const text = fullPromptText();
         if (!text) {
             setPromptStatus('Prompt not loaded yet', true);
@@ -2100,10 +2068,10 @@
         }
     });
 
-    projectSel.addEventListener('change', onProjectChange);
-    storiesInput.addEventListener('input', updatePreview);
-    importRaw.addEventListener('input', updatePreview);
-    importBtn.addEventListener('click', runImport);
+    bindEl(projectSel, 'change', onProjectChange);
+    bindEl(storiesInput, 'input', updatePreview);
+    bindEl(importRaw, 'input', updatePreview);
+    bindEl(importBtn, 'click', runImport);
     ['intake-title','intake-ac','intake-role','intake-surface','intake-freetext'].forEach(function (id) {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', updatePreview);
@@ -2117,12 +2085,12 @@
         const ft = document.getElementById('generate-free-text-more');
         if (ft) ft.hidden = true;
     }
-    authoringReviewProvider.addEventListener('change', function () {
+    bindEl(authoringReviewProvider, 'change', function () {
         rememberAuthoringReviewProvider();
         syncAuthoringReviewProviderUi();
     });
-    authoringReviewModel.addEventListener('change', rememberAuthoringReviewProvider);
-    document.getElementById('authoring-review-banner-open').addEventListener('click', function () {
+    bindEl(authoringReviewModel, 'change', rememberAuthoringReviewProvider);
+    bindEl(document.getElementById('authoring-review-banner-open'), 'click', function () {
         if (!hasGeneratedWorkbook) {
             setAuthoringReviewStatus('Generate or import a workbook first.', true);
             return;
@@ -2131,25 +2099,25 @@
         authoringReviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         authoringReviewStart.focus();
     });
-    authoringReviewStart.addEventListener('click', startAuthoringReview);
-    authoringReviewAccept.addEventListener('click', acceptAuthoringReviewProposal);
-    authoringReviewDiscard.addEventListener('click', function () {
+    bindEl(authoringReviewStart, 'click', startAuthoringReview);
+    bindEl(authoringReviewAccept, 'click', acceptAuthoringReviewProposal);
+    bindEl(authoringReviewDiscard, 'click', function () {
         clearAuthoringReviewProposal();
         setAuthoringReviewStatus('Proposal discarded.', false);
     });
     generateBtn?.addEventListener('click', runGenerate);
     compareBtn?.addEventListener('click', runCompare);
     runPipelineBtn?.addEventListener('click', runPipeline);
-    keelFilter.addEventListener('change', function () {
+    bindEl(keelFilter, 'change', function () {
         if (lastResult) renderTable(lastResult.rows || []);
     });
-    previewBody.addEventListener('change', function (ev) {
+    bindEl(previewBody, 'change', function (ev) {
         const target = ev.target;
         if (target && target.classList && target.classList.contains('keel-path-select')) {
             onKeelPathChange(target);
         }
     });
-    previewBody.addEventListener('click', function (ev) {
+    bindEl(previewBody, 'click', function (ev) {
         const target = ev.target;
         if (target && target.classList && target.classList.contains('keel-path-select')) {
             ev.stopPropagation();
@@ -2161,8 +2129,8 @@
         const row = findRowByTcId(tcId);
         if (row) openTcEditor(row);
     });
-    tcEditCancel.addEventListener('click', closeTcEditor);
-    tcEditSave.addEventListener('click', saveTcEditor);
+    bindEl(tcEditCancel, 'click', closeTcEditor);
+    bindEl(tcEditSave, 'click', saveTcEditor);
     if (tcCallBeforeSearch) {
         tcCallBeforeSearch.addEventListener('input', renderTcCallBeforeResults);
         tcCallBeforeSearch.addEventListener('focus', renderTcCallBeforeResults);
@@ -2212,11 +2180,11 @@
             return false;
         }
     }
-    if (coverageNotesSave) coverageNotesSave.addEventListener('click', saveCoverageNotes);
-    coverageNotes.addEventListener('input', function () {
+    bindEl(coverageNotesSave, 'click', saveCoverageNotes);
+    bindEl(coverageNotes, 'input', function () {
         if (lastResult) lastResult.coverageNotes = coverageNotes.value;
     });
-    tcEditModal.addEventListener('click', function (ev) {
+    bindEl(tcEditModal, 'click', function (ev) {
         if (ev.target === tcEditModal) closeTcEditor();
     });
     document.addEventListener('keydown', function (ev) {
@@ -2227,12 +2195,12 @@
         }
         trapFocusInModal(ev);
     });
-    downloadCsvBtn.addEventListener('click', downloadCsv);
-    bulkFile.addEventListener('change', updateBulkControls);
-    bulkQueueBtn.addEventListener('click', queueBulkGenerate);
+    bindEl(downloadCsvBtn, 'click', downloadCsv);
+    bindEl(bulkFile, 'change', updateBulkControls);
+    bindEl(bulkQueueBtn, 'click', queueBulkGenerate);
     saveCompareABtn?.addEventListener('click', function () { saveCompareSide('A'); });
     saveCompareBBtn?.addEventListener('click', function () { saveCompareSide('B'); });
-    generateModelSelect.addEventListener('change', function () {
+    bindEl(generateModelSelect, 'change', function () {
         if (generateModelSelect.value) {
             sessionStorage.setItem(MODEL_STORAGE_KEY, generateModelSelect.value);
         }
@@ -2243,7 +2211,12 @@
     restoreAuthoringReviewProvider();
     loadPrompt();
     loadGenerateModels();
-    loadProjects();
+    loadProjects().catch(function () {
+        if (projectErr) {
+            projectErr.hidden = false;
+            projectErr.textContent = 'Could not load projects.';
+        }
+    });
 
     const pendingCompareJobId = new URLSearchParams(window.location.search).get('compareJobId');
     if (pendingCompareJobId) {

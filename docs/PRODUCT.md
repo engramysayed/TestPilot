@@ -7,7 +7,7 @@ It describes the portal as it exists now (October 2026), not only the last commi
 - **How to run it**: [`README.md`](../README.md)
 - **Engineer pointers**: [`ENGINEERING_HANDOFF.md`](ENGINEERING_HANDOFF.md)
 
-Keel is a self-hosted portal. You sign in, create a **project** (site URL + login profiles), then work in **Generate** or **Record** → **Execute** and/or **Automate**, plus exploratory **Bug Hunter**.
+Keel is a self-hosted portal. You sign in, create a **project** (site URL + login profiles), then work in **TCs Generation** or **Playback** → **TCs execution** and/or **TCs automation**, plus exploratory **Bug Hunter**. The left nav uses those names (Nov 2026 UX Phase 1); each item has a **`?`** help popover. Old URLs such as `/record` and `/runs` still work (`/playback`, `/history` are aliases).
 
 ```text
 Stories / Excel / CSV          Click through the site in Chrome
@@ -93,6 +93,8 @@ After Automate has produced a package:
 ## Generate
 
 Turn stories or AI output into a Keel workbook stored on the project (`generated/latest.xlsx` + CSV).
+
+The Generate page is four stacked cards: **story generate**, **bulk CSV**, **paste external AI**, and **copy prompt** — each has a **`?`** section help control. Recent bulk jobs appear only under the bulk card.
 
 ### From stories (Ollama)
 
@@ -240,6 +242,7 @@ Exploratory live hunting from the project library. Goal: **break features** and 
 - Caps: scenario invent budget, iterations, cycles per iteration, **actions per cycle** (defaults 2 × 8 × 5). Each click or typed value is one step. The credit charge is the number of steps this run may try, times the Bug Hunter unit price. A compact bar above **Start Bug Hunter** shows that total and updates when the caps change. Execute and Automate use the same bar for the test cases in the run or the build.
 - **DOM mode**: Auto (structured page map; full slim HTML if the map is thin) · Map only · Full slim.
 - **Use hunt strategies** (default on): happy path → empty fields → boundary → abuse → session → invent.
+- Past hunts, status links, and downloads are in **History** — not a second “recent runs” table on this page.
 
 **Preferred hooks:** if the project has preferred locator attributes configured, auto-login and hunt grounding prefer those patterns before generic CSS (configure on the project — no hardcoded vendor attrs in code).
 
@@ -282,7 +285,9 @@ Stop reasons: planner `finish`, cycle ceiling, **STUCK**, or **COMPLETE** (strat
 
 ## Suites (test packs)
 
-On **`/suites`**, group library test cases into tagged packs (smoke / regression / nightly built-ins plus your own). Search the project library, multi-select cases in order, save membership, and **Run pack now** uses the saved workbook `TC_ID`s. Plain-English case IDs may appear in the picker for reference; pack runs still require workbook library IDs. Schedules, alerts, and monitor panels are unchanged. Live portal validation of the picker: **pending** (jar refresh + Ctrl+F5 when you turn the portal on).
+On **`/suites`**, group library test cases into tagged packs (smoke / regression / nightly built-ins plus your own). Search the project library, multi-select cases in order, save membership, and **Run pack now** uses the saved workbook `TC_ID`s. Plain-English case IDs may appear in the picker for reference; pack runs still require workbook library IDs.
+
+**Scheduling** (`/suites/schedule`): pick a pack by Smoke/Regression-style labels (technical id under **Technical id**), set cron presets or custom cron, choose the same credential profile as Execute, use **Account** alert preferences for failures, and save schedule + alerts + watch in one sticky **Save schedule settings** action.
 
 ---
 
@@ -328,7 +333,7 @@ Run cases on the live site **without** building a customer ZIP.
 
 ### Results
 
-- Recent runs for the project; **Results** opens that run’s evidence.
+- **While a run is active**, progress and results stay on the Execute page. **Past runs** for the project are listed in **History** (`/history` → `/runs`), not in a duplicate table on Execute.
 - Expand a row: step timeline + screenshots (including the last heal shot when a bind missed).
 - QA column (pass / fail / blocked).
 - **Design** column: live last screen vs uploaded PNG (dash = no reference).

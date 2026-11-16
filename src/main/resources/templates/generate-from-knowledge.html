@@ -71,10 +71,29 @@
                     <input type="hidden" id="ingest-batch-size" value="30"/>
                 </div>
                 <div id="ingest-pane-library" class="gfk-ingest-pane" data-ingest-pane="library" style="margin-top:0.75rem">
-                    <p class="field-hint muted">Multi-select project library TCs (same source as Execute / Bug Hunter).</p>
+                    <p class="field-hint muted">Multi-select project library TCs (same control as TCs execution).</p>
                     <p id="ingest-lib-status" class="muted" role="status">Pin a project to load cases.</p>
                     <p id="ingest-lib-empty" class="muted" hidden>No test cases in this project library yet.</p>
-                    <div id="ingest-lib-list" class="generate-options" hidden></div>
+                    <div id="ingest-library-pick" class="tc-multiselect" hidden>
+                        <span class="tc-ms-label">Cases for this pack</span>
+                        <div class="tc-ms" id="gfk-tc-ms">
+                            <button type="button" class="tc-ms-trigger" id="gfk-tc-ms-trigger"
+                                    aria-haspopup="listbox" aria-expanded="false">
+                                <span class="tc-ms-chips" id="gfk-tc-ms-chips"></span>
+                                <span class="tc-ms-summary muted" id="gfk-tc-ms-summary">Select cases</span>
+                                <span class="tc-ms-caret" aria-hidden="true"></span>
+                            </button>
+                            <div class="tc-ms-dropdown" id="gfk-tc-ms-dropdown" hidden>
+                                <input type="search" id="gfk-tc-ms-search" class="tc-ms-search"
+                                       placeholder="Search cases…" autocomplete="off"/>
+                                <div class="tc-ms-toolbar">
+                                    <button type="button" class="button ghost" id="gfk-lib-pick-all">Select all</button>
+                                    <button type="button" class="button ghost" id="gfk-lib-pick-none">Clear</button>
+                                </div>
+                                <div id="gfk-library-pick-list" class="tc-ms-list" role="listbox"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div id="ingest-pane-upload-tc" class="gfk-ingest-pane" data-ingest-pane="upload-tc" hidden style="margin-top:0.75rem">
                     <label>Case workbook (.xlsx / .csv)
@@ -400,7 +419,8 @@
     const ingestStatus = document.getElementById('ingest-status');
     const ingestLibStatus = document.getElementById('ingest-lib-status');
     const ingestLibEmpty = document.getElementById('ingest-lib-empty');
-    const ingestLibList = document.getElementById('ingest-lib-list');
+    const ingestLibraryPick = document.getElementById('ingest-library-pick');
+    let gfkTcMs = null;
     const ingestFileTc = document.getElementById('ingest-file-tc');
     const ingestFileMd = document.getElementById('ingest-file-md');
 
@@ -429,12 +449,22 @@
         });
     });
 
+    function syncIngestTcSelection(selected) {
+        selectedIngestTcIds.clear();
+        (selected || []).forEach(function (cb) { selectedIngestTcIds.add(cb.value); });
+    }
+
+  if (window.KeelTcMultiselect) {
+        gfkTcMs = window.KeelTcMultiselect.mount({
+            root: 'gfk-tc-ms',
+            checkboxClass: 'gfk-lib-pick-check',
+            onChange: syncIngestTcSelection
+        });
+    }
+
     async function loadIngestLibrary(projectId) {
         selectedIngestTcIds.clear();
-        if (ingestLibList) {
-            ingestLibList.innerHTML = '';
-            ingestLibList.hidden = true;
-        }
+        if (ingestLibraryPick) ingestLibraryPick.hidden = true;
         if (ingestLibEmpty) ingestLibEmpty.hidden = true;
         if (!projectId) {
             if (ingestLibStatus) {
@@ -445,50 +475,29 @@
         }
         if (ingestLibStatus) {
             ingestLibStatus.hidden = false;
-            ingestLibStatus.textContent = 'Loading library cases.';
+            ingestLibStatus.textContent = 'Loading library cases…';
         }
         try {
-            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/generated-workbook/cases', {
-                credentials: 'same-origin',
-                headers: API_HEADERS
-            });
-            if (!res.ok) {
+            const result = window.KeelTcMultiselect
+                ? await window.KeelTcMultiselect.fetchLibraryCases(projectId)
+                : { ok: false, status: 0, cases: [] };
+            if (!result.ok) {
                 if (ingestLibStatus) {
                     ingestLibStatus.hidden = false;
-                    ingestLibStatus.textContent = res.status === 404
+                    ingestLibStatus.textContent = result.status === 404
                         ? 'Library cases not available yet (HTTP 404).'
-                        : ('Could not load library cases (HTTP ' + res.status + ').');
+                        : ('Could not load library cases (HTTP ' + result.status + ').');
                 }
                 return;
             }
-            const data = await res.json();
-            const cases = (data && Array.isArray(data.cases)) ? data.cases : (Array.isArray(data) ? data : []);
             if (ingestLibStatus) ingestLibStatus.hidden = true;
-            if (!cases.length) {
+            if (!result.cases.length) {
                 if (ingestLibEmpty) ingestLibEmpty.hidden = false;
                 return;
             }
             if (ingestLibEmpty) ingestLibEmpty.hidden = true;
-            if (ingestLibList) ingestLibList.hidden = false;
-            cases.forEach(function (tc) {
-                const id = tc.tcId || tc.id;
-                if (!id || !ingestLibList) return;
-                const label = document.createElement('label');
-                label.className = 'generate-check';
-                const cb = document.createElement('input');
-                cb.type = 'checkbox';
-                cb.value = id;
-                cb.addEventListener('change', function () {
-                    if (cb.checked) selectedIngestTcIds.add(id);
-                    else selectedIngestTcIds.delete(id);
-                });
-                const span = document.createElement('span');
-                span.innerHTML = '<span class="mono">' + escapeHtml(id) + '</span> '
-                    + escapeHtml(tc.title || '');
-                label.appendChild(cb);
-                label.appendChild(span);
-                ingestLibList.appendChild(label);
-            });
+            if (ingestLibraryPick) ingestLibraryPick.hidden = false;
+            if (gfkTcMs) gfkTcMs.setCases(result.cases);
         } catch (err) {
             if (ingestLibStatus) {
                 ingestLibStatus.hidden = false;
@@ -511,7 +520,7 @@
         try {
             let res;
             if (ingestTab === 'library') {
-                const tcIds = Array.from(selectedIngestTcIds);
+                const tcIds = gfkTcMs ? gfkTcMs.getSelectedIds() : Array.from(selectedIngestTcIds);
                 if (!tcIds.length) {
                     if (ingestStatus) ingestStatus.textContent = 'Select at least one library case.';
                     return;
@@ -576,11 +585,7 @@
             if (ingestFileTc) ingestFileTc.value = '';
             if (ingestFileMd) ingestFileMd.value = '';
             selectedIngestTcIds.clear();
-            if (ingestLibList) {
-                ingestLibList.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
-                    cb.checked = false;
-                });
-            }
+            if (gfkTcMs) gfkTcMs.setCases([]);
             await loadPacks(projectId);
         } catch (err) {
             if (ingestStatus) ingestStatus.textContent = 'Waiting on Backend case-pack add API';

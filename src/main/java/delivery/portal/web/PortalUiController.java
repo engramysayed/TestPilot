@@ -142,15 +142,19 @@ public class PortalUiController {
         return switch (navActive) {
             case "dashboard" -> "Overview";
             case "projects" -> "Projects";
-            case "generate" -> "Write test cases";
+            case "generate" -> "TCs Generation";
+            case "generate-compare" -> "Multi-model generate";
             case "generate-from-knowledge" -> "Generate from knowledge";
-            case "record" -> "Record a test";
-            case "plain-cases" -> "Plain-English cases";
-            case "suites" -> "Suites";
-            case "execute" -> "Run tests";
-            case "automate" -> "Build code";
+            case "record" -> "Playback";
+            case "plain-cases" -> "Plain cases";
+            case "structured-plans" -> "Test blueprints";
+            case "suites" -> "Test suites";
+            case "suites-schedule" -> "Scheduling";
+            case "execute" -> "TCs execution";
+            case "automate" -> "TCs automation";
             case "bug-hunter" -> "Bug Hunter";
-            case "runs" -> "Run history";
+            case "run-memory" -> "Run memory";
+            case "runs" -> "History";
             case "packages" -> "Code packages";
             case "guide" -> "Guide";
             case "tc-guide" -> "Guide";
@@ -169,6 +173,21 @@ public class PortalUiController {
     @GetMapping("/")
     public String home() {
         return "redirect:/dashboard";
+    }
+
+    @GetMapping("/playback")
+    public String playbackAlias() {
+        return "redirect:/record";
+    }
+
+    @GetMapping("/history")
+    public String historyAlias() {
+        return "redirect:/runs";
+    }
+
+    @GetMapping("/test-blueprints")
+    public String testBlueprintsAlias() {
+        return "redirect:/structured-plans";
     }
 
     @GetMapping("/login")

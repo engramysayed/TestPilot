@@ -1,13 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Keel">
-  <defs>
-    <linearGradient id="keelHull" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3db8e8"/>
-      <stop offset="100%" stop-color="#1a8fc4"/>
-    </linearGradient>
-  </defs>
-  <!-- Stable keel / hull mark -->
-  <path fill="url(#keelHull)" d="M18 52c22-28 62-28 84 0-8 34-28 52-42 58C46 104 26 86 18 52z"/>
-  <path fill="#0b1a2a" opacity="0.22" d="M60 38v64c-8-4-22-18-28-40 12-16 28-22 28-24z"/>
-  <path fill="none" stroke="#e8f6fc" stroke-width="5" stroke-linecap="round"
-        d="M36 58h48M48 74h24"/>
+  <rect width="120" height="120" rx="28" fill="#132a32"/>
+  <g transform="translate(60 60) scale(2.15) translate(-15 -17)" fill="none" stroke="#7ddbc9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 4v23l11 5 11-5V4L15 9 4 4Z"/>
+    <path d="m8 11 7 4 7-4M15 15v11"/>
+  </g>
 </svg>

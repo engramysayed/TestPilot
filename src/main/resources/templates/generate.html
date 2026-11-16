@@ -8,10 +8,11 @@
 if (location.hash === '#record') location.replace('/record' + location.search);
 </script>
 <link rel="stylesheet" th:href="@{/css/keel-portal-enhancements.css}"/>
+<link rel="stylesheet" th:href="@{/css/keel-generate-layout.css}"/>
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
 <header th:replace="~{fragments :: topbar}"></header>
-<main class="shell keel-page">
+<main class="shell keel-page generate-page">
     <div class="page-title">
         <div>
             <h1 th:text="#{page.generate.title}">Write test cases</h1>
@@ -67,13 +68,15 @@ if (location.hash === '#record') location.replace('/record' + location.search);
         </div>
     </section>
 
-    <section class="panel" id="generate-workflow" hidden>
-        <div class="generate-primary">
-            <div class="generate-primary-head">
-                <div>
+    <div class="generate-workflow-stack" id="generate-workflow" hidden>
+        <section class="panel generate-card generate-card--primary">
+            <div class="panelhead">
+                <div class="panelhead-title">
                     <h2>Write test cases from stories</h2>
+                    <th:block th:replace="~{fragments :: featureHelpBtn('generate-stories')}"></th:block>
                 </div>
             </div>
+            <div class="generate-primary">
 
             <div id="structured-intake" class="structured-intake" data-testid="structured-intake">
                 <label for="intake-title">Story title
@@ -218,9 +221,9 @@ if (location.hash === '#record') location.replace('/record' + location.search);
             </div>
         </section>
 
-        <section class="generate-results panel" id="generate-authoring-review" hidden>
-            <div class="generate-primary-head">
-                <div>
+        <section class="generate-results generate-results--review panel" id="generate-authoring-review" hidden>
+            <div class="panelhead panelhead--compact">
+                <div class="panelhead-title">
                     <h2>Review with AI</h2>
                 </div>
             </div>
@@ -272,13 +275,13 @@ if (location.hash === '#record') location.replace('/record' + location.search);
                 </div>
             </div>
         </section>
+        </section>
 
-        <details class="more-options" id="generate-more-ways" open>
-            <summary>More ways to add test cases: many stories at once, or paste from another AI tool</summary>
-        <section class="generate-bulk" id="generate-bulk">
-            <div class="generate-primary-head">
-                <div>
-                    <h2>Many stories at once</h2>
+        <section class="panel generate-card generate-card--secondary generate-bulk" id="generate-bulk">
+            <div class="panelhead">
+                <div class="panelhead-title">
+                    <h2>Many stories at once (bulk CSV)</h2>
+                    <th:block th:replace="~{fragments :: featureHelpBtn('generate-bulk')}"></th:block>
                 </div>
             </div>
 
@@ -333,10 +336,11 @@ if (location.hash === '#record') location.replace('/record' + location.search);
             </section>
         </section>
 
-        <section class="generate-import" id="generate-import">
-            <div class="generate-primary-head">
-                <div>
+        <section class="panel generate-card generate-card--secondary generate-import" id="generate-import">
+            <div class="panelhead">
+                <div class="panelhead-title">
                     <h2>Paste from external AI</h2>
+                    <th:block th:replace="~{fragments :: featureHelpBtn('generate-import')}"></th:block>
                 </div>
             </div>
 
@@ -357,13 +361,18 @@ if (location.hash === '#record') location.replace('/record' + location.search);
             </p>
         </section>
 
-        <details class="panel-details generate-fallback" open>
-            <summary>Use another AI chat (copy our prompt)</summary>
-            <ol class="guide-howto">
+        <section class="panel generate-card generate-card--tertiary generate-copy-prompt" id="generate-copy-prompt">
+            <div class="panelhead">
+                <div class="panelhead-title">
+                    <h2>Copy prompt for another AI</h2>
+                    <th:block th:replace="~{fragments :: featureHelpBtn('generate-copy-prompt')}"></th:block>
+                </div>
+            </div>
+            <ol class="guide-howto generate-copy-steps">
                 <li>Click <strong>Copy prompt</strong> (it includes your project's name and website).</li>
                 <li>Paste into any AI chat (ChatGPT, Claude, Cursor, etc.).</li>
                 <li>Paste <strong>one batch</strong> of user stories (about <strong>5–15</strong> cases worth).</li>
-                <li>Copy the AI's <strong>CSV or JSON</strong> output and paste it into <strong>Import into project</strong> above.</li>
+                <li>Copy the AI's <strong>CSV or JSON</strong> output into <strong>Paste from external AI</strong> above.</li>
             </ol>
             <div class="ai-prompt-card">
                 <div class="ai-prompt-card-head">
@@ -373,9 +382,8 @@ if (location.hash === '#record') location.replace('/record' + location.search);
                 <pre id="generate-prompt-preview" class="ai-prompt-preview" aria-live="polite">Loading prompt…</pre>
                 <p id="generate-prompt-status" class="ai-prompt-status" role="status"></p>
             </div>
-        </details>
-        </details>
-    </section>
+        </section>
+    </div>
     </div>
 </main>
 </div>

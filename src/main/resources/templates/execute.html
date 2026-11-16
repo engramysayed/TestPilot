@@ -202,23 +202,12 @@
         <p id="form-error" class="error" hidden></p>
     </section>
 
-    <section class="panel" id="recent-execute-panel" hidden>
-        <h2>Recent execute runs</h2>
-        <table class="table" id="recent-execute-table">
-            <thead>
-            <tr>
-                <th>Job</th>
-                <th>Status</th>
-                <th>Progress</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody id="recent-execute-body"></tbody>
-        </table>
-        <p id="recent-execute-empty" class="muted" hidden>No execute runs for this project yet.</p>
-        <p id="recent-execute-err" class="error" hidden></p>
+    <section class="panel keel-history-cta" id="execute-history-cta" hidden>
+        <p class="muted" style="margin:0">Past execute runs, exports, and evidence live in History — not on this page.</p>
+        <p style="margin:0.75rem 0 0">
+            <a class="button ghost small" id="execute-history-link" href="/history">View execute runs in History →</a>
+        </p>
     </section>
-
 
     <section class="panel" id="visual-diffs-panel" hidden>
         <h2>Screenshot diffs <span class="muted">(visual)</span></h2>
@@ -245,7 +234,7 @@
                     <div class="actions visual-diffs-actions">
                         <button type="button" class="button" id="visual-diffs-approve-btn">Approve saved good screenshot</button>
                         <label class="button ghost visual-diffs-replace-label">Replace upload
-                            <input type="file" id="visual-diffs-replace-file" accept="image/png,image/*" hidden/>
+                            <input type="file" id="visual-diffs-replace-file" accept="image/png,image/*" hidden data-keel-file-skip="true"/>
                         </label>
                     </div>
                 </div>
@@ -270,7 +259,7 @@
         </div>
     </section>
 
-    <!-- Live run + results host (also reused inside expanded recent rows) -->
+    <!-- Live run + results (mounted in #run-detail-host by execute.js) -->
     <section class="panel" id="job-panel" hidden>
         <h2>Run progress</h2>
         <dl class="status">

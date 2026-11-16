@@ -42,7 +42,22 @@
     var label = document.querySelector('[data-features-label]');
     if (label) label.hidden = !anyVisible;
     var path = location.pathname || '';
-    var featurePaths = { '/generate': 'feature.generate', '/generate-from-knowledge': 'feature.generate', '/record': 'feature.generate', '/plain-cases': 'feature.execute', '/suites': 'feature.execute', '/execute': 'feature.execute', '/automate': 'feature.automate', '/bug-hunter': 'feature.hunt' };
+    var featurePaths = {
+      '/generate': 'feature.generate',
+      '/generate/compare': 'feature.generate',
+      '/generate-from-knowledge': 'feature.generate',
+      '/record': 'feature.generate',
+      '/playback': 'feature.generate',
+      '/plain-cases': 'feature.execute',
+      '/structured-plans': 'feature.execute',
+      '/test-blueprints': 'feature.execute',
+      '/suites': 'feature.execute',
+      '/suites/schedule': 'feature.execute',
+      '/execute': 'feature.execute',
+      '/run-memory': 'feature.execute',
+      '/automate': 'feature.automate',
+      '/bug-hunter': 'feature.hunt'
+    };
     var need = featurePaths[path];
     if (need && (!approved || !hasPerm(perms, need))) {
       var main = document.querySelector('main.shell');
@@ -58,8 +73,30 @@
       }
     }
   }
+  function bindNavGroups() {
+    document.querySelectorAll('.nav-group[data-nav-group-id]').forEach(function (group) {
+      var id = group.getAttribute('data-nav-group-id');
+      var key = 'keel-nav-open-' + id;
+      try {
+        var stored = localStorage.getItem(key);
+        if (stored === '0') group.classList.remove('is-open');
+        else if (stored === '1') group.classList.add('is-open');
+      } catch (e) { /* private mode */ }
+      var toggle = group.querySelector('.nav-toggle');
+      if (!toggle) return;
+      toggle.addEventListener('click', function (e) {
+        e.preventDefault();
+        group.classList.toggle('is-open');
+        try {
+          localStorage.setItem(key, group.classList.contains('is-open') ? '1' : '0');
+        } catch (err) { /* private mode */ }
+      });
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     refreshCredits();
     gateNav();
+    bindNavGroups();
   });
 })();
