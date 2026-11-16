@@ -82,7 +82,7 @@
                     </select>
                 </label>
                 <label>Intent text <span class="muted">(the step text, lowercased)</span>
-                    <input type="text" id="add-intent-text" placeholder="e.g. click the sign in button" style="width:100%"/>
+                    <input type="text" id="add-intent-text" placeholder="e.g. click the sign in button" style="width:100%" autocapitalize="off" autocorrect="off" spellcheck="false"/>
                 </label>
                 <label>Strategy
                     <select id="add-strategy" style="width:100%">
@@ -339,6 +339,22 @@
     }
 
     document.getElementById('mem-filter').addEventListener('input', renderTable);
+
+    // Match the engine: StepIntentBinder keys on intent text lowercased + trimmed.
+    // Normalise as the user types so the field shows exactly what will be stored.
+    (function wireIntentTextNormalise() {
+        const inp = document.getElementById('add-intent-text');
+        if (!inp) return;
+        inp.addEventListener('input', () => {
+            const caret = inp.selectionStart;
+            const next = inp.value.toLowerCase();
+            if (next !== inp.value) {
+                inp.value = next;
+                try { inp.setSelectionRange(caret, caret); } catch (_) { /* ignore */ }
+            }
+        });
+        inp.addEventListener('blur', () => { inp.value = inp.value.trim(); });
+    })();
 
     document.getElementById('add-submit').onclick = async () => {
         const kind = document.getElementById('add-intent-kind').value;
