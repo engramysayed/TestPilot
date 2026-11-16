@@ -299,6 +299,11 @@ public class DomainLocatorMemory {
         return intentKeyFitsLocator(intentKey(intent), locator);
     }
 
+    /** Public wrapper so the portal UI can reject poisoned manual Add attempts before persisting. */
+    public static boolean canRemember(String intentKey, String locator) {
+        return intentKeyFitsLocator(intentKey, locator);
+    }
+
     static boolean intentKeyFitsLocator(String intentKey, String locator) {
         if (intentKey == null || intentKey.isBlank() || locator == null || locator.isBlank()) {
             return false;

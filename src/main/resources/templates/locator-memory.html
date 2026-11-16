@@ -40,6 +40,73 @@
             </p>
         </section>
 
+        <section class="panel" id="add-panel">
+            <div class="panelhead">
+                <div class="panelhead-title">
+                    <h2>Add a locator manually</h2>
+                </div>
+            </div>
+            <p class="muted" style="margin:0 0 0.75rem">
+                Teach Keel a locator for a specific element directly, without waiting for a live run
+                to record it. The same fitness checks the engine uses when learning run here too, so
+                you can't register a login-only control for a non-login click.
+            </p>
+            <div class="add-locator-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.75rem">
+                <label>Path <span class="muted">(e.g. /login or /)</span>
+                    <input type="text" id="add-path" placeholder="/login" style="width:100%"/>
+                </label>
+                <label>Action <span class="muted">(what Keel will do)</span>
+                    <select id="add-action" style="width:100%">
+                        <option value="click">click</option>
+                        <option value="type">type</option>
+                        <option value="hover">hover</option>
+                        <option value="doubleClick">doubleClick</option>
+                        <option value="rightClick">rightClick</option>
+                        <option value="drag">drag</option>
+                    </select>
+                </label>
+                <label>Intent kind
+                    <select id="add-intent-kind" style="width:100%">
+                        <option value="CLICK">CLICK — any click (button, link)</option>
+                        <option value="TYPE_FIELD">TYPE_FIELD — type into a field</option>
+                        <option value="TYPE_USER">TYPE_USER — username/email on login</option>
+                        <option value="TYPE_PASS">TYPE_PASS — password on login</option>
+                        <option value="CLICK_LOGIN">CLICK_LOGIN — login submit button</option>
+                        <option value="HOVER">HOVER</option>
+                        <option value="DOUBLE_CLICK">DOUBLE_CLICK</option>
+                        <option value="RIGHT_CLICK">RIGHT_CLICK</option>
+                        <option value="DRAG">DRAG</option>
+                    </select>
+                </label>
+                <label>Intent text <span class="muted">(what the user said)</span>
+                    <input type="text" id="add-intent-text" placeholder="e.g. email, submit, add to cart" style="width:100%"/>
+                </label>
+                <label>Strategy
+                    <select id="add-strategy" style="width:100%">
+                        <option value="css">css</option>
+                        <option value="xpath">xpath</option>
+                        <option value="id">id</option>
+                        <option value="name">name</option>
+                        <option value="linkText">linkText</option>
+                        <option value="partialLinkText">partialLinkText</option>
+                        <option value="className">className</option>
+                        <option value="tagName">tagName</option>
+                    </select>
+                </label>
+                <label>Locator value
+                    <input type="text" id="add-locator" placeholder="e.g. [data-testid='sign-in']  or  //button[contains(.,'Sign in')]" style="width:100%;font-family:var(--mono,ui-monospace,monospace)"/>
+                </label>
+            </div>
+            <p class="field-hint muted" style="margin-top:0.5rem">
+                The <strong>Strategy</strong> + <strong>Locator value</strong> together are how Selenium finds the element.
+                Pick <code>css</code> and give a CSS selector; pick <code>xpath</code> and give an XPath; pick <code>id</code> / <code>name</code> and give just the attribute value.
+            </p>
+            <p style="margin-top:0.75rem">
+                <button type="button" class="button" id="add-submit">Add locator</button>
+                <span id="add-status" class="muted" style="margin-left:0.5rem" role="status"></span>
+            </p>
+        </section>
+
         <section class="panel" id="dupes-panel" hidden>
             <div class="panelhead">
                 <div class="panelhead-title">
@@ -268,6 +335,37 @@
     }
 
     document.getElementById('mem-filter').addEventListener('input', renderTable);
+
+    document.getElementById('add-submit').onclick = async () => {
+        const kind = document.getElementById('add-intent-kind').value;
+        const text = document.getElementById('add-intent-text').value.trim();
+        const status = document.getElementById('add-status');
+        if (!text) { status.textContent = 'Intent text is required.'; return; }
+        const body = {
+            host: host,
+            path: document.getElementById('add-path').value.trim() || '/',
+            intentKey: kind + '|' + text,
+            strategy: document.getElementById('add-strategy').value,
+            locator: document.getElementById('add-locator').value.trim(),
+            action: document.getElementById('add-action').value
+        };
+        if (!body.locator) { status.textContent = 'Locator value is required.'; return; }
+        status.textContent = 'Adding…';
+        const r = await fetch(base(), {
+            method: 'POST', headers: H, credentials: 'same-origin',
+            body: JSON.stringify(body)
+        });
+        if (r.status === 201) {
+            status.textContent = 'Added. Keel will try it first on the next run.';
+            document.getElementById('add-intent-text').value = '';
+            document.getElementById('add-locator').value = '';
+            refresh();
+        } else {
+            let msg = 'Add failed (HTTP ' + r.status + ')';
+            try { const j = await r.json(); if (j && j.message) msg = j.message; } catch (_) {}
+            status.textContent = msg;
+        }
+    };
 
     document.getElementById('launcher-continue').onclick = () => {
         const sel = document.getElementById('launcher-project-select');

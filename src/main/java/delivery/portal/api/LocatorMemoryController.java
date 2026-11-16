@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,6 +39,24 @@ public class LocatorMemoryController {
         if (denied != null) return denied;
         try {
             return ResponseEntity.ok(memory.list(projectId));
+        } catch (Exception e) {
+            return internal(e);
+        }
+    }
+
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> create(@PathVariable String projectId, @RequestBody EntryBody body) {
+        ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(store, projectId, currentUser.requireUserId());
+        if (denied != null) return denied;
+        if (body == null) return bad("body required");
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(memory.create(projectId,
+                    body.host(), body.path(), body.intentKey(),
+                    body.strategy(), body.locator(), body.action()));
+        } catch (LocatorMemoryService.NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
+        } catch (IllegalArgumentException e) {
+            return bad(e.getMessage());
         } catch (Exception e) {
             return internal(e);
         }

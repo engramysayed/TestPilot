@@ -51,6 +51,51 @@ public class LocatorMemoryService {
         return out;
     }
 
+    public Map<String, Object> create(String projectId, String host, String path, String intentKey,
+                                      String strategy, String locator, String action) throws IOException {
+        if (intentKey == null || intentKey.isBlank()) {
+            throw new IllegalArgumentException("intentKey required (e.g. CLICK|sign in)");
+        }
+        if (!intentKey.contains("|")) {
+            throw new IllegalArgumentException("intentKey must be KIND|text (e.g. CLICK|sign in)");
+        }
+        if (locator == null || locator.isBlank()) {
+            throw new IllegalArgumentException("locator required");
+        }
+        if (!delivery.store.DomainLocatorMemory.canRemember(intentKey, locator)) {
+            throw new IllegalArgumentException(
+                    "This locator cannot be remembered for this intent — Keel's fitness checks reject it "
+                    + "(e.g. assert-visible is not remembered; login controls are rejected for non-login intents). "
+                    + "Use a different intent or locator.");
+        }
+        Path file = resolveSiteFile(projectId).orElseThrow(
+                () -> new NotFoundException("No site resolvable for this project (missing base URL?)"));
+        Path lock = file.resolveSibling(FILE_NAME + ".lock");
+        try {
+            return delivery.identity.PublicationLock.<Map<String, Object>>call(lock, () -> {
+                List<Map<String, Object>> entries = new ArrayList<>(
+                        Files.isRegularFile(file) ? readEntries(file) : List.of());
+                // Replace any existing entry for the same slot key so the file stays consistent with
+                // the engine's (host, path, intentKey) uniqueness contract.
+                entries.removeIf(e -> matches(e, host, path, intentKey));
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("host", host == null ? "" : host);
+                entry.put("path", path == null ? "" : path);
+                entry.put("intentKey", intentKey);
+                entry.put("strategy", strategy == null ? "" : strategy);
+                entry.put("locator", locator);
+                entry.put("action", action == null ? "" : action);
+                entries.add(entry);
+                writeEntries(file, entries);
+                return Map.<String, Object>of("ok", true);
+            });
+        } catch (NotFoundException | IllegalArgumentException re) {
+            throw re;
+        } catch (Exception e) {
+            throw new IOException("create failed: " + e.getMessage(), e);
+        }
+    }
+
     public Map<String, Object> update(String projectId, String host, String path,
                                       String intentKey, String strategy, String locator,
                                       String action) throws IOException {
