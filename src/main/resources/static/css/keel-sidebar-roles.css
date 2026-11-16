@@ -40,15 +40,41 @@
 html[data-theme="dark"] .keel-perm-chips li{background:var(--calm-accent-soft,#1a3330);color:var(--calm-ink,#e7eaf0);border-color:var(--calm-line,#2d3440)}
 html[data-theme="dark"] .keel-perm-grid label{background:transparent;border-color:var(--calm-line,#2d3440)}
 
+/* Sidebar: help (? ) lives on page sections — keep nav clean. */
+.sidebar-nav .keel-feature-help-btn { display: none !important; }
+
 /* Sidebar child items — one level of indent under a parent nav link. */
-.sidebar-nav a.sidebar-child{padding-left:2.1rem;font-size:.82rem;opacity:.85}
-.sidebar-nav a.sidebar-child .nav-ico{width:14px;height:14px}
-.sidebar-nav a.sidebar-child.active{opacity:1}
+.sidebar-nav .nav-children{
+  margin:0.2rem 0 0.35rem 0.35rem;
+  padding:0.2rem 0 0.35rem 0.55rem;
+  border-left:2px solid rgba(125,219,201,0.22);
+  border-radius:0 0 0 8px;
+}
+.sidebar-nav a.sidebar-child{
+  padding:0.45rem 0.65rem 0.45rem 1.15rem;
+  margin:0.1rem 0;
+  font-size:.84rem;
+  opacity:.9;
+  border-radius:8px;
+  width:calc(100% - 0.15rem);
+}
+.sidebar-nav a.sidebar-child .nav-ico{width:14px;height:14px;opacity:.85}
+.sidebar-nav a.sidebar-child:hover{
+  background:rgba(255,255,255,.06);
+  opacity:1;
+}
+.sidebar-nav a.sidebar-child.active{
+  opacity:1;
+  background:rgba(125,219,201,0.12);
+  font-weight:600;
+}
+.sidebar-nav a.sidebar-child.active::before{display:none}
 
 /* Dashboard KPI tiles — colored, iconized, less boring than flat text stats. */
 .dash-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:0 0 1.25rem}
 .dash-heading h1{margin:0;font-size:1.5rem;letter-spacing:-.01em}
-.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.75rem;margin:0 0 1.5rem}
+.kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0.75rem;margin:0 0 1.5rem}
+@media (max-width: 1100px){.kpi-row{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}}
 .kpi{display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;border:1px solid var(--calm-line,#e5e7eb);border-radius:12px;background:var(--calm-paper,#fff);transition:transform .15s ease, box-shadow .15s ease}
 .kpi:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.05)}
 .kpi-ico{flex:0 0 auto;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:9px;background:var(--calm-accent-soft,#eef2ff);color:var(--calm-accent,#4f46e5)}

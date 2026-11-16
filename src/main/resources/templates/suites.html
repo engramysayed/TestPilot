@@ -1,98 +1,22 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <th:block th:replace="~{fragments :: pageHead(title='Suites (test packs)')}"></th:block>
+    <th:block th:replace="~{fragments :: pageHead(title='Test suites')}"></th:block>
     <style>
-        .suite-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            margin: 0.2rem 0.25rem 0.2rem 0;
-            padding: 0.2rem 0.55rem;
-            border-radius: 999px;
-            border: 1px solid rgba(15, 118, 110, 0.35);
-            background: rgba(15, 118, 110, 0.08);
-            font-size: 0.85rem;
-            cursor: pointer;
-            user-select: none;
-        }
-        .suite-chip.active {
-            background: rgba(15, 118, 110, 0.22);
-            border-color: rgba(15, 118, 110, 0.65);
-            font-weight: 600;
-        }
-        .suite-chip .chip-x {
-            border: 0;
-            background: transparent;
-            cursor: pointer;
-            padding: 0 0.15rem;
-            line-height: 1;
-            color: inherit;
-            opacity: 0.7;
-        }
-        .suite-chip .chip-x:hover { opacity: 1; }
-        .suite-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-        .suite-list li {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin: 0.35rem 0;
-            flex-wrap: wrap;
-        }
-        .suite-list li.active-suite button.suite-pick {
-            font-weight: 600;
-        }
-        .kind-row { display: flex; gap: 1rem; flex-wrap: wrap; margin: 0.5rem 0; }
-        .kind-row label { display: inline-flex; align-items: center; gap: 0.35rem; }
-        .field-row { margin-top: 0.75rem; }
-        .field-row label { display: block; }
-        .field-row input[type="text"],
-        .field-row input[type="number"],
-        .field-row select,
-        .field-row textarea {
+        .suite-compose-panel .field-row { margin-top: 0.85rem; }
+        .suite-compose-panel .field-row label { display: block; }
+        .suite-compose-panel input[type="text"],
+        .suite-compose-panel select {
             width: min(100%, 28rem);
             max-width: 100%;
         }
-        .panel-actions { margin-top: 0.85rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
-        .tag-built-ins, .tag-customs { margin-top: 0.5rem; }
-        .tc-picker-list {
-            max-height: 14rem;
-            overflow: auto;
-            border: 1px solid rgba(15, 23, 42, 0.12);
-            border-radius: 0.35rem;
-            padding: 0.35rem 0.5rem;
-            margin-top: 0.35rem;
-        }
-        .tc-picker-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.45rem;
-            padding: 0.25rem 0.15rem;
-            border-radius: 0.25rem;
-        }
-        .tc-picker-row:focus-within { background: rgba(15, 118, 110, 0.06); }
-        .tc-picker-row label { flex: 1; cursor: pointer; margin: 0; }
-        .tc-picker-selected {
-            list-style: none;
-            margin: 0.35rem 0 0;
-            padding: 0;
-        }
-        .tc-picker-selected li {
-            display: flex;
-            align-items: center;
-            gap: 0.35rem;
-            flex-wrap: wrap;
-            margin: 0.25rem 0;
-        }
-        .tc-picker-unresolved { color: #b45309; font-weight: 600; }
-        .tc-picker-plain-hint { font-size: 0.8rem; }
+        .suite-compose-panel .panel-actions { margin-top: 1.1rem; }
+        /* Schedule page still uses list/chips from shared suites.js */
+        .suite-list { list-style: none; margin: 0; padding: 0; }
+        .suite-pick--name { width: 100%; text-align: left; justify-content: flex-start; }
     </style>
 </head>
-<body class="app-body">
+<body class="app-body suites-compose-page">
 <link rel="stylesheet" th:href="@{/css/keel-portal-enhancements.css}"/>
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
@@ -100,13 +24,9 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1>Suites <span class="muted">(test packs)</span></h1>
+            <h1>Test suites</h1>
         </div>
     </div>
-
-    <p id="api-wait-note" class="muted" hidden role="status">
-        Waiting on Backend test-pack / schedule APIs.
-    </p>
 
     <section class="panel workspace-launcher" id="workspace-launcher">
         <h2>Choose a project</h2>
@@ -139,90 +59,57 @@
             </p>
         </section>
 
-        <section class="panel" id="suites-list-panel">
-            <h2>Suites <span class="muted">(test packs)</span></h2>
+        <section class="panel suite-compose-panel" id="suite-compose-panel">
+            <h2>Test suite</h2>
+            <p class="muted" style="margin:0 0 0.5rem">
+                Pick <strong>Smoke</strong> (quick), <strong>Regression</strong> (wider), or <strong>Nightly</strong> (usually scheduled).
+                These are the only pack types on this page.
+            </p>
+
             <div class="field-row">
-                <label>Name
-                    <input type="text" id="create-name" maxlength="200" placeholder="e.g. Checkout happy path"/>
-                </label>
+                <label for="suite-tag-select">Suite type</label>
+                <select id="suite-tag-select">
+                    <option value="smoke">Smoke</option>
+                    <option value="regression">Regression</option>
+                    <option value="nightly">Nightly</option>
+                </select>
             </div>
+
             <div class="field-row">
-                <label>Tags (comma-separated; avoid reserved smoke/regression/nightly for user packs)
-                    <input type="text" id="create-tags" maxlength="400" placeholder="e.g. checkout, critical"/>
-                </label>
+                <label for="create-name">Suite name</label>
+                <input type="text" id="create-name" maxlength="200" placeholder="e.g. Smoke checkout"/>
             </div>
-            <div class="field-row" id="create-cases-row">
-                <label>Test cases <span class="muted">(optional)</span></label>
-                <input type="search" id="create-library-search" placeholder="Search library by id or title" autocomplete="off"
-                       aria-controls="create-library-list"/>
-                <p id="create-library-status" class="muted" role="status" style="margin:0.35rem 0 0"></p>
-                <div id="create-library-list" class="tc-picker-list" role="listbox" aria-label="Library test cases"></div>
-                <p id="create-selected-summary" class="muted" style="margin:0.5rem 0 0.25rem">Selected: 0</p>
-                <ul id="create-selected-list" class="tc-picker-selected" aria-label="Selected test cases for new pack"></ul>
+
+            <div class="field-row" id="compose-cases-row">
+                <label>Test cases</label>
+                <div class="tc-multiselect" id="compose-tc-multiselect">
+                    <div class="tc-ms" id="suite-compose-tc-ms">
+                        <button type="button" class="tc-ms-trigger" id="suite-compose-tc-ms-trigger"
+                                aria-haspopup="listbox" aria-expanded="false">
+                            <span class="tc-ms-chips" id="suite-compose-tc-ms-chips"></span>
+                            <span class="tc-ms-summary muted" id="suite-compose-tc-ms-summary">Pick cases…</span>
+                            <span class="tc-ms-caret" aria-hidden="true"></span>
+                        </button>
+                        <div class="tc-ms-dropdown" id="suite-compose-tc-ms-dropdown" hidden>
+                            <input type="search" id="suite-compose-tc-ms-search" class="tc-ms-search"
+                                   placeholder="Search by id or title…" autocomplete="off"/>
+                            <div class="tc-ms-toolbar">
+                                <button type="button" class="button ghost" id="suite-compose-tc-ms-all">Select all</button>
+                                <button type="button" class="button ghost" id="suite-compose-tc-ms-none">Clear</button>
+                            </div>
+                            <div id="suite-compose-tc-ms-list" class="tc-ms-list" role="listbox"
+                                 aria-label="Library test cases"></div>
+                        </div>
+                    </div>
+                </div>
+                <p id="compose-library-status" class="muted" role="status" style="margin:0.35rem 0 0"></p>
             </div>
+
             <div class="panel-actions">
-                <button type="button" class="button" id="create-suite" disabled>Create test pack</button>
-                <button type="button" class="button ghost" id="refresh-suites">Refresh</button>
+                <button type="button" class="button" id="create-suite" disabled>Save test suite</button>
                 <span id="create-status" class="muted" role="status"></span>
             </div>
-            <p id="suites-empty" class="muted" style="margin-top:0.85rem">No test packs yet.</p>
-            <ul id="suites-list" class="suite-list" hidden></ul>
-            <p id="suites-meta" class="muted" style="margin-top:0.5rem"></p>
         </section>
-
-        <div id="suite-detail" hidden>
-            <section class="panel" id="tags-panel">
-                <h2>Tags</h2>
-                <p class="muted" style="margin:0 0 0.35rem">Built-in tags</p>
-                <div class="tag-built-ins" id="builtin-chips"></div>
-                <p class="muted" style="margin:0.75rem 0 0.35rem">Your own tags</p>
-                <div class="tag-customs" id="custom-chips"></div>
-                <div class="field-row" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:flex-end">
-                    <label style="flex:1;min-width:12rem">Add custom tag
-                        <input type="text" id="custom-tag-input" maxlength="80" placeholder="e.g. checkout"/>
-                    </label>
-                    <button type="button" class="button" id="add-custom-tag">Add</button>
-                </div>
-                <div class="panel-actions">
-                    <button type="button" class="button" id="save-tags">Save tags</button>
-                    <span id="tags-status" class="muted" role="status"></span>
-                </div>
-            </section>
-
-            <section class="panel" id="cases-panel">
-                <h2>Test cases</h2>
-                <div class="field-row">
-                    <label class="sr-only" for="detail-library-search">Search library</label>
-                    <input type="search" id="detail-library-search" placeholder="Search by id or title" autocomplete="off"
-                           aria-controls="detail-library-list"/>
-                </div>
-                <p id="detail-library-status" class="muted" role="status" style="margin:0.35rem 0 0"></p>
-                <div id="detail-library-list" class="tc-picker-list" role="listbox" aria-label="Library test cases"></div>
-                <p id="detail-selected-summary" class="muted" style="margin:0.65rem 0 0.25rem">Selected: 0</p>
-                <ul id="detail-selected-list" class="tc-picker-selected" aria-label="Selected test cases"></ul>
-                <p id="detail-unresolved-note" class="tc-picker-unresolved" hidden role="status"></p>
-                <div class="panel-actions">
-                    <button type="button" class="button" id="save-membership">Save test cases</button>
-                    <span id="membership-status" class="muted" role="status"></span>
-                </div>
-            </section>
-
-            <section class="panel" id="plan-panel">
-                <h2>Structured plan</h2>
-                <label>Plan id
-                    <input type="text" id="detail-structured-plan-id" placeholder="login-happy" autocomplete="off"/>
-                </label>
-                <div class="panel-actions" style="margin-top:0.65rem">
-                    <button type="button" class="button ghost" id="save-structured-plan">Save plan link</button>
-                    <span id="plan-link-status" class="muted" role="status"></span>
-                </div>
-            </section>
-
-            <section class="panel">
-                <h2>Automation</h2>
-                <p><a class="button ghost" id="go-schedule-link" href="/suites/schedule">Schedule, alerts &amp; watch →</a></p>
-            </section>
-        </div>
     </div>
 </main>
 </div>

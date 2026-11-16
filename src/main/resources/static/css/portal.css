@@ -746,6 +746,41 @@ code, .mono { font-family: var(--mono); font-size: 0.86em; }
 .table--runs td.clip {
     max-width: none;
 }
+/* /runs page (7 columns): Run · Kind · Project · Status · Progress · Message · Actions */
+.shell-runs .table--runs th:nth-child(1),
+.shell-runs .table--runs td:nth-child(1) { width: 13%; }
+.shell-runs .table--runs th:nth-child(2),
+.shell-runs .table--runs td:nth-child(2) { width: 8%; }
+.shell-runs .table--runs th:nth-child(3),
+.shell-runs .table--runs td:nth-child(3) { width: 14%; }
+.shell-runs .table--runs th:nth-child(4),
+.shell-runs .table--runs td:nth-child(4) { width: 10%; }
+.shell-runs .table--runs th:nth-child(5),
+.shell-runs .table--runs td:nth-child(5) { width: 11%; }
+.shell-runs .table--runs th:nth-child(6),
+.shell-runs .table--runs td:nth-child(6) { width: 22%; }
+.shell-runs .table--runs th:nth-child(7),
+.shell-runs .table--runs td:nth-child(7) { width: 22%; }
+.shell-runs .table--runs th:nth-child(8),
+.shell-runs .table--runs td:nth-child(8) { width: auto; }
+.shell-runs .table--runs td.clip {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.shell-runs .table--runs .actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+    justify-content: flex-end;
+}
+.shell-runs .table--runs .actions .button,
+.shell-runs .table--runs .actions a {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
 .badge {
     display: inline-block;
     padding: 0.22rem 0.55rem;

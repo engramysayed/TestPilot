@@ -18,10 +18,18 @@
 }
 .sidebar-nav-item:hover .keel-feature-help-btn,
 .sidebar-nav-item:focus-within .keel-feature-help-btn,
+.nav-main-wrap:hover .keel-feature-help-btn,
+.nav-main-wrap:focus-within .keel-feature-help-btn,
 .keel-feature-help-btn:focus-visible,
 .keel-feature-help-btn.is-open {
   opacity: 1;
 }
+.sidebar .nav-main-wrap .keel-feature-help-btn,
+.sidebar .sidebar-nav-item .keel-feature-help-btn {
+  opacity: 0;
+}
+.sidebar .nav-main-wrap .keel-feature-help-btn:focus-visible,
+.sidebar .sidebar-nav-item .keel-feature-help-btn:focus-visible { opacity: 1; }
 .keel-feature-help-btn:hover,
 .keel-feature-help-btn.is-open {
   color: #7ddbc9;

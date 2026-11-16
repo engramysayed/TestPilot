@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title th:text="|Keel · ${status ?: 'Error'}|">Keel · Error</title>
+    <link rel="stylesheet" th:href="@{/css/portal.css}"/>
+    <link rel="stylesheet" th:href="@{/css/keel-theme-calm.css}"/>
+    <style>
+        .error-shell {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 2rem 1rem;
+            background: var(--bg, #0f1419);
+        }
+        .error-card {
+            max-width: 32rem;
+            width: 100%;
+            padding: 2rem 2.25rem;
+            border-radius: 14px;
+            background: var(--panel, #182026);
+            border: 1px solid var(--line, #263038);
+            text-align: center;
+        }
+        .error-code {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 0 0 0.25rem;
+            color: var(--accent, #7ddbc9);
+            font-variant-numeric: tabular-nums;
+        }
+        .error-title { margin: 0 0 0.75rem; font-size: 1.25rem; }
+        .error-msg { color: var(--muted, #8a9aa5); margin: 0 0 1.5rem; }
+        .error-actions { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+<main class="error-shell">
+    <div class="error-card">
+        <p class="error-code" th:text="${status} ?: 'Error'">403</p>
+        <h1 class="error-title"
+            th:text="${status == 403 ? 'Not allowed' : (status == 404 ? 'Page not found' : (status == 401 ? 'Please sign in' : 'Something went wrong'))}">
+            Not allowed
+        </h1>
+        <p class="error-msg"
+           th:text="${status == 403 ? 'Your account does not have access to this page. Ask an admin to grant it, or go back.' : (status == 404 ? 'That page does not exist here.' : (status == 401 ? 'Your session expired. Sign in to continue.' : (error ?: 'An unexpected error occurred.')))}">
+            Your account does not have access to this page.
+        </h1>
+        <div class="error-actions">
+            <a class="button primary" href="/dashboard">Back to dashboard</a>
+            <a class="button ghost" th:if="${status == 401}" href="/login">Sign in</a>
+        </div>
+    </div>
+</main>
+</body>
+</html>

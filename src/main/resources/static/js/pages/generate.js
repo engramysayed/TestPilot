@@ -437,6 +437,7 @@
     async function loadGenerateModels() {
         const hint = document.getElementById('generate-model-hint');
         const setHint = function (txt) { if (hint) hint.textContent = txt; };
+        if (!generateModelSelect) return;
         generateModelSelect.disabled = true;
         setHint('Loading models from Ollama…');
         try {
@@ -559,16 +560,16 @@
 
     function updatePreview() {
         const full = fullPromptText();
-        preview.textContent = full || 'Loading prompt…';
-        copyBtn.disabled = !full;
+        if (preview) preview.textContent = full || 'Loading prompt…';
+        if (copyBtn) copyBtn.disabled = !full;
         if (structuredIntakeOn) composeStoriesFromIntake();
         const hasStories = !!(storiesInput && storiesInput.value.trim());
-        if (generateBtn) generateBtn.disabled = !modelsReady || !projectSel.value || !hasStories;
-        if (compareBtn) compareBtn.disabled = !modelsReady || !projectSel.value || !hasStories
+        if (generateBtn) generateBtn.disabled = !modelsReady || !(projectSel && projectSel.value) || !hasStories;
+        if (compareBtn) compareBtn.disabled = !modelsReady || !(projectSel && projectSel.value) || !hasStories
             || !selectedGenerateModel() || !selectedCompareModelB();
-        if (runPipelineBtn) runPipelineBtn.disabled = !projectSel.value;
+        if (runPipelineBtn) runPipelineBtn.disabled = !(projectSel && projectSel.value);
         updateBulkControls();
-        if (importBtn) importBtn.disabled = !projectSel.value || !importRaw.value.trim();
+        if (importBtn) importBtn.disabled = !(projectSel && projectSel.value) || !importRaw.value.trim();
     }
 
     function updateAutomateLink(projectId) {
@@ -1322,14 +1323,15 @@
             })
             .catch(function (err) {
                 promptText = '';
-                preview.textContent = 'Prompt failed to load. Refresh the page or use Ollama generate above.';
-                copyBtn.disabled = true;
+                if (preview) preview.textContent = 'Prompt failed to load. Refresh the page or use Ollama generate above.';
+                if (copyBtn) copyBtn.disabled = true;
                 setPromptStatus(err && err.message ? err.message : 'Failed to load prompt', true);
             });
     }
 
     var projectPicker;
-    if (window.KeelProjectPicker && projectSel) {
+    function initProjectPicker() {
+        if (projectPicker || !window.KeelProjectPicker || !projectSel) return;
         projectPicker = window.KeelProjectPicker.bind({
             storageKey: STORAGE_KEY,
             initialProjectId: initialProjectId,
@@ -1359,6 +1361,7 @@
     }
 
     async function loadProjects() {
+        initProjectPicker();
         try {
             if (projectPicker) {
                 projects = await projectPicker.loadProjects();
@@ -2208,18 +2211,31 @@
         updatePreview();
     });
 
-    restoreAuthoringReviewProvider();
-    loadPrompt();
-    loadGenerateModels();
-    loadProjects().catch(function () {
-        if (projectErr) {
-            projectErr.hidden = false;
-            projectErr.textContent = 'Could not load projects.';
-        }
-    });
+    function bootGeneratePage() {
+        initProjectPicker();
+        restoreAuthoringReviewProvider();
+        loadPrompt();
+        loadGenerateModels();
+        loadProjects().catch(function () {
+            if (projectErr) {
+                projectErr.hidden = false;
+                projectErr.textContent = 'Could not load projects.';
+            }
+            if (launcherErr) {
+                launcherErr.hidden = false;
+                launcherErr.textContent = 'Could not load projects.';
+            }
+        });
 
-    const pendingCompareJobId = new URLSearchParams(window.location.search).get('compareJobId');
-    if (pendingCompareJobId) {
-        loadCompareFromJob(pendingCompareJobId);
+        const pendingCompareJobId = new URLSearchParams(window.location.search).get('compareJobId');
+        if (pendingCompareJobId) {
+            loadCompareFromJob(pendingCompareJobId);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootGeneratePage);
+    } else {
+        bootGeneratePage();
     }
 })();

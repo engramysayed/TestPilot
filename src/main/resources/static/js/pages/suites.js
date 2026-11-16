@@ -9,6 +9,9 @@
         'weekly-mon-2am': '0 2 * * 1'
     };
     const schedulePage = document.body.classList.contains('suites-schedule-page');
+    const composePage = document.body.classList.contains('suites-compose-page');
+    const suiteTagSelect = document.getElementById('suite-tag-select');
+    const composeLibraryStatus = document.getElementById('compose-library-status');
     const FALLBACK_CHANNELS = [
         { id: 'email', enabled: true, minSeverity: null },
         { id: 'telegram', enabled: true, minSeverity: null },
@@ -109,6 +112,7 @@
     let libraryLoadedForProject = null;
     let createDraftTcIds = [];
     let detailDraftTcIds = [];
+    let composeDraftTcIds = [];
     let libraryFocusIndex = -1;
 
     function escapeHtml(s) {
@@ -392,41 +396,96 @@
         });
     }
 
-    function refreshPickerViews() {
-        renderPickerList(createLibraryList, createDraftTcIds, createLibrarySearch, function (id, on) {
-            if (on && createDraftTcIds.indexOf(id) < 0) createDraftTcIds.push(id);
-            else if (!on) createDraftTcIds = createDraftTcIds.filter(function (x) { return x !== id; });
-            createDraftTcIds = dedupeTcIds(createDraftTcIds);
-            refreshPickerViews();
+    let createTcMs = null;
+    let detailTcMs = null;
+    let composeTcMs = null;
+
+    function libraryAsTcMsCases() {
+        return libraryItems.map(function (it) {
+            return { tcId: it.id, title: it.title || '', keelPath: it.keelPath };
         });
-        renderPickerList(detailLibraryList, detailDraftTcIds, detailLibrarySearch, function (id, on) {
-            if (on && detailDraftTcIds.indexOf(id) < 0) detailDraftTcIds.push(id);
-            else if (!on) detailDraftTcIds = detailDraftTcIds.filter(function (x) { return x !== id; });
-            detailDraftTcIds = dedupeTcIds(detailDraftTcIds);
-            refreshPickerViews();
-            updateRunSuiteEnabled();
+    }
+
+    function syncMsFromIds(ms, rootId, ids) {
+        if (!ms) return;
+        const root = document.getElementById(rootId);
+        if (!root) return;
+        const want = {};
+        (ids || []).forEach(function (id) { want[id] = true; });
+        root.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+            cb.checked = !!want[cb.value];
         });
-        renderSelectedList(createSelectedList, createSelectedSummary, createDraftTcIds,
-            function (id) {
-                createDraftTcIds = createDraftTcIds.filter(function (x) { return x !== id; });
-                refreshPickerViews();
-            },
-            function (id, delta) {
-                const moved = moveIdInList(createDraftTcIds, id, delta);
-                if (moved) createDraftTcIds = moved;
-                refreshPickerViews();
+        ms.refreshSummary();
+    }
+
+    function initSuiteTcMultiselects() {
+        if (!window.KeelTcMultiselect) return;
+        if (!createTcMs && document.getElementById('create-tc-ms')) {
+            createTcMs = window.KeelTcMultiselect.mount({
+                root: 'create-tc-ms',
+                listId: 'create-library-pick-list',
+                selectAllId: 'create-tc-ms-all',
+                selectNoneId: 'create-tc-ms-none',
+                checkboxClass: 'suite-create-pick-check',
+                onChange: function (selected) {
+                    createDraftTcIds = dedupeTcIds(selected.map(function (cb) { return cb.value; }));
+                }
             });
-        renderSelectedList(detailSelectedList, detailSelectedSummary, detailDraftTcIds,
-            function (id) {
-                detailDraftTcIds = detailDraftTcIds.filter(function (x) { return x !== id; });
+        }
+        if (!detailTcMs && document.getElementById('detail-tc-ms')) {
+            detailTcMs = window.KeelTcMultiselect.mount({
+                root: 'detail-tc-ms',
+                listId: 'detail-library-pick-list',
+                selectAllId: 'detail-tc-ms-all',
+                selectNoneId: 'detail-tc-ms-none',
+                checkboxClass: 'suite-detail-pick-check',
+                onChange: function (selected) {
+                    detailDraftTcIds = dedupeTcIds(selected.map(function (cb) { return cb.value; }));
+                    updateRunSuiteEnabled();
+                }
+            });
+        }
+        if (!composeTcMs && document.getElementById('suite-compose-tc-ms')) {
+            composeTcMs = window.KeelTcMultiselect.mount({
+                root: 'suite-compose-tc-ms',
+                listId: 'suite-compose-tc-ms-list',
+                selectAllId: 'suite-compose-tc-ms-all',
+                selectNoneId: 'suite-compose-tc-ms-none',
+                checkboxClass: 'suite-compose-pick-check',
+                onChange: function (selected) {
+                    composeDraftTcIds = dedupeTcIds(selected.map(function (cb) { return cb.value; }));
+                }
+            });
+        }
+    }
+
+    function pushLibraryToMultiselects() {
+        initSuiteTcMultiselects();
+        const cases = libraryAsTcMsCases();
+        if (createTcMs) {
+            createTcMs.setCases(cases);
+            syncMsFromIds(createTcMs, 'create-tc-ms', createDraftTcIds);
+        }
+        if (detailTcMs) {
+            detailTcMs.setCases(cases);
+            syncMsFromIds(detailTcMs, 'detail-tc-ms', detailDraftTcIds);
+        }
+        if (composeTcMs) {
+            composeTcMs.setCases(cases);
+            syncMsFromIds(composeTcMs, 'suite-compose-tc-ms', composeDraftTcIds);
+        }
+    }
+
+    function refreshPickerViews() {
+        if (createLibraryList || detailLibraryList) {
+            renderPickerList(createLibraryList, createDraftTcIds, createLibrarySearch, function () { refreshPickerViews(); });
+            renderPickerList(detailLibraryList, detailDraftTcIds, detailLibrarySearch, function () {
                 refreshPickerViews();
                 updateRunSuiteEnabled();
-            },
-            function (id, delta) {
-                const moved = moveIdInList(detailDraftTcIds, id, delta);
-                if (moved) detailDraftTcIds = moved;
-                refreshPickerViews();
             });
+        } else {
+            pushLibraryToMultiselects();
+        }
         updateRunSuiteEnabled();
     }
 
@@ -455,6 +514,7 @@
     async function loadTestCaseLibrary(projectId) {
         if (!projectId) return;
         libraryLoadError = '';
+        if (composeLibraryStatus) composeLibraryStatus.textContent = 'Loading library…';
         if (createLibraryStatus) createLibraryStatus.textContent = 'Loading library…';
         if (detailLibraryStatus) detailLibraryStatus.textContent = 'Loading library…';
         try {
@@ -489,10 +549,12 @@
             libraryItems = Array.isArray(data.items) ? data.items : [];
             libraryLoadedForProject = projectId;
             libraryLoadError = '';
-            if (createLibraryStatus) createLibraryStatus.textContent = libraryItems.length
-                ? (libraryItems.length + ' case(s) in library') : 'No cases in library yet.';
-            if (detailLibraryStatus) detailLibraryStatus.textContent = createLibraryStatus
-                ? createLibraryStatus.textContent : '';
+            const libLine = libraryItems.length
+                ? (libraryItems.length + ' case(s) in library')
+                : 'No cases in library yet.';
+            if (composeLibraryStatus) composeLibraryStatus.textContent = libLine;
+            if (createLibraryStatus) createLibraryStatus.textContent = libLine;
+            if (detailLibraryStatus) detailLibraryStatus.textContent = libLine;
             refreshPickerViews();
         } catch (_) {
             libraryLoadError = 'Could not load library.';
@@ -571,10 +633,88 @@
     }
 
     function updateCreateEnabled() {
+        if (!createBtn) return;
         const projectId = projectSel && projectSel.value;
         const name = (createName && createName.value || '').trim();
+        if (composePage) {
+            createBtn.disabled = !!(createInFlight || !projectId || !name);
+            return;
+        }
         const tags = parseCsv(createTags && createTags.value);
         createBtn.disabled = !!(createInFlight || !projectId || !name || tags.length < 1);
+    }
+
+    function findSuiteByBuiltinTag(tag) {
+        const key = String(tag || '').toLowerCase();
+        return suites.find(function (s) {
+            const tags = Array.isArray(s.tags) ? s.tags : [];
+            return tags.some(function (t) { return String(t).toLowerCase() === key; });
+        }) || null;
+    }
+
+    function syncComposeFromTag() {
+        if (!composePage || !suiteTagSelect) return;
+        const tag = suiteTagSelect.value || 'smoke';
+        const suite = findSuiteByBuiltinTag(tag);
+        if (createName) {
+            const existingName = suite && (suite.name || '').trim();
+            createName.value = existingName || (tag.charAt(0).toUpperCase() + tag.slice(1));
+        }
+        composeDraftTcIds = suite && Array.isArray(suite.tcIds) ? suite.tcIds.slice() : [];
+        selectedSuiteId = suite ? suiteIdOf(suite) : null;
+        selectedSuite = suite;
+        pushLibraryToMultiselects();
+        updateCreateEnabled();
+    }
+
+    async function saveComposeSuite() {
+        const projectId = projectSel && projectSel.value;
+        const tag = (suiteTagSelect && suiteTagSelect.value) || 'smoke';
+        const name = (createName && createName.value || '').trim();
+        const tcIds = composeTcMs
+            ? dedupeTcIds(composeTcMs.getSelectedIds())
+            : dedupeTcIds(composeDraftTcIds);
+        if (!projectId || !name) {
+            if (createStatus) createStatus.textContent = 'Choose a project and suite name.';
+            return;
+        }
+        createInFlight = true;
+        updateCreateEnabled();
+        if (createStatus) createStatus.textContent = 'Saving…';
+        showApiWait(false);
+        const existing = findSuiteByBuiltinTag(tag);
+        const suiteId = existing ? suiteIdOf(existing) : null;
+        const body = { name: name, tags: [tag], tcIds: tcIds };
+        try {
+            const url = suiteId
+                ? suitesBase(projectId) + '/' + encodeURIComponent(suiteId)
+                : suitesBase(projectId);
+            const res = await fetch(url, {
+                method: suiteId ? 'PUT' : 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify(body)
+            });
+            if (isStubStatus(res.status)) {
+                if (createStatus) createStatus.textContent = 'Test-pack API is not available on this server yet.';
+                showApiWait(true);
+                return;
+            }
+            if (!res.ok) {
+                const msg = await readErrorMessage(res);
+                if (createStatus) createStatus.textContent = msg || ('Save failed (HTTP ' + res.status + ')');
+                return;
+            }
+            apiAvailable = true;
+            if (createStatus) createStatus.textContent = 'Saved.';
+            await loadSuites(projectId);
+            syncComposeFromTag();
+        } catch (_) {
+            if (createStatus) createStatus.textContent = 'Could not save test suite.';
+        } finally {
+            createInFlight = false;
+            updateCreateEnabled();
+        }
     }
 
     function suitesBase(projectId) {
@@ -618,13 +758,19 @@
     }
 
     function renderSuitesList() {
+        if (!suitesList) {
+            if (composePage) syncComposeFromTag();
+            return;
+        }
         if (!suites.length) {
             suitesEmpty.hidden = false;
             suitesEmpty.textContent = apiAvailable ? 'No test packs yet.' : 'No test packs yet.';
             suitesList.hidden = true;
             suitesList.innerHTML = '';
             if (suitesMeta) {
-                suitesMeta.textContent = apiAvailable ? '' : 'Waiting on Backend test-pack / schedule APIs.';
+                suitesMeta.textContent = apiAvailable
+                    ? ''
+                    : 'Could not load test packs — try Refresh, or check that the portal is connected to the test-pack API.';
             }
             if (suiteDetail) suiteDetail.hidden = true;
             return;
@@ -634,42 +780,19 @@
         suitesList.innerHTML = suites.map(function (row) {
             const id = suiteIdOf(row) || '';
             const label = suiteDisplayLabel(row);
-            const tags = Array.isArray(row.tags) ? row.tags : [];
-            const builtIn = !!row.builtIn;
             const active = id && id === selectedSuiteId;
-            const tagBits = suiteTagLine(row);
-            if (schedulePage) {
-                return '<li class="' + (active ? 'active-suite' : '') + '">'
-                    + '<button type="button" class="button ghost suite-pick" data-suite-id="' + escapeHtml(id) + '"'
-                    + ' style="padding:0;text-align:left;width:100%">'
-                    + '<span class="suite-pick-label">' + escapeHtml(label) + '</span>'
-                    + (tagBits ? '<span class="suite-pick-tags muted">' + escapeHtml(tagBits) + '</span>' : '')
-                    + (builtIn ? '<span class="suite-pick-tags muted">Built-in pack</span>' : '')
-                    + '<details class="suite-id-details"><summary>Technical id</summary><code class="mono">'
-                    + escapeHtml(id) + '</code></details>'
-                    + '</button></li>';
-            }
-            const name = (row.name || '').trim() || '(unnamed)';
-            const tagCsv = tags.map(function (t) { return escapeHtml(t); }).join(', ');
             return '<li class="' + (active ? 'active-suite' : '') + '">'
-                + '<button type="button" class="button ghost suite-pick" data-suite-id="' + escapeHtml(id) + '"'
-                + ' style="padding:0.15rem 0.4rem">'
-                + escapeHtml(name) + '</button>'
-                + ' <span class="muted">' + escapeHtml(id)
-                + (builtIn ? ' | built-in' : '')
-                + (tagCsv ? ' | ' + tagCsv : '')
-                + '</span>'
-                + '</li>';
+                + '<button type="button" class="button ghost suite-pick suite-pick--name" data-suite-id="' + escapeHtml(id) + '">'
+                + escapeHtml(label) + '</button></li>';
         }).join('');
         if (suitesMeta) {
             const selected = suites.find(function (s) { return suiteIdOf(s) === selectedSuiteId; });
             const selLabel = selected ? suiteDisplayLabel(selected) : '';
-            if (schedulePage) {
-                suitesMeta.textContent = suites.length + (suites.length === 1 ? ' test pack' : ' test packs')
-                    + (selLabel ? (' · Selected: ' + selLabel) : '');
+            const countText = suites.length + (suites.length === 1 ? ' test pack' : ' test packs');
+            if (selLabel) {
+                suitesMeta.textContent = countText + (schedulePage ? ' · Selected: ' : ' · Editing: ') + selLabel;
             } else {
-                suitesMeta.textContent = suites.length + (suites.length === 1 ? ' test pack' : ' test packs')
-                    + (selectedSuiteId ? ' | selected ' + selectedSuiteId : '');
+                suitesMeta.textContent = countText;
             }
         }
         Array.prototype.forEach.call(suitesList.querySelectorAll('[data-suite-id]'), function (btn) {
@@ -767,6 +890,8 @@
             return;
         }
         suiteDetail.hidden = false;
+        const titleEl = document.getElementById('detail-pack-title');
+        if (titleEl) titleEl.textContent = suiteDisplayLabel(suite);
         draftTags = Array.isArray(suite.tags) ? suite.tags.slice() : [];
         renderTagChips();
         detailDraftTcIds = Array.isArray(suite.tcIds) ? suite.tcIds.slice() : [];
@@ -894,13 +1019,17 @@
             showApiWait(false);
             const data = await res.json().catch(function () { return []; });
             suites = normalizeList(data);
-            if (selectedSuiteId && !suites.some(function (s) { return suiteIdOf(s) === selectedSuiteId; })) {
-                selectedSuiteId = suites.length ? suiteIdOf(suites[0]) : null;
-            } else if (!selectedSuiteId && suites.length) {
-                selectedSuiteId = suiteIdOf(suites[0]);
+            if (!composePage) {
+                if (selectedSuiteId && !suites.some(function (s) { return suiteIdOf(s) === selectedSuiteId; })) {
+                    selectedSuiteId = suites.length ? suiteIdOf(suites[0]) : null;
+                } else if (!selectedSuiteId && suites.length) {
+                    selectedSuiteId = suiteIdOf(suites[0]);
+                }
             }
             renderSuitesList();
-            if (selectedSuiteId) {
+            if (composePage) {
+                syncComposeFromTag();
+            } else if (selectedSuiteId) {
                 await selectSuite(selectedSuiteId);
             } else if (suiteDetail) {
                 suiteDetail.hidden = true;
@@ -1425,7 +1554,8 @@
     }
 
     var suitesProjectPicker;
-    if (window.KeelProjectPicker && projectSel) {
+    function initSuitesProjectPicker() {
+        if (suitesProjectPicker || !window.KeelProjectPicker || !projectSel) return;
         suitesProjectPicker = window.KeelProjectPicker.bind({
             storageKey: STORAGE_KEY,
             initialProjectId: initialProjectId,
@@ -1450,6 +1580,7 @@
     }
 
     async function loadProjects() {
+        initSuitesProjectPicker();
         if (suitesProjectPicker) {
             projects = await suitesProjectPicker.loadProjects();
             return;
@@ -1528,7 +1659,11 @@
 
     createName && createName.addEventListener('input', updateCreateEnabled);
     createTags && createTags.addEventListener('input', updateCreateEnabled);
-    createBtn && createBtn.addEventListener('click', createSuite);
+    createBtn && createBtn.addEventListener('click', composePage ? saveComposeSuite : createSuite);
+    suiteTagSelect && suiteTagSelect.addEventListener('change', function () {
+        syncComposeFromTag();
+        if (createStatus) createStatus.textContent = '';
+    });
     refreshBtn && refreshBtn.addEventListener('click', function () {
         const projectId = projectSel && projectSel.value;
         if (projectId) loadSuites(projectId);
@@ -1580,12 +1715,26 @@
     if (schedulePreset) syncSchedulePresetUi();
     else syncScheduleKindUi();
     if (alertChannel) renderChannelSelect();
-    refreshPickerViews();
-    loadProjects().catch(function () {
-        if (projectErr) {
-            projectErr.hidden = false;
-            projectErr.textContent = 'Could not load projects.';
-        }
-        showWorkspaceLauncher();
-    });
+    function bootSuitesPage() {
+        initSuitesProjectPicker();
+        initSuiteTcMultiselects();
+        refreshPickerViews();
+        loadProjects().catch(function () {
+            if (projectErr) {
+                projectErr.hidden = false;
+                projectErr.textContent = 'Could not load projects.';
+            }
+            if (launcherErr) {
+                launcherErr.hidden = false;
+                launcherErr.textContent = 'Could not load projects.';
+            }
+            showWorkspaceLauncher();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootSuitesPage);
+    } else {
+        bootSuitesPage();
+    }
 })();

@@ -74,24 +74,8 @@
                     <h2>Execution trends</h2>
                     <th:block th:replace="~{fragments :: featureHelpBtn('dashboard-trends')}"></th:block>
                 </div>
-                <span class="badge badge--pass" th:if="${stats.passedTotal > 0}"
-                      th:text="|${stats.passedTotal} proven passes|">0 proven passes</span>
             </div>
             <div class="panelbody">
-                <div class="dash-trend-summary" aria-hidden="false">
-                    <div class="dash-trend-stat" th:if="${stats.hasProvenSample}">
-                        <strong th:text="${stats.passRate} + '%'">—</strong>
-                        <span>Pass rate</span>
-                    </div>
-                    <div class="dash-trend-stat">
-                        <strong th:text="${stats.executeJobCount}">0</strong>
-                        <span>Execute jobs</span>
-                    </div>
-                    <div class="dash-trend-stat">
-                        <strong th:text="${stats.passedTotal}">0</strong>
-                        <span>Proven passes</span>
-                    </div>
-                </div>
                 <div class="panel-toolbar overview-filters">
                     <label class="field field--inline">
                         <span>Project</span>
@@ -114,7 +98,7 @@
                                inputmode="numeric" autocomplete="off" spellcheck="false"
                                pattern="\d{4}-\d{2}-\d{2}" title="yyyy-mm-dd"/>
                     </label>
-                    <button type="button" id="applyFilters" class="button small">Apply</button>
+                    <button type="button" id="applyFilters" class="button">Apply</button>
                 </div>
                 <div class="chart-wrap chart-wrap--tall">
                     <canvas id="scoreChart" height="140"></canvas>
