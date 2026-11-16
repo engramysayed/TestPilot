@@ -11,10 +11,13 @@
     <div class="page-title">
         <div>
             <h1>Shared step recipes</h1>
-            <p class="hint muted">
-                A recipe is a named sequence of <code>action</code> / <code>assert</code> steps
-                you re-use across cases. After saving, reference it from any test case step as
-                <code>run recipe:&lt;id&gt;</code>. Nothing runs on Save — just the recipe is stored.
+            <p class="hint muted" style="max-width:52rem">
+                A recipe is a <strong>saved block of steps</strong> you re-use across many test cases
+                — like a copy-paste shortcut for sequences like login, add-to-cart, or accept-cookies.
+                Give it a short id (e.g. <code>login-happy</code>), list its steps, hit <strong>Save</strong>.
+                Then in <em>any</em> test case, write one step <code>run recipe:login-happy</code>
+                instead of re-typing all 5 login steps. Change the recipe once → every case that calls it
+                follows the new version next run. Save only stores the recipe — nothing runs.
             </p>
         </div>
     </div>

@@ -36,41 +36,55 @@
         <section class="panel">
             <div class="panelhead">
                 <div class="panelhead-title">
-                    <h2>Propose memory</h2>
+                    <h2 id="form-title">Add a flaky locator</h2>
                     <th:block th:replace="~{fragments :: featureHelpBtn('run-memory-propose')}"></th:block>
                 </div>
             </div>
-            <label>Id
+            <label>Memory key
                 <input type="text" id="mem-id" placeholder="mem_login_btn"/>
             </label>
-            <label style="display:block;margin-top:0.5rem">Summary
-                <input type="text" id="mem-summary" style="width:100%"/>
+            <p class="field-hint muted">Any unique name <strong>you pick</strong> — not the HTML id. Convention is <code>mem_&lt;what-it-is&gt;</code>. Used as the stable key for approve / retire / edit later.</p>
+
+            <label style="display:block;margin-top:0.6rem">Summary
+                <input type="text" id="mem-summary" style="width:100%" placeholder="e.g. Login button renamed to data-testid=sign-in"/>
             </label>
-            <label style="display:block;margin-top:0.5rem">Locator hint
-                <input type="text" id="mem-locator" style="width:100%"/>
+            <p class="field-hint muted">One line describing what broke, for the next person reading the list.</p>
+
+            <label style="display:block;margin-top:0.6rem">Locator hint
+                <input type="text" id="mem-locator" style="width:100%" placeholder="e.g. [data-testid='sign-in']  or  //button[contains(.,'Sign in')]"/>
             </label>
-            <label style="display:block;margin-top:0.5rem">Source job
-                <input type="text" id="mem-job" placeholder="exec_…"/>
+            <p class="field-hint muted">The full locator Keel should try first. Any supported form works: CSS selector (<code>[data-testid='x']</code>, <code>#id</code>, <code>.class</code>), XPath (<code>//button[…]</code>), or Keel's <code>attr=value</code> shorthand (<code>data-testid=sign-in</code>).</p>
+
+            <label style="display:block;margin-top:0.6rem">Source job <span class="muted">(optional)</span>
+                <select id="mem-job">
+                    <option value="">— None —</option>
+                </select>
             </label>
+            <p class="field-hint muted">Which past Execute run surfaced this flake. Searchable — type to filter. Only used for traceability; the hint applies to all future runs regardless.</p>
+
             <p style="margin-top:0.75rem">
-                <button type="button" class="button" id="propose">Propose</button>
+                <button type="button" class="button" id="propose">Save hint</button>
+                <button type="button" class="button ghost" id="form-reset" hidden style="margin-left:0.5rem">Cancel edit</button>
+                <span id="propose-status" class="muted" style="margin-left:0.5rem" role="status"></span>
             </p>
         </section>
         <section class="panel">
             <div class="panelhead">
                 <div class="panelhead-title">
-                    <h2>Approved &amp; proposed</h2>
+                    <h2>Saved flaky-locator hints</h2>
                     <th:block th:replace="~{fragments :: featureHelpBtn('run-memory')}"></th:block>
                 </div>
             </div>
-            <p id="mem-empty" class="muted" hidden>No memory entries yet — propose one above or approve from a run.</p>
+            <p id="mem-empty" class="muted" hidden>No entries yet — add one above, or they'll show up here when Keel's heal cascade proposes one after a failing run.</p>
             <div class="table-scroll">
                 <table class="table table--run-memory">
                     <thead>
                     <tr>
-                        <th>Id</th>
+                        <th>Memory key</th>
                         <th>Status</th>
                         <th>Summary</th>
+                        <th>Locator hint</th>
+                        <th>Source</th>
                         <th>Actions</th>
                     </tr>
                     </thead>
@@ -102,9 +116,45 @@
         });
     }
 
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+    let memoryRows = [];
+
+    async function loadJobs() {
+        try {
+            const res = await fetch('/api/jobs?projectId=' + encodeURIComponent(projectId) + '&kind=EXECUTE',
+                { headers: H, credentials: 'same-origin' });
+            if (!res.ok) return;
+            const jobs = await res.json();
+            const sel = document.getElementById('mem-job');
+            const prev = sel.value;
+            sel.innerHTML = '<option value="">— None —</option>';
+            jobs.slice(0, 200).forEach(j => {
+                const o = document.createElement('option');
+                o.value = j.jobId;
+                const when = (j.createdAt || '').slice(0, 16).replace('T', ' ');
+                o.textContent = j.jobId + ' · ' + (j.status || '?') + (when ? ' · ' + when : '');
+                sel.appendChild(o);
+            });
+            if (prev) sel.value = prev;
+        } catch (_) { /* ignore */ }
+    }
+
+    function fillForm(m) {
+        document.getElementById('form-title').textContent = m ? 'Edit flaky locator' : 'Add a flaky locator';
+        document.getElementById('mem-id').value = m ? m.id : '';
+        document.getElementById('mem-id').disabled = !!m;
+        document.getElementById('mem-summary').value = m ? (m.summary || '') : '';
+        document.getElementById('mem-locator').value = m ? (m.locatorHint || '') : '';
+        document.getElementById('mem-job').value = m ? (m.sourceJobId || '') : '';
+        document.getElementById('form-reset').hidden = !m;
+        document.getElementById('propose').textContent = m ? 'Save changes' : 'Save hint';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     async function refresh() {
         const res = await fetch(base(), { headers: H, credentials: 'same-origin' });
         const rows = await res.json();
+        memoryRows = rows;
         const tbody = document.getElementById('mem-rows');
         const empty = document.getElementById('mem-empty');
         const table = tbody && tbody.closest('table');
@@ -113,12 +163,25 @@
         if (table) table.hidden = rows.length === 0;
         rows.forEach(m => {
             const tr = document.createElement('tr');
-            tr.innerHTML = '<td class="mono">' + m.id + '</td><td>' + m.status + '</td><td>' + (m.summary || '') + '</td><td class="run-memory-actions"></td>';
+            const statusBadge = '<span class="badge badge--' + esc(m.status) + '">' + esc(m.status) + '</span>';
+            tr.innerHTML =
+                  '<td class="mono">' + esc(m.id) + '</td>'
+                + '<td>' + statusBadge + '</td>'
+                + '<td>' + esc(m.summary || '') + '</td>'
+                + '<td class="mono"><code>' + esc(m.locatorHint || '—') + '</code></td>'
+                + '<td class="mono">' + esc(m.sourceJobId || '—') + '</td>'
+                + '<td class="run-memory-actions"></td>';
             const td = tr.lastElementChild;
+            const edit = document.createElement('button');
+            edit.className = 'button ghost small';
+            edit.textContent = 'Edit';
+            edit.onclick = () => fillForm(m);
+            td.appendChild(edit);
             if (m.status === 'proposed') {
                 const a = document.createElement('button');
-                a.className = 'button ghost';
+                a.className = 'button ghost small';
                 a.textContent = 'Approve';
+                a.style.marginLeft = '0.35rem';
                 a.onclick = async () => {
                     await fetch(base() + '/' + encodeURIComponent(m.id) + '/approve', { method: 'POST', headers: H });
                     refresh();
@@ -127,7 +190,7 @@
             }
             if (m.status !== 'retired') {
                 const r = document.createElement('button');
-                r.className = 'button ghost';
+                r.className = 'button ghost small';
                 r.textContent = 'Retire';
                 r.style.marginLeft = '0.35rem';
                 r.onclick = async () => {
@@ -141,15 +204,27 @@
     }
 
     document.getElementById('propose').onclick = async () => {
+        const status = document.getElementById('propose-status');
         const body = {
             id: document.getElementById('mem-id').value.trim(),
             summary: document.getElementById('mem-summary').value.trim(),
             locatorHint: document.getElementById('mem-locator').value.trim(),
             sourceJobId: document.getElementById('mem-job').value.trim()
         };
-        await fetch(base(), { method: 'POST', headers: H, body: JSON.stringify(body) });
-        refresh();
+        if (!body.id) { status.textContent = 'Pick a memory key first.'; return; }
+        if (!body.locatorHint) { status.textContent = 'Locator hint is required.'; return; }
+        status.textContent = 'Saving…';
+        const res = await fetch(base(), { method: 'POST', headers: H, body: JSON.stringify(body) });
+        if (res.ok) {
+            status.textContent = 'Saved as "' + body.id + '". Runs for this project will try it first.';
+            fillForm(null);
+            refresh();
+        } else {
+            status.textContent = 'Save failed (HTTP ' + res.status + ').';
+        }
     };
+
+    document.getElementById('form-reset').onclick = () => fillForm(null);
 
     document.getElementById('launcher-continue').onclick = () => {
         const sel = document.getElementById('launcher-project-select');
@@ -160,6 +235,7 @@
         document.getElementById('workspace-config').hidden = false;
         document.getElementById('pinned-name').textContent = sel.selectedOptions[0].textContent;
         refresh();
+        loadJobs();
     };
     document.getElementById('change-project').onclick = () => {
         document.getElementById('workspace-config').hidden = true;
