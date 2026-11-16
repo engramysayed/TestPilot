@@ -1,0 +1,109 @@
+# Handoff — where this project stands right now
+
+Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
+
+**Last updated:** 2026-11-16 (Opus 4.7 session).
+
+---
+
+## 1. Branch state
+
+| Branch | HEAD | Notes |
+|--------|------|-------|
+| `main` | `2fbcc2b fix(ux): live-portal UI cleanup` | Just pushed to both `keel/main` and `origin/main`. 16 commits worth of UX overhaul flowed through at once. |
+| `ux-overhaul` | `2fbcc2b` (same as main after FF-merge) | The long-running UX feature branch; now in sync with main. |
+| `audit-c1-healcascade` … `audit-c5-abstractworker` | various | Per-audit refactor branches; mostly landed on main. |
+| `alerts-members-and-cleanup` | `c265e5b` | The *other* session's UI rebase; **not** merged — contains overlapping template work. |
+| `backup/*`, `backup-pre-engine-*` | — | Pre-refactor safety nets. Leave alone. |
+
+Remotes:
+- `origin` = `https://github.com/engramysayed/TestPilot` (the fork — also has `ux-overhaul`).
+- `keel` = `https://github.com/engramysayed/Keel.git` (main Keel repo). `main` tracks `keel/main`.
+
+## 2. Deployed state
+
+Server running at `http://localhost:8080` (user's local) is **not** on the latest main — it's on whatever branch was checked out when the user last built. After every push you tell them to:
+
+```bash
+git pull
+mvn -DskipTests package
+./start-portal.cmd   # or: mvn spring-boot:run
+```
+
+…before re-inspecting.
+
+## 3. Recently shipped (2026-11-16 session)
+
+In commit `2fbcc2b` (`fix(ux): live-portal UI cleanup`):
+- Deleted orphan `#account-scoped-picker-hint` panels from `execute.html`, `upload.html`, `bug-hunter.html`.
+- Dropped duplicate Execution-trends inner stats from `dashboard.html`; dropped the "N proven passes" badge next to it.
+- `.kpi-row` switched to 4-up grid above 1100 px, `auto-fit minmax(170px)` below.
+- `/runs` got a scoped `.shell-runs .table--runs` CSS block — real widths for Message/Actions, ellipsized message cell, flex-nowrap actions.
+- Sidebar `?` help buttons hidden by default, revealed on hover/focus-within/keyboard focus (now covers `.nav-main-wrap` too, which was leaking).
+- `/suites` dev line "Waiting on Backend test-pack / schedule APIs" and old chip CSS removed.
+- `/record` step labels shortened: **Name / Website / Record / Save**.
+- Added `templates/error.html` — styled 401/403/404/500 page.
+
+Earlier on `ux-overhaul` (now also on main):
+- `f74adbc` — Portal UX phases 8-11 + harness execution recovery + framework contract Phase 6.
+- `89cb650` — Phases 5-7: dedupe recent tables, Generate layout, suite scheduling child page.
+- `8a90df7` — Dashboard chart redesign (gradients, fat bars, totals plugin, pass-rate tooltip).
+- `78b6c14` — Guard removed compare refs so `/generate` init doesn't throw.
+- `67c310f` — Collapsible sidebar parent/child groups.
+- `0591f4e` — Admin-users invite split + overflow menus on Execute & Suites.
+- `3a17c74` — Zero-JS `.overflow-menu` CSS pattern (details/summary-based).
+- `7ea9dce` — `/suites/schedule` split.
+- `375fb55`, `b2d4068`, `e7866d7`, `be3adab` — Arabic engine removal, Generate "More options" accordion unwrap, helper-prose strip across 28 templates, Generate/Compare pilot.
+
+## 4. Known live issues (not yet fixed)
+
+| Severity | Page | Issue |
+|----------|------|-------|
+| 🟠 | `/projects` | "Delete" per-card button is flat next to "Open" and "Archive" — should overflow under `⋯` (rule 4). Modal already guards it, so low-risk; skipped this session. |
+| 🟡 | `/plain-cases`, `/generate-from-knowledge`, `/execute` (visual-diffs) | "Waiting on Backend …" lines still visible because those APIs are stubs. Intentional dev hints, but need a kinder empty state. |
+| 🟡 | `/record` step wizard | On very narrow viewports (<480 px) step labels may still cramp against the number bubble; not critical. |
+| 🟡 | Sidebar `?` on dashboard / project panels | These are not inside `.sidebar-nav-item` so the hover-reveal rule doesn't apply there — they stay visible at low opacity. Intentional for in-page help, but a design decision worth revisiting. |
+| ⚪ | `/admin/users` empty 403 → `error.html` | Now styled, but the "Back to dashboard" action for a user without admin rights is still a dead end if they clicked an admin link from somewhere unexpected. |
+
+## 5. Deferred work (named but not done)
+
+- **Project-detail tab-split.** 4 tabs on `/projects/{id}` should become 4 sidebar children per rule 1. Not started.
+- **Overflow-menu retrofit on action rows.** `.overflow-menu` pattern exists (commit `3a17c74`); still needs to be applied to `/projects` cards, `/packages` rows, and the live `/execute` toolbars.
+- **`SuitePortalScheduleWorker`** is still flagged off (`delivery.suites.portal-schedule-worker.enabled`). Slice F plumbing landed; flip after soak.
+- **Agent harness capabilities** all flagged off (`delivery.agent-harness.*`). Phase 3 Convert integration is in but inert.
+- **Phase 6 framework contract** reached Phase 6.16 ("READY AFTER SPECIFIED BLOCKERS"). See `docs/handoff/2026-11-15-phase6-16-production-readiness-audit.md`.
+
+## 6. Open PRs / review
+
+- No open PRs at time of writing — work has been going directly to `main` through the FF merge.
+- Local `main` and remote `keel/main`/`origin/main` are all at `2fbcc2b`.
+
+## 7. Working-tree detritus (not committed, not .gitignored)
+
+- `ex-test/p1/heal-proposals/*.json` (4 files) — test-output heal proposals; add to `.gitignore` or clean.
+- `tools/cursor-agent/node_modules/`, `tools/cursor-agent/package-lock.json` — the cursor-agent sidecar deps. Sibling `tools/cursor-heal/node_modules/` **is** in `.gitignore`; cursor-agent isn't. Low-priority gitignore addition.
+
+## 8. How to pick up mid-task
+
+1. `git fetch --all --prune && git log --oneline -20` — get the lay of the land.
+2. Read this file (`docs/handoff.md`) — current state.
+3. Read `docs/implementation.md` for feature map, `docs/engineering.md` for stack/patterns.
+4. For deeper context on a phase / feature, go to `docs/handoff/` (dated per-session docs) — see `docs/ENGINEERING_HANDOFF.md` for the index.
+5. For architecture at a glance: open `floorplan/index.html` or check `floorplan/architecture.json`.
+6. For a knowledge-graph view: `graphify-out/GRAPH_REPORT.md` (regen with `scripts/graphify-update.cmd`).
+
+## 9. Common pitfalls (bitten in this session)
+
+- **Pushing to main bypasses PR.** The user explicitly authorized it this session; don't generalise to future sessions.
+- **The deployed server lags main.** When "can't reproduce" a bug the user sees — check `git status` on their checkout before assuming it's merged.
+- **Two remotes, two mains.** Always push to **both** `keel/main` and `origin/main` or they'll diverge.
+- **Thymeleaf templates use CRLF on Windows.** Git will nag; harmless, don't fix.
+- **TestNG, not JUnit.** Any new test must extend `AbstractTestNGSpringContextTests` and use TestNG `@Test`.
+- **Arabic support was torn out (Nov 2026).** Don't re-add `IntentText.annotateArabicVerbs` or similar — the project is English-only now across UI, engine, prompts, tests.
+
+## 10. Environment the session was running in
+
+- Windows 11 Pro, PowerShell + Bash available.
+- Working dir: `D:\Work\projects\Keel\keel\TestPilot`.
+- Git user: `engramysayed`.
+- User email: **private** — do not quote it in any external tool call.
