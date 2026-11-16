@@ -11,11 +11,18 @@ Paste user stories or import structured test cases, prove them against a real si
 | Surface | Purpose |
 |---------|---------|
 | **Generate** | Stories or external AI JSON/CSV → quality-gated workbook (`latest.xlsx` / CSV) |
-| **Record** | Click through the site in Chrome → library case, with locators, then an optional framework build that does not open Chrome again |
-| **Automate** | Workbook → live prove + heal → Java Selenium TestNG ZIP |
-| **Execute** | Run selected cases against the live site with evidence, without full codegen packaging |
-| **Bug Hunter** | Exploratory live hunt: break features + invent edge scenarios → downloadable hunter pack (no auto-merge into the library) |
 | **Compare** | Same stories through two local models; save the better set into the project |
+| **Written cases** | Hand-write test steps in everyday English, save into the project library (formerly "Plain cases") |
+| **Record** | Click through the site in Chrome → library case, with locators, then an optional framework build that does not open Chrome again |
+| **Test blueprints** | Named action/assert step recipes per project (PREVIEW — stored but not yet consumed by the engine; use `CALLBEFORE` on a TC for a real shared pre-flow) |
+| **Test suites** | Bundle library cases into packs (Smoke / Regression / Nightly) and run them together |
+| **Scheduling** | Run a suite on a cron or day + time; alert me when a run fails |
+| **Execute** | Run selected cases against the live site with evidence, without full codegen packaging |
+| **Automate** | Workbook → live prove + heal → Java Selenium TestNG ZIP |
+| **Bug Hunter** | Exploratory live hunt: break features + invent edge scenarios → downloadable hunter pack (no auto-merge into the library) |
+| **History** | Past runs, downloads, failure packs |
+| **Flaky locators** | Free-text locator hints you leave for Keel's heal AI (per project; was "Run memory") |
+| **Locator memory** | Keel's "muscle memory": proven locators it recorded automatically after successful runs (view / edit / delete / add, per site) |
 | **KeelPath** | Per-case routing: `AUTOMATE` · `EXECUTE` · `VISION_ONLY` · `MANUAL` |
 
 On **Generate**, after a workbook is saved, you can optionally run **Review with AI** (Cursor or Ollama) to spot missing scenarios, ambiguities, and leave-empty / TestData issues before Execute or Automate. The review returns findings and a proposed suite for preview; **Accept** saves the updated workbook, **Discard** leaves the current file unchanged.
@@ -32,7 +39,15 @@ Supporting capabilities:
 - Domains, projects, credentials, design references, and retention under a local store
 
 **Everything Keel can do today:** [`docs/PRODUCT.md`](docs/PRODUCT.md).  
-**What shipped in each publish:** [`CHANGELOG.md`](CHANGELOG.md).
+**What shipped in each publish:** [`CHANGELOG.md`](CHANGELOG.md).  
+**Living docs (always current):** [`docs/engineering.md`](docs/engineering.md) · [`docs/implementation.md`](docs/implementation.md) · [`docs/handoff.md`](docs/handoff.md).  
+**User guide (visible in the app):** [`/guide`](http://localhost:8080/guide) when the portal is running.
+
+> **Recent UX pass (2026-11):** Portal re-skinned end to end — new Written cases + Flaky locators + Locator memory pages, suite scheduling UI with time + day-of-week picker, bug-hunter cleanup with per-option scan-mode help, sidebar polish, CSV generate dropdown lists every configured model. Full what-landed list lives in [`docs/handoff.md`](docs/handoff.md).
+
+> **CI is disabled.** `.github/workflows/` is now `.github/workflows.disabled/`. Nothing auto-runs on push, PR, or cron. Reverse with `git mv .github/workflows.disabled .github/workflows` when you want it back.
+
+> **Docs cleanup.** `docs/` top level now carries only 7 living files. Everything dated / per-phase moved to [`docs/archive/`](docs/archive/) (nothing deleted — any file can come back with `git mv`).
 
 ---
 
@@ -117,7 +132,7 @@ flowchart LR
 - A verified test id or hook is always the primary; text-based locators stay as fallbacks, so the framework survives copy
   changes and Arabic ↔ English switches. Projects can choose **user-facing first** (role + label before test id).
 - Generated ids/classes (`ember123`, `css-1x2y3z`, ASP.NET `ctl00$…`, JSF `j_idt12:…`) are never primaries.
-- Steps can be written in **Arabic or English** (`اضغط على زر حفظ` binds like `Click the Save button`).
+- Steps are written in **English** only (Arabic authoring engine was removed in the 2026-11 pass).
 - Generated fields fall back at runtime: `FirstOf.of(primary, fallback1, fallback2)` or `KeelBy.of(...)` for frame/shadow targets.
 
 ### When a step does not bind: heal
@@ -223,7 +238,7 @@ After Generate UI, prompt, or gate changes: **restart the portal** and hard-refr
 
 ### CLI
 
-Batch conversion without the UI: `delivery.cli.DeliveryCli` — see `docs/ops/` for local Ollama and ops notes.
+Batch conversion without the UI: `delivery.cli.DeliveryCli` — see `docs/archive/ops/` for local Ollama and ops notes.
 
 ```bat
 mvn -q exec:java -Dexec.mainClass=delivery.cli.DeliveryCli -Dexec.args="--excel path\to\cases.xlsx --base-url https://example.com --authoring-engine precision"

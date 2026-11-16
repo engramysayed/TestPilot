@@ -208,10 +208,10 @@
                     <span th:text="#{nav.tcsGeneration}">TCs Generation</span>
                 </a>
                 <th:block th:replace="~{fragments :: featureHelpBtn('tcs-generation')}"></th:block>
+                <button type="button" class="nav-toggle" aria-label="Toggle TCs Generation menu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
             </div>
-            <button type="button" class="nav-toggle" aria-label="Toggle TCs Generation menu">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
             <div class="nav-children">
                 <div class="sidebar-nav-item">
                     <a href="/generate/compare" class="sidebar-child sidebar-nav-item__link" th:classappend="${navActive == 'generate-compare'} ? 'active'">
@@ -260,10 +260,10 @@
                     <span th:text="#{nav.testSuites}">Test suites</span>
                 </a>
                 <th:block th:replace="~{fragments :: featureHelpBtn('test-suites')}"></th:block>
+                <button type="button" class="nav-toggle" aria-label="Toggle Test suites menu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
             </div>
-            <button type="button" class="nav-toggle" aria-label="Toggle Test suites menu">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
             <div class="nav-children">
                 <div class="sidebar-nav-item">
                     <a href="/suites/schedule" class="sidebar-child sidebar-nav-item__link" th:classappend="${navActive == 'suites-schedule'} ? 'active'">
