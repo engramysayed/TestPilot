@@ -15,10 +15,6 @@
             <th:block th:replace="~{fragments :: featureHelpBtn('dashboard-overview')}"></th:block>
             <p class="dash-heading__lede" th:text="#{page.dashboard.lede}">Snapshot of projects, quality, and recent runs.</p>
         </div>
-        <div class="actions">
-            <a class="button ghost" href="/projects" th:text="#{nav.projects}">Projects</a>
-            <a class="button primary" href="/execute">+ TCs execution</a>
-        </div>
     </header>
 
     <p th:if="${!stats.hasProjects}" class="muted overview-empty-hint">

@@ -17,8 +17,8 @@
     <nav class="projects-filter tabs" aria-label="Project filters">
         <button type="button" class="active" id="projects-filter-all" disabled>All projects</button>
         <button type="button" class="tab-planned" disabled title="Web-only filter — not available yet">Web</button>
-        <button type="button" th:if="${mobileEnabled}" class="tab-planned" disabled title="Android filter — coming soon">Android</button>
-        <button type="button" th:unless="${mobileEnabled}" class="tab-planned" disabled title="Mobile projects — enable delivery.mobile.enabled">Android</button>
+        <button type="button" th:if="${mobileEnabled}" class="tab-planned" disabled title="Mobile filter — coming soon">Mobile</button>
+        <button type="button" th:unless="${mobileEnabled}" class="tab-planned" disabled title="Mobile projects — enable delivery.mobile.enabled">Mobile</button>
     </nav>
 
     <section class="panel create-panel">
@@ -39,7 +39,7 @@
                     </label>
                     <label class="platform-segment-option">
                         <input type="radio" name="platform" value="ANDROID"/>
-                        <span>Android app</span>
+                        <span>Mobile app</span>
                     </label>
                 </div>
             </fieldset>
@@ -183,7 +183,7 @@
             } else if ((p.platform || '').toUpperCase() === 'ANDROID') {
                 const badge = document.createElement('span');
                 badge.className = 'badge mobile-platform-badge';
-                badge.textContent = 'Android';
+                badge.textContent = 'Mobile';
                 top.appendChild(badge);
             }
 

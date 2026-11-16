@@ -191,6 +191,31 @@
         if (intervalRow) intervalRow.hidden = preset !== 'interval';
         if (cronRow) cronRow.hidden = preset !== 'custom';
         if (timezoneRow) timezoneRow.hidden = preset === 'interval';
+        if (preset === 'custom') updateCronFromPickers();
+    }
+
+    function updateCronFromPickers() {
+        const time = document.getElementById('schedule-time');
+        const weekday = document.getElementById('schedule-weekday');
+        if (!time || !weekday || !scheduleCron) return;
+        const parts = String(time.value || '02:00').split(':');
+        const hh = Math.max(0, Math.min(23, parseInt(parts[0], 10) || 0));
+        const mm = Math.max(0, Math.min(59, parseInt(parts[1], 10) || 0));
+        const dow = weekday.value || '*';
+        scheduleCron.value = mm + ' ' + hh + ' * * ' + dow;
+    }
+
+    function syncPickersFromCron(cron) {
+        const time = document.getElementById('schedule-time');
+        const weekday = document.getElementById('schedule-weekday');
+        if (!time || !weekday) return;
+        const parts = String(cron || '').trim().split(/\s+/);
+        if (parts.length < 5) return;
+        const mm = parseInt(parts[0], 10);
+        const hh = parseInt(parts[1], 10);
+        if (!Number.isFinite(mm) || !Number.isFinite(hh)) return;
+        time.value = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+        weekday.value = parts[4] || '*';
     }
 
     async function loadScheduleCredentials(projectId) {
@@ -758,6 +783,7 @@
     }
 
     function renderSuitesList() {
+        renderSuitesLibraryTable();
         if (!suitesList) {
             if (composePage) syncComposeFromTag();
             return;
@@ -777,14 +803,38 @@
         }
         suitesEmpty.hidden = true;
         suitesList.hidden = false;
-        suitesList.innerHTML = suites.map(function (row) {
-            const id = suiteIdOf(row) || '';
-            const label = suiteDisplayLabel(row);
-            const active = id && id === selectedSuiteId;
-            return '<li class="' + (active ? 'active-suite' : '') + '">'
-                + '<button type="button" class="button ghost suite-pick suite-pick--name" data-suite-id="' + escapeHtml(id) + '">'
-                + escapeHtml(label) + '</button></li>';
-        }).join('');
+        const isSelect = suitesList.tagName === 'SELECT';
+        if (isSelect) {
+            suitesList.innerHTML = '<option value="">— Pick a suite —</option>'
+                + suites.map(function (row) {
+                    const id = suiteIdOf(row) || '';
+                    const label = suiteDisplayLabel(row);
+                    return '<option value="' + escapeHtml(id) + '">' + escapeHtml(label) + '</option>';
+                }).join('');
+            if (selectedSuiteId && suites.some(function (s) { return suiteIdOf(s) === selectedSuiteId; })) {
+                suitesList.value = selectedSuiteId;
+            }
+            if (!suitesList.dataset.wired) {
+                suitesList.addEventListener('change', function () {
+                    if (suitesList.value) selectSuite(suitesList.value);
+                });
+                suitesList.dataset.wired = '1';
+            }
+        } else {
+            suitesList.innerHTML = suites.map(function (row) {
+                const id = suiteIdOf(row) || '';
+                const label = suiteDisplayLabel(row);
+                const active = id && id === selectedSuiteId;
+                return '<li class="' + (active ? 'active-suite' : '') + '">'
+                    + '<button type="button" class="button ghost suite-pick suite-pick--name" data-suite-id="' + escapeHtml(id) + '">'
+                    + escapeHtml(label) + '</button></li>';
+            }).join('');
+            Array.prototype.forEach.call(suitesList.querySelectorAll('[data-suite-id]'), function (btn) {
+                btn.addEventListener('click', function () {
+                    selectSuite(btn.getAttribute('data-suite-id'));
+                });
+            });
+        }
         if (suitesMeta) {
             const selected = suites.find(function (s) { return suiteIdOf(s) === selectedSuiteId; });
             const selLabel = selected ? suiteDisplayLabel(selected) : '';
@@ -795,9 +845,36 @@
                 suitesMeta.textContent = countText;
             }
         }
-        Array.prototype.forEach.call(suitesList.querySelectorAll('[data-suite-id]'), function (btn) {
+    }
+
+    function renderSuitesLibraryTable() {
+        const body = document.getElementById('suites-library-body');
+        const table = document.getElementById('suites-library-table');
+        if (!body || !table) return;
+        const empty = document.getElementById('suites-empty');
+        if (!suites.length) {
+            body.innerHTML = '';
+            table.hidden = true;
+            if (empty) { empty.hidden = false; empty.textContent = 'No suites yet — create one below.'; }
+            return;
+        }
+        if (empty) empty.hidden = true;
+        table.hidden = false;
+        body.innerHTML = suites.map(function (row) {
+            const id = suiteIdOf(row) || '';
+            const label = suiteDisplayLabel(row);
+            const tagList = Array.isArray(row.tags) ? row.tags.join(', ') : '';
+            const cases = Array.isArray(row.tcIds) ? row.tcIds.length : 0;
+            return '<tr>'
+                + '<td>' + escapeHtml(label) + '</td>'
+                + '<td>' + escapeHtml(tagList) + '</td>'
+                + '<td>' + cases + '</td>'
+                + '<td><button type="button" class="button ghost" data-library-edit="' + escapeHtml(id) + '">Edit</button></td>'
+                + '</tr>';
+        }).join('');
+        Array.prototype.forEach.call(body.querySelectorAll('[data-library-edit]'), function (btn) {
             btn.addEventListener('click', function () {
-                selectSuite(btn.getAttribute('data-suite-id'));
+                selectSuite(btn.getAttribute('data-library-edit'));
             });
         });
     }
@@ -906,6 +983,7 @@
             schedulePreset.value = preset;
             scheduleCron.value = (sched && sched.cron) || '';
             scheduleInterval.value = (sched && sched.intervalMinutes != null) ? sched.intervalMinutes : '';
+            if (preset === 'custom') syncPickersFromCron(scheduleCron.value);
             syncSchedulePresetUi();
         } else if (typeof setScheduleKind === 'function') {
             setScheduleKind(sched && sched.kind === 'interval' ? 'interval' : 'cron');
@@ -1702,6 +1780,12 @@
         el.addEventListener('change', syncScheduleKindUi);
     });
     schedulePreset && schedulePreset.addEventListener('change', syncSchedulePresetUi);
+    (function wireCronPickers() {
+        const t = document.getElementById('schedule-time');
+        const d = document.getElementById('schedule-weekday');
+        if (t) t.addEventListener('change', updateCronFromPickers);
+        if (d) d.addEventListener('change', updateCronFromPickers);
+    })();
     alertUseAccount && alertUseAccount.addEventListener('change', loadAccountAlertSummary);
     saveAllScheduleBtn && saveAllScheduleBtn.addEventListener('click', saveAllScheduleSettings);
     saveScheduleBtn && saveScheduleBtn.addEventListener('click', function () { saveSchedule(); });

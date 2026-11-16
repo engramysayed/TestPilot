@@ -106,3 +106,18 @@ html[data-theme="dark"] .generate-page .generate-card--primary {
 html[data-theme="dark"] .generate-page .generate-card--tertiary {
   background: rgba(255, 255, 255, 0.03);
 }
+
+/* Styled expander: "Paste free-text story instead" — clearly an action, not a link. */
+.more-options--pill{margin:0.75rem 0 0;border:1px dashed rgba(13,154,168,0.5);border-radius:10px;background:rgba(13,154,168,0.06);overflow:hidden}
+.more-options--pill > summary{display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;cursor:pointer;color:var(--accent-2,#0d9aa8);font-weight:600;list-style:none;user-select:none}
+.more-options--pill > summary::-webkit-details-marker{display:none}
+.more-options--pill > summary::marker{content:""}
+.more-options--pill > summary:hover{background:rgba(13,154,168,0.1)}
+.more-options--pill .more-options-caret{display:inline-flex;align-items:center;justify-content:center;width:1.25rem;height:1.25rem;border-radius:50%;border:1px solid currentColor;font-size:0.95rem;line-height:1;font-weight:700;flex:0 0 auto}
+.more-options--pill[open] .more-options-caret{transform:rotate(45deg)}
+.more-options--pill .more-options-label{flex:1 1 auto}
+.more-options--pill .more-options-tip{display:inline-flex;align-items:center;justify-content:center;width:1.15rem;height:1.15rem;border-radius:50%;background:rgba(13,154,168,0.15);color:var(--accent-2,#0d9aa8);font-size:0.75rem;font-weight:700;font-family:Georgia,serif;font-style:italic;cursor:help;flex:0 0 auto}
+.more-options--pill .more-options-tip:focus-visible{outline:2px solid var(--accent-2,#0d9aa8);outline-offset:2px}
+.more-options--pill > label,
+.more-options--pill > textarea{display:block;padding:0 0.9rem 0.9rem}
+html[data-theme="dark"] .more-options--pill{background:rgba(13,154,168,0.1);border-color:rgba(13,154,168,0.4)}

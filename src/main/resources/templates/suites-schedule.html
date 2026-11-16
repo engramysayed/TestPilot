@@ -51,16 +51,17 @@
         <section class="panel" id="suites-list-panel">
             <div class="panelhead">
                 <div class="panelhead-title">
-                    <h2>Pick a suite</h2>
+                    <h2>Pick a suite to schedule</h2>
                     <th:block th:replace="~{fragments :: featureHelpBtn('scheduling')}"></th:block>
                 </div>
             </div>
-            <div class="panel-actions" style="margin-top:0">
+            <p id="suites-empty" class="muted" style="margin-top:.85rem">No test packs yet — <a href="/suites">create one</a>.</p>
+            <label for="suites-list" class="muted" style="display:block;margin-top:.5rem">Your test suites</label>
+            <select id="suites-list" class="suite-list suite-list--pick" hidden></select>
+            <div class="panel-actions" style="margin-top:0.75rem">
                 <button type="button" class="button ghost" id="refresh-suites">Refresh</button>
                 <a class="button ghost" href="/suites">Create or edit suites →</a>
             </div>
-            <p id="suites-empty" class="muted" style="margin-top:.85rem">No test packs yet — <a href="/suites">create one</a>.</p>
-            <ul id="suites-list" class="suite-list suite-list--pick" hidden></ul>
             <p id="suites-meta" class="muted" style="margin-top:.5rem"></p>
         </section>
 
@@ -70,21 +71,36 @@
                 <label class="keel-check">
                     <input type="checkbox" id="schedule-enabled"/> Turn on automatic runs
                 </label>
+                <p class="field-hint muted" style="margin:0.15rem 0 0.75rem 1.65rem">
+                    When on, Keel runs this suite on the chosen schedule and emails or Telegram-pings you on failures. Turn off to pause scheduled runs.
+                </p>
                 <div class="field-row">
                     <label for="schedule-preset">How often
                         <select id="schedule-preset">
                             <option value="daily-2am">Daily at 2:00 AM</option>
                             <option value="weekly-mon-2am">Weekly — Monday at 2:00 AM</option>
                             <option value="interval">Every N minutes</option>
-                            <option value="custom">Custom cron (advanced)</option>
+                            <option value="custom">Pick a time</option>
                         </select>
                     </label>
-                    <p class="field-hint muted">Cron patterns and overlap rules — <a href="/guide#suites">Guide § Test suites</a></p>
                 </div>
                 <div class="field-row" id="cron-row" hidden>
-                    <label>Cron pattern
-                        <input type="text" id="schedule-cron" placeholder="0 2 * * *" autocomplete="off"/>
+                    <label>Day
+                        <select id="schedule-weekday">
+                            <option value="*">Every day</option>
+                            <option value="1">Monday</option>
+                            <option value="2">Tuesday</option>
+                            <option value="3">Wednesday</option>
+                            <option value="4">Thursday</option>
+                            <option value="5">Friday</option>
+                            <option value="6">Saturday</option>
+                            <option value="0">Sunday</option>
+                        </select>
                     </label>
+                    <label>Time
+                        <input type="time" id="schedule-time" value="02:00"/>
+                    </label>
+                    <input type="hidden" id="schedule-cron"/>
                 </div>
                 <div class="field-row" id="timezone-row">
                     <label>Time zone
@@ -110,50 +126,16 @@
                     </label>
                     <p class="field-hint muted">Same login profiles as <a href="/execute">TCs execution</a> — configured per project.</p>
                 </div>
+
+                <div class="field-row" id="alerts-inline">
+                    <label class="keel-check">
+                        <input type="checkbox" id="alert-use-account" checked/>
+                        Alert me when a run fails
+                    </label>
+                    <p id="alert-account-summary" class="muted field-hint" role="status"></p>
+                </div>
+
                 <p id="schedule-meta" class="muted"></p>
-            </section>
-
-            <section class="panel" id="alerts-panel">
-                <h2>When a run fails</h2>
-                <label class="keel-check">
-                    <input type="checkbox" id="alert-use-account" checked/>
-                    Use my alert preferences from <a href="/account">Account</a>
-                </label>
-                <p id="alert-account-summary" class="muted field-hint" role="status"></p>
-                <p class="field-hint muted">Keel also notifies project members who turned on Telegram or email on Account — no extra channel picker here.</p>
-            </section>
-
-            <section class="panel" id="monitor-panel">
-                <div class="panelhead">
-                    <div class="panelhead-title">
-                        <h2>Watch after a green run</h2>
-                        <th:block th:replace="~{fragments :: featureHelpBtn('schedule-watch')}"></th:block>
-                    </div>
-                </div>
-                <p class="muted monitor-watch-hint">
-                    After a <strong>passing</strong> scheduled or manual pack run, Keel can promote the pack to an always-on monitor that re-checks the same cases on prod or staging.
-                </p>
-                <label class="keel-check">
-                    <input type="checkbox" id="monitor-enabled"/> Keep this pack on watch after the next green run
-                </label>
-                <div class="field-row">
-                    <label>Target
-                        <select id="monitor-target">
-                            <option value="prod">Production</option>
-                            <option value="staging">Staging</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="field-row">
-                    <label>Start from run id <span class="muted">(optional)</span>
-                        <input type="text" id="monitor-from-job" maxlength="80" placeholder="e.g. exec_abc123"/>
-                    </label>
-                </div>
-                <p id="monitor-meta" class="muted"></p>
-                <p class="panel-actions" style="margin-top:0.5rem">
-                    <button type="button" class="button ghost" id="demote-monitor">Stop watching</button>
-                    <span id="monitor-status" class="muted" role="status"></span>
-                </p>
             </section>
 
             <div class="schedule-save-bar" id="schedule-save-bar">

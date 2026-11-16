@@ -78,16 +78,16 @@
 
         <label>Page scan mode
             <select id="dom-mode">
-                <option value="auto" selected>Auto (map + slim when thin)</option>
-                <option value="map">Map only</option>
-                <option value="slim">Full slim page scan</option>
+                <option value="auto" selected>Auto — map first, full scan only on thin pages</option>
+                <option value="map">Map only — fastest, sees just the clickable outline</option>
+                <option value="slim">Full slim page scan — most context, slowest</option>
             </select>
-            <span class="field-hint">What the AI can see about the current page.</span>
+            <span class="field-hint">What the AI can see about the current page. <strong>Auto</strong> balances speed and coverage — leave it unless the hunt is missing obvious things (use <em>slim</em>) or running too slow (use <em>map</em>).</span>
         </label>
 
         <div class="hunt-strategy-block">
             <label class="hunt-strategy-toggle check">
-                <input type="checkbox" id="strategies-enabled" checked/>
+                <input type="checkbox" id="strategies-enabled"/>
                 <span>
                     <strong>Use hunt strategies</strong>
                     <span class="field-hint">Follow a fixed checklist of probe types instead of free exploration only.</span>
@@ -105,20 +105,20 @@
 
         <div class="hunt-caps">
             <label>Scenario cap
-                <input type="number" id="scenario-cap" min="1" max="20" value="5"/>
-                <span class="field-hint">Max new ideas to keep</span>
+                <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="scenario-cap" value="5"/>
+                <span class="field-hint">Most <strong>new bug ideas</strong> the planner may keep across the whole run (1–20).</span>
             </label>
             <label>Iterations
-                <input type="number" id="iteration-ceiling" min="1" max="5" value="2"/>
-                <span class="field-hint">Plan → execute → replan loops</span>
+                <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="iteration-ceiling" value="2"/>
+                <span class="field-hint">How many <strong>plan → execute → replan</strong> loops. More = deeper, but longer (1–5).</span>
             </label>
             <label>Cycles / iteration
-                <input type="number" id="cycle-ceiling" min="1" max="30" value="8"/>
-                <span class="field-hint">Planning rounds per iteration</span>
+                <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="cycle-ceiling" value="8"/>
+                <span class="field-hint">Planning rounds inside one iteration — one round = one new idea the AI tries (1–30).</span>
             </label>
             <label>Actions / cycle
-                <input type="number" id="action-cap" min="1" max="15" value="5"/>
-                <span class="field-hint">Clicks or typing per round</span>
+                <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="action-cap" value="5"/>
+                <span class="field-hint">Max <strong>clicks or things typed</strong> per round. Higher = thorough probing, more credits (1–15).</span>
             </label>
         </div>
 
@@ -179,14 +179,7 @@
         </div>
     </section>
 
-    <section class="panel keel-history-cta">
-        <p class="muted" style="margin:0">Past hunts, status pages, and downloads live in History.</p>
-        <p style="margin:0.75rem 0 0">
-            <a class="button ghost small" href="/history">View hunts in History →</a>
-        </p>
-    </section>
-
-    <section class="panel hunt-triage-panel" id="hunt-triage-panel" hidden
+<section class="panel hunt-triage-panel" id="hunt-triage-panel" hidden
              th:attr="data-enabled=${huntTriageEnabled} ?: false">
         <div class="panelhead">
             <div class="panelhead-title">
@@ -194,7 +187,7 @@
                 <th:block th:replace="~{fragments :: featureHelpBtn('bug-hunter-triage')}"></th:block>
             </div>
         </div>
-        <p class="muted hunt-triage-intro">Pick a completed hunt (from <a href="/history">History</a>). Confirm or dismiss each finding — nothing is added to the library until you promote candidates below.</p>
+        <p class="muted hunt-triage-intro">After a hunt finishes, this panel lets you review each bug the AI found: pick a completed hunt from <a href="/history">History</a>, then <strong>confirm</strong> real findings (they get saved into your project's case library as new TCs) or <strong>dismiss</strong> false positives. Nothing is promoted until you decide.</p>
         <label>Hunt run
             <select id="triage-job-select">
                 <option value="">— Pick a completed hunt —</option>

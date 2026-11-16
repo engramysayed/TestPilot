@@ -471,12 +471,15 @@
             }
         } catch (err) {
             generateModelSelect.innerHTML = '';
-            const opt = document.createElement('option');
-            opt.value = 'gemma4:e2b';
-            opt.textContent = 'gemma4:e2b';
-            generateModelSelect.appendChild(opt);
+            const fallback = ['gemma4:26b', 'gemma4:e2b', 'qwen2.5:latest'];
+            fallback.forEach(function (name) {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                generateModelSelect.appendChild(opt);
+            });
             defaultGenerateModel = 'gemma4:e2b';
-            generateModels = ['gemma4:e2b'];
+            generateModels = fallback.slice();
             modelsReady = true;
             renderCompareModelB({ models: generateModels, defaultModel: defaultGenerateModel });
             renderAuthoringReviewModels();

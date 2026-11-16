@@ -26,6 +26,8 @@ public class GenerateModelListTest {
         props.setLlmBaseUrl("http://127.0.0.1:11434");
         props.setLlmModel("gemma4:e2b");
         props.setGenerateModel("gemma4:e2b");
+        // Clear configured-model merge so tests isolate Ollama-cache behavior.
+        props.setGenerateModels(List.of());
         prevBase = System.getProperty("delivery.llm-base-url");
         prevGenModel = System.getProperty("delivery.generate-model");
         prevLlmModel = System.getProperty("delivery.llm-model");

@@ -93,8 +93,7 @@
                         <span>Use project library</span>
                     </label>
                 </div>
-                <p id="generated-workbook-meta" class="muted execute-source-meta"></p>
-                <p class="muted generate-option-hint">Runs AUTOMATE, EXECUTE, VISION_ONLY, and blank KeelPath. MANUAL is skipped.</p>
+                <p id="generated-workbook-meta" class="muted execute-source-meta" hidden></p>
                 <div id="library-pick-panel" class="tc-multiselect" hidden>
                     <span class="tc-ms-label">Cases to run</span>
                     <div class="tc-ms" id="tc-ms">
@@ -202,14 +201,7 @@
         <p id="form-error" class="error" hidden></p>
     </section>
 
-    <section class="panel keel-history-cta" id="execute-history-cta" hidden>
-        <p class="muted" style="margin:0">Past execute runs, exports, and evidence live in History — not on this page.</p>
-        <p style="margin:0.75rem 0 0">
-            <a class="button ghost small" id="execute-history-link" href="/history">View execute runs in History →</a>
-        </p>
-    </section>
-
-    <section class="panel" id="visual-diffs-panel" hidden>
+<section class="panel" id="visual-diffs-panel" hidden>
         <h2>Screenshot diffs <span class="muted">(visual)</span></h2>
         <div class="visual-diffs-layout">
             <div class="visual-diffs-list-wrap">

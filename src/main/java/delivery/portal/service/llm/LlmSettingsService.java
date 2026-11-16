@@ -220,7 +220,8 @@ public class LlmSettingsService implements ApplicationRunner {
     public GenerateModelList listForGenerate(boolean refresh) {
         List<String> cachedChat = chatModels(cachedOllamaModels());
         if (!refresh && !cachedChat.isEmpty()) {
-            return new GenerateModelList(cachedChat, pickDefault(cachedChat), "cache", false);
+            List<String> merged = withConfiguredModels(cachedChat);
+            return new GenerateModelList(merged, pickDefault(merged), "cache", false);
         }
         try {
             List<String> all = listOllamaModels(null);
@@ -228,7 +229,8 @@ public class LlmSettingsService implements ApplicationRunner {
             if (chat.isEmpty()) {
                 return failForGenerate(cachedChat);
             }
-            return new GenerateModelList(chat, pickDefault(chat), "live", false);
+            List<String> merged = withConfiguredModels(chat);
+            return new GenerateModelList(merged, pickDefault(merged), "live", false);
         } catch (Exception e) {
             return failForGenerate(cachedChat);
         }
@@ -236,9 +238,38 @@ public class LlmSettingsService implements ApplicationRunner {
 
     private GenerateModelList failForGenerate(List<String> cachedChat) {
         if (cachedChat != null && !cachedChat.isEmpty()) {
-            return new GenerateModelList(cachedChat, pickDefault(cachedChat), "cache", true);
+            List<String> merged = withConfiguredModels(cachedChat);
+            return new GenerateModelList(merged, pickDefault(merged), "cache", true);
         }
-        return new GenerateModelList(FALLBACK_GENERATE_MODELS, pickDefault(FALLBACK_GENERATE_MODELS), "fallback", true);
+        List<String> merged = withConfiguredModels(FALLBACK_GENERATE_MODELS);
+        return new GenerateModelList(merged, pickDefault(merged), "fallback", true);
+    }
+
+    // Union installed/cached chat models with the admin-configured delivery.generate-models list,
+    // so the dropdown always shows every chat model the operator approved — not just the one or
+    // two that happen to be installed in Ollama.
+    private List<String> withConfiguredModels(List<String> installed) {
+        List<String> out = new ArrayList<>();
+        if (installed != null) {
+            for (String m : installed) {
+                if (m != null && !m.isBlank() && !out.contains(m.trim())) {
+                    out.add(m.trim());
+                }
+            }
+        }
+        List<String> configured = props.getGenerateModels();
+        if (configured != null) {
+            for (String m : configured) {
+                if (m == null || m.isBlank() || isVisionModel(m)) {
+                    continue;
+                }
+                String t = m.trim();
+                if (!out.contains(t)) {
+                    out.add(t);
+                }
+            }
+        }
+        return List.copyOf(out);
     }
 
     private String pickDefault(List<String> chat) {

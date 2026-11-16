@@ -297,27 +297,19 @@
         </div>
 
         <p class="sidebar-label" th:text="#{nav.section.history}">History</p>
-        <div class="nav-group" data-nav-group-id="history"
-             th:classappend="${navActive == 'runs' or navActive == 'run-memory'} ? 'is-open'">
-            <div class="nav-main-wrap">
-                <a href="/history" class="nav-main sidebar-nav-item__link" th:classappend="${navActive == 'runs'} ? 'active'">
-                    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v2H8z"/><path d="M6 6h12v14H6z"/><path d="M9 11h6 M9 15h4"/></svg>
-                    <span th:text="#{nav.history}">History</span>
-                </a>
-                <th:block th:replace="~{fragments :: featureHelpBtn('history')}"></th:block>
-            </div>
-            <button type="button" class="nav-toggle" aria-label="Toggle History menu">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
-            <div class="nav-children">
-                <div class="sidebar-nav-item" data-feature-perm="feature.execute">
-                    <a href="/run-memory" class="sidebar-child sidebar-nav-item__link" th:classappend="${navActive == 'run-memory'} ? 'active'">
-                        <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a5 5 0 0 1 5 5c0 2-1 3.5-2.5 4.5L12 22l-2.5-10.5C8 10 7 8.5 7 7a5 5 0 0 1 5-5z"/></svg>
-                        <span th:text="#{nav.runMemory}">Run memory</span>
-                    </a>
-                    <th:block th:replace="~{fragments :: featureHelpBtn('run-memory')}"></th:block>
-                </div>
-            </div>
+        <div class="sidebar-nav-item">
+            <a href="/history" class="sidebar-nav-item__link" th:classappend="${navActive == 'runs'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v2H8z"/><path d="M6 6h12v14H6z"/><path d="M9 11h6 M9 15h4"/></svg>
+                <span th:text="#{nav.history}">History</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('history')}"></th:block>
+        </div>
+        <div class="sidebar-nav-item" data-feature-perm="feature.execute">
+            <a href="/run-memory" class="sidebar-nav-item__link" th:classappend="${navActive == 'run-memory'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a5 5 0 0 1 5 5c0 2-1 3.5-2.5 4.5L12 22l-2.5-10.5C8 10 7 8.5 7 7a5 5 0 0 1 5-5z"/></svg>
+                <span th:text="#{nav.runMemory}">Run memory</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('run-memory')}"></th:block>
         </div>
 
         <p class="sidebar-label" th:text="#{nav.section.resources}">Resources</p>

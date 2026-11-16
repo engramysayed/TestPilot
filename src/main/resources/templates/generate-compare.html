@@ -5,6 +5,7 @@
 </head>
 <body class="app-body" th:attr="data-structured-intake=${generateStructuredIntake} ?: true">
 <link rel="stylesheet" th:href="@{/css/keel-portal-enhancements.css}"/>
+<link rel="stylesheet" th:href="@{/css/keel-generate-layout.css}"/>
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
 <header th:replace="~{fragments :: topbar}"></header>
@@ -58,21 +59,19 @@
                 <label for="intake-ac">Acceptance criteria
                     <textarea id="intake-ac" rows="5" placeholder="One criterion per line"></textarea>
                 </label>
-                <div class="structured-intake-row">
-                    <label for="intake-role">Role
-                        <input type="text" id="intake-role" placeholder="e.g. Shopper"/>
-                    </label>
-                    <label for="intake-surface">Surface
-                        <input type="text" id="intake-surface" placeholder="e.g. Web checkout"/>
-                    </label>
-                </div>
             </div>
 
             <label for="stories-input" id="stories-input-label" class="structured-intake-fallback-label" hidden>Stories</label>
             <textarea id="stories-input" rows="10" hidden></textarea>
 
-            <details class="more-options" id="generate-free-text-more">
-                <summary>Paste free-text story instead</summary>
+            <details class="more-options more-options--pill" id="generate-free-text-more">
+                <summary>
+                    <span class="more-options-caret" aria-hidden="true">+</span>
+                    <span class="more-options-label">Paste free-text story instead</span>
+                    <span class="more-options-tip" tabindex="0" role="note"
+                          aria-label="Use this if you already have a full story blob. It is merged with the fields above."
+                          title="Use this if you already have a full story blob. It is merged with the fields above.">i</span>
+                </summary>
                 <label for="intake-freetext">Free-text story
                     <textarea id="intake-freetext" rows="6"></textarea>
                 </label>
@@ -97,7 +96,7 @@
             <div class="generate-options">
                 <label class="generate-check">
                     <input type="checkbox" id="review-pass"/>
-                    <span>Double-check the results (about twice as long)</span>
+                    <span>Double-check the results</span>
                 </label>
             </div>
 
