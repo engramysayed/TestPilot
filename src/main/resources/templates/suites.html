@@ -25,6 +25,11 @@
     <div class="page-title">
         <div>
             <h1>Test suites</h1>
+            <p class="hint muted">
+                A <strong>suite</strong> is a named bundle of test cases you run together.
+                Build one here, then run it on demand from <a href="/execute">TCs execution</a>
+                or on a schedule from <a href="/suites/schedule">Scheduling</a>.
+            </p>
         </div>
     </div>
 
@@ -78,10 +83,9 @@
         </section>
 
         <section class="panel suite-compose-panel" id="suite-compose-panel">
-            <h2>Test suite</h2>
+            <h2>Create a new suite</h2>
             <p class="muted" style="margin:0 0 0.5rem">
-                Pick <strong>Smoke</strong> (quick), <strong>Regression</strong> (wider), or <strong>Nightly</strong> (usually scheduled).
-                These are the only pack types on this page.
+                <strong>Smoke</strong> = quick, happy-path only · <strong>Regression</strong> = wide coverage before release · <strong>Nightly</strong> = full pack, scheduled.
             </p>
 
             <div class="field-row">

@@ -11,6 +11,11 @@
     <div class="page-title">
         <div>
             <h1>Shared step recipes</h1>
+            <p class="hint muted">
+                A recipe is a named sequence of <code>action</code> / <code>assert</code> steps
+                you re-use across cases. After saving, reference it from any test case step as
+                <code>run recipe:&lt;id&gt;</code>. Nothing runs on Save — just the recipe is stored.
+            </p>
         </div>
     </div>
     <section class="panel workspace-launcher" id="workspace-launcher">
@@ -31,13 +36,23 @@
         <section class="panel">
             <h2 id="editor-title">Create or edit a recipe</h2>
             <label>Short id (no spaces) <input type="text" id="plan-id" pattern="[A-Za-z0-9][A-Za-z0-9_-]*" placeholder="login-happy"/></label>
+            <p class="field-hint muted">Stable key cases use to call the recipe. Cannot change after save.</p>
             <label style="display:block;margin-top:0.5rem">Display name <input type="text" id="plan-name" maxlength="200" placeholder="Login happy path"/></label>
+            <p class="field-hint muted">UI label only. Short id is what cases actually reference.</p>
             <div id="steps" style="margin-top:0.75rem"></div>
             <p style="margin-top:0.5rem">
                 <button type="button" class="button ghost" id="add-step">Add step</button>
                 <button type="button" class="button" id="save-plan" style="margin-left:0.5rem">Save</button>
                 <span id="save-status" class="muted"></span>
             </p>
+            <div id="save-confirm" class="hint" hidden style="margin-top:0.85rem;padding:0.75rem 0.9rem;border-left:3px solid var(--ok,#3ecf8e);background:rgba(62,207,142,0.08);border-radius:6px">
+                <strong>Saved.</strong>
+                Reference this recipe from any test case step as
+                <code id="save-confirm-ref">run recipe:…</code>
+                <button type="button" class="button ghost small" id="save-confirm-copy" style="margin-left:0.5rem">Copy</button>
+                <br/>
+                <span class="muted" style="font-size:0.85rem">Stored at <code id="save-confirm-path">{project}/structured-plans/{id}.json</code> · revision <span id="save-confirm-rev">—</span></span>
+            </div>
         </section>
     </div>
 </main>
@@ -122,7 +137,18 @@
         const method = editingRevision != null ? 'PUT' : 'POST';
         const res = await fetch(path, { method, headers: H, body: JSON.stringify(body) });
         document.getElementById('save-status').textContent = res.ok ? 'Saved' : 'Error ' + res.status;
-        if (res.ok) { editingRevision = (await res.json()).revision; await refreshPlans(); }
+        if (res.ok) {
+            const saved = await res.json();
+            editingRevision = saved.revision;
+            await refreshPlans();
+            const confirm = document.getElementById('save-confirm');
+            const ref = 'run recipe:' + id;
+            document.getElementById('save-confirm-ref').textContent = ref;
+            document.getElementById('save-confirm-path').textContent = '{project}/structured-plans/' + id + '.json';
+            document.getElementById('save-confirm-rev').textContent = saved.revision;
+            confirm.hidden = false;
+            document.getElementById('save-confirm-copy').onclick = () => navigator.clipboard.writeText(ref);
+        }
     };
 
     document.getElementById('launcher-continue').onclick = () => {
