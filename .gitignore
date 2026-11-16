@@ -14,6 +14,8 @@ delivery-work/
 Thumbs.db
 delivery.properties
 tools/cursor-heal/node_modules/
+tools/cursor-agent/node_modules/
+tools/cursor-agent/package-lock.json
 cursor-api-key.local.bat
 api-keys.local.bat
 keel-env.local.bat
@@ -48,6 +50,11 @@ docs/design/keel-preview/signoff-screenshots/
 tmp/
 META-INF/
 patches/
+
+# Local test-run outputs / heal proposals (per-run artifacts)
+ex-test/*/heal-proposals/
+ex-test/*/execute-runs/
+ex-test/*/__packager/
 
 
 # Local workspaces, extracted build artifacts
