@@ -68,6 +68,31 @@ public class CodeWriter {
         return outcomes.stream().map(CodegenEmitFilters::filterOutcome).toList();
     }
 
+    /**
+     * Page import class names for a test group — same union as {@link #writeVerified} {@code unionImports}.
+     */
+    public static List<String> expectedUnionPageImportsForGroup(
+            List<TcOutcome> members, PageAccumulator pages, String testDataEnvPrefix) {
+        if (members == null || members.isEmpty()) {
+            return List.of();
+        }
+        CodeWriter writer = new CodeWriter(Path.of("customer-framework-template/templates"));
+        String prefix = testDataEnvPrefix == null ? "" : testDataEnvPrefix;
+        CodegenDataKeys keys = CodegenDataKeys.assign(members, pages, prefix);
+        Map<String, Boolean> importSet = new LinkedHashMap<>();
+        Set<String> usedMethodNames = new HashSet<>();
+        boolean mergedClass = members.size() > 1;
+        for (TcOutcome outcome : members) {
+            Map<String, Object> tm = writer.buildTestMethodModel(
+                    outcome, pages, keys, usedMethodNames, mergedClass);
+            for (String imp : pageImportsFor(
+                    castCalls(tm.get("chronCalls")), castCalls(tm.get("beforeCalls")))) {
+                importSet.putIfAbsent(imp, true);
+            }
+        }
+        return List.copyOf(importSet.keySet());
+    }
+
     public static PageAccumulator accumulate(List<TcOutcome> outcomes) {
         PageAccumulator pages = new PageAccumulator();
         List<TcOutcome> emitOutcomes = EmitStepNormalizer.applyOutcomes(filterForEmit(outcomes));

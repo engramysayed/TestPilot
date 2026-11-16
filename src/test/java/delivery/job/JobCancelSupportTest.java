@@ -57,7 +57,7 @@ public class JobCancelSupportTest {
         AtomicBoolean cancelled = new AtomicBoolean(false);
         AtomicInteger storyCalls = new AtomicInteger();
 
-        TcGenerateService generate = new TcGenerateService(null, null, null, null, null) {
+        TcGenerateService generate = new TcGenerateService(null, null, null, null, null, null) {
             @Override
             public List<ManualTestCase> generateCasesForStory(
                     ProjectRecord project,
@@ -102,7 +102,7 @@ public class JobCancelSupportTest {
                 StandardCharsets.UTF_8);
         Path outputDir = Files.createTempDirectory("gen-batch-mid-cancel");
 
-        TcGenerateService generate = new TcGenerateService(null, null, null, null, null) {
+        TcGenerateService generate = new TcGenerateService(null, null, null, null, null, null) {
             @Override
             public List<ManualTestCase> generateCasesForStory(
                     ProjectRecord project,

@@ -39,8 +39,12 @@
         <p class="muted" style="margin:0">
             Project: <strong id="pinned-project-name">—</strong>
             <button type="button" class="button ghost" id="change-project" style="margin-left:0.5rem">Change</button>
-            <span id="tunnel-badge" class="badge muted" style="margin-left:0.75rem" hidden>Tunnel</span>
+            <span id="tunnel-badge-wrap" class="execute-tunnel-wrap" hidden>
+                <span id="tunnel-badge" class="badge muted" title="Private app tunnel">Tunnel inactive</span>
+                <a id="tunnel-badge-guide" class="execute-tunnel-guide muted" href="/guide#tunnel">Private app tunnel →</a>
+            </span>
         </p>
+        <p id="tunnel-hint" class="muted execute-tunnel-hint" hidden></p>
         <select id="project-select" hidden aria-hidden="true">
             <option value="">— Loading projects —</option>
         </select>

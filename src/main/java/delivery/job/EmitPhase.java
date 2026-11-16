@@ -4,6 +4,7 @@ import delivery.codegen.CodeWriter;
 import delivery.codegen.CodegenEmitGate;
 import delivery.codegen.CodegenEnvHint;
 import delivery.codegen.CodegenOptions;
+import delivery.agent.validation.contract.FrameworkExpectedInventory;
 import delivery.codegen.DomainCatalogWriter;
 import delivery.codegen.PageClusterer;
 import delivery.codegen.ProvenStep;
@@ -41,9 +42,15 @@ public class EmitPhase {
     private final JobProgressTracker progress;
     private int proveBase;
     private int emitStep;
+    private delivery.agent.validation.automate.AutomateFrameworkAcceptanceGate acceptanceGate;
 
     public EmitPhase(JobProgressTracker progress) {
         this.progress = progress == null ? new JobProgressTracker() : progress;
+    }
+
+    public EmitPhase withAcceptanceGate(delivery.agent.validation.automate.AutomateFrameworkAcceptanceGate gate) {
+        this.acceptanceGate = gate;
+        return this;
     }
 
     /** Package-visible for progress reserve tests. */
@@ -142,6 +149,9 @@ public class EmitPhase {
         appendHealMetrics(projectDir, clustered);
         packager.writeTargetConfig(projectDir, request.baseUrl(), request.username(), request.password());
 
+        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
+        Path tenantProjectRoot = store.projectRoot(request.projectId());
+
         bumpProgress("Phase2 emit: compile smoke check");
         // D-QA-02: inline compile gate so source order is compile-then-publish.
         EmitCompileCheck.runIfEnabled(projectDir, java.time.Duration.ofMinutes(10), cancel);
@@ -155,7 +165,27 @@ public class EmitPhase {
         Files.createDirectories(mapInProject.getParent());
         Files.writeString(mapInProject, locatorMap.toString(2));
 
-        ProjectStore store = new ProjectStore(request.storeRoot(), request.baseUrl(), request.tenantId());
+        // RevisePhase may inject review comments into generated tests — re-compile before acceptance.
+        bumpProgress("Phase2 emit: post-revise compile check");
+        EmitCompileCheck.runIfEnabled(projectDir, java.time.Duration.ofMinutes(10), cancel);
+        JobCancelSupport.checkCancelled(cancel);
+
+        if (acceptanceGate != null) {
+            bumpProgress("Phase2 emit: framework contract acceptance (pre-zip)");
+            FrameworkExpectedInventory expectedInventory = FrameworkExpectedInventory.fromOutcomes(outcomes);
+            var acceptance = acceptanceGate.run(
+                    workDir,
+                    projectDir,
+                    request.templateRoot(),
+                    tenantProjectRoot,
+                    request.jobId(),
+                    request.projectId(),
+                    expectedInventory);
+            if (!acceptance.accepted()) {
+                throw new delivery.agent.validation.automate.FrameworkAcceptanceException(acceptance);
+            }
+        }
+
         Path stagedState = workDir.resolve("publication-state");
         new LocatorMapStore(stagedState.resolve("locator-map.json"))
                 .save(locatorMap);

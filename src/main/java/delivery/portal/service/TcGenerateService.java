@@ -10,6 +10,11 @@ import delivery.excel.KeelPathCounts;
 import delivery.excel.ManualTestCase;
 import delivery.job.JobCancelSupport;
 import delivery.job.JobCancelledException;
+import delivery.agent.harness.AgentHarnessCoordinator;
+import delivery.agent.validation.contract.TestCaseValidationContext;
+import delivery.agent.validation.generate.GenerateHarnessBridge;
+import delivery.agent.validation.generate.GenerateTcContractValidation;
+import delivery.portal.AgentHarnessProperties;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.ProjectRecord;
 import org.apache.logging.log4j.LogManager;
@@ -43,19 +48,22 @@ public class TcGenerateService {
     private final GeneratedWorkbookService workbooks;
     private final GenerateModelService models;
     private final TcImportService tcImport;
+    private final AgentHarnessProperties harnessProps;
 
     public TcGenerateService(
             DeliveryPortalProperties props,
             PortalStore store,
             GeneratedWorkbookService workbooks,
             GenerateModelService models,
-            TcImportService tcImport
+            TcImportService tcImport,
+            AgentHarnessProperties harnessProps
     ) {
         this.props = props;
         this.store = store;
         this.workbooks = workbooks;
         this.models = models;
         this.tcImport = tcImport;
+        this.harnessProps = harnessProps == null ? new AgentHarnessProperties() : harnessProps;
     }
 
     public Map<String, Object> generate(
@@ -267,6 +275,29 @@ public class TcGenerateService {
             gateErrors = GenerateQualityGate.validate(cases, project.getBaseUrl());
             if (!gateErrors.isEmpty()) {
                 throw GenerateQualityGate.failureException(gateErrors);
+            }
+        }
+        if (harnessProps.isTcValidationEnabled()) {
+            var contractCtx = new TestCaseValidationContext(stories, project.getBaseUrl(), project.getProjectId());
+            var contractReport = GenerateTcContractValidation.validate(cases, contractCtx);
+            if (!contractReport.passed()) {
+                if (harnessProps.isTcValidationCursorEscalationEnabled()) {
+                    var bridge = new GenerateHarnessBridge(
+                            harnessProps, AgentHarnessCoordinator.forProduction(harnessProps));
+                    var esc = bridge.tryCursorReview(
+                            store.projectDiskRoot(project.getProjectId()),
+                            "generate_" + project.getProjectId(),
+                            project.getProjectId(),
+                            cases,
+                            contractReport,
+                            stories);
+                    log.info("TC contract Cursor escalation status={} detail={}", esc.status(), esc.detail());
+                    contractReport = GenerateTcContractValidation.validate(cases, contractCtx);
+                }
+                var contractErrors = GenerateTcContractValidation.toLegacyGateErrors(contractReport);
+                if (!contractErrors.isEmpty()) {
+                    throw GenerateQualityGate.failureException(contractErrors);
+                }
             }
         }
         cases = KeelPathSuggester.applyToBlank(cases);

@@ -7,6 +7,7 @@ import delivery.job.ExecuteJobResult;
 import delivery.job.ExecuteJobRunner;
 import delivery.job.JobCancelledException;
 import delivery.job.JobProgressTracker;
+import delivery.portal.AgentHarnessProperties;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.jobs.DurableJobClaim;
 import delivery.portal.model.JobRecord;
@@ -29,19 +30,22 @@ public class ExecuteWorker extends AbstractJobWorker {
     private final Environment env;
     private final RunMemoryJobBootstrap runMemory;
     private final TunnelJobBaseUrlService tunnelBaseUrl;
+    private final AgentHarnessProperties harnessProps;
 
     public ExecuteWorker(
             DeliveryPortalProperties props,
             PortalStore portalStore,
             Environment env,
             RunMemoryJobBootstrap runMemory,
-            TunnelJobBaseUrlService tunnelBaseUrl
+            TunnelJobBaseUrlService tunnelBaseUrl,
+            AgentHarnessProperties harnessProps
     ) {
         super(portalStore);
         this.props = props;
         this.env = env;
         this.runMemory = runMemory;
         this.tunnelBaseUrl = tunnelBaseUrl;
+        this.harnessProps = harnessProps == null ? new AgentHarnessProperties() : harnessProps;
     }
 
     @Override
@@ -105,7 +109,7 @@ public class ExecuteWorker extends AbstractJobWorker {
                 result = runWithProgressMirror(job, tracker,
                         () -> new DryRunExecuteService().run(request, jobId, tracker, cancelCheck));
             } else {
-                ExecuteJobRunner runner = new ExecuteJobRunner();
+                ExecuteJobRunner runner = new ExecuteJobRunner(harnessProps);
                 result = runWithProgressMirror(job, runner.progress(),
                         () -> runner.run(request, jobId, cancelCheck));
             }

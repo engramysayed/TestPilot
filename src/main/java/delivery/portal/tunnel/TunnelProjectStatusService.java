@@ -32,7 +32,8 @@ public class TunnelProjectStatusService {
         out.put("enabled", enabled);
         if (!enabled) {
             out.put("status", "disabled");
-            out.put("label", "Tunnel: off (set delivery.tunnel.enabled=true)");
+            out.put("label", "Tunnel inactive");
+            out.put("hint", tunnelHint("disabled"));
             return out;
         }
         TunnelHostPolicy.Evaluation iso = TunnelHostPolicy.evaluate(
@@ -42,13 +43,15 @@ public class TunnelProjectStatusService {
         out.put("isolation", iso.misconfigured() ? "misconfigured" : iso.devLoopback() ? "dev-loopback" : "dedicated-host");
         if (iso.misconfigured()) {
             out.put("status", "misconfigured");
-            out.put("label", "Tunnel: disabled — " + iso.reason());
+            out.put("label", "Tunnel unavailable");
+            out.put("hint", tunnelHint("misconfigured"));
             return out;
         }
         Optional<Map<String, Object>> latest = disk.latest(store.projectDiskRoot(projectId));
         if (latest.isEmpty()) {
             out.put("status", "none");
-            out.put("label", "Tunnel: not enrolled");
+            out.put("label", "Tunnel not connected");
+            out.put("hint", tunnelHint("none"));
             return out;
         }
         Map<String, Object> e = latest.get();
@@ -59,10 +62,29 @@ public class TunnelProjectStatusService {
         jobBaseUrl.relayBaseUrl(projectId).ifPresent(u -> out.put("executeBaseUrl", u));
         out.put("lastHeartbeatAt", e.getOrDefault("lastHeartbeatAt", ""));
         out.put("label", "active".equalsIgnoreCase(st)
-                ? "Tunnel: active (cloud execute uses relay URL)"
+                ? "Tunnel active"
                 : "stale".equalsIgnoreCase(st)
-                ? "Tunnel: offline (no heartbeat; execute uses project baseUrl)"
-                : "Tunnel: " + st);
+                ? "Tunnel offline"
+                : "Tunnel " + st);
+        if ("active".equalsIgnoreCase(st)) {
+            out.put("hint", "Execute runs use the tunnel relay instead of the project URL.");
+        } else {
+            out.put("hint", tunnelHint(st));
+        }
         return out;
+    }
+
+    /** Short hint for Execute UI when runs fall back to the project URL (no JVM jargon). */
+    public static String tunnelHint(String status) {
+        if (status == null) {
+            return "";
+        }
+        return switch (status.trim().toLowerCase()) {
+            case "disabled" -> "Your admin can turn on the private app tunnel for localhost and VPN apps.";
+            case "none" -> "On your machine, run keel tunnel start for this project — see the Guide.";
+            case "stale" -> "No recent agent heartbeat — runs use the project URL until the tunnel is back.";
+            case "misconfigured" -> "Ask your admin to set a dedicated tunnel web address (separate from Keel).";
+            default -> "";
+        };
     }
 }

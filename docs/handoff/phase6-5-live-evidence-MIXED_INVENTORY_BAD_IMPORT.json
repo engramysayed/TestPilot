@@ -1,0 +1,19 @@
+{
+  "scenario" : "MIXED_INVENTORY_BAD_IMPORT",
+  "accepted" : true,
+  "gateStatus" : "ACCEPTED",
+  "detail" : "contract and compile passed",
+  "taskId" : "",
+  "initialMandatoryRuleIds" : [ "FW_TEST_USES_PAGE" ],
+  "initialMandatoryCount" : 1,
+  "revalidationPassed" : true,
+  "reconciliation" : {
+    "copied" : [ "src/test/java/project/tests/todo/CheckoutStepOne_TestTodo.java" ],
+    "deleted" : [ ],
+    "excluded" : [ "src/test/resources/test-data/delivery-testdata.properties" ],
+    "unchanged" : [ "src/test/java/project/tests/generated/Login_Test.java", "src/main/java/project/pages/Cart_Page.java", "src/main/java/project/pages/CheckoutStepOne_Page.java", "src/main/java/project/pages/Login_Page.java", "src/test/java/project/tests/todo/TC_DTestTodo.java" ]
+  },
+  "promoted" : true,
+  "permittedSourceFiles" : [ ],
+  "repairCandidateFiles" : [ "src/main/java/project/pages/Cart_Page.java", "src/main/java/project/pages/CheckoutStepOne_Page.java", "src/main/java/project/pages/Login_Page.java", "src/test/java/project/tests/generated/Login_Test.java", "src/test/java/project/tests/todo/CheckoutStepOne_TestTodo.java", "src/test/java/project/tests/todo/TC_DTestTodo.java" ]
+}

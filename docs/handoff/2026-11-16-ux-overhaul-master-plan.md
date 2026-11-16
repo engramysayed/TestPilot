@@ -180,6 +180,10 @@
 | 2026-11-16 | 5 | **Shipped:** Execute + Bug Hunter recent tables removed; History CTAs; live execute run panel kept. **Review:** `localhost:8080` execute start + bug-hunter triage. **Next:** Phase 6 Generate layout. |
 | 2026-11-16 | 6 | **Shipped:** Generate stacked cards + section `?` help; bulk jobs under bulk card only. **Next:** Phase 7 suites schedule. |
 | 2026-11-16 | 7 | **Shipped:** `suites-schedule` presets, Account alerts, unified save, suite picker labels. **Next:** Phase 8 Execute tunnel copy. |
+| 2026-11-16 | 8 | **Shipped:** Execute tunnel badge user copy + Guide link. **Next:** Phase 9 run memory / Bug Hunter. |
+| 2026-11-16 | 9 | **Shipped:** Run memory table fix + triage rename/help. **Next:** Phase 10 guide sync. |
+| 2026-11-16 | 10 | **Shipped:** Guide feature glossary + anchored `feature.help.*.guide` URLs; TOC/cards/headings aligned with sidebar IA. **Next:** Phase 11 QA/a11y. |
+| 2026-11-16 | 11 | **Shipped:** Skip link, focus-visible rings, keyboard feature help, nav `aria-expanded` sync, reduced-motion pass. **UX overhaul (0–11) complete** for scoped portal IA. |
 
 ---
 

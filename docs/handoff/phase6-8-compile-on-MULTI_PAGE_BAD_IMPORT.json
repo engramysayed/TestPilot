@@ -1,0 +1,33 @@
+{
+  "phase" : "6.8-compile-on",
+  "scenario" : "MULTI_PAGE_BAD_IMPORT",
+  "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-multi_page_bad_import-16667347345825341966",
+  "accepted" : true,
+  "promoted" : true,
+  "gateStatus" : "ACCEPTED",
+  "initialMandatoryRuleIds" : [ "FW_TEST_USES_PAGE" ],
+  "compilePassed" : true,
+  "compileCheckEnabled" : true,
+  "reconciliation" : {
+    "copied" : [ "src/test/java/project/tests/todo/CheckoutStepOne_TestTodo.java" ],
+    "deleted" : [ ],
+    "excluded" : [ ".gitattributes", ".github/dependabot.yml", ".github/keel/summarize_results.py", ".github/workflows/E2E.yml", ".github/workflows/keel-pr-report.yml", ".gitignore", "docs/CI_E2E_WORKFLOW.md", "docs/CI_PR_REPORT.md", "pom.xml", "README.md", "src/main/java/project/drivers/AbstractDriver.java", "src/main/java/project/drivers/Browser.java", "src/main/java/project/drivers/ChromeFactory.java", "src/main/java/project/drivers/EdgeFactory.java", "src/main/java/project/drivers/WebDriverFactory.java", "src/main/java/project/drivers/WebDriverProvider.java", "src/main/java/project/listeners/TestNGListeners.java", "src/main/java/project/media/ScreenRecordManager.java", "src/main/java/project/media/ScreenShotManager.java", "src/main/java/project/utils/Actions/AlertsHandler.java", "src/main/java/project/utils/Actions/BrowserHandler.java", "src/main/java/project/utils/Actions/ElementsHandler.java", "src/main/java/project/utils/Actions/FramesHandler.java", "src/main/java/project/utils/Actions/ReplayActionException.java", "src/main/java/project/utils/CaptureCompare.java", "src/main/java/project/utils/CapturedValues.java", "src/main/java/project/utils/dataReader/JsonReader.java", "src/main/java/project/utils/dataReader/PropertyReader.java", "src/main/java/project/utils/FilesManager.java", "src/main/java/project/utils/locators/FirstOf.java", "src/main/java/project/utils/locators/KeelActions.java", "src/main/java/project/utils/locators/KeelBy.java", "src/main/java/project/utils/locators/KeelHook.java", "src/main/java/project/utils/locators/KeelLocate.java", "src/main/java/project/utils/locators/SettledActions.java", "src/main/java/project/utils/locators/SmartWait.java", "src/main/java/project/utils/Logs/LogsManager.java", "src/main/java/project/utils/reports/AllureAttachmentManager.java", "src/main/java/project/utils/reports/AllureDownloadManager.java", "src/main/java/project/utils/reports/AllureEnviromentsManager.java", "src/main/java/project/utils/reports/AllurePaths.java", "src/main/java/project/utils/reports/AllureReportGenerator.java", "src/main/java/project/utils/reports/AllureSteps.java", "src/main/java/project/utils/reports/KeelResults.java", "src/main/java/project/utils/reports/Secrets.java", "src/main/java/project/utils/retry/KeelReadOnly.java", "src/main/java/project/utils/retry/KeelRetryAnalyzer.java", "src/main/java/project/utils/retry/KeelRetryListener.java", "src/main/java/project/utils/settle/NoEffectError.java", "src/main/java/project/utils/settle/ScreenshotDiff.java", "src/main/java/project/utils/settle/Settle.java", "src/main/java/project/utils/settle/SettlePolicy.java", "src/main/java/project/utils/Terminal.java", "src/main/java/project/utils/TimeManager.java", "src/main/java/project/utils/WaitHandler.java", "src/main/java/project/validations/Assertion.java", "src/main/java/project/validations/Validation.java", "src/main/java/project/validations/Verification.java", "src/main/resources/allure.properties", "src/main/resources/enviroment.properties", "src/main/resources/keel/closed-shadow-hook.js", "src/main/resources/keel/keel-text-match.js", "src/main/resources/keel/settle-network.js", "src/main/resources/keel/settle-policy.json", "src/main/resources/keel/settle-probe.js", "src/main/resources/log4j2.properties", "src/main/resources/META-INF/services/org.testng.ITestNGListener", "src/main/resources/waits.properties", "src/main/resources/webapp.properties.example", "src/test/java/project/tests/BaseTest.java", "src/test/resources/keel/settle-policy.golden.txt", "src/test/resources/test-data/delivery-testdata.properties", "src/test/resources/test-data/login-data.json" ],
+    "unchanged" : [ "src/main/java/project/pages/Cart_Page.java", "src/main/java/project/pages/CheckoutStepOne_Page.java" ]
+  },
+  "revalidationReport" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-multi_page_bad_import-16667347345825341966\\agent-runs\\compile-live-MULTI_PAGE_BAD_IMPORT_acceptance-revalidate\\contract-validation-report.json",
+  "revalidationPassed" : true,
+  "revalidationMandatoryRuleIds" : [ ],
+  "taskId" : "beed1dcd195e4cf4aae2865188074a98",
+  "agentId" : "agent-6a3c0037-1a48-4eb1-93da-8a2ebbd5cdf3",
+  "agentRunId" : "run-88af565b-032c-495d-b4c2-d8a3d552fa88",
+  "cursorTaskStatus" : "COMPLETED",
+  "architectureRepairCandidate" : {
+    "functionallyComplete" : true,
+    "findings" : [ ]
+  },
+  "architecturePublished" : {
+    "functionallyComplete" : true,
+    "findings" : [ ]
+  },
+  "failureClass" : "SUCCESS"
+}

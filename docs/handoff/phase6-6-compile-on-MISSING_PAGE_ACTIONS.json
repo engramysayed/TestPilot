@@ -1,0 +1,27 @@
+{
+  "phase" : "6.6-compile-on",
+  "scenario" : "MISSING_PAGE_ACTIONS",
+  "accepted" : false,
+  "gateStatus" : "COMPILE_FAILED",
+  "initialMandatoryRuleIds" : [ "FW_PAGE_MISSING_ACTIONS" ],
+  "compilePassed" : false,
+  "compileCheckEnabled" : true,
+  "reconciliation" : {
+    "copied" : [ "src/main/java/project/pages/Login_Page.java" ],
+    "deleted" : [ ],
+    "excluded" : [ "src/test/resources/test-data/delivery-testdata.properties" ],
+    "unchanged" : [ "src/test/java/project/tests/generated/Login_Test.java" ]
+  },
+  "taskId" : "f7a28b3c90034a42ac4fc93321a09e19",
+  "agentId" : "agent-13e7cef5-4f0a-4317-bad7-cea7a10fc825",
+  "agentRunId" : "run-fe466b43-f4bf-41ba-ba87-4f427f8a5902",
+  "architectureRepairCandidate" : {
+    "functionallyComplete" : true,
+    "findings" : [ ]
+  },
+  "architecturePublished" : {
+    "functionallyComplete" : true,
+    "findings" : [ ]
+  },
+  "failureClass" : "COMPILE_FAILURE"
+}

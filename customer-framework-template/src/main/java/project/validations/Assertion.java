@@ -188,7 +188,7 @@ public abstract class  Assertion {
                 }
                 ok = expected == null ? actual == null : expected.equals(actual);
             }
-        } catch (WebDriverException | RuntimeException e) {
+        } catch (RuntimeException e) {
             LogsManager.error("soft assert elementValue failed: " + e.getMessage());
         }
         if (!ok) {
@@ -207,7 +207,7 @@ public abstract class  Assertion {
                 actual = el.getText() == null ? "" : el.getText();
                 ok = expected == null ? actual.isEmpty() : expected.equals(actual);
             }
-        } catch (WebDriverException | RuntimeException e) {
+        } catch (RuntimeException e) {
             LogsManager.error("soft assert elementTextEquals failed: " + e.getMessage());
         }
         if (!ok) {

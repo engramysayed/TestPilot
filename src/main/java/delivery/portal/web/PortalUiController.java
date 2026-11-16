@@ -36,6 +36,28 @@ import java.util.Map;
 
 @Controller
 public class PortalUiController {
+    /** Sidebar feature ids — Guide glossary + feature-help "More in Guide" anchors stay aligned. */
+    private static final List<String> GUIDE_GLOSSARY_FEATURE_IDS = List.of(
+            "overview",
+            "projects",
+            "tcs-generation",
+            "multi-model-generate",
+            "generate-from-knowledge",
+            "playback",
+            "plain-cases",
+            "test-blueprints",
+            "test-suites",
+            "scheduling",
+            "schedule-watch",
+            "tcs-execution",
+            "tcs-automation",
+            "bug-hunter",
+            "history",
+            "run-memory",
+            "pricing",
+            "guide"
+    );
+
     private final DashboardService dashboard;
     private final CurrentUserService currentUser;
     private final PortalStore store;
@@ -404,6 +426,7 @@ public class PortalUiController {
     @GetMapping("/guide")
     public String guide(Model model) {
         addNav(model, "guide");
+        model.addAttribute("guideFeatureIds", GUIDE_GLOSSARY_FEATURE_IDS);
         return "guide";
     }
 

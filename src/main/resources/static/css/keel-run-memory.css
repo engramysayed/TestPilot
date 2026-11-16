@@ -1,0 +1,29 @@
+/* Phase 9 — Run memory table layout */
+
+.run-memory-page .panelhead {
+    margin-bottom: 0.85rem;
+}
+
+.run-memory-page .panelhead-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.run-memory-page .panelhead-title h2 {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 1.1rem;
+}
+
+.run-memory-page .table--run-memory th {
+  white-space: nowrap;
+}
+
+.run-memory-page .table--run-memory td.mono {
+  font-size: 0.88rem;
+}
+
+.run-memory-page .run-memory-actions .button {
+  margin: 0;
+}

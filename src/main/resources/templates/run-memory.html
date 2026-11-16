@@ -2,8 +2,9 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments :: pageHead(title='Run memory')}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/keel-run-memory.css}"/>
 </head>
-<body class="app-body">
+<body class="app-body run-memory-page">
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
 <header th:replace="~{fragments :: topbar}"></header>
@@ -11,30 +12,71 @@
     <div class="page-title">
         <div>
             <h1 th:text="#{page.run-memory.title}">Run memory</h1>
+            <p class="hint muted" th:text="#{page.run-memory.lede}">Capture locator hints from past runs.</p>
         </div>
     </div>
     <section class="panel workspace-launcher" id="workspace-launcher">
         <h2>Choose a project</h2>
-        <label>Project <select id="launcher-project-select"><option value="">Loading…</option></select></label>
-        <p style="margin-top:0.75rem"><button type="button" class="button" id="launcher-continue">Continue</button></p>
+        <label>Project
+            <select id="launcher-project-select">
+                <option value="">Loading…</option>
+            </select>
+        </label>
+        <p style="margin-top:0.75rem">
+            <button type="button" class="button" id="launcher-continue">Continue</button>
+        </p>
     </section>
     <div id="workspace-config" hidden>
-        <section class="panel">
-            <p class="muted">Project: <strong id="pinned-name">—</strong>
-                <button type="button" class="button ghost" id="change-project">Change</button></p>
+        <section class="panel workspace-pinned">
+            <p class="muted" style="margin:0">
+                Project: <strong id="pinned-name">—</strong>
+                <button type="button" class="button ghost" id="change-project" style="margin-left:0.5rem">Change</button>
+            </p>
         </section>
         <section class="panel">
-            <h2>Propose memory</h2>
-            <label>Id <input type="text" id="mem-id" placeholder="mem_login_btn"/></label>
-            <label style="display:block;margin-top:0.5rem">Summary <input type="text" id="mem-summary" style="width:100%"/></label>
-            <label style="display:block;margin-top:0.5rem">Locator hint <input type="text" id="mem-locator" style="width:100%"/></label>
-            <label style="display:block;margin-top:0.5rem">Source job <input type="text" id="mem-job" placeholder="exec_…"/></label>
-            <p style="margin-top:0.5rem"><button type="button" class="button" id="propose">Propose</button></p>
+            <div class="panelhead">
+                <div class="panelhead-title">
+                    <h2>Propose memory</h2>
+                    <th:block th:replace="~{fragments :: featureHelpBtn('run-memory-propose')}"></th:block>
+                </div>
+            </div>
+            <label>Id
+                <input type="text" id="mem-id" placeholder="mem_login_btn"/>
+            </label>
+            <label style="display:block;margin-top:0.5rem">Summary
+                <input type="text" id="mem-summary" style="width:100%"/>
+            </label>
+            <label style="display:block;margin-top:0.5rem">Locator hint
+                <input type="text" id="mem-locator" style="width:100%"/>
+            </label>
+            <label style="display:block;margin-top:0.5rem">Source job
+                <input type="text" id="mem-job" placeholder="exec_…"/>
+            </label>
+            <p style="margin-top:0.75rem">
+                <button type="button" class="button" id="propose">Propose</button>
+            </p>
         </section>
         <section class="panel">
-            <h2>Approved &amp; proposed</h2>
-            <table class="status" style="width:100%"><thead><tr><th>Id</th><th>Status</th><th>Summary</th><th></th></tr></thead>
-            <tbody id="mem-rows"></tbody></table>
+            <div class="panelhead">
+                <div class="panelhead-title">
+                    <h2>Approved &amp; proposed</h2>
+                    <th:block th:replace="~{fragments :: featureHelpBtn('run-memory')}"></th:block>
+                </div>
+            </div>
+            <p id="mem-empty" class="muted" hidden>No memory entries yet — propose one above or approve from a run.</p>
+            <div class="table-scroll">
+                <table class="table table--run-memory">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Status</th>
+                        <th>Summary</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="mem-rows"></tbody>
+                </table>
+            </div>
         </section>
     </div>
 </main>
@@ -48,7 +90,7 @@
     const base = () => '/api/projects/' + encodeURIComponent(projectId) + '/run-memory';
 
     async function loadProjects() {
-        const res = await fetch('/api/projects', { headers: H });
+        const res = await fetch('/api/projects', { headers: H, credentials: 'same-origin' });
         const rows = await res.json();
         const sel = document.getElementById('launcher-project-select');
         sel.innerHTML = '<option value="">— Select —</option>';
@@ -61,13 +103,17 @@
     }
 
     async function refresh() {
-        const res = await fetch(base(), { headers: H });
+        const res = await fetch(base(), { headers: H, credentials: 'same-origin' });
         const rows = await res.json();
         const tbody = document.getElementById('mem-rows');
+        const empty = document.getElementById('mem-empty');
+        const table = tbody && tbody.closest('table');
         tbody.innerHTML = '';
+        if (empty) empty.hidden = rows.length > 0;
+        if (table) table.hidden = rows.length === 0;
         rows.forEach(m => {
             const tr = document.createElement('tr');
-            tr.innerHTML = '<td class="mono">' + m.id + '</td><td>' + m.status + '</td><td>' + (m.summary || '') + '</td><td></td>';
+            tr.innerHTML = '<td class="mono">' + m.id + '</td><td>' + m.status + '</td><td>' + (m.summary || '') + '</td><td class="run-memory-actions"></td>';
             const td = tr.lastElementChild;
             if (m.status === 'proposed') {
                 const a = document.createElement('button');

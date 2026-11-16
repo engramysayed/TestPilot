@@ -18,8 +18,15 @@ public class AgentToolRegistryTest {
     @Test
     public void requireAllowed_permitsListedTool() {
         AgentPolicy policy = new AgentPolicy(
-                Duration.ofMinutes(5), 1, AgentToolRegistry.defaultsFor(AgentTaskType.FRAMEWORK_VALIDATION_V1), List.of(), false, false);
+                Duration.ofMinutes(5), 1, AgentToolRegistry.defaultsFor(AgentTaskType.FRAMEWORK_ADAPTATION_V1), List.of(), false, false);
         AgentToolRegistry.requireAllowed(policy, AgentToolId.RUN_APPROVED_MAVEN_COMMANDS);
         Assert.assertTrue(policy.allowedTools().contains(AgentToolId.RUN_APPROVED_MAVEN_COMMANDS));
+    }
+
+    @Test
+    public void frameworkValidation_isReadOnly() {
+        var tools = AgentToolRegistry.defaultsFor(AgentTaskType.FRAMEWORK_VALIDATION_V1);
+        Assert.assertFalse(tools.contains(AgentToolId.MODIFY_GENERATED_SOURCES));
+        Assert.assertTrue(tools.contains(AgentToolId.READ_WORKSPACE_FILES));
     }
 }

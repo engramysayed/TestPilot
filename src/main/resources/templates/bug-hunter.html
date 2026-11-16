@@ -192,7 +192,13 @@
 
     <section class="panel hunt-triage-panel" id="hunt-triage-panel" hidden
              th:attr="data-enabled=${huntTriageEnabled} ?: false">
-        <h2>Review findings</h2>
+        <div class="panelhead">
+            <div class="panelhead-title">
+                <h2>Review last hunt report</h2>
+                <th:block th:replace="~{fragments :: featureHelpBtn('bug-hunter-triage')}"></th:block>
+            </div>
+        </div>
+        <p class="muted hunt-triage-intro">Pick a completed hunt (from <a href="/history">History</a>). Confirm or dismiss each finding — nothing is added to the library until you promote candidates below.</p>
         <label>Hunt run
             <select id="triage-job-select">
                 <option value="">— Pick a completed hunt —</option>

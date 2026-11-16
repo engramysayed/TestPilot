@@ -39,7 +39,8 @@ public class TcGenerateServiceSaveComparedGateTest {
                 stubStore(facebookProject()),
                 workbooks,
                 GenerateModelService.forTests(),
-                tcImport);
+                tcImport,
+                null);
     }
 
     @Test

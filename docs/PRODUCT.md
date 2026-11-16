@@ -194,7 +194,11 @@ The number on the page is the price of one unit. Keel multiplies it when the job
 
 ## Guide
 
-`/tc-guide` — authoring standard for anyone writing Excel.
+**Portal product guide** (`/guide`) — workflows for TCs Generation, Playback, execution, suites, and the rest. The **Feature glossary** section uses the same names and one-line blurbs as sidebar **`?` tooltips**, with links into each long-form section.
+
+**Accessibility** — **Skip to main content** (first Tab from the sidebar), visible keyboard focus rings on nav and help controls, and keyboard-openable **`?`** feature help (Enter/Space, Escape to close).
+
+`/tc-guide` — authoring standard for anyone writing Excel (redirects into Guide § case authoring).
 
 - Excel columns and which are required / recommended / optional.
 - Login & credentials (preconditions vs run config).
@@ -296,7 +300,7 @@ On **`/suites`**, group library test cases into tagged packs (smoke / regression
 When the site under test is only reachable on your machine (localhost/VPN), enable **`delivery.tunnel.enabled=true`** on the portal and set **`delivery.tunnel.public-base-url`** to the portal’s HTTPS origin.
 
 1. On the dev machine: `keel tunnel start --project <id> --target http://127.0.0.1:<app-port>` (see agent skill **keel-portal-cli** or fat jar `-Pkeel-cli`).
-2. Execute badge shows **Tunnel: active**; jobs use `{public-base-url}/tunnel/p/{token}/` as **base URL** instead of the project URL.
+2. Execute shows **Tunnel active** (or **Tunnel inactive** / **not connected** with a link to the Guide). No JVM property names in the UI — admins enable the feature on the server. Active jobs use the tunnel relay URL instead of the project URL.
    - Restarting `keel tunnel start` keeps the same token (credentials cached under `~/.keel/tunnel/`, override with `KEEL_HOME`); add `--re-enroll` to rotate it.
    - If the agent stops sending heartbeats for `delivery.tunnel.heartbeat-ttl-seconds` (default 60), the badge shows **offline** and jobs go back to the project base URL.
 3. Cloud browsers reach your app through the portal relay; the agent forwards to your local target.
@@ -375,6 +379,8 @@ Turn the workbook into a **downloadable Java Selenium TestNG** package.
 - `/status?jobId=…` — live log, progress, download when ready, links back to Execute results or Generate compare.
 
 Locator memory remembers working locators **per live page path**. Auth-only locators (`login-button`, username, password, …) are not stored against cart/checkout clicks.
+
+**Run memory** (`/run-memory`) — propose named locator hints from a job, approve them as a team, and retire stale entries. Approved memory is what Execute reuses on later runs; the page shows a normal table (Id, Status, Summary, Actions).
 
 ---
 

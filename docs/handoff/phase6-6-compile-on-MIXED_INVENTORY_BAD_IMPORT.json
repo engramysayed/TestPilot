@@ -1,0 +1,27 @@
+{
+  "phase" : "6.6-compile-on",
+  "scenario" : "MIXED_INVENTORY_BAD_IMPORT",
+  "accepted" : false,
+  "gateStatus" : "COMPILE_FAILED",
+  "initialMandatoryRuleIds" : [ "FW_TEST_USES_PAGE" ],
+  "compilePassed" : false,
+  "compileCheckEnabled" : true,
+  "reconciliation" : {
+    "copied" : [ "src/test/java/project/tests/todo/CheckoutStepOne_TestTodo.java" ],
+    "deleted" : [ ],
+    "excluded" : [ "src/test/resources/test-data/delivery-testdata.properties" ],
+    "unchanged" : [ "src/test/java/project/tests/generated/Login_Test.java", "src/main/java/project/pages/Cart_Page.java", "src/main/java/project/pages/CheckoutStepOne_Page.java", "src/main/java/project/pages/Login_Page.java", "src/test/java/project/tests/todo/TC_DTestTodo.java" ]
+  },
+  "taskId" : "7ac26b378b7942609eafbfe78a461893",
+  "agentId" : "agent-6fe9c978-dcff-46c3-b454-3635b5e324a5",
+  "agentRunId" : "run-eba1e601-0949-43d9-b907-b41e7ae65f49",
+  "architectureRepairCandidate" : {
+    "functionallyComplete" : true,
+    "findings" : [ ]
+  },
+  "architecturePublished" : {
+    "functionallyComplete" : true,
+    "findings" : [ ]
+  },
+  "failureClass" : "COMPILE_FAILURE"
+}

@@ -47,6 +47,9 @@ import delivery.heal.HealProposalWriter;
 import delivery.visual.VisualDiffStatus;
 import delivery.heal.CursorHealClient;
 import delivery.heal.FailedLocator;
+import delivery.agent.harness.recovery.ExecutionInvestigationOutcome;
+import delivery.agent.harness.recovery.ExecutionRecoveryEscalationGate;
+import delivery.agent.harness.recovery.ExecutionRecoveryEscalationRequest;
 import delivery.heal.HealCascade;
 import delivery.heal.HealResult;
 import delivery.heal.CandidateLivenessProbe;
@@ -118,6 +121,7 @@ public class ProvePhase {
     private boolean precisionReuseLocatorMemory;
     private boolean precisionLocatorMemoryDisabledLogged;
     private PrecisionJobTracker precisionTracker = new PrecisionJobTracker(AuthoringEngine.KEEL);
+    private ExecutionRecoveryEscalationGate executionRecoveryGate;
 
     private static final class PrecisionJobTracker {
         final AuthoringEngine engine;
@@ -185,6 +189,11 @@ public class ProvePhase {
 
     public ProvePhase withCancelCheck(BooleanSupplier cancelCheck) {
         this.cancelCheck = cancelCheck == null ? () -> false : cancelCheck;
+        return this;
+    }
+
+    public ProvePhase withExecutionRecoveryGate(ExecutionRecoveryEscalationGate gate) {
+        this.executionRecoveryGate = gate;
         return this;
     }
 
@@ -782,6 +791,8 @@ public class ProvePhase {
         int recoveryAttemptsThisIntent = 0;
         List<ProvenStep> recoveredNav = new ArrayList<>();
         List<ProvenStep> recoveredActions = new ArrayList<>();
+        boolean ollamaHealAttempted = false;
+        boolean cursorHealAttempted = false;
         try {
         RetryBudget budget = new RetryBudget(MAX_RETRIES, MAX_INFRA_RETRIES, infraBackoffMs, infraSleeper);
         try {
@@ -993,8 +1004,10 @@ public class ProvePhase {
                     healTier = mergeHealTier(healTier, healed.tierUsed());
                     if ("ollama".equals(healed.tierUsed()) || "vision".equals(healed.tierUsed())) {
                         ollamaUsed = true;
+                        ollamaHealAttempted = true;
                     } else if ("cursor".equals(healed.tierUsed()) || "invent".equals(healed.tierUsed())) {
                         cursorUsed = true;
+                        cursorHealAttempted = true;
                     }
                 }
 
@@ -1048,9 +1061,11 @@ public class ProvePhase {
                             healTier = mergeHealTier(healTier, healed.tierUsed());
                             if ("ollama".equals(healed.tierUsed()) || "vision".equals(healed.tierUsed())) {
                                 ollamaUsed = true;
+                                ollamaHealAttempted = true;
                             } else if ("cursor".equals(healed.tierUsed())
                                     || "invent".equals(healed.tierUsed())) {
                                 cursorUsed = true;
+                                cursorHealAttempted = true;
                             }
                             TcOutcome retryOutcome = execution.execute(tc.tcId(), healed.steps(), evidence);
                             if (retryOutcome.status() == TcStatus.PASSED) {
@@ -1113,6 +1128,7 @@ public class ProvePhase {
                         if (escalate == EscalateHealDecision.EXECUTE_AS_INTENT_FIX
                                 && !refusesSubmitNavigation(intent, cursorHeal.steps())) {
                             cursorUsed = true;
+                            cursorHealAttempted = true;
                             healTier = mergeHealTier(healTier, cursorHeal.tierUsed());
                             TcOutcome cursorRetry = execution.execute(
                                     tc.tcId(), cursorHeal.steps(), evidence);
@@ -1176,7 +1192,10 @@ public class ProvePhase {
         } catch (RuntimeException ignored) {
             // A9 evidence is best effort (flag off by default)
         }
-        return StepAttempt.fail(lastReason, lastPartial, evidenceDir, retriesUsed, healTier, healSkipReason);
+        return failWithOptionalInvestigation(
+                tc, request, intent, intentIndex, lastReason, lastPartial, evidenceDir,
+                retriesUsed, healTier, healSkipReason, failedThisIntent,
+                ollamaHealAttempted, cursorHealAttempted, driverFactory);
         } finally {
             tcTestRetries += budget.testRetriesUsed();
             tcTestFailures += budget.testFailures();
@@ -1185,6 +1204,56 @@ public class ProvePhase {
         } finally {
             VisionAttemptLog.endIntent();
         }
+    }
+
+    private StepAttempt failWithOptionalInvestigation(
+            ManualTestCase tc,
+            ConversionJobRequest request,
+            StepIntentBinder.IntentLine intent,
+            int intentIndex,
+            String lastReason,
+            List<ProvenStep> lastPartial,
+            String evidenceDir,
+            int retriesUsed,
+            String healTier,
+            String healSkipReason,
+            List<FailedLocator> failedThisIntent,
+            boolean ollamaHealAttempted,
+            boolean cursorHealAttempted,
+            WebDriverFactory driverFactory) {
+        boolean healPipelineExhausted = containsHealExhausted(healSkipReason) || containsHealExhausted(lastReason);
+        if (executionRecoveryGate != null && healPipelineExhausted) {
+            JobCancelSupport.checkCancelled(cancelCheck);
+            String dedup = request.jobId() + ":" + tc.tcId() + ":" + intentIndex + ":"
+                    + (lastReason == null ? "" : lastReason);
+            ExecutionInvestigationOutcome investigation = executionRecoveryGate.tryEscalate(
+                    new ExecutionRecoveryEscalationRequest(
+                            request,
+                            tc,
+                            intent,
+                            intentIndex,
+                            lastReason,
+                            healSkipReason,
+                            healTier,
+                            healPipelineExhausted,
+                            ollamaHealAttempted,
+                            cursorHealAttempted,
+                            evidenceDir,
+                            "",
+                            currentUrl(driverFactory),
+                            failedThisIntent,
+                            dedup));
+            if (investigation != null && investigation.investigationRan()) {
+                LogsManager.info("EXEC_INVESTIGATION: " + investigation.status()
+                        + " task=" + investigation.taskId()
+                        + " harness=" + investigation.harnessTerminalStatus());
+            }
+        }
+        return StepAttempt.fail(lastReason, lastPartial, evidenceDir, retriesUsed, healTier, healSkipReason);
+    }
+
+    private static boolean containsHealExhausted(String text) {
+        return text != null && text.contains("HEAL_EXHAUSTED");
     }
 
     /**

@@ -14,7 +14,7 @@ This document points engineers at deeper material already in the tree.
 | Open risks / next work | [`knowledge/REVIEW-2026-11-07.md`](knowledge/REVIEW-2026-11-07.md) |
 | Session history (newest first) | [`history/HISTORY.md`](history/HISTORY.md) |
 | Docs map and rules | [`README.md`](README.md) |
-| Portal UX overhaul (phased, `ux-overhaul`) | [`docs/handoff/2026-11-16-ux-overhaul-master-plan.md`](handoff/2026-11-16-ux-overhaul-master-plan.md) — through Phase 7: [`2026-11-16-phase7-suites-schedule.md`](handoff/2026-11-16-phase7-suites-schedule.md) |
+| Portal UX overhaul (phased, `ux-overhaul`) | [`docs/handoff/2026-11-16-ux-overhaul-master-plan.md`](handoff/2026-11-16-ux-overhaul-master-plan.md) — through Phase 11: [`2026-11-16-phase11-portal-a11y.md`](handoff/2026-11-16-phase11-portal-a11y.md) |
 
 ## Core flows
 

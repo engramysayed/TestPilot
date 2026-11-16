@@ -1,0 +1,23 @@
+{
+  "scenario" : "MISSING_PAGE_ASSERTIONS",
+  "accepted" : true,
+  "gateStatus" : "ACCEPTED",
+  "detail" : "contract and compile passed",
+  "initialMandatoryRuleIds" : [ "FW_PAGE_MISSING_ASSERTIONS" ],
+  "initialMandatoryCount" : 1,
+  "revalidationPassed" : true,
+  "taskId" : "f46ed92fb40d4a8c845b70ba45d0e3fe",
+  "agentId" : "agent-6847ba9f-8eec-4292-a88b-9d582624f4d0",
+  "agentRunId" : "run-58c777bf-1694-44e9-8f4b-44000886b518",
+  "provider" : "CURSOR",
+  "terminalTaskStatus" : "COMPLETED",
+  "reconciliation" : {
+    "copied" : [ "src/main/java/project/pages/Login_Page.java" ],
+    "deleted" : [ ],
+    "excluded" : [ "src/test/resources/test-data/delivery-testdata.properties" ],
+    "unchanged" : [ "src/test/java/project/tests/generated/Login_Test.java" ]
+  },
+  "promoted" : true,
+  "permittedSourceFiles" : [ "src/main/java/project/pages/Login_Page.java", "src/test/java/project/tests/generated/Login_Test.java" ],
+  "repairCandidateFiles" : [ "src/main/java/project/pages/Login_Page.java", "src/test/java/project/tests/generated/Login_Test.java" ]
+}

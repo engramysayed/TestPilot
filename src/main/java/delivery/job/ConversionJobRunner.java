@@ -7,12 +7,17 @@ import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStore;
 import delivery.ir.TcIdentity;
 import delivery.codegen.CodegenEnvHint;
+import delivery.agent.harness.recovery.ExecutionRecoveryEscalationGate;
+import delivery.agent.harness.recovery.ExecutionRecoveryWiring;
+import delivery.agent.validation.automate.AutomateFrameworkAcceptanceGate;
 import delivery.packager.FrameworkPackager;
+import delivery.portal.AgentHarnessProperties;
 import delivery.store.ProjectStore;
 import org.json.JSONObject;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,6 +37,21 @@ import java.util.function.BooleanSupplier;
  */
 public class ConversionJobRunner {
     private final JobProgressTracker progress = new JobProgressTracker();
+    private final AgentHarnessProperties harnessProps;
+    private final Duration investigationBudgetCap;
+
+    public ConversionJobRunner() {
+        this(null, null);
+    }
+
+    public ConversionJobRunner(AgentHarnessProperties harnessProps) {
+        this(harnessProps, null);
+    }
+
+    public ConversionJobRunner(AgentHarnessProperties harnessProps, Duration investigationBudgetCap) {
+        this.harnessProps = harnessProps;
+        this.investigationBudgetCap = investigationBudgetCap;
+    }
 
     public JobProgressTracker progress() {
         return progress;
@@ -104,12 +124,15 @@ public class ConversionJobRunner {
         int proveUnits = allCases.size();
         int jobTotal = proveUnits + EmitPhase.PROGRESS_UNITS;
         progress.update(0, jobTotal, "Phase1 starting");
-        ProvePhase prove = new ProvePhase(progress).withCancelCheck(cancelCheck)
-                .withHealWorkbookApplier(ExecuteJobRunner.healWorkbookApplier(request));
+        ProvePhase prove = configureProvePhase(progress, cancelCheck, request);
         prove.prove(request, allCases, authorIds, work);
 
         progress.update(proveUnits, jobTotal, "Phase2 starting");
-        EmitPhase emit = new EmitPhase(progress);
+        AgentHarnessProperties acceptanceProps =
+                harnessProps == null ? new AgentHarnessProperties() : harnessProps;
+        AutomateFrameworkAcceptanceGate acceptanceGate = AutomateFrameworkAcceptanceGate.forConversionJob(
+                acceptanceProps, cancelCheck, investigationBudgetCap);
+        EmitPhase emit = new EmitPhase(progress).withAcceptanceGate(acceptanceGate);
         ConversionJobResult conversionResult = emit.emit(request, allCases, work, projectDir, workFolder, mode, cancelCheck, publicationGuard);
         SuiteAlertNotifier.notifyOutcome(conversionResult.passed(), conversionResult.todo(), 0, conversionResult.message());
         return conversionResult;
@@ -177,6 +200,21 @@ public class ConversionJobRunner {
         progress.update(0, EmitPhase.PROGRESS_UNITS, "Building the framework from the recording");
         return new EmitPhase(progress).emit(
                 request, allCases, work, projectDir, workFolder, mode, cancelCheck, publicationGuard);
+    }
+
+    ProvePhase configureProvePhase(
+            JobProgressTracker progress,
+            BooleanSupplier cancelCheck,
+            ConversionJobRequest request) {
+        ProvePhase prove = new ProvePhase(progress)
+                .withCancelCheck(cancelCheck)
+                .withHealWorkbookApplier(ExecuteJobRunner.healWorkbookApplier(request));
+        ExecutionRecoveryEscalationGate gate = ExecutionRecoveryWiring.optionalGate(
+                harnessProps, cancelCheck, investigationBudgetCap);
+        if (gate != null) {
+            prove = prove.withExecutionRecoveryGate(gate);
+        }
+        return prove;
     }
 
     /** Strip login instructions so body authoring does not re-emit login clicks. */

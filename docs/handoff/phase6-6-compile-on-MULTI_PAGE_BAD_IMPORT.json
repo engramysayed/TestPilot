@@ -1,0 +1,27 @@
+{
+  "phase" : "6.6-compile-on",
+  "scenario" : "MULTI_PAGE_BAD_IMPORT",
+  "accepted" : false,
+  "gateStatus" : "COMPILE_FAILED",
+  "initialMandatoryRuleIds" : [ "FW_TEST_USES_PAGE" ],
+  "compilePassed" : false,
+  "compileCheckEnabled" : true,
+  "reconciliation" : {
+    "copied" : [ "src/test/java/project/tests/todo/CheckoutStepOne_TestTodo.java" ],
+    "deleted" : [ ],
+    "excluded" : [ "src/test/resources/test-data/delivery-testdata.properties" ],
+    "unchanged" : [ "src/main/java/project/pages/Cart_Page.java", "src/main/java/project/pages/CheckoutStepOne_Page.java" ]
+  },
+  "taskId" : "af3b6f3b1d734630a6d160b6cc5a82ce",
+  "agentId" : "agent-571a57e2-ba1e-4970-9519-eb8cc8ea3a16",
+  "agentRunId" : "run-dd78993f-86f2-4844-bfcc-079ec49ee7c2",
+  "architectureRepairCandidate" : {
+    "functionallyComplete" : true,
+    "findings" : [ ]
+  },
+  "architecturePublished" : {
+    "functionallyComplete" : true,
+    "findings" : [ ]
+  },
+  "failureClass" : "COMPILE_FAILURE"
+}

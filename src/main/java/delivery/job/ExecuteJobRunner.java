@@ -6,6 +6,9 @@ import delivery.excel.ManualTestCase;
 import delivery.ir.TcDraft;
 import delivery.ir.TcDraftStore;
 import delivery.ir.TcIdentity;
+import delivery.agent.harness.recovery.ExecutionRecoveryEscalationGate;
+import delivery.agent.harness.recovery.ExecutionRecoveryWiring;
+import delivery.portal.AgentHarnessProperties;
 import delivery.store.ProjectStore;
 
 import java.nio.file.Files;
@@ -19,6 +22,15 @@ import java.util.function.BooleanSupplier;
  */
 public class ExecuteJobRunner {
     private final JobProgressTracker progress = new JobProgressTracker();
+    private final AgentHarnessProperties harnessProps;
+
+    public ExecuteJobRunner() {
+        this(null);
+    }
+
+    public ExecuteJobRunner(AgentHarnessProperties harnessProps) {
+        this.harnessProps = harnessProps;
+    }
 
     public JobProgressTracker progress() {
         return progress;
@@ -59,8 +71,7 @@ public class ExecuteJobRunner {
         int jobTotal = proveUnits + 2; // + design compare + evidence save
         progress.update(0, jobTotal, "Execute starting");
 
-        ProvePhase prove = new ProvePhase(progress).withMirrorRoot(dest).withCancelCheck(cancelCheck)
-                .withHealWorkbookApplier(healWorkbookApplier(request));
+        ProvePhase prove = configureProvePhase(progress, dest, cancelCheck, request);
         prove.prove(request, cases, null, work);
 
         progress.update(proveUnits, jobTotal, "Design compare");
@@ -99,6 +110,22 @@ public class ExecuteJobRunner {
                 SuiteRunContext.clear();
             }
         }
+    }
+
+    ProvePhase configureProvePhase(
+            JobProgressTracker progress,
+            Path mirrorRoot,
+            BooleanSupplier cancelCheck,
+            ConversionJobRequest request) {
+        ProvePhase prove = new ProvePhase(progress)
+                .withMirrorRoot(mirrorRoot)
+                .withCancelCheck(cancelCheck)
+                .withHealWorkbookApplier(healWorkbookApplier(request));
+        ExecutionRecoveryEscalationGate gate = ExecutionRecoveryWiring.optionalGate(harnessProps, cancelCheck);
+        if (gate != null) {
+            prove = prove.withExecutionRecoveryGate(gate);
+        }
+        return prove;
     }
 
     static ProvePhase.HealWorkbookApplier healWorkbookApplier(ConversionJobRequest request) {

@@ -1,0 +1,29 @@
+{
+  "phase" : "6.6-compile-on",
+  "scenario" : "MISSING_PAGE_ASSERTIONS",
+  "accepted" : false,
+  "gateStatus" : "REPAIR_FAILED",
+  "initialMandatoryRuleIds" : [ "FW_ORPHAN_TEST_CLASS", "FW_PAGE_MISSING_ASSERTIONS" ],
+  "compilePassed" : false,
+  "compileCheckEnabled" : true,
+  "taskId" : "264f6d2085264d84b1350d68d71fd17d",
+  "agentId" : null,
+  "agentRunId" : null,
+  "architectureRepairCandidate" : {
+    "functionallyComplete" : false,
+    "findings" : [ {
+      "message" : "Login_Page missing assert methods (inventory expects 1)",
+      "code" : "PAGE_NO_ASSERTIONS",
+      "functionalGap" : true
+    } ]
+  },
+  "architecturePublished" : {
+    "functionallyComplete" : false,
+    "findings" : [ {
+      "message" : "Login_Page missing assert methods (inventory expects 1)",
+      "code" : "PAGE_NO_ASSERTIONS",
+      "functionalGap" : true
+    } ]
+  },
+  "failureClass" : "COMPILE_FAILURE"
+}

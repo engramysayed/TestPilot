@@ -1,0 +1,27 @@
+{
+  "phase" : "6.6-compile-on",
+  "scenario" : "MISSING_PAGE_LOCATORS",
+  "accepted" : false,
+  "gateStatus" : "COMPILE_FAILED",
+  "initialMandatoryRuleIds" : [ "FW_PAGE_MISSING_LOCATORS" ],
+  "compilePassed" : false,
+  "compileCheckEnabled" : true,
+  "reconciliation" : {
+    "copied" : [ "src/main/java/project/pages/Login_Page.java" ],
+    "deleted" : [ ],
+    "excluded" : [ "src/test/resources/test-data/delivery-testdata.properties" ],
+    "unchanged" : [ "src/test/java/project/tests/generated/Login_Test.java" ]
+  },
+  "taskId" : "23a09c3296354d728469d9bb96a56092",
+  "agentId" : "agent-6e64f9d3-89ff-42ec-9a22-c289c14430f7",
+  "agentRunId" : "run-20cbed68-393e-4afc-b3eb-9c13b26175d4",
+  "architectureRepairCandidate" : {
+    "functionallyComplete" : true,
+    "findings" : [ ]
+  },
+  "architecturePublished" : {
+    "functionallyComplete" : true,
+    "findings" : [ ]
+  },
+  "failureClass" : "COMPILE_FAILURE"
+}

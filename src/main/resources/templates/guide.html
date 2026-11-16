@@ -20,8 +20,8 @@
         </div>
         <div class="actions guide-hero-actions">
             <a class="button" href="/projects">Add test cases to a project</a>
-            <a class="button ghost" href="#generate">Start with Generate</a>
-            <a class="button ghost" href="#record">Record</a>
+            <a class="button ghost" href="#generate">TCs Generation</a>
+            <a class="button ghost" href="#record">Playback</a>
             <a class="button ghost" href="#tc-authoring">Case authoring</a>
         </div>
     </header>
@@ -30,17 +30,20 @@
         <nav class="guide-toc panel product-guide-toc" aria-label="Guide sections">
             <p class="guide-toc-title">On this page</p>
             <a href="#overview">Overview</a>
+            <a href="#feature-glossary">Feature glossary</a>
             <a href="#whats-new">What's new</a>
-            <a href="#generate">Generate</a>
+            <a href="#generate">TCs Generation</a>
             <a href="#generate-from-knowledge">Generate from knowledge</a>
-            <a href="#plain-cases">Plain-English cases</a>
-            <a href="#record">Record</a>
+            <a href="#plain-cases">Plain cases</a>
+            <a href="#test-blueprints">Test blueprints</a>
+            <a href="#record">Playback</a>
             <a href="#quality-gate">Quality gate</a>
-            <a href="#execute">Execute</a>
-            <a href="#evidence">Evidence</a>
+            <a href="#execute">TCs execution</a>
+            <a href="#evidence">History &amp; evidence</a>
+            <a href="#run-memory">Run memory</a>
             <a href="#visual-diffs">Visual diffs</a>
-            <a href="#suites">Suites</a>
-            <a href="#automate">Automate</a>
+            <a href="#suites">Test suites</a>
+            <a href="#automate">TCs automation</a>
             <a href="#locators">Locators &amp; languages</a>
             <a href="#packages">Packages</a>
             <a href="#hunt">Bug Hunt</a>
@@ -74,26 +77,59 @@
                     </div>
                 </header>
                 <div class="product-guide-cards">
-                    <a class="product-guide-card" href="#generate"><strong>Write test cases</strong><span>Stories → quality gate → import</span></a>
-                    <a class="product-guide-card" href="#generate-from-knowledge"><strong>From knowledge</strong><span>Packs → draft cases</span></a>
-                    <a class="product-guide-card" href="#plain-cases"><strong>Plain-English cases</strong><span>Everyday wording → library</span></a>
-                    <a class="product-guide-card" href="#record"><strong>Record and automate</strong><span>Click in Chrome → save → build</span></a>
-                    <a class="product-guide-card" href="#execute"><strong>Run tests</strong><span>Live browser + screenshots</span></a>
-                    <a class="product-guide-card" href="#evidence"><strong>Evidence</strong><span>Heal Accept/Reject + flaky tags</span></a>
+                    <a class="product-guide-card" href="#generate"><strong>TCs Generation</strong><span>Stories → quality gate → import</span></a>
+                    <a class="product-guide-card" href="#generate-from-knowledge"><strong>Generate from knowledge</strong><span>Packs → draft cases</span></a>
+                    <a class="product-guide-card" href="#plain-cases"><strong>Plain cases</strong><span>Everyday wording → library</span></a>
+                    <a class="product-guide-card" href="#test-blueprints"><strong>Test blueprints</strong><span>Structured plans &amp; revisions</span></a>
+                    <a class="product-guide-card" href="#record"><strong>Playback</strong><span>Record in Chrome → library case</span></a>
+                    <a class="product-guide-card" href="#execute"><strong>TCs execution</strong><span>Live browser + screenshots</span></a>
+                    <a class="product-guide-card" href="#evidence"><strong>History</strong><span>Runs, downloads, evidence links</span></a>
                     <a class="product-guide-card" href="#visual-diffs"><strong>Visual diffs</strong><span>Prove / compare / approve</span></a>
-                    <a class="product-guide-card" href="#suites"><strong>Suites</strong><span>Tags, schedules, monitor</span></a>
-                    <a class="product-guide-card" href="#automate"><strong>Build code</strong><span>Workbook → stronger framework ZIP</span></a>
+                    <a class="product-guide-card" href="#suites"><strong>Test suites</strong><span>Tags, schedules, monitor</span></a>
+                    <a class="product-guide-card" href="#automate"><strong>TCs automation</strong><span>Workbook → framework ZIP</span></a>
                     <a class="product-guide-card" href="#hunt"><strong>Bug Hunter</strong><span>Explore — never auto-merges</span></a>
+                    <a class="product-guide-card" href="#run-memory"><strong>Run memory</strong><span>Approved locator hints</span></a>
                 </div>
                 <div class="guide-callouts">
                     <div class="callout ok">
                         <strong>Prerequisite</strong>
-                        <p>Create a <a href="/projects">project</a>, set the website URL under Settings, add a login account when cases need sign-in, and (optional) preferred how-we-find-it attributes (locators) such as <code>data-axis-test-id</code>. Features live in the sidebar: Generate, From knowledge, Plain cases, Record, Suites, Execute, Automate, Bug Hunter, and more.</p>
+                        <p>Create a <a href="/projects">project</a>, set the website URL under Settings, add a login account when cases need sign-in, and (optional) preferred how-we-find-it attributes (locators) such as <code>data-axis-test-id</code>. Use the sidebar groups <em>Design tests</em>, <em>Execute &amp; automate</em>, and <em>History</em> — each link has a <strong>?</strong> tooltip; the <a href="#feature-glossary">feature glossary</a> lists the same names and Guide sections.</p>
                     </div>
                     <div class="callout warn">
                         <strong>Credits</strong>
                         <p>Jobs debit <strong>credits</strong> (not dollars). Open <a href="/pricing">Pricing</a> for Credits each. The account Owner edits those unit costs on Admin → Prices and grants balance after approval — there is no free trial.</p>
                     </div>
+                </div>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="feature-glossary" data-guide-section="feature-glossary">
+                <header class="guide-section-head">
+                    <span class="guide-num">↗</span>
+                    <div>
+                        <h2>Feature glossary</h2>
+                        <p class="panel-intro">Same names as the sidebar and the <strong>?</strong> tooltips. <em>Guide section</em> is where the long-form how-to lives; popovers use these links as <em>More in Guide →</em>.</p>
+                    </div>
+                </header>
+                <div class="table-scroll">
+                    <table class="table guide-glossary-table" th:attr="aria-label=#{a11y.glossaryTable}">
+                        <thead>
+                        <tr>
+                            <th scope="col">Feature</th>
+                            <th scope="col">What it does</th>
+                            <th scope="col">Guide section</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="fid : ${guideFeatureIds}">
+                            <th scope="row" th:text="${#messages.msg('feature.help.' + fid + '.title')}">Overview</th>
+                            <td th:text="${#messages.msg('feature.help.' + fid + '.short')}">Short help</td>
+                            <td>
+                                <a th:href="${#messages.msg('feature.help.' + fid + '.guide')}"
+                                   th:text="${#messages.msg('feature.help.' + fid + '.title')}">Overview</a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 
@@ -108,9 +144,9 @@
                 <ul class="guide-points">
                     <li><strong>Alerts also reach project members.</strong> A suite failure now goes to every project member who turned on alerts in <a href="/account">Account</a>, using the email or Telegram chat id they saved — no shared server list needed.</li>
                     <li><strong>Email is the first supported channel.</strong> Admins set Gmail SMTP once (<code>KEEL_MAIL_*</code> env vars with a Gmail app password); users just type their own address. Slack was removed; Telegram stays but ships off by default.</li>
-                    <li><strong>Sidebar regrouped.</strong> Items now sit under <em>Author tests</em>, <em>Run</em>, <em>Review</em> and <em>Workspace</em>, with clearer names (<em>Generate with AI</em>, <em>Convert to code</em>, <em>Record browser</em>). Screenshot diffs stays inside Execute; Runtime packages is a project tab.</li>
+                    <li><strong>Sidebar regrouped (Nov 2026 UX).</strong> Items sit under <em>Workspace</em>, <em>Design tests</em>, <em>Execute &amp; automate</em>, and <em>History</em>, with names such as <em>TCs Generation</em>, <em>Playback</em>, <em>TCs execution</em>, <em>TCs automation</em>, and <em>History</em>. Every nav link has a <strong>?</strong> tooltip; this page’s <a href="#feature-glossary">feature glossary</a> matches those ids.</li>
                     <li><strong>Humans instead of ids.</strong> The Runs page and the dashboard now label runs by when they happened (<code>Nov 09 · 16:42</code>) and show the project name — the raw <code>exec_…</code> id is still on hover.</li>
-                    <li><strong>Delete any run.</strong> Every row on <a href="/runs">Runs &amp; evidence</a> has a Delete button that removes the run and its evidence folder. Active runs refuse to delete — cancel first.</li>
+                    <li><strong>Delete any run.</strong> Every row on <a href="/runs">History</a> has a Delete button that removes the run and its evidence folder. Active runs refuse to delete — cancel first.</li>
                     <li><strong>English-only UI (for now).</strong> The Arabic toggle was dropped because it pulled Arabic date pickers in from the OS locale. The portal is pinned to English.</li>
                     <li><strong>Engine picks up schedules.</strong> <code>GET /api/schedules/due</code> now accepts a runner bearer token, so the engine no longer floods its window with HTTP 401.</li>
                     <li><strong>Suite tags, explained.</strong> On <a href="/suites">Suites</a>: <em>Smoke</em> is the quick must-pass set, <em>Regression</em> is the full what-broke set, <em>Nightly</em> is the overnight run.</li>
@@ -126,8 +162,8 @@
                 <header class="guide-section-head">
                     <span class="guide-num">01</span>
                     <div>
-                        <h2>Generate</h2>
-                        <p class="panel-intro">On <a href="/generate">Write test cases</a>, describe visitor behavior or paste stories. Keel drafts cases, runs a quality gate, then you import into the project library.</p>
+                        <h2>TCs Generation</h2>
+                        <p class="panel-intro">On <a href="/generate">TCs Generation</a> (Write test cases), describe visitor behavior or paste stories. Keel drafts cases, runs a quality gate, then you import into the project library.</p>
                     </div>
                 </header>
                 <figure class="product-guide-figure">
@@ -169,7 +205,7 @@
                     <span class="guide-num">01b</span>
                     <div>
                         <h2>Generate from knowledge</h2>
-                        <p class="panel-intro">On <a href="/generate-from-knowledge">From knowledge</a>, you pick knowledge packs on the project and Keel drafts cases from that material. This is separate from classic <a href="#generate">Generate</a> (stories and free text).</p>
+                        <p class="panel-intro">On <a href="/generate-from-knowledge">Generate from knowledge</a>, you pick knowledge packs on the project and Keel drafts cases from that material. This is separate from <a href="#generate">TCs Generation</a> (stories and free text).</p>
                     </div>
                 </header>
                 <ol class="guide-howto">
@@ -196,7 +232,7 @@
                 <ol class="guide-howto">
                     <li>Open Plain cases, pick the project, and describe what the visitor does.</li>
                     <li>Review the proposed cases, then save them into the project library.</li>
-                    <li>Run them from <a href="#execute">Execute</a> or fold them into a <a href="#suites">suite</a>.</li>
+                    <li>Run them from <a href="#execute">TCs execution</a> or fold them into a <a href="#suites">test suite</a>.</li>
                 </ol>
                 <div class="guide-callouts">
                     <div class="callout ok">
@@ -206,12 +242,26 @@
                 </div>
             </section>
 
+            <section class="panel guide-section guide-reveal" id="test-blueprints" data-guide-section="test-blueprints">
+                <header class="guide-section-head">
+                    <span class="guide-num">01d</span>
+                    <div>
+                        <h2>Test blueprints</h2>
+                        <p class="panel-intro">On <a href="/test-blueprints">Test blueprints</a>, author structured action and assert plans with revisions. Suites and execution workflows can reference a blueprint instead of a flat spreadsheet row.</p>
+                    </div>
+                </header>
+                <ul class="guide-points">
+                    <li><strong>Revisions</strong> — save drafts, compare versions, and promote the revision you want in the library.</li>
+                    <li><strong>Not a run</strong> — blueprints describe intent; <a href="#execute">TCs execution</a> still runs cases in a browser.</li>
+                </ul>
+            </section>
+
             <section class="panel guide-section guide-reveal" id="record" data-guide-section="record">
                 <header class="guide-section-head">
                     <span class="guide-num">02</span>
                     <div>
-                        <h2>Record and automate</h2>
-                        <p class="panel-intro">On <a href="/record">Record</a> you do the test yourself in Chrome. Keel writes the steps, remembers the buttons, and can write the automation code from that. Chrome does not open a second time for the code.</p>
+                        <h2>Playback</h2>
+                        <p class="panel-intro">On <a href="/record">Playback</a> (record in Chrome) you do the test yourself in Chrome. Keel writes the steps, remembers the buttons, and can write the automation code from that. Chrome does not open a second time for the code.</p>
                     </div>
                 </header>
                 <div class="guide-callouts">
@@ -288,8 +338,8 @@
                 <header class="guide-section-head">
                     <span class="guide-num">04</span>
                     <div>
-                        <h2>Execute</h2>
-                        <p class="panel-intro">On <a href="/execute">Run tests</a>, Keel runs cases in a real browser. You can review the selected cases first; Accept saves them to the library, then the run starts. Every step can produce a screenshot. Open <a href="/runs">Run history</a> and Evidence for results.</p>
+                        <h2>TCs execution</h2>
+                        <p class="panel-intro">On <a href="/execute">TCs execution</a> (Run tests), Keel runs cases in a real browser. You can review the selected cases first; Accept saves them to the library, then the run starts. Every step can produce a screenshot. Open <a href="/runs">History</a> and evidence for results.</p>
                     </div>
                 </header>
                 <div class="decision-row">
@@ -334,8 +384,8 @@
                 <header class="guide-section-head">
                     <span class="guide-num">04b</span>
                     <div>
-                        <h2>Evidence</h2>
-                        <p class="panel-intro">After a run, open Evidence from <a href="/execute">Run tests</a>, <a href="/runs">Run history</a>, or the Evidence page. You see step screenshots, pass/fail, and heal suggestions.</p>
+                        <h2>History &amp; evidence</h2>
+                        <p class="panel-intro"><a href="/runs">History</a> lists every generate, automate, and execute job. After a run, open evidence from History, <a href="/execute">TCs execution</a>, or the evidence viewer. You see step screenshots, pass/fail, and heal suggestions.</p>
                     </div>
                 </header>
                 <ul class="guide-points">
@@ -351,12 +401,26 @@
                 </div>
             </section>
 
-            <section class="panel guide-section guide-reveal" id="visual-diffs" data-guide-section="visual-diffs">
+            <section class="panel guide-section guide-reveal" id="run-memory" data-guide-section="run-memory">
                 <header class="guide-section-head">
                     <span class="guide-num">04c</span>
                     <div>
+                        <h2>Run memory</h2>
+                        <p class="panel-intro">On <a href="/run-memory">Run memory</a>, approved locator hints from past runs are stored for reuse. Propose a hint from evidence; a teammate approves it before <a href="#execute">TCs execution</a> can apply it on the next run.</p>
+                    </div>
+                </header>
+                <ul class="guide-points">
+                    <li><strong>Propose → approve</strong> — drafts stay separate from production memory until a human approves them.</li>
+                    <li><strong>Not a job log</strong> — for run status and downloads, use <a href="#evidence">History</a> instead.</li>
+                </ul>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="visual-diffs" data-guide-section="visual-diffs">
+                <header class="guide-section-head">
+                    <span class="guide-num">04d</span>
+                    <div>
                         <h2>Visual diffs</h2>
-                        <p class="panel-intro">Prove and compare screens after a run. On <a href="/execute">Run tests</a>, open the Visual diffs panel to see baseline, actual, and diff side by side, then <strong>Approve baseline</strong> when the new look is correct. This is different from the authoring <a href="#visual">Visual check</a> wording in a spreadsheet.</p>
+                        <p class="panel-intro">Prove and compare screens after a run. On <a href="/execute">TCs execution</a>, open the Visual diffs panel to see baseline, actual, and diff side by side, then <strong>Approve baseline</strong> when the new look is correct. This is different from the authoring <a href="#visual">Visual check</a> wording in a spreadsheet.</p>
                     </div>
                 </header>
                 <ol class="guide-howto">
@@ -374,10 +438,10 @@
 
             <section class="panel guide-section guide-reveal" id="suites" data-guide-section="suites">
                 <header class="guide-section-head">
-                    <span class="guide-num">04d</span>
+                    <span class="guide-num">04e</span>
                     <div>
-                        <h2>Suites</h2>
-                        <p class="panel-intro">On <a href="/suites">Suites</a>, group cases into test packs. Add tags (smoke, regression, nightly, or your own), attach a schedule, pick an alert channel, and promote a green pack to an always-on monitor.</p>
+                        <h2>Test suites</h2>
+                        <p class="panel-intro">On <a href="/suites">Test suites</a>, group cases into test packs. <a href="/suites/schedule">Scheduling</a> attaches cron or interval runs, credentials, and failure alerts. Add tags (smoke, regression, nightly, or your own), attach a schedule, pick an alert channel, and promote a green pack to an always-on monitor.</p>
                     </div>
                 </header>
                 <ul class="guide-points">
@@ -400,8 +464,8 @@
                 <header class="guide-section-head">
                     <span class="guide-num">05</span>
                     <div>
-                        <h2>Automate</h2>
-                        <p class="panel-intro">On <a href="/automate">Build code</a>, upload or select a workbook. Keel opens the site, checks the steps work, then builds a framework you can download. If you already clicked through the site on <a href="#record">Record</a>, use Build the framework there instead. That uses the same builder and does not open Chrome again.</p>
+                        <h2>TCs automation</h2>
+                        <p class="panel-intro">On <a href="/automate">TCs automation</a> (Build code), upload or select a workbook. Keel opens the site, checks the steps work, then builds a framework you can download. If you already clicked through the site on <a href="#record">Playback</a>, use Build the framework there instead. That uses the same builder and does not open Chrome again.</p>
                     </div>
                 </header>
                 <ol class="guide-howto">
@@ -502,7 +566,7 @@
                 </div>
                 <ol class="guide-howto">
                     <li>Start a hunt for the project. Download the report when ready.</li>
-                    <li>Open <strong>Review findings</strong> (when triage is enabled). Decide each bug.</li>
+                    <li>Open <strong>Review last hunt report</strong> (when triage is enabled). Decide each bug.</li>
                     <li>Confirm real bugs; dismiss noise. Confirm does <em>not</em> merge into the library.</li>
                     <li>For confirmed items you want as cases, use the separate promote / Add to test cases flow.</li>
                 </ol>
@@ -587,7 +651,7 @@
                 <ol class="guide-howto">
                     <li>Your admin turns the tunnel on and gives it its <strong>own web address</strong> (for example <code>tunnel.your-keel.com</code>), separate from the Keel address.</li>
                     <li>On your computer run <code>keel tunnel start --project &lt;id&gt; --target http://localhost:3000</code>.</li>
-                    <li>The Execute page shows <strong>Tunnel: active</strong>. Runs for that project use the tunnel instead of the project URL.</li>
+                    <li>The Execute page shows <strong>Tunnel active</strong> with a link here when the tunnel is not connected. Runs for that project use the tunnel instead of the project URL.</li>
                     <li>Restarting the command keeps the same address. Add <code>--re-enroll</code> to get a new one.</li>
                 </ol>
                 <div class="guide-callouts">

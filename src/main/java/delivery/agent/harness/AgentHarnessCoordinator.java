@@ -279,6 +279,10 @@ public final class AgentHarnessCoordinator {
 
     private AgentRuntime resolveRuntime(AgentTask task, Path projectRoot, Path taskDir) {
         if (task.providerId() == AgentProviderId.CURSOR) {
+            AgentRuntime override = runtimes.get(AgentProviderId.CURSOR);
+            if (override != null) {
+                return override;
+            }
             Path cancelFlag = AgentWorkspacePaths.cancelRequestedFile(taskDir);
             return new CursorAgentRuntime(properties, projectRoot, taskDir, () -> Files.exists(cancelFlag));
         }

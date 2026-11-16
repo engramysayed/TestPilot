@@ -45,6 +45,16 @@
     font-weight: 400;
 }
 
+.hunt-triage-intro {
+    margin: 0 0 0.85rem;
+    max-width: 42rem;
+    line-height: 1.45;
+}
+
+.hunt-triage-panel .panelhead-title h2 {
+    margin: 0;
+}
+
 .hunt-triage-panel .hunt-triage-summary {
     margin: 0.5rem 0 0.75rem;
 }
@@ -145,4 +155,30 @@ html[data-theme="dark"] .hunt-triage-card {
 }
 .gfk-run-bar .generate-actions {
     margin-top: 0;
+}
+
+.execute-tunnel-wrap {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    margin-left: 0.75rem;
+    vertical-align: middle;
+}
+
+.execute-tunnel-guide {
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.execute-tunnel-guide:hover {
+    text-decoration: underline;
+}
+
+.execute-tunnel-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    max-width: 42rem;
 }

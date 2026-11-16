@@ -1,0 +1,19 @@
+{
+  "scenario" : "MISSING_PAGE",
+  "accepted" : true,
+  "gateStatus" : "ACCEPTED",
+  "detail" : "contract and compile passed",
+  "taskId" : "",
+  "initialMandatoryRuleIds" : [ "FW_EXPECTED_PAGE_PRESENT" ],
+  "initialMandatoryCount" : 1,
+  "revalidationPassed" : true,
+  "reconciliation" : {
+    "copied" : [ "src/main/java/project/pages/Login_Page.java" ],
+    "deleted" : [ ],
+    "excluded" : [ "src/test/resources/test-data/delivery-testdata.properties" ],
+    "unchanged" : [ "src/test/java/project/tests/generated/Login_Test.java" ]
+  },
+  "promoted" : true,
+  "permittedSourceFiles" : [ ],
+  "repairCandidateFiles" : [ "src/main/java/project/pages/Login_Page.java", "src/test/java/project/tests/generated/Login_Test.java" ]
+}

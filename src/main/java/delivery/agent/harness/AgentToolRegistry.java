@@ -27,7 +27,8 @@ public final class AgentToolRegistry {
             return Set.copyOf(READ_ONLY);
         }
         return switch (type) {
-            case FRAMEWORK_VALIDATION_V1, FRAMEWORK_ADAPTATION_V1 -> Set.copyOf(VALIDATION_REPAIR);
+            case FRAMEWORK_VALIDATION_V1 -> Set.copyOf(READ_ONLY);
+            case FRAMEWORK_ADAPTATION_V1 -> Set.copyOf(VALIDATION_REPAIR);
             case EXECUTION_FAILURE_INVESTIGATION_V1, GENERATED_TEST_REVIEW_V1, BUG_INVESTIGATION_V1 ->
                     Set.copyOf(READ_ONLY);
         };

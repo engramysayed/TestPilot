@@ -1,0 +1,170 @@
+{
+  "phase" : "6.8-compile-on-requalification",
+  "runStartedLocal" : "2026-11-15T17:37:34+02:00",
+  "runEndedLocal" : "2026-11-15T18:34:32+02:00",
+  "mavenExitCode" : 1,
+  "surefire" : {
+    "testsRun" : 8,
+    "failures" : 6,
+    "errors" : 0,
+    "skipped" : 0,
+    "elapsedSeconds" : 3412
+  },
+  "log" : "docs/handoff/phase6-8-compile-on-live-run.log",
+  "surefireReport" : "keel-portal/target/surefire-reports/delivery.agent.validation.automate.FrameworkAdaptationCursorCompileOnLiveIT.txt",
+  "note" : "phase6-6-compile-on-*.json on disk are mostly Phase 6.6 (14:17–14:26); only MISSING_PAGE_LEGACY and MISSING_PAGE_ASSERTIONS were refreshed during 6.8 when gate returned compilePassed=false. Six scenarios failed FrameworkAdaptationCursorCompileOnLiveIT assert (compilePassed=true, accepted=false) before writeEvidence.",
+  "compileLogCorrelation" : [ {
+    "logTime" : "2026-11-15T17:49:43",
+    "scenario" : "EMPTY_TEST_STUB",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-empty_test_stub-6879143804284142972"
+  }, {
+    "logTime" : "2026-11-15T18:12:08",
+    "scenario" : "MISSING_TEST",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-missing_test-14634987871971196653"
+  }, {
+    "logTime" : "2026-11-15T18:14:02",
+    "scenario" : "MISSING_PAGE_ACTIONS",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-missing_page_actions-7109887212929441662"
+  }, {
+    "logTime" : "2026-11-15T18:28:20",
+    "scenario" : "MISSING_PAGE_LOCATORS",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-missing_page_locators-4995740430413066592"
+  }, {
+    "logTime" : "2026-11-15T18:31:19",
+    "scenario" : "MIXED_INVENTORY_BAD_IMPORT",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-mixed_inventory_bad_import-11333366484287633344"
+  }, {
+    "logTime" : "2026-11-15T18:34:31",
+    "scenario" : "MULTI_PAGE_BAD_IMPORT",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-multi_page_bad_import-14911100206853892490"
+  } ],
+  "scenarios" : [ {
+    "scenario" : "EMPTY_TEST_STUB",
+    "cursorTaskStatus" : "COMPLETED",
+    "taskId" : "01c4212530dd4065a8fb1ad85f7d512e",
+    "agentRunId" : "run-abdcda17-91ac-4b51-bfe1-790980c245d1",
+    "gateStatus" : "REVALIDATION_FAILED",
+    "accepted" : false,
+    "reconciliation" : true,
+    "emitCompileCheck" : true,
+    "revalidationPassed" : false,
+    "revalidationMandatoryRules" : [ "FW_ORPHAN_TEST_CLASS" ],
+    "promoted" : false,
+    "surefireTest" : "emptyTestStub_compileOnQualification",
+    "surefireResult" : "FAIL",
+    "failureClass" : "REPAIR_QUALITY_OR_VALIDATION",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-empty_test_stub-6879143804284142972"
+  }, {
+    "scenario" : "MISSING_PAGE_LEGACY",
+    "cursorTaskStatus" : "INTERRUPTED",
+    "taskId" : "0b0b22d2c2544c73801d5180e3a9d54b",
+    "agentRunId" : null,
+    "gateStatus" : "REPAIR_FAILED",
+    "accepted" : false,
+    "reconciliation" : false,
+    "emitCompileCheck" : false,
+    "revalidationPassed" : null,
+    "promoted" : false,
+    "surefireTest" : "missingExpectedPage_compileOnQualification",
+    "surefireResult" : "PASS",
+    "failureClass" : "REPAIR",
+    "onDiskEvidence" : "docs/handoff/phase6-6-compile-on-MISSING_PAGE_LEGACY.json",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-missing_page-13846076721577406703"
+  }, {
+    "scenario" : "MISSING_TEST",
+    "cursorTaskStatus" : "COMPLETED",
+    "taskId" : "16a9c1f618b2492dbb76e6f9e0c84da5",
+    "agentRunId" : "run-62bf4b6b-f110-4d68-b70d-121dffd08404",
+    "gateStatus" : "REVALIDATION_FAILED",
+    "accepted" : false,
+    "reconciliation" : true,
+    "emitCompileCheck" : true,
+    "revalidationPassed" : false,
+    "revalidationMandatoryRules" : [ "FW_ORPHAN_TEST_CLASS" ],
+    "promoted" : false,
+    "surefireTest" : "missingExpectedTest_compileOnQualification",
+    "surefireResult" : "FAIL",
+    "failureClass" : "REPAIR_QUALITY_OR_VALIDATION",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-missing_test-14634987871971196653"
+  }, {
+    "scenario" : "MULTI_PAGE_BAD_IMPORT",
+    "cursorTaskStatus" : "COMPLETED",
+    "taskId" : "b6e105854df84cbeb330b0cdc005542f",
+    "agentRunId" : "run-08c74865-28b8-45fe-b68b-7825481b001c",
+    "gateStatus" : "REVALIDATION_FAILED",
+    "accepted" : false,
+    "reconciliation" : true,
+    "emitCompileCheck" : true,
+    "revalidationPassed" : false,
+    "revalidationMandatoryRules" : [ "FW_ORPHAN_TEST_CLASS" ],
+    "promoted" : false,
+    "surefireTest" : "multiPageBadImport_compileOnQualification",
+    "surefireResult" : "FAIL",
+    "failureClass" : "REPAIR_QUALITY_OR_VALIDATION",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-multi_page_bad_import-14911100206853892490"
+  }, {
+    "scenario" : "MISSING_PAGE_LOCATORS",
+    "cursorTaskStatus" : "COMPLETED",
+    "taskId" : "2830c74984fe488692c842173b74cfd1",
+    "agentRunId" : "run-f87ceac2-05a8-483d-b593-0bc085ab244b",
+    "gateStatus" : "REVALIDATION_FAILED",
+    "accepted" : false,
+    "reconciliation" : true,
+    "emitCompileCheck" : true,
+    "revalidationPassed" : false,
+    "revalidationMandatoryRules" : [ "FW_ORPHAN_TEST_CLASS" ],
+    "promoted" : false,
+    "surefireTest" : "missingPageLocators_compileOnQualification",
+    "surefireResult" : "FAIL",
+    "failureClass" : "REPAIR_QUALITY_OR_VALIDATION",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-missing_page_locators-4995740430413066592"
+  }, {
+    "scenario" : "MISSING_PAGE_ACTIONS",
+    "cursorTaskStatus" : "COMPLETED",
+    "taskId" : "f5593282a75846fe8b6635303628481f",
+    "agentRunId" : "run-03a9548a-0a79-4901-8b8d-504febb6cb27",
+    "gateStatus" : "REVALIDATION_FAILED",
+    "accepted" : false,
+    "reconciliation" : true,
+    "emitCompileCheck" : true,
+    "revalidationPassed" : false,
+    "revalidationMandatoryRules" : [ "FW_ORPHAN_TEST_CLASS" ],
+    "promoted" : false,
+    "surefireTest" : "missingPageActions_compileOnQualification",
+    "surefireResult" : "FAIL",
+    "failureClass" : "REPAIR_QUALITY_OR_VALIDATION",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-missing_page_actions-7109887212929441662"
+  }, {
+    "scenario" : "MISSING_PAGE_ASSERTIONS",
+    "cursorTaskStatus" : "INTERRUPTED",
+    "taskId" : "264f6d2085264d84b1350d68d71fd17d",
+    "agentRunId" : null,
+    "gateStatus" : "REPAIR_FAILED",
+    "accepted" : false,
+    "reconciliation" : false,
+    "emitCompileCheck" : false,
+    "revalidationPassed" : null,
+    "promoted" : false,
+    "surefireTest" : "missingPageAssertions_compileOnQualification",
+    "surefireResult" : "PASS",
+    "failureClass" : "REPAIR",
+    "onDiskEvidence" : "docs/handoff/phase6-6-compile-on-MISSING_PAGE_ASSERTIONS.json",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-missing_page_assertions-3803315295394760586"
+  }, {
+    "scenario" : "MIXED_INVENTORY_BAD_IMPORT",
+    "cursorTaskStatus" : "COMPLETED",
+    "taskId" : "2207cecd44374485ac420e58397adc54",
+    "agentRunId" : "run-ee4ea804-8842-4cb5-908a-8a1a9367ea28",
+    "gateStatus" : "REVALIDATION_FAILED",
+    "accepted" : false,
+    "reconciliation" : true,
+    "emitCompileCheck" : true,
+    "revalidationPassed" : false,
+    "revalidationMandatoryRules" : [ "FW_ORPHAN_TEST_CLASS" ],
+    "promoted" : false,
+    "surefireTest" : "mixedInventory_compileOnQualification",
+    "surefireResult" : "FAIL",
+    "failureClass" : "REPAIR_QUALITY_OR_VALIDATION",
+    "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-mixed_inventory_bad_import-11333366484287633344"
+  } ]
+}

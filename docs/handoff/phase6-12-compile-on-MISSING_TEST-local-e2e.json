@@ -1,0 +1,71 @@
+{
+  "phase" : "6.12-compile-on",
+  "scenario" : "MISSING_TEST",
+  "workDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-missing_test-16708165900721668856",
+  "accepted" : true,
+  "promoted" : true,
+  "gateStatus" : "ACCEPTED",
+  "initialMandatoryRuleIds" : [ "FW_EXPECTED_TEST_PRESENT" ],
+  "compilePassed" : true,
+  "compileCheckEnabled" : true,
+  "reconciliation" : {
+    "copied" : [ "src/test/java/project/tests/generated/Login_Test.java" ],
+    "deleted" : [ ],
+    "excluded" : [ ".gitattributes", ".github/dependabot.yml", ".github/keel/summarize_results.py", ".github/workflows/E2E.yml", ".github/workflows/keel-pr-report.yml", ".gitignore", "docs/CI_E2E_WORKFLOW.md", "docs/CI_PR_REPORT.md", "pom.xml", "README.md", "src/main/java/project/drivers/AbstractDriver.java", "src/main/java/project/drivers/Browser.java", "src/main/java/project/drivers/ChromeFactory.java", "src/main/java/project/drivers/EdgeFactory.java", "src/main/java/project/drivers/WebDriverFactory.java", "src/main/java/project/drivers/WebDriverProvider.java", "src/main/java/project/listeners/TestNGListeners.java", "src/main/java/project/media/ScreenRecordManager.java", "src/main/java/project/media/ScreenShotManager.java", "src/main/java/project/utils/Actions/AlertsHandler.java", "src/main/java/project/utils/Actions/BrowserHandler.java", "src/main/java/project/utils/Actions/ElementsHandler.java", "src/main/java/project/utils/Actions/FramesHandler.java", "src/main/java/project/utils/Actions/ReplayActionException.java", "src/main/java/project/utils/CaptureCompare.java", "src/main/java/project/utils/CapturedValues.java", "src/main/java/project/utils/dataReader/JsonReader.java", "src/main/java/project/utils/dataReader/PropertyReader.java", "src/main/java/project/utils/FilesManager.java", "src/main/java/project/utils/locators/FirstOf.java", "src/main/java/project/utils/locators/KeelActions.java", "src/main/java/project/utils/locators/KeelBy.java", "src/main/java/project/utils/locators/KeelHook.java", "src/main/java/project/utils/locators/KeelLocate.java", "src/main/java/project/utils/locators/SettledActions.java", "src/main/java/project/utils/locators/SmartWait.java", "src/main/java/project/utils/Logs/LogsManager.java", "src/main/java/project/utils/reports/AllureAttachmentManager.java", "src/main/java/project/utils/reports/AllureDownloadManager.java", "src/main/java/project/utils/reports/AllureEnviromentsManager.java", "src/main/java/project/utils/reports/AllurePaths.java", "src/main/java/project/utils/reports/AllureReportGenerator.java", "src/main/java/project/utils/reports/AllureSteps.java", "src/main/java/project/utils/reports/KeelResults.java", "src/main/java/project/utils/reports/Secrets.java", "src/main/java/project/utils/retry/KeelReadOnly.java", "src/main/java/project/utils/retry/KeelRetryAnalyzer.java", "src/main/java/project/utils/retry/KeelRetryListener.java", "src/main/java/project/utils/settle/NoEffectError.java", "src/main/java/project/utils/settle/ScreenshotDiff.java", "src/main/java/project/utils/settle/Settle.java", "src/main/java/project/utils/settle/SettlePolicy.java", "src/main/java/project/utils/Terminal.java", "src/main/java/project/utils/TimeManager.java", "src/main/java/project/utils/WaitHandler.java", "src/main/java/project/validations/Assertion.java", "src/main/java/project/validations/Validation.java", "src/main/java/project/validations/Verification.java", "src/main/resources/allure.properties", "src/main/resources/enviroment.properties", "src/main/resources/keel/closed-shadow-hook.js", "src/main/resources/keel/keel-text-match.js", "src/main/resources/keel/settle-network.js", "src/main/resources/keel/settle-policy.json", "src/main/resources/keel/settle-probe.js", "src/main/resources/log4j2.properties", "src/main/resources/META-INF/services/org.testng.ITestNGListener", "src/main/resources/waits.properties", "src/main/resources/webapp.properties.example", "src/test/java/project/tests/BaseTest.java", "src/test/resources/keel/settle-policy.golden.txt", "src/test/resources/test-data/delivery-testdata.properties", "src/test/resources/test-data/login-data.json" ],
+    "unchanged" : [ "src/main/java/project/pages/Login_Page.java" ]
+  },
+  "operationalReport" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-missing_test-16708165900721668856\\framework-acceptance\\framework-repair-operational.json",
+  "operational" : {
+    "schemaVersion" : 1,
+    "writtenAt" : "2026-11-15T19:12:07.890647700Z",
+    "accepted" : true,
+    "gateStatus" : "ACCEPTED",
+    "trace" : {
+      "acceptanceTerminalReason" : "SUCCESS",
+      "bridgeBudgetMs" : 720000,
+      "bridgeElapsedMs" : 99387,
+      "bridgeBudgetUtilizationPct" : 13.80375,
+      "timeToRunStartedMs" : 99539,
+      "cursorRunMs" : 5,
+      "reconciliationMs" : 202,
+      "agentRunStarted" : true,
+      "taskId" : "2dc52f3a176c4a539c9b3c7abc122937",
+      "agentId" : "agent-67a05323-2194-4c86-b0d1-9aa4ffa9aa74",
+      "agentRunId" : "run-421c39a8-5ed7-426c-8796-e06abdd997e7",
+      "taskStatus" : "COMPLETED"
+    }
+  },
+  "revalidationReport" : "C:\\Users\\PC\\AppData\\Local\\Temp\\qual-missing_test-16708165900721668856\\agent-runs\\compile-live-MISSING_TEST_acceptance-revalidate\\contract-validation-report.json",
+  "revalidationPassed" : true,
+  "revalidationMandatoryRuleIds" : [ ],
+  "taskId" : "2dc52f3a176c4a539c9b3c7abc122937",
+  "agentId" : "agent-67a05323-2194-4c86-b0d1-9aa4ffa9aa74",
+  "agentRunId" : "run-421c39a8-5ed7-426c-8796-e06abdd997e7",
+  "cursorTaskStatus" : "COMPLETED",
+  "architectureRepairCandidate" : {
+    "functionallyComplete" : true,
+    "findings" : [ ]
+  },
+  "architecturePublished" : {
+    "functionallyComplete" : true,
+    "findings" : [ ]
+  },
+  "failureClass" : "SUCCESS",
+  "qualificationAttempt" : "local-e2e",
+  "taskMaxRuntimeSeconds" : 720.0,
+  "taskCreatedAt" : "2026-11-15T19:10:19.822701700Z",
+  "taskStartedAt" : "2026-11-15T19:11:59.358290300Z",
+  "taskCompletedAt" : "2026-11-15T19:11:59.362980800Z",
+  "launchState" : {
+    "launchState" : "COMPLETED",
+    "agentId" : "agent-67a05323-2194-4c86-b0d1-9aa4ffa9aa74",
+    "runId" : "run-421c39a8-5ed7-426c-8796-e06abdd997e7",
+    "sidecarPid" : null,
+    "cancelRequestedAt" : null,
+    "idempotencyKey" : "compile-live-MISSING_TEST:2dc52f3a176c4a539c9b3c7abc122937:a1",
+    "attempt" : 1
+  },
+  "taskEventCount" : 3,
+  "taskEventsTail" : [ "{\"at\":\"2026-11-15T19:10:19.869562800Z\",\"type\":\"TASK_CREATED\",\"message\":\"Agent task persisted\",\"details\":{\"provider\":\"CURSOR\",\"taskType\":\"FRAMEWORK_ADAPTATION_V1\"}}", "{\"at\":\"2026-11-15T19:11:59.361973700Z\",\"type\":\"START\",\"message\":\"Provider run started\",\"details\":{\"agentId\":\"agent-67a05323-2194-4c86-b0d1-9aa4ffa9aa74\",\"runId\":\"run-421c39a8-5ed7-426c-8796-e06abdd997e7\"}}", "{\"at\":\"2026-11-15T19:11:59.366490400Z\",\"type\":\"TERMINAL\",\"message\":\"COMPLETED\",\"details\":{\"summary\":\"Resolved **FW_EXPECTED_TEST_PRESENT** by adding the missing generated test.\\n\\nCreated `src/test/java/project/tests/generated/Login_Test.java`:\\n- Extends `BaseTest` (customer template pattern)\\n- Linked to `Login_Page`\\n- `TC_1 — Valid login` calls `click_Login_Button()` (matches page API / intent)\\n\\nNo MCP feedback tool is available in this environment. If anything looks off with the test shape or intent, say what to adjust — or reply **end** to close.\"}}" ],
+  "liveLogHint" : "docs/handoff/phase6-12-deferred-cursor-live.log"
+}

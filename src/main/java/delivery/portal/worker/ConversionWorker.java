@@ -124,7 +124,7 @@ public class ConversionWorker extends AbstractJobWorker {
                     job, lease, cancelCheck, harnessBudget, request);
             if (fromRecording) {
                 var captures = RecordedCaptureFile.read(recordedFile);
-                ConversionJobRunner runner = new ConversionJobRunner();
+                ConversionJobRunner runner = conversionRunner(job, lease);
                 result = runWithProgressMirror(job, runner.progress(), lease,
                         () -> runner.runRecorded(request, captures, cancelCheck, guard));
             } else if (props.isDryRun()) {
@@ -132,7 +132,7 @@ public class ConversionWorker extends AbstractJobWorker {
                 result = runWithProgressMirror(job, tracker, lease,
                         () -> new DryRunConversionService().run(request, tracker, cancelCheck, guard));
             } else {
-                ConversionJobRunner runner = new ConversionJobRunner();
+                ConversionJobRunner runner = conversionRunner(job, lease);
                 result = runWithProgressMirror(job, runner.progress(), lease,
                         () -> runner.run(request, cancelCheck, guard));
             }
@@ -234,16 +234,13 @@ public class ConversionWorker extends AbstractJobWorker {
         return new JobAttemptPublicationGuard(portalStore, job.getJobId(), lease);
     }
 
+    private ConversionJobRunner conversionRunner(JobRecord job, DurableJobClaim.Lease lease) {
+        java.time.Duration budget = harnessBudget(job, lease);
+        return new ConversionJobRunner(harnessProps, budget);
+    }
+
     private static java.time.Duration harnessBudget(JobRecord job, DurableJobClaim.Lease lease) {
-        java.time.Instant until = job == null ? null : job.getLeaseUntil();
-        if (until == null) {
-            return java.time.Duration.ofMinutes(15);
-        }
-        java.time.Duration remaining = java.time.Duration.between(java.time.Instant.now(), until);
-        if (remaining.isNegative() || remaining.isZero()) {
-            return java.time.Duration.ofSeconds(30);
-        }
-        return remaining.minusSeconds(30);
+        return delivery.job.JobHarnessBudget.remainingLeaseBudget(job == null ? null : job.getLeaseUntil());
     }
 
     private ConversionJobResult runWithProgressMirror(

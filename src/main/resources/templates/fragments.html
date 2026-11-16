@@ -9,6 +9,7 @@
         <link rel="stylesheet" th:href="@{/css/keel-credits.css}"/>
         <link rel="stylesheet" th:href="@{/css/keel-sidebar-roles.css}"/>
         <link rel="stylesheet" th:href="@{/css/keel-feature-help.css}"/>
+        <link rel="stylesheet" th:href="@{/css/keel-portal-a11y.css}"/>
         <link rel="stylesheet" th:href="@{/css/keel-dashboard.css}"/>
         <link rel="stylesheet" th:href="@{/css/keel-file-input.css}"/>
         <link rel="stylesheet" th:href="@{/css/keel-layout.css}"/>
@@ -64,6 +65,7 @@
         <script defer th:src="@{/js/keel-sidebar-ia.js}"></script>
         <script defer th:src="@{/js/keel-project-picker.js}"></script>
         <script defer th:src="@{/js/keel-tc-multiselect.js}"></script>
+        <script defer th:src="@{/js/keel-portal-a11y.js}"></script>
         <script defer th:src="@{/js/keel-feature-help.js}"></script>
         <script defer th:src="@{/js/keel-file-input.js}"></script>
         <script defer th:src="@{/js/keel-confirm.js}"></script>
@@ -152,9 +154,12 @@
 <button type="button" class="keel-feature-help-btn" th:fragment="featureHelpBtn(id)"
         th:attr="aria-label=${#messages.msg('feature.help.' + id + '.title')},
                  data-help=${#messages.msg('feature.help.' + id + '.short')}"
+        aria-expanded="false"
+        aria-controls="keel-feature-help-popover"
         th:data-guide="${#messages.msgOrNull('feature.help.' + id + '.guide')}">?</button>
 
-<aside class="sidebar" th:fragment="sidebar">
+<aside class="sidebar" th:fragment="sidebar" th:attr="aria-label=#{a11y.sidebarLabel}">
+    <a class="keel-skip-link" href="#keel-main-content" th:text="#{a11y.skipToMain}">Skip to main content</a>
     <div class="sidebar-brand">
         <a href="/dashboard" class="brand-link" aria-label="Keel home">
             <img class="brand-logo-svg" th:src="@{/img/keel-mark.svg}" width="27" height="31" alt=""/>

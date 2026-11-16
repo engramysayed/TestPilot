@@ -3840,6 +3840,19 @@ body:not(.app-body) .shell {
 @media (max-width: 900px) {
     .product-guide-cards { grid-template-columns: 1fr 1fr; }
 }
+.guide-glossary-table th[scope="row"] {
+    white-space: nowrap;
+    font-weight: 600;
+}
+.guide-glossary-table td {
+    font-size: 0.9rem;
+    line-height: 1.45;
+    vertical-align: top;
+}
+.guide-glossary-table td:last-child {
+    white-space: nowrap;
+}
+
 @media (max-width: 560px) {
     .product-guide-cards { grid-template-columns: 1fr; }
     .product-guide-mock-row { grid-template-columns: 1fr; }

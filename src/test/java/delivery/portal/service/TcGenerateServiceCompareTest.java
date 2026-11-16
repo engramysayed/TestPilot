@@ -113,6 +113,7 @@ public class TcGenerateServiceCompareTest {
                     null,
                     new TrackingWorkbooks(saveCalls),
                     GenerateModelService.forTests(),
+                    null,
                     null);
             this.saveCalls = saveCalls;
         }

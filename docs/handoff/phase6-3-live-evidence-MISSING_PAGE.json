@@ -1,0 +1,12 @@
+{
+  "taskId" : "",
+  "contractVersion" : "2",
+  "status" : "ACCEPTED",
+  "accepted" : true,
+  "initialReport" : "C:\\Users\\PC\\AppData\\Local\\Temp\\live-fw-missing_page-9611052056311798479\\agent-runs\\live-MISSING_PAGE_acceptance\\contract-validation-report.json",
+  "inventoryVersion" : "2",
+  "scenario" : "MISSING_PAGE",
+  "mandatoryFindingCount" : 0,
+  "reportDir" : "C:\\Users\\PC\\AppData\\Local\\Temp\\live-fw-missing_page-9611052056311798479\\agent-runs\\live-MISSING_PAGE_acceptance",
+  "detail" : "contract and compile passed"
+}

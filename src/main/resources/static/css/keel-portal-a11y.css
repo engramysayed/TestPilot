@@ -1,0 +1,78 @@
+/* Portal UX phase 11 — keyboard focus, skip link, calmer motion */
+
+.keel-skip-link {
+    position: absolute;
+    left: 0.75rem;
+    top: 0.5rem;
+    z-index: 300;
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    background: var(--calm-paper, #121820);
+    color: var(--calm-ink, #e7eaf0);
+    border: 2px solid #7ddbc9;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-140%);
+    transition: transform 0.15s ease;
+}
+.keel-skip-link:focus {
+    transform: translateY(0);
+    outline: none;
+}
+html[data-theme="light"] .keel-skip-link {
+    background: #fff;
+    color: #1a1d24;
+}
+
+:root {
+    --keel-focus-ring: #7ddbc9;
+    --keel-focus-ring-dark: #0d6b5c;
+}
+
+.sidebar-nav a.sidebar-nav-item__link:focus-visible,
+.sidebar-nav a.nav-main:focus-visible,
+.sidebar-nav a.sidebar-child:focus-visible,
+.sidebar-nav .nav-toggle:focus-visible,
+.topbar button:focus-visible,
+.topbar input[type="search"]:focus-visible,
+.keel-feature-help-btn:focus-visible,
+.keel-feature-help-popover a:focus-visible,
+.product-guide-toc a:focus-visible,
+.product-guide-card:focus-visible,
+.guide-glossary-table a:focus-visible {
+    outline: 2px solid var(--keel-focus-ring);
+    outline-offset: 2px;
+}
+html[data-theme="light"] .sidebar-nav a:focus-visible,
+html[data-theme="light"] .sidebar-nav .nav-toggle:focus-visible,
+html[data-theme="light"] .keel-feature-help-btn:focus-visible,
+html[data-theme="light"] .product-guide-toc a:focus-visible {
+    outline-color: var(--keel-focus-ring-dark);
+}
+
+/* Discoverable ? without relying on hover-only (still subtle). */
+.sidebar-nav .keel-feature-help-btn,
+.heading .keel-feature-help-btn,
+.panel h2 .keel-feature-help-btn {
+    opacity: 0.5;
+}
+
+.keel-feature-help-popover a:focus-visible {
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .kpi--live .kpi-ico svg circle:first-child {
+        animation: none !important;
+    }
+    .keel-skip-link {
+        transition: none;
+    }
+    .sidebar-nav a,
+    .kpi,
+    .sidebar-nav .nav-group .nav-toggle svg {
+        transition: none !important;
+    }
+}

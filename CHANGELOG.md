@@ -2,6 +2,32 @@
 
 # Keel changelog
 
+## 2026-11-16 — Portal UX Phase 11 (portal accessibility)
+
+- **Skip to main content** link in the sidebar; `main` gets `id="keel-main-content"` on load.
+- **Keyboard** — feature `?` help opens on Enter/Space; Escape closes and restores focus; nav group toggles expose `aria-expanded`.
+- **Focus-visible** rings on sidebar, top bar, Guide TOC, and help popovers; calmer `?` default opacity; reduced-motion tweaks for KPI pulse.
+- Handoff: `docs/handoff/2026-11-16-phase11-portal-a11y.md`.
+
+## 2026-11-16 — Portal UX Phase 10 (Guide + feature-help sync)
+
+- **Guide** — new **Feature glossary** (`/guide#feature-glossary`) lists sidebar features with deep links; TOC and overview cards use current nav names (TCs Generation, Playback, History, …).
+- **`?` tooltips** — `feature.help.*.guide` URLs now match Guide section anchors (single source of truth with the glossary table).
+- New Guide sections: **Test blueprints**, **Run memory**.
+- Handoff: `docs/handoff/2026-11-16-phase10-guide-glossary-sync.md`.
+
+## 2026-11-16 — Portal UX Phase 9 (run memory + Bug Hunter triage)
+
+- **Run memory** — fix table layout (removed erroneous `status` grid class); proper `table` + empty state; section `?` help; sidebar copy matches “saved locators” wording.
+- **Bug Hunter** — triage renamed **Review last hunt report** with intro + `?` help (recent runs removal was Phase 5).
+- Handoff: `docs/handoff/2026-11-16-phase9-run-memory-bug-hunter.md`.
+
+## 2026-11-16 — Portal UX Phase 8 (Execute tunnel copy)
+
+- Execute tunnel badge uses plain labels (**Tunnel inactive**, **Tunnel active**, …) without `delivery.tunnel.*` property hints.
+- Badge row links to **Guide § Private app tunnel**; optional one-line hint under the project chip.
+- Handoff: `docs/handoff/2026-11-16-phase8-execute-tunnel-copy.md`.
+
 ## 2026-11-16 — Portal UX Phase 7 (suites scheduling)
 
 - Scheduling page: friendly suite picker, cron presets, credential dropdown, Account-based failure alerts, sticky **Save schedule settings** for schedule + alerts + watch.

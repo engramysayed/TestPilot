@@ -1,0 +1,29 @@
+{
+  "phase" : "6.6-compile-on",
+  "scenario" : "MISSING_PAGE_LEGACY",
+  "accepted" : false,
+  "gateStatus" : "REPAIR_FAILED",
+  "initialMandatoryRuleIds" : [ "FW_EXPECTED_PAGE_PRESENT", "FW_ORPHAN_TEST_CLASS" ],
+  "compilePassed" : false,
+  "compileCheckEnabled" : true,
+  "taskId" : "0b0b22d2c2544c73801d5180e3a9d54b",
+  "agentId" : null,
+  "agentRunId" : null,
+  "architectureRepairCandidate" : {
+    "functionallyComplete" : false,
+    "findings" : [ {
+      "message" : "expected page class file missing: Login_Page",
+      "code" : "PAGE_MISSING",
+      "functionalGap" : true
+    } ]
+  },
+  "architecturePublished" : {
+    "functionallyComplete" : false,
+    "findings" : [ {
+      "message" : "expected page class file missing: Login_Page",
+      "code" : "PAGE_MISSING",
+      "functionalGap" : true
+    } ]
+  },
+  "failureClass" : "COMPILE_FAILURE"
+}

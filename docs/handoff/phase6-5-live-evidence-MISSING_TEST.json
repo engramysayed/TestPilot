@@ -1,0 +1,19 @@
+{
+  "scenario" : "MISSING_TEST",
+  "accepted" : true,
+  "gateStatus" : "ACCEPTED",
+  "detail" : "contract and compile passed",
+  "taskId" : "",
+  "initialMandatoryRuleIds" : [ "FW_EXPECTED_TEST_PRESENT" ],
+  "initialMandatoryCount" : 1,
+  "revalidationPassed" : true,
+  "reconciliation" : {
+    "copied" : [ "src/test/java/project/tests/generated/Login_Test.java" ],
+    "deleted" : [ ],
+    "excluded" : [ "src/test/resources/test-data/delivery-testdata.properties" ],
+    "unchanged" : [ "src/main/java/project/pages/Login_Page.java" ]
+  },
+  "promoted" : true,
+  "permittedSourceFiles" : [ ],
+  "repairCandidateFiles" : [ "src/main/java/project/pages/Login_Page.java", "src/test/java/project/tests/generated/Login_Test.java" ]
+}

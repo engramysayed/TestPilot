@@ -134,7 +134,7 @@ public class FacebookLoginNegativeGenerateTest {
         int llmCallCount;
 
         StubTcGenerateService() {
-            super(new DeliveryPortalProperties(), null, null, GenerateModelService.forTests(), null);
+            super(new DeliveryPortalProperties(), null, null, GenerateModelService.forTests(), null, null);
         }
 
         @Override

@@ -18,7 +18,8 @@ public class AgentTaskRouterTest {
         Path ws = Files.createTempDirectory("router-ws");
         AgentTaskPlan plan = router.plan(AgentTaskType.FRAMEWORK_VALIDATION_V1, ws);
         Assert.assertEquals(plan.providerId(), AgentProviderId.FAKE);
-        Assert.assertTrue(plan.policy().allowedTools().contains(AgentToolId.MODIFY_GENERATED_SOURCES));
+        Assert.assertFalse(plan.policy().allowedTools().contains(AgentToolId.MODIFY_GENERATED_SOURCES));
+        Assert.assertTrue(plan.policy().allowedTools().contains(AgentToolId.READ_WORKSPACE_FILES));
         Assert.assertTrue(plan.policy().isWorkspaceAllowed(ws));
     }
 

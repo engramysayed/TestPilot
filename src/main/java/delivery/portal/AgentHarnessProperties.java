@@ -15,6 +15,10 @@ public class AgentHarnessProperties {
     private int maxRetries = 1;
     private boolean frameworkValidationEnabled = false;
     private boolean failureInvestigationEnabled = false;
+    private boolean tcValidationEnabled = false;
+    private boolean tcValidationCursorEscalationEnabled = false;
+    private boolean executionRecoveryCursorEscalationEnabled = false;
+    private boolean automateFrameworkRepairEnabled = false;
     private String cursorCommand = "node tools/cursor-agent/agent.mjs";
 
     public boolean isEnabled() {
@@ -71,6 +75,38 @@ public class AgentHarnessProperties {
 
     public void setFailureInvestigationEnabled(boolean failureInvestigationEnabled) {
         this.failureInvestigationEnabled = failureInvestigationEnabled;
+    }
+
+    public boolean isTcValidationEnabled() {
+        return tcValidationEnabled;
+    }
+
+    public void setTcValidationEnabled(boolean tcValidationEnabled) {
+        this.tcValidationEnabled = tcValidationEnabled;
+    }
+
+    public boolean isTcValidationCursorEscalationEnabled() {
+        return tcValidationCursorEscalationEnabled;
+    }
+
+    public void setTcValidationCursorEscalationEnabled(boolean tcValidationCursorEscalationEnabled) {
+        this.tcValidationCursorEscalationEnabled = tcValidationCursorEscalationEnabled;
+    }
+
+    public boolean isExecutionRecoveryCursorEscalationEnabled() {
+        return executionRecoveryCursorEscalationEnabled;
+    }
+
+    public void setExecutionRecoveryCursorEscalationEnabled(boolean executionRecoveryCursorEscalationEnabled) {
+        this.executionRecoveryCursorEscalationEnabled = executionRecoveryCursorEscalationEnabled;
+    }
+
+    public boolean isAutomateFrameworkRepairEnabled() {
+        return automateFrameworkRepairEnabled;
+    }
+
+    public void setAutomateFrameworkRepairEnabled(boolean automateFrameworkRepairEnabled) {
+        this.automateFrameworkRepairEnabled = automateFrameworkRepairEnabled;
     }
 
     public String getCursorCommand() {

@@ -1072,19 +1072,45 @@
         await openExecuteRun(jobId);
     }
 
+    function tunnelBadgeClass(status) {
+        const st = String(status || '').toLowerCase();
+        if (st === 'active') return 'badge ok';
+        if (st === 'stale' || st === 'offline') return 'badge warn';
+        if (st === 'misconfigured') return 'badge err';
+        return 'badge muted';
+    }
+
     async function loadTunnelBadge(projectId) {
+        const wrap = document.getElementById('tunnel-badge-wrap');
         const el = document.getElementById('tunnel-badge');
-        if (!el || !projectId) return;
+        const guide = document.getElementById('tunnel-badge-guide');
+        const hint = document.getElementById('tunnel-hint');
+        if (!el || !projectId) {
+            if (wrap) wrap.hidden = true;
+            if (hint) hint.hidden = true;
+            return;
+        }
         try {
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/tunnel/badge', {
                 credentials: 'same-origin',
                 headers: API_HEADERS
             });
             const data = await res.json();
-            el.hidden = false;
-            el.textContent = data.label || 'Tunnel';
+            const status = data.status || '';
+            const label = data.label || 'Tunnel inactive';
+            if (wrap) wrap.hidden = false;
+            el.textContent = label;
+            el.className = tunnelBadgeClass(status);
+            el.title = label;
+            if (guide) guide.hidden = status === 'active';
+            if (hint) {
+                const msg = data.hint || '';
+                hint.textContent = msg;
+                hint.hidden = !msg || status === 'active';
+            }
         } catch (e) {
-            el.hidden = true;
+            if (wrap) wrap.hidden = true;
+            if (hint) hint.hidden = true;
         }
     }
 
