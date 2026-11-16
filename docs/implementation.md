@@ -10,7 +10,7 @@ Keel/TestPilot is a test-automation portal. Users describe what their web (or An
 
 ## 2. The six UX rules (portal)
 
-The portal is being rebuilt against these (branch `ux-overhaul`, docs in `docs/handoff/2026-11-16-ux-overhaul-*`):
+The portal is being rebuilt against these (branch `ux-overhaul`, docs in `docs/archive/handoffs/2026-11-16-ux-overhaul-*`):
 
 1. **One job per page.** Multi-action pages are split into sidebar children (no tabs).
 2. **Choose before submit.** Settings visible above submit; no "Advanced" accordions.

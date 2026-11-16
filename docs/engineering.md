@@ -190,7 +190,7 @@ Floorplan output lands at `floorplan/index.html` and `floorplan/architecture.jso
 - Spring context tests use `AbstractTestNGSpringContextTests` + `@SpringBootTest(classes = PortalApplication.class, properties = {…})`.
 - Common per-test properties: isolated H2 URL, `delivery.store-root=./target/test-delivery-store-*`, `delivery.dry-run=true`.
 - MVC tests use `MockMvc` + `httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")`.
-- Framework contract has its own evidence JSON files under `docs/handoff/phase6-*-compile-on-*.json`.
+- Framework contract has its own evidence JSON files under `docs/archive/handoffs/phase6-*-compile-on-*.json`.
 - Live smokes (`SettleLiveSmoke`, `TunnelBrokerApiTest`) need real infra and are gated.
 
 ## 11. Branch model
@@ -212,8 +212,8 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 - `docs/ENGINEERING_HANDOFF.md` — the long-form engineer onboarding doc (index into everything).
 - `docs/knowledge/CURRENT.md` — architecture + status snapshot.
 - `docs/knowledge/REVIEW-2026-11-07.md` — open risks / next work.
-- `docs/handoff/` — dated handoff docs; see `docs/handoff/CLAUDE-RESUME-KEEL-KNOWLEDGE.md` for Claude-specific resume map.
-- `docs/handoff/2026-11-16-ux-overhaul-master-plan.md` — the UX overhaul plan (Phases 1–11).
-- `docs/history/HISTORY.md` — session history, newest first.
+- `docs/archive/handoffs/` — dated handoff docs; see `docs/archive/handoffs/CLAUDE-RESUME-KEEL-KNOWLEDGE.md` for Claude-specific resume map.
+- `docs/archive/handoffs/2026-11-16-ux-overhaul-master-plan.md` — the UX overhaul plan (Phases 1–11).
+- `docs/archive/HISTORY.md` — session history, newest first.
 - `floorplan/index.html` — interactive architecture map.
 - `graphify-out/GRAPH_REPORT.md` — knowledge graph export.

@@ -12,64 +12,64 @@ This document points engineers at deeper material already in the tree.
 |------|-------|
 | Current architecture, flows, config, status | [`knowledge/CURRENT.md`](knowledge/CURRENT.md) |
 | Open risks / next work | [`knowledge/REVIEW-2026-11-07.md`](knowledge/REVIEW-2026-11-07.md) |
-| Session history (newest first) | [`history/HISTORY.md`](history/HISTORY.md) |
+| Session history (newest first) | [`archive/HISTORY.md`](archive/HISTORY.md) |
 | Docs map and rules | [`README.md`](README.md) |
-| Portal UX overhaul (phased, `ux-overhaul`) | [`docs/handoff/2026-11-16-ux-overhaul-master-plan.md`](handoff/2026-11-16-ux-overhaul-master-plan.md) — through Phase 11: [`2026-11-16-phase11-portal-a11y.md`](handoff/2026-11-16-phase11-portal-a11y.md) |
+| Portal UX overhaul (phased, `ux-overhaul`) | [`docs/archive/handoffs/2026-11-16-ux-overhaul-master-plan.md`](archive/handoffs/2026-11-16-ux-overhaul-master-plan.md) — through Phase 11: [`2026-11-16-phase11-portal-a11y.md`](archive/handoffs/2026-11-16-phase11-portal-a11y.md) |
 
 ## Core flows
 
 | Topic | Where to look |
 |-------|----------------|
-| **Unified agent harness (off by default)** | Phase 3 Convert integration on `keel/main` (`a1c9c4d`+). Policy A reconcile fix: `CursorAgentRuntime` accepts terminal `INTERRUPTED` without `run.started` when ids persisted; live evidence `docs/handoff/2026-11-12-cursor-live-recovery-evidence.json`. Plan: `docs/handoff/2026-11-12-agent-harness-phase3-plan.md`. Implementation: `docs/handoff/2026-11-12-agent-harness-phase3-implementation.md`. |
-| **Automate framework contract (Phase 6)** | Inventory-driven validation: `FrameworkExpectedInventory`, `FrameworkContractValidator` contractVersion `2` at pre-zip acceptance (`EmitPhase`). Completion: `docs/handoff/2026-11-15-framework-contract-phase6-completion.md`. **Phase 6.4:** Cursor workspace → `repair-candidate` reconciliation (`FrameworkRepairWorkspaceReconciler`, D-6.3-01): `docs/handoff/2026-11-15-framework-contract-phase6-4-cursor-reconciliation.md`. **Phase 6.5:** live qualification matrix + resilience: `docs/handoff/2026-11-15-framework-contract-phase6-5-qualification.md`. **Phase 6.6:** staged reconciliation, architecture assessor, compile-on qualification: `docs/handoff/2026-11-15-framework-contract-phase6-6-production-readiness.md` (**NOT READY**). **Phase 6.7:** template POM compile baseline: `docs/handoff/2026-11-15-framework-contract-phase6-7-template-compile-baseline.md`. **Phase 6.13:** production readiness assessment (**READY AFTER BLOCKERS**): `docs/handoff/2026-11-15-framework-contract-phase6-13-production-readiness.md`. **Phase 6.14:** bridge/gate operational JSON + operator runbook (not staging-canary-ready): `docs/handoff/2026-11-15-framework-contract-phase6-14-operational-observability.md`. **Phase 6.15:** staging load qualification **BLOCKED** (checklist + gated IT only): `docs/handoff/2026-11-15-framework-contract-phase6-15-staging-load-qualification.md`. **Phase 6.16:** production readiness audit — **READY AFTER SPECIFIED BLOCKERS**: `docs/handoff/2026-11-15-phase6-16-production-readiness-audit.md`. Phase 5 acceptance boundary unchanged. |
+| **Unified agent harness (off by default)** | Phase 3 Convert integration on `keel/main` (`a1c9c4d`+). Policy A reconcile fix: `CursorAgentRuntime` accepts terminal `INTERRUPTED` without `run.started` when ids persisted; live evidence `docs/archive/handoffs/2026-11-12-cursor-live-recovery-evidence.json`. Plan: `docs/archive/handoffs/2026-11-12-agent-harness-phase3-plan.md`. Implementation: `docs/archive/handoffs/2026-11-12-agent-harness-phase3-implementation.md`. |
+| **Automate framework contract (Phase 6)** | Inventory-driven validation: `FrameworkExpectedInventory`, `FrameworkContractValidator` contractVersion `2` at pre-zip acceptance (`EmitPhase`). Completion: `docs/archive/handoffs/2026-11-15-framework-contract-phase6-completion.md`. **Phase 6.4:** Cursor workspace → `repair-candidate` reconciliation (`FrameworkRepairWorkspaceReconciler`, D-6.3-01): `docs/archive/handoffs/2026-11-15-framework-contract-phase6-4-cursor-reconciliation.md`. **Phase 6.5:** live qualification matrix + resilience: `docs/archive/handoffs/2026-11-15-framework-contract-phase6-5-qualification.md`. **Phase 6.6:** staged reconciliation, architecture assessor, compile-on qualification: `docs/archive/handoffs/2026-11-15-framework-contract-phase6-6-production-readiness.md` (**NOT READY**). **Phase 6.7:** template POM compile baseline: `docs/archive/handoffs/2026-11-15-framework-contract-phase6-7-template-compile-baseline.md`. **Phase 6.13:** production readiness assessment (**READY AFTER BLOCKERS**): `docs/archive/handoffs/2026-11-15-framework-contract-phase6-13-production-readiness.md`. **Phase 6.14:** bridge/gate operational JSON + operator runbook (not staging-canary-ready): `docs/archive/handoffs/2026-11-15-framework-contract-phase6-14-operational-observability.md`. **Phase 6.15:** staging load qualification **BLOCKED** (checklist + gated IT only): `docs/archive/handoffs/2026-11-15-framework-contract-phase6-15-staging-load-qualification.md`. **Phase 6.16:** production readiness audit — **READY AFTER SPECIFIED BLOCKERS**: `docs/archive/handoffs/2026-11-15-phase6-16-production-readiness-audit.md`. Phase 5 acceptance boundary unchanged. |
 | **Shared locator ranking** (hook → test id → id → name → role+name → label → text → CSS → ordinal; per-project mode) | `delivery.locator.LocatorStabilityPolicy`, `CandidateScorer`, `LocatorRanker`, `SemanticLocatorLadder`, `MultiLocatorBag`, `ElementGrounder`; Projects → Settings → Locator ranking; tests `LocatorStabilityPolicyTest`, `CodegenW2EmitTest` |
 | **Arabic / Unicode step matching** | `delivery.authoring.IntentText`, `StepIntentBinder.classify`, `IntentTextTest` |
 | **Refund requests** (auto for platform failures, user request, Admin → Refunds) | `RefundRequestService`, `AdminRefundsController`, `JobRefundController`, `templates/admin-refunds.html`, `RefundRequestTest` |
 | **Durable leases** (renewal for all workers, periodic reclaim) | `portal/jobs/LeaseKeeper`, `JobLeaseReconciler`, `LeaseKeeperTest` |
 | **Tunnel host isolation + multi-value headers** | `TunnelHostPolicy`, `TunnelHostIsolationFilter`, `TunnelRelayService.completeMulti` |
-| Latest session (2026-11-07, Claude) | [`history/handoffs/2026-11/2026-11-07-claude-locator-policy-refunds.md`](history/handoffs/2026-11/2026-11-07-claude-locator-policy-refunds.md) |
-| Suites Slice E — TC picker + library adapter | `docs/knowledge/contracts/E-contract-map.md`, `docs/history/handoffs/2026-11/2026-11-07-slice-e-cursor.md`, `GET /api/projects/{projectId}/test-case-library`, `templates/suites.html` |
-| Suites Slice F — portal schedule dispatch (flagged) | `docs/knowledge/contracts/F-transaction-map.md`, `docs/history/handoffs/2026-11/2026-11-07-slice-f-cursor.md`, `delivery.suites.portal-schedule-worker.enabled` |
-| Adopt A1–A6 — what exists vs missing | `docs/history/handoffs/2026-11/2026-11-07-adopt-slices-inventory.md`, session `docs/history/handoffs/2026-11/2026-11-07-adopt-cursor-session.md` |
-| Adopt A5 — cloud tunnel broker | `docs/history/handoffs/2026-11/2026-11-07-adopt-a5-tunnel-broker.md`, `scripts/tunnel-live-smoke.ps1`, `-Dtest=TunnelBrokerApiTest` |
-| **Resume in Claude Code** — knowledge map + Graphify | `docs/handoff/CLAUDE-RESUME-KEEL-KNOWLEDGE.md` (resume entry), `graphify-out/GRAPH_REPORT.md`, `scripts/graphify-update.cmd` |
-| Record → framework (skip the browser prove pass) | `docs/superpowers/plans/2026-10-15-record-to-framework.md` |
-| Phase 2 failure replay + heal Accept/Reject proposals + flaky tags (AE disk emit) | docs/history/handoffs/2026-11/2026-11-02-phase2-ae.md, contract docs/history/handoffs/2026-11/2026-11-02-phase2-api-contract.md |
-| 2026-10-15 portal session (Record, alerts, layout, unit prices, owner-only admin, editable price copy, project tabs, Execute punctuation, compact credit bar, named-label clicks, overview restyle, screenshot occ folders, expected-per-step, page locator catalog, history copy, attention colors) | `docs/history/handoffs/2026-10/2026-10-15-portal-session.md` |
-| Candidate scorer + DOM shortlist (bind before Ollama/vision; proof-gated catalog; fixture metrics) | spec `docs/superpowers/specs/2026-10-16-candidate-scorer-design.md`, plan `docs/superpowers/plans/2026-10-16-candidate-scorer.md` |
+| Latest session (2026-11-07, Claude) | [`archive/handoffs/2026-11/2026-11-07-claude-locator-policy-refunds.md`](archive/history-handoffs/2026-11/2026-11-07-claude-locator-policy-refunds.md) |
+| Suites Slice E — TC picker + library adapter | `docs/knowledge/contracts/E-contract-map.md`, `docs/archive/history-handoffs/2026-11/2026-11-07-slice-e-cursor.md`, `GET /api/projects/{projectId}/test-case-library`, `templates/suites.html` |
+| Suites Slice F — portal schedule dispatch (flagged) | `docs/knowledge/contracts/F-transaction-map.md`, `docs/archive/history-handoffs/2026-11/2026-11-07-slice-f-cursor.md`, `delivery.suites.portal-schedule-worker.enabled` |
+| Adopt A1–A6 — what exists vs missing | `docs/archive/history-handoffs/2026-11/2026-11-07-adopt-slices-inventory.md`, session `docs/archive/history-handoffs/2026-11/2026-11-07-adopt-cursor-session.md` |
+| Adopt A5 — cloud tunnel broker | `docs/archive/history-handoffs/2026-11/2026-11-07-adopt-a5-tunnel-broker.md`, `scripts/tunnel-live-smoke.ps1`, `-Dtest=TunnelBrokerApiTest` |
+| **Resume in Claude Code** — knowledge map + Graphify | `docs/archive/handoffs/CLAUDE-RESUME-KEEL-KNOWLEDGE.md` (resume entry), `graphify-out/GRAPH_REPORT.md`, `scripts/graphify-update.cmd` |
+| Record → framework (skip the browser prove pass) | `docs/archive/plans/2026-10-15-record-to-framework.md` |
+| Phase 2 failure replay + heal Accept/Reject proposals + flaky tags (AE disk emit) | docs/archive/history-handoffs/2026-11/2026-11-02-phase2-ae.md, contract docs/archive/history-handoffs/2026-11/2026-11-02-phase2-api-contract.md |
+| 2026-10-15 portal session (Record, alerts, layout, unit prices, owner-only admin, editable price copy, project tabs, Execute punctuation, compact credit bar, named-label clicks, overview restyle, screenshot occ folders, expected-per-step, page locator catalog, history copy, attention colors) | `docs/archive/history-handoffs/2026-10/2026-10-15-portal-session.md` |
+| Candidate scorer + DOM shortlist (bind before Ollama/vision; proof-gated catalog; fixture metrics) | spec `docs/archive/specs/2026-10-16-candidate-scorer-design.md`, plan `docs/archive/plans/2026-10-16-candidate-scorer.md` |
 | OutcomeKind confirm-line classify before score (enabled/disabled execute types; nameless skip-echo; toast tokens; OTP/Username/Logout without field/button) | `src/main/java/delivery/authoring/OutcomeKind.java`, `EnabledDisabledAssertBindTest` |
-| End-to-end conversion | `docs/ops/end-to-end-flow.md` |
-| Local Ollama | `docs/ops/ollama-local.md`, `docs/ops/local-live-ollama.md` (if present) |
+| End-to-end conversion | `docs/archive/ops/end-to-end-flow.md` |
+| Local Ollama | `docs/archive/ops/ollama-local.md`, `docs/archive/ops/local-live-ollama.md` (if present) |
 | Heal/LLM API keys (env wins then Settings publish props then DEV LocalApiKeyLoader; clear drops System props; env wins for URL/model props; optional Ollama Bearer) | `delivery.heal.ApiKeySource`, `LocalLlmClient`, Backend `/admin/llm-settings` |
-| Live Ollama models on Generate (chat tags + disk cache; Account vision radios unchanged) | `docs/history/handoffs/2026-10/2026-10-18-live-ollama-generate-models.md`, spec `docs/superpowers/specs/2026-10-18-live-ollama-generate-models-design.md` |
-| Add library TC + pre-run review (Cursor or Keel; Accept saves library then starts reviewed ids; review not charged) | `docs/history/handoffs/2026-10/2026-10-18-library-add-and-prerun-review.md`, spec `docs/superpowers/specs/2026-10-18-library-add-and-prerun-review-design.md`, plan `docs/superpowers/plans/2026-10-18-library-add-and-prerun-review.md` |
-| Admin review batch size + browser type (Owner N + Chrome/Chrome headless/Edge; split when selected > 5) | `docs/history/handoffs/2026-10/2026-10-19-admin-review-batch-and-browser.md`, spec `docs/superpowers/specs/2026-10-19-admin-review-batch-and-browser-design.md`, plan `docs/superpowers/plans/2026-10-19-admin-review-batch-and-browser.md` |
-| Portal delete version ZIPs (member) + live framework (owner/admin) | `docs/history/handoffs/2026-10/2026-10-21-portal-artifact-delete.md` (`7eb71ed`, codegen merge `b46c012`) |
-| Codegen UX emit (filter echo/html; login collapse; page-under-test `*_Page`/`*_Test`; merge same stem; PropertyReader; optional test data env on TARGET_* only) | `docs/history/handoffs/2026-10/2026-10-20-codegen-ux-emit.md`, spec `docs/superpowers/specs/2026-10-20-codegen-ux-emit-design.md` |
-| List-row-first grid click + extra Treat as (clear/select/drag/hover/double/right; first matching row; Execute actions) | `docs/history/handoffs/2026-10/2026-10-20-list-row-first-and-treat-as.md`, spec `docs/superpowers/specs/2026-10-20-list-row-first-and-treat-as-design.md`, plan `docs/superpowers/plans/2026-10-20-list-row-first-and-treat-as.md` |
-| Authoring verb aliases (Owner list; built-ins read-only; seed observe→assert; Guide `/guide#verbs`; Admin LLM page must not use `[[` in script — Thymeleaf aborts the HTML) | `docs/history/handoffs/2026-10/2026-10-19-authoring-verb-aliases.md`, spec `docs/superpowers/specs/2026-10-19-authoring-verb-aliases-design.md`, plan `docs/superpowers/plans/2026-10-19-authoring-verb-aliases.md` |
-| Nested preferred hook + leftover Expected quoting (inner unique hook on named bind and on remembered click/type/clear/select; review leftover quotes, dash rows, and quoted fillers; Execute unique live heading wait including the bound Confirm wrapper; vision keeps the hit node’s own hook; OutcomeKind unchanged) | `docs/history/handoffs/2026-10/2026-10-19-nested-hook-and-quote-heading.md`, spec `docs/superpowers/specs/2026-10-19-nested-hook-and-quote-heading-design.md`, plan `docs/superpowers/plans/2026-10-19-nested-hook-and-quote-heading.md` |
-| Scoped inner hook when a submenu clones the link (unique row + one inner hook duplicated outside → scoped xpath under that row, not bare CSS) | `docs/history/handoffs/2026-10/2026-10-19-scoped-nested-hook.md`, spec `docs/superpowers/specs/2026-10-19-scoped-nested-hook-design.md`, plan `docs/superpowers/plans/2026-10-19-scoped-nested-hook.md` |
-| Portal restart / Windows | `rebuild-portal.cmd` (package jar, skip tests, does not start), then `start-portal.cmd`; `docs/ops/portal-restart.md`, `docs/ops/windows-vps-setup.md` |
-| Architecture notes | `docs/ops/architecture-audit.md` |
+| Live Ollama models on Generate (chat tags + disk cache; Account vision radios unchanged) | `docs/archive/history-handoffs/2026-10/2026-10-18-live-ollama-generate-models.md`, spec `docs/archive/specs/2026-10-18-live-ollama-generate-models-design.md` |
+| Add library TC + pre-run review (Cursor or Keel; Accept saves library then starts reviewed ids; review not charged) | `docs/archive/history-handoffs/2026-10/2026-10-18-library-add-and-prerun-review.md`, spec `docs/archive/specs/2026-10-18-library-add-and-prerun-review-design.md`, plan `docs/archive/plans/2026-10-18-library-add-and-prerun-review.md` |
+| Admin review batch size + browser type (Owner N + Chrome/Chrome headless/Edge; split when selected > 5) | `docs/archive/history-handoffs/2026-10/2026-10-19-admin-review-batch-and-browser.md`, spec `docs/archive/specs/2026-10-19-admin-review-batch-and-browser-design.md`, plan `docs/archive/plans/2026-10-19-admin-review-batch-and-browser.md` |
+| Portal delete version ZIPs (member) + live framework (owner/admin) | `docs/archive/history-handoffs/2026-10/2026-10-21-portal-artifact-delete.md` (`7eb71ed`, codegen merge `b46c012`) |
+| Codegen UX emit (filter echo/html; login collapse; page-under-test `*_Page`/`*_Test`; merge same stem; PropertyReader; optional test data env on TARGET_* only) | `docs/archive/history-handoffs/2026-10/2026-10-20-codegen-ux-emit.md`, spec `docs/archive/specs/2026-10-20-codegen-ux-emit-design.md` |
+| List-row-first grid click + extra Treat as (clear/select/drag/hover/double/right; first matching row; Execute actions) | `docs/archive/history-handoffs/2026-10/2026-10-20-list-row-first-and-treat-as.md`, spec `docs/archive/specs/2026-10-20-list-row-first-and-treat-as-design.md`, plan `docs/archive/plans/2026-10-20-list-row-first-and-treat-as.md` |
+| Authoring verb aliases (Owner list; built-ins read-only; seed observe→assert; Guide `/guide#verbs`; Admin LLM page must not use `[[` in script — Thymeleaf aborts the HTML) | `docs/archive/history-handoffs/2026-10/2026-10-19-authoring-verb-aliases.md`, spec `docs/archive/specs/2026-10-19-authoring-verb-aliases-design.md`, plan `docs/archive/plans/2026-10-19-authoring-verb-aliases.md` |
+| Nested preferred hook + leftover Expected quoting (inner unique hook on named bind and on remembered click/type/clear/select; review leftover quotes, dash rows, and quoted fillers; Execute unique live heading wait including the bound Confirm wrapper; vision keeps the hit node’s own hook; OutcomeKind unchanged) | `docs/archive/history-handoffs/2026-10/2026-10-19-nested-hook-and-quote-heading.md`, spec `docs/archive/specs/2026-10-19-nested-hook-and-quote-heading-design.md`, plan `docs/archive/plans/2026-10-19-nested-hook-and-quote-heading.md` |
+| Scoped inner hook when a submenu clones the link (unique row + one inner hook duplicated outside → scoped xpath under that row, not bare CSS) | `docs/archive/history-handoffs/2026-10/2026-10-19-scoped-nested-hook.md`, spec `docs/archive/specs/2026-10-19-scoped-nested-hook-design.md`, plan `docs/archive/plans/2026-10-19-scoped-nested-hook.md` |
+| Portal restart / Windows | `rebuild-portal.cmd` (package jar, skip tests, does not start), then `start-portal.cmd`; `docs/archive/ops/portal-restart.md`, `docs/archive/ops/windows-vps-setup.md` |
+| Architecture notes | `docs/archive/ops/architecture-audit.md` |
 | Customer TAF template | `customer-framework-template/README.md` |
 
 ## Recent design specs (authoring, import, heal)
 
 | Spec | Path |
 |------|------|
-| Unified TC import | `docs/superpowers/specs/2026-09-02-unified-tc-import-design.md` |
-| Authoring + heal recovery | `docs/superpowers/specs/2026-09-02-authoring-heal-recovery-design.md` |
-| Defect fix pass | `docs/superpowers/specs/2026-09-02-defect-fix-authoring-heal-design.md` |
-| Generate authoring repair | `docs/superpowers/specs/2026-08-31-generate-authoring-repair-design.md` |
-| Project TC library + mix upload | `docs/superpowers/specs/2026-09-07-project-tc-library-design.md` |
-| Generate authoring preflight review | `docs/superpowers/specs/2026-09-06-authoring-preflight-review-design.md` |
-| Bug Hunter (HUNT) | `docs/superpowers/specs/2026-09-09-bug-hunter-design.md` |
-| Bug Hunter quality (page map + strategies) | `docs/superpowers/specs/2026-09-10-bug-hunter-quality-design.md` |
-| Bug Hunter quality pass 2 (hooks login, tokens, dedupe/triage) | `docs/superpowers/specs/2026-09-10-bug-hunter-quality-pass2-design.md` |
-| Precision authoring engine (Keel vs Cursor groundRank) | `docs/superpowers/specs/2026-09-11-authoring-precision-engine-design.md` |
+| Unified TC import | `docs/archive/specs/2026-09-02-unified-tc-import-design.md` |
+| Authoring + heal recovery | `docs/archive/specs/2026-09-02-authoring-heal-recovery-design.md` |
+| Defect fix pass | `docs/archive/specs/2026-09-02-defect-fix-authoring-heal-design.md` |
+| Generate authoring repair | `docs/archive/specs/2026-08-31-generate-authoring-repair-design.md` |
+| Project TC library + mix upload | `docs/archive/specs/2026-09-07-project-tc-library-design.md` |
+| Generate authoring preflight review | `docs/archive/specs/2026-09-06-authoring-preflight-review-design.md` |
+| Bug Hunter (HUNT) | `docs/archive/specs/2026-09-09-bug-hunter-design.md` |
+| Bug Hunter quality (page map + strategies) | `docs/archive/specs/2026-09-10-bug-hunter-quality-design.md` |
+| Bug Hunter quality pass 2 (hooks login, tokens, dedupe/triage) | `docs/archive/specs/2026-09-10-bug-hunter-quality-pass2-design.md` |
+| Precision authoring engine (Keel vs Cursor groundRank) | `docs/archive/specs/2026-09-11-authoring-precision-engine-design.md` |
 
-Matching plans/tasks/notes sit beside each spec under `docs/superpowers/plans/`. Review fix checklist: `docs/superpowers/plans/2026-09-11-precision-engine-fixes.md`.
+Matching plans/tasks/notes sit beside each spec under `docs/archive/plans/`. Review fix checklist: `docs/archive/plans/2026-09-11-precision-engine-fixes.md`.
 
 ## Bug Hunter (summary)
 
@@ -78,10 +78,10 @@ Matching plans/tasks/notes sit beside each spec under `docs/superpowers/plans/`.
 3. Phase 2: strategy sequencer (happy→…→invent), `HuntOracle` drafts, stop reasons `STUCK` / `COMPLETE` / finish / cycle cap.
 4. **Quality pass 2** — preferred-hook `JobLoginService` login; `HuntSecretResolver` token expansion at execute; post-click settle; strategy auto-advance on login block; `HuntBugDedupe` + `HuntBugTriage`; login-feature oracle fix; `restart_browser` via `HuntBrowserSession`.
 5. Phase 3 (two-pass DOM neighborhoods) is **out of scope** until AxisPay proves map+slim still too large.
-   - Gaps backlog: `docs/superpowers/plans/2026-09-10-bug-hunter-phase12-gaps.md`
-   - Deferred Phase 3: `docs/superpowers/plans/2026-09-10-bug-hunter-phase3-twopass-dom.md`
+   - Gaps backlog: `docs/archive/plans/2026-09-10-bug-hunter-phase12-gaps.md`
+   - Deferred Phase 3: `docs/archive/plans/2026-09-10-bug-hunter-phase3-twopass-dom.md`
 6. Package: `delivery.hunt.*` under `src/main/java/delivery/hunt/`. Never put plaintext passwords in planner prompts or pack artifacts.
-7. **Knowledge packs (2026-11-02):** optional `knowledgePackIds` on Hunt → brief guidance via `KnowledgePackReader` (NoOp until Backend HTTP). Flag `delivery.hunt.knowledge-packs.enabled`. See `docs/history/handoffs/2026-11/2026-11-02-hunt-knowledge-ae.md`.
+7. **Knowledge packs (2026-11-02):** optional `knowledgePackIds` on Hunt → brief guidance via `KnowledgePackReader` (NoOp until Backend HTTP). Flag `delivery.hunt.knowledge-packs.enabled`. See `docs/archive/history-handoffs/2026-11/2026-11-02-hunt-knowledge-ae.md`.
 
 ```bat
 mvn -q "-Dtest=HuntCoreTest,HuntBugDedupeTest,HuntBugTriageTest,HuntSecretResolverTest,HuntOracleLoginFeatureTest,HuntPlannerPromptCredsTest,JobLoginServiceHooksTest,HuntStopRulesTest,HuntOracleTest" test
@@ -137,8 +137,8 @@ mvn -q "-Dtest=RecoveryPlanParserTest,HealCascadeTest,FreeInventHealerTest,Requi
 
 ## Candidate scorer pack
 
-- Spec: docs/superpowers/specs/2026-10-16-candidate-scorer-design.md
-- Plan: docs/superpowers/plans/2026-10-16-candidate-scorer.md
+- Spec: docs/archive/specs/2026-10-16-candidate-scorer-design.md
+- Plan: docs/archive/plans/2026-10-16-candidate-scorer.md
 - Gate: CandidateScorerFixtureTest + bind-quality.json before live AxisPay Execute
 - Wired: bind/ollama/vision/heal counters flush on fail; both Ollama and Cursor TIE picks get HealPickPayload (whyTied + neighborhood + scored shortlist; screenshotPath optional/empty-ok); DOM grounding, no Midscene vision-first; preferStable via CandidateScorer.stability
 - bind-quality.json is **job totals** (one BindQualityMetrics per ProvePhase job; proveOne must not zero counters; pageCatalog.clear() stays per TC)

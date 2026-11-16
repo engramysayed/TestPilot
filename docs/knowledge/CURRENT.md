@@ -1,7 +1,7 @@
 # Keel — current project knowledge
 
 > **What is true now.** Updated 2026-11-12. When something changes, edit this page in the same commit.
-> History (what was true on a given day) is in [`../history/HISTORY.md`](../history/HISTORY.md).
+> History (what was true on a given day) is in [`../archive/HISTORY.md`](../archive/HISTORY.md).
 > Engineer entry point: [`../ENGINEERING_HANDOFF.md`](../ENGINEERING_HANDOFF.md). User-facing features: [`../PRODUCT.md`](../PRODUCT.md).
 
 ## 1. What Keel is
@@ -234,5 +234,5 @@ scripts\graphify-update.cmd                       & rem refresh code graph (Pyth
 ```
 
 - Code graph: `graphify-out/GRAPH_REPORT.md` (read first), `graphify-out/graph.html`.
-- New session notes go to `docs/history/handoffs/YYYY-MM/YYYY-MM-DD-topic.md` and a line in `CHANGELOG.md`;
+- New session notes go to `docs/archive/history-handoffs/YYYY-MM/YYYY-MM-DD-topic.md` and a line in `CHANGELOG.md`;
   update this page when the *current* truth changes.

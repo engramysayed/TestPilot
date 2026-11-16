@@ -6,7 +6,7 @@
 
 ## Baseline preservation
 
-Modified (preserved, not staged): `docs/history/handoffs/2026-11/2026-11-02-prompts-owner-ui-fe.md`, `src/main/resources/application.properties`, `src/main/resources/templates/admin-prompts.html`
+Modified (preserved, not staged): `docs/archive/history-handoffs/2026-11/2026-11-02-prompts-owner-ui-fe.md`, `src/main/resources/application.properties`, `src/main/resources/templates/admin-prompts.html`
 
 Untracked (preserved): `BOOT-INF/`, `_backup/`, `_scratch/`, integration/, and handoff kickoffs listed in S3.
 

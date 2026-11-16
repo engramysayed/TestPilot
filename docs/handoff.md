@@ -34,7 +34,9 @@ mvn -DskipTests package
 
 ## 3. Recently shipped (2026-11-16 session, later turns)
 
-Since `cd0f01a`, through to `11bb87e` and this commit:
+Since `cd0f01a`, through to `c980a55` and this commit:
+
+- **Docs cleanup**. `docs/` was 382 files, mostly dated per-phase handoffs, plans, specs, legacy per-bot status. Moved all archaeology into a new top-level `docs/archive/` folder — `plans/`, `specs/`, `handoffs/`, `history-handoffs/`, `legacy-grok/`, `reviews/`, `ops/`, `design/`, `qa/`, plus `HISTORY.md`. The top of `docs/` now carries only the living files: my 3 (`engineering.md`, `implementation.md`, `handoff.md`) plus `README.md`, `PRODUCT.md`, `ENGINEERING_HANDOFF.md`, `SUPPORT.md`, and `knowledge/`. Dead links across the living docs rewritten in the same commit. **Nothing was deleted.** Reverse any path with `git mv` if an archived file turns out to still matter.
 
 - **`/locator-memory` page shipped** (`0fce769` + `18667a8` + `17af621` + `11bb87e`). New sibling to Flaky locators under History. Reads / edits / deletes / **adds** entries in `{siteRoot}/domain-locator-memory.json` — the site-level proven-locator file Keel writes automatically after successful runs. Add form is gated by `DomainLocatorMemory.canRemember(intentKey, locator)` — same fitness check the engine runs during live learning, so no login-button entries for non-login clicks. Possible-duplicates panel + one-click "keep newest, drop rest". Backend: `LocatorMemoryController`, `LocatorMemoryService`. Writes go through `PublicationLock.call` + atomic file-move so UI edits do not race live runs.
 - **Strategy + Action dropdowns on `/locator-memory` Add** match what the engine really supports — not what Selenium superficially offers. Strategies: `css`, `xpath`, `id`, `name`, `data-testid`, `data-test`, `data-qa` (the last three auto-wrap into CSS via `PageAccumulator.normalizeLocatorValue`). Actions: full set from `AuthoringVerbAliases.TREAT_AS` minus `assert`/`ignore` (not persistable).
@@ -91,7 +93,7 @@ Earlier on `ux-overhaul` (now also on main):
 - **Overflow-menu retrofit on action rows.** `.overflow-menu` pattern exists (commit `3a17c74`); still needs to be applied to `/projects` cards, `/packages` rows, and the live `/execute` toolbars.
 - **`SuitePortalScheduleWorker`** is still flagged off (`delivery.suites.portal-schedule-worker.enabled`). Slice F plumbing landed; flip after soak.
 - **Agent harness capabilities** all flagged off (`delivery.agent-harness.*`). Phase 3 Convert integration is in but inert.
-- **Phase 6 framework contract** reached Phase 6.16 ("READY AFTER SPECIFIED BLOCKERS"). See `docs/handoff/2026-11-15-phase6-16-production-readiness-audit.md`.
+- **Phase 6 framework contract** reached Phase 6.16 ("READY AFTER SPECIFIED BLOCKERS"). See `docs/archive/handoffs/2026-11-15-phase6-16-production-readiness-audit.md`.
 
 ## 6. Open PRs / review
 
@@ -108,7 +110,7 @@ Earlier on `ux-overhaul` (now also on main):
 1. `git fetch --all --prune && git log --oneline -20` — get the lay of the land.
 2. Read this file (`docs/handoff.md`) — current state.
 3. Read `docs/implementation.md` for feature map, `docs/engineering.md` for stack/patterns.
-4. For deeper context on a phase / feature, go to `docs/handoff/` (dated per-session docs) — see `docs/ENGINEERING_HANDOFF.md` for the index.
+4. For deeper context on a phase / feature, go to `docs/archive/handoffs/` (dated per-session docs) — see `docs/ENGINEERING_HANDOFF.md` for the index.
 5. For architecture at a glance: open `floorplan/index.html` or check `floorplan/architecture.json`.
 6. For a knowledge-graph view: `graphify-out/GRAPH_REPORT.md` (regen with `scripts/graphify-update.cmd`).
 

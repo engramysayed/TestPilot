@@ -3,18 +3,19 @@
 ```mermaid
 flowchart TB
     R["/README.md<br/>what Keel is · quick start · diagrams"] --> D["docs/README.md<br/>(this map)"]
+    D --> L["engineering.md · implementation.md · handoff.md<br/>LIVING DOCS (edit each session)"]
     D --> K["knowledge/<br/>CURRENT TRUTH"]
     D --> E["ENGINEERING_HANDOFF.md<br/>engineer index"]
     D --> P["PRODUCT.md<br/>every user-facing feature"]
-    D --> H["history/<br/>WHAT HAPPENED"]
-    D --> O["ops/ · superpowers/ · reviews/ · design/ · qa/"]
+    D --> A["archive/<br/>HISTORICAL — read-only"]
     K --> K1[CURRENT.md]
     K --> K2[REVIEW-2026-11-07.md]
     K --> K3[contracts/]
-    H --> H1[HISTORY.md timeline]
-    H --> H2["handoffs/YYYY-MM/*.md"]
-    H --> H3[legacy-grok/]
-    C["/CHANGELOG.md<br/>dated releases"] -.-> H
+    A --> A1[HISTORY.md timeline]
+    A --> A2["handoffs/ · history-handoffs/"]
+    A --> A3["plans/ · specs/"]
+    A --> A4["ops/ · reviews/ · design/ · qa/ · legacy-grok/"]
+    C["/CHANGELOG.md<br/>dated releases"] -.-> A
 ```
 
 | You want… | Read |
@@ -24,16 +25,15 @@ flowchart TB
 | Open risks and recommended next work | [`knowledge/REVIEW-2026-11-07.md`](knowledge/REVIEW-2026-11-07.md) |
 | Where code and specs live for a given feature | [`ENGINEERING_HANDOFF.md`](ENGINEERING_HANDOFF.md) |
 | Every user-facing feature | [`PRODUCT.md`](PRODUCT.md) |
-| What happened on a given day / session | [`history/HISTORY.md`](history/HISTORY.md) |
+| What happened on a given day / session | [`archive/HISTORY.md`](archive/HISTORY.md) |
 | What shipped, dated | [`/CHANGELOG.md`](/CHANGELOG.md) |
-| Resume in Claude Code / Cursor | [`handoff/CLAUDE-RESUME-KEEL-KNOWLEDGE.md`](handoff/CLAUDE-RESUME-KEEL-KNOWLEDGE.md) |
-| Specs and implementation plans | [`superpowers/specs/`](superpowers/specs/), [`superpowers/plans/`](superpowers/plans/) |
-| Running and operating the portal | [`ops/`](ops/) |
+| Resume in Claude Code / Cursor | [`archive/handoffs/CLAUDE-RESUME-KEEL-KNOWLEDGE.md`](archive/handoffs/CLAUDE-RESUME-KEEL-KNOWLEDGE.md) |
+| Specs and implementation plans | [`archive/specs/`](archive/specs/), [`archive/plans/`](archive/plans/) |
+| Running and operating the portal | [`archive/ops/`](archive/ops/) |
 
 ## Rules
 
-1. **Current truth** lives in `knowledge/`. Edit it when behaviour changes.
-2. **History** is append-only: a new session adds `history/handoffs/YYYY-MM/YYYY-MM-DD-topic.md` and a row is added to
-   `history/HISTORY.md`. Old entries are never rewritten.
-3. Every publish adds a dated section to `/CHANGELOG.md`.
-4. `handoff/` keeps only the resume entry, the codegen `samples/`, and local `patches/`.
+1. **Living docs** are `engineering.md` (stable: stack, patterns), `implementation.md` (feature inventory), and `handoff.md` (volatile state — rewrite each session).
+2. **Current truth** lives in `knowledge/`. Edit it when behaviour changes.
+3. **`archive/` is read-only.** Dated handoffs, plans, specs, ops notes and legacy per-bot status all moved there in the 2026-11-16 cleanup. Nothing new should land in `archive/` — write new session notes as plain prose in `handoff.md`, or as its own top-level file if it is lasting reference.
+4. Every publish adds a dated section to `/CHANGELOG.md`.

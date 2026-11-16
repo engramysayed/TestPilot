@@ -17,9 +17,9 @@ Dedicated installations and private runners are **implemented** and **out of fir
 
 ## Not a first-release support guarantee
 
-- Dedicated install / private CIDRs (code preserved; [dedicated-install.md](reviews/2026-09-15/dedicated-install.md))
-- Private runners (code preserved; [private-runner.md](ops/private-runner.md))
-- Live UI-TARS click-grounding or live vision role-split as product proof ([vision-live-smoke-rca.md](reviews/2026-09-15/vision-live-smoke-rca.md))
+- Dedicated install / private CIDRs (code preserved; [dedicated-install.md](archive/reviews/2026-09-15/dedicated-install.md))
+- Private runners (code preserved; [private-runner.md](archive/ops/private-runner.md))
+- Live UI-TARS click-grounding or live vision role-split as product proof ([vision-live-smoke-rca.md](archive/reviews/2026-09-15/vision-live-smoke-rca.md))
 - Kernel/worker network isolation on a **deployed shared staging** host (P2-03). Isolated local Spring Boot drills are not that host.
 - Named privacy policy covering screenshots and providers (P2-04 engineering exists locally; sign-off is unsigned)
 - Restored backups on **shared staging** storage (P4-02)
@@ -44,4 +44,4 @@ Retention: `delivery.retention.days` (default 14). Deletion tombstones then purg
 
 ## Recovery
 
-See [shared staging](ops/shared-staging.md), [deployment](ops/deployment.md), [backup/restore](ops/backup-restore.md), and [runbooks](ops/runbooks.md).
+See [shared staging](archive/ops/shared-staging.md), [deployment](archive/ops/deployment.md), [backup/restore](archive/ops/backup-restore.md), and [runbooks](archive/ops/runbooks.md).

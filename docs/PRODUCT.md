@@ -173,7 +173,7 @@ Optional, after a workbook exists:
 - **Run it once** is optional and off by default. It starts a normal Execute check and charges the run price once for this test case. Keel opens the site again and finds the buttons from the written steps. It does not reuse the recorded locators. Cursor is used only when that project’s authoring engine is Precision.
 - One recording per person, 20 minutes maximum.
 
-Plan: `docs/superpowers/plans/2026-10-15-record-to-framework.md`.
+Plan: `docs/archive/plans/2026-10-15-record-to-framework.md`.
 
 ---
 
@@ -404,7 +404,7 @@ Per project, under **Settings**, you choose how **Automate**, **Execute**, and *
 
 **CLI**: `DeliveryCli --authoring-engine keel|precision`.
 
-Design: `docs/superpowers/specs/2026-09-11-authoring-precision-engine-design.md`.
+Design: `docs/archive/specs/2026-09-11-authoring-precision-engine-design.md`.
 
 ---
 
@@ -423,7 +423,7 @@ The Account page chooses the vision model only: UI-TARS by default, or Qwen visi
 
 - `delivery.cli.DeliveryCli` — batch Automate conversion without the UI.
 - `--authoring-engine keel|precision` (default `keel`).
-- Ops notes: `docs/ops/` (Ollama, portal restart, Windows).
+- Ops notes: `docs/archive/ops/` (Ollama, portal restart, Windows).
 
 Start scripts:
 
@@ -478,8 +478,8 @@ Be explicit so a demo does not promise these:
 | This file | “What can Keel do?” for everyone |
 | `CHANGELOG.md` | “What changed in this publish?” |
 | `README.md` | Install, stack, security |
-| `docs/superpowers/specs/` | Why a slice was designed that way |
-| `docs/ops/` | How to run Ollama / restart / Windows |
+| `docs/archive/specs/` | Why a slice was designed that way |
+| `docs/archive/ops/` | How to run Ollama / restart / Windows |
 
 ## Locator bind (Execute)
 
