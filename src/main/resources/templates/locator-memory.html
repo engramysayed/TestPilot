@@ -52,24 +52,27 @@
                 you can't register a login-only control for a non-login click.
             </p>
             <div class="add-locator-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.75rem">
-                <label>Path <span class="muted">(e.g. /login or /)</span>
+                <label>Page <span class="muted">(URL path on this site)</span>
                     <input type="text" id="add-path" placeholder="/login" style="width:100%"/>
                 </label>
-                <label>Action <span class="muted">(what Keel will do)</span>
+                <label>Action <span class="muted">(what Selenium will do)</span>
                     <select id="add-action" style="width:100%">
                         <option value="click">click</option>
                         <option value="type">type</option>
+                        <option value="select">select</option>
+                        <option value="clear">clear</option>
                         <option value="hover">hover</option>
                         <option value="doubleClick">doubleClick</option>
                         <option value="rightClick">rightClick</option>
                         <option value="drag">drag</option>
+                        <option value="drop">drop</option>
                     </select>
                 </label>
-                <label>Intent kind
+                <label>Intent kind <span class="muted">(how Keel will match a step to this entry)</span>
                     <select id="add-intent-kind" style="width:100%">
                         <option value="CLICK">CLICK — any click (button, link)</option>
                         <option value="TYPE_FIELD">TYPE_FIELD — type into a field</option>
-                        <option value="TYPE_USER">TYPE_USER — username/email on login</option>
+                        <option value="TYPE_USER">TYPE_USER — username / email on login</option>
                         <option value="TYPE_PASS">TYPE_PASS — password on login</option>
                         <option value="CLICK_LOGIN">CLICK_LOGIN — login submit button</option>
                         <option value="HOVER">HOVER</option>
@@ -78,28 +81,29 @@
                         <option value="DRAG">DRAG</option>
                     </select>
                 </label>
-                <label>Intent text <span class="muted">(what the user said)</span>
-                    <input type="text" id="add-intent-text" placeholder="e.g. email, submit, add to cart" style="width:100%"/>
+                <label>Intent text <span class="muted">(the step text, lowercased)</span>
+                    <input type="text" id="add-intent-text" placeholder="e.g. click the sign in button" style="width:100%"/>
                 </label>
                 <label>Strategy
                     <select id="add-strategy" style="width:100%">
-                        <option value="css">css</option>
-                        <option value="xpath">xpath</option>
-                        <option value="id">id</option>
-                        <option value="name">name</option>
-                        <option value="linkText">linkText</option>
-                        <option value="partialLinkText">partialLinkText</option>
-                        <option value="className">className</option>
-                        <option value="tagName">tagName</option>
+                        <option value="css">css — CSS selector</option>
+                        <option value="xpath">xpath — XPath expression</option>
+                        <option value="id">id — HTML id attribute value</option>
+                        <option value="name">name — HTML name attribute value</option>
+                        <option value="data-testid">data-testid — attribute value (auto-wrapped to CSS)</option>
+                        <option value="data-test">data-test — attribute value (auto-wrapped to CSS)</option>
+                        <option value="data-qa">data-qa — attribute value (auto-wrapped to CSS)</option>
                     </select>
                 </label>
                 <label>Locator value
-                    <input type="text" id="add-locator" placeholder="e.g. [data-testid='sign-in']  or  //button[contains(.,'Sign in')]" style="width:100%;font-family:var(--mono,ui-monospace,monospace)"/>
+                    <input type="text" id="add-locator" placeholder="e.g. [data-testid='sign-in']  or  //button[contains(.,'Sign in')]  or  sign-in-btn" style="width:100%;font-family:var(--mono,ui-monospace,monospace)"/>
                 </label>
             </div>
             <p class="field-hint muted" style="margin-top:0.5rem">
-                The <strong>Strategy</strong> + <strong>Locator value</strong> together are how Selenium finds the element.
-                Pick <code>css</code> and give a CSS selector; pick <code>xpath</code> and give an XPath; pick <code>id</code> / <code>name</code> and give just the attribute value.
+                <strong>Intent text</strong> must match what the engine will compute from a test-case step. It is the step line lowercased and trimmed, so for a step like <em>"Click the Sign in button"</em> enter <code>click the sign in button</code>.
+                If you later run a case whose step parses to the same kind + text, Keel uses this locator first.
+                <br/>
+                <strong>Strategy + Locator value</strong> together are how Selenium finds the element. <code>css</code> + a CSS selector, <code>xpath</code> + an XPath, <code>id</code> / <code>name</code> + just the attribute value, or any of the <code>data-*</code> shortcuts + just the attribute value (Keel wraps it into CSS for you).
             </p>
             <p style="margin-top:0.75rem">
                 <button type="button" class="button" id="add-submit">Add locator</button>
