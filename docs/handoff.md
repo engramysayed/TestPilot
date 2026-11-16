@@ -2,7 +2,7 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-16 (Opus 4.7 session, later turns at `cd0f01a` + follow-ups).
+**Last updated:** 2026-11-16 (Opus 4.7 session, latest at head after Locator memory UI + CI disable).
 
 ---
 
@@ -34,7 +34,17 @@ mvn -DskipTests package
 
 ## 3. Recently shipped (2026-11-16 session, later turns)
 
-In `cd0f01a` and follow-ups:
+Since `cd0f01a`, through to `11bb87e` and this commit:
+
+- **`/locator-memory` page shipped** (`0fce769` + `18667a8` + `17af621` + `11bb87e`). New sibling to Flaky locators under History. Reads / edits / deletes / **adds** entries in `{siteRoot}/domain-locator-memory.json` — the site-level proven-locator file Keel writes automatically after successful runs. Add form is gated by `DomainLocatorMemory.canRemember(intentKey, locator)` — same fitness check the engine runs during live learning, so no login-button entries for non-login clicks. Possible-duplicates panel + one-click "keep newest, drop rest". Backend: `LocatorMemoryController`, `LocatorMemoryService`. Writes go through `PublicationLock.call` + atomic file-move so UI edits do not race live runs.
+- **Strategy + Action dropdowns on `/locator-memory` Add** match what the engine really supports — not what Selenium superficially offers. Strategies: `css`, `xpath`, `id`, `name`, `data-testid`, `data-test`, `data-qa` (the last three auto-wrap into CSS via `PageAccumulator.normalizeLocatorValue`). Actions: full set from `AuthoringVerbAliases.TREAT_AS` minus `assert`/`ignore` (not persistable).
+- **Intent-text helper on `/locator-memory`** lowercases + trims as you type, preserving caret position, so the field matches `StepIntentBinder.intentKey` behaviour exactly.
+- **Locator-value field kept case-preserving** on purpose (XPath text matches, CSS aria-labels, HTML ids all depend on case).
+- **`CI disabled`** — `.github/workflows/` moved to `.github/workflows.disabled/` so no workflow auto-fires on push. Reverse with `git mv` back if you want CI live again.
+
+### Earlier in this session
+
+In `cd0f01a` and immediate follow-ups:
 
 - **Nav rename** — `Plain cases` → `Written cases`; `Run memory` → `Flaky locators` (nav labels, page titles, feature-help titles, lede, guide).
 - **/run-memory redesign** — now a two-section flow (Add / Edit form + saved-hints table). Columns: Memory key, Status, Summary, Locator hint, Source, Actions. Each row has Edit. Source-job field is a search-as-you-type combo backed by `/api/jobs?projectId=&kind=EXECUTE` with up to 50 live-filtered results. Locator-hint description corrected: it is **free text passed to the heal AI**, not a parsed selector — any syntax (CSS, XPath, plain English) works.

@@ -72,6 +72,7 @@ portal/
 
 Engine subpackages of interest:
 - `delivery.heal` — heal cascade (`HealCascade`, `FreeInventHealer`, `CursorHealClient`, `HealProposal*`).
+- `delivery.store` — on-disk memory. **Two separate locator-memory layers**: `DomainLocatorMemory` (proven selectors keyed by `host + path + intentKey`, auto-recorded after successful runs, site-scoped at `{siteRoot}/domain-locator-memory.json`; tried before bind, dropped on failure) and `RunMemoryHintsStore` (free-text hints fed to the heal AI, per-job at `{projectRoot}/run-memory/{memId}.json` → copied onto each execute job as `run-memory-approved.json`). Both exposed in the portal: `/locator-memory` edits the first, `/run-memory` ("Flaky locators") edits the second.
 - `delivery.authoring` — story-to-step binding (`StepIntentBinder`, `IntentText`, `CandidateScorer`, `OutcomeKind`).
 - `delivery.settle` — post-action settle (`Settle`, `SettlePolicy`, `EffectOutcome`, `ScreenshotDiff`).
 - `delivery.locator` — locator policy + ranking (`LocatorStabilityPolicy`, `LocatorRanker`, `SemanticLocatorLadder`, `MultiLocatorBag`, `ElementGrounder`).

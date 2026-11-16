@@ -41,6 +41,7 @@
             <a href="#execute">TCs execution</a>
             <a href="#evidence">History &amp; evidence</a>
             <a href="#run-memory">Flaky locators</a>
+            <a href="#locator-memory">Locator memory</a>
             <a href="#visual-diffs">Visual diffs</a>
             <a href="#suites">Test suites</a>
             <a href="#automate">TCs automation</a>
@@ -89,6 +90,7 @@
                     <a class="product-guide-card" href="#automate"><strong>TCs automation</strong><span>Workbook → framework ZIP</span></a>
                     <a class="product-guide-card" href="#hunt"><strong>Bug Hunter</strong><span>Explore — never auto-merges</span></a>
                     <a class="product-guide-card" href="#run-memory"><strong>Flaky locators</strong><span>Replacement hints for broken elements</span></a>
+                    <a class="product-guide-card" href="#locator-memory"><strong>Locator memory</strong><span>Keel's muscle memory — view &amp; edit</span></a>
                 </div>
                 <div class="guide-callouts">
                     <div class="callout ok">
@@ -414,6 +416,24 @@
                     <li><strong>Propose → approve</strong> — drafts stay separate from production hints until a human approves them.</li>
                     <li><strong>Edit anytime</strong> — click Edit on any row to refine the hint or summary later.</li>
                     <li><strong>Not a job log</strong> — for run status and downloads, use <a href="#evidence">History</a> instead.</li>
+                </ul>
+            </section>
+
+            <section class="panel guide-section guide-reveal" id="locator-memory" data-guide-section="locator-memory">
+                <header class="guide-section-head">
+                    <span class="guide-num">04d</span>
+                    <div>
+                        <h2>Locator memory</h2>
+                        <p class="panel-intro">On <a href="/locator-memory">Locator memory</a>, see every locator Keel has learned automatically from successful runs on this project's site. Keel tries these first on every future run — a failure drops them, a success overwrites them. You can edit, delete, or add entries manually.</p>
+                    </div>
+                </header>
+                <ul class="guide-points">
+                    <li><strong>Different from Flaky locators.</strong> Flaky locators = free-text hints you leave for Keel's heal AI. Locator memory = proven selectors Keel recorded itself. Two layers, both help a run pick the right element.</li>
+                    <li><strong>Per site, not per project.</strong> Every project of yours that targets the same host shares this list. Edits here affect every project on that host.</li>
+                    <li><strong>Possible duplicates panel</strong> flags when the same host + intent + locator exists on more than one path (classic "URL changed, old slot stuck around"). One click keeps the newest and drops the rest.</li>
+                    <li><strong>Add a locator manually</strong> — pick the Intent kind, type the step text lowercased (what the engine will match on), pick the Strategy (<code>css</code>, <code>xpath</code>, <code>id</code>, <code>name</code>, or a <code>data-*</code> shortcut) and type the locator value. The same fitness check the engine runs during live learning runs here too, so you can't poison memory with a login-button for a non-login click.</li>
+                    <li><strong>Strategies Keel really supports:</strong> <code>css</code>, <code>xpath</code>, <code>id</code>, <code>name</code> — plus <code>data-testid</code> / <code>data-test</code> / <code>data-qa</code> shortcuts (auto-wrapped to CSS). Anything else collapses to CSS silently, so it's not in the dropdown.</li>
+                    <li><strong>Action vs Intent kind:</strong> Intent kind is how Keel <em>finds</em> the memory entry; Action is what Selenium <em>does</em> with the element.</li>
                 </ul>
             </section>
 
