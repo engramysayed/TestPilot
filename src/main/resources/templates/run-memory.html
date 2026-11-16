@@ -51,16 +51,26 @@
             <p class="field-hint muted">One line describing what broke, for the next person reading the list.</p>
 
             <label style="display:block;margin-top:0.6rem">Locator hint
-                <input type="text" id="mem-locator" style="width:100%" placeholder="e.g. [data-testid='sign-in']  or  //button[contains(.,'Sign in')]"/>
+                <input type="text" id="mem-locator" style="width:100%" placeholder="e.g. new sign-in button has data-testid='sign-in'"/>
             </label>
-            <p class="field-hint muted">The full locator Keel should try first. Any supported form works: CSS selector (<code>[data-testid='x']</code>, <code>#id</code>, <code>.class</code>), XPath (<code>//button[…]</code>), or Keel's <code>attr=value</code> shorthand (<code>data-testid=sign-in</code>).</p>
+            <p class="field-hint muted">
+                <strong>Free text</strong> — passed to Keel's heal AI as a tip when it tries to find
+                the element next time. You don't have to pick a locator syntax; Keel figures it out
+                from the hint plus the live page. All three of these work the same way:
+                <br/><code>[data-testid='sign-in']</code>
+                &nbsp;·&nbsp; <code>//button[contains(.,'Sign in')]</code>
+                &nbsp;·&nbsp; <em>"new sign-in button has data-testid=sign-in"</em> (plain English).
+            </p>
 
-            <label style="display:block;margin-top:0.6rem">Source job <span class="muted">(optional)</span>
-                <select id="mem-job">
-                    <option value="">— None —</option>
-                </select>
-            </label>
-            <p class="field-hint muted">Which past Execute run surfaced this flake. Searchable — type to filter. Only used for traceability; the hint applies to all future runs regardless.</p>
+            <label style="display:block;margin-top:0.6rem">Source job <span class="muted">(optional)</span></label>
+            <div class="job-combo" style="position:relative">
+                <input type="text" id="mem-job-search" autocomplete="off"
+                       placeholder="Type to search exec runs (id, status, date)…"/>
+                <input type="hidden" id="mem-job"/>
+                <ul id="mem-job-results" class="job-combo-list" hidden
+                    style="position:absolute;z-index:20;top:100%;left:0;right:0;max-height:260px;overflow:auto;margin:2px 0 0;padding:0;list-style:none;background:var(--panel,#fff);border:1px solid var(--line,#d0d7de);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.12)"></ul>
+            </div>
+            <p class="field-hint muted">Which past Execute run surfaced this flake. Start typing to filter; click a result to pick it. Clear the box for "none".</p>
 
             <p style="margin-top:0.75rem">
                 <button type="button" class="button" id="propose">Save hint</button>
@@ -118,25 +128,51 @@
 
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
     let memoryRows = [];
+    let allJobs = [];
+
+    function jobLabel(j) {
+        const when = (j.createdAt || '').slice(0, 16).replace('T', ' ');
+        return j.jobId + ' · ' + (j.status || '?') + (when ? ' · ' + when : '');
+    }
+
+    function filterJobs(q) {
+        const needle = String(q || '').trim().toLowerCase();
+        if (!needle) return allJobs.slice(0, 50);
+        return allJobs.filter(j => jobLabel(j).toLowerCase().includes(needle)).slice(0, 50);
+    }
+
+    function renderJobResults(q) {
+        const list = document.getElementById('mem-job-results');
+        const rows = filterJobs(q);
+        if (!rows.length) {
+            list.hidden = true;
+            list.innerHTML = '';
+            return;
+        }
+        list.hidden = false;
+        list.innerHTML = rows.map(j => {
+            const label = esc(jobLabel(j));
+            return '<li data-jid="' + esc(j.jobId) + '" style="padding:0.45rem 0.7rem;cursor:pointer;border-bottom:1px solid var(--line,#eee);font-family:var(--mono,ui-monospace,monospace);font-size:0.85rem">' + label + '</li>';
+        }).join('');
+        Array.prototype.forEach.call(list.querySelectorAll('li'), li => {
+            li.addEventListener('mouseenter', () => li.style.background = 'rgba(13,154,168,0.08)');
+            li.addEventListener('mouseleave', () => li.style.background = 'transparent');
+            li.addEventListener('click', () => {
+                const jid = li.getAttribute('data-jid');
+                document.getElementById('mem-job').value = jid;
+                document.getElementById('mem-job-search').value = jid;
+                list.hidden = true;
+            });
+        });
+    }
 
     async function loadJobs() {
         try {
             const res = await fetch('/api/jobs?projectId=' + encodeURIComponent(projectId) + '&kind=EXECUTE',
                 { headers: H, credentials: 'same-origin' });
             if (!res.ok) return;
-            const jobs = await res.json();
-            const sel = document.getElementById('mem-job');
-            const prev = sel.value;
-            sel.innerHTML = '<option value="">— None —</option>';
-            jobs.slice(0, 200).forEach(j => {
-                const o = document.createElement('option');
-                o.value = j.jobId;
-                const when = (j.createdAt || '').slice(0, 16).replace('T', ' ');
-                o.textContent = j.jobId + ' · ' + (j.status || '?') + (when ? ' · ' + when : '');
-                sel.appendChild(o);
-            });
-            if (prev) sel.value = prev;
-        } catch (_) { /* ignore */ }
+            allJobs = await res.json();
+        } catch (_) { allJobs = []; }
     }
 
     function fillForm(m) {
@@ -146,6 +182,7 @@
         document.getElementById('mem-summary').value = m ? (m.summary || '') : '';
         document.getElementById('mem-locator').value = m ? (m.locatorHint || '') : '';
         document.getElementById('mem-job').value = m ? (m.sourceJobId || '') : '';
+        document.getElementById('mem-job-search').value = m ? (m.sourceJobId || '') : '';
         document.getElementById('form-reset').hidden = !m;
         document.getElementById('propose').textContent = m ? 'Save changes' : 'Save hint';
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -225,6 +262,21 @@
     };
 
     document.getElementById('form-reset').onclick = () => fillForm(null);
+
+    (function wireJobSearch() {
+        const inp = document.getElementById('mem-job-search');
+        const list = document.getElementById('mem-job-results');
+        if (!inp || !list) return;
+        inp.addEventListener('focus', () => renderJobResults(inp.value));
+        inp.addEventListener('input', () => {
+            // User cleared the box → unset the chosen job.
+            if (!inp.value.trim()) document.getElementById('mem-job').value = '';
+            renderJobResults(inp.value);
+        });
+        document.addEventListener('click', (e) => {
+            if (e.target !== inp && !list.contains(e.target)) list.hidden = true;
+        });
+    })();
 
     document.getElementById('launcher-continue').onclick = () => {
         const sel = document.getElementById('launcher-project-select');

@@ -10,17 +10,21 @@
 <main class="shell keel-page">
     <div class="page-title">
         <div>
-            <h1>Shared step recipes</h1>
+            <h1>Shared step recipes <span class="badge" style="background:#ffd166;color:#333;margin-left:0.5rem;font-size:0.7em;vertical-align:middle">PREVIEW</span></h1>
             <p class="hint muted" style="max-width:52rem">
-                A recipe is a <strong>saved block of steps</strong> you re-use across many test cases
-                — like a copy-paste shortcut for sequences like login, add-to-cart, or accept-cookies.
-                Give it a short id (e.g. <code>login-happy</code>), list its steps, hit <strong>Save</strong>.
-                Then in <em>any</em> test case, write one step <code>run recipe:login-happy</code>
-                instead of re-typing all 5 login steps. Change the recipe once → every case that calls it
-                follows the new version next run. Save only stores the recipe — nothing runs.
+                A recipe is a saved sequence of action / assert steps. You can create and save them
+                here; they persist per project on disk.
             </p>
         </div>
     </div>
+    <section class="panel hint" style="border-left:4px solid #ffd166;background:rgba(255,209,102,0.08)">
+        <strong>Preview — not yet wired to the engine.</strong>
+        Right now the recipes you save here are stored on disk but <strong>not consumed by any test
+        run</strong>. There is no way yet for a test case to invoke a recipe inline. For now, if you need
+        a shared pre-flow (e.g. login before many cases), use the test case's
+        <strong>Call before test</strong> field (`CALLBEFORE` column) — it runs another whole TC before
+        yours and is a real, working feature of Keel today.
+    </section>
     <section class="panel workspace-launcher" id="workspace-launcher">
         <h2>Choose a project</h2>
         <label>Project <select id="launcher-project-select"><option value="">Loading…</option></select></label>
@@ -50,11 +54,10 @@
             </p>
             <div id="save-confirm" class="hint" hidden style="margin-top:0.85rem;padding:0.75rem 0.9rem;border-left:3px solid var(--ok,#3ecf8e);background:rgba(62,207,142,0.08);border-radius:6px">
                 <strong>Saved.</strong>
-                Reference this recipe from any test case step as
-                <code id="save-confirm-ref">run recipe:…</code>
-                <button type="button" class="button ghost small" id="save-confirm-copy" style="margin-left:0.5rem">Copy</button>
+                Stored at <code id="save-confirm-path">{project}/structured-plans/{id}.json</code>
+                · revision <span id="save-confirm-rev">—</span>
                 <br/>
-                <span class="muted" style="font-size:0.85rem">Stored at <code id="save-confirm-path">{project}/structured-plans/{id}.json</code> · revision <span id="save-confirm-rev">—</span></span>
+                <span class="muted" style="font-size:0.85rem">Will be used by test runs once the engine-side reader ships.</span>
             </div>
         </section>
     </div>
@@ -144,13 +147,9 @@
             const saved = await res.json();
             editingRevision = saved.revision;
             await refreshPlans();
-            const confirm = document.getElementById('save-confirm');
-            const ref = 'run recipe:' + id;
-            document.getElementById('save-confirm-ref').textContent = ref;
             document.getElementById('save-confirm-path').textContent = '{project}/structured-plans/' + id + '.json';
             document.getElementById('save-confirm-rev').textContent = saved.revision;
-            confirm.hidden = false;
-            document.getElementById('save-confirm-copy').onclick = () => navigator.clipboard.writeText(ref);
+            document.getElementById('save-confirm').hidden = false;
         }
     };
 

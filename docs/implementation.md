@@ -33,9 +33,9 @@ All under `src/main/resources/templates/`. Route handlers in `delivery.portal.we
 | `/generate/compare` | `generate-compare.html` | Multi-model side-by-side generate (new child page). |
 | `/generate-from-knowledge` | `generate-from-knowledge.html` | Generate from knowledge packs. |
 | `/record` (alias `/playback`) | `record.html` | Chrome record → steps → save as test case. |
-| `/plain-cases` | `plain-cases.html` | Plain-English step authoring before formalising. |
-| `/structured-plans` (alias `/test-blueprints`) | `structured-plans.html` | Action/assert plan editor with revisions. |
-| `/run-memory` | `run-memory.html` | Approved locator hints that Execute pins. |
+| `/plain-cases` | `plain-cases.html` | **Written cases** — plain-English step authoring before formalising. |
+| `/structured-plans` (alias `/test-blueprints`) | `structured-plans.html` | Action/assert plan editor with revisions. **PREVIEW** — plans are persisted to `{projectRoot}/structured-plans/{id}.json` and snapshotted onto execute jobs, but no engine code reads the snapshot yet (nothing in `src/main/java` or `customer-framework-template/` loads `structured-plan-snapshot.json`). There is no `run recipe:<id>` step syntax. Use `CALLBEFORE` on a TC for a working shared-pre-flow. |
+| `/run-memory` | `run-memory.html` | **Flaky locators** — free-text locator hints that are passed to Keel's heal AI on subsequent runs for this project. Approved hints are written to `run-memory-approved.json` on each execute job. See `RunMemoryHintsStore` + `CursorHealClient.putRunMemoryHints`. |
 | `/suites` | `suites.html` | Compose test packs (Smoke / Regression / Nightly). |
 | `/suites/schedule` | `suites-schedule.html` | Pack scheduling + alerts + monitor. |
 | `/execute` | `execute.html` | Run library cases with vision + heal. |

@@ -34,13 +34,13 @@
             <a href="#whats-new">What's new</a>
             <a href="#generate">TCs Generation</a>
             <a href="#generate-from-knowledge">Generate from knowledge</a>
-            <a href="#plain-cases">Plain cases</a>
+            <a href="#plain-cases">Written cases</a>
             <a href="#test-blueprints">Test blueprints</a>
             <a href="#record">Playback</a>
             <a href="#quality-gate">Quality gate</a>
             <a href="#execute">TCs execution</a>
             <a href="#evidence">History &amp; evidence</a>
-            <a href="#run-memory">Run memory</a>
+            <a href="#run-memory">Flaky locators</a>
             <a href="#visual-diffs">Visual diffs</a>
             <a href="#suites">Test suites</a>
             <a href="#automate">TCs automation</a>
@@ -79,7 +79,7 @@
                 <div class="product-guide-cards">
                     <a class="product-guide-card" href="#generate"><strong>TCs Generation</strong><span>Stories → quality gate → import</span></a>
                     <a class="product-guide-card" href="#generate-from-knowledge"><strong>Generate from knowledge</strong><span>Packs → draft cases</span></a>
-                    <a class="product-guide-card" href="#plain-cases"><strong>Plain cases</strong><span>Everyday wording → library</span></a>
+                    <a class="product-guide-card" href="#plain-cases"><strong>Written cases</strong><span>Everyday wording → library</span></a>
                     <a class="product-guide-card" href="#test-blueprints"><strong>Test blueprints</strong><span>Structured plans &amp; revisions</span></a>
                     <a class="product-guide-card" href="#record"><strong>Playback</strong><span>Record in Chrome → library case</span></a>
                     <a class="product-guide-card" href="#execute"><strong>TCs execution</strong><span>Live browser + screenshots</span></a>
@@ -88,7 +88,7 @@
                     <a class="product-guide-card" href="#suites"><strong>Test suites</strong><span>Tags, schedules, monitor</span></a>
                     <a class="product-guide-card" href="#automate"><strong>TCs automation</strong><span>Workbook → framework ZIP</span></a>
                     <a class="product-guide-card" href="#hunt"><strong>Bug Hunter</strong><span>Explore — never auto-merges</span></a>
-                    <a class="product-guide-card" href="#run-memory"><strong>Run memory</strong><span>Approved locator hints</span></a>
+                    <a class="product-guide-card" href="#run-memory"><strong>Flaky locators</strong><span>Replacement hints for broken elements</span></a>
                 </div>
                 <div class="guide-callouts">
                     <div class="callout ok">
@@ -225,12 +225,12 @@
                 <header class="guide-section-head">
                     <span class="guide-num">01c</span>
                     <div>
-                        <h2>Plain-English cases</h2>
-                        <p class="panel-intro">On <a href="/plain-cases">Plain cases</a>, write steps in everyday English. Keel helps turn them into library cases you can run and automate.</p>
+                        <h2>Written cases</h2>
+                        <p class="panel-intro">On <a href="/plain-cases">Written cases</a>, write steps in everyday English. Keel helps turn them into library cases you can run and automate.</p>
                     </div>
                 </header>
                 <ol class="guide-howto">
-                    <li>Open Plain cases, pick the project, and describe what the visitor does.</li>
+                    <li>Open Written cases, pick the project, and describe what the visitor does.</li>
                     <li>Review the proposed cases, then save them into the project library.</li>
                     <li>Run them from <a href="#execute">TCs execution</a> or fold them into a <a href="#suites">test suite</a>.</li>
                 </ol>
@@ -405,12 +405,14 @@
                 <header class="guide-section-head">
                     <span class="guide-num">04c</span>
                     <div>
-                        <h2>Run memory</h2>
-                        <p class="panel-intro">On <a href="/run-memory">Run memory</a>, approved locator hints from past runs are stored for reuse. Propose a hint from evidence; a teammate approves it before <a href="#execute">TCs execution</a> can apply it on the next run.</p>
+                        <h2>Flaky locators</h2>
+                        <p class="panel-intro">On <a href="/run-memory">Flaky locators</a>, save a replacement locator for an element that keeps breaking. Approved entries are tried first on every new Execute run for this project — before the original locator stored on the case.</p>
                     </div>
                 </header>
                 <ul class="guide-points">
-                    <li><strong>Propose → approve</strong> — drafts stay separate from production memory until a human approves them.</li>
+                    <li><strong>Free-text hint</strong> — the hint is passed to Keel's heal AI, which reads it plus the live page and picks a locator. CSS selectors, XPath, or plain English all work.</li>
+                    <li><strong>Propose → approve</strong> — drafts stay separate from production hints until a human approves them.</li>
+                    <li><strong>Edit anytime</strong> — click Edit on any row to refine the hint or summary later.</li>
                     <li><strong>Not a job log</strong> — for run status and downloads, use <a href="#evidence">History</a> instead.</li>
                 </ul>
             </section>
