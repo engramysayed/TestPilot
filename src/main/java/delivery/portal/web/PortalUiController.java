@@ -54,6 +54,7 @@ public class PortalUiController {
             "bug-hunter",
             "history",
             "run-memory",
+            "locator-memory",
             "pricing",
             "guide"
     );
@@ -175,7 +176,8 @@ public class PortalUiController {
             case "execute" -> "TCs execution";
             case "automate" -> "TCs automation";
             case "bug-hunter" -> "Bug Hunter";
-            case "run-memory" -> "Run memory";
+            case "run-memory" -> "Flaky locators";
+            case "locator-memory" -> "Locator memory";
             case "runs" -> "History";
             case "packages" -> "Code packages";
             case "guide" -> "Guide";
@@ -355,6 +357,13 @@ public class PortalUiController {
         addNav(model, "run-memory");
         model.addAttribute("projectId", projectId == null ? "" : projectId);
         return "run-memory";
+    }
+
+    @GetMapping("/locator-memory")
+    public String locatorMemory(@RequestParam(value = "projectId", required = false) String projectId, Model model) {
+        addNav(model, "locator-memory");
+        model.addAttribute("projectId", projectId == null ? "" : projectId);
+        return "locator-memory";
     }
 
     @GetMapping("/suites")

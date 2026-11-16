@@ -307,9 +307,16 @@
         <div class="sidebar-nav-item" data-feature-perm="feature.execute">
             <a href="/run-memory" class="sidebar-nav-item__link" th:classappend="${navActive == 'run-memory'} ? 'active'">
                 <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a5 5 0 0 1 5 5c0 2-1 3.5-2.5 4.5L12 22l-2.5-10.5C8 10 7 8.5 7 7a5 5 0 0 1 5-5z"/></svg>
-                <span th:text="#{nav.runMemory}">Run memory</span>
+                <span th:text="#{nav.runMemory}">Flaky locators</span>
             </a>
             <th:block th:replace="~{fragments :: featureHelpBtn('run-memory')}"></th:block>
+        </div>
+        <div class="sidebar-nav-item" data-feature-perm="feature.execute">
+            <a href="/locator-memory" class="sidebar-nav-item__link" th:classappend="${navActive == 'locator-memory'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                <span th:text="#{nav.locatorMemory}">Locator memory</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('locator-memory')}"></th:block>
         </div>
 
         <p class="sidebar-label" th:text="#{nav.section.resources}">Resources</p>

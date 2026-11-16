@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Locator memory')}"></th:block>
+</head>
+<body class="app-body locator-memory-page">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1>Locator memory</h1>
+            <p class="hint muted" style="max-width:52rem">
+                Keel's muscle memory — proven locators it learned automatically after each successful
+                run on this project's site. Keel tries these first on every future run; a failure
+                drops them, a new success overwrites them. You can delete rows that are stale, or
+                fix a locator that is drifting wrong. Entries are <strong>per-site</strong>: other
+                projects you have pointing at the same host share this list.
+            </p>
+        </div>
+    </div>
+
+    <section class="panel workspace-launcher" id="workspace-launcher">
+        <h2>Choose a project</h2>
+        <label>Project
+            <select id="launcher-project-select"><option value="">Loading…</option></select>
+        </label>
+        <p style="margin-top:0.75rem">
+            <button type="button" class="button" id="launcher-continue">Continue</button>
+        </p>
+    </section>
+
+    <div id="workspace-config" hidden>
+        <section class="panel workspace-pinned">
+            <p class="muted" style="margin:0">
+                Project: <strong id="pinned-name">—</strong>
+                <button type="button" class="button ghost" id="change-project" style="margin-left:0.5rem">Change</button>
+                · Host: <strong id="pinned-host">—</strong>
+            </p>
+        </section>
+
+        <section class="panel" id="dupes-panel" hidden>
+            <div class="panelhead">
+                <div class="panelhead-title">
+                    <h2>Possible duplicates</h2>
+                </div>
+            </div>
+            <p class="muted" style="margin:0 0 0.5rem">
+                The same host + intent + locator is remembered on more than one path — likely the
+                same element after a URL change. Keep the newer one, drop the others.
+            </p>
+            <table class="table" id="dupes-table"><thead><tr><th>Host</th><th>Intent</th><th>Locator</th><th>Paths</th><th></th></tr></thead><tbody id="dupes-body"></tbody></table>
+        </section>
+
+        <section class="panel">
+            <div class="panelhead">
+                <div class="panelhead-title">
+                    <h2>Locators Keel remembers for this site</h2>
+                </div>
+            </div>
+            <p class="muted" id="mem-empty" hidden style="margin:0 0 0.5rem">No locators remembered yet — Keel fills this in automatically after the first successful run on the site.</p>
+            <div style="margin:0 0 0.5rem">
+                <input type="search" id="mem-filter" placeholder="Filter by host, path, intent, or locator…" style="width:min(100%, 30rem)" autocomplete="off"/>
+                <span id="mem-count" class="muted" style="margin-left:0.5rem"></span>
+            </div>
+            <div class="table-scroll">
+                <table class="table" id="mem-table">
+                    <thead>
+                        <tr>
+                            <th>Path</th>
+                            <th>Intent</th>
+                            <th>Strategy</th>
+                            <th>Locator</th>
+                            <th>Action</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="mem-body"></tbody>
+                </table>
+            </div>
+            <p id="mem-status" class="muted" role="status"></p>
+        </section>
+    </div>
+</main>
+</div>
+<script>
+(function () {
+    const H = { 'X-Keel-Requested-With': 'Keel', 'Content-Type': 'application/json' };
+    const STORAGE = 'keel.locatorMemoryProjectId';
+    const initial = /*[[${projectId}]]*/ '';
+    let projectId = '';
+    let entries = [];
+    let host = '';
+    const base = () => '/api/projects/' + encodeURIComponent(projectId) + '/locator-memory';
+
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+            ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    }
+
+    function prettyIntent(key) {
+        // IntentKey is "KIND|text" — show both halves clearly.
+        if (!key) return '';
+        const pipe = key.indexOf('|');
+        if (pipe < 0) return esc(key);
+        return '<span class="mono" style="color:var(--accent-2,#0d9aa8)">' + esc(key.slice(0, pipe)) + '</span> '
+            + '<span class="muted">·</span> ' + esc(key.slice(pipe + 1));
+    }
+
+    async function loadProjects() {
+        const res = await fetch('/api/projects', { headers: H, credentials: 'same-origin' });
+        const rows = await res.json();
+        const sel = document.getElementById('launcher-project-select');
+        sel.innerHTML = '<option value="">— Select —</option>';
+        rows.forEach(p => {
+            const o = document.createElement('option');
+            o.value = p.projectId;
+            o.textContent = p.name || p.projectId;
+            sel.appendChild(o);
+        });
+    }
+
+    function filterEntries() {
+        const q = (document.getElementById('mem-filter').value || '').toLowerCase().trim();
+        if (!q) return entries;
+        return entries.filter(e => {
+            const hay = [e.host, e.path, e.intentKey, e.locator, e.strategy, e.action]
+                .map(x => String(x || '').toLowerCase()).join(' ');
+            return hay.includes(q);
+        });
+    }
+
+    function renderDupes(nearDupes) {
+        const panel = document.getElementById('dupes-panel');
+        const body = document.getElementById('dupes-body');
+        if (!nearDupes || !nearDupes.length) {
+            panel.hidden = true;
+            return;
+        }
+        panel.hidden = false;
+        body.innerHTML = nearDupes.map(g => {
+            const list = g.entries || [];
+            const first = list[0] || {};
+            const paths = list.map(e => esc(e.path || '/')).join(', ');
+            return '<tr>'
+                + '<td class="mono">' + esc(first.host || '') + '</td>'
+                + '<td>' + prettyIntent(first.intentKey) + '</td>'
+                + '<td class="mono"><code>' + esc(first.locator || '') + '</code></td>'
+                + '<td class="mono">' + paths + '</td>'
+                + '<td><button type="button" class="button ghost small" data-dupe-key="' + esc(g.key) + '">Keep newest, delete rest</button></td>'
+                + '</tr>';
+        }).join('');
+        Array.prototype.forEach.call(body.querySelectorAll('[data-dupe-key]'), btn => {
+            btn.onclick = async () => {
+                const key = btn.getAttribute('data-dupe-key');
+                const group = (nearDupes.find(g => g.key === key) || {}).entries || [];
+                if (group.length < 2) return;
+                // Keel's slots map is a LinkedHashMap; the last-inserted entry is the newest.
+                // We pop the newest, delete the rest sequentially.
+                const toKill = group.slice(0, group.length - 1);
+                btn.disabled = true;
+                for (const e of toKill) {
+                    await fetch(base(), {
+                        method: 'DELETE', headers: H, credentials: 'same-origin',
+                        body: JSON.stringify({ host: e.host, path: e.path, intentKey: e.intentKey })
+                    });
+                }
+                await refresh();
+            };
+        });
+    }
+
+    function renderTable() {
+        const body = document.getElementById('mem-body');
+        const empty = document.getElementById('mem-empty');
+        const count = document.getElementById('mem-count');
+        const rows = filterEntries();
+        body.innerHTML = '';
+        empty.hidden = entries.length > 0;
+        count.textContent = rows.length === entries.length
+            ? (entries.length + ' entries')
+            : (rows.length + ' of ' + entries.length + ' entries');
+        rows.forEach(e => {
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                  '<td class="mono">' + esc(e.path || '/') + '</td>'
+                + '<td>' + prettyIntent(e.intentKey) + '</td>'
+                + '<td class="mono">' + esc(e.strategy || '') + '</td>'
+                + '<td class="mono locator-cell"><code>' + esc(e.locator || '') + '</code></td>'
+                + '<td class="mono">' + esc(e.action || '') + '</td>'
+                + '<td class="row-actions"></td>';
+            const td = tr.lastElementChild;
+            const edit = document.createElement('button');
+            edit.className = 'button ghost small';
+            edit.textContent = 'Edit';
+            edit.onclick = () => startEdit(tr, e);
+            td.appendChild(edit);
+            const del = document.createElement('button');
+            del.className = 'button ghost small';
+            del.textContent = 'Delete';
+            del.style.marginLeft = '0.35rem';
+            del.onclick = async () => {
+                if (!confirm('Delete this locator? Keel will re-learn it on the next successful run for the same intent.')) return;
+                const r = await fetch(base(), {
+                    method: 'DELETE', headers: H, credentials: 'same-origin',
+                    body: JSON.stringify({ host: e.host, path: e.path, intentKey: e.intentKey })
+                });
+                if (r.ok) refresh(); else document.getElementById('mem-status').textContent = 'Delete failed (' + r.status + ').';
+            };
+            td.appendChild(del);
+            body.appendChild(tr);
+        });
+    }
+
+    function startEdit(tr, e) {
+        const cells = tr.querySelectorAll('td');
+        const strategyCell = cells[2];
+        const locatorCell = cells[3];
+        const prevStrategy = strategyCell.textContent;
+        const prevLocatorHtml = locatorCell.innerHTML;
+        strategyCell.innerHTML = '<input type="text" value="' + esc(e.strategy || '') + '" style="width:5rem"/>';
+        locatorCell.innerHTML = '<input type="text" value="' + esc(e.locator || '') + '" style="width:100%;font-family:var(--mono,monospace)"/>';
+        const actions = tr.querySelector('.row-actions');
+        actions.innerHTML = '';
+        const save = document.createElement('button');
+        save.className = 'button small';
+        save.textContent = 'Save';
+        const cancel = document.createElement('button');
+        cancel.className = 'button ghost small';
+        cancel.textContent = 'Cancel';
+        cancel.style.marginLeft = '0.35rem';
+        actions.appendChild(save);
+        actions.appendChild(cancel);
+        save.onclick = async () => {
+            const newStrategy = strategyCell.querySelector('input').value.trim();
+            const newLocator = locatorCell.querySelector('input').value.trim();
+            if (!newLocator) {
+                document.getElementById('mem-status').textContent = 'Locator cannot be empty.';
+                return;
+            }
+            const r = await fetch(base(), {
+                method: 'PUT', headers: H, credentials: 'same-origin',
+                body: JSON.stringify({
+                    host: e.host, path: e.path, intentKey: e.intentKey,
+                    strategy: newStrategy, locator: newLocator, action: e.action || ''
+                })
+            });
+            if (r.ok) refresh(); else document.getElementById('mem-status').textContent = 'Save failed (' + r.status + ').';
+        };
+        cancel.onclick = () => renderTable();
+    }
+
+    async function refresh() {
+        document.getElementById('mem-status').textContent = 'Loading…';
+        const res = await fetch(base(), { headers: H, credentials: 'same-origin' });
+        if (!res.ok) {
+            document.getElementById('mem-status').textContent = 'Could not load locator memory (' + res.status + ').';
+            return;
+        }
+        const data = await res.json();
+        host = data.host || '';
+        entries = Array.isArray(data.entries) ? data.entries : [];
+        document.getElementById('pinned-host').textContent = host || '—';
+        renderDupes(data.nearDupes || []);
+        renderTable();
+        document.getElementById('mem-status').textContent = '';
+    }
+
+    document.getElementById('mem-filter').addEventListener('input', renderTable);
+
+    document.getElementById('launcher-continue').onclick = () => {
+        const sel = document.getElementById('launcher-project-select');
+        projectId = sel.value;
+        if (!projectId) return;
+        localStorage.setItem(STORAGE, projectId);
+        document.getElementById('workspace-launcher').hidden = true;
+        document.getElementById('workspace-config').hidden = false;
+        document.getElementById('pinned-name').textContent = sel.selectedOptions[0].textContent;
+        refresh();
+    };
+    document.getElementById('change-project').onclick = () => {
+        document.getElementById('workspace-config').hidden = true;
+        document.getElementById('workspace-launcher').hidden = false;
+    };
+    loadProjects().then(() => {
+        const pin = initial || localStorage.getItem(STORAGE) || '';
+        if (pin) {
+            document.getElementById('launcher-project-select').value = pin;
+            document.getElementById('launcher-continue').click();
+        }
+    });
+})();
+</script>
+</body>
+</html>
