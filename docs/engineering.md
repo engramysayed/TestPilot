@@ -206,6 +206,18 @@ Attribution lines for commits made by this assistant:
 Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 ```
 
+## 11b. Agent harness + validation — where to read
+
+Unified scaffold under `delivery.agent.harness.*` + `delivery.agent.validation.*` — 76 files, **off by default**. Provider-abstracted agent runtime (Fake + Cursor today), coordinator, five versioned task types, durable store, workspace prep, policy/budget, reconciliation. Bridges live under `convert/`, `recovery/`, `validation/automate/`, `validation/generate/`. Deterministic contract validators (`FrameworkContractValidator`, `TestCaseContractValidator`) share the `ValidationReport` shape with AI-driven bridges so callers consume both the same way. See `docs/implementation.md §6.10` for the inventory.
+
+Start here when you resume this work:
+- **Architecture plan** — [`docs/archive/handoffs/2026-11-15-unified-ai-validation-architecture-plan.md`](archive/handoffs/2026-11-15-unified-ai-validation-architecture-plan.md) (master doc, read first)
+- **Phase 6 completion** — [`docs/archive/handoffs/2026-11-15-framework-contract-phase6-completion.md`](archive/handoffs/2026-11-15-framework-contract-phase6-completion.md)
+- **Next-phase plan** — [`docs/archive/handoffs/2026-11-16-framework-contract-phase6-plan.md`](archive/handoffs/2026-11-16-framework-contract-phase6-plan.md)
+- **Execution-recovery spike** — [`docs/archive/handoffs/2026-11-15-execution-recovery-evidence-spike.md`](archive/handoffs/2026-11-15-execution-recovery-evidence-spike.md)
+- **Phase 3 plan/impl** — [`docs/archive/handoffs/2026-11-12-agent-harness-phase3-plan.md`](archive/handoffs/2026-11-12-agent-harness-phase3-plan.md) + [`-phase3-implementation.md`](archive/handoffs/2026-11-12-agent-harness-phase3-implementation.md)
+- **Routing table** (all Phase 6 sub-handoffs 6.4 → 6.17 + evidence JSONs) — [`docs/ENGINEERING_HANDOFF.md`](ENGINEERING_HANDOFF.md) rows **Unified agent harness** and **Automate framework contract (Phase 6)**
+
 ## 12. Pointers into deeper docs
 
 - `docs/PRODUCT.md` — full product feature list (487 lines).

@@ -92,7 +92,7 @@ Earlier on `ux-overhaul` (now also on main):
 - **Project-detail tab-split.** 4 tabs on `/projects/{id}` should become 4 sidebar children per rule 1. Not started.
 - **Overflow-menu retrofit on action rows.** `.overflow-menu` pattern exists (commit `3a17c74`); still needs to be applied to `/projects` cards, `/packages` rows, and the live `/execute` toolbars.
 - **`SuitePortalScheduleWorker`** is still flagged off (`delivery.suites.portal-schedule-worker.enabled`). Slice F plumbing landed; flip after soak.
-- **Agent harness capabilities** all flagged off (`delivery.agent-harness.*`). Phase 3 Convert integration is in but inert.
+- **Agent harness capabilities** all flagged off (`delivery.agent-harness.*`). Phase 3 Convert integration is in but inert. Start-here for the architecture is [`docs/archive/handoffs/2026-11-15-unified-ai-validation-architecture-plan.md`](archive/handoffs/2026-11-15-unified-ai-validation-architecture-plan.md); the engine layer inventory is in `docs/implementation.md §6.10` and the `engineering.md §11b` pointer block.
 - **Phase 6 framework contract** reached Phase 6.16 ("READY AFTER SPECIFIED BLOCKERS"). See `docs/archive/handoffs/2026-11-15-phase6-16-production-readiness-audit.md`.
 
 ## 6. Open PRs / review

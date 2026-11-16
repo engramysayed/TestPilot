@@ -185,8 +185,25 @@ Screen-vision (annotated screenshots the models see) + visual diffs between runs
 ### 6.9 Mobile (`delivery.mobile`, modules `mobile-*`)
 Appium runner with its own settle service. Enabled via `delivery.mobile.enabled`.
 
-### 6.10 Agent harness (`delivery.agent`)
-Unified scaffold for driving Cursor sidecar workflows (framework repair, failure investigation, TC validation, execution recovery). **Off by default** (`delivery.agent-harness.enabled=false`); each capability has its own flag.
+### 6.10 Agent harness + validation (`delivery.agent`)
+
+76 Java files, two sibling packages, **all flagged off by default**. The point of the layer: unify every place in Keel where an AI agent decides something behind one provider-abstracted interface — before, each AI integration (heal, invent, Review-with-AI, framework repair) had its own HTTP client and its own idea of a result.
+
+**`delivery.agent.harness.*` — the harness itself (31 types)**
+- `AgentRuntime` — provider interface. Implementations: `FakeAgentRuntime` (deterministic test stub) and `cursor/CursorAgentRuntime` (real Cursor SDK via `tools/cursor-agent/agent.mjs` sidecar).
+- `AgentHarnessCoordinator` — front door. Builds an `AgentTask` (durable record: taskId, parentJobId, projectId, taskType, objective, contextReferences, workspacePath, budget, providerId, inputFingerprint, stageKey, schemaVersion), routes via `AgentTaskRouter`, prepares workspace via `AgentWorkspacePreparer`, launches via the runtime, writes a `ValidationReport`, handles restart-safe reconciliation via `AgentHarnessReconcile`.
+- `AgentTaskType` — five versioned kinds: `FRAMEWORK_VALIDATION_V1` (Phase 3 post-emit inspection + permitted repair), `EXECUTION_FAILURE_INVESTIGATION_V1` (Phase 4 read-only), `FRAMEWORK_ADAPTATION_V1` (Phase 5), `GENERATED_TEST_REVIEW_V1` (Phase 6 pre-run TC review), `BUG_INVESTIGATION_V1` (Phase 6 Bug Hunter deep-dive).
+- Infrastructure: `AgentPolicy` (budget/retry), `AgentRunStore` (durable JSON persistence), `AgentStoreLock` (concurrency), `AgentToolRegistry` + `AgentToolId`, `AgentContextBuilder` + `AgentContextManifest`, `AgentArtifactFingerprints` (reconciliation hashes), `ValidationReportWriter`.
+- Bridges: `convert/AgentHarnessJobBridge` (Automate/Convert → framework validation), `recovery/ExecutionRecoveryHarnessBridge` (Execute → failure investigation), plus the validation-layer bridges below.
+
+**`delivery.agent.validation.*` — deterministic validators + validation bridges (45 types)**
+- `contract/` — **no AI needed**. `FrameworkContractValidator` (contract version `2`) reads emitted Selenium frameworks against `FrameworkExpectedInventory`; `TestCaseContractValidator` does the same for TC quality. Both produce the same `ValidationReport` shape every bridge returns.
+- `automate/` — `AutomateFrameworkAcceptanceGate` runs after `EmitCompileCheck`; `FrameworkRepairWorkspaceReconciler` reconciles Cursor repair candidates (Phase 6.4); `FrameworkRepairArchitectureAssessor` (Phase 6.6+).
+- `generate/` — `GenerateTcContractValidation` (shared façade), `GenerateHarnessBridge` (optional Cursor escalation for unresolved TC contract violations).
+
+**Flags (`application.properties:48-57`)**: `delivery.agent-harness.enabled`, `.cursor.enabled`, `.framework-validation.enabled`, `.failure-investigation.enabled`, `.tc-validation.enabled`, `.tc-validation.cursor-escalation.enabled`, plus budget caps (`.max-concurrent-runs`, `.max-runtime-minutes`, `.max-retries`). All false by default — Phase 3 Convert integration is wired in and inert.
+
+**Design intent** (start here when picking the work back up): [`docs/archive/handoffs/2026-11-15-unified-ai-validation-architecture-plan.md`](archive/handoffs/2026-11-15-unified-ai-validation-architecture-plan.md). Phase 6 rollup: [`2026-11-15-framework-contract-phase6-completion.md`](archive/handoffs/2026-11-15-framework-contract-phase6-completion.md) with the next-phase plan at [`2026-11-16-framework-contract-phase6-plan.md`](archive/handoffs/2026-11-16-framework-contract-phase6-plan.md). Execution-recovery spike evidence: [`2026-11-15-execution-recovery-evidence-spike.md`](archive/handoffs/2026-11-15-execution-recovery-evidence-spike.md). All sub-phase handoffs (6.4 through 6.17) are indexed from the **Automate framework contract** row in [`ENGINEERING_HANDOFF.md`](ENGINEERING_HANDOFF.md).
 
 ## 7. Services (`delivery.portal.service`)
 
