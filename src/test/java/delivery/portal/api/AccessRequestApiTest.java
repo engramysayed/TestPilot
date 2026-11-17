@@ -51,6 +51,28 @@ public class AccessRequestApiTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    public void floodReturns429AfterCap() throws Exception {
+        // 6th request from the same remote IP inside the window returns 429 with a Retry-After header.
+        String remote = "10.9.9.9";
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/access-requests")
+                            .with(r -> { r.setRemoteAddr(remote); return r; })
+                            .header("X-Keel-Requested-With", "Keel")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"email\":\"flood-" + i + "-" + System.nanoTime() + "@example.com\"}"))
+                    .andExpect(status().isCreated());
+        }
+        mockMvc.perform(post("/api/access-requests")
+                        .with(r -> { r.setRemoteAddr(remote); return r; })
+                        .header("X-Keel-Requested-With", "Keel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"flood-over-" + System.nanoTime() + "@example.com\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().exists("Retry-After"));
+    }
+
+    @Test
     public void adminCanApproveAccessRequest() throws Exception {
         String email = "approve-" + System.nanoTime() + "@example.com";
         mockMvc.perform(post("/api/access-requests")

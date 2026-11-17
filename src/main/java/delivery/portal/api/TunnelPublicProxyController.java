@@ -63,7 +63,13 @@ public class TunnelPublicProxyController {
         if (query != null && !query.isBlank()) {
             path = path + "?" + query;
         }
-        Map<String, String> headers = hopByHopFilter(readHeaders(request));
+        Map<String, String> rawHeaders = readHeaders(request);
+        // Only drop Authorization when the client is clearly a portal-logged-in browser
+        // (carries one of PORTAL_COOKIES). Non-portal callers may rely on Authorization
+        // to auth against the customer's SUT (Basic-auth dev apps, OAuth proxies, …).
+        boolean portalAuthenticated = hasPortalCookie(rawHeaders.get("cookie"))
+                || hasPortalCookie(rawHeaders.get("Cookie"));
+        Map<String, String> headers = hopByHopFilter(rawHeaders, portalAuthenticated);
         byte[] body = request.getInputStream().readNBytes(MAX_BODY_BYTES + 1);
         if (body.length > MAX_BODY_BYTES) {
             return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
@@ -79,6 +85,11 @@ public class TunnelPublicProxyController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                     .header(HttpHeaders.RETRY_AFTER, "2")
                     .body("Tunnel relay busy".getBytes());
+        }
+        // Symmetric cap on the response — a misbehaving agent cannot OOM the portal either.
+        if (res.body() != null && res.body().length > MAX_BODY_BYTES) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(("Tunnel response body exceeds " + MAX_BODY_BYTES + " bytes").getBytes());
         }
         HttpHeaders out = new HttpHeaders();
         res.headers().forEach((k, values) -> {
@@ -124,16 +135,19 @@ public class TunnelPublicProxyController {
                 || k.equals("proxy-authenticate") || k.equals("proxy-authorization");
     }
 
-    private static Map<String, String> hopByHopFilter(Map<String, String> in) {
+    static Map<String, String> hopByHopFilter(Map<String, String> in, boolean portalAuthenticated) {
         Map<String, String> out = new LinkedHashMap<>();
         for (Map.Entry<String, String> e : in.entrySet()) {
             String k = e.getKey() == null ? "" : e.getKey().toLowerCase();
             if (k.equals("host") || k.equals("connection") || k.equals("content-length")
                     || k.equals("transfer-encoding") || k.equals("keep-alive") || k.equals("te")
                     || k.equals("trailer") || k.equals("upgrade") || k.equals("expect")
-                    || k.equals("proxy-authorization") || k.equals("proxy-connection")
-                    // Portal auth never flows to the customer's app through the tunnel.
-                    || k.equals("authorization")) {
+                    || k.equals("proxy-authorization") || k.equals("proxy-connection")) {
+                continue;
+            }
+            // Drop the portal's own Authorization only when the browser is portal-authenticated;
+            // otherwise keep it so Basic/Bearer flows to the customer's SUT.
+            if (k.equals("authorization") && portalAuthenticated) {
                 continue;
             }
             if (k.equals("cookie")) {
@@ -146,6 +160,23 @@ public class TunnelPublicProxyController {
             out.put(e.getKey(), e.getValue());
         }
         return out;
+    }
+
+    /** Does the Cookie header carry any PORTAL_COOKIES entry? Marks the request as portal-logged-in. */
+    static boolean hasPortalCookie(String cookieHeader) {
+        if (cookieHeader == null || cookieHeader.isBlank()) {
+            return false;
+        }
+        for (String part : cookieHeader.split(";")) {
+            String p = part.trim();
+            if (p.isEmpty()) continue;
+            int eq = p.indexOf('=');
+            String name = (eq < 0 ? p : p.substring(0, eq)).trim().toLowerCase(java.util.Locale.ROOT);
+            if (PORTAL_COOKIES.contains(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Portal auth cookies must never reach the customer's app through the tunnel. */

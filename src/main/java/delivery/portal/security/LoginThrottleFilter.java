@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -16,7 +17,7 @@ public class LoginThrottleFilter extends OncePerRequestFilter {
     private final LoginThrottle throttle;
     private final AntPathRequestMatcher loginPost = new AntPathRequestMatcher("/login", "POST");
 
-    public LoginThrottleFilter(LoginThrottle throttle) {
+    public LoginThrottleFilter(@Qualifier("loginThrottle") LoginThrottle throttle) {
         this.throttle = throttle;
     }
 

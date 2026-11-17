@@ -71,6 +71,8 @@ public final class JobSecretCrypto {
                     .resolve("delivery.secret");
             if (Files.isRegularFile(file)) {
                 raw = Files.readString(file, StandardCharsets.UTF_8).trim();
+                // Repair perms on an existing file created before the owner-only patch landed.
+                restrictToOwner(file);
             } else {
                 Files.createDirectories(file.getParent());
                 raw = Base64.getEncoder().encodeToString(SecureRandom.getInstanceStrong().generateSeed(32));

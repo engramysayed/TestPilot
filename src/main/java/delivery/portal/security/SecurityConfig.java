@@ -2,9 +2,9 @@ package delivery.portal.security;
 
 import delivery.portal.roles.CreditsAdminPermissionFilter;
 import org.springframework.context.annotation.Bean;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
@@ -35,9 +35,8 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    /** Primary = the login throttle. LoginThrottleFilter autowires this one. */
+    /** The login POST /login throttle — injected by name into LoginThrottleFilter. */
     @Bean
-    @Primary
     public LoginThrottle loginThrottle() {
         return new LoginThrottle(5, 15 * 60);
     }
@@ -85,7 +84,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, ApiRequestHeaderFilter apiHeaderFilter,
-                                           LoginThrottle loginThrottle,
+                                           @Qualifier("loginThrottle") LoginThrottle loginThrottle,
                                            LoginThrottleFilter loginThrottleFilter,
                                            delivery.portal.DeliveryPortalProperties props,
                                            RunnerRequestVerifier runnerRequestVerifier,
