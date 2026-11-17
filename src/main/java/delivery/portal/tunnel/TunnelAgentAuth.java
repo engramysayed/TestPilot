@@ -20,9 +20,11 @@ public final class TunnelAgentAuth {
             return false;
         }
         Map<String, Object> e = doc.get();
-        if (!token.equals(String.valueOf(e.getOrDefault("token", "")))) {
+        if (!delivery.portal.security.ConstantTime.equals(
+                token, String.valueOf(e.getOrDefault("token", "")))) {
             return false;
         }
-        return agentSecret.equals(String.valueOf(e.getOrDefault("agentSecret", "")));
+        return delivery.portal.security.ConstantTime.equals(
+                agentSecret, String.valueOf(e.getOrDefault("agentSecret", "")));
     }
 }

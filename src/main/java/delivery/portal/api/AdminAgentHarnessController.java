@@ -84,12 +84,12 @@ public class AdminAgentHarnessController {
     @GetMapping({"", "/"})
     public Map<String, Object> get() {
         requireOwner();
-        List<Map<String, Object>> models = fetchModels().rows();
-        List<String> allowed = fetchModels().ids();
+        // Single cache lookup — rows and ids must come from the same snapshot.
+        CachedModels snap = fetchModels();
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("cursorModel", properties.getCursorModel());
-        out.put("models", models);
-        out.put("knownModels", allowed);
+        out.put("models", snap.rows());
+        out.put("knownModels", snap.ids());
         return out;
     }
 
@@ -182,7 +182,7 @@ public class AdminAgentHarnessController {
             requested = "auto";
         }
         List<String> allowed = fetchModels().ids();
-        if (!allowed.contains(requested)) {
+        if (allowed == null || !allowed.contains(requested)) {
             Map<String, Object> err = new LinkedHashMap<>();
             err.put("error", "BAD_MODEL");
             err.put("allowed", allowed);

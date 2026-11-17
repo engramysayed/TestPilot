@@ -92,7 +92,8 @@ public class TunnelEnrollmentService {
             Optional<String> pid = TunnelTokenIndex.projectIdForToken(store.storeRoot(), token);
             if (pid.isPresent()) {
                 Optional<Map<String, Object>> doc = disk.latest(store.projectDiskRoot(pid.get()));
-                if (doc.isPresent() && token.equals(String.valueOf(doc.get().getOrDefault("token", "")))) {
+                if (doc.isPresent() && delivery.portal.security.ConstantTime.equals(
+                        token, String.valueOf(doc.get().getOrDefault("token", "")))) {
                     return Map.of(
                             "token", token,
                             "projectId", pid.get(),

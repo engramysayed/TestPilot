@@ -23,6 +23,9 @@ import java.util.Optional;
 @ConditionalOnProperty(name = "delivery.tunnel.enabled", havingValue = "true")
 public class TunnelAgentController {
 
+    /** Cap the base64 string the authenticated agent posts back. Decoded bytes ≈ 3/4 of this. */
+    static final int MAX_BODY_BASE64_CHARS = 34 * 1024 * 1024; // ~25 MB decoded
+
     private final PortalStore store;
     private final TunnelRelayService relay;
 
@@ -71,6 +74,10 @@ public class TunnelAgentController {
             return ResponseEntity.badRequest().body(new ApiError("MISSING_REQUEST_ID", "requestId required").asMap());
         }
         int status = body.status() == null ? 502 : body.status();
+        if (body.bodyBase64() != null && body.bodyBase64().length() > MAX_BODY_BASE64_CHARS) {
+            return ResponseEntity.status(413).body(new ApiError(
+                    "BODY_TOO_LARGE", "Relay body exceeds " + MAX_BODY_BASE64_CHARS + " base64 chars").asMap());
+        }
         byte[] raw = decodeBase64(body.bodyBase64());
         boolean ok;
         if (body.multiHeaders() != null && !body.multiHeaders().isEmpty()) {

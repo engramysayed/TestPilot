@@ -43,7 +43,8 @@ public class TunnelHeartbeatController {
         }
         String token = body == null ? "" : (body.token() == null ? "" : body.token().trim());
         Optional<Map<String, Object>> latest = disk.latest(store.projectDiskRoot(projectId));
-        if (latest.isEmpty() || token.isBlank() || !token.equals(String.valueOf(latest.get().getOrDefault("token", "")))) {
+        if (latest.isEmpty() || token.isBlank() || !delivery.portal.security.ConstantTime.equals(
+                token, String.valueOf(latest.get().getOrDefault("token", "")))) {
             return ResponseEntity.status(404).body(new ApiError("NOT_FOUND", "Unknown tunnel token").asMap());
         }
         disk.markActive(store.projectDiskRoot(projectId), body == null ? "" : body.listenUrl());

@@ -2,7 +2,6 @@ package delivery.portal.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import delivery.agent.harness.AgentRunStore;
-import delivery.agent.harness.AgentTaskStatus;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -12,17 +11,28 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
  * Summarises agent-harness tasks for a single parent job so the UI can render
  * a "AI validation" chip (queued / running / ok / fail) next to the run's status.
+ *
+ * <p>Status values the overall label maps to (see {@link delivery.agent.harness.AgentTaskStatus}):
+ * {@code PENDING}/{@code INTERRUPTED} → queued, {@code RUNNING} → running,
+ * {@code COMPLETED} → ok, {@code FAILED}/{@code TIMED_OUT}/{@code CANCELLED} → failed.
  */
 @Service
 public class JobAgentTasksService {
     private static final ObjectMapper JSON = new ObjectMapper();
+    /** Global "running agents" count per project root is re-scanned at most this often. */
+    private static final long COUNT_CACHE_TTL_MS = 2_000L;
 
     private final PortalStore store;
+    private final ConcurrentHashMap<Path, RunningCount> runningCache = new ConcurrentHashMap<>();
+
+    private record RunningCount(long expiresAt, int runningTotal) {
+    }
 
     public JobAgentTasksService(PortalStore store) {
         this.store = store;
@@ -87,21 +97,45 @@ public class JobAgentTasksService {
         }
     }
 
-    /** Rough estimate: how many tasks on the host are RUNNING ahead of the queued ones in this job. */
+    /**
+     * How many tasks on this project are RUNNING, minus whatever this job contributes.
+     * The scan is cached per project root for {@link #COUNT_CACHE_TTL_MS} so a page of N rows
+     * polling every 5 s doesn't re-walk the whole agent-runs tree on every row.
+     */
     private int countAhead(Path projectRoot, Path thisJobDir) {
         Path agentRuns = projectRoot.resolve(AgentRunStore.ROOT_DIR);
         if (!Files.isDirectory(agentRuns)) return 0;
+        long now = System.currentTimeMillis();
+        RunningCount cached = runningCache.get(projectRoot);
+        int total = (cached != null && cached.expiresAt() > now)
+                ? cached.runningTotal()
+                : refreshRunning(projectRoot, agentRuns, now);
+        int thisJob = countRunningIn(thisJobDir);
+        return Math.max(0, total - thisJob);
+    }
+
+    private int refreshRunning(Path projectRoot, Path agentRuns, long now) {
         int running = 0;
         try (Stream<Path> jobs = Files.list(agentRuns)) {
             for (Path jobDir : (Iterable<Path>) jobs::iterator) {
-                if (jobDir.equals(thisJobDir) || !Files.isDirectory(jobDir)) continue;
-                try (Stream<Path> tasks = Files.list(jobDir)) {
-                    for (Path t : (Iterable<Path>) tasks::iterator) {
-                        if (!Files.isDirectory(t)) continue;
-                        Map<String, Object> row = readTask(t);
-                        if (row != null && "RUNNING".equals(row.get("status"))) running++;
-                    }
-                }
+                if (!Files.isDirectory(jobDir)) continue;
+                running += countRunningIn(jobDir);
+            }
+        } catch (IOException ignored) {
+            // best-effort
+        }
+        runningCache.put(projectRoot, new RunningCount(now + COUNT_CACHE_TTL_MS, running));
+        return running;
+    }
+
+    private int countRunningIn(Path jobDir) {
+        if (jobDir == null || !Files.isDirectory(jobDir)) return 0;
+        int running = 0;
+        try (Stream<Path> tasks = Files.list(jobDir)) {
+            for (Path t : (Iterable<Path>) tasks::iterator) {
+                if (!Files.isDirectory(t)) continue;
+                Map<String, Object> row = readTask(t);
+                if (row != null && "RUNNING".equals(row.get("status"))) running++;
             }
         } catch (IOException ignored) {
             // best-effort
@@ -124,8 +158,4 @@ public class JobAgentTasksService {
         if (anyFailed) return "failed";
         return "mixed";
     }
-
-    /** Status enum for JavaDoc hints — not referenced directly but documents what values the UI maps. */
-    @SuppressWarnings("unused")
-    private static final AgentTaskStatus[] STATUS_LEGEND = AgentTaskStatus.values();
 }

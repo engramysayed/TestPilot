@@ -75,10 +75,22 @@ public final class JobSecretCrypto {
                 Files.createDirectories(file.getParent());
                 raw = Base64.getEncoder().encodeToString(SecureRandom.getInstanceStrong().generateSeed(32));
                 Files.writeString(file, raw, StandardCharsets.UTF_8);
+                restrictToOwner(file);
             }
         }
         byte[] digest = MessageDigest.getInstance("SHA-256")
                 .digest(raw.getBytes(StandardCharsets.UTF_8));
         return new SecretKeySpec(digest, "AES");
+    }
+
+    /** Owner-only perms on the master key file — no-op on Windows / non-POSIX filesystems. */
+    private static void restrictToOwner(Path file) {
+        try {
+            Files.setPosixFilePermissions(file, java.util.EnumSet.of(
+                    java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+                    java.nio.file.attribute.PosixFilePermission.OWNER_WRITE));
+        } catch (UnsupportedOperationException | java.io.IOException ignored) {
+            // POSIX perms not supported (Windows dev) or race on first create — accept default perms.
+        }
     }
 }

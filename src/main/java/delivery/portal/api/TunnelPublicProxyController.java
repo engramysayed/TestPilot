@@ -25,6 +25,8 @@ import java.util.Optional;
 public class TunnelPublicProxyController {
 
     private static final Duration RELAY_TIMEOUT = Duration.ofSeconds(90);
+    /** Cap the proxied request body so one bad POST cannot OOM the portal. */
+    static final int MAX_BODY_BYTES = 25 * 1024 * 1024;
 
     private final PortalStore store;
     private final TunnelRelayService relay;
@@ -52,7 +54,8 @@ public class TunnelPublicProxyController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                     .body("Tunnel agent offline".getBytes());
         }
-        if (!token.equals(String.valueOf(en.get().getOrDefault("token", "")))) {
+        if (!delivery.portal.security.ConstantTime.equals(
+                token, String.valueOf(en.get().getOrDefault("token", "")))) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
         String path = subPath(request.getRequestURI(), token);
@@ -61,7 +64,11 @@ public class TunnelPublicProxyController {
             path = path + "?" + query;
         }
         Map<String, String> headers = hopByHopFilter(readHeaders(request));
-        byte[] body = request.getInputStream().readAllBytes();
+        byte[] body = request.getInputStream().readNBytes(MAX_BODY_BYTES + 1);
+        if (body.length > MAX_BODY_BYTES) {
+            return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                    .body(("Tunnel request body exceeds " + MAX_BODY_BYTES + " bytes").getBytes());
+        }
         TunnelRelayService.RelayResponse res;
         try {
             res = relay.relay(token, request.getMethod(), path, headers, body, RELAY_TIMEOUT);
@@ -124,7 +131,9 @@ public class TunnelPublicProxyController {
             if (k.equals("host") || k.equals("connection") || k.equals("content-length")
                     || k.equals("transfer-encoding") || k.equals("keep-alive") || k.equals("te")
                     || k.equals("trailer") || k.equals("upgrade") || k.equals("expect")
-                    || k.equals("proxy-authorization") || k.equals("proxy-connection")) {
+                    || k.equals("proxy-authorization") || k.equals("proxy-connection")
+                    // Portal auth never flows to the customer's app through the tunnel.
+                    || k.equals("authorization")) {
                 continue;
             }
             if (k.equals("cookie")) {

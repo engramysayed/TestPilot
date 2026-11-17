@@ -4,6 +4,7 @@ import delivery.portal.roles.CreditsAdminPermissionFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
@@ -17,6 +18,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.DelegatingAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -33,9 +35,25 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /** Primary = the login throttle. LoginThrottleFilter autowires this one. */
     @Bean
+    @Primary
     public LoginThrottle loginThrottle() {
         return new LoginThrottle(5, 15 * 60);
+    }
+
+    /** Separate throttle for public /api/access-requests POST: 5/hour/IP. */
+    @Bean
+    public LoginThrottle accessRequestThrottle() {
+        return new LoginThrottle(5, 60 * 60);
+    }
+
+    /** Keep LoginThrottleFilter out of Boot's servlet chain — SecurityConfig wires it into the security chain. */
+    @Bean
+    public FilterRegistrationBean<LoginThrottleFilter> loginThrottleFilterRegistration(LoginThrottleFilter filter) {
+        FilterRegistrationBean<LoginThrottleFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
     }
 
     @Bean
@@ -68,6 +86,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, ApiRequestHeaderFilter apiHeaderFilter,
                                            LoginThrottle loginThrottle,
+                                           LoginThrottleFilter loginThrottleFilter,
                                            delivery.portal.DeliveryPortalProperties props,
                                            RunnerRequestVerifier runnerRequestVerifier,
                                            CreditsAdminPermissionFilter creditsAdminPermissionFilter)
@@ -116,6 +135,7 @@ public class SecurityConfig {
                         .permitAll()
                 )
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/tunnel/**"))
+                .addFilterBefore(loginThrottleFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(apiHeaderFilter, CsrfFilter.class)
                 .addFilterAfter(new ServiceIdentityFilter(props), CsrfFilter.class)
                 .addFilterAfter(new PrivateRunnerFilter(props, runnerRequestVerifier), CsrfFilter.class)
