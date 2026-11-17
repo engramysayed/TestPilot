@@ -186,9 +186,9 @@ Plan: `docs/archive/plans/2026-10-15-record-to-framework.md`.
 | Generate | One writing job |
 | Execute | Each test case in the run, including Run it once |
 | Automation | Each test case in the build, including a recording |
-| Bug Hunter | Each step. A step is one click or one thing typed. The hunt page shows how many steps the run may try. |
+| Bug Hunter | Each step. A step is one click or one thing typed. The hunt page's **How deep** block shows how many steps the run may try. |
 
-The number on the page is the price of one unit. Keel multiplies it when the job starts. A manual-only row is not included in a run or a build. The default hunt may try 80 steps (2 iterations × 8 cycles × 5 actions).
+The number on the page is the price of one unit. Keel multiplies it when the job starts. A manual-only row is not included in a run or a build. The default hunt may try 80 steps (2 replan rounds × 8 ideas × 5 steps per idea).
 
 ---
 
@@ -243,7 +243,21 @@ Exploratory live hunting from the project library. Goal: **break features** and 
 - **Credential profile** — hunter receives `$TARGET_USERNAME` / `$TARGET_PASSWORD` / `$TARGET_OTP` **tokens only** (never plaintext password in planner prompts or pack text). Choose **Open site only** for hunts without credentials.
 - Multi-select library TCs; optional free-text user story (OTP hints can be parsed from story text).
 - Planner: **Ollama** or **Cursor**.
-- Caps: scenario invent budget, iterations, cycles per iteration, **actions per cycle** (defaults 2 × 8 × 5). Each click or typed value is one step. The credit charge is the number of steps this run may try, times the Bug Hunter unit price. A compact bar above **Start Bug Hunter** shows that total and updates when the caps change. Execute and Automate use the same bar for the test cases in the run or the build.
+- **How deep** — pick a preset or tune four knobs. The first is an independent cap; the other three multiply into total steps. One step = one click or one thing typed.
+
+  | Preset | Rounds × Ideas × Steps | Scenarios | Total steps |
+  |---|---|---|---|
+  | Quick | 1 × 3 × 3 | 3 | ~9 |
+  | Standard *(default)* | 2 × 8 × 5 | 5 | ~80 |
+  | Deep | 3 × 10 × 7 | 10 | ~210 |
+  | Custom | your values | your value | multiplied |
+
+  - **Max new scenarios** — independent cap. Most new scenario ideas the hunter may invent for human review (1–20). Bugs track separately with their own dedupe + triage. Does not multiply.
+  - **Replan rounds** — how many times the AI rethinks the plan after seeing what the last round found (1–5).
+  - **Ideas per round** — planner invocations inside one round; each invocation = one idea tried (1–30).
+  - **Steps per idea** — max clicks or things typed while trying one idea (1–15).
+
+  The credit charge is total steps × the Bug Hunter unit price. A **This hunt** box above **Start Bug Hunter** shows that total and updates live as you tweak. Execute and Automate use the same credit box for their own units.
 - **DOM mode**: Auto (structured page map; full slim HTML if the map is thin) · Map only · Full slim.
 - **Use hunt strategies** (default on): happy path → empty fields → boundary → abuse → session → invent.
 - Past hunts, status links, and downloads are in **History** — not a second “recent runs” table on this page.

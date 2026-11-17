@@ -592,6 +592,20 @@
                     <li>Confirm real bugs; dismiss noise. Confirm does <em>not</em> merge into the library.</li>
                     <li>For confirmed items you want as cases, use the separate promote / Add to test cases flow.</li>
                 </ol>
+                <h3 style="margin-top:1.25rem;">How deep (the four knobs)</h3>
+                <p class="panel-intro">Pick a preset on the hunt page, or <strong>Custom</strong> to tune. One step = one click or one thing typed; credits are charged per step.</p>
+                <ul class="guide-points">
+                    <li><strong>Quick</strong> ≈ 9 steps (1 round × 3 ideas × 3 steps, 3 new scenarios). Sanity check.</li>
+                    <li><strong>Standard</strong> ≈ 80 steps (2 × 8 × 5, 5 scenarios). The default.</li>
+                    <li><strong>Deep</strong> ≈ 210 steps (3 × 10 × 7, 10 scenarios). Thorough exploration.</li>
+                </ul>
+                <ul class="guide-points">
+                    <li><strong>Max new scenarios</strong> — independent cap. Most new scenario ideas the hunter may invent for you to review later. Bugs are tracked separately with their own dedupe + triage. Does not multiply.</li>
+                    <li><strong>Replan rounds</strong> — how many times the AI rethinks its plan after seeing what the last round found.</li>
+                    <li><strong>Ideas per round</strong> — planner invocations inside one round. Each invocation = one idea tried.</li>
+                    <li><strong>Steps per idea</strong> — max clicks or things typed while trying one idea.</li>
+                </ul>
+                <p class="panel-intro"><strong>Total steps = rounds × ideas × steps.</strong> The <em>This hunt</em> box above <strong>Start Bug Hunter</strong> shows the total and updates live.</p>
             </section>
 
             <section class="panel guide-section guide-reveal" id="credits" data-guide-section="credits">

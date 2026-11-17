@@ -114,21 +114,21 @@
                 </div>
             </div>
             <div class="hunt-caps hunt-caps--hidden" id="hunt-caps-fields">
-                <label>Max bug hypotheses
+                <label>Max new scenarios
                     <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="scenario-cap" value="5"/>
-                    <span class="field-hint">Most <strong>distinct bug ideas</strong> the planner may track across the whole run (1–20). A hard ceiling — does not multiply with the others.</span>
+                    <span class="field-hint"><strong>Independent cap.</strong> Most <strong>new scenario ideas</strong> the hunter may invent for you to review later (1–20). Bugs are tracked separately. Does not multiply with the three below.</span>
                 </label>
                 <label>Replan rounds
                     <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="iteration-ceiling" value="2"/>
-                    <span class="field-hint">How many times the AI <strong>rethinks the plan</strong> after seeing what it tried (1–5). Each round covers all ideas.</span>
+                    <span class="field-hint">How many times the AI <strong>rethinks the plan</strong> after seeing what it tried (1–5). Multiplies with the two below → total steps.</span>
                 </label>
                 <label>Ideas per round
                     <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="cycle-ceiling" value="8"/>
-                    <span class="field-hint">Planner invocations inside one replan round — <strong>one invocation = one idea tried</strong> (1–30).</span>
+                    <span class="field-hint">Planner invocations inside one round — <strong>one invocation = one idea tried</strong> (1–30).</span>
                 </label>
                 <label>Steps per idea
                     <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="action-cap" value="5"/>
-                    <span class="field-hint">Max <strong>clicks or things typed</strong> while trying one idea (1–15). Higher = thorough probing, more credits.</span>
+                    <span class="field-hint">Max <strong>clicks or things typed</strong> while trying one idea (1–15). Total steps = rounds × ideas × steps.</span>
                 </label>
             </div>
         </div>
