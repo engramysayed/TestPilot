@@ -50,6 +50,14 @@
   align-items: center;
   gap: 0.6rem;
 }
+/* Long labels (e.g. "Generate from knowledge") were clipping mid-letter; let them ellipse instead. */
+.sidebar-nav-item__link > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .sidebar-nav-item .keel-feature-help-btn {
   align-self: center;
 }
