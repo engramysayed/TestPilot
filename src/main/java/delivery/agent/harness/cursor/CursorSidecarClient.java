@@ -71,6 +71,7 @@ public final class CursorSidecarClient {
         req.put("workspacePath", task.workspacePath());
         req.put("taskDir", taskDir.toAbsolutePath().normalize().toString());
         req.put("storePath", taskDir.resolve("cursor-sdk-state").toString());
+        req.put("model", properties.getCursorModel());
         req.put("tools", new JSONArray(tools.tools()));
         req.put("disallowedTools", new JSONArray(tools.disallowedTools()));
         req.put("agentName", "keel-harness:" + task.taskId());

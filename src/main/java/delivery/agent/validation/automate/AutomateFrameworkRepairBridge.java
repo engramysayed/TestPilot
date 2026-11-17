@@ -18,13 +18,17 @@ import delivery.agent.validation.contract.ValidationReport;
 import delivery.job.JobCancelSupport;
 import delivery.job.JobCancelledException;
 import delivery.portal.AgentHarnessProperties;
+import delivery.prompts.PromptCatalog;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,6 +47,26 @@ public final class AutomateFrameworkRepairBridge {
     private final Duration waitBudget;
     private final AgentRunStore store = new AgentRunStore();
     private final AgentWorkspacePreparer preparer = new AgentWorkspacePreparer();
+    /** Optional: resolves the workspace's locator settings for repair context (nullable; unset in tests). */
+    private Function<String, LocatorPreference> locatorPreferenceLookup;
+    /** Optional: customer-framework-template path for repair context (nullable; unset in tests). */
+    private String templateRootPath;
+
+    public record LocatorPreference(String locatorMode, String preferredHooks) {
+    }
+
+    /** Wire the project's saved locator ranking + preferred hooks into repair context. */
+    public AutomateFrameworkRepairBridge withLocatorPreferenceLookup(
+            Function<String, LocatorPreference> lookup) {
+        this.locatorPreferenceLookup = lookup;
+        return this;
+    }
+
+    /** Wire the customer-framework-template path (file reference, not hardcoded in prompt). */
+    public AutomateFrameworkRepairBridge withTemplateRootPath(String path) {
+        this.templateRootPath = path;
+        return this;
+    }
 
     public AutomateFrameworkRepairBridge(
             AgentHarnessProperties properties,
@@ -95,7 +119,22 @@ public final class AutomateFrameworkRepairBridge {
         Path taskDir = store.taskDir(projectRoot, parentJobId, created.taskId());
         preparer.ensureIsolatedCopy(taskDir, repairCandidateRoot);
         Files.createDirectories(taskDir);
-        JSON.writeValue(taskDir.resolve("framework-repair-context.json").toFile(), failedReport.toApiMap());
+        Map<String, Object> contextMap = new LinkedHashMap<>(failedReport.toApiMap());
+        if (locatorPreferenceLookup != null) {
+            LocatorPreference pref = locatorPreferenceLookup.apply(projectId);
+            if (pref != null) {
+                Map<String, Object> locatorBlock = new LinkedHashMap<>();
+                if (pref.locatorMode() != null) locatorBlock.put("locatorMode", pref.locatorMode());
+                if (pref.preferredHooks() != null) locatorBlock.put("preferredHooks", pref.preferredHooks());
+                if (!locatorBlock.isEmpty()) {
+                    contextMap.put("locatorPreference", locatorBlock);
+                }
+            }
+        }
+        if (templateRootPath != null && !templateRootPath.isBlank()) {
+            contextMap.put("customerFrameworkTemplatePath", templateRootPath);
+        }
+        JSON.writeValue(taskDir.resolve("framework-repair-context.json").toFile(), contextMap);
         ContractValidationReportWriter.writeContractReport(projectRoot, parentJobId + "/framework-repair", failedReport);
 
         AgentRunResult result = executeWithJobCancel(projectRoot, parentJobId, created.taskId());
@@ -227,10 +266,8 @@ public final class AutomateFrameworkRepairBridge {
                 .distinct()
                 .sorted()
                 .toList();
-        return "Repair generated framework in isolated workspace to resolve mandatory contract violations. "
-                + "Mandatory rule IDs: " + String.join(", ", ruleIds)
-                + ". Use framework-repair-context.json for full inventory v2 findings. "
-                + "Modify only generated page/test sources; reuse customer-framework-template patterns; preserve test intent.";
+        return PromptCatalog.format("agent-validation/automate", Map.of(
+                "ruleIds", String.join(", ", ruleIds)));
     }
 
     /** Job context for harness tasks without pulling full ConversionJobRequest into harness layer. */

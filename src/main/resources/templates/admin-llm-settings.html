@@ -65,6 +65,18 @@
                     </select>
                     <span class="muted">Next Execute / Automate / Record / Bug Hunter window. Environment variables still win if already set.</span>
                 </label>
+                <label>Cursor model (agent harness)
+                    <select id="cursorModel" name="cursorModel">
+                        <option value="auto">Auto — cheapest capable (recommended)</option>
+                        <option value="claude-opus-5">claude-opus-5</option>
+                        <option value="claude-sonnet-5">claude-sonnet-5</option>
+                        <option value="claude-haiku-5">claude-haiku-5</option>
+                        <option value="gpt-5">gpt-5</option>
+                        <option value="gpt-5-mini">gpt-5-mini</option>
+                    </select>
+                    <span class="muted">Model Cursor uses for TC review / framework repair / failure investigation / hunt triage. Saved separately from API keys.</span>
+                    <span class="ok" id="cursor-model-saved" hidden style="margin-left:0.5rem;">Saved.</span>
+                </label>
             </div>
             <div class="authoring-verbs" style="margin-top:1.75rem;max-width:46rem;">
                 <h2 style="font-size:1.05rem;margin:0 0 0.35rem;">Authoring verbs</h2>
@@ -429,6 +441,37 @@
         fillAliases(data.authoringVerbAliases);
         showSaved();
     }
+    async function loadCursorModel() {
+        try {
+            const res = await fetch('/api/admin/agent-harness', { credentials: 'same-origin', headers: HDR });
+            if (!res.ok) return;
+            const body = await res.json();
+            const sel = document.getElementById('cursorModel');
+            if (sel && body.cursorModel) sel.value = body.cursorModel;
+        } catch (_) { /* best-effort */ }
+    }
+    async function saveCursorModel(v) {
+        const savedTag = document.getElementById('cursor-model-saved');
+        if (savedTag) savedTag.hidden = true;
+        try {
+            const res = await fetch('/api/admin/agent-harness', {
+                method: 'PUT', credentials: 'same-origin', headers: HDR,
+                body: JSON.stringify({ cursorModel: v })
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                showError(body.message || ('Cursor model save failed (' + res.status + ').'));
+                return;
+            }
+            if (savedTag) { savedTag.hidden = false; setTimeout(() => (savedTag.hidden = true), 2000); }
+        } catch (e) {
+            showError(String(e));
+        }
+    }
+    const cursorModelSel = document.getElementById('cursorModel');
+    if (cursorModelSel) {
+        cursorModelSel.addEventListener('change', function () { saveCursorModel(this.value); });
+    }
     document.getElementById('btn-refresh-models').addEventListener('click', function () {
         refreshModels().catch(function (e) { showError(String(e)); });
     });
@@ -451,6 +494,7 @@
     }
     loadSettings()
         .then(function () { return refreshModels(false); })
+        .then(loadCursorModel)
         .catch(function (e) { showError(String(e)); });
 })();
 </script>

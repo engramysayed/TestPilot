@@ -23,6 +23,8 @@ public record ExecutionInvestigationEvidenceV1(
         String currentUrl,
         String evidenceDir,
         String screenshotPath,
+        /** Dir containing per-step IR JSON (prior steps' intents, pass/fail, screenshots). Optional. */
+        String irDir,
         List<FailedLocatorRef> failedLocators,
         List<String> missingFields) {
 
@@ -68,6 +70,9 @@ public record ExecutionInvestigationEvidenceV1(
         }
         if (screenshotPath != null && !screenshotPath.isBlank()) {
             m.put("screenshotPath", screenshotPath);
+        }
+        if (irDir != null && !irDir.isBlank()) {
+            m.put("irDir", irDir);
         }
         m.put("failedLocators", failedLocators.stream()
                 .map(f -> Map.of(

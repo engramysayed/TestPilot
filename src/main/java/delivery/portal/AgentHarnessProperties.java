@@ -24,6 +24,8 @@ public class AgentHarnessProperties {
     /** B4: run the architecture assessor as a publish gate on repaired frameworks (default on). */
     private boolean automateFrameworkRepairArchitectureGateEnabled = true;
     private String cursorCommand = "node tools/cursor-agent/agent.mjs";
+    /** Cursor model id passed to the sidecar; "auto" lets Cursor pick the cheapest capable model. */
+    private String cursorModel = "auto";
 
     public boolean isEnabled() {
         return enabled;
@@ -137,5 +139,15 @@ public class AgentHarnessProperties {
         this.cursorCommand = cursorCommand == null || cursorCommand.isBlank()
                 ? "node tools/cursor-agent/agent.mjs"
                 : cursorCommand.trim();
+    }
+
+    public String getCursorModel() {
+        return cursorModel;
+    }
+
+    public void setCursorModel(String cursorModel) {
+        this.cursorModel = cursorModel == null || cursorModel.isBlank()
+                ? "auto"
+                : cursorModel.trim();
     }
 }

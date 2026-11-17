@@ -103,6 +103,7 @@ async function waitForExistingRun(runId, workspacePath, storePath, agentId, apiK
       /* resume optional — getRun is authoritative */
     }
   }
+  // (reconcile path keeps "auto" — model only affects new work, not getRun polling)
   const pollBudget = Number(maxPollMs) > 0 ? Number(maxPollMs) : 120_000;
   const deadline = Date.now() + pollBudget;
   /** @type {SdkRun | null} */
@@ -212,7 +213,7 @@ async function runExecute(req) {
   let agent;
   const tools = req.tools || ["read", "grep", "glob", "ls", "edit"];
   const disallowedTools = req.disallowedTools || ["shell", "mcp", "task", "webFetch", "webSearch", "delete"];
-  const model = { id: "auto" };
+  const model = { id: req.model && String(req.model).trim() ? String(req.model).trim() : "auto" };
 
   if (req.agentId) {
     agent = await Agent.resume(req.agentId, {

@@ -53,8 +53,21 @@ public final class AutomateFrameworkAcceptanceGate {
         if (repairEnabled(properties)) {
             AgentHarnessCoordinator coordinator = AgentHarnessCoordinator.forProduction(properties);
             bridge = new AutomateFrameworkRepairBridge(properties, coordinator, cancelCheck, waitBudget);
+            var lookup = locatorPreferenceLookup;
+            if (lookup != null) {
+                bridge.withLocatorPreferenceLookup(lookup);
+            }
         }
         return new AutomateFrameworkAcceptanceGate(properties, cancelCheck, waitBudget, bridge);
+    }
+
+    /** Process-wide hook — Spring wires this on boot to feed the project's locator settings into repair context. */
+    private static volatile java.util.function.Function<String, AutomateFrameworkRepairBridge.LocatorPreference>
+            locatorPreferenceLookup;
+
+    public static void setLocatorPreferenceLookup(
+            java.util.function.Function<String, AutomateFrameworkRepairBridge.LocatorPreference> lookup) {
+        locatorPreferenceLookup = lookup;
     }
 
     static AutomateFrameworkAcceptanceGate forTests(AutomateFrameworkRepairBridge repairBridge) {
@@ -121,6 +134,10 @@ public final class AutomateFrameworkAcceptanceGate {
         FrameworkAcceptanceWorkspace.snapshotOriginal(workDir, projectDir);
         Path repairRoot = FrameworkAcceptanceWorkspace.createRepairCandidate(workDir, projectDir);
         FrameworkRepairOperationalTrace operationalTrace = null;
+
+        if (templateRoot != null) {
+            repairBridge.withTemplateRootPath(templateRoot.toAbsolutePath().toString());
+        }
 
         try {
             var repair = repairBridge.attemptRepair(

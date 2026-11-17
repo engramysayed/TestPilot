@@ -11,6 +11,7 @@ import delivery.agent.harness.NewAgentTaskRequest;
 import delivery.job.JobCancelSupport;
 import delivery.job.JobCancelledException;
 import delivery.portal.AgentHarnessProperties;
+import delivery.prompts.PromptCatalog;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -18,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -77,9 +79,10 @@ public final class ExecutionRecoveryHarnessBridge {
             Path workDir = request.jobRequest().workDir();
 
             ExecutionInvestigationEvidenceV1 evidence = ExecutionInvestigationEvidenceBuilder.build(request);
-            String objective = "Investigate execution failure for " + evidence.testCaseId()
-                    + " step " + evidence.intentIndex()
-                    + " (" + evidence.failureClass() + "). Read-only analysis; do not weaken expected results.";
+            String objective = PromptCatalog.format("agent-validation/execute", Map.of(
+                    "testCaseId", String.valueOf(evidence.testCaseId()),
+                    "intentIndex", String.valueOf(evidence.intentIndex()),
+                    "failureClass", String.valueOf(evidence.failureClass())));
 
             var created = coordinator.createTask(
                     projectRoot,

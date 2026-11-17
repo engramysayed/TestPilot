@@ -1,27 +1,38 @@
 package delivery.agent.validation.generate;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import delivery.agent.harness.AgentHarnessCoordinator;
 import delivery.agent.harness.AgentHarnessException;
+import delivery.agent.harness.AgentRunStore;
 import delivery.agent.harness.AgentTaskType;
 import delivery.agent.validation.contract.ValidationReport;
 import delivery.agent.validation.contract.ContractValidationReportWriter;
 import delivery.portal.AgentHarnessProperties;
 import delivery.excel.ManualTestCase;
 import delivery.agent.harness.NewAgentTaskRequest;
+import delivery.prompts.PromptCatalog;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 /**
  * Optional Cursor escalation for unresolved TC contract violations ({@link AgentTaskType#GENERATED_TEST_REVIEW_V1}).
  * Does not modify {@code heal.mjs}. No-op when harness flags are off.
  */
 public final class GenerateHarnessBridge {
     private static final Logger log = LogManager.getLogger(GenerateHarnessBridge.class);
+    private static final ObjectMapper JSON = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+    private static final String CONTEXT_FILENAME = "generate-context.json";
+    private static final String CONTEXT_CONTRACT_ID = "keel.generate-context/v1";
 
     private final AgentHarnessProperties properties;
     private final AgentHarnessCoordinator coordinator;
+    private final AgentRunStore store = new AgentRunStore();
 
     public GenerateHarnessBridge(AgentHarnessProperties properties, AgentHarnessCoordinator coordinator) {
         this.properties = properties == null ? new AgentHarnessProperties() : properties;
@@ -56,6 +67,8 @@ public final class GenerateHarnessBridge {
                             objective,
                             List.of(),
                             projectRoot.toString()));
+            writeContextFile(projectRoot, created.parentJobId(), created.taskId(),
+                    cases, failedReport, userStoryText);
             coordinator.execute(projectRoot, created.parentJobId(), created.taskId());
             return EscalationResult.completed(created.taskId());
         } catch (AgentHarnessException e) {
@@ -68,17 +81,41 @@ public final class GenerateHarnessBridge {
     }
 
     private static String buildObjective(ValidationReport report, String userStoryText) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Review generated test cases against keel.tc-contract/v1. ");
-        sb.append("Fix violations without inventing requirements or weakening mandatory rules. ");
-        sb.append("Preserve user story intent. Findings: ");
-        sb.append(report.findings().size());
+        String storyBlock = "";
         if (userStoryText != null && !userStoryText.isBlank()) {
-            sb.append(". Story excerpt: ");
             String story = userStoryText.trim();
-            sb.append(story.length() > 200 ? story.substring(0, 200) + "…" : story);
+            storyBlock = "Story excerpt: " + (story.length() > 200 ? story.substring(0, 200) + "…" : story);
         }
-        return sb.toString();
+        return PromptCatalog.format("agent-validation/generate", Map.of(
+                "contractId", "keel.tc-contract/v1",
+                "findingsCount", String.valueOf(report.findings().size()),
+                "storyBlock", storyBlock));
+    }
+
+    private void writeContextFile(Path projectRoot, String parentJobId, String taskId,
+                                  List<ManualTestCase> cases, ValidationReport report,
+                                  String userStoryText) {
+        try {
+            Path taskDir = store.taskDir(projectRoot, parentJobId, taskId);
+            Files.createDirectories(taskDir);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("schemaVersion", 1);
+            body.put("contractId", CONTEXT_CONTRACT_ID);
+            body.put("parentJobId", parentJobId);
+            body.put("contractValidationReportPath",
+                    projectRoot.relativize(
+                            projectRoot.resolve("contract-reports")
+                                    .resolve("contract-validation-report-" + parentJobId + ".json"))
+                            .toString().replace('\\', '/'));
+            body.put("generatedCaseCount", cases == null ? 0 : cases.size());
+            body.put("findingsCount", report.findings().size());
+            if (userStoryText != null && !userStoryText.isBlank()) {
+                body.put("userStory", userStoryText.trim());
+            }
+            JSON.writeValue(taskDir.resolve(CONTEXT_FILENAME).toFile(), body);
+        } catch (Exception e) {
+            log.warn("generate-context write failed for {}: {}", taskId, e.getMessage());
+        }
     }
 
     public record EscalationResult(String status, String detail, String taskId) {

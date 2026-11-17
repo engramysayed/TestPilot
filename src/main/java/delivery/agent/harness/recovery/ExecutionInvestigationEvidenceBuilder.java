@@ -46,6 +46,7 @@ public final class ExecutionInvestigationEvidenceBuilder {
         String steps = tc == null || tc.steps() == null ? "" : tc.steps();
         String excerpt = steps.length() <= STEPS_EXCERPT_MAX ? steps : steps.substring(0, STEPS_EXCERPT_MAX) + "…";
 
+        String irDir = resolveIrDir(request);
         return new ExecutionInvestigationEvidenceV1(
                 ExecutionInvestigationEvidenceV1.SCHEMA_VERSION,
                 ExecutionInvestigationEvidenceV1.CONTRACT_ID,
@@ -67,8 +68,18 @@ public final class ExecutionInvestigationEvidenceBuilder {
                 request.currentUrl(),
                 request.evidenceDir(),
                 request.screenshotPath(),
+                irDir,
                 List.copyOf(locs),
                 List.copyOf(missing));
+    }
+
+    /** Prior-step IR lives at work-dir/ir — Cursor can read every TC's intents + per-step evidence there. */
+    private static String resolveIrDir(ExecutionRecoveryEscalationRequest request) {
+        if (request.jobRequest() == null || request.jobRequest().workDir() == null) {
+            return "";
+        }
+        java.nio.file.Path ir = request.jobRequest().workDir().resolve("ir");
+        return java.nio.file.Files.isDirectory(ir) ? ir.toString() : "";
     }
 
     private static String scrub(String text, ConversionJobRequest request) {
