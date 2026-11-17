@@ -137,6 +137,31 @@
             </form>
         </section>
 
+        <section class="panel" id="ai-policy-panel">
+            <h2>AI validation</h2>
+            <p class="muted" style="max-width:52rem">
+                Opt-in layer where Cursor reviews what Keel produces (TC coverage, framework repair after a bad build,
+                failure investigation after a red run, Bug Hunter triage). <strong>Off by default per workspace.</strong>
+                When on, each AI task is charged at the <strong>AI validation</strong> price the account owner sets on
+                <a href="/admin/pricing">Admin → Prices</a>. If you turn it off, every workflow still runs — it just
+                skips the AI layer and uses deterministic checks only.
+            </p>
+            <label class="check" style="margin-top:0.75rem">
+                <input type="checkbox" id="ai-policy-main"/>
+                <strong>Enable AI validation for this workspace</strong>
+            </label>
+            <div id="ai-policy-sub" style="margin:0.5rem 0 0 1.5rem;opacity:.9">
+                <label class="check"><input type="checkbox" id="ai-policy-tc"/> TC review on Generate</label>
+                <label class="check"><input type="checkbox" id="ai-policy-repair"/> Framework repair on Automate</label>
+                <label class="check"><input type="checkbox" id="ai-policy-failure"/> Failure investigation on Execute</label>
+                <label class="check"><input type="checkbox" id="ai-policy-hunt"/> Bug Hunter triage</label>
+            </div>
+            <p style="margin-top:0.75rem">
+                <button type="button" class="button" id="ai-policy-save">Save AI validation settings</button>
+                <span id="ai-policy-msg" class="muted" style="margin-left:0.5rem" role="status"></span>
+            </p>
+        </section>
+
         <section class="panel" id="workspace-collab-panel" hidden>
             <h2>Workspace members</h2>
             <p id="workspace-role-line" class="muted"></p>

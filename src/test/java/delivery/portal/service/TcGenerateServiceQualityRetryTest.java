@@ -117,7 +117,7 @@ public class TcGenerateServiceQualityRetryTest {
         int llmCallCount;
 
         StubTcGenerateService() {
-            super(new DeliveryPortalProperties(), null, null, GenerateModelService.forTests(), null, null);
+            super(new DeliveryPortalProperties(), null, null, GenerateModelService.forTests(), null, null, null);
         }
 
         @Override

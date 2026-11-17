@@ -23,7 +23,7 @@ public class GenerateBatchJobRunnerFailureTest {
                 StandardCharsets.UTF_8);
         Path outputDir = Files.createTempDirectory("gen-batch-fail");
 
-        TcGenerateService generate = new TcGenerateService(null, null, null, null, null, null) {
+        TcGenerateService generate = new TcGenerateService(null, null, null, null, null, null, null) {
             @Override
             public List<ManualTestCase> generateCasesForStory(
                     ProjectRecord project,

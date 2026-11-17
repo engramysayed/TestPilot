@@ -49,6 +49,7 @@ public class TcGenerateService {
     private final GenerateModelService models;
     private final TcImportService tcImport;
     private final AgentHarnessProperties harnessProps;
+    private final WorkspaceAiPolicyService workspaceAiPolicy;
 
     public TcGenerateService(
             DeliveryPortalProperties props,
@@ -56,7 +57,8 @@ public class TcGenerateService {
             GeneratedWorkbookService workbooks,
             GenerateModelService models,
             TcImportService tcImport,
-            AgentHarnessProperties harnessProps
+            AgentHarnessProperties harnessProps,
+            WorkspaceAiPolicyService workspaceAiPolicy
     ) {
         this.props = props;
         this.store = store;
@@ -64,6 +66,7 @@ public class TcGenerateService {
         this.models = models;
         this.tcImport = tcImport;
         this.harnessProps = harnessProps == null ? new AgentHarnessProperties() : harnessProps;
+        this.workspaceAiPolicy = workspaceAiPolicy;
     }
 
     public Map<String, Object> generate(
@@ -277,7 +280,8 @@ public class TcGenerateService {
                 throw GenerateQualityGate.failureException(gateErrors);
             }
         }
-        if (harnessProps.isTcValidationEnabled()) {
+        if (harnessProps.isTcValidationEnabled()
+                && (workspaceAiPolicy == null || workspaceAiPolicy.isTcValidationEnabled(project.getProjectId()))) {
             var contractCtx = new TestCaseValidationContext(stories, project.getBaseUrl(), project.getProjectId());
             var contractReport = GenerateTcContractValidation.validate(cases, contractCtx);
             if (!contractReport.passed()) {
@@ -292,6 +296,14 @@ public class TcGenerateService {
                             contractReport,
                             stories);
                     log.info("TC contract Cursor escalation status={} detail={}", esc.status(), esc.detail());
+                    // Charge the project owner once per successful escalation (slice 3).
+                    if (workspaceAiPolicy != null
+                            && esc.detail() != null
+                            && !esc.detail().isBlank()
+                            && !"skipped".equalsIgnoreCase(String.valueOf(esc.status()))) {
+                        workspaceAiPolicy.chargeForAiTask(project.getProjectId(),
+                                "generate_" + project.getProjectId() + "_" + System.currentTimeMillis());
+                    }
                     contractReport = GenerateTcContractValidation.validate(cases, contractCtx);
                 }
                 var contractErrors = GenerateTcContractValidation.toLegacyGateErrors(contractReport);

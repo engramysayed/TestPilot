@@ -2678,3 +2678,59 @@
         loadMobileApp();
         loadMobileDevices();
     })();
+
+    // -- AI validation policy panel (per-workspace opt-in) -------------------
+    (function wireAiPolicyPanel() {
+        const main = document.getElementById('ai-policy-main');
+        if (!main) return;
+        const tc = document.getElementById('ai-policy-tc');
+        const repair = document.getElementById('ai-policy-repair');
+        const failure = document.getElementById('ai-policy-failure');
+        const hunt = document.getElementById('ai-policy-hunt');
+        const save = document.getElementById('ai-policy-save');
+        const msg = document.getElementById('ai-policy-msg');
+        const sub = document.getElementById('ai-policy-sub');
+        const projectId = (typeof KEEL_PROJECT_ID !== 'undefined' && KEEL_PROJECT_ID)
+            || (document.body && document.body.dataset && document.body.dataset.projectId)
+            || new URLSearchParams(location.search).get('id')
+            || (location.pathname.match(/\/projects\/([^/?#]+)/) || [])[1];
+        if (!projectId) return;
+        const H = { 'X-Keel-Requested-With': 'Keel', 'Content-Type': 'application/json' };
+        const base = '/api/projects/' + encodeURIComponent(projectId) + '/ai-policy';
+
+        function syncSub() {
+            const on = !!main.checked;
+            sub.style.opacity = on ? '1' : '.5';
+            [tc, repair, failure, hunt].forEach(cb => cb.disabled = !on);
+        }
+
+        async function load() {
+            try {
+                const res = await fetch(base, { headers: H, credentials: 'same-origin' });
+                if (!res.ok) return;
+                const p = await res.json();
+                main.checked = !!p.aiValidationEnabled;
+                tc.checked = !!p.tcValidationEnabled;
+                repair.checked = !!p.frameworkRepairEnabled;
+                failure.checked = !!p.failureInvestigationEnabled;
+                hunt.checked = !!p.huntValidationEnabled;
+                syncSub();
+            } catch (_) { /* ignore */ }
+        }
+
+        main.addEventListener('change', syncSub);
+        save.addEventListener('click', async () => {
+            msg.textContent = 'Saving…';
+            const body = {
+                aiValidationEnabled: main.checked,
+                tcValidationEnabled: tc.checked,
+                frameworkRepairEnabled: repair.checked,
+                failureInvestigationEnabled: failure.checked,
+                huntValidationEnabled: hunt.checked
+            };
+            const res = await fetch(base, { method: 'PUT', headers: H, credentials: 'same-origin', body: JSON.stringify(body) });
+            msg.textContent = res.ok ? 'Saved. New jobs for this workspace will respect these settings.' : ('Save failed (HTTP ' + res.status + ').');
+        });
+
+        load();
+    })();

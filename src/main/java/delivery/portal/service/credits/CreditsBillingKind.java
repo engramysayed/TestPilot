@@ -2,9 +2,9 @@ package delivery.portal.service.credits;
 
 import delivery.portal.model.JobRecord;
 
-/** Customer-facing billable kinds: GENERATE | EXECUTE | AUTOMATE | HUNT. */
+/** Customer-facing billable kinds: GENERATE | EXECUTE | AUTOMATE | HUNT | AI_VALIDATION. */
 public enum CreditsBillingKind {
-    GENERATE, EXECUTE, AUTOMATE, HUNT;
+    GENERATE, EXECUTE, AUTOMATE, HUNT, AI_VALIDATION;
 
     public static CreditsBillingKind fromJobKind(JobRecord.JobKind kind) {
         if (kind == null) {

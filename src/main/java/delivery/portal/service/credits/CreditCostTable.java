@@ -34,6 +34,7 @@ public class CreditCostTable {
             case EXECUTE -> props.getCost().getExecute();
             case AUTOMATE -> props.getCost().getAutomate();
             case HUNT -> props.getCost().getHunt();
+            case AI_VALIDATION -> props.getCost().getAiValidation();
         };
     }
 

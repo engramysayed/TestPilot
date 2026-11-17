@@ -40,6 +40,7 @@ public class TcGenerateServiceSaveComparedGateTest {
                 workbooks,
                 GenerateModelService.forTests(),
                 tcImport,
+                null,
                 null);
     }
 

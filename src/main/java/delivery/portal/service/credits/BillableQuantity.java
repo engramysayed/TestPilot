@@ -75,6 +75,7 @@ public final class BillableQuantity {
             case EXECUTE, AUTOMATE -> "test cases";
             case HUNT -> "steps";
             case GENERATE -> "writing jobs";
+            case AI_VALIDATION -> "AI validation tasks";
         };
         return quantity + " " + noun + " × " + unitPrice;
     }

@@ -28,6 +28,8 @@ public class DeliveryCreditsProperties {
         private long execute = 5L;
         private long automate = 25L;
         private long hunt = 15L;
+        /** Credits charged per minute of actual AI-validation runtime (post-hoc, actual elapsed). */
+        private long aiValidation = 10L;
 
         public long getGenerate() { return generate; }
         public void setGenerate(long generate) { this.generate = Math.max(0, generate); }
@@ -37,5 +39,7 @@ public class DeliveryCreditsProperties {
         public void setAutomate(long automate) { this.automate = Math.max(0, automate); }
         public long getHunt() { return hunt; }
         public void setHunt(long hunt) { this.hunt = Math.max(0, hunt); }
+        public long getAiValidation() { return aiValidation; }
+        public void setAiValidation(long aiValidation) { this.aiValidation = Math.max(0, aiValidation); }
     }
 }

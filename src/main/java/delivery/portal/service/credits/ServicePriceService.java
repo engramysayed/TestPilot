@@ -93,6 +93,7 @@ public class ServicePriceService {
             saveDefault("EXECUTE", "Execute", defaults.getCost().getExecute(), 2);
             saveDefault("AUTOMATE", "Automation", defaults.getCost().getAutomate(), 3);
             saveDefault("HUNT", "Bug Hunter", defaults.getCost().getHunt(), 4);
+            saveDefault("AI_VALIDATION", "AI validation", defaults.getCost().getAiValidation(), 8);
         } else {
             renameLegacy("GENERATE", "Write test cases", "Generate");
             renameLegacy("EXECUTE", "Run a test", "Execute");
@@ -122,6 +123,7 @@ public class ServicePriceService {
         ensureAddon("VISUAL_DIFF", "Visual diffs", 5L, 5);
         ensureAddon("SUITES_MONITOR", "Suites & monitor", 10L, 6);
         ensureAddon("HEAL_REVIEW", "Heal review", 5L, 7);
+        ensureAddon("AI_VALIDATION", "AI validation", defaults.getCost().getAiValidation(), 8);
         // Refresh old canned draft covers only when still exact match (owner edits preserved).
         refreshLegacyCovers("VISUAL_DIFF",
                 "Compare screenshots and review visual changes after a prove run. Draft credit amount — the account owner can edit it on Admin → Prices.");
@@ -186,6 +188,7 @@ public class ServicePriceService {
             case EXECUTE -> defaults.getCost().getExecute();
             case AUTOMATE -> defaults.getCost().getAutomate();
             case HUNT -> defaults.getCost().getHunt();
+            case AI_VALIDATION -> defaults.getCost().getAiValidation();
         };
     }
 
@@ -206,6 +209,7 @@ public class ServicePriceService {
             case "VISUAL_DIFF" -> "Each review";
             case "SUITES_MONITOR" -> "Each scheduled run";
             case "HEAL_REVIEW" -> "Each proposal";
+            case "AI_VALIDATION" -> "Each AI validation task";
             default -> "Each writing job";
         };
     }
@@ -230,6 +234,8 @@ public class ServicePriceService {
                     "Scheduled suite runs and monitor alerts that watch tagged cases. Owner can edit on Admin → Prices.";
             case "HEAL_REVIEW" ->
                     "Review heal proposals: Accept or Reject suggested fixes after a failed run. Owner can edit on Admin → Prices.";
+            case "AI_VALIDATION" ->
+                    "Opt-in AI validation layer. Charged once per AI task when a workspace has enabled AI validation on its project page. Only workspaces with the toggle on are charged. A 'task' is one Cursor call: TC review, framework repair, failure investigation, or Bug Hunter triage.";
             default -> "";
         };
     }
