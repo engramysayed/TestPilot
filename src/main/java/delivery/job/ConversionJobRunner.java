@@ -65,6 +65,7 @@ public class ConversionJobRunner {
         copy.setEnabled(src.isEnabled());
         copy.setCursorEnabled(src.isCursorEnabled());
         copy.setMaxConcurrentRuns(src.getMaxConcurrentRuns());
+        copy.setGlobalMaxConcurrentAgents(src.getGlobalMaxConcurrentAgents());
         copy.setMaxRuntimeMinutes(src.getMaxRuntimeMinutes());
         copy.setMaxRetries(src.getMaxRetries());
         copy.setFrameworkValidationEnabled(src.isFrameworkValidationEnabled());
@@ -73,6 +74,7 @@ public class ConversionJobRunner {
         copy.setTcValidationCursorEscalationEnabled(src.isTcValidationCursorEscalationEnabled());
         copy.setExecutionRecoveryCursorEscalationEnabled(src.isExecutionRecoveryCursorEscalationEnabled());
         copy.setAutomateFrameworkRepairEnabled(false);
+        copy.setAutomateFrameworkRepairArchitectureGateEnabled(src.isAutomateFrameworkRepairArchitectureGateEnabled());
         copy.setCursorCommand(src.getCursorCommand());
         return copy;
     }
@@ -162,8 +164,17 @@ public class ConversionJobRunner {
         AgentHarnessProperties effectiveProps = repairAllowedForWorkspace
                 ? acceptanceProps
                 : copyWithRepairDisabled(acceptanceProps);
+        // B5 closed: wrap cancelCheck so an in-flight repair also aborts if the workspace flips the
+        // AI-validation toggle off mid-run. The existing JobCancelSupport.awaitOrCancel polls this.
+        final BooleanSupplier originalCancel = cancelCheck;
+        final delivery.portal.service.WorkspaceAiPolicyService policyRef = workspaceAiPolicy;
+        final String projectIdRef = request.projectId();
+        BooleanSupplier repairCancel = (policyRef != null && repairAllowedForWorkspace)
+                ? () -> originalCancel.getAsBoolean()
+                        || !policyRef.isFrameworkRepairEnabled(projectIdRef)
+                : cancelCheck;
         AutomateFrameworkAcceptanceGate acceptanceGate = AutomateFrameworkAcceptanceGate.forConversionJob(
-                effectiveProps, cancelCheck, investigationBudgetCap);
+                effectiveProps, repairCancel, investigationBudgetCap);
         EmitPhase emit = new EmitPhase(progress).withAcceptanceGate(acceptanceGate);
         ConversionJobResult conversionResult = emit.emit(request, allCases, work, projectDir, workFolder, mode, cancelCheck, publicationGuard);
         SuiteAlertNotifier.notifyOutcome(conversionResult.passed(), conversionResult.todo(), 0, conversionResult.message());

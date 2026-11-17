@@ -11,5 +11,7 @@ public enum AutomateFrameworkAcceptanceStatus {
     REPAIR_INTERRUPTED,
     COMPILE_FAILED,
     RECONCILIATION_FAILED,
-    REVALIDATION_FAILED
+    REVALIDATION_FAILED,
+    /** B4 closed: FrameworkRepairArchitectureAssessor reported functional gaps. */
+    ARCHITECTURE_GAPS
 }

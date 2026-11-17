@@ -11,6 +11,8 @@ public class AgentHarnessProperties {
     private boolean enabled = false;
     private boolean cursorEnabled = false;
     private int maxConcurrentRuns = 2;
+    /** B6: process-wide fair-share cap across all parent jobs. Default = 2 × conversionExecutor max. */
+    private int globalMaxConcurrentAgents = 4;
     private int maxRuntimeMinutes = 15;
     private int maxRetries = 1;
     private boolean frameworkValidationEnabled = false;
@@ -19,6 +21,8 @@ public class AgentHarnessProperties {
     private boolean tcValidationCursorEscalationEnabled = false;
     private boolean executionRecoveryCursorEscalationEnabled = false;
     private boolean automateFrameworkRepairEnabled = false;
+    /** B4: run the architecture assessor as a publish gate on repaired frameworks (default on). */
+    private boolean automateFrameworkRepairArchitectureGateEnabled = true;
     private String cursorCommand = "node tools/cursor-agent/agent.mjs";
 
     public boolean isEnabled() {
@@ -43,6 +47,14 @@ public class AgentHarnessProperties {
 
     public void setMaxConcurrentRuns(int maxConcurrentRuns) {
         this.maxConcurrentRuns = Math.max(1, maxConcurrentRuns);
+    }
+
+    public int getGlobalMaxConcurrentAgents() {
+        return globalMaxConcurrentAgents;
+    }
+
+    public void setGlobalMaxConcurrentAgents(int v) {
+        this.globalMaxConcurrentAgents = Math.max(1, v);
     }
 
     public int getMaxRuntimeMinutes() {
@@ -107,6 +119,14 @@ public class AgentHarnessProperties {
 
     public void setAutomateFrameworkRepairEnabled(boolean automateFrameworkRepairEnabled) {
         this.automateFrameworkRepairEnabled = automateFrameworkRepairEnabled;
+    }
+
+    public boolean isAutomateFrameworkRepairArchitectureGateEnabled() {
+        return automateFrameworkRepairArchitectureGateEnabled;
+    }
+
+    public void setAutomateFrameworkRepairArchitectureGateEnabled(boolean v) {
+        this.automateFrameworkRepairArchitectureGateEnabled = v;
     }
 
     public String getCursorCommand() {

@@ -225,6 +225,29 @@ public final class AutomateFrameworkAcceptanceGate {
                                 "independent revalidation failed"));
             }
 
+            // B4 closed: run the architecture assessor as a promotion gate. A repair that compiles
+            // and passes contract v2 can still ship an empty-body test class or a page with no actions
+            // — the assessor catches those. Opt-out via delivery.agent-harness.automate-framework-repair.architecture-gate-enabled=false.
+            if (properties.isAutomateFrameworkRepairArchitectureGateEnabled()) {
+                FrameworkRepairArchitectureAssessor.ArchitectureQualityReport arch =
+                        FrameworkRepairArchitectureAssessor.assess(repairRoot, expectedInventory);
+                if (!arch.functionallyComplete()) {
+                    StringBuilder summary = new StringBuilder("architecture gaps: ");
+                    arch.findings().forEach(f -> {
+                        if (f.functionalGap()) summary.append(f.code()).append(' ');
+                    });
+                    return recordAndReturn(
+                            workDir,
+                            operationalTrace,
+                            AutomateFrameworkAcceptanceOutcome.rejected(
+                                    AutomateFrameworkAcceptanceStatus.ARCHITECTURE_GAPS,
+                                    report,
+                                    revalidated,
+                                    repair.taskId(),
+                                    summary.toString().trim()));
+                }
+            }
+
             FrameworkAcceptanceWorkspace.promoteRepairCandidate(repairRoot, projectDir);
             log.info("Automate framework accepted after repair task {}", repair.taskId());
             return recordAndReturn(

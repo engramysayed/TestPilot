@@ -125,6 +125,11 @@ public final class AgentHarnessCoordinator {
             throw new AgentHarnessException("task terminal: " + task.taskStatus());
         }
         enforceConcurrency(projectRoot, parentJobId, taskId);
+        // B6: process-wide fair-share — bounds the total concurrent agent runs across every parent
+        // job on this host, independent of per-job maxConcurrentRuns. Prevents 4 concurrent
+        // conversions × 2 agents each saturating the sidecar / CPU.
+        boolean globalPermit = acquireGlobalSlot();
+        try {
 
         Path taskDir = store.taskDir(projectRoot, parentJobId, taskId);
         if (task.providerId() == AgentProviderId.CURSOR) {
@@ -218,6 +223,39 @@ public final class AgentHarnessCoordinator {
         store.appendEvent(projectRoot, parentJobId, taskId,
                 new AgentEvent(Instant.now(), "TERMINAL", terminal.name(), Map.of("summary", result.summary())));
         return result;
+        } finally {
+            if (globalPermit) releaseGlobalSlot();
+        }
+    }
+
+    // B6: process-wide fair-share across all agent runs on this host. Lazy init based on
+    // AgentHarnessProperties.globalMaxConcurrentAgents so tests + per-run reconfig both work.
+    private static volatile java.util.concurrent.Semaphore GLOBAL_PERMITS;
+    private static volatile int GLOBAL_CAP;
+
+    private boolean acquireGlobalSlot() {
+        int cap = Math.max(1, properties.getGlobalMaxConcurrentAgents());
+        java.util.concurrent.Semaphore sem = resolveGlobalSemaphore(cap);
+        try {
+            sem.acquire();
+            return true;
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    private void releaseGlobalSlot() {
+        java.util.concurrent.Semaphore sem = GLOBAL_PERMITS;
+        if (sem != null) sem.release();
+    }
+
+    private static synchronized java.util.concurrent.Semaphore resolveGlobalSemaphore(int cap) {
+        if (GLOBAL_PERMITS == null || cap != GLOBAL_CAP) {
+            GLOBAL_PERMITS = new java.util.concurrent.Semaphore(cap, true);
+            GLOBAL_CAP = cap;
+        }
+        return GLOBAL_PERMITS;
     }
 
     public void cancel(Path projectRoot, String parentJobId, String taskId) throws IOException {

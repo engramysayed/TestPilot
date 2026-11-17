@@ -83,7 +83,13 @@ final class FrameworkRepairTaskTelemetry {
                 || startEvent != null;
         trace.agentRunStarted(runStarted);
         if (created != null && startEvent != null) {
-            trace.timeToRunStartedMs(Math.max(0, startEvent.toEpochMilli() - created.toEpochMilli()));
+            long startupMs = Math.max(0, startEvent.toEpochMilli() - created.toEpochMilli());
+            trace.timeToRunStartedMs(startupMs);
+            // B2 closed: sidecarStartupMs is the time from task creation to the runtime reporting
+            // the sidecar has started. Previously left null; now derived from the same timestamps
+            // the telemetry already reads. Same value as timeToRunStartedMs, surfaced under the
+            // field the Phase 6.16 audit called out.
+            trace.sidecarStartupMs(startupMs);
         }
         if (startEvent != null && terminalEvent != null) {
             trace.cursorRunMs(Math.max(0, terminalEvent.toEpochMilli() - startEvent.toEpochMilli()));

@@ -143,8 +143,13 @@ public class ExecuteJobRunner {
         // post-run in the ExecuteWorker (CreditService.tryDebitForAddon is idempotent on jobId).
         boolean failureInvestigationAllowed = workspaceAiPolicy == null
                 || workspaceAiPolicy.isFailureInvestigationEnabled(request.projectId());
+        // B5 closed: if the workspace flips the toggle off mid-run, also abort the investigation.
+        BooleanSupplier investigationCancel = (workspaceAiPolicy != null && failureInvestigationAllowed)
+                ? () -> cancelCheck.getAsBoolean()
+                        || !workspaceAiPolicy.isFailureInvestigationEnabled(request.projectId())
+                : cancelCheck;
         ExecutionRecoveryEscalationGate gate = failureInvestigationAllowed
-                ? ExecutionRecoveryWiring.optionalGate(harnessProps, cancelCheck)
+                ? ExecutionRecoveryWiring.optionalGate(harnessProps, investigationCancel)
                 : null;
         if (gate != null) {
             prove = prove.withExecutionRecoveryGate(gate);
