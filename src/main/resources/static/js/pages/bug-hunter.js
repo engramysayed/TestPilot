@@ -656,10 +656,45 @@
         totalEl.textContent = creditDigits(steps * huntUnit);
         if (unitEl) unitEl.textContent = 'credits';
     }
-    ['iteration-ceiling', 'cycle-ceiling', 'action-cap'].forEach(function (id) {
+    ['iteration-ceiling', 'cycle-ceiling', 'action-cap', 'scenario-cap'].forEach(function (id) {
         const input = document.getElementById(id);
         if (input) input.addEventListener('input', paintHuntPrice);
     });
+
+    const PRESETS = {
+        quick:    { iterations: 1, cycles: 3, actions: 3, scenarios: 3 },
+        standard: { iterations: 2, cycles: 8, actions: 5, scenarios: 5 },
+        deep:     { iterations: 3, cycles: 10, actions: 7, scenarios: 10 }
+    };
+    function applyPreset(name) {
+        const p = PRESETS[name];
+        if (!p) return; // 'custom' just reveals the fields, no value change
+        const set = function (id, v) { const el = document.getElementById(id); if (el) el.value = String(v); };
+        set('iteration-ceiling', p.iterations);
+        set('cycle-ceiling', p.cycles);
+        set('action-cap', p.actions);
+        set('scenario-cap', p.scenarios);
+        paintHuntPrice();
+    }
+    const capsFields = document.getElementById('hunt-caps-fields');
+    document.querySelectorAll('.hunt-preset').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.hunt-preset').forEach(function (b) {
+                b.classList.remove('is-active');
+                b.setAttribute('aria-pressed', 'false');
+            });
+            btn.classList.add('is-active');
+            btn.setAttribute('aria-pressed', 'true');
+            const name = btn.getAttribute('data-preset');
+            if (name === 'custom') {
+                if (capsFields) capsFields.classList.remove('hunt-caps--hidden');
+            } else {
+                applyPreset(name);
+                if (capsFields) capsFields.classList.add('hunt-caps--hidden');
+            }
+        });
+    });
+
     paintHuntPrice();
     fetch('/api/account/credits', { credentials: 'same-origin', headers: API_HEADERS })
         .then(function (res) { return res.ok ? res.json() : null; })

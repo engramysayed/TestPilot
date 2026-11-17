@@ -103,23 +103,34 @@
             </ol>
         </div>
 
-        <div class="hunt-caps">
-            <label>Scenario cap
-                <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="scenario-cap" value="5"/>
-                <span class="field-hint">Most <strong>new bug ideas</strong> the planner may keep across the whole run (1–20).</span>
-            </label>
-            <label>Iterations
-                <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="iteration-ceiling" value="2"/>
-                <span class="field-hint">How many <strong>plan → execute → replan</strong> loops. More = deeper, but longer (1–5).</span>
-            </label>
-            <label>Cycles / iteration
-                <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="cycle-ceiling" value="8"/>
-                <span class="field-hint">Planning rounds inside one iteration — one round = one new idea the AI tries (1–30).</span>
-            </label>
-            <label>Actions / cycle
-                <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="action-cap" value="5"/>
-                <span class="field-hint">Max <strong>clicks or things typed</strong> per round. Higher = thorough probing, more credits (1–15).</span>
-            </label>
+        <div class="hunt-depth">
+            <div class="hunt-depth-head">
+                <span class="hunt-depth-label">How deep</span>
+                <div class="hunt-presets" role="radiogroup" aria-label="Hunt depth preset">
+                    <button type="button" class="button ghost small hunt-preset" data-preset="quick" aria-pressed="false">Quick · ~9 steps</button>
+                    <button type="button" class="button ghost small hunt-preset is-active" data-preset="standard" aria-pressed="true">Standard · ~80 steps</button>
+                    <button type="button" class="button ghost small hunt-preset" data-preset="deep" aria-pressed="false">Deep · ~210 steps</button>
+                    <button type="button" class="button ghost small hunt-preset" data-preset="custom" aria-pressed="false">Custom</button>
+                </div>
+            </div>
+            <div class="hunt-caps hunt-caps--hidden" id="hunt-caps-fields">
+                <label>Max bug hypotheses
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="scenario-cap" value="5"/>
+                    <span class="field-hint">Most <strong>distinct bug ideas</strong> the planner may track across the whole run (1–20). A hard ceiling — does not multiply with the others.</span>
+                </label>
+                <label>Replan rounds
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="iteration-ceiling" value="2"/>
+                    <span class="field-hint">How many times the AI <strong>rethinks the plan</strong> after seeing what it tried (1–5). Each round covers all ideas.</span>
+                </label>
+                <label>Ideas per round
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="cycle-ceiling" value="8"/>
+                    <span class="field-hint">Planner invocations inside one replan round — <strong>one invocation = one idea tried</strong> (1–30).</span>
+                </label>
+                <label>Steps per idea
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="action-cap" value="5"/>
+                    <span class="field-hint">Max <strong>clicks or things typed</strong> while trying one idea (1–15). Higher = thorough probing, more credits.</span>
+                </label>
+            </div>
         </div>
 
         <div class="hunt-library tc-multiselect" id="hunt-library-panel">
