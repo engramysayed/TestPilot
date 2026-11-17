@@ -23,6 +23,7 @@ import java.util.function.BooleanSupplier;
 public class ExecuteJobRunner {
     private final JobProgressTracker progress = new JobProgressTracker();
     private final AgentHarnessProperties harnessProps;
+    private delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy;
 
     public ExecuteJobRunner() {
         this(null);
@@ -30,6 +31,11 @@ public class ExecuteJobRunner {
 
     public ExecuteJobRunner(AgentHarnessProperties harnessProps) {
         this.harnessProps = harnessProps;
+    }
+
+    public ExecuteJobRunner withWorkspaceAiPolicy(delivery.portal.service.WorkspaceAiPolicyService policy) {
+        this.workspaceAiPolicy = policy;
+        return this;
     }
 
     public JobProgressTracker progress() {
@@ -104,6 +110,17 @@ public class ExecuteJobRunner {
                 health.flaky(), health.healed(), health.infraError(), health.configError(),
                 health.firstPassRate(), health.finalPassRate());
         SuiteAlertNotifier.notifyOutcome(result.passed(), result.todo(), result.flaky(), result.message());
+        // Charge the project owner for the AI failure-investigation task when the workspace opted
+        // in AND the harness was configured to run it (idempotent on jobId via tryDebitForAddon;
+        // no-op when the Cursor call never actually fired).
+        if (workspaceAiPolicy != null
+                && harnessProps != null
+                && harnessProps.isEnabled()
+                && harnessProps.isFailureInvestigationEnabled()
+                && workspaceAiPolicy.isFailureInvestigationEnabled(request.projectId())) {
+            workspaceAiPolicy.chargeForAiTask(request.projectId(),
+                    "execute-investigation:" + jobId);
+        }
         return result;
         } finally {
             if (activatedProps) {
@@ -121,7 +138,14 @@ public class ExecuteJobRunner {
                 .withMirrorRoot(mirrorRoot)
                 .withCancelCheck(cancelCheck)
                 .withHealWorkbookApplier(healWorkbookApplier(request));
-        ExecutionRecoveryEscalationGate gate = ExecutionRecoveryWiring.optionalGate(harnessProps, cancelCheck);
+        // Gate the Cursor-driven failure investigation on the per-workspace policy so an enabled
+        // global flag does not fire for a workspace that has not opted in (B1). Charge is applied
+        // post-run in the ExecuteWorker (CreditService.tryDebitForAddon is idempotent on jobId).
+        boolean failureInvestigationAllowed = workspaceAiPolicy == null
+                || workspaceAiPolicy.isFailureInvestigationEnabled(request.projectId());
+        ExecutionRecoveryEscalationGate gate = failureInvestigationAllowed
+                ? ExecutionRecoveryWiring.optionalGate(harnessProps, cancelCheck)
+                : null;
         if (gate != null) {
             prove = prove.withExecutionRecoveryGate(gate);
         }

@@ -39,6 +39,7 @@ public class ConversionJobRunner {
     private final JobProgressTracker progress = new JobProgressTracker();
     private final AgentHarnessProperties harnessProps;
     private final Duration investigationBudgetCap;
+    private delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy;
 
     public ConversionJobRunner() {
         this(null, null);
@@ -51,6 +52,29 @@ public class ConversionJobRunner {
     public ConversionJobRunner(AgentHarnessProperties harnessProps, Duration investigationBudgetCap) {
         this.harnessProps = harnessProps;
         this.investigationBudgetCap = investigationBudgetCap;
+    }
+
+    public ConversionJobRunner withWorkspaceAiPolicy(delivery.portal.service.WorkspaceAiPolicyService policy) {
+        this.workspaceAiPolicy = policy;
+        return this;
+    }
+
+    /** Clone the harness properties with automate-framework-repair forced off (per-workspace veto). */
+    private static AgentHarnessProperties copyWithRepairDisabled(AgentHarnessProperties src) {
+        AgentHarnessProperties copy = new AgentHarnessProperties();
+        copy.setEnabled(src.isEnabled());
+        copy.setCursorEnabled(src.isCursorEnabled());
+        copy.setMaxConcurrentRuns(src.getMaxConcurrentRuns());
+        copy.setMaxRuntimeMinutes(src.getMaxRuntimeMinutes());
+        copy.setMaxRetries(src.getMaxRetries());
+        copy.setFrameworkValidationEnabled(src.isFrameworkValidationEnabled());
+        copy.setFailureInvestigationEnabled(src.isFailureInvestigationEnabled());
+        copy.setTcValidationEnabled(src.isTcValidationEnabled());
+        copy.setTcValidationCursorEscalationEnabled(src.isTcValidationCursorEscalationEnabled());
+        copy.setExecutionRecoveryCursorEscalationEnabled(src.isExecutionRecoveryCursorEscalationEnabled());
+        copy.setAutomateFrameworkRepairEnabled(false);
+        copy.setCursorCommand(src.getCursorCommand());
+        return copy;
     }
 
     public JobProgressTracker progress() {
@@ -130,11 +154,25 @@ public class ConversionJobRunner {
         progress.update(proveUnits, jobTotal, "Phase2 starting");
         AgentHarnessProperties acceptanceProps =
                 harnessProps == null ? new AgentHarnessProperties() : harnessProps;
+        // Gate Cursor-driven framework repair on the per-workspace toggle so an enabled global flag
+        // does not fire repair on a workspace that has not opted in (B1). Contract validation
+        // (deterministic) is unaffected and always runs when acceptance is on.
+        boolean repairAllowedForWorkspace = workspaceAiPolicy == null
+                || workspaceAiPolicy.isFrameworkRepairEnabled(request.projectId());
+        AgentHarnessProperties effectiveProps = repairAllowedForWorkspace
+                ? acceptanceProps
+                : copyWithRepairDisabled(acceptanceProps);
         AutomateFrameworkAcceptanceGate acceptanceGate = AutomateFrameworkAcceptanceGate.forConversionJob(
-                acceptanceProps, cancelCheck, investigationBudgetCap);
+                effectiveProps, cancelCheck, investigationBudgetCap);
         EmitPhase emit = new EmitPhase(progress).withAcceptanceGate(acceptanceGate);
         ConversionJobResult conversionResult = emit.emit(request, allCases, work, projectDir, workFolder, mode, cancelCheck, publicationGuard);
         SuiteAlertNotifier.notifyOutcome(conversionResult.passed(), conversionResult.todo(), 0, conversionResult.message());
+        // Charge the project owner once per successful repair-eligible run (conversion passed → repair
+        // may or may not have fired; idempotent on taskId so re-runs do not double-charge).
+        if (repairAllowedForWorkspace && workspaceAiPolicy != null && conversionResult.passed() > 0) {
+            workspaceAiPolicy.chargeForAiTask(request.projectId(),
+                    "automate-repair:" + request.jobId());
+        }
         return conversionResult;
         } finally {
             if (activatedProps) {

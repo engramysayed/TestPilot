@@ -31,6 +31,7 @@ public class ExecuteWorker extends AbstractJobWorker {
     private final RunMemoryJobBootstrap runMemory;
     private final TunnelJobBaseUrlService tunnelBaseUrl;
     private final AgentHarnessProperties harnessProps;
+    private final delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy;
 
     public ExecuteWorker(
             DeliveryPortalProperties props,
@@ -38,7 +39,8 @@ public class ExecuteWorker extends AbstractJobWorker {
             Environment env,
             RunMemoryJobBootstrap runMemory,
             TunnelJobBaseUrlService tunnelBaseUrl,
-            AgentHarnessProperties harnessProps
+            AgentHarnessProperties harnessProps,
+            delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy
     ) {
         super(portalStore);
         this.props = props;
@@ -46,6 +48,7 @@ public class ExecuteWorker extends AbstractJobWorker {
         this.runMemory = runMemory;
         this.tunnelBaseUrl = tunnelBaseUrl;
         this.harnessProps = harnessProps == null ? new AgentHarnessProperties() : harnessProps;
+        this.workspaceAiPolicy = workspaceAiPolicy;
     }
 
     @Override
@@ -109,7 +112,7 @@ public class ExecuteWorker extends AbstractJobWorker {
                 result = runWithProgressMirror(job, tracker,
                         () -> new DryRunExecuteService().run(request, jobId, tracker, cancelCheck));
             } else {
-                ExecuteJobRunner runner = new ExecuteJobRunner(harnessProps);
+                ExecuteJobRunner runner = new ExecuteJobRunner(harnessProps).withWorkspaceAiPolicy(workspaceAiPolicy);
                 result = runWithProgressMirror(job, runner.progress(),
                         () -> runner.run(request, jobId, cancelCheck));
             }

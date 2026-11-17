@@ -37,16 +37,19 @@ public class ConversionWorker extends AbstractJobWorker {
     private final DeliveryPortalProperties props;
     private final Environment env;
     private final AgentHarnessProperties harnessProps;
+    private final delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy;
 
     public ConversionWorker(
             DeliveryPortalProperties props,
             PortalStore portalStore,
             Environment env,
-            AgentHarnessProperties harnessProps) {
+            AgentHarnessProperties harnessProps,
+            delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy) {
         super(portalStore);
         this.props = props;
         this.env = env;
         this.harnessProps = harnessProps == null ? new AgentHarnessProperties() : harnessProps;
+        this.workspaceAiPolicy = workspaceAiPolicy;
     }
 
     @Override
@@ -236,7 +239,7 @@ public class ConversionWorker extends AbstractJobWorker {
 
     private ConversionJobRunner conversionRunner(JobRecord job, DurableJobClaim.Lease lease) {
         java.time.Duration budget = harnessBudget(job, lease);
-        return new ConversionJobRunner(harnessProps, budget);
+        return new ConversionJobRunner(harnessProps, budget).withWorkspaceAiPolicy(workspaceAiPolicy);
     }
 
     private static java.time.Duration harnessBudget(JobRecord job, DurableJobClaim.Lease lease) {

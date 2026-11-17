@@ -40,7 +40,7 @@ public class ConversionWorkerFenceTest {
         when(store.reconcileExpiredLeases()).thenAnswer(call->{
             job.setStatus(JobRecord.Status.FAILED);job.setError(DurableJobClaim.INTERRUPTED_UNCERTAIN);return 1;
         });
-        new ConversionWorker(props, store, new MockEnvironment(), new AgentHarnessProperties())
+        new ConversionWorker(props, store, new MockEnvironment(), new AgentHarnessProperties(), null)
                 .submit(job.getJobId());
         Assert.assertEquals(job.getStatus(),requested?JobRecord.Status.CANCELLED:JobRecord.Status.FAILED);
         if(!requested)Assert.assertEquals(job.getError(),DurableJobClaim.INTERRUPTED_UNCERTAIN);

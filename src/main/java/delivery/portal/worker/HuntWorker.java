@@ -38,15 +38,21 @@ public class HuntWorker extends AbstractJobWorker {
     private final GeneratedWorkbookService workbooks;
     private final Environment env;
     private final KnowledgePackReader knowledgePackReader;
+    private final delivery.portal.AgentHarnessProperties harnessProps;
+    private final delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy;
 
     public HuntWorker(DeliveryPortalProperties props, PortalStore portalStore,
                       GeneratedWorkbookService workbooks, Environment env,
-                      KnowledgePackReader knowledgePackReader) {
+                      KnowledgePackReader knowledgePackReader,
+                      delivery.portal.AgentHarnessProperties harnessProps,
+                      delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy) {
         super(portalStore);
         this.props = props;
         this.workbooks = workbooks;
         this.env = env;
         this.knowledgePackReader = knowledgePackReader;
+        this.harnessProps = harnessProps;
+        this.workspaceAiPolicy = workspaceAiPolicy;
     }
 
     @Override
@@ -148,6 +154,34 @@ public class HuntWorker extends AbstractJobWorker {
             log.info("Hunt job {} completed bugs={} scenarios={} stop={} network={}",
                     jobId, result.bugCount(), result.scenarioCount(),
                     result.stopReason(), result.networkCapture());
+
+            // Optional AI triage pass — opt-in per workspace, charged per task.
+            boolean triageAllowed = workspaceAiPolicy == null
+                    || workspaceAiPolicy.isHuntValidationEnabled(job.getProjectId());
+            if (triageAllowed
+                    && harnessProps != null
+                    && harnessProps.isEnabled()
+                    && harnessProps.isCursorEnabled()
+                    && (result.bugCount() > 0 || result.scenarioCount() > 0)) {
+                try {
+                    var bridge = new delivery.agent.validation.hunt.HuntHarnessBridge(
+                            harnessProps,
+                            delivery.agent.harness.AgentHarnessCoordinator.forProduction(harnessProps));
+                    var triage = bridge.tryTriage(
+                            portalStore.projectDiskRoot(job.getProjectId()),
+                            jobId,
+                            job.getProjectId(),
+                            result.bugCount(),
+                            result.scenarioCount(),
+                            result.message());
+                    log.info("Hunt triage status={} detail={}", triage.status(), triage.detail());
+                    if (workspaceAiPolicy != null && "completed".equalsIgnoreCase(triage.status())) {
+                        workspaceAiPolicy.chargeForAiTask(job.getProjectId(), "hunt-triage:" + jobId);
+                    }
+                } catch (Exception triageErr) {
+                    log.warn("Hunt triage threw, continuing: {}", triageErr.getMessage());
+                }
+            }
         } catch (JobCancelledException e) {
             cancel(job);
         } catch (Exception e) {
