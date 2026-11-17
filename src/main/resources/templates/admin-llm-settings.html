@@ -69,6 +69,11 @@
                     </select>
                     <span class="muted">Next Execute / Automate / Record / Bug Hunter window. Environment variables still win if already set.</span>
                 </label>
+                <label class="check" style="display:flex;gap:0.5rem;align-items:center;">
+                    <input type="checkbox" id="agentHarnessEnabled" name="agentHarnessEnabled"/>
+                    <span><strong>Agent harness (AI validation)</strong> — install-wide kill switch. When off, every workspace's AI-validation toggle is ignored and all agent jobs skip cleanly.</span>
+                    <span class="ok" id="agent-harness-saved" hidden style="margin-left:0.5rem;">Saved.</span>
+                </label>
                 <label>Cursor model (agent harness)
                     <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
                         <select id="cursorModel" name="cursorModel" style="flex:1;min-width:14rem;">
@@ -280,7 +285,27 @@
                 }
             }
             if ([...sel.options].some(o => o.value === current)) sel.value = current;
+            const enabledBox = document.getElementById('agentHarnessEnabled');
+            if (enabledBox) enabledBox.checked = !!body.enabled;
         } catch (_) { /* best-effort */ }
+    }
+    async function saveAgentHarnessEnabled(enabled) {
+        const savedTag = document.getElementById('agent-harness-saved');
+        if (savedTag) savedTag.hidden = true;
+        try {
+            const res = await fetch('/api/admin/agent-harness', {
+                method: 'PUT', credentials: 'same-origin', headers: HDR,
+                body: JSON.stringify({ enabled: !!enabled })
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                showError(body.message || ('Agent harness save failed (' + res.status + ').'));
+                return;
+            }
+            if (savedTag) { savedTag.hidden = false; setTimeout(() => (savedTag.hidden = true), 2000); }
+        } catch (e) {
+            showError(String(e));
+        }
     }
     async function saveCursorModel(v) {
         const savedTag = document.getElementById('cursor-model-saved');
@@ -303,6 +328,10 @@
     const cursorModelSel = document.getElementById('cursorModel');
     if (cursorModelSel) {
         cursorModelSel.addEventListener('change', function () { saveCursorModel(this.value); });
+    }
+    const agentHarnessBox = document.getElementById('agentHarnessEnabled');
+    if (agentHarnessBox) {
+        agentHarnessBox.addEventListener('change', function () { saveAgentHarnessEnabled(this.checked); });
     }
     const btnRefreshCursor = document.getElementById('btn-refresh-cursor-models');
     if (btnRefreshCursor) {

@@ -81,6 +81,10 @@ public class AdminAgentHarnessController {
                 if (model instanceof String s && !s.isBlank()) {
                     properties.setCursorModel(s);
                 }
+                Object enabled = raw.get("enabled");
+                if (enabled instanceof Boolean b) {
+                    properties.setEnabled(b);
+                }
             }
         } catch (Exception ignored) {
             // Keep defaults from application.properties on parse failure.
@@ -92,6 +96,7 @@ public class AdminAgentHarnessController {
         requireOwner();
         CachedModels snap = models();
         Map<String, Object> out = new LinkedHashMap<>();
+        out.put("enabled", properties.isEnabled());
         out.put("cursorModel", properties.getCursorModel());
         out.put("models", snap.rows());
         out.put("knownModels", snap.ids());
@@ -124,24 +129,29 @@ public class AdminAgentHarnessController {
     @PutMapping({"", "/"})
     public ResponseEntity<?> put(@RequestBody(required = false) PutBody body) {
         requireOwner();
+        // Model (optional in the body — null means "don't change").
         String requested = body == null || body.cursorModel == null ? null : body.cursorModel.trim();
-        if (requested == null || requested.isBlank()) {
-            requested = "auto";
+        if (requested != null) {
+            if (requested.isBlank()) {
+                requested = "auto";
+            }
+            if (!MODEL_ID.matcher(requested).matches()) {
+                Map<String, Object> err = new LinkedHashMap<>();
+                err.put("error", "BAD_MODEL");
+                err.put("message", "Model id must match " + MODEL_ID.pattern());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
+            }
+            properties.setCursorModel(requested);
         }
-        // Accept any Cursor-looking id (including models we haven't curated like grok-code-fast-1).
-        // Rejecting unknown ids used to block grok etc.; now we trust the owner and let Cursor
-        // reject at run time with a clear error if the id is wrong.
-        if (!MODEL_ID.matcher(requested).matches()) {
-            Map<String, Object> err = new LinkedHashMap<>();
-            err.put("error", "BAD_MODEL");
-            err.put("message", "Model id must match " + MODEL_ID.pattern());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
+        // Master on/off (optional in the body — null means "don't change").
+        if (body != null && body.enabled != null) {
+            properties.setEnabled(body.enabled);
         }
-        properties.setCursorModel(requested);
         try {
             Files.createDirectories(settingsFile.getParent());
             Map<String, Object> raw = new LinkedHashMap<>();
-            raw.put("cursorModel", requested);
+            raw.put("cursorModel", properties.getCursorModel());
+            raw.put("enabled", properties.isEnabled());
             Files.writeString(settingsFile, JSON.writeValueAsString(raw), StandardCharsets.UTF_8);
         } catch (Exception e) {
             Map<String, Object> err = new LinkedHashMap<>();
@@ -154,6 +164,7 @@ public class AdminAgentHarnessController {
 
     public static final class PutBody {
         public String cursorModel;
+        public Boolean enabled;
     }
 
     private void requireOwner() {
