@@ -44,6 +44,7 @@
                             <span class="spinner spinner--badge" th:if="${j.status == 'RUNNING' or j.status == 'QUEUED'}" aria-hidden="true"></span>
                             <span th:text="${j.status == 'COMPLETED'} ? 'Done' : (${j.status == 'COMPLETED_WITH_BLOCK'} ? 'Blocked' : (${j.status == 'FAILED'} ? 'Failed' : (${j.status == 'RUNNING'} ? 'Running' : (${j.status == 'QUEUED'} ? 'Queued' : ${j.status}))))">Queued</span>
                         </span>
+                        <span class="badge ai-status" th:attr="data-ai-job=${j.jobId}" hidden></span>
                     </td>
                     <td>
                         <div class="run-progress">
@@ -71,12 +72,78 @@
     </section>
 </main>
 </div>
+<style>
+    .badge.ai-status { margin-left: 0.35rem; font-size: 0.75rem; padding: 0.1rem 0.45rem; vertical-align: middle; border-radius: 999px; }
+    .badge.ai-status.ai--queued  { background: #fff1c2; color: #7a5b00; border: 1px solid #ebd38a; }
+    .badge.ai-status.ai--running { background: #dce6ff; color: #1f3a9b; border: 1px solid #a7baf0; }
+    .badge.ai-status.ai--ok      { background: #d6f2d8; color: #175525; border: 1px solid #99d8a1; }
+    .badge.ai-status.ai--failed  { background: #ffd8d8; color: #7a1d1d; border: 1px solid #eba8a8; }
+    .badge.ai-status.ai--mixed   { background: #eceef2; color: #3a4053; border: 1px solid #c8cdd9; }
+    .badge.ai-status .ai-dot { display:inline-block; width:0.45rem; height:0.45rem; border-radius:50%; background: currentColor; margin-right: 0.3rem; vertical-align: 0.05em; }
+    .badge.ai-status.ai--running .ai-dot { animation: aiPulse 1.1s ease-in-out infinite; }
+    @keyframes aiPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+</style>
 <script th:inline="javascript">
     (function () {
         var csrfName = /*[[${_csrf != null ? _csrf.headerName : ''}]]*/ '';
         var csrfVal = /*[[${_csrf != null ? _csrf.token : ''}]]*/ '';
         var confirmFn = window.keelConfirm || function (o) { return Promise.resolve(confirm((o && o.message) || o)); };
         var alertFn = window.keelAlert || function (o) { alert((o && o.message) || o); return Promise.resolve(true); };
+        var AI_LABELS = {
+            queued:  { label: 'AI queued',  tooltip: 'Waiting for an AI validation slot (B6 global cap).' },
+            running: { label: 'AI running', tooltip: 'AI validation in progress.' },
+            ok:      { label: 'AI ok',      tooltip: 'AI validation finished.' },
+            failed:  { label: 'AI failed',  tooltip: 'AI validation did not complete — the run itself is still authoritative.' },
+            mixed:   { label: 'AI mixed',   tooltip: 'Multiple AI tasks with mixed outcomes.' }
+        };
+        function renderAiChip(el, s) {
+            if (!el) return;
+            if (!s || !s.present || s.overall === 'none') { el.hidden = true; el.textContent = ''; return; }
+            var info = AI_LABELS[s.overall] || AI_LABELS.mixed;
+            el.className = 'badge ai-status ai--' + s.overall;
+            var tip = info.tooltip;
+            if (s.overall === 'queued' && typeof s.queuedAhead === 'number' && s.queuedAhead > 0) {
+                tip += ' ' + s.queuedAhead + ' agent(s) running ahead on this host.';
+            }
+            if (Array.isArray(s.tasks) && s.tasks.length) {
+                tip += ' Tasks: ' + s.tasks.map(function (t) { return t.taskType + '=' + t.status; }).join(', ');
+            }
+            el.setAttribute('title', tip);
+            el.innerHTML = '<span class="ai-dot" aria-hidden="true"></span>' + info.label;
+            el.hidden = false;
+        }
+        async function pollAi(jobId, el) {
+            if (!el) return;
+            try {
+                var r = await fetch('/api/jobs/' + encodeURIComponent(jobId), {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-Keel-Requested-With': 'Keel' }
+                });
+                if (!r.ok) return;
+                var body = await r.json();
+                renderAiChip(el, body.aiValidation);
+                // Stop polling once the job is terminal and AI is terminal-or-absent.
+                var jobTerminal = body.status === 'COMPLETED'
+                    || body.status === 'COMPLETED_WITH_BLOCK'
+                    || body.status === 'FAILED'
+                    || body.status === 'CANCELLED';
+                var aiTerminal = !body.aiValidation
+                    || !body.aiValidation.present
+                    || body.aiValidation.overall === 'ok'
+                    || body.aiValidation.overall === 'failed'
+                    || body.aiValidation.overall === 'none';
+                return jobTerminal && aiTerminal;
+            } catch (_) { /* best-effort */ }
+        }
+        document.querySelectorAll('.ai-status').forEach(function (el) {
+            var jobId = el.getAttribute('data-ai-job');
+            if (!jobId) return;
+            (async function loop() {
+                var done = await pollAi(jobId, el);
+                if (done) return;
+                setTimeout(loop, 5000);
+            })();
+        });
         document.querySelectorAll('button.run-delete').forEach(function (btn) {
             btn.addEventListener('click', async function () {
                 var jobId = btn.getAttribute('data-job-id');

@@ -17,6 +17,7 @@ import delivery.portal.security.CurrentUserService;
 import delivery.portal.roles.PermissionEnforcer;
 import delivery.portal.service.CompareJobFiles;
 import delivery.portal.service.GeneratedWorkbookService;
+import delivery.portal.service.JobAgentTasksService;
 import delivery.portal.service.JobLinkEnricher;
 import delivery.portal.service.JobVisionSummaryService;
 import delivery.portal.service.PortalStore;
@@ -57,11 +58,13 @@ public class JobController {
     private final DeliveryPortalProperties portalProperties;
     private final JobLinkEnricher jobLinks;
     private final JobVisionSummaryService visionSummary;
+    private final JobAgentTasksService agentTasks;
 
     public JobController(PortalStore store, ConversionWorker worker, CurrentUserService currentUser,
                          ProjectCredentialService credentials, GeneratedWorkbookService workbooks,
                          DeliveryPortalProperties portalProperties, JobLinkEnricher jobLinks,
-                         PermissionEnforcer permissionEnforcer, JobVisionSummaryService visionSummary) {
+                         PermissionEnforcer permissionEnforcer, JobVisionSummaryService visionSummary,
+                         JobAgentTasksService agentTasks) {
         this.store = store;
         this.worker = worker;
         this.currentUser = currentUser;
@@ -71,6 +74,7 @@ public class JobController {
         this.jobLinks = jobLinks;
         this.permissionEnforcer = permissionEnforcer;
         this.visionSummary = visionSummary;
+        this.agentTasks = agentTasks;
     }
 
     @PostMapping("/projects/{projectId}/jobs")
@@ -292,6 +296,7 @@ public class JobController {
                     if (job.getJobKind() == JobRecord.JobKind.EXECUTE) {
                         body.put("vision", visionSummary.summarize(job.getProjectId(), job.getJobId()));
                     }
+                    body.put("aiValidation", agentTasks.summarise(job.getProjectId(), job.getJobId()));
                     return ResponseEntity.ok(body);
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)

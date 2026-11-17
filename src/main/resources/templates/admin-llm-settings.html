@@ -66,15 +66,13 @@
                     <span class="muted">Next Execute / Automate / Record / Bug Hunter window. Environment variables still win if already set.</span>
                 </label>
                 <label>Cursor model (agent harness)
-                    <select id="cursorModel" name="cursorModel">
-                        <option value="auto">Auto — cheapest capable (recommended)</option>
-                        <option value="claude-opus-5">claude-opus-5</option>
-                        <option value="claude-sonnet-5">claude-sonnet-5</option>
-                        <option value="claude-haiku-5">claude-haiku-5</option>
-                        <option value="gpt-5">gpt-5</option>
-                        <option value="gpt-5-mini">gpt-5-mini</option>
-                    </select>
-                    <span class="muted">Model Cursor uses for TC review / framework repair / failure investigation / hunt triage. Saved separately from API keys.</span>
+                    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                        <select id="cursorModel" name="cursorModel" style="flex:1;min-width:14rem;">
+                            <option value="auto">Auto — cheapest capable (recommended)</option>
+                        </select>
+                        <button type="button" class="btn ghost" id="btn-refresh-cursor-models">Refresh</button>
+                    </div>
+                    <span class="muted">Model Cursor uses for TC review / framework repair / failure investigation / hunt triage. List fetched live from Cursor when the API key is set.</span>
                     <span class="ok" id="cursor-model-saved" hidden style="margin-left:0.5rem;">Saved.</span>
                 </label>
             </div>
@@ -441,13 +439,28 @@
         fillAliases(data.authoringVerbAliases);
         showSaved();
     }
-    async function loadCursorModel() {
+    async function loadCursorModel(forceRefresh) {
         try {
-            const res = await fetch('/api/admin/agent-harness', { credentials: 'same-origin', headers: HDR });
+            const url = forceRefresh ? '/api/admin/agent-harness/models/refresh' : '/api/admin/agent-harness';
+            const res = await fetch(url, { credentials: 'same-origin', headers: HDR });
             if (!res.ok) return;
             const body = await res.json();
             const sel = document.getElementById('cursorModel');
-            if (sel && body.cursorModel) sel.value = body.cursorModel;
+            if (!sel) return;
+            const models = Array.isArray(body.models) ? body.models : [];
+            const current = body.cursorModel || sel.value || 'auto';
+            sel.innerHTML = '';
+            if (!models.length) {
+                sel.appendChild(new Option('Auto — cheapest capable (recommended)', 'auto'));
+            } else {
+                for (const m of models) {
+                    const label = m.displayName && m.displayName !== m.id
+                        ? (m.id + ' — ' + m.displayName)
+                        : m.id;
+                    sel.appendChild(new Option(label, m.id));
+                }
+            }
+            if ([...sel.options].some(o => o.value === current)) sel.value = current;
         } catch (_) { /* best-effort */ }
     }
     async function saveCursorModel(v) {
@@ -471,6 +484,13 @@
     const cursorModelSel = document.getElementById('cursorModel');
     if (cursorModelSel) {
         cursorModelSel.addEventListener('change', function () { saveCursorModel(this.value); });
+    }
+    const btnRefreshCursor = document.getElementById('btn-refresh-cursor-models');
+    if (btnRefreshCursor) {
+        btnRefreshCursor.addEventListener('click', function () {
+            btnRefreshCursor.disabled = true;
+            loadCursorModel(true).finally(() => { btnRefreshCursor.disabled = false; });
+        });
     }
     document.getElementById('btn-refresh-models').addEventListener('click', function () {
         refreshModels().catch(function (e) { showError(String(e)); });
