@@ -24,9 +24,9 @@ public class RunMemoryService {
         return disk.get(store.projectDiskRoot(projectId), memId);
     }
 
-    public Map<String, Object> propose(String projectId, String memId, String summary, String locatorHint, String sourceJobId)
-            throws IOException {
-        return disk.propose(store.projectDiskRoot(projectId), memId, summary, locatorHint, sourceJobId);
+    public Map<String, Object> propose(String projectId, String memId, String summary, String locatorHint,
+                                       String sourceJobId, String pageUrl, String caseId) throws IOException {
+        return disk.propose(store.projectDiskRoot(projectId), memId, summary, locatorHint, sourceJobId, pageUrl, caseId);
     }
 
     public Map<String, Object> approve(String projectId, String memId) throws IOException {

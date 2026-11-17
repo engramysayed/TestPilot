@@ -62,6 +62,16 @@
                 &nbsp;·&nbsp; <em>"new sign-in button has data-testid=sign-in"</em> (plain English).
             </p>
 
+            <label style="display:block;margin-top:0.6rem">Page URL <span class="muted">(optional)</span>
+                <input type="text" id="mem-page-url" style="width:100%" placeholder="e.g. /login or https://app.example.com/login"/>
+            </label>
+            <p class="field-hint muted">Scopes this hint to a page so the heal AI doesn't apply it on unrelated pages. Leave blank for project-wide.</p>
+
+            <label style="display:block;margin-top:0.6rem">Case ID <span class="muted">(optional)</span>
+                <input type="text" id="mem-case-id" style="width:100%" placeholder="e.g. TC001 or login_basic"/>
+            </label>
+            <p class="field-hint muted">Scopes this hint to one test case. Workbook <code>TC_ID</code> column value.</p>
+
             <label style="display:block;margin-top:0.6rem">Source job <span class="muted">(optional)</span></label>
             <div class="job-combo" style="position:relative">
                 <input type="text" id="mem-job-search" autocomplete="off"
@@ -181,6 +191,8 @@
         document.getElementById('mem-id').disabled = !!m;
         document.getElementById('mem-summary').value = m ? (m.summary || '') : '';
         document.getElementById('mem-locator').value = m ? (m.locatorHint || '') : '';
+        document.getElementById('mem-page-url').value = m ? (m.pageUrl || '') : '';
+        document.getElementById('mem-case-id').value = m ? (m.caseId || '') : '';
         document.getElementById('mem-job').value = m ? (m.sourceJobId || '') : '';
         document.getElementById('mem-job-search').value = m ? (m.sourceJobId || '') : '';
         document.getElementById('form-reset').hidden = !m;
@@ -246,6 +258,8 @@
             id: document.getElementById('mem-id').value.trim(),
             summary: document.getElementById('mem-summary').value.trim(),
             locatorHint: document.getElementById('mem-locator').value.trim(),
+            pageUrl: document.getElementById('mem-page-url').value.trim(),
+            caseId: document.getElementById('mem-case-id').value.trim(),
             sourceJobId: document.getElementById('mem-job').value.trim()
         };
         if (!body.id) { status.textContent = 'Pick a memory key first.'; return; }

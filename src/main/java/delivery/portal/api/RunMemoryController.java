@@ -31,7 +31,8 @@ public class RunMemoryController {
         this.memory = memory;
     }
 
-    public record ProposeBody(String id, String summary, String locatorHint, String sourceJobId) {
+    public record ProposeBody(String id, String summary, String locatorHint, String sourceJobId,
+                              String pageUrl, String caseId) {
     }
 
     @GetMapping
@@ -71,7 +72,8 @@ public class RunMemoryController {
         }
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(memory.propose(
-                    projectId, body.id(), body.summary(), body.locatorHint(), body.sourceJobId()));
+                    projectId, body.id(), body.summary(), body.locatorHint(), body.sourceJobId(),
+                    body.pageUrl(), body.caseId()));
         } catch (RunMemoryDiskStore.ConflictException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError("CONFLICT", e.getMessage()).asMap());
         } catch (RunMemoryDiskStore.BadRequestException e) {

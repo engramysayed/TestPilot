@@ -44,13 +44,23 @@ public final class RunMemoryHintsStore {
                 String id = str(m.get("id"));
                 String hint = str(m.get("locatorHint"));
                 String summary = str(m.get("summary"));
+                String pageUrl = str(m.get("pageUrl"));
+                String caseId = str(m.get("caseId"));
                 if (hint.isBlank() && summary.isBlank()) {
                     continue;
                 }
                 if (!id.isBlank()) {
                     ids.add(id);
                 }
-                String line = hint.isBlank() ? summary : (summary.isBlank() ? hint : summary + " → " + hint);
+                StringBuilder scope = new StringBuilder();
+                if (!pageUrl.isBlank()) {
+                    scope.append("[on ").append(pageUrl).append("] ");
+                }
+                if (!caseId.isBlank()) {
+                    scope.append("[TC ").append(caseId).append("] ");
+                }
+                String body = hint.isBlank() ? summary : (summary.isBlank() ? hint : summary + " → " + hint);
+                String line = scope + body;
                 lines.add(line.length() > 300 ? line.substring(0, 300) : line);
             }
             return List.copyOf(lines);

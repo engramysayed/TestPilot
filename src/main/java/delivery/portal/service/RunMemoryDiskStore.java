@@ -61,12 +61,19 @@ public final class RunMemoryDiskStore {
 
     public Map<String, Object> propose(Path projectRoot, String memId, String summary, String locatorHint, String sourceJobId)
             throws IOException {
+        return propose(projectRoot, memId, summary, locatorHint, sourceJobId, null, null);
+    }
+
+    public Map<String, Object> propose(Path projectRoot, String memId, String summary, String locatorHint,
+                                       String sourceJobId, String pageUrl, String caseId) throws IOException {
         validateId(memId);
         Path file = file(projectRoot, memId);
         if (Files.exists(file)) {
             throw new ConflictException("Memory already exists: " + memId);
         }
         Map<String, Object> doc = baseDoc(memId, summary, locatorHint, sourceJobId, "proposed");
+        doc.put("pageUrl", str(pageUrl));
+        doc.put("caseId", str(caseId));
         write(file, doc);
         return doc;
     }
