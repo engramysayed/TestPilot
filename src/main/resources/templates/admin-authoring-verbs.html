@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='LLM Settings · Authoring verbs')}"></th:block>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1>LLM Settings</h1>
+        </div>
+    </div>
+    <nav class="tabs" aria-label="LLM Settings sections">
+        <a href="/admin/llm-settings">Keys &amp; models</a>
+        <a href="/admin/authoring-verbs" class="active">Authoring verbs</a>
+    </nav>
+    <section class="panel">
+        <p class="ok" id="verbs-saved" hidden>Saved.</p>
+        <p class="error" id="verbs-error" hidden></p>
+        <div class="authoring-verbs" style="max-width:46rem;">
+            <p class="muted">Built-in words Keel already treats as click, type, select, clear, assert, skip, drag, hover, double-click, or right-click. These cannot be edited. Add aliases below so extra Excel words use the same kinds.</p>
+            <h3 style="font-size:0.95rem;margin:1rem 0 0.35rem;">Built-in (read-only)</h3>
+            <table class="table" id="builtin-verbs-table">
+                <thead><tr><th>Word</th><th>Treat as</th></tr></thead>
+                <tbody>
+                    <tr th:each="row : ${builtInVerbs}">
+                        <td th:text="${row.word}">click</td>
+                        <td th:switch="${row.treatAs}">
+                            <span th:case="'assert'">Assert visible</span>
+                            <span th:case="'ignore'">Ignore</span>
+                            <span th:case="'type'">Type</span>
+                            <span th:case="'select'">Select</span>
+                            <span th:case="'clear'">Clear</span>
+                            <span th:case="'drag'">Drag</span>
+                            <span th:case="'drop'">Drop</span>
+                            <span th:case="'hover'">Hover</span>
+                            <span th:case="'doubleclick'">Double-click</span>
+                            <span th:case="'rightclick'">Right-click</span>
+                            <span th:case="*">Click</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="muted" id="code-only-verbs" style="margin-top:0.5rem;"
+               th:if="${codeOnlyVerbsText}"
+               th:text="${'Code-only specials (not remappable): ' + codeOnlyVerbsText + '.'}"></p>
+            <h3 style="font-size:0.95rem;margin:1.25rem 0 0.35rem;">Owner aliases</h3>
+            <p class="muted">One word, letters only (3–40). Treat as Click, Type, Select, Clear, Assert visible, Ignore, Drag, Drop, Hover, Double-click, or Right-click. Built-in words cannot be remapped. Max 50.</p>
+            <table class="table" id="alias-verbs-table">
+                <thead><tr><th>Word</th><th>Treat as</th><th></th></tr></thead>
+                <tbody>
+                    <tr th:each="row : ${authoringVerbAliases}">
+                        <td><input type="text" class="alias-word" maxlength="40" autocomplete="off" placeholder="observe" th:value="${row.word}"></td>
+                        <td>
+                            <select class="alias-treat">
+                                <option value="click" th:selected="${row.treatAs == 'click'}">Click</option>
+                                <option value="type" th:selected="${row.treatAs == 'type'}">Type</option>
+                                <option value="select" th:selected="${row.treatAs == 'select'}">Select</option>
+                                <option value="clear" th:selected="${row.treatAs == 'clear'}">Clear</option>
+                                <option value="assert" th:selected="${row.treatAs == 'assert'}">Assert visible</option>
+                                <option value="ignore" th:selected="${row.treatAs == 'ignore'}">Ignore</option>
+                                <option value="drag" th:selected="${row.treatAs == 'drag'}">Drag</option>
+                                <option value="drop" th:selected="${row.treatAs == 'drop'}">Drop</option>
+                                <option value="hover" th:selected="${row.treatAs == 'hover'}">Hover</option>
+                                <option value="doubleclick" th:selected="${row.treatAs == 'doubleclick'}">Double-click</option>
+                                <option value="rightclick" th:selected="${row.treatAs == 'rightclick'}">Right-click</option>
+                            </select>
+                        </td>
+                        <td><button type="button" class="btn alias-remove">Remove</button></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(authoringVerbAliases)}">
+                        <td><input type="text" class="alias-word" maxlength="40" autocomplete="off" placeholder="observe"></td>
+                        <td>
+                            <select class="alias-treat">
+                                <option value="click">Click</option>
+                                <option value="type">Type</option>
+                                <option value="select">Select</option>
+                                <option value="clear">Clear</option>
+                                <option value="assert" selected>Assert visible</option>
+                                <option value="ignore">Ignore</option>
+                                <option value="drag">Drag</option>
+                                <option value="drop">Drop</option>
+                                <option value="hover">Hover</option>
+                                <option value="doubleclick">Double-click</option>
+                                <option value="rightclick">Right-click</option>
+                            </select>
+                        </td>
+                        <td><button type="button" class="btn alias-remove">Remove</button></td>
+                    </tr>
+                </tbody>
+            </table>
+            <button type="button" class="btn" id="btn-add-alias" style="margin-top:0.5rem;">Add alias</button>
+        </div>
+        <div style="margin-top:1.25rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+            <button class="btn btn-primary" type="button" id="btn-save-verbs">Save</button>
+        </div>
+    </section>
+</main>
+</div>
+<script th:inline="none">
+(function () {
+    const HDR = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Keel-Requested-With': 'Keel'
+    };
+    const savedEl = document.getElementById('verbs-saved');
+    const errEl = document.getElementById('verbs-error');
+    function showError(msg) {
+        savedEl.hidden = true;
+        errEl.hidden = !msg;
+        errEl.textContent = msg || '';
+    }
+    function showSaved() {
+        errEl.hidden = true;
+        savedEl.hidden = false;
+        setTimeout(() => (savedEl.hidden = true), 2000);
+    }
+    const TREAT_OPTIONS = [
+        { value: 'click', label: 'Click' },
+        { value: 'type', label: 'Type' },
+        { value: 'select', label: 'Select' },
+        { value: 'clear', label: 'Clear' },
+        { value: 'assert', label: 'Assert visible' },
+        { value: 'ignore', label: 'Ignore' },
+        { value: 'drag', label: 'Drag' },
+        { value: 'drop', label: 'Drop' },
+        { value: 'hover', label: 'Hover' },
+        { value: 'doubleclick', label: 'Double-click' },
+        { value: 'rightclick', label: 'Right-click' }
+    ];
+    function aliasRow(word, treatAs) {
+        const tr = document.createElement('tr');
+        const wTd = document.createElement('td');
+        const wIn = document.createElement('input');
+        wIn.type = 'text';
+        wIn.className = 'alias-word';
+        wIn.maxLength = 40;
+        wIn.value = word || '';
+        wIn.placeholder = 'observe';
+        wIn.autocomplete = 'off';
+        wTd.appendChild(wIn);
+        const tTd = document.createElement('td');
+        const sel = document.createElement('select');
+        sel.className = 'alias-treat';
+        TREAT_OPTIONS.forEach(function (opt) {
+            const o = document.createElement('option');
+            o.value = opt.value;
+            o.textContent = opt.label;
+            sel.appendChild(o);
+        });
+        sel.value = treatAs || 'assert';
+        tTd.appendChild(sel);
+        const dTd = document.createElement('td');
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'btn alias-remove';
+        del.textContent = 'Remove';
+        dTd.appendChild(del);
+        tr.appendChild(wTd);
+        tr.appendChild(tTd);
+        tr.appendChild(dTd);
+        return tr;
+    }
+    function collectAliases() {
+        const rows = document.querySelectorAll('#alias-verbs-table tbody tr');
+        const out = [];
+        for (const tr of rows) {
+            const word = (tr.querySelector('.alias-word') || {}).value || '';
+            const treatAs = (tr.querySelector('.alias-treat') || {}).value || '';
+            if (!word.trim()) continue;
+            out.push({ word: word.trim(), treatAs: treatAs });
+        }
+        return out;
+    }
+    async function save() {
+        showError('');
+        const body = { authoringVerbAliases: collectAliases() };
+        const res = await fetch('/api/admin/llm-settings', {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: HDR,
+            body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            showError(data.message || data.error || ('Save failed (' + res.status + ').'));
+            return;
+        }
+        showSaved();
+    }
+    document.getElementById('btn-save-verbs').addEventListener('click', function () {
+        save().catch(function (e) { showError(String(e)); });
+    });
+    document.getElementById('btn-add-alias').addEventListener('click', function () {
+        const body = document.querySelector('#alias-verbs-table tbody');
+        if (body) body.appendChild(aliasRow('', 'assert'));
+    });
+    const aliasTable = document.getElementById('alias-verbs-table');
+    if (aliasTable) {
+        aliasTable.addEventListener('click', function (e) {
+            const btn = e.target && e.target.closest ? e.target.closest('.alias-remove') : null;
+            if (btn) {
+                const tr = btn.closest('tr');
+                if (tr) tr.remove();
+            }
+        });
+    }
+})();
+</script>
+</body>
+</html>
