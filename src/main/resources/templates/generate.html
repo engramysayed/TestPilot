@@ -18,6 +18,11 @@ if (location.hash === '#record') location.replace('/record' + location.search);
             <h1 th:text="#{page.generate.title}">Write test cases</h1>
         </div>
     </div>
+    <nav class="tabs" aria-label="TCs Generation sections">
+        <a href="/generate" class="active">Write cases</a>
+        <a href="/generate/compare">Multi-model generate</a>
+        <a href="/generate-from-knowledge">From knowledge</a>
+    </nav>
 
 
     <section class="panel workspace-launcher" id="workspace-launcher">
