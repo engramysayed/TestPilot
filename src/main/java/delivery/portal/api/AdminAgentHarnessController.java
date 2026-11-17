@@ -1,8 +1,6 @@
 package delivery.portal.api;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import delivery.heal.ApiKeySource;
 import delivery.portal.AgentHarnessProperties;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.roles.RolesService;
@@ -16,8 +14,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,8 +21,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 
 /**
  * Install-wide admin control for the Cursor model used by the agent harness sidecars.
@@ -37,13 +32,24 @@ import java.util.concurrent.atomic.AtomicReference;
 public class AdminAgentHarnessController {
     static final String FILE_NAME = "agent-harness.json";
     private static final ObjectMapper JSON = new ObjectMapper();
-    /** Static fallback when CURSOR_API_KEY is missing or the SDK call fails. */
-    static final List<String> KNOWN_MODELS_FALLBACK = List.of(
-            "auto", "claude-opus-5", "claude-sonnet-5", "claude-haiku-5", "gpt-5", "gpt-5-mini");
-    private static final long MODEL_CACHE_TTL_MS = 10 * 60 * 1000L; // 10 minutes
-    private final AtomicReference<CachedModels> modelCache = new AtomicReference<>(null);
+    /**
+     * Curated list of Cursor cloud models. @cursor/sdk 1.0.27 does not expose a listCloudModels
+     * endpoint, so this is static. If Cursor adds a new model, enter its id in the custom-id
+     * field on Admin and the PUT endpoint accepts it as long as the pattern matches.
+     */
+    static final List<String> KNOWN_MODELS = List.of(
+            "auto",
+            "claude-opus-5", "claude-sonnet-5", "claude-haiku-5",
+            "claude-opus-4.5", "claude-sonnet-4.5",
+            "gpt-5", "gpt-5-mini", "gpt-5-codex",
+            "gpt-4.1",
+            "o3", "o4-mini",
+            "gemini-2.5-pro", "gemini-2.5-flash",
+            "grok-code-fast-1", "grok-5");
+    /** User-supplied model ids must look like a valid Cursor identifier (no injection). */
+    static final Pattern MODEL_ID = Pattern.compile("^[a-z][a-z0-9.\\-]{0,60}$");
 
-    private record CachedModels(long expiresAt, List<Map<String, Object>> rows, List<String> ids) {
+    private record CachedModels(List<Map<String, Object>> rows, List<String> ids) {
     }
 
     private final AgentHarnessProperties properties;
@@ -84,8 +90,7 @@ public class AdminAgentHarnessController {
     @GetMapping({"", "/"})
     public Map<String, Object> get() {
         requireOwner();
-        // Single cache lookup — rows and ids must come from the same snapshot.
-        CachedModels snap = fetchModels();
+        CachedModels snap = models();
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("cursorModel", properties.getCursorModel());
         out.put("models", snap.rows());
@@ -93,85 +98,27 @@ public class AdminAgentHarnessController {
         return out;
     }
 
+    /** Legacy no-op so the Refresh button keeps working on existing clients — list is now static. */
     @GetMapping("/models/refresh")
     public Map<String, Object> refreshModels() {
-        requireOwner();
-        modelCache.set(null);
         return get();
     }
 
-    private CachedModels fetchModels() {
-        CachedModels cached = modelCache.get();
-        long now = System.currentTimeMillis();
-        if (cached != null && cached.expiresAt() > now) {
-            return cached;
-        }
-        CachedModels fresh = fetchFromSdk(now);
-        modelCache.set(fresh);
-        return fresh;
-    }
-
-    private CachedModels fetchFromSdk(long now) {
+    private CachedModels models() {
         List<Map<String, Object>> rows = new ArrayList<>();
         List<String> ids = new ArrayList<>();
-        rows.add(Map.of("id", "auto", "displayName", "Auto — cheapest capable (recommended)", "description", ""));
-        ids.add("auto");
-        String apiKey = ApiKeySource.resolve(ApiKeySource.CURSOR_API_KEY);
-        if (apiKey == null || apiKey.isBlank()) {
-            // No key — static fallback so the picker still works offline.
-            for (String id : KNOWN_MODELS_FALLBACK) {
-                if (!"auto".equals(id)) {
-                    rows.add(Map.of("id", id, "displayName", id, "description", ""));
-                    ids.add(id);
-                }
-            }
-            return new CachedModels(now + MODEL_CACHE_TTL_MS, rows, ids);
+        for (String id : KNOWN_MODELS) {
+            String name = "auto".equals(id) ? "Auto — cheapest capable (recommended)" : id;
+            rows.add(Map.of("id", id, "displayName", name, "description", ""));
+            ids.add(id);
         }
-        try {
-            ProcessBuilder pb = new ProcessBuilder("node", "tools/cursor-agent/list-models.mjs");
-            pb.environment().put("CURSOR_API_KEY", apiKey);
-            pb.redirectErrorStream(false);
-            Process proc = pb.start();
-            StringBuilder stdout = new StringBuilder();
-            try (BufferedReader r = new BufferedReader(new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = r.readLine()) != null) {
-                    stdout.append(line);
-                }
-            }
-            boolean finished = proc.waitFor(30, TimeUnit.SECONDS);
-            if (!finished || proc.exitValue() != 0) {
-                proc.destroyForcibly();
-                return fallbackCache(now, rows, ids);
-            }
-            List<Map<String, Object>> parsed = JSON.readValue(stdout.toString(), new TypeReference<>() {});
-            for (Map<String, Object> m : parsed) {
-                Object id = m.get("id");
-                if (id == null) continue;
-                String sid = String.valueOf(id);
-                if ("auto".equals(sid)) continue; // already added
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("id", sid);
-                row.put("displayName", String.valueOf(m.getOrDefault("displayName", sid)));
-                row.put("description", String.valueOf(m.getOrDefault("description", "")));
-                rows.add(row);
-                ids.add(sid);
-            }
-            return new CachedModels(now + MODEL_CACHE_TTL_MS, rows, ids);
-        } catch (Exception e) {
-            return fallbackCache(now, rows, ids);
+        // Include whatever the admin currently has set, even if we don't know it yet (custom id).
+        String current = properties.getCursorModel();
+        if (current != null && !current.isBlank() && !ids.contains(current)) {
+            rows.add(Map.of("id", current, "displayName", current + " (custom)", "description", ""));
+            ids.add(current);
         }
-    }
-
-    private CachedModels fallbackCache(long now, List<Map<String, Object>> rows, List<String> ids) {
-        for (String id : KNOWN_MODELS_FALLBACK) {
-            if (!ids.contains(id)) {
-                rows.add(Map.of("id", id, "displayName", id, "description", ""));
-                ids.add(id);
-            }
-        }
-        // Short TTL on fallback so a later refresh picks up a freshly configured key.
-        return new CachedModels(now + 60_000L, rows, ids);
+        return new CachedModels(rows, ids);
     }
 
     @PutMapping({"", "/"})
@@ -181,11 +128,13 @@ public class AdminAgentHarnessController {
         if (requested == null || requested.isBlank()) {
             requested = "auto";
         }
-        List<String> allowed = fetchModels().ids();
-        if (allowed == null || !allowed.contains(requested)) {
+        // Accept any Cursor-looking id (including models we haven't curated like grok-code-fast-1).
+        // Rejecting unknown ids used to block grok etc.; now we trust the owner and let Cursor
+        // reject at run time with a clear error if the id is wrong.
+        if (!MODEL_ID.matcher(requested).matches()) {
             Map<String, Object> err = new LinkedHashMap<>();
             err.put("error", "BAD_MODEL");
-            err.put("allowed", allowed);
+            err.put("message", "Model id must match " + MODEL_ID.pattern());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
         }
         properties.setCursorModel(requested);

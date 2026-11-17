@@ -72,7 +72,12 @@
                         </select>
                         <button type="button" class="btn ghost" id="btn-refresh-cursor-models">Refresh</button>
                     </div>
-                    <span class="muted">Model Cursor uses for TC review / framework repair / failure investigation / hunt triage. List fetched live from Cursor when the API key is set.</span>
+                    <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem;flex-wrap:wrap;">
+                        <input type="text" id="cursorModelCustom" placeholder="or type a model id (e.g. grok-code-fast-1)"
+                               style="flex:1;min-width:14rem;" autocomplete="off" pattern="[a-z][a-z0-9.\-]{0,60}" />
+                        <button type="button" class="btn ghost" id="btn-save-cursor-model-custom">Save</button>
+                    </div>
+                    <span class="muted">Model Cursor uses for TC review / framework repair / failure investigation / hunt triage. Curated list — if your model isn't shown, type its id above (Cursor validates at run time).</span>
                     <span class="ok" id="cursor-model-saved" hidden style="margin-left:0.5rem;">Saved.</span>
                 </label>
             </div>
@@ -490,6 +495,22 @@
         btnRefreshCursor.addEventListener('click', function () {
             btnRefreshCursor.disabled = true;
             loadCursorModel(true).finally(() => { btnRefreshCursor.disabled = false; });
+        });
+    }
+    const customIdInput = document.getElementById('cursorModelCustom');
+    const btnSaveCustom = document.getElementById('btn-save-cursor-model-custom');
+    async function saveCustomCursorModel() {
+        if (!customIdInput) return;
+        const v = (customIdInput.value || '').trim();
+        if (!v) return;
+        await saveCursorModel(v);
+        customIdInput.value = '';
+        await loadCursorModel(false);
+    }
+    if (btnSaveCustom) btnSaveCustom.addEventListener('click', saveCustomCursorModel);
+    if (customIdInput) {
+        customIdInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); saveCustomCursorModel(); }
         });
     }
     document.getElementById('btn-refresh-models').addEventListener('click', function () {

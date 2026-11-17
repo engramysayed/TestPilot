@@ -235,7 +235,7 @@ public class ServicePriceService {
             case "HEAL_REVIEW" ->
                     "Review heal proposals: Accept or Reject suggested fixes after a failed run. Owner can edit on Admin → Prices.";
             case "AI_VALIDATION" ->
-                    "Opt-in AI validation layer. Charged once per AI task when a workspace has enabled AI validation on its project page. Only workspaces with the toggle on are charged. A 'task' is one Cursor call: TC review, framework repair, failure investigation, or Bug Hunter triage.";
+                    "Charged once per AI task when a workspace turns AI validation on. A task is one Cursor call: TC review, framework repair, failure investigation, or Bug Hunter triage. Owner edits on Admin → Prices.";
             default -> "";
         };
     }

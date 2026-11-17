@@ -20,10 +20,11 @@ import static org.mockito.Mockito.when;
 
 public class ServicePriceServiceTest {
 
-    private static final Set<String> CORE = Set.of("GENERATE", "EXECUTE", "AUTOMATE", "HUNT");
+    private static final Set<String> CORE = Set.of("GENERATE", "EXECUTE", "AUTOMATE", "HUNT", "AI_VALIDATION");
     private static final Set<String> ADDONS = Set.of("VISUAL_DIFF", "SUITES_MONITOR", "HEAL_REVIEW");
     private static final Set<String> ALL = Set.of(
-            "GENERATE", "EXECUTE", "AUTOMATE", "HUNT", "VISUAL_DIFF", "SUITES_MONITOR", "HEAL_REVIEW");
+            "GENERATE", "EXECUTE", "AUTOMATE", "HUNT", "AI_VALIDATION",
+            "VISUAL_DIFF", "SUITES_MONITOR", "HEAL_REVIEW");
 
     @Test
     public void detailAndUnitLabelCoverCoreAndAddons() {
@@ -42,7 +43,7 @@ public class ServicePriceServiceTest {
     }
 
     @Test
-    public void ensureSeededListReturnsCoreFourPlusThreeAddons() {
+    public void ensureSeededListReturnsCoreFivePlusThreeAddons() {
         MapStore store = new MapStore();
         ServicePriceRepository repo = mock(ServicePriceRepository.class);
         when(repo.count()).thenAnswer(inv -> (long) store.map.size());
@@ -57,7 +58,7 @@ public class ServicePriceServiceTest {
         ServicePriceService service = new ServicePriceService(repo, new DeliveryCreditsProperties());
         List<Map<String, Object>> rows = service.list();
 
-        Assert.assertEquals(rows.size(), 7);
+        Assert.assertEquals(rows.size(), 8);
         Set<String> codes = rows.stream().map(r -> String.valueOf(r.get("code"))).collect(Collectors.toSet());
         Assert.assertEquals(codes, ALL);
         Assert.assertTrue(codes.containsAll(CORE));
@@ -80,7 +81,7 @@ public class ServicePriceServiceTest {
         store.map.get("VISUAL_DIFF").setCost(99L);
         store.map.get("GENERATE").setCovers("Owner custom covers for generate.");
         List<Map<String, Object>> again = service.list();
-        Assert.assertEquals(again.size(), 7);
+        Assert.assertEquals(again.size(), 8);
         Map<String, Object> visual = again.stream().filter(r -> "VISUAL_DIFF".equals(r.get("code"))).findFirst().orElseThrow();
         Assert.assertEquals(((Number) visual.get("cost")).longValue(), 99L);
         Map<String, Object> gen = again.stream().filter(r -> "GENERATE".equals(r.get("code"))).findFirst().orElseThrow();
