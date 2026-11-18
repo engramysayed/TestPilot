@@ -200,34 +200,13 @@
         </div>
 
         <p class="sidebar-label" data-features-label th:text="#{nav.section.designTests}">Design tests</p>
-        <div class="nav-group" data-feature-perm="feature.generate" data-nav-group-id="tcs-generation"
-             th:classappend="${navActive == 'generate' or navActive == 'generate-compare' or navActive == 'generate-from-knowledge'} ? 'is-open'">
-            <div class="nav-main-wrap">
-                <a href="/generate" class="nav-main sidebar-nav-item__link" th:classappend="${navActive == 'generate'} ? 'active'">
-                    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18 M5 5l14 14 M5 19 19 5"/></svg>
-                    <span th:text="#{nav.tcsGeneration}">TCs Generation</span>
-                </a>
-                <th:block th:replace="~{fragments :: featureHelpBtn('tcs-generation')}"></th:block>
-                <button type="button" class="nav-toggle" aria-label="Toggle TCs Generation menu">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                </button>
-            </div>
-            <div class="nav-children">
-                <div class="sidebar-nav-item">
-                    <a href="/generate/compare" class="sidebar-child sidebar-nav-item__link" th:classappend="${navActive == 'generate-compare'} ? 'active'">
-                        <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7v12H4z"/><path d="M13 6h7v12h-7z"/></svg>
-                        <span th:text="#{nav.multiModelGenerate}">Multi-model generate</span>
-                    </a>
-                    <th:block th:replace="~{fragments :: featureHelpBtn('multi-model-generate')}"></th:block>
-                </div>
-                <div class="sidebar-nav-item">
-                    <a href="/generate-from-knowledge" class="sidebar-child sidebar-nav-item__link" th:classappend="${navActive == 'generate-from-knowledge'} ? 'active'">
-                        <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z"/><path d="M13 5h7v12a2 2 0 0 1-2 2h-7a2 2 0 0 0 2-2z"/><path d="M7 9h2 M7 12h2"/></svg>
-                        <span th:text="#{nav.generateFromKnowledge}">Generate from knowledge</span>
-                    </a>
-                    <th:block th:replace="~{fragments :: featureHelpBtn('generate-from-knowledge')}"></th:block>
-                </div>
-            </div>
+        <div class="sidebar-nav-item" data-feature-perm="feature.generate">
+            <a href="/generate" class="sidebar-nav-item__link"
+               th:classappend="${navActive == 'generate' or navActive == 'generate-compare' or navActive == 'generate-from-knowledge'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18 M5 5l14 14 M5 19 19 5"/></svg>
+                <span th:text="#{nav.tcsGeneration}">TCs Generation</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('tcs-generation')}"></th:block>
         </div>
         <div class="sidebar-nav-item" data-feature-perm="feature.generate">
             <a href="/playback" class="sidebar-nav-item__link" th:classappend="${navActive == 'record'} ? 'active'">
@@ -252,27 +231,13 @@
         </div>
 
         <p class="sidebar-label" th:text="#{nav.section.executeAutomate}">Execute &amp; automate</p>
-        <div class="nav-group" data-feature-perm="feature.execute" data-nav-group-id="test-suites"
-             th:classappend="${navActive == 'suites' or navActive == 'suites-schedule'} ? 'is-open'">
-            <div class="nav-main-wrap">
-                <a href="/suites" class="nav-main sidebar-nav-item__link" th:classappend="${navActive == 'suites'} ? 'active'">
-                    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v4H4z"/><path d="M4 11h16v4H4z"/><path d="M4 17h10v2H4z"/></svg>
-                    <span th:text="#{nav.testSuites}">Test suites</span>
-                </a>
-                <th:block th:replace="~{fragments :: featureHelpBtn('test-suites')}"></th:block>
-                <button type="button" class="nav-toggle" aria-label="Toggle Test suites menu">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                </button>
-            </div>
-            <div class="nav-children">
-                <div class="sidebar-nav-item">
-                    <a href="/suites/schedule" class="sidebar-child sidebar-nav-item__link" th:classappend="${navActive == 'suites-schedule'} ? 'active'">
-                        <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 9v4l3 2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
-                        <span th:text="#{nav.scheduling}">Scheduling</span>
-                    </a>
-                    <th:block th:replace="~{fragments :: featureHelpBtn('scheduling')}"></th:block>
-                </div>
-            </div>
+        <div class="sidebar-nav-item" data-feature-perm="feature.execute">
+            <a href="/suites" class="sidebar-nav-item__link"
+               th:classappend="${navActive == 'suites' or navActive == 'suites-schedule'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v4H4z"/><path d="M4 11h16v4H4z"/><path d="M4 17h10v2H4z"/></svg>
+                <span th:text="#{nav.testSuites}">Test suites</span>
+            </a>
+            <th:block th:replace="~{fragments :: featureHelpBtn('test-suites')}"></th:block>
         </div>
         <div class="sidebar-nav-item" data-feature-perm="feature.execute">
             <a href="/execute" class="sidebar-nav-item__link" th:classappend="${navActive == 'execute'} ? 'active'">
