@@ -1,5 +1,8 @@
 package delivery.codegen;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -9,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class PageAccumulator {
+    private static final Logger log = LoggerFactory.getLogger(PageAccumulator.class);
     private final Map<String, PageModel> pages = new LinkedHashMap<>();
     private final Set<String> usedStems = new LinkedHashSet<>();
 
@@ -26,6 +30,9 @@ public class PageAccumulator {
         if (step.locatorValue() == null || step.locatorValue().isBlank()) {
             if (step.assertionType() != null && "urlContains".equalsIgnoreCase(step.assertionType())) {
                 allocateAssertion(pageFor(step), step, null);
+            } else if (step.assertionType() != null && "textContains".equalsIgnoreCase(step.assertionType())) {
+                log.warn("Dropping textContains step with no locator (Rule 3c): tc={} page={} expected={}",
+                        step.tcId(), step.pageName(), step.assertionExpected());
             }
             return;
         }
