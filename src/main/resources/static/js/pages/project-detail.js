@@ -1005,6 +1005,8 @@
         updateFrameworkDeleteUi();
     });
 
+    let selectedPreviewPath = null;
+
     function clearPreview() {
         const pathEl = document.getElementById('auto-preview-path');
         const contentEl = document.getElementById('auto-preview-content');
@@ -1012,7 +1014,19 @@
         if (contentEl) {
             contentEl.textContent = 'No file selected.';
             contentEl.className = 'code-preview muted';
+            contentEl.removeAttribute('data-highlighted');
         }
+        selectedPreviewPath = null;
+        document.querySelectorAll('.artifact-item.is-selected-file').forEach(el => el.classList.remove('is-selected-file'));
+    }
+
+    function highlightSelectedArtifactItem(path) {
+        document.querySelectorAll('.artifact-item.is-selected-file').forEach(el => el.classList.remove('is-selected-file'));
+        if (!path) return;
+        document.querySelectorAll('.artifact-item').forEach(li => {
+            const pathEl = li.querySelector('.artifact-path');
+            if (pathEl && pathEl.textContent === path) li.classList.add('is-selected-file');
+        });
     }
 
     function renderArtifactItem(item, opts) {
@@ -1128,6 +1142,9 @@
         pathEl.textContent = pkg ? (pkg + ' → ' + path) : path;
         contentEl.textContent = 'Loading…';
         contentEl.className = 'code-preview';
+        contentEl.removeAttribute('data-highlighted');
+        selectedPreviewPath = path;
+        highlightSelectedArtifactItem(path);
         let url = apiUrl('/artifacts/preview?path=' + encodeURIComponent(path));
         if (pkg) {
             url += '&package=' + encodeURIComponent(pkg);
@@ -1143,8 +1160,25 @@
             contentEl.className = 'code-preview error';
             return;
         }
-        contentEl.textContent = await res.text();
-        contentEl.className = 'code-preview';
+        const body = await res.text();
+        // Replace the plain <pre> with a Prism-shaped <pre><code> so syntax highlighting and
+        // line-numbers kick in. Only wraps when Prism loaded — fail-open to plain text otherwise.
+        const parent = contentEl.parentNode;
+        const isJava = /\.java$/i.test(path);
+        if (window.Prism && parent) {
+            const pre = document.createElement('pre');
+            pre.id = 'auto-preview-content';
+            pre.className = 'line-numbers language-' + (isJava ? 'java' : 'none');
+            const code = document.createElement('code');
+            code.className = pre.className;
+            code.textContent = body;
+            pre.appendChild(code);
+            parent.replaceChild(pre, contentEl);
+            try { window.Prism.highlightElement(code); } catch (e) { /* fail-open */ }
+        } else {
+            contentEl.textContent = body;
+            contentEl.className = 'code-preview';
+        }
     }
 
     function openArtifactDelete(path, label) {
