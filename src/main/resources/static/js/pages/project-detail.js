@@ -1226,14 +1226,37 @@
         updateFrameworkDeleteUi();
     }
 
+    let projectProgressMount = null;
     async function pollJobs() {
         const res = await fetch('/api/jobs', { credentials: 'same-origin', headers: API_HEADERS });
         if (!res.ok) return;
         const jobs = await res.json();
-        const running = jobs.some(j =>
+        const runningForProject = jobs.find(j =>
             j.projectId === projectId && (j.status === 'RUNNING' || j.status === 'QUEUED')
         );
-        updateJobRunningState(running);
+        updateJobRunningState(!!runningForProject);
+        syncProjectProgressWidget(runningForProject);
+    }
+
+    function syncProjectProgressWidget(runningJob) {
+        const widget = document.getElementById('project-progress-widget');
+        if (!widget) return;
+        if (runningJob && runningJob.jobId && window.KeelProgressLog) {
+            if (projectProgressMount !== runningJob.jobId) {
+                projectProgressMount = runningJob.jobId;
+                widget.hidden = false;
+                KeelProgressLog.mount({
+                    container: widget,
+                    jobId: runningJob.jobId,
+                    onTerminal: () => { projectProgressMount = null; }
+                });
+            }
+        } else if (projectProgressMount && !runningJob) {
+            // A job finished since last poll — keep its final log visible for ~30s then hide, so users
+            // see the terminal state at least once; next running job replaces the widget.
+            projectProgressMount = null;
+            setTimeout(() => { widget.hidden = true; widget.innerHTML = ''; }, 30000);
+        }
     }
 
     function startJobPoll() {

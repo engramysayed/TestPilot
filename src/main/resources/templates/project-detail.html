@@ -577,6 +577,8 @@
     <!-- Automation tab -->
     <section id="tab-automation" class="tab-panel" th:classappend="${activeTab != 'automation'} ? ' hidden' : ''">
         <p id="auto-running-hint" class="hint hidden">A job is running for this project — artifact delete is disabled until it finishes.</p>
+        <!-- Live progress log for the currently-running job on this project; mounted by project-detail.js when pollJobs sees one. -->
+        <section class="panel" id="project-progress-widget" hidden style="margin-bottom:1rem"></section>
         <p id="auto-delete-hint" class="hint hidden">You can delete old <strong>version ZIPs</strong>. Deleting the live <strong>current framework</strong> or individual page/test files requires workspace <strong>Owner</strong> or <strong>Admin</strong>.</p>
         <p id="auto-err" class="error" hidden></p>
         <div id="auto-viewing-banner" class="auto-source-banner" role="status" aria-live="polite">
