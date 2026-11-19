@@ -9,6 +9,17 @@
 <header th:replace="~{fragments :: topbar}"></header>
 <main class="shell keel-page" id="status-root"
       th:attr="data-job-id=${jobId},data-initial-status=${jobStatus},data-job-kind=${jobKind},data-created-at=${jobCreatedAt}">
+<style>
+  .status-log-cell { padding: 0; }
+  .progress-log { list-style: none; margin: 0; padding: .35rem .5rem; max-height: 220px; overflow: auto; border: 1px solid var(--muted-border, #e4e4e7); border-radius: 8px; background: var(--panel-alt, #fafafa); }
+  .progress-log__row { display: grid; grid-template-columns: 5.5rem 1fr; gap: .5rem; padding: .3rem 0; border-bottom: 1px solid var(--muted-border, #eee); font-size: .92rem; }
+  .progress-log__row:last-child { border-bottom: 0; }
+  .progress-log__ts { color: var(--muted-fg, #6b6b73); font-size: .85rem; }
+  .progress-log__msg { word-break: break-word; }
+  .progress-log__empty { padding: .5rem 0; list-style: none; }
+  html[data-theme='dark'] .progress-log { background: #26272c; border-color: #3a3b43; }
+  html[data-theme='dark'] .progress-log__row { border-bottom-color: #35363d; }
+</style>
     <div class="page-title">
         <div>
             <h1 th:text="#{page.status.title}">Run status</h1>
@@ -40,6 +51,12 @@
             <dt>Status</dt><dd id="status" th:text="${jobStatus}">QUEUED</dd>
             <dt>Progress</dt><dd id="progress" th:text="${progressLabel}">0 / 0</dd>
             <dt>Message</dt><dd id="message" th:text="${jobMessage}">—</dd>
+            <dt>Progress log</dt>
+            <dd class="status-log-cell">
+                <ol id="progress-log" class="progress-log" aria-live="polite">
+                    <li class="progress-log__empty muted">Live steps will appear here as the job runs.</li>
+                </ol>
+            </dd>
             <dt th:text="${isGenerateCompareJob} ? 'Model A TCs' : 'Passed'">Passed</dt><dd id="passed" th:text="${passedCount}">0</dd>
             <dt th:text="${isGenerateCompareJob} ? 'Model B TCs' : (${isGenerateBatchJob} ? 'Failed stories' : 'Blocked / TODO')">Blocked / TODO</dt><dd id="todo" th:text="${todoCount}">0</dd>
         </dl>

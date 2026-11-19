@@ -36,6 +36,31 @@
             .replace(/"/g, '&quot;');
     }
 
+    function formatLocalTime(ms) {
+        if (!ms || typeof ms !== 'number') return '';
+        const d = new Date(ms);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    }
+
+    function renderProgressLog(entries) {
+        const list = document.getElementById('progress-log');
+        if (!list) return;
+        if (!Array.isArray(entries) || entries.length === 0) {
+            list.innerHTML = '<li class="progress-log__empty muted">Live steps will appear here as the job runs.</li>';
+            return;
+        }
+        // Newest first so the latest step is immediately visible without scrolling.
+        const rows = entries.slice().reverse().map(function (e) {
+            const t = formatLocalTime(e && e.ts);
+            const msg = escapeHtml(e && e.message ? e.message : '');
+            return '<li class="progress-log__row">'
+                + '<span class="progress-log__ts mono">' + escapeHtml(t) + '</span>'
+                + '<span class="progress-log__msg">' + msg + '</span>'
+                + '</li>';
+        }).join('');
+        list.innerHTML = rows;
+    }
+
     function isActiveStatus(status) {
         return status === 'QUEUED' || status === 'RUNNING' || status === 'CANCELLING';
     }
@@ -177,6 +202,7 @@
         const tot = data.progressTotal || 0;
         document.getElementById('progress').textContent = cur + ' / ' + tot;
         document.getElementById('message').textContent = data.message || '—';
+        renderProgressLog(data.progressLog);
         const precisionBanner = document.getElementById('precision-fallback-banner');
         if (precisionBanner) {
             const msgText = String(data.message || '');

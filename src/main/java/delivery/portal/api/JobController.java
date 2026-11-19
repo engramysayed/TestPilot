@@ -267,6 +267,7 @@ public class JobController {
                     body.put("message", job.getMessage() == null ? "" : job.getMessage());
                     body.put("progressCurrent", job.getProgressCurrent());
                     body.put("progressTotal", job.getProgressTotal());
+                    body.put("progressLog", job.getProgressLog());
                     body.put("createdAt", job.getCreatedAt() == null ? "" : job.getCreatedAt().toString());
                     body.put("downloadable", JobRecord.isDownloadable(job.getJobKind(), job.getStatus()));
                     body.put("softBlocked", job.getStatus() == JobRecord.Status.COMPLETED_WITH_BLOCK);

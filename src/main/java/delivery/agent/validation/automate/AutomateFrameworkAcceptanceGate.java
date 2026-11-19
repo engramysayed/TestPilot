@@ -246,6 +246,13 @@ public final class AutomateFrameworkAcceptanceGate {
             // and passes contract v2 can still ship an empty-body test class or a page with no actions
             // — the assessor catches those. Opt-out via delivery.agent-harness.automate-framework-repair.architecture-gate-enabled=false.
             if (properties.isAutomateFrameworkRepairArchitectureGateEnabled()) {
+                if (expectedInventory == null) {
+                    // Should only happen in tests / utility paths — EmitPhase always passes inventory.
+                    // Warn so a production regression (a new caller that forgets inventory) shows up in logs.
+                    log.warn("Architecture gate ran WITHOUT expectedInventory for parentJobId={} projectId={}: "
+                                    + "advisory-only check, no architecture enforcement for this run",
+                            parentJobId, projectId);
+                }
                 FrameworkRepairArchitectureAssessor.ArchitectureQualityReport arch =
                         FrameworkRepairArchitectureAssessor.assess(repairRoot, expectedInventory);
                 if (!arch.functionallyComplete()) {
