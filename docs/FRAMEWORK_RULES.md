@@ -5,42 +5,50 @@ Canonical reference for the test framework Keel emits. The agent and codegen mus
 - **Source of truth for emit shape**: `customer-framework-template/templates/*.ftl`
 - **Validator**: [`FrameworkContractValidator.java`](../src/main/java/delivery/agent/validation/contract/FrameworkContractValidator.java)
 - **Keep this doc in sync**: any change to codegen emit, template contracts, runtime framework classes, or validator rules MUST update this file in the same commit. The agent uses this doc as its canonical rules reference.
-- **Severities today**:
-  - `FW_RULE_ASSERT_TAKES_LOCATOR` → **MANDATORY** (blocks emit)
-  - `FW_RULE_NO_STEP_ON_VALUE_METHODS` → **MANDATORY** (blocks emit)
-  - `FW_RULE_LOCAL_REUSE` → RECOMMENDED
-  - `FW_RULE_REUSE_ACTIONS` → RECOMMENDED
-  - `FW_RULE_LOCATOR_LADDER` → RECOMMENDED
+- **Sync check**: [`FrameworkRulesDocSyncTest`](../src/test/java/delivery/agent/validation/contract/FrameworkRulesDocSyncTest.java) fails if a `FW_RULE_*` code lives in the doc but not the validator, or the other way round.
+
+### Severities today
+
+| Rule ID | Validator code | Severity |
+| --- | --- | --- |
+| KEEL-R-3c | `FW_RULE_ASSERT_TAKES_LOCATOR` | **MANDATORY** (blocks emit) |
+| KEEL-R-STEP-SAFE | `FW_RULE_NO_STEP_ON_VALUE_METHODS` | **MANDATORY** (blocks emit) |
+| KEEL-R-2 | `FW_RULE_LOCAL_REUSE` | RECOMMENDED |
+| KEEL-R-3a | `FW_RULE_REUSE_ACTIONS` | RECOMMENDED |
+| KEEL-R-4 | `FW_RULE_LOCATOR_LADDER` | RECOMMENDED |
+| KEEL-R-TEST-NO-BY | `FW_RULE_TEST_NO_RAW_BY` | RECOMMENDED |
+| KEEL-R-TEST-DESC | `FW_RULE_TEST_DESC_REQUIRED` | RECOMMENDED |
+| KEEL-R-NO-SYSOUT | `FW_RULE_NO_SYSOUT` | RECOMMENDED |
 
 ---
 
 ## 1. User-stated rules
 
-### Rule 1 — 1 TC = 1 test class
+### KEEL-R-1 — 1 TC = 1 test class
 Each TC renders to one test class file. Re-emits edit the same file; new TCs create new files.
 - Enforced by: `CodegenTestClasses.classNameFor`, `CodegenTestClasses.groupKey`.
 - Partial / failed TCs emit under `src/test/java/project/tests/todo/<Stem>_TestTodo.java` with `@Test(enabled=false)` and `Assert.fail("STOPPED HERE: ...")`.
 
-### Rule 2 — Local reuse via private fields/methods (not constants)
+### KEEL-R-2 — Local reuse via private fields/methods (not constants)
 Repeated literals/method bodies inside one test class become `private` fields or methods (not `private static final` constants).
 - Validator: `FW_RULE_LOCAL_REUSE` (flags ≥ 2 occurrences of the same string literal in one class).
 
-### Rule 3a — Reuse Actions / utils (don't call Selenium directly)
+### KEEL-R-3a — Reuse Actions / utils (don't call Selenium directly)
 Tests and page objects call the project's Action/util classes; never `driver.findElement(...)`, `new WebDriverWait(...)`, or `new org.openqa.selenium.interactions.Actions(...)`.
 - Validator: `FW_RULE_REUSE_ACTIONS`.
 - Facades: `project.utils.Actions.Act`, `project.utils.Actions.Browse`, `project.utils.Actions.Alerts`, `project.utils.Actions.Frames`.
 
-### Rule 3b — Static facades for reused Actions / assertions
+### KEEL-R-3b — Static facades for reused Actions / assertions
 Reused action/assertion entry points are static (no instance required), callable as `Act.click(by)`, `Browse.navigateToUrl(url)`, `Validate.elementVisable(by)`, `Verify.textContains(by, s)`.
 - Internal facades resolve the driver via `WebDriverFactory.getDriver()` (`ThreadLocal<WebDriver>`).
 
-### Rule 3c — Assertions take a locator, no HTML / body scan
+### KEEL-R-3c — Assertions take a locator, no HTML / body scan
 Every assertion compares expected vs actual against a specific element locator, or checks that element's visibility. Never scan the page's HTML or body text.
 - Validator: `FW_RULE_ASSERT_TAKES_LOCATOR` — **MANDATORY**, blocks emit. Flags `bodyTextContains`, `driver.getPageSource()`, `driver.getTitle()`, `driver.getCurrentUrl()`.
 - Runtime: `bodyTextContains` is removed from `project.validations.Assertion` so a user cannot hand-write it and compile.
-- Codegen: a `textContains` step with no locator demotes its TC to `TcStatus.PARTIAL` and lands in `tests/todo/` with a `failureReason` naming the broken assertion. See `CodegenEmitFilters.filterOutcome`.
+- Codegen: a `textContains` step with no locator demotes its TC to `TcStatus.PARTIAL` and lands in `tests/todo/` with a `failureReason` naming the broken assertion. See `CodegenEmitFilters.filterOutcome`. There is no legitimate code path that produces an assertion without a locator: if an element can't be located the step is marked TODO; if it can, the step emits with that locator.
 
-### Rule 4 — Locator ladder
+### KEEL-R-4 — Locator ladder
 Field strategies, best first:
 1. Project's user-preferred hook (`PreferredHooksStore.current()`)
 2. `id`
@@ -50,10 +58,10 @@ Field strategies, best first:
 - Validator: `FW_RULE_LOCATOR_LADDER`.
 - Codegen: `KeelBy` ranker + `MultiLocatorBag` carry fallbacks; preferred-hook wins first.
 
-### Rule 5 — No test-data env prefix
+### KEEL-R-5 — No test-data env prefix
 No `sit_`, `uat_` style prefixes baked into property keys. Switch envs via runtime (`-Denv=...`) if needed.
 
-### Rule 6 — No comments in the generated framework
+### KEEL-R-6 — No comments in the generated framework
 Generated page and test files ship without comments (block, Javadoc, line).
 - Enforced by: `CodeWriter.stripJavaComments` on every emit. String literals (URLs, XPath values) are preserved.
 - For load-bearing data a template needs to preserve through the stripper, use `LogsManager.info("…")` (like REVIEW notes do).
@@ -61,6 +69,23 @@ Generated page and test files ship without comments (block, Javadoc, line).
 ---
 
 ## 2. Rules the codebase enforces (implied / derived)
+
+### KEEL-R-STEP-SAFE — @Step is forbidden on methods taking String args
+`@Step` + a `String` parameter leaks the arg via Allure's aspect weaver. Value-bearing methods (`type_*` / `select_*` / `login`) deliberately omit `@Step`; they still appear in Allure via `AllureSteps.run("<methodName>", ...)`, which handles secret redaction via `Secrets.register` / `Secrets.redact`.
+- Validator: `FW_RULE_NO_STEP_ON_VALUE_METHODS` — **MANDATORY**, blocks emit. Flags `@Step` on any method whose first parameter is `String`.
+- Covers the generic form: `@Step("x") public <T> void foo(String s)` is still caught by the regex.
+
+### KEEL-R-TEST-NO-BY — Tests don't instantiate raw By
+Test classes must call page methods only. Locators belong on the page object.
+- Validator: `FW_RULE_TEST_NO_RAW_BY` — flags any `By.cssSelector(...)`, `By.xpath(...)`, `By.id(...)`, etc. inside a `*_Test.java` file.
+
+### KEEL-R-TEST-DESC — Every @Test carries a non-blank description
+`@Test(description = "<TC title/summary>")`. The TC description carries over from the IR.
+- Validator: `FW_RULE_TEST_DESC_REQUIRED` — flags `@Test` with no `description` or an empty `description`.
+
+### KEEL-R-NO-SYSOUT — No System.out / System.err in generated code
+Generated code must log via `LogsManager` only.
+- Validator: `FW_RULE_NO_SYSOUT` — flags `System.out.print(ln|f)` and `System.err.print(ln|f)` in page and test files.
 
 ### Pages and element reuse
 - **Page merging**: `Login` / `LoginForm` / `LoginPage` / `TargetLogin` collapse onto the `Login` page key. Other names use their own key.
@@ -74,14 +99,20 @@ Generated page and test files ship without comments (block, Javadoc, line).
 - `@Test(description = "<TC title and summary>")` — the TC description carries over from the IR.
 - Read-only cases: add `@KeelReadOnly`, `groups = {KeelReadOnly.GROUP}`, `retryAnalyzer = KeelRetryAnalyzer.class`.
 - `@Step` annotation on each no-arg page method and on every assertion (via Allure's aspect weaver, `import io.qameta.allure.Step;`).
-- **Secret-safe exception**: `type_/select_` methods that take `String value` and the login helper deliberately omit `@Step` so Allure's aspect weaver does not log parameter values. Those methods still appear in Allure via `AllureSteps.run("<methodName>", ...)`, which handles secret redaction via `Secrets.register` / `Secrets.redact`.
-- Validator: `FW_RULE_NO_STEP_ON_VALUE_METHODS` — **MANDATORY**, blocks emit. Flags `@Step` on any method whose first parameter is `String`.
-- `LogsManager.info("<methodName>")` fires after every action method and every assertion method body completes (outside the `AllureSteps.run` lambda so it only logs on success).
+- **Secret-safe exception**: see KEEL-R-STEP-SAFE above.
+- `LogsManager.info("Step: <action> on <fieldName>")` fires after every action method body, and `LogsManager.info("Step: assert <assertionType> on <fieldName>")` after every assertion method body (outside the `AllureSteps.run` lambda so it only logs on success). The log describes what happened on the locator, never the value — value logging is Allure's job, redacted via `Secrets`.
 
 ### Allure / reporting
 - `AllureSteps.run(name, Runnable)` wraps every action and assertion in a soft-assert-aware step: starts a named step, checks `Validation.pendingFailureCount()` to decide PASSED vs FAILED, redacts secrets on exception, re-throws redacted `AssertionError` when the message carries a secret.
 - Attachments and traces route through `AllureAttachmentManager`, `AllureDownloadManager`, `AllureEnviromentsManager`.
 - Reports generated via `AllureReportGenerator`.
+
+### Local Allure report generation
+The generated framework ships with `allure-maven` wired. Two helper scripts live at the framework root:
+- `generate-allure-report.sh` (POSIX)
+- `generate-allure-report.bat` (Windows)
+
+Both run `mvn clean test` (failures ignored) then `mvn allure-maven:report`, producing `test-output/target/site/allure-report/index.html`. Users open or host that HTML. Server-side post-emit generation (running headless Chrome on the Keel server and bundling the report alongside the delivery ZIP) is tracked as open work in section 3.
 
 ### Driver lifecycle
 - `WebDriverFactory` holds a `ThreadLocal<WebDriver>`. One driver per TestNG thread.
@@ -114,14 +145,12 @@ Generated page and test files ship without comments (block, Javadoc, line).
 
 ## 3. Open rules worth adding
 
-- **Mandatory severity for Rule 4** — `FW_RULE_LOCATOR_LADDER` still RECOMMENDED. Promote once the ranker is trusted end-to-end.
-- **Mandatory severity for Rule 2 and Rule 3a** — `FW_RULE_LOCAL_REUSE` and `FW_RULE_REUSE_ACTIONS` still RECOMMENDED. Promote when ready.
-- **No direct Selenium calls in tests** — tests must call page methods only; pages call `Act`/`Browse`/`Validate`/`Verify`. Partially covered by `FW_RULE_REUSE_ACTIONS` (which only flags raw driver/wait/actions constructors). Expand to flag any `org.openqa.selenium.By` instantiation inside a `*Test` class.
-- **@Test(description) non-blank check** — every generated test method must have a non-blank description. A hard emit assertion.
-- **Page-object constructor is single-shaped** — only `public <Page>(WebDriverFactory driver)`. No no-arg, no overloaded constructors. Hard emit assertion.
-- **Page objects fields are `protected final By`** — no mutable locators, no `public`/`private` locators (protected lets a hand-written subclass override for a specific project variant).
+- **Mandatory severity for KEEL-R-4** — `FW_RULE_LOCATOR_LADDER` still RECOMMENDED. Promote once the ranker is trusted end-to-end.
+- **Mandatory severity for KEEL-R-2 and KEEL-R-3a** — `FW_RULE_LOCAL_REUSE` and `FW_RULE_REUSE_ACTIONS` still RECOMMENDED. Promote when ready.
+- **Page constructor shape** — only `public <Page>(WebDriverFactory driver)`. No no-arg, no overloaded constructors. Hard emit assertion. (Validator rule not added yet.)
+- **Page objects fields are `protected final By`** — no mutable locators, no `public`/`private` locators (protected lets a hand-written subclass override for a specific project variant). (Validator rule not added yet.)
 - **IR-level reject for `textContains` without a locator** — today the emit demotes to TODO; upstream could reject before codegen ever sees it (cleaner, stops bad IR earlier).
-- **Post-emit Allure report** — run the generated suite headless after codegen packaging and bundle the Allure HTML report alongside the ZIP, so the user can open the report without running the tests themselves. Needs a headless Chrome image, Maven exec, Allure CLI, and output-pipeline wiring; scope as a separate initiative.
+- **Server-side post-emit Allure report** — run the generated suite headless after codegen packaging and bundle the Allure HTML report alongside the ZIP, so the user can open the report without running the tests themselves. Needs a headless Chrome image, Maven exec, Allure CLI, and output-pipeline wiring; scope as a separate initiative. Today the `generate-allure-report.sh`/`.bat` helpers give the user a one-command path to the report locally.
 
 ---
 
@@ -130,27 +159,38 @@ Generated page and test files ship without comments (block, Javadoc, line).
 When the agent generates or edits a framework file:
 
 1. **Automatic**: `FrameworkContractValidator.validate(root, …)` runs over all test + page files. Findings with code `FW_RULE_*` surface in the agent-run report. MANDATORY findings block emit; RECOMMENDED findings warn.
-2. **This doc, as LLM context**: load the entire file into the agent's prompt so it knows the semantic rules the validator doesn't yet enforce. Two practical wiring points:
-   - **In the authoring prompt** (`LocalLlmClient` call sites in `CodeWriter` / planner): prepend the file contents as a `system`-role message before user instructions.
-   - **In the agent-run job bridge** (`src/main/java/delivery/agent/harness/convert/AgentHarnessJobBridge.java` or the hunt/generate bridges): read `docs/FRAMEWORK_RULES.md` once at job start, attach it to the LLM session context so every prompt in that run carries it.
-   - Keep the file under ~10KB so it fits in a prompt comfortably; trim Section 5 (the rule-to-code table) if the context budget is tight.
+2. **This doc, as LLM context**: `AgentHarnessJobBridge` copies `docs/FRAMEWORK_RULES.md` into the agent's isolated workspace at `.keel/FRAMEWORK_RULES.md` right after extracting the framework ZIP. The agent is instructed (via its objective) to read that file first. Call sites with an LLM session (`CodeWriter` naming hooks, planner prompts) can also prepend the file contents as a `system`-role message before user instructions.
 3. **Severity dial**: adjust `ValidationSeverity` per rule in [`FrameworkContractValidator.java`](../src/main/java/delivery/agent/validation/contract/FrameworkContractValidator.java) when a rule must block emit instead of warn.
-4. **Sync discipline**: every commit that touches codegen emit, template contracts, runtime framework classes, or validator rules updates this file too. See the memory note `framework-rules-doc`.
+4. **Sync discipline**: every commit that touches codegen emit, template contracts, runtime framework classes, or validator rules updates this file too. Enforced by [`FrameworkRulesDocSyncTest`](../src/test/java/delivery/agent/validation/contract/FrameworkRulesDocSyncTest.java) for FW_RULE_* codes; the broader sync is a memory rule (`framework-rules-doc`).
 
 ---
 
 ## 5. Rule-to-code map
 
-| Rule | Validator code | Severity | Primary file |
+| Rule ID | Validator code | Severity | Primary file |
 | --- | --- | --- | --- |
-| 2 Local reuse | `FW_RULE_LOCAL_REUSE` | RECOMMENDED | [`FrameworkContractValidator.java`](../src/main/java/delivery/agent/validation/contract/FrameworkContractValidator.java) |
-| 3a / 3b Reuse Actions | `FW_RULE_REUSE_ACTIONS` | RECOMMENDED | same |
-| 3c Assertion takes locator | `FW_RULE_ASSERT_TAKES_LOCATOR` | **MANDATORY** | same |
-| 4 Locator ladder | `FW_RULE_LOCATOR_LADDER` | RECOMMENDED | same |
-| @Step safety | `FW_RULE_NO_STEP_ON_VALUE_METHODS` | **MANDATORY** | same |
-| 6 No comments | — | — | [`CodeWriter.stripJavaComments`](../src/main/java/delivery/codegen/CodeWriter.java) |
+| KEEL-R-2 Local reuse | `FW_RULE_LOCAL_REUSE` | RECOMMENDED | [`FrameworkContractValidator.java`](../src/main/java/delivery/agent/validation/contract/FrameworkContractValidator.java) |
+| KEEL-R-3a/3b Reuse Actions | `FW_RULE_REUSE_ACTIONS` | RECOMMENDED | same |
+| KEEL-R-3c Assertion takes locator | `FW_RULE_ASSERT_TAKES_LOCATOR` | **MANDATORY** | same |
+| KEEL-R-4 Locator ladder | `FW_RULE_LOCATOR_LADDER` | RECOMMENDED | same |
+| KEEL-R-STEP-SAFE @Step safety | `FW_RULE_NO_STEP_ON_VALUE_METHODS` | **MANDATORY** | same |
+| KEEL-R-TEST-NO-BY No raw By in tests | `FW_RULE_TEST_NO_RAW_BY` | RECOMMENDED | same |
+| KEEL-R-TEST-DESC @Test description | `FW_RULE_TEST_DESC_REQUIRED` | RECOMMENDED | same |
+| KEEL-R-NO-SYSOUT No System.out | `FW_RULE_NO_SYSOUT` | RECOMMENDED | same |
+| KEEL-R-6 No comments | — | — | [`CodeWriter.stripJavaComments`](../src/main/java/delivery/codegen/CodeWriter.java) |
 | Page merging | — | — | [`PageAccumulator.pageKey`](../src/main/java/delivery/codegen/PageAccumulator.java) |
 | Field / action / assertion reuse | — | — | [`PageAccumulator`](../src/main/java/delivery/codegen/PageAccumulator.java) |
 | TODO routing | — | — | [`CodegenEmitFilters.filterOutcome`](../src/main/java/delivery/codegen/CodegenEmitFilters.java) |
 | Framework delete | — | — | [`ProjectController.deleteLiveFramework`](../src/main/java/delivery/portal/api/ProjectController.java), [`project-detail.html`](../src/main/resources/templates/project-detail.html) |
 | Test-data override | — | — | [`PropertyReader.loadProperties`](../customer-framework-template/src/main/java/project/utils/dataReader/PropertyReader.java) |
+
+---
+
+## 6. Last changed
+
+One line per rule-touching change. Newest first.
+
+- 2026-11-19 — added KEEL-R-TEST-NO-BY, KEEL-R-TEST-DESC, KEEL-R-NO-SYSOUT (all RECOMMENDED); added KEEL-R-* IDs to every rule; `LogsManager.info` now logs `"Step: <action> on <fieldName>"` instead of the method name; wired `AgentHarnessJobBridge` to drop this doc into the agent workspace; added `FrameworkRulesDocSyncTest` to catch future drift; added `allure-maven` plugin + `generate-allure-report.sh`/`.bat` helpers to the template.
+- 2026-11-19 — added KEEL-R-STEP-SAFE (`FW_RULE_NO_STEP_ON_VALUE_METHODS`, MANDATORY); promoted KEEL-R-3c to MANDATORY; added test-data override file + `PropertyReader.loadOverride`; removed `bodyTextContains` from `Assertion.java`; `@Step` on every no-arg page method.
+- 2026-11-19 — added KEEL-R-3b static facades (Act, Browse, Validate, Verify); migrated `BaseTest` + `SettledActions` to the facades; `bodyTextContains` no longer emitted by codegen.
+- 2026-11-18 — added KEEL-R-3c (`FW_RULE_ASSERT_TAKES_LOCATOR`, started RECOMMENDED); TODO demotion for locator-free `textContains`.

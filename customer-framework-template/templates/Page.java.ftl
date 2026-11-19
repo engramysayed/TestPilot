@@ -85,7 +85,7 @@ public class ${pageClassName} {
 </#if>
         });
 </#if>
-        LogsManager.info("${method.name}");
+        LogsManager.info("Step: ${method.action} on ${method.fieldName}");
     }
 <#else>
     @Step("${method.name}")
@@ -99,7 +99,7 @@ public class ${pageClassName} {
             Act.click(${method.fieldName});
         });
 </#if>
-        LogsManager.info("${method.name}");
+        LogsManager.info("Step: ${method.action} on ${method.fieldName}");
     }
 </#if>
 
@@ -157,7 +157,7 @@ public class ${pageClassName} {
           }
 </#if>
         });
-        LogsManager.info("${assertion.name}");
+        LogsManager.info("Step: assert ${assertion.assertionType} on ${assertion.fieldName}");
     }
 <#else>
     @Step("${assertion.name}")
@@ -192,7 +192,7 @@ public class ${pageClassName} {
           }
 </#if>
         });
-        LogsManager.info("${assertion.name}");
+        LogsManager.info("Step: assert ${assertion.assertionType} on ${assertion.fieldName}");
     }
 </#if>
 

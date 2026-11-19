@@ -670,11 +670,15 @@ public final class FrameworkContractValidator {
       out.addAll(ruleRawDriverInTest(root, e.getKey(), e.getValue(), body));
       out.addAll(ruleAssertScansHtml(root, e.getKey(), e.getValue(), body));
       out.addAll(ruleDuplicateLiterals(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleTestNoRawBy(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleTestDescriptionPresent(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleNoSysout(root, e.getKey(), e.getValue(), body));
     }
     for (Map.Entry<String, Path> e : pageFiles.entrySet()) {
       String body = readQuiet(e.getValue());
       out.addAll(ruleComplexLocators(root, e.getKey(), e.getValue(), body, userHooks));
       out.addAll(ruleNoStepOnValueMethod(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleNoSysout(root, e.getKey(), e.getValue(), body));
     }
     return out;
   }
@@ -756,6 +760,88 @@ public final class FrameworkContractValidator {
           lineOf(body, m.start()),
           truncate(m.group(), 80),
           "Delete the @Step annotation on this method."));
+    }
+    return out;
+  }
+
+  /* --- Rule 3a extension: tests must not instantiate raw Selenium By in test bodies --- */
+  private static final Pattern RAW_BY_IN_TEST = Pattern.compile(
+      "\\bBy\\.(cssSelector|xpath|id|name|className|tagName|linkText|partialLinkText)\\s*\\(");
+
+  private static List<ValidationFinding> ruleTestNoRawBy(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = RAW_BY_IN_TEST.matcher(body);
+    if (m.find()) {
+      out.add(new ValidationFinding(
+          "FW_RULE_TEST_NO_RAW_BY",
+          "Test '" + cls + "' instantiates " + m.group() + " directly — tests must call page methods only; locators belong in page classes",
+          ValidationSeverity.RECOMMENDED,
+          cls,
+          relativize(root, file),
+          lineOf(body, m.start()),
+          m.group(),
+          "Move the locator to the page class and call a page method from the test."));
+    }
+    return out;
+  }
+
+  /* --- Rule: every generated @Test must declare a non-blank description --- */
+  private static final Pattern TEST_DESCRIPTION = Pattern.compile(
+      "@Test\\s*\\(([^)]*)\\)");
+
+  private static List<ValidationFinding> ruleTestDescriptionPresent(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = TEST_DESCRIPTION.matcher(body);
+    while (m.find()) {
+      String args = m.group(1);
+      if (args == null || !args.contains("description")) {
+        out.add(new ValidationFinding(
+            "FW_RULE_TEST_DESC_REQUIRED",
+            "@Test in '" + cls + "' has no description — every generated test must carry a non-blank description from the TC",
+            ValidationSeverity.RECOMMENDED,
+            cls,
+            relativize(root, file),
+            lineOf(body, m.start()),
+            truncate(m.group(), 80),
+            "Add description = \"<TC title/summary>\" to the @Test annotation."));
+        continue;
+      }
+      Matcher descMatcher = Pattern.compile("description\\s*=\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").matcher(args);
+      if (descMatcher.find() && descMatcher.group(1).trim().isEmpty()) {
+        out.add(new ValidationFinding(
+            "FW_RULE_TEST_DESC_REQUIRED",
+            "@Test in '" + cls + "' has an empty description",
+            ValidationSeverity.RECOMMENDED,
+            cls,
+            relativize(root, file),
+            lineOf(body, m.start()),
+            truncate(m.group(), 80),
+            "Populate description with the TC's title or summary."));
+      }
+    }
+    return out;
+  }
+
+  /* --- Rule: no System.out / System.err in generated code — use LogsManager --- */
+  private static final Pattern SYSOUT = Pattern.compile(
+      "\\bSystem\\.(out|err)\\.(print|println|printf)\\s*\\(");
+
+  private static List<ValidationFinding> ruleNoSysout(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = SYSOUT.matcher(body);
+    if (m.find()) {
+      out.add(new ValidationFinding(
+          "FW_RULE_NO_SYSOUT",
+          "'" + cls + "' uses " + m.group() + " — generated code must log via LogsManager, not System.out/err",
+          ValidationSeverity.RECOMMENDED,
+          cls,
+          relativize(root, file),
+          lineOf(body, m.start()),
+          m.group(),
+          "Replace with project.utils.Logs.LogsManager.info / warn / error."));
     }
     return out;
   }
