@@ -34,11 +34,24 @@
         if (list) list.innerHTML = '';
         fetch('/api/preflight', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
             .then(function (r) {
+                // Session expired / not authenticated → friendly message + re-login link, not raw HTTP 401.
+                if (r.status === 401 || r.status === 403) {
+                    var msg = r.status === 401
+                        ? 'Your session expired. '
+                        : 'You do not have permission to run this check. ';
+                    if (status) {
+                        status.className = 'preflight-modal__status fail';
+                        status.innerHTML = escapeHtml(msg)
+                            + '<a href="/login?next=' + encodeURIComponent(window.location.pathname + window.location.search) + '">Sign in again</a>';
+                    }
+                    throw new Error('__handled__');
+                }
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.json();
             })
             .then(render)
             .catch(function (e) {
+                if (e && e.message === '__handled__') return;
                 if (status) {
                     status.textContent = 'Could not reach pre-flight endpoint: ' + (e && e.message ? e.message : e);
                     status.className = 'preflight-modal__status fail';

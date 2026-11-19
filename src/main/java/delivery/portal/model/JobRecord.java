@@ -216,6 +216,15 @@ public class JobRecord {
     public java.util.List<ProgressEntry> getProgressLog() {
         return java.util.List.copyOf(progressLog);
     }
+    /** Replace the in-memory log (used by PortalStore.hydrate after JVM restart). Trims to {@link #PROGRESS_LOG_MAX}. */
+    public void setProgressLog(java.util.List<ProgressEntry> entries) {
+        progressLog.clear();
+        if (entries == null || entries.isEmpty()) {
+            return;
+        }
+        int fromIdx = Math.max(0, entries.size() - PROGRESS_LOG_MAX);
+        progressLog.addAll(entries.subList(fromIdx, entries.size()));
+    }
     public Path getZipPath() { return zipPath.get(); }
     public void setZipPath(Path p) { zipPath.set(p); }
     public String getError() { return error.get(); }

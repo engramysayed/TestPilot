@@ -100,7 +100,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/css/**", "/js/**", "/img/**", "/prompts/**",
+                                "/css/**", "/js/**", "/img/**", "/prompts/**", "/vendor/**",
                                 "/favicon.ico", "/favicon.svg",
                                 "/login", "/request-access", "/invite/**", "/error",
                                 "/api/health", "/api/ready",

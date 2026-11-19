@@ -911,12 +911,12 @@
 </div>
 
 <script th:inline="javascript">window.KEEL_PAGE = Object.assign(window.KEEL_PAGE || {}, { activeTab: /*[[${activeTab}]]*/ 'summary' });</script>
-<!-- VS Code-style preview: PrismJS from cdnjs (pinned version, Java syntax + line-numbers) -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css"/>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+<!-- VS Code-style preview: PrismJS 1.29.0 vendored under /vendor/prism — no CDN dependency. -->
+<link rel="stylesheet" th:href="@{/vendor/prism/prism-tomorrow.min.css}"/>
+<link rel="stylesheet" th:href="@{/vendor/prism/prism-line-numbers.min.css}"/>
+<script defer th:src="@{/vendor/prism/prism.min.js}"></script>
+<script defer th:src="@{/vendor/prism/prism-java.min.js}"></script>
+<script defer th:src="@{/vendor/prism/prism-line-numbers.min.js}"></script>
 <style>
     .auto-preview-panel { background: #282a36; color: #f8f8f2; border-color: #1f2129; }
     .auto-preview-panel h2 { color: #f8f8f2; }

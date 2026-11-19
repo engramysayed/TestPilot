@@ -590,6 +590,39 @@ public class PortalStore {
     }
 
     @Transactional
+    /** JSON-serialize the live progress-log entries for persistence (null when empty). */
+    static String serializeProgressLog(java.util.List<JobRecord.ProgressEntry> entries) {
+        if (entries == null || entries.isEmpty()) {
+            return null;
+        }
+        org.json.JSONArray arr = new org.json.JSONArray();
+        for (JobRecord.ProgressEntry entry : entries) {
+            if (entry == null) continue;
+            arr.put(new org.json.JSONObject()
+                    .put("ts", entry.ts())
+                    .put("message", entry.message() == null ? "" : entry.message()));
+        }
+        return arr.toString();
+    }
+
+    /** Inverse of {@link #serializeProgressLog}; returns an empty list for blank/invalid JSON. */
+    static java.util.List<JobRecord.ProgressEntry> deserializeProgressLog(String json) {
+        if (json == null || json.isBlank()) {
+            return java.util.List.of();
+        }
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray(json);
+            java.util.List<JobRecord.ProgressEntry> out = new java.util.ArrayList<>(arr.length());
+            for (int i = 0; i < arr.length(); i++) {
+                org.json.JSONObject row = arr.getJSONObject(i);
+                out.add(new JobRecord.ProgressEntry(row.optLong("ts", 0L), row.optString("message", "")));
+            }
+            return out;
+        } catch (Exception ignored) {
+            return java.util.List.of();
+        }
+    }
+
     public synchronized JobRecord saveJob(JobRecord job) {
         boolean creating = job.getStatus() == JobRecord.Status.QUEUED
                 && jobRepository.findByJobId(job.getJobId()).isEmpty();
@@ -652,6 +685,7 @@ public class PortalStore {
         entity.setProgressCurrent(job.getProgressCurrent());
         entity.setProgressTotal(job.getProgressTotal());
         entity.setMessage(job.getMessage());
+        entity.setProgressLog(serializeProgressLog(job.getProgressLog()));
         entity.setError(truncate(job.getError(), 1024));
         if (entity.getCreatedAt() == null) {
             Instant created = job.getCreatedAt() != null ? job.getCreatedAt() : Instant.now();
@@ -1117,6 +1151,10 @@ public class PortalStore {
         job.setProgressTotal(e.getProgressTotal());
         if (e.getMessage() != null) {
             job.setMessage(e.getMessage());
+        }
+        java.util.List<JobRecord.ProgressEntry> hydratedLog = deserializeProgressLog(e.getProgressLog());
+        if (!hydratedLog.isEmpty()) {
+            job.setProgressLog(hydratedLog);
         }
         if (e.getError() != null && !e.getError().isBlank()) {
             job.setError(e.getError());
