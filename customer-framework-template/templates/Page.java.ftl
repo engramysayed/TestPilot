@@ -1,5 +1,6 @@
 package project.pages;
 
+import io.qameta.allure.Step;
 import org.openqa.selenium.By;
 import project.drivers.WebDriverFactory;
 import project.utils.Actions.Act;
@@ -86,6 +87,7 @@ public class ${pageClassName} {
 </#if>
     }
 <#else>
+    @Step("${method.name}")
     public void ${method.name}() {
 <#if method.action == "drag">
         SettledActions.drag(driver, ${method.fieldName}, ${method.dropFieldName}, "${method.name}");
@@ -112,7 +114,6 @@ public class ${pageClassName} {
 
 </#if>
 <#if loginHelper??>
-    /** Preferred login API: type credentials then submit. */
     public void login(String username, String password) {
         ${loginHelper.userMethod}(username);
         ${loginHelper.passMethod}(password);
@@ -122,6 +123,7 @@ public class ${pageClassName} {
 </#if>
 <#list assertions as assertion>
 <#if assertion.parameterized>
+    @Step("${assertion.name}")
     public void ${assertion.name}(String expected) {
         AllureSteps.run("${assertion.name}", () -> {
 <#if assertion.smart>
@@ -155,6 +157,7 @@ public class ${pageClassName} {
         });
     }
 <#else>
+    @Step("${assertion.name}")
     public void ${assertion.name}() {
         AllureSteps.run("${assertion.name}", () -> {
 <#if assertion.smart>
