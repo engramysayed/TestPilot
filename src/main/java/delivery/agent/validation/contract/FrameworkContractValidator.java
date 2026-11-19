@@ -674,6 +674,7 @@ public final class FrameworkContractValidator {
     for (Map.Entry<String, Path> e : pageFiles.entrySet()) {
       String body = readQuiet(e.getValue());
       out.addAll(ruleComplexLocators(root, e.getKey(), e.getValue(), body, userHooks));
+      out.addAll(ruleNoStepOnValueMethod(root, e.getKey(), e.getValue(), body));
     }
     return out;
   }
@@ -715,7 +716,7 @@ public final class FrameworkContractValidator {
       out.add(new ValidationFinding(
           "FW_RULE_ASSERT_TAKES_LOCATOR",
           "Test '" + cls + "' asserts on " + m.group() + " — assertions must take a locator and compare expected vs actual, not scan the whole page",
-          ValidationSeverity.RECOMMENDED,
+          ValidationSeverity.MANDATORY,
           cls,
           relativize(root, file),
           lineOf(body, m.start()),
@@ -727,12 +728,34 @@ public final class FrameworkContractValidator {
       out.add(new ValidationFinding(
           "FW_RULE_ASSERT_TAKES_LOCATOR",
           "Test '" + cls + "' uses bodyTextContains — assertions must target a specific locator",
-          ValidationSeverity.RECOMMENDED,
+          ValidationSeverity.MANDATORY,
           cls,
           relativize(root, file),
           lineOf(body, b.start()),
           "bodyTextContains",
           "Replace with elementTextEquals(By, expected) or textContains(By, expected)."));
+    }
+    return out;
+  }
+
+  /* --- Rule: @Step on a method taking a String arg leaks the arg via Allure's aspect weaver --- */
+  private static final Pattern STEP_ON_VALUE_METHOD = Pattern.compile(
+      "@(?:io\\.qameta\\.allure\\.)?Step\\s*\\([^)]*\\)\\s*(?:public|protected|private)?\\s*\\w[\\w.<>\\[\\]]*\\s+\\w+\\s*\\(\\s*(?:final\\s+)?String\\b");
+
+  private static List<ValidationFinding> ruleNoStepOnValueMethod(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = STEP_ON_VALUE_METHOD.matcher(body);
+    while (m.find()) {
+      out.add(new ValidationFinding(
+          "FW_RULE_NO_STEP_ON_VALUE_METHODS",
+          "@Step on a method taking a String arg — Allure's aspect weaver will log that arg. Remove @Step; keep the body inside AllureSteps.run(name, Runnable) so Secrets.redact applies.",
+          ValidationSeverity.MANDATORY,
+          cls,
+          relativize(root, file),
+          lineOf(body, m.start()),
+          truncate(m.group(), 80),
+          "Delete the @Step annotation on this method."));
     }
     return out;
   }

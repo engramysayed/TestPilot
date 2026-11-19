@@ -68,7 +68,7 @@ public class ${pageClassName} {
 <#if method.needsValue>
     public void ${method.name}(String value) {
 <#if method.secret>
-        Secrets.register(value); // IR secret: true - redacted from logs, Allure and keel-results jsonl
+        Secrets.register(value);
 </#if>
 <#if method.smart>
 <#if method.action == "select">
@@ -85,6 +85,7 @@ public class ${pageClassName} {
 </#if>
         });
 </#if>
+        LogsManager.info("${method.name}");
     }
 <#else>
     @Step("${method.name}")
@@ -98,6 +99,7 @@ public class ${pageClassName} {
             Act.click(${method.fieldName});
         });
 </#if>
+        LogsManager.info("${method.name}");
     }
 </#if>
 
@@ -155,6 +157,7 @@ public class ${pageClassName} {
           }
 </#if>
         });
+        LogsManager.info("${assertion.name}");
     }
 <#else>
     @Step("${assertion.name}")
@@ -189,6 +192,7 @@ public class ${pageClassName} {
           }
 </#if>
         });
+        LogsManager.info("${assertion.name}");
     }
 </#if>
 
