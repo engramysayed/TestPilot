@@ -1,6 +1,7 @@
 package delivery.codegen;
 
 import delivery.job.TcOutcome;
+import delivery.job.TcStatus;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,16 +16,51 @@ public final class CodegenEmitFilters {
         if (outcome == null) {
             return null;
         }
+        List<ProvenStep> proven = filterSteps(outcome.provenSteps());
+        List<ProvenStep> login = outcome.loginSteps() == null ? null : filterSteps(outcome.loginSteps());
+        List<ProvenStep> setup = filterSteps(outcome.setupSteps());
+
+        TcStatus status = outcome.status();
+        String reason = outcome.failureReason();
+        String broken = findLocatorFreeTextContains(proven, login, setup);
+        if (broken != null && status == TcStatus.PASSED) {
+            status = TcStatus.PARTIAL;
+            String added = "textContains step without a locator (IR must provide one): " + broken;
+            reason = reason == null || reason.isBlank() ? added : reason + "; " + added;
+        }
+
         return new TcOutcome(
                 outcome.tcId(),
                 outcome.title(),
-                outcome.status(),
-                filterSteps(outcome.provenSteps()),
-                outcome.failureReason(),
+                status,
+                proven,
+                reason,
                 outcome.evidenceDir(),
                 outcome.needsLoginBeforeMethod(),
-                outcome.loginSteps() == null ? null : filterSteps(outcome.loginSteps()),
-                filterSteps(outcome.setupSteps()));
+                login,
+                setup);
+    }
+
+    private static String findLocatorFreeTextContains(
+            List<ProvenStep> proven, List<ProvenStep> login, List<ProvenStep> setup) {
+        String hit = scanForLocatorFreeTextContains(proven);
+        if (hit != null) return hit;
+        hit = scanForLocatorFreeTextContains(login);
+        if (hit != null) return hit;
+        return scanForLocatorFreeTextContains(setup);
+    }
+
+    private static String scanForLocatorFreeTextContains(List<ProvenStep> steps) {
+        if (steps == null) return null;
+        for (ProvenStep step : steps) {
+            if (step == null) continue;
+            if ("textContains".equalsIgnoreCase(step.assertionType())
+                    && (step.locatorValue() == null || step.locatorValue().isBlank())) {
+                String expected = step.assertionExpected() == null ? "" : step.assertionExpected();
+                return "\"" + expected + "\"";
+            }
+        }
+        return null;
     }
 
     public static List<ProvenStep> filterSteps(List<ProvenStep> steps) {

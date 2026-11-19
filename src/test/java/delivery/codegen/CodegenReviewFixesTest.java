@@ -268,12 +268,17 @@ public class CodegenReviewFixesTest {
     }
 
     @Test
-    public void locatorFreeTextContainsIsDroppedForRule3c() throws Exception {
+    public void locatorFreeTextContainsRoutesToTodoWithReason() throws Exception {
         Path dir = Files.createTempDirectory("cg07-body");
         ProvenStep body = new ProvenStep("TC_BODY", "Cart", "elementAction", "assert",
                 "", "", "", "textContains", "Saved", true, "");
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_BODY", body)));
-        Assert.assertFalse(Files.exists(dir.resolve("src/main/java/project/pages/Cart_Page.java")));
+        Assert.assertFalse(Files.exists(dir.resolve("src/test/java/project/tests/generated/Cart_Test.java")));
+        Path todoTest = dir.resolve("src/test/java/project/tests/todo/Cart_TestTodo.java");
+        Assert.assertTrue(Files.exists(todoTest), "expected todo test to exist");
+        String todo = Files.readString(todoTest);
+        Assert.assertTrue(todo.contains("STOPPED HERE"), todo);
+        Assert.assertTrue(todo.contains("textContains step without a locator"), todo);
     }
 
     private static Properties loadProps(Path dir) throws Exception {
