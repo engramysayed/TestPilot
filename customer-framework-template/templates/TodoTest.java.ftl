@@ -56,11 +56,10 @@ public class ${className} extends BaseTest {
 </#list>
 <#if tm.reviewComments??>
 <#list tm.reviewComments as note>
-        // REVIEW: ${note?j_string}
+        project.utils.Logs.LogsManager.info("REVIEW: ${note?j_string}");
 </#list>
 </#if>
-        // STOPPED HERE: ${tm.reason?j_string}
-        org.testng.Assert.fail("TODO ${tm.tcId?j_string}: ${tm.reason?j_string}");
+        org.testng.Assert.fail("STOPPED HERE: TODO ${tm.tcId?j_string}: ${tm.reason?j_string}");
 <#if multi>
         project.validations.Validation.assertAll();
 </#if>

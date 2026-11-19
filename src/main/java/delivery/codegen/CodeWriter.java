@@ -8,7 +8,6 @@ import freemarker.template.Template;
 import freemarker.template.TemplateExceptionHandler;
 
 import java.io.IOException;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,6 +47,48 @@ public class CodeWriter {
 
     public void write(Path projectRoot, List<TcOutcome> outcomes) throws Exception {
         write(projectRoot, outcomes, List.of());
+    }
+
+    /**
+     * Strip Java comments (block, Javadoc, and line) from rendered source so generated pages
+     * and tests ship without any comments, per the framework-rules policy. Respects string and
+     * char literals so URLs like "http://foo" or XPath "//button[@id='x']" stay intact.
+     */
+    static String stripJavaComments(String src) {
+        if (src == null || src.isEmpty()) return src;
+        StringBuilder out = new StringBuilder(src.length());
+        int i = 0, n = src.length();
+        while (i < n) {
+            char c = src.charAt(i);
+            if (c == '"' || c == '\'') {
+                char quote = c;
+                out.append(c); i++;
+                while (i < n) {
+                    char d = src.charAt(i);
+                    out.append(d); i++;
+                    if (d == '\\' && i < n) { out.append(src.charAt(i++)); continue; }
+                    if (d == quote) break;
+                }
+                continue;
+            }
+            if (c == '/' && i + 1 < n) {
+                char next = src.charAt(i + 1);
+                if (next == '*') {
+                    i += 2;
+                    while (i + 1 < n && !(src.charAt(i) == '*' && src.charAt(i + 1) == '/')) i++;
+                    i = Math.min(n, i + 2);
+                    continue;
+                }
+                if (next == '/') {
+                    while (i < n && src.charAt(i) != '\n') i++;
+                    continue;
+                }
+            }
+            out.append(c); i++;
+        }
+        return out.toString()
+                .replaceAll("(?m)^[ \\t]+\\r?\\n", "\n")
+                .replaceAll("\\n{3,}", "\n\n");
     }
 
     /** W3: emit pages/tests and attach NL-cached validated By fields onto existing page classes. */
@@ -150,9 +191,9 @@ public class CodeWriter {
             String pageFile = page.pageClassName() + ".java";
             registerFile(usedPageFiles, pageFile, "page", e.getKey());
             Path pageOut = pagesDir.resolve(pageFile);
-            try (Writer w = Files.newBufferedWriter(pageOut, StandardCharsets.UTF_8)) {
-                pageTpl.process(model, w);
-            }
+            java.io.StringWriter buf = new java.io.StringWriter();
+            pageTpl.process(model, buf);
+            Files.writeString(pageOut, stripJavaComments(buf.toString()), StandardCharsets.UTF_8);
             keepPages.add(pageFile);
         }
 
@@ -211,9 +252,9 @@ public class CodeWriter {
             String testFile = className + ".java";
             Path out = (passed ? generatedDir : todoDir).resolve(testFile);
             Template tpl = passed ? genTpl : todoTpl;
-            try (Writer w = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
-                tpl.process(model, w);
-            }
+            java.io.StringWriter buf = new java.io.StringWriter();
+            tpl.process(model, buf);
+            Files.writeString(out, stripJavaComments(buf.toString()), StandardCharsets.UTF_8);
             if (passed) {
                 keepGenerated.add(testFile);
             } else {

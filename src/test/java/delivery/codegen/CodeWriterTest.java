@@ -11,6 +11,30 @@ import java.util.List;
 
 public class CodeWriterTest {
     @Test
+    public void stripJavaComments_removesCommentsAndPreservesLiteralsWithSlashes() {
+        String src = """
+                /** page javadoc */
+                public class Demo {
+                    protected String url = "http://example.com/path"; // trailing
+                    protected String xpath = "//button[@id='x']";
+                    /* block
+                       comment */
+                    protected String single = "a // b";
+                    void x() { /* inline */ y(); }
+                }
+                """;
+        String out = CodeWriter.stripJavaComments(src);
+        Assert.assertFalse(out.contains("javadoc"), out);
+        Assert.assertFalse(out.contains("trailing"), out);
+        Assert.assertFalse(out.contains("block"), out);
+        Assert.assertFalse(out.contains("inline"), out);
+        Assert.assertTrue(out.contains("http://example.com/path"), out);
+        Assert.assertTrue(out.contains("//button[@id='x']"), out);
+        Assert.assertTrue(out.contains("a // b"), out);
+        Assert.assertTrue(out.contains("y();"), out);
+    }
+
+    @Test
     public void writesPassedAndTodoClasses() throws Exception {
         Path temp = Files.createTempDirectory("codegen");
         Path templateRoot = Path.of("customer-framework-template");
