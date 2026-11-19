@@ -679,6 +679,7 @@ public final class FrameworkContractValidator {
       out.addAll(ruleComplexLocators(root, e.getKey(), e.getValue(), body, userHooks));
       out.addAll(ruleNoStepOnValueMethod(root, e.getKey(), e.getValue(), body));
       out.addAll(ruleNoSysout(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleLocatorFieldVisibility(root, e.getKey(), e.getValue(), body));
     }
     return out;
   }
@@ -842,6 +843,37 @@ public final class FrameworkContractValidator {
           lineOf(body, m.start()),
           m.group(),
           "Replace with project.utils.Logs.LogsManager.info / warn / error."));
+    }
+    return out;
+  }
+
+  /* --- Rule: page locator By fields must be declared `protected final By` --- */
+  private static final Pattern BY_FIELD_DECL = Pattern.compile(
+      "(?m)^\\s*((?:public|protected|private)\\s+)?(?:static\\s+)?((?:final\\s+)?)By\\s+(\\w+)\\s*[=;]");
+
+  private static List<ValidationFinding> ruleLocatorFieldVisibility(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = BY_FIELD_DECL.matcher(body);
+    while (m.find()) {
+      String visibility = m.group(1) == null ? "" : m.group(1).trim();
+      String finality = m.group(2) == null ? "" : m.group(2).trim();
+      String fieldName = m.group(3);
+      if ("protected".equals(visibility) && "final".equals(finality)) {
+        continue;
+      }
+      out.add(new ValidationFinding(
+          "FW_RULE_LOCATOR_FIELD_VISIBILITY",
+          "Page '" + cls + "' declares locator field '" + fieldName + "' as '"
+              + (visibility.isEmpty() ? "<package-private>" : visibility) + " "
+              + (finality.isEmpty() ? "<non-final>" : finality)
+              + "' — By fields must be `protected final By`",
+          ValidationSeverity.RECOMMENDED,
+          cls,
+          relativize(root, file),
+          lineOf(body, m.start()),
+          truncate(m.group().trim(), 80),
+          "Change the declaration to `protected final By " + fieldName + " = …;`."));
     }
     return out;
   }

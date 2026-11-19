@@ -707,7 +707,20 @@ public class PortalUiController {
     public String adminPrompts(Model model) {
         requireHeadPage();
         addNav(model, "prompts");
+        model.addAttribute("frameworkRulesText", readFrameworkRulesDoc());
         return "admin-prompts";
+    }
+
+    private static String readFrameworkRulesDoc() {
+        java.nio.file.Path doc = java.nio.file.Path.of("docs", "FRAMEWORK_RULES.md");
+        if (!java.nio.file.Files.isRegularFile(doc)) {
+            return "";
+        }
+        try {
+            return java.nio.file.Files.readString(doc, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException e) {
+            return "";
+        }
     }
 
     @GetMapping("/account")

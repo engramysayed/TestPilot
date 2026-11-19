@@ -19,6 +19,7 @@ Canonical reference for the test framework Keel emits. The agent and codegen mus
 | KEEL-R-TEST-NO-BY | `FW_RULE_TEST_NO_RAW_BY` | RECOMMENDED |
 | KEEL-R-TEST-DESC | `FW_RULE_TEST_DESC_REQUIRED` | RECOMMENDED |
 | KEEL-R-NO-SYSOUT | `FW_RULE_NO_SYSOUT` | RECOMMENDED |
+| KEEL-R-BY-VIS | `FW_RULE_LOCATOR_FIELD_VISIBILITY` | RECOMMENDED |
 
 ---
 
@@ -86,6 +87,11 @@ Test classes must call page methods only. Locators belong on the page object.
 ### KEEL-R-NO-SYSOUT — No System.out / System.err in generated code
 Generated code must log via `LogsManager` only.
 - Validator: `FW_RULE_NO_SYSOUT` — flags `System.out.print(ln|f)` and `System.err.print(ln|f)` in page and test files.
+
+### KEEL-R-BY-VIS — Locator fields are `protected final By`
+Page classes declare every `By` field as `protected final By`. No `public`/`private` locators, no mutable locators, no bare package-private.
+- Rationale: `protected` lets a hand-written project subclass override one locator without rewriting the page; `final` prevents accidental mutation at runtime.
+- Validator: `FW_RULE_LOCATOR_FIELD_VISIBILITY` — flags any `By` field whose declaration is not exactly `protected final By` (parameterized row/list factory methods are not fields and are not flagged).
 
 ### Pages and element reuse
 - **Page merging**: `Login` / `LoginForm` / `LoginPage` / `TargetLogin` collapse onto the `Login` page key. Other names use their own key.
@@ -177,6 +183,7 @@ When the agent generates or edits a framework file:
 | KEEL-R-TEST-NO-BY No raw By in tests | `FW_RULE_TEST_NO_RAW_BY` | RECOMMENDED | same |
 | KEEL-R-TEST-DESC @Test description | `FW_RULE_TEST_DESC_REQUIRED` | RECOMMENDED | same |
 | KEEL-R-NO-SYSOUT No System.out | `FW_RULE_NO_SYSOUT` | RECOMMENDED | same |
+| KEEL-R-BY-VIS Locator field visibility | `FW_RULE_LOCATOR_FIELD_VISIBILITY` | RECOMMENDED | same |
 | KEEL-R-6 No comments | — | — | [`CodeWriter.stripJavaComments`](../src/main/java/delivery/codegen/CodeWriter.java) |
 | Page merging | — | — | [`PageAccumulator.pageKey`](../src/main/java/delivery/codegen/PageAccumulator.java) |
 | Field / action / assertion reuse | — | — | [`PageAccumulator`](../src/main/java/delivery/codegen/PageAccumulator.java) |
@@ -190,6 +197,7 @@ When the agent generates or edits a framework file:
 
 One line per rule-touching change. Newest first.
 
+- 2026-11-19 — added KEEL-R-BY-VIS (`FW_RULE_LOCATOR_FIELD_VISIBILITY`, RECOMMENDED); built `AllureReportBuilder` + wired into `EmitPhase` behind `keel.framework.allure.autoreport=true`; rendered this doc on the admin **Prompts** page (read-only).
 - 2026-11-19 — added KEEL-R-TEST-NO-BY, KEEL-R-TEST-DESC, KEEL-R-NO-SYSOUT (all RECOMMENDED); added KEEL-R-* IDs to every rule; `LogsManager.info` now logs `"Step: <action> on <fieldName>"` instead of the method name; wired `AgentHarnessJobBridge` to drop this doc into the agent workspace; added `FrameworkRulesDocSyncTest` to catch future drift; added `allure-maven` plugin + `generate-allure-report.sh`/`.bat` helpers to the template.
 - 2026-11-19 — added KEEL-R-STEP-SAFE (`FW_RULE_NO_STEP_ON_VALUE_METHODS`, MANDATORY); promoted KEEL-R-3c to MANDATORY; added test-data override file + `PropertyReader.loadOverride`; removed `bodyTextContains` from `Assertion.java`; `@Step` on every no-arg page method.
 - 2026-11-19 — added KEEL-R-3b static facades (Act, Browse, Validate, Verify); migrated `BaseTest` + `SettledActions` to the facades; `bodyTextContains` no longer emitted by codegen.
