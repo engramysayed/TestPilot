@@ -47,7 +47,8 @@ public final class CursorSidecarClient {
         Duration deadline = task.budget() == null ? Duration.ofMinutes(properties.getMaxRuntimeMinutes()) : task.budget().maxRuntime();
         long lockMs = Long.getLong("delivery.agent-harness.store-lock-ms", 30_000L);
         AgentStoreLock storeLock = AgentStoreLock.acquire(taskDir, Duration.ofMillis(Math.max(100L, lockMs)));
-        return new CursorSidecarSession(cmd, req.toString(), repoRoot, deadline, cancel, env, mapper, storeLock);
+        String streamKey = task.parentJobId();
+        return new CursorSidecarSession(cmd, req.toString(), repoRoot, deadline, cancel, env, mapper, storeLock, streamKey);
     }
 
     private void assertRuntimeReady() {

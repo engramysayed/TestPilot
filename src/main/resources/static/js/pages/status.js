@@ -42,6 +42,47 @@
         return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
     }
 
+    // Cursor sidecar NDJSON event stream — SSE via /api/jobs/{jobId}/cursor-stream.
+    // Handles are closed automatically when the EventSource errors or the window unloads.
+    let cursorSource = null;
+    let cursorCount = 0;
+    function openCursorStream() {
+        if (!jobId || cursorSource) return;
+        const list = document.getElementById('cursor-stream');
+        const countEl = document.getElementById('cursor-stream-count');
+        try {
+            cursorSource = new EventSource('/api/jobs/' + encodeURIComponent(jobId) + '/cursor-stream');
+        } catch (e) { return; }
+        cursorSource.addEventListener('cursor', function (ev) {
+            if (!list) return;
+            if (cursorCount === 0 && list.firstChild) list.innerHTML = '';
+            cursorCount += 1;
+            let text = ev.data;
+            try {
+                const obj = JSON.parse(ev.data);
+                if (obj && typeof obj.type === 'string') {
+                    text = '[' + obj.type + '] ' + (obj.text || obj.message || JSON.stringify(obj).slice(0, 180));
+                }
+            } catch (e) { /* non-JSON — leave as-is */ }
+            const li = document.createElement('li');
+            li.className = 'progress-log__row';
+            li.innerHTML = '<span class="progress-log__ts mono">' + escapeHtml(formatLocalTime(Date.now())) + '</span>'
+                + '<span class="progress-log__msg">' + escapeHtml(text) + '</span>';
+            list.appendChild(li);
+            list.scrollTop = list.scrollHeight;
+            if (countEl) countEl.textContent = '(' + cursorCount + ')';
+        });
+        cursorSource.addEventListener('ready', function () { /* backlog replayed */ });
+        cursorSource.onerror = function () {
+            if (cursorSource) { try { cursorSource.close(); } catch (e) {} }
+            cursorSource = null;
+        };
+        window.addEventListener('beforeunload', function () {
+            if (cursorSource) { try { cursorSource.close(); } catch (e) {} cursorSource = null; }
+        });
+    }
+    openCursorStream();
+
     function renderProgressLog(entries) {
         const list = document.getElementById('progress-log');
         if (!list) return;

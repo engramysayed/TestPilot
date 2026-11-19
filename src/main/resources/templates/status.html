@@ -57,6 +57,15 @@
                     <li class="progress-log__empty muted">Live steps will appear here as the job runs.</li>
                 </ol>
             </dd>
+            <dt>Cursor reasoning</dt>
+            <dd class="status-log-cell">
+                <details id="cursor-stream-wrap">
+                    <summary>Live LLM output <span id="cursor-stream-count" class="muted" style="margin-left:.4rem"></span></summary>
+                    <ol id="cursor-stream" class="progress-log" style="max-height:260px" aria-live="polite">
+                        <li class="progress-log__empty muted">Cursor events will stream here if the agent runs.</li>
+                    </ol>
+                </details>
+            </dd>
             <dt th:text="${isGenerateCompareJob} ? 'Model A TCs' : 'Passed'">Passed</dt><dd id="passed" th:text="${passedCount}">0</dd>
             <dt th:text="${isGenerateCompareJob} ? 'Model B TCs' : (${isGenerateBatchJob} ? 'Failed stories' : 'Blocked / TODO')">Blocked / TODO</dt><dd id="todo" th:text="${todoCount}">0</dd>
         </dl>
