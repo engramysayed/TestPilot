@@ -1019,10 +1019,14 @@
         const li = document.createElement('li');
         li.className = 'artifact-item';
         const isZip = item.path && item.path.endsWith('.zip');
-        const active = isZip && viewingPackage === item.path;
+        const isAllure = item.kind === 'allure';
+        const active = isZip && !isAllure && viewingPackage === item.path;
         if (active) li.classList.add('is-active');
+        if (isAllure) li.classList.add('is-allure');
+        const labelHtml = escapeHtml(item.label || item.path)
+                + (isAllure ? ' <span class="pill pill-allure">Allure report</span>' : '');
         li.innerHTML =
-            '<span class="artifact-label">' + escapeHtml(item.label || item.path) + '</span>' +
+            '<span class="artifact-label">' + labelHtml + '</span>' +
             '<span class="mono muted artifact-path">' + escapeHtml(item.path) + '</span>' +
             (item.sizeBytes != null ? '<span class="muted artifact-size">' + formatBytes(item.sizeBytes) + '</span>' : '') +
             '<span class="artifact-actions"></span>';
@@ -1036,17 +1040,19 @@
             actions.appendChild(previewBtn);
         }
         if (isZip) {
-            const openBtn = document.createElement('button');
-            openBtn.type = 'button';
-            openBtn.className = 'button ghost';
-            openBtn.textContent = active ? 'Viewing' : 'Open';
-            openBtn.disabled = active;
-            openBtn.addEventListener('click', () => {
-                viewingPackage = item.path;
-                clearPreview();
-                loadArtifacts();
-            });
-            actions.appendChild(openBtn);
+            if (!isAllure) {
+                const openBtn = document.createElement('button');
+                openBtn.type = 'button';
+                openBtn.className = 'button ghost';
+                openBtn.textContent = active ? 'Viewing' : 'Open';
+                openBtn.disabled = active;
+                openBtn.addEventListener('click', () => {
+                    viewingPackage = item.path;
+                    clearPreview();
+                    loadArtifacts();
+                });
+                actions.appendChild(openBtn);
+            }
             const dl = document.createElement('a');
             dl.className = 'button ghost';
             dl.textContent = 'Download';

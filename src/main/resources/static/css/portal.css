@@ -1312,6 +1312,7 @@ code, .mono { font-family: var(--mono); font-size: 0.86em; }
 }
 .pill.bad { color: #9f2f2f; background: rgba(201, 79, 79, 0.14); }
 .pill.good { color: #0a6b75; background: rgba(13, 154, 168, 0.16); }
+.pill.pill-allure { color: #8a5a00; background: #faf3e6; border: 1px solid #e8d4a8; }
 .compare-steps {
     margin: 0;
     padding: 0.9rem 0.95rem 1rem 1.7rem;

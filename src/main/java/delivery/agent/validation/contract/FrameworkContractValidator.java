@@ -880,8 +880,12 @@ public final class FrameworkContractValidator {
   }
 
   /* --- Rule: page locator By fields must be declared `protected final By` --- */
+  // (?m) + (?:^|[;{]) anchors each match to a statement start — the beginning of a line, OR right
+  // after a semicolon or opening brace. That catches both one-per-line declarations and the
+  // mid-line case `protected final By a = …; public By b = …;` where the second slips past a
+  // plain `^\s*` anchor.
   private static final Pattern BY_FIELD_DECL = Pattern.compile(
-      "(?m)^\\s*((?:public|protected|private)\\s+)?(?:static\\s+)?((?:final\\s+)?)By\\s+(\\w+)\\s*[=;]");
+      "(?m)(?:^|[;{])\\s*((?:public|protected|private)\\s+)?(?:static\\s+)?((?:final\\s+)?)By\\s+(\\w+)\\s*[=;]");
 
   private static List<ValidationFinding> ruleLocatorFieldVisibility(
       Path root, String cls, Path file, String body) {

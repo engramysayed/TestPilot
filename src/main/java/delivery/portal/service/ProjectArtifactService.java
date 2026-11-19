@@ -119,6 +119,11 @@ public class ProjectArtifactService {
         if (!normalized.startsWith("versions/") || !normalized.endsWith(".zip")) {
             throw new BadPathException("Download only supported for version packages");
         }
+        String leaf = normalized.substring("versions/".length());
+        if (!leaf.matches("v\\d+\\.zip")
+                && !leaf.matches("v\\d+-allure-report-\\d{8}-\\d{4}\\.zip")) {
+            throw new BadPathException("Invalid package filename");
+        }
         return resolveAllowedFile(projectRoot, relativePath);
     }
 
@@ -260,7 +265,8 @@ public class ProjectArtifactService {
         try (Stream<Path> stream = Files.list(versions)) {
             stream.filter(p -> {
                         String name = p.getFileName().toString();
-                        return name.matches("v\\d+\\.zip");
+                        return name.matches("v\\d+\\.zip")
+                                || name.matches("v\\d+-allure-report-\\d{8}-\\d{4}\\.zip");
                     })
                     .sorted(Comparator.comparing(p -> p.getFileName().toString()))
                     .forEach(p -> {
@@ -273,6 +279,9 @@ public class ProjectArtifactService {
                             item.put("path", "versions/" + fileName);
                             item.put("label", fileName.replace(".zip", ""));
                             item.put("sizeBytes", Files.size(p));
+                            if (fileName.contains("-allure-report-")) {
+                                item.put("kind", "allure");
+                            }
                             out.add(item);
                         } catch (IOException ignored) {
                         }
