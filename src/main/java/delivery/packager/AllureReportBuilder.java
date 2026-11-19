@@ -113,7 +113,7 @@ public final class AllureReportBuilder {
         return p.exitValue();
     }
 
-    static String findMvn() {
+    public static String findMvn() {
         String envPath = System.getenv("PATH");
         if (envPath == null) {
             return null;

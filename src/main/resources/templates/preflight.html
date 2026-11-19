@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="preflight-widget">
+    <button type="button" class="button ghost preflight-btn" data-preflight-open="1" title="Verify Ollama, Cursor, Allure before running a job">
+        Health check
+    </button>
+    <div class="preflight-modal" id="preflight-modal" hidden role="dialog" aria-labelledby="preflight-title" aria-modal="true">
+        <div class="preflight-modal__backdrop" data-preflight-close="1"></div>
+        <div class="preflight-modal__panel" role="document">
+            <div class="preflight-modal__head">
+                <h3 id="preflight-title">Pre-flight checks</h3>
+                <button type="button" class="preflight-modal__close" aria-label="Close" data-preflight-close="1">&times;</button>
+            </div>
+            <div class="preflight-modal__body">
+                <p class="preflight-modal__status" id="preflight-status">Running checks&hellip;</p>
+                <ul class="preflight-modal__list" id="preflight-list"></ul>
+            </div>
+            <div class="preflight-modal__foot">
+                <button type="button" class="button ghost" data-preflight-rerun="1">Re-run</button>
+                <button type="button" class="button" data-preflight-close="1">Close</button>
+            </div>
+        </div>
+    </div>
+    <style>
+        .preflight-btn { margin-left: .5rem; }
+        .preflight-modal { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        .preflight-modal[hidden] { display: none; }
+        .preflight-modal__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(2px); }
+        .preflight-modal__panel { position: relative; background: var(--panel-bg, #fff); color: var(--panel-fg, #111); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.35); width: min(520px, 92vw); max-height: 86vh; overflow: auto; }
+        .preflight-modal__head { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--muted-border, #e4e4e7); }
+        .preflight-modal__head h3 { margin: 0; font-size: 1.05rem; }
+        .preflight-modal__close { background: transparent; border: 0; font-size: 1.5rem; cursor: pointer; line-height: 1; color: inherit; }
+        .preflight-modal__body { padding: 1rem 1.25rem; }
+        .preflight-modal__status { font-weight: 600; margin: 0 0 .75rem; }
+        .preflight-modal__status.ok { color: #137a39; }
+        .preflight-modal__status.fail { color: #b32d2d; }
+        .preflight-modal__list { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+        .preflight-item { display: grid; grid-template-columns: 1.5rem 1fr; gap: .5rem; padding: .5rem .6rem; border: 1px solid var(--muted-border, #e4e4e7); border-radius: 8px; background: var(--panel-alt, #fafafa); }
+        .preflight-item.ok { border-color: #c7eacc; background: #f0faf2; }
+        .preflight-item.fail { border-color: #f1c7c7; background: #fbf1f1; }
+        .preflight-item__icon { font-weight: 700; }
+        .preflight-item.ok .preflight-item__icon { color: #137a39; }
+        .preflight-item.fail .preflight-item__icon { color: #b32d2d; }
+        .preflight-item__name { font-weight: 600; }
+        .preflight-item__detail { grid-column: 2; color: var(--muted-fg, #555); font-size: .88rem; margin-top: .15rem; }
+        .preflight-modal__foot { display: flex; justify-content: flex-end; gap: .5rem; padding: .75rem 1.25rem 1rem; border-top: 1px solid var(--muted-border, #e4e4e7); }
+        html[data-theme='dark'] .preflight-modal__panel { background: #1f2024; color: #eaeaea; }
+        html[data-theme='dark'] .preflight-item { background: #2a2b31; border-color: #3a3b43; }
+        html[data-theme='dark'] .preflight-item.ok { background: #1f3a2c; border-color: #2f6b47; }
+        html[data-theme='dark'] .preflight-item.fail { background: #3a2626; border-color: #6b2f2f; }
+        html[data-theme='dark'] .preflight-modal__head, html[data-theme='dark'] .preflight-modal__foot { border-color: #3a3b43; }
+    </style>
+</th:block>
+</body>
+</html>
