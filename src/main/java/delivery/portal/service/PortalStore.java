@@ -589,20 +589,43 @@ public class PortalStore {
         return n;
     }
 
-    @Transactional
+    /**
+     * Max entries kept in {@code progress_log} after the job reaches a terminal status (COMPLETED,
+     * COMPLETED_WITH_BLOCK, FAILED, CANCELLED). Live jobs keep the full {@link JobRecord#PROGRESS_LOG_MAX}
+     * window; terminal jobs only need the tail for post-mortem, so we trim to save DB space.
+     */
+    static final int TERMINAL_PROGRESS_LOG_KEEP = 10;
+
     /** JSON-serialize the live progress-log entries for persistence (null when empty). */
     static String serializeProgressLog(java.util.List<JobRecord.ProgressEntry> entries) {
+        return serializeProgressLog(entries, false);
+    }
+
+    /** With {@code terminal=true}, keeps only the last {@link #TERMINAL_PROGRESS_LOG_KEEP} entries. */
+    static String serializeProgressLog(java.util.List<JobRecord.ProgressEntry> entries, boolean terminal) {
         if (entries == null || entries.isEmpty()) {
             return null;
         }
+        java.util.List<JobRecord.ProgressEntry> source = entries;
+        if (terminal && entries.size() > TERMINAL_PROGRESS_LOG_KEEP) {
+            source = entries.subList(entries.size() - TERMINAL_PROGRESS_LOG_KEEP, entries.size());
+        }
         org.json.JSONArray arr = new org.json.JSONArray();
-        for (JobRecord.ProgressEntry entry : entries) {
+        for (JobRecord.ProgressEntry entry : source) {
             if (entry == null) continue;
             arr.put(new org.json.JSONObject()
                     .put("ts", entry.ts())
                     .put("message", entry.message() == null ? "" : entry.message()));
         }
         return arr.toString();
+    }
+
+    /** Terminal statuses whose progress log can be trimmed before write. Mirrors JobRecord.Status enum. */
+    private static boolean isTerminalStatus(JobRecord.Status s) {
+        return s == JobRecord.Status.COMPLETED
+                || s == JobRecord.Status.COMPLETED_WITH_BLOCK
+                || s == JobRecord.Status.FAILED
+                || s == JobRecord.Status.CANCELLED;
     }
 
     /** Inverse of {@link #serializeProgressLog}; returns an empty list for blank/invalid JSON. */
@@ -623,6 +646,7 @@ public class PortalStore {
         }
     }
 
+    @Transactional
     public synchronized JobRecord saveJob(JobRecord job) {
         boolean creating = job.getStatus() == JobRecord.Status.QUEUED
                 && jobRepository.findByJobId(job.getJobId()).isEmpty();
@@ -685,7 +709,7 @@ public class PortalStore {
         entity.setProgressCurrent(job.getProgressCurrent());
         entity.setProgressTotal(job.getProgressTotal());
         entity.setMessage(job.getMessage());
-        entity.setProgressLog(serializeProgressLog(job.getProgressLog()));
+        entity.setProgressLog(serializeProgressLog(job.getProgressLog(), isTerminalStatus(job.getStatus())));
         entity.setError(truncate(job.getError(), 1024));
         if (entity.getCreatedAt() == null) {
             Instant created = job.getCreatedAt() != null ? job.getCreatedAt() : Instant.now();

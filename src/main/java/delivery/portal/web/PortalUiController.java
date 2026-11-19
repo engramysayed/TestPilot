@@ -220,7 +220,15 @@ public class PortalUiController {
     }
 
     @GetMapping("/login")
-    public String login() {
+    public String login(
+            @RequestParam(value = "next", required = false) String next,
+            org.springframework.ui.Model model) {
+        // Preserve the page the user was trying to reach when their session expired
+        // (set by preflight.js and other 401 handlers). Validated in SecurityConfig
+        // successHandler before redirect, so a bad value here is harmless.
+        if (next != null && !next.isBlank()) {
+            model.addAttribute("next", next);
+        }
         return "login";
     }
 
