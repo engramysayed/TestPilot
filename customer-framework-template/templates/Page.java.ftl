@@ -2,8 +2,10 @@ package project.pages;
 
 import org.openqa.selenium.By;
 import project.drivers.WebDriverFactory;
+import project.utils.Actions.Act;
 import project.utils.Logs.LogsManager;
 import project.utils.reports.AllureSteps;
+import project.validations.Validate;
 <#if fields?filter(f -> f.smart)?has_content>
 import project.utils.locators.KeelBy;
 </#if>
@@ -76,9 +78,9 @@ public class ${pageClassName} {
 <#else>
         AllureSteps.run("${method.name}", () -> {
 <#if method.action == "select">
-            driver.element().selectFromDD(${method.fieldName}, value);
+            Act.selectFromDD(${method.fieldName}, value);
 <#else>
-            driver.element().type(${method.fieldName}, value);
+            Act.type(${method.fieldName}, value);
 </#if>
         });
 </#if>
@@ -91,7 +93,7 @@ public class ${pageClassName} {
         SettledActions.click(driver, ${method.fieldName}, "click", "${method.name}"<#if method.pointer>, true</#if>);
 <#else>
         AllureSteps.run("${method.name}", () -> {
-            driver.element().click(${method.fieldName});
+            Act.click(${method.fieldName});
         });
 </#if>
     }
@@ -102,7 +104,7 @@ public class ${pageClassName} {
     /** True when a stable page marker is visible (preferred hook / id / test id). */
     public boolean isLoaded() {
         try {
-            return driver.element().findElement(${loadedMarker}).isDisplayed();
+            return Act.findElement(${loadedMarker}).isDisplayed();
         } catch (RuntimeException e) {
             return false;
         }
@@ -127,31 +129,31 @@ public class ${pageClassName} {
 </#if>
 <#if assertion.assertionType == "textContains">
 <#if assertion.fieldName?has_content>
-            driver.validation().textContains(${assertion.fieldName}, expected);
+            Validate.textContains(${assertion.fieldName}, expected);
 <#else>
             driver.validation().bodyTextContains(expected);
 </#if>
 <#elseif assertion.assertionType == "urlContains">
-            driver.validation().urlContains(expected);
+            Validate.urlContains(expected);
 <#elseif assertion.assertionType == "checked" || assertion.assertionType == "selected">
-            driver.validation().elementSelected(${assertion.fieldName}, expected);
+            Validate.elementSelected(${assertion.fieldName}, expected);
 <#elseif assertion.assertionType == "value" || assertion.assertionType == "valueEquals">
-            driver.validation().elementValue(${assertion.fieldName}, expected);
+            Validate.elementValue(${assertion.fieldName}, expected);
 <#elseif assertion.assertionType == "textEquals">
-            driver.validation().elementTextEquals(${assertion.fieldName}, expected);
+            Validate.elementTextEquals(${assertion.fieldName}, expected);
 <#elseif assertion.assertionType == "ariaRole">
-            driver.validation().elementAriaRole(${assertion.fieldName}, expected);
+            Validate.elementAriaRole(${assertion.fieldName}, expected);
 <#elseif assertion.assertionType == "ariaLabel">
-            driver.validation().elementAriaLabel(${assertion.fieldName}, expected);
+            Validate.elementAriaLabel(${assertion.fieldName}, expected);
 <#elseif assertion.assertionType == "region">
-            driver.validation().elementRegion(${assertion.fieldName}, expected);
+            Validate.elementRegion(${assertion.fieldName}, expected);
 <#else>
             LogsManager.error("unsupported assertionType: ${assertion.assertionType}");
-            driver.validation().softTrue(false, "unsupported assertionType: ${assertion.assertionType}");
+            Validate.softTrue(false, "unsupported assertionType: ${assertion.assertionType}");
 </#if>
 <#if assertion.smart>
           } finally {
-              KeelLocate.reset(driver.get());
+              KeelLocate.reset(WebDriverFactory.getDriver());
           }
 </#if>
         });
@@ -163,28 +165,28 @@ public class ${pageClassName} {
           try {
 </#if>
 <#if assertion.assertionType == "visible">
-            driver.validation().elementVisable(${assertion.fieldName});
+            Validate.elementVisable(${assertion.fieldName});
 <#elseif assertion.assertionType == "unchecked">
-            driver.validation().elementUnchecked(${assertion.fieldName});
+            Validate.elementUnchecked(${assertion.fieldName});
 <#elseif assertion.assertionType == "enabled">
-            driver.validation().elementEnabled(${assertion.fieldName});
+            Validate.elementEnabled(${assertion.fieldName});
 <#elseif assertion.assertionType == "disabled">
-            driver.validation().elementDisabled(${assertion.fieldName});
+            Validate.elementDisabled(${assertion.fieldName});
 <#elseif assertion.assertionType == "notVisible">
-            driver.validation().elementNotVisible(${assertion.fieldName});
+            Validate.elementNotVisible(${assertion.fieldName});
 <#elseif assertion.assertionType == "captureText">
-            driver.validation().captureFrom(${assertion.fieldName}, "${assertion.slot?j_string}", "${assertion.expected?j_string}");
+            Validate.captureFrom(${assertion.fieldName}, "${assertion.slot?j_string}", "${assertion.expected?j_string}");
 <#elseif assertion.assertionType == "capturedEquals">
-            driver.validation().compareCapturedExact(${assertion.fieldName}, "${assertion.slot?j_string}");
+            Validate.compareCapturedExact(${assertion.fieldName}, "${assertion.slot?j_string}");
 <#elseif assertion.assertionType == "signedOut">
-            driver.validation().signedOut(${assertion.fieldName}, "${assertion.expected?j_string}");
+            Validate.signedOut(${assertion.fieldName}, "${assertion.expected?j_string}");
 <#else>
             LogsManager.error("unsupported assertionType: ${assertion.assertionType}");
-            driver.validation().softTrue(false, "unsupported assertionType: ${assertion.assertionType}");
+            Validate.softTrue(false, "unsupported assertionType: ${assertion.assertionType}");
 </#if>
 <#if assertion.smart>
           } finally {
-              KeelLocate.reset(driver.get());
+              KeelLocate.reset(WebDriverFactory.getDriver());
           }
 </#if>
         });

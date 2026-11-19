@@ -168,7 +168,7 @@ public class CodegenReviewFixesTest {
         String actions = Files.readString(dir.resolve("src/main/java/project/pages/Profile_Page.java"));
         Assert.assertTrue(actions.contains("public void type_Secret(String value)"), actions);
         Assert.assertTrue(actions.contains("AllureSteps.run(\"type_Secret\""), actions);
-        Assert.assertTrue(actions.contains("driver.element().type"), actions);
+        Assert.assertTrue(actions.contains("Act.type"), actions);
         Assert.assertFalse(actions.contains("private void step_type_Secret()"), actions);
         Assert.assertFalse(actions.contains("@Step(\"type_Secret\")"), actions);
         Assert.assertFalse(actions.contains("CANARY_PW_zipreplay_7f2c9a"), actions);
@@ -185,7 +185,7 @@ public class CodegenReviewFixesTest {
                         || actions.contains("(String expected)"),
                 actions);
         Assert.assertTrue(actions.contains("AllureSteps.run("), actions);
-        Assert.assertTrue(actions.contains("driver.validation()"), actions);
+        Assert.assertTrue(actions.contains("Validate."), actions);
         Assert.assertFalse(actions.contains("private void step_"), actions);
         Assert.assertFalse(actions.contains("@Param"), actions);
         String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Home_Test.java"));

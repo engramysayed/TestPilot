@@ -30,6 +30,10 @@ public class WebDriverFactory {
         return driverThreadLocal.get();
     }
 
+    public static WebDriver getDriver() {
+        return driverThreadLocal.get();
+    }
+
     public void quit(){
         WebDriver driver = driverThreadLocal.get();
         if (driver == null) {
