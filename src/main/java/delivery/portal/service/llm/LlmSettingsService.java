@@ -546,10 +546,6 @@ public class LlmSettingsService implements ApplicationRunner {
      * Never logs secret values.
      */
     private static void publishSecretProp(String key, String value) {
-        String env = System.getenv(key);
-        if (env != null && !env.isBlank()) {
-            return;
-        }
         if (value == null || value.isBlank()) {
             System.clearProperty(key);
             return;

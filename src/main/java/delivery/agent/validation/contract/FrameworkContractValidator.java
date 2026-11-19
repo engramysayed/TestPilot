@@ -887,11 +887,40 @@ public final class FrameworkContractValidator {
   private static final Pattern BY_FIELD_DECL = Pattern.compile(
       "(?m)(?:^|[;{])\\s*((?:public|protected|private)\\s+)?(?:static\\s+)?((?:final\\s+)?)By\\s+(\\w+)\\s*[=;]");
 
+  /**
+   * True when {@code pos} is inside a class body (not a method / constructor body). Walks back
+   * through balanced braces and, at the nearest enclosing unmatched {@code '{'}, checks whether
+   * that brace is preceded by {@code ')'} (method sig) or something else (class / init block).
+   */
+  static boolean isInClassScope(String body, int pos) {
+    int depth = 0;
+    for (int i = pos - 1; i >= 0; i--) {
+      char c = body.charAt(i);
+      if (c == '}') {
+        depth++;
+      } else if (c == '{') {
+        if (depth == 0) {
+          int j = i - 1;
+          while (j >= 0 && Character.isWhitespace(body.charAt(j))) {
+            j--;
+          }
+          return j < 0 || body.charAt(j) != ')';
+        }
+        depth--;
+      }
+    }
+    return true;
+  }
+
   private static List<ValidationFinding> ruleLocatorFieldVisibility(
       Path root, String cls, Path file, String body) {
     List<ValidationFinding> out = new ArrayList<>();
     Matcher m = BY_FIELD_DECL.matcher(body);
     while (m.find()) {
+      // Skip local `By` variables inside method/constructor bodies — rule is for class fields only.
+      if (!isInClassScope(body, m.start())) {
+        continue;
+      }
       String visibility = m.group(1) == null ? "" : m.group(1).trim();
       String finality = m.group(2) == null ? "" : m.group(2).trim();
       String fieldName = m.group(3);

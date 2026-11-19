@@ -19,15 +19,16 @@ public class TestMethodNamingTest {
     }
 
     @Test
-    public void acceptsValidOllamaIdentifier() {
-        Assert.assertEquals(
-                TestMethodNaming.parseOllamaResponse("successful_login_test"),
-                "Successful_login_test");
-    }
-
-    @Test
-    public void rejectsTooManyWordsFromOllama() {
-        Assert.assertNull(TestMethodNaming.parseOllamaResponse(
-                "one_two_three_four_five_six_seven_eight_nine_ten_eleven_twelve"));
+    public void shouldFromTitle_trimsAtWordBoundaryNotMidWord() {
+        String longTitle = "verify the customer enters a very descriptive and lengthy test case title that exceeds limit";
+        String name = TestMethodNaming.shouldFromTitle(longTitle, "Checkout", "TC_LONG");
+        Assert.assertTrue(name.length() <= 100, "name length " + name.length());
+        Assert.assertFalse(name.endsWith("_"), "no dangling underscore: " + name);
+        Assert.assertTrue(name.startsWith("should_"), name);
+        for (String part : name.split("_")) {
+            if (part.isBlank() || part.equals("should")) continue;
+            Assert.assertTrue(longTitle.toLowerCase().contains(part),
+                    "every word in the trimmed name must be a full word from the title; got '" + part + "'");
+        }
     }
 }

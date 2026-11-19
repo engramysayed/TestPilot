@@ -38,7 +38,6 @@ public class BaseTest implements WebDriverProvider {
     @BeforeMethod
     public void setUp() {
         Validation.clearCapturedPhrases();
-        PropertyReader.loadProperties();
         driver = new WebDriverFactory();
         String base = PropertyReader.getProperty("BASE_WEB");
         if (base != null && !base.isBlank()) {

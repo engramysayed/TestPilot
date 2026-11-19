@@ -34,10 +34,10 @@ public class ProjectStore {
 
     /**
      * Copies {@code package-allure-report.zip} (produced beside the main package by EmitPhase when
-     * auto-report is enabled) into {@code versions/v<N>-allure-report-<yyyyMMdd-HHmm>.zip}. Missing
-     * sidecar is a no-op — autoreport is optional and failures there must not break publish.
+     * auto-report is enabled) into {@code versions/v<N>-<projectSlug>-allure-report-<yyyyMMdd-HHmm>.zip}.
+     * Missing sidecar is a no-op — autoreport is optional and failures there must not break publish.
      */
-    static void promoteAllureSidecar(Path workDir, Path versionsDir, int version) {
+    static void promoteAllureSidecar(Path workDir, Path versionsDir, int version, String projectId) {
         if (workDir == null) {
             return;
         }
@@ -49,10 +49,25 @@ public class ProjectStore {
             Files.createDirectories(versionsDir);
             String ts = java.time.LocalDateTime.now().format(
                     java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmm"));
-            Path target = versionsDir.resolve("v" + version + "-allure-report-" + ts + ".zip");
+            String slug = projectSlug(projectId);
+            Path target = versionsDir.resolve("v" + version + "-" + slug + "-allure-report-" + ts + ".zip");
             Files.copy(sidecar, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception ignored) {
         }
+    }
+
+    /** Filename-safe slug derived from a projectId. Empty input → {@code "project"}. */
+    public static String projectSlug(String projectId) {
+        if (projectId == null || projectId.isBlank()) {
+            return "project";
+        }
+        String cleaned = projectId.trim().replaceAll("[^A-Za-z0-9._-]+", "-")
+                .replaceAll("-+", "-")
+                .replaceAll("^-|-$", "");
+        if (cleaned.isBlank()) {
+            return "project";
+        }
+        return cleaned.length() > 40 ? cleaned.substring(0, 40) : cleaned;
     }
 
     public Path projectRoot(String projectId) {
@@ -107,7 +122,7 @@ public class ProjectStore {
             Path versioned = root.resolve("versions").resolve("v" + next + ".zip");
             Files.copy(zipFile, versioned, StandardCopyOption.REPLACE_EXISTING);
             String sha256 = sha256(versioned);
-            promoteAllureSidecar(zipFile.getParent(), root.resolve("versions"), next);
+            promoteAllureSidecar(zipFile.getParent(), root.resolve("versions"), next, projectId);
             org.json.JSONObject meta = new org.json.JSONObject();
             meta.put("projectId", projectId);
             meta.put("version", next);

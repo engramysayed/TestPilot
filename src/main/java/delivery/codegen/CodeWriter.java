@@ -1,6 +1,5 @@
 package delivery.codegen;
 
-import delivery.authoring.LocalLlmClient;
 import delivery.job.TcOutcome;
 import delivery.job.TcStatus;
 import freemarker.template.Configuration;
@@ -11,7 +10,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -23,7 +21,6 @@ import java.util.Set;
 public class CodeWriter {
     private final Path templateDir;
     private final CodegenOptions namingOptions;
-    private final LocalLlmClient namingClient;
 
     public CodeWriter(Path templateDir) {
         this(templateDir, CodegenOptions.DEFAULT);
@@ -32,17 +29,6 @@ public class CodeWriter {
     public CodeWriter(Path templateDir, CodegenOptions namingOptions) {
         this.templateDir = templateDir;
         this.namingOptions = namingOptions == null ? CodegenOptions.DEFAULT : namingOptions;
-        if (this.namingOptions.ollamaNaming()
-                && !this.namingOptions.llmBaseUrl().isBlank()
-                && !this.namingOptions.llmModel().isBlank()) {
-            this.namingClient = new LocalLlmClient(
-                    this.namingOptions.llmBaseUrl(),
-                    this.namingOptions.llmModel(),
-                    Duration.ofSeconds(15),
-                    64);
-        } else {
-            this.namingClient = null;
-        }
     }
 
     public void write(Path projectRoot, List<TcOutcome> outcomes) throws Exception {

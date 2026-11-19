@@ -298,7 +298,8 @@ public class ProjectController {
             Resource resource = new FileSystemResource(file);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + file.getFileName().toString() + "\"")
+                            "attachment; filename=\""
+                                    + friendlyDownloadName(projectId, file) + "\"")
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .contentLength(Files.size(file))
                     .body(resource);
@@ -309,6 +310,31 @@ public class ProjectController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiError("INTERNAL_ERROR", e.getMessage() == null ? "Download failed" : e.getMessage()).asMap());
         }
+    }
+
+    /**
+     * Download filename = {@code <projectSlug>-<existingName>-<yyyyMMdd-HHmm>.zip}. The file on
+     * disk keeps its storage name (v<N>.zip or v<N>-slug-allure-report-TS.zip). Date is the
+     * file's last-modified time, so users can tell runs apart in their Downloads folder.
+     */
+    private static String friendlyDownloadName(String projectId, Path file) {
+        String name = file.getFileName().toString();
+        String slug = delivery.store.ProjectStore.projectSlug(projectId);
+        String stem = name.endsWith(".zip") ? name.substring(0, name.length() - 4) : name;
+        if (stem.contains("-" + slug + "-") || stem.endsWith("-" + slug)) {
+            return name;
+        }
+        String ts;
+        try {
+            ts = java.time.LocalDateTime.ofInstant(
+                    java.nio.file.Files.getLastModifiedTime(file).toInstant(),
+                    java.time.ZoneId.systemDefault())
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmm"));
+        } catch (Exception e) {
+            ts = java.time.LocalDateTime.now().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmm"));
+        }
+        return slug + "-" + stem + "-" + ts + ".zip";
     }
 
     @DeleteMapping("/{projectId}/artifacts")

@@ -121,7 +121,7 @@ public class ProjectArtifactService {
         }
         String leaf = normalized.substring("versions/".length());
         if (!leaf.matches("v\\d+\\.zip")
-                && !leaf.matches("v\\d+-allure-report-\\d{8}-\\d{4}\\.zip")) {
+                && !leaf.matches("v\\d+-[A-Za-z0-9._-]+-allure-report-\\d{8}-\\d{4}\\.zip")) {
             throw new BadPathException("Invalid package filename");
         }
         return resolveAllowedFile(projectRoot, relativePath);
@@ -266,7 +266,7 @@ public class ProjectArtifactService {
             stream.filter(p -> {
                         String name = p.getFileName().toString();
                         return name.matches("v\\d+\\.zip")
-                                || name.matches("v\\d+-allure-report-\\d{8}-\\d{4}\\.zip");
+                                || name.matches("v\\d+-[A-Za-z0-9._-]+-allure-report-\\d{8}-\\d{4}\\.zip");
                     })
                     .sorted(Comparator.comparing(p -> p.getFileName().toString()))
                     .forEach(p -> {

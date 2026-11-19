@@ -19,15 +19,12 @@ public class PromptCatalogTest {
     }
 
     @Test
-    public void classpath_loadsFinalReviseAndNaming() {
+    public void classpath_loadsFinalRevise() {
         System.clearProperty(PromptCatalog.PROP_DIR);
         PromptCatalog.clearCache();
         String revise = PromptCatalog.get("revise/final-revise");
         Assert.assertTrue(revise.contains("You are TestPilot Final Revise"), revise);
         Assert.assertTrue(revise.contains("jobVerdict"), revise);
-        String naming = PromptCatalog.get("codegen/test-method-naming");
-        Assert.assertTrue(naming.contains("Return ONE Java test method identifier only"), naming);
-        Assert.assertTrue(naming.contains("underscores between words"), naming);
     }
 
     @Test

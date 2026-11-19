@@ -184,6 +184,6 @@ public class ProjectArtifactsApiTest extends AbstractTestNGSpringContextTests {
                         .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
                         .header("X-Keel-Requested-With", "Keel"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("v1.zip")));
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("-v1-")));
     }
 }
