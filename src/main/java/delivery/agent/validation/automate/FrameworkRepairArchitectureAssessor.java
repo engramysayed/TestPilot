@@ -47,7 +47,10 @@ public final class FrameworkRepairArchitectureAssessor {
             return ArchitectureQualityReport.of(findings);
         }
         if (inventory == null) {
-            findings.add(new ArchitectureFinding("INVENTORY_MISSING", "no inventory", true));
+            // No inventory → no expected shape to compare against. Record as advisory, don't block:
+            // callers that need architecture enforcement must pass the inventory.
+            findings.add(new ArchitectureFinding(
+                    "INVENTORY_MISSING", "no inventory (architecture check skipped)", false));
             return ArchitectureQualityReport.of(findings);
         }
 

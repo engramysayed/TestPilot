@@ -305,6 +305,12 @@ public class CodeWriter {
                 buildChronologicalCalls(outcome.tcId(), outcome.provenSteps(), pages, keys,
                         CodegenDataKeys.PHASE_BODY);
         chronCalls = LoginPageHelper.collapseLeadingLogin(chronCalls, pages);
+        if (outcome.needsLoginBeforeMethod()) {
+            // Prelude already calls login(user, pass) in @BeforeMethod — avoid re-emitting it in the body.
+            chronCalls = chronCalls.stream()
+                    .filter(c -> !Boolean.TRUE.equals(c.get("loginHelper")))
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        }
         List<Map<String, Object>> beforeCalls = new ArrayList<>();
         beforeCalls.addAll(loginChron);
         beforeCalls.addAll(setupChron);
