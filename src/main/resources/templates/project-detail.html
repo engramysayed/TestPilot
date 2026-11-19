@@ -49,6 +49,19 @@
                 <span class="summary-strip-label">Last Automate prove</span>
                 <span class="summary-strip-value" id="summary-prove">—</span>
             </div>
+            <div class="summary-strip-item" th:if="${latestAgentTask != null}">
+                <span class="summary-strip-label">Last AI task</span>
+                <span class="summary-strip-value"
+                      th:title="${latestAgentTask.createdAt}">
+                    <span th:text="${#strings.replace(#strings.toLowerCase(latestAgentTask.taskType), '_', ' ')}">task</span>
+                    ·
+                    <span th:text="${#strings.toLowerCase(latestAgentTask.status)}">status</span>
+                    <span class="muted" th:if="${latestAgentTask.completedAt != null}"
+                          th:text="${#strings.substring(latestAgentTask.completedAt, 0, 19)}">time</span>
+                    <span class="muted" th:if="${latestAgentTask.completedAt == null and latestAgentTask.createdAt != null}"
+                          th:text="${#strings.substring(latestAgentTask.createdAt, 0, 19)}">time</span>
+                </span>
+            </div>
         </div>
         <section class="panel">
             <h2>Recent activity</h2>
@@ -83,10 +96,6 @@
                 <label>Base URL
                     <input type="url" name="baseUrl" id="settings-base-url" placeholder="https://app.example.com"/>
                 </label>
-                <label>Test data env <span class="muted">(optional)</span>
-                    <input type="text" name="testDataEnv" id="settings-test-data-env" placeholder="sit" maxlength="32" pattern="[a-z0-9_-]*"/>
-                </label>
-                <p class="muted">When set, generated frameworks use keys like <code>sit_username</code> in <code>delivery-testdata.properties</code>. Leave blank for <code>username</code>, <code>password</code>, <code>otp</code> without a prefix.</p>
                 <label>Preferred test hooks
                     <input type="text" name="preferredHooks" id="settings-preferred-hooks"
                            placeholder="data-axis-test-id"/>

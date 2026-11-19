@@ -9,6 +9,7 @@ import delivery.portal.security.CurrentUserService;
 import delivery.portal.security.JobSecretCrypto;
 import delivery.portal.service.DashboardService;
 import delivery.portal.service.InviteService;
+import delivery.portal.service.JobAgentTasksService;
 import delivery.portal.service.JobLinkEnricher;
 import delivery.portal.service.PortalStore;
 import delivery.portal.service.WorkspacePackageService;
@@ -71,6 +72,7 @@ public class PortalUiController {
     private final RolesService roles;
     private final ServicePriceService prices;
     private final LlmSettingsService llmSettings;
+    private final JobAgentTasksService agentTasks;
 
     public PortalUiController(DashboardService dashboard, CurrentUserService currentUser,
                               PortalStore store, InviteService invites,
@@ -78,7 +80,8 @@ public class PortalUiController {
                               JobLinkEnricher jobLinks, WorkspacePackageService workspacePackages,
                               MobileProperties mobileProperties, CreditService creditService,
                               RolesService roles, ServicePriceService prices,
-                              LlmSettingsService llmSettings) {
+                              LlmSettingsService llmSettings,
+                              JobAgentTasksService agentTasks) {
         this.dashboard = dashboard;
         this.currentUser = currentUser;
         this.store = store;
@@ -91,6 +94,7 @@ public class PortalUiController {
         this.roles = roles;
         this.prices = prices;
         this.llmSettings = llmSettings;
+        this.agentTasks = agentTasks;
     }
 
     private void addNav(Model model, String navActive) {
@@ -260,6 +264,7 @@ public class PortalUiController {
         model.addAttribute("mobileEnabled", mobileProperties.isEnabled());
         model.addAttribute("projectPlatform", owned.get().getPlatform() == null ? "WEB" : owned.get().getPlatform());
         model.addAttribute("mobileCanEdit", store.canOperate(projectId, ownerUserId));
+        model.addAttribute("latestAgentTask", agentTasks.latestTask(projectId).orElse(null));
         return "project-detail";
     }
 
