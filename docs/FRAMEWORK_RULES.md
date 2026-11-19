@@ -20,6 +20,7 @@ Canonical reference for the test framework Keel emits. The agent and codegen mus
 | KEEL-R-TEST-DESC | `FW_RULE_TEST_DESC_REQUIRED` | RECOMMENDED |
 | KEEL-R-NO-SYSOUT | `FW_RULE_NO_SYSOUT` | RECOMMENDED |
 | KEEL-R-BY-VIS | `FW_RULE_LOCATOR_FIELD_VISIBILITY` | RECOMMENDED |
+| KEEL-R-TEST-NAME | `FW_RULE_TEST_METHOD_NAMING` | RECOMMENDED |
 
 ---
 
@@ -87,6 +88,13 @@ Test classes must call page methods only. Locators belong on the page object.
 ### KEEL-R-NO-SYSOUT — No System.out / System.err in generated code
 Generated code must log via `LogsManager` only.
 - Validator: `FW_RULE_NO_SYSOUT` — flags `System.out.print(ln|f)` and `System.err.print(ln|f)` in page and test files.
+
+### KEEL-R-TEST-NAME — @Test method names mirror the TC title
+Every `@Test` method is named `should_<tc_title_as_snake_case>`. The words come from the TC's title; the method reads like the sentence the TC describes.
+- Example: TC title `"Login with valid credentials"` → `public void should_login_with_valid_credentials()`.
+- Fallback: when a TC has no title (hand-written or imported with blank title), codegen falls back to the page-based `camelCase` name (`login`, `cart`) so the code still compiles.
+- Codegen: `TestMethodNaming.shouldFromTitle(title, pageName, tcId)` builds the name; `CodeWriter` / `RevisePhase` call it.
+- Validator: `FW_RULE_TEST_METHOD_NAMING` — flags any `@Test` method name that doesn't match `^should(_[a-z0-9]+)+$`.
 
 ### KEEL-R-BY-VIS — Locator fields are `protected final By`
 Page classes declare every `By` field as `protected final By`. No `public`/`private` locators, no mutable locators, no bare package-private.
@@ -184,6 +192,7 @@ When the agent generates or edits a framework file:
 | KEEL-R-TEST-DESC @Test description | `FW_RULE_TEST_DESC_REQUIRED` | RECOMMENDED | same |
 | KEEL-R-NO-SYSOUT No System.out | `FW_RULE_NO_SYSOUT` | RECOMMENDED | same |
 | KEEL-R-BY-VIS Locator field visibility | `FW_RULE_LOCATOR_FIELD_VISIBILITY` | RECOMMENDED | same |
+| KEEL-R-TEST-NAME `should_<snake>` test methods | `FW_RULE_TEST_METHOD_NAMING` | RECOMMENDED | same |
 | KEEL-R-6 No comments | — | — | [`CodeWriter.stripJavaComments`](../src/main/java/delivery/codegen/CodeWriter.java) |
 | Page merging | — | — | [`PageAccumulator.pageKey`](../src/main/java/delivery/codegen/PageAccumulator.java) |
 | Field / action / assertion reuse | — | — | [`PageAccumulator`](../src/main/java/delivery/codegen/PageAccumulator.java) |
@@ -197,6 +206,7 @@ When the agent generates or edits a framework file:
 
 One line per rule-touching change. Newest first.
 
+- 2026-11-19 — added KEEL-R-TEST-NAME (`FW_RULE_TEST_METHOD_NAMING`, RECOMMENDED); codegen now emits `should_<tc_title_as_snake_case>` test method names via `TestMethodNaming.shouldFromTitle`; flipped `AllureReportBuilder.isEnabled()` default to **ON** (set `keel.framework.allure.autoreport=false` to disable).
 - 2026-11-19 — added KEEL-R-BY-VIS (`FW_RULE_LOCATOR_FIELD_VISIBILITY`, RECOMMENDED); built `AllureReportBuilder` + wired into `EmitPhase` behind `keel.framework.allure.autoreport=true`; rendered this doc on the admin **Prompts** page (read-only).
 - 2026-11-19 — added KEEL-R-TEST-NO-BY, KEEL-R-TEST-DESC, KEEL-R-NO-SYSOUT (all RECOMMENDED); added KEEL-R-* IDs to every rule; `LogsManager.info` now logs `"Step: <action> on <fieldName>"` instead of the method name; wired `AgentHarnessJobBridge` to drop this doc into the agent workspace; added `FrameworkRulesDocSyncTest` to catch future drift; added `allure-maven` plugin + `generate-allure-report.sh`/`.bat` helpers to the template.
 - 2026-11-19 — added KEEL-R-STEP-SAFE (`FW_RULE_NO_STEP_ON_VALUE_METHODS`, MANDATORY); promoted KEEL-R-3c to MANDATORY; added test-data override file + `PropertyReader.loadOverride`; removed `bodyTextContains` from `Assertion.java`; `@Step` on every no-arg page method.

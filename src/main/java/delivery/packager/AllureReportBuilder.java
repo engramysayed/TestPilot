@@ -42,8 +42,15 @@ public final class AllureReportBuilder {
     }
 
     public static boolean isEnabled() {
-        return parseBool(System.getProperty(PROP))
-                || parseBool(System.getenv(ENV));
+        String prop = System.getProperty(PROP);
+        if (prop != null && !prop.isBlank()) {
+            return parseBool(prop);
+        }
+        String env = System.getenv(ENV);
+        if (env != null && !env.isBlank()) {
+            return parseBool(env);
+        }
+        return true;
     }
 
     public static Result runAndPackage(Path projectDir, Path reportZipOut) {

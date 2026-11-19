@@ -56,7 +56,7 @@ public class CodeWriterTest {
         Assert.assertTrue(java.contains("private Login_Page loginPage;"), java);
         Assert.assertTrue(java.contains("loginPage = new Login_Page(driver)"), java);
         Assert.assertTrue(java.contains("@Test(description = \"TC_001 — Valid login\")"), java);
-        Assert.assertTrue(java.contains("public void login()"), java);
+        Assert.assertTrue(java.contains("public void should_valid_login()"), java);
         Assert.assertFalse(java.contains("new project.pages.Login"));
         Assert.assertFalse(java.contains("typeType_"));
         Assert.assertFalse(java.contains("clickClick_"));
@@ -209,7 +209,7 @@ public class CodeWriterTest {
         writer.write(temp, List.of(checkout));
         String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/Cart_Test.java"));
         int prereq = java.indexOf("runPrerequisite_TC_CHECKOUT");
-        int test = java.indexOf("public void cart()");
+        int test = java.indexOf("public void should_checkout_backpack()");
         int setupCall = java.indexOf("click_Add_Backpack");
         int bodyCall = java.indexOf("click_Checkout");
         Assert.assertTrue(prereq >= 0 && test > prereq, java);
@@ -238,7 +238,7 @@ public class CodeWriterTest {
 
         String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/Cart_Test.java"));
         int prereq = java.indexOf("runPrerequisite_TC_CHECKOUT");
-        int test = java.indexOf("public void cart()");
+        int test = java.indexOf("public void should_checkout_backpack()");
         int typeCall = java.indexOf("type_Qty");
         int assertCall = java.indexOf("assert_Cart_Badge_Is_Visible");
         Assert.assertTrue(prereq >= 0 && typeCall > prereq && typeCall < test, java);

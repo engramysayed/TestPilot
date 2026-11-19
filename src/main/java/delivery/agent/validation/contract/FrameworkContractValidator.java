@@ -673,6 +673,7 @@ public final class FrameworkContractValidator {
       out.addAll(ruleTestNoRawBy(root, e.getKey(), e.getValue(), body));
       out.addAll(ruleTestDescriptionPresent(root, e.getKey(), e.getValue(), body));
       out.addAll(ruleNoSysout(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleTestMethodNaming(root, e.getKey(), e.getValue(), body));
     }
     for (Map.Entry<String, Path> e : pageFiles.entrySet()) {
       String body = readQuiet(e.getValue());
@@ -821,6 +822,37 @@ public final class FrameworkContractValidator {
             truncate(m.group(), 80),
             "Populate description with the TC's title or summary."));
       }
+    }
+    return out;
+  }
+
+  /* --- Rule: @Test methods must be named should_<snake_case> mirroring the TC title --- */
+  private static final Pattern TEST_METHOD_NAME = Pattern.compile(
+      "@Test\\s*(?:\\([^)]*\\))?\\s*(?:public|protected|private)?\\s*(?:static\\s+)?\\w[\\w.<>\\[\\]]*\\s+(\\w+)\\s*\\(");
+  private static final Pattern VALID_TEST_METHOD_NAME = Pattern.compile(
+      "^should(?:_[a-z0-9]+)+$");
+
+  private static List<ValidationFinding> ruleTestMethodNaming(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = TEST_METHOD_NAME.matcher(body);
+    while (m.find()) {
+      String name = m.group(1);
+      if (name == null || name.isEmpty()) {
+        continue;
+      }
+      if (VALID_TEST_METHOD_NAME.matcher(name).matches()) {
+        continue;
+      }
+      out.add(new ValidationFinding(
+          "FW_RULE_TEST_METHOD_NAMING",
+          "@Test method '" + name + "' in '" + cls + "' does not follow should_<snake_case> naming from the TC title",
+          ValidationSeverity.RECOMMENDED,
+          cls,
+          relativize(root, file),
+          lineOf(body, m.start()),
+          "method=" + name,
+          "Rename to `should_<tc_title_as_snake_case>`, e.g. should_login_with_valid_credentials."));
     }
     return out;
   }

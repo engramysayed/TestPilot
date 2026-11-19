@@ -215,15 +215,17 @@ public class RevisePhase {
             }
         }
         String page = "Page";
+        String title = "";
         if (d != null) {
             TcOutcome o = EmitPhase.toOutcome(d);
             if (drafts != null && cases != null) {
                 o = o.withSetup(CallBeforeSetup.stepsFor(d, drafts, cases));
             }
             page = PageUnderTest.primaryPageName(o);
+            title = o.title();
         }
-        String named = TestMethodNaming.resolveFromPage(
-                page, d == null ? "" : d.tcId(), null, false);
+        String named = TestMethodNaming.shouldFromTitle(
+                title, page, d == null ? "" : d.tcId());
         int namedAt = src.indexOf("public void " + named + "(");
         if (namedAt >= 0) {
             int brace = src.indexOf('{', namedAt);

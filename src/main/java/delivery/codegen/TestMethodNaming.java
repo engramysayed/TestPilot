@@ -48,6 +48,28 @@ public final class TestMethodNaming {
         return CodegenNaming.sanitizeJavaIdentifier(raw, fallback(tcId));
     }
 
+    /**
+     * Method name mirroring the TC title: {@code should_<snake_case_title>}. Falls back to the
+     * page-based name when title is blank, so TCs with no title still get a valid identifier.
+     */
+    public static String shouldFromTitle(String title, String pageName, String tcId) {
+        if (title != null && !title.isBlank()) {
+            String[] words = tokenize(title);
+            if (words.length > 0) {
+                StringBuilder sb = new StringBuilder("should");
+                for (String w : words) {
+                    if (w.isBlank()) {
+                        continue;
+                    }
+                    sb.append('_').append(w.toLowerCase(Locale.ROOT));
+                }
+                String candidate = sb.length() > 100 ? sb.substring(0, 100) : sb.toString();
+                return CodegenNaming.sanitizeJavaIdentifier(candidate, "should_" + fallback(tcId));
+            }
+        }
+        return deterministicFromPage(pageName, tcId);
+    }
+
     public static String deterministic(String title, String tcId) {
         String[] words = tokenize(title);
         if (words.length == 0) {

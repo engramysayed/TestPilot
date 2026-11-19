@@ -299,8 +299,8 @@ public class CodeWriter {
             Set<String> usedMethodNames,
             boolean mergedClass) {
         String primaryPage = PageUnderTest.primaryPageName(outcome);
-        String baseMethod = TestMethodNaming.resolveFromPage(
-                primaryPage, outcome.tcId(), namingClient, namingOptions.ollamaNaming());
+        String baseMethod = TestMethodNaming.shouldFromTitle(
+                outcome.title(), primaryPage, outcome.tcId());
         String stem = mergedClass
                 ? baseMethod + "_" + sanitizeMethod(outcome.tcId())
                 : baseMethod;

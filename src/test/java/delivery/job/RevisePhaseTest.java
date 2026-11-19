@@ -68,7 +68,8 @@ public class RevisePhaseTest {
                 "TC_REV", TcStatus.PASSED, List.of(one), "", null)
                 .withTitle("Visible heading after save")));
         String generated = Files.readString(temp.resolve("src/test/java/project/tests/generated/Home_Test.java"));
-        String method = delivery.codegen.TestMethodNaming.deterministicFromPage("Home", "TC_REV");
+        String method = delivery.codegen.TestMethodNaming.shouldFromTitle(
+                "Visible heading after save", "Home", "TC_REV");
         Assert.assertTrue(generated.contains("public void " + method + "("), generated);
         Assert.assertFalse(generated.contains("public void runCase()"), generated);
 
