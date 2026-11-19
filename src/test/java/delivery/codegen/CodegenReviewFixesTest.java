@@ -268,17 +268,12 @@ public class CodegenReviewFixesTest {
     }
 
     @Test
-    public void locatorFreeTextContainsEmitsBodyAssertionAndPageClass() throws Exception {
+    public void locatorFreeTextContainsIsDroppedForRule3c() throws Exception {
         Path dir = Files.createTempDirectory("cg07-body");
         ProvenStep body = new ProvenStep("TC_BODY", "Cart", "elementAction", "assert",
                 "", "", "", "textContains", "Saved", true, "");
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_BODY", body)));
-        Assert.assertTrue(Files.exists(dir.resolve("src/main/java/project/pages/Cart_Page.java")));
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Cart_Test.java"));
-        Assert.assertTrue(test.contains("assert_"), test);
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart_Page.java"));
-        Assert.assertTrue(actions.contains("bodyTextContains"), actions);
-        Assert.assertTrue(test.contains("\"Saved\"") || actions.contains("Saved"), test + "\n" + actions);
+        Assert.assertFalse(Files.exists(dir.resolve("src/main/java/project/pages/Cart_Page.java")));
     }
 
     private static Properties loadProps(Path dir) throws Exception {

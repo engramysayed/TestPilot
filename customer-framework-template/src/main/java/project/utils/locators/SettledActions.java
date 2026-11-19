@@ -3,13 +3,10 @@ package project.utils.locators;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import project.drivers.WebDriverFactory;
+import project.utils.Actions.Act;
 import project.utils.reports.AllureSteps;
 import project.utils.settle.Settle;
 
-/**
- * Settled smart/drag verbs for generated pages: Allure + Settle + SmartWait + {@link KeelLocate#reset}.
- * Plain (non-smart) clicks/types stay on {@code driver.element()} in page methods.
- */
 public final class SettledActions {
     private SettledActions() {
     }
@@ -28,7 +25,7 @@ public final class SettledActions {
                     if (pointer) {
                         KeelActions.click(wd, locator);
                     } else {
-                        driver.element().click(locator);
+                        Act.click(locator);
                     }
                 });
             } finally {
@@ -43,7 +40,7 @@ public final class SettledActions {
             try {
                 Settle.after(wd, settleKind, locator, () -> {
                     SmartWait.untilActionable(wd, locator);
-                    driver.element().type(locator, value);
+                    Act.type(locator, value);
                 });
             } finally {
                 KeelLocate.reset(wd);
@@ -57,7 +54,7 @@ public final class SettledActions {
             try {
                 Settle.after(wd, settleKind, locator, () -> {
                     SmartWait.untilActionable(wd, locator);
-                    driver.element().selectFromDD(locator, value);
+                    Act.selectFromDD(locator, value);
                 });
             } finally {
                 KeelLocate.reset(wd);

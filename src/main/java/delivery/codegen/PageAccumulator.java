@@ -23,11 +23,6 @@ public class PageAccumulator {
             return;
         }
         step = EmitStepNormalizer.apply(step);
-        if (isBodyTextAssert(step)) {
-            PageModel page = pageFor(step);
-            allocateAssertion(page, step, null);
-            return;
-        }
         if (step.locatorValue() == null || step.locatorValue().isBlank()) {
             if (step.assertionType() != null && "urlContains".equalsIgnoreCase(step.assertionType())) {
                 allocateAssertion(pageFor(step), step, null);
@@ -489,40 +484,6 @@ public class PageAccumulator {
         return step.assertionType() != null && !step.assertionType().isBlank();
     }
 
-    /** textContains without a solid locator — use body text instead of brittle XPath fields. */
-    private static boolean isBodyTextAssert(ProvenStep step) {
-        if (step == null || step.assertionType() == null) {
-            return false;
-        }
-        String type = step.assertionType().trim();
-        if (!"textContains".equalsIgnoreCase(type)) {
-            return false;
-        }
-        String loc = step.locatorValue() == null ? "" : step.locatorValue().trim();
-        if (loc.isBlank()) {
-            return true;
-        }
-        String strat = step.locatorStrategy() == null ? "" : step.locatorStrategy().toLowerCase(Locale.ROOT);
-        if ("xpath".equals(strat)) {
-            String compact = loc.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
-            if ("//body".equals(compact) || "/html/body".equals(compact)) {
-                return false;
-            }
-        }
-        if ("id".equals(strat) || "name".equals(strat)) {
-            return false;
-        }
-        String lower = loc.toLowerCase(Locale.ROOT);
-        if (lower.contains("data-axis-test-id") || lower.contains("data-test") || lower.contains("data-qa")) {
-            return false;
-        }
-        return false;
-    }
-
-    /** Package-visible for unit tests. */
-    static boolean isBodyTextAssertForTest(ProvenStep step) {
-        return isBodyTextAssert(step);
-    }
 
     /** Normalise bag entries to Selenium By factory names; drop non-plain keel targets and the primary twin. */
     static List<MultiLocatorBag.Entry> emittableBag(
