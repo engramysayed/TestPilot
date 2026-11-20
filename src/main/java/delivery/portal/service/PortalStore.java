@@ -628,6 +628,12 @@ public class PortalStore {
                 || s == JobRecord.Status.CANCELLED;
     }
 
+    /** Tolerant version for the pre-save DB snapshot string; unknown → null. */
+    private static JobRecord.Status parseStatusSafe(String s) {
+        if (s == null || s.isBlank()) return null;
+        try { return JobRecord.Status.valueOf(s); } catch (IllegalArgumentException e) { return null; }
+    }
+
     /** Inverse of {@link #serializeProgressLog}; returns an empty list for blank/invalid JSON. */
     static java.util.List<JobRecord.ProgressEntry> deserializeProgressLog(String json) {
         if (json == null || json.isBlank()) {
@@ -709,8 +715,18 @@ public class PortalStore {
         entity.setProgressCurrent(job.getProgressCurrent());
         entity.setProgressTotal(job.getProgressTotal());
         entity.setMessage(job.getMessage());
-        entity.setProgressLog(serializeProgressLog(job.getProgressLog(), isTerminalStatus(job.getStatus())));
+        boolean terminal = isTerminalStatus(job.getStatus());
+        entity.setProgressLog(serializeProgressLog(job.getProgressLog(), terminal));
         entity.setError(truncate(job.getError(), 1024));
+        // Close any idle Cursor SSE subscribers + drop the per-job buffer at the moment the job
+        // transitions to a terminal status (first terminal save wins — isTerminalStatus is idempotent).
+        if (terminal && !isTerminalStatus(parseStatusSafe(previousStatus))) {
+            try {
+                delivery.agent.harness.cursor.CursorStreamBus.drop(job.getJobId());
+            } catch (RuntimeException ignored) {
+                // stream cleanup is best-effort; never fail a save over it
+            }
+        }
         if (entity.getCreatedAt() == null) {
             Instant created = job.getCreatedAt() != null ? job.getCreatedAt() : Instant.now();
             entity.setCreatedAt(created);

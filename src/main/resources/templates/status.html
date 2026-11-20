@@ -19,6 +19,19 @@
   .progress-log__empty { padding: .5rem 0; list-style: none; }
   html[data-theme='dark'] .progress-log { background: #26272c; border-color: #3a3b43; }
   html[data-theme='dark'] .progress-log__row { border-bottom-color: #35363d; }
+  /* Cursor reasoning pane — <details>/<summary> get explicit colors so dark mode is readable. */
+  #cursor-stream-wrap { margin: 0; }
+  #cursor-stream-wrap > summary { cursor: pointer; padding: .3rem .1rem; color: var(--panel-fg, #1f2129); font-weight: 500; user-select: none; }
+  #cursor-stream-wrap > summary:hover { color: #1b5caa; }
+  #cursor-stream-wrap[open] > summary { margin-bottom: .4rem; }
+  #cursor-stream-count { font-size: .82rem; }
+  html[data-theme='dark'] #cursor-stream-wrap > summary { color: #eaeaea; }
+  html[data-theme='dark'] #cursor-stream-wrap > summary:hover { color: #7fb7ff; }
+  html[data-theme='dark'] #cursor-stream-count { color: #a4b1cd; }
+  html[data-theme='dark'] #cursor-stream { background: #1f2024; border-color: #3a3b43; color: #eaeaea; }
+  html[data-theme='dark'] #cursor-stream .progress-log__msg { color: #eaeaea; }
+  html[data-theme='dark'] #cursor-stream .progress-log__ts { color: #8a8d99; }
+  html[data-theme='dark'] #cursor-stream .progress-log__empty { color: #8a8d99; }
 </style>
     <div class="page-title">
         <div>
