@@ -101,6 +101,16 @@ Page classes declare every `By` field as `protected final By`. No `public`/`priv
 - Rationale: `protected` lets a hand-written project subclass override one locator without rewriting the page; `final` prevents accidental mutation at runtime.
 - Validator: `FW_RULE_LOCATOR_FIELD_VISIBILITY` — flags any `By` field whose declaration is not exactly `protected final By` (parameterized row/list factory methods are not fields and are not flagged).
 
+### KEEL-R-FIRSTOF — `FirstOf.of(pageClass, fieldName, ...)` is the canonical multi-locator signature
+Codegen emits every multi-locator `By` field as `FirstOf.of("<PageClass>", "<fieldName>", primaryBy, fallback1By, fallback2By)`. The runtime logs one `WIN` and one or more `MISS` events per resolution to `test-output/keel-results/locator-outcomes.jsonl` (append-only, not reset between runs), keyed by `(page, field, slot, target)`. The portal's codegen reads that store on the next emit and reorders each field's bag by Laplace-smoothed win ratio (`(wins+1)/(wins+misses+2)`), stable for ties.
+- Runtime: [`FirstOf.java`](../customer-framework-template/src/main/java/project/utils/locators/FirstOf.java).
+- Reader + reorder: [`LocatorOutcomeStore`](../src/main/java/delivery/store/LocatorOutcomeStore.java), invoked from [`CodeWriter.reorderFieldsByStore`](../src/main/java/delivery/codegen/CodeWriter.java).
+- Memory-hit fields (`field.nlCached`) emit the same `FirstOf.of(...)` shape when the step carries a bag, with the memory-remembered locator pinned to slot 0 and up to two snapshot fallbacks after it. When the bag is empty the field degrades to the single-By emit (backward compat).
+- Memory file carries snapshot fallbacks per entry (`candidates`: `[{strategy, value}]`, up to `LocatorCandidate.MAX_FALLBACKS`). [`DomainLocatorMemory.remember`](../src/main/java/delivery/store/DomainLocatorMemory.java) captures them from the proved step at save time; `recall()` replays them onto the recalled `ProvenStep.locatorCandidates()` so the memory-hit field emits FirstOf by default. Entries written before this change have no `candidates` array and recall as single-By (compatible).
+- Legacy `FirstOf.of("<fieldName>", ...)` (no pageClass) remains valid for already-generated projects; its slot outcomes record under `page=""`.
+- JSONL line shape: `{"page":"LoginPage","field":"loginButton","slot":0,"outcome":"WIN","target":"By.cssSelector: button[data-test='login']"}`.
+- Validator rule not added yet (open work in section 3): flag any `FirstOf.of(` call in a generated Page that passes a single string before the locators — codegen is the only emitter today, so the new shape is already universal in regenerated projects, and a validator rule would catch nothing until hand-written Pages are allowed to call FirstOf (see section 3 for the trigger).
+
 ### Pages and element reuse
 - **Page merging**: `Login` / `LoginForm` / `LoginPage` / `TargetLogin` collapse onto the `Login` page key. Other names use their own key.
 - **Field reuse**: same `locatorIdentity(strategy, value)` + frame context in the same page → same field name returned (no duplicate `By ...`).
@@ -159,6 +169,7 @@ Both run `mvn clean test` (failures ignored) then `mvn allure-maven:report`, pro
 
 ## 3. Open rules worth adding
 
+- **Validator rule for KEEL-R-FIRSTOF** — flag any `FirstOf.of(` call in a generated Page that does not pass `pageClass` as the first argument. Today codegen is the only writer, so every regenerated project uses the new shape; the rule becomes useful once hand-written Pages are allowed to use FirstOf.
 - **Mandatory severity for KEEL-R-4** — `FW_RULE_LOCATOR_LADDER` still RECOMMENDED. Promote once the ranker is trusted end-to-end.
 - **Mandatory severity for KEEL-R-2 and KEEL-R-3a** — `FW_RULE_LOCAL_REUSE` and `FW_RULE_REUSE_ACTIONS` still RECOMMENDED. Promote when ready.
 - **Page constructor shape** — only `public <Page>(WebDriverFactory driver)`. No no-arg, no overloaded constructors. Hard emit assertion. (Validator rule not added yet.)
@@ -194,6 +205,7 @@ When the agent generates or edits a framework file:
 | KEEL-R-BY-VIS Locator field visibility | `FW_RULE_LOCATOR_FIELD_VISIBILITY` | RECOMMENDED | same |
 | KEEL-R-TEST-NAME `should_<snake>` test methods | `FW_RULE_TEST_METHOD_NAMING` | RECOMMENDED | same |
 | KEEL-R-6 No comments | — | — | [`CodeWriter.stripJavaComments`](../src/main/java/delivery/codegen/CodeWriter.java) |
+| KEEL-R-FIRSTOF Multi-locator signature + bag reorder | — | — | [`FirstOf.java`](../customer-framework-template/src/main/java/project/utils/locators/FirstOf.java), [`LocatorOutcomeStore`](../src/main/java/delivery/store/LocatorOutcomeStore.java), [`CodeWriter.reorderFieldsByStore`](../src/main/java/delivery/codegen/CodeWriter.java) |
 | Page merging | — | — | [`PageAccumulator.pageKey`](../src/main/java/delivery/codegen/PageAccumulator.java) |
 | Field / action / assertion reuse | — | — | [`PageAccumulator`](../src/main/java/delivery/codegen/PageAccumulator.java) |
 | TODO routing | — | — | [`CodegenEmitFilters.filterOutcome`](../src/main/java/delivery/codegen/CodegenEmitFilters.java) |

@@ -78,8 +78,7 @@ public final class UiTarsVisionProvider implements VisionGroundingProvider {
         try {
             VisionAnalysisResult result = analyzeOnce(client, user, prepared, imageW, imageH);
             if (shouldRetryGrounding(intent, result)) {
-                String nudgeUser = user + "\n\n"
-                        + "IMPORTANT: Click the Login/Submit button itself — not Username/Password inputs.";
+                String nudgeUser = user + "\n\n" + retryNudgeFor(intent);
                 result = analyzeOnce(client, nudgeUser, prepared, imageW, imageH);
             }
             return result;
@@ -123,15 +122,36 @@ public final class UiTarsVisionProvider implements VisionGroundingProvider {
         if (intent == null || result == null || result.candidates().isEmpty()) {
             return false;
         }
-        String intentText = intent.text() == null ? "" : intent.text().toLowerCase();
-        boolean wantsLoginClick = intentText.contains("login") || intentText.contains("submit");
-        if (!wantsLoginClick) {
+        if (!isClickishKind(intent.kind())) {
             return false;
         }
         String desc = result.candidates().get(0).description();
         String d = desc == null ? "" : desc.toLowerCase();
         return d.contains("username") || d.contains("password") || d.contains("textbox")
                 || d.contains("input field") || d.contains("empty text");
+    }
+
+    private static boolean isClickishKind(StepIntentBinder.IntentKind kind) {
+        if (kind == null) return false;
+        return kind == StepIntentBinder.IntentKind.CLICK
+                || kind == StepIntentBinder.IntentKind.CLICK_LOGIN
+                || kind == StepIntentBinder.IntentKind.HOVER
+                || kind == StepIntentBinder.IntentKind.DOUBLE_CLICK
+                || kind == StepIntentBinder.IntentKind.RIGHT_CLICK;
+    }
+
+    static String retryNudgeFor(StepIntentBinder.IntentLine intent) {
+        String intentText = intent == null || intent.text() == null ? "" : intent.text().toLowerCase(Locale.ROOT);
+        if (intentText.contains("login") || intentText.contains("submit")) {
+            return "IMPORTANT: Click the Login/Submit button itself — not Username/Password inputs.";
+        }
+        String quoted = StepIntentBinder.quotedVisibleName(intent == null ? "" : intent.text());
+        if (quoted != null && !quoted.isBlank()) {
+            return "IMPORTANT: Click the control labelled \"" + quoted
+                    + "\" itself — never a text input, placeholder, or empty field.";
+        }
+        return "IMPORTANT: Click the actual button or control the instruction names — "
+                + "never a text input, placeholder, or empty field.";
     }
 
     @Override

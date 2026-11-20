@@ -1,6 +1,7 @@
 package delivery.store;
 
 import delivery.authoring.StepIntentBinder;
+import delivery.codegen.LocatorCandidate;
 import delivery.codegen.ProvenStep;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -8,7 +9,9 @@ import org.json.JSONObject;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -109,9 +112,29 @@ public class DomainLocatorMemory {
                 intentKey(intent),
                 step.locatorStrategy() == null ? "" : step.locatorStrategy(),
                 step.locatorValue(),
-                step.action() == null ? "" : step.action()));
+                step.action() == null ? "" : step.action(),
+                extractFallbacks(step)));
         pending.put(key, slots.get(key));
         removed.remove(key);
+    }
+
+    private static List<Fallback> extractFallbacks(ProvenStep step) {
+        if (step == null) return List.of();
+        List<LocatorCandidate> src = step.locatorCandidates();
+        if (src == null || src.isEmpty()) return List.of();
+        String primaryS = step.locatorStrategy() == null ? "" : step.locatorStrategy();
+        String primaryV = step.locatorValue() == null ? "" : step.locatorValue();
+        List<Fallback> out = new ArrayList<>();
+        for (LocatorCandidate c : src) {
+            if (c == null) continue;
+            String s = c.strategy() == null ? "" : c.strategy();
+            String v = c.value() == null ? "" : c.value();
+            if (s.isBlank() || v.isBlank()) continue;
+            if (s.equals(primaryS) && v.equals(primaryV)) continue; // skip proven echo
+            out.add(new Fallback(s, v));
+            if (out.size() >= LocatorCandidate.MAX_FALLBACKS) break;
+        }
+        return out;
     }
 
     public Optional<ProvenStep> recall(
@@ -134,7 +157,7 @@ public class DomainLocatorMemory {
                 && StepIntentBinder.looksLikeNonSubmitNavigationLocator(slot.locator())) {
             return Optional.empty();
         }
-        return Optional.of(new ProvenStep(
+        ProvenStep base = new ProvenStep(
                 tcId == null ? "" : tcId,
                 "Page",
                 "elementAction",
@@ -145,7 +168,16 @@ public class DomainLocatorMemory {
                 "",
                 "",
                 true,
-                "memory:" + slot.intentKey() + fieldSuffix(intent)));
+                "memory:" + slot.intentKey() + fieldSuffix(intent));
+        List<Fallback> fbs = slot.fallbacks();
+        if (fbs == null || fbs.isEmpty()) {
+            return Optional.of(base);
+        }
+        List<LocatorCandidate> cands = new ArrayList<>(fbs.size());
+        for (Fallback fb : fbs) {
+            cands.add(LocatorCandidate.of(fb.strategy(), fb.value()));
+        }
+        return Optional.of(base.withLocatorCandidates(cands));
     }
 
     private static String fieldSuffix(StepIntentBinder.IntentLine intent) {
@@ -221,7 +253,8 @@ public class DomainLocatorMemory {
                         intentKey,
                         o.optString("strategy", ""),
                         locator,
-                        o.optString("action", "")));
+                        o.optString("action", ""),
+                        readFallbacks(o.optJSONArray("candidates"))));
             }
         } catch (Exception ignored) {
             // Corrupt memory must not block prove; start empty.
@@ -253,6 +286,16 @@ public class DomainLocatorMemory {
                 o.put("strategy", slot.strategy());
                 o.put("locator", slot.locator());
                 o.put("action", slot.action());
+                List<Fallback> fbs = slot.fallbacks();
+                if (fbs != null && !fbs.isEmpty()) {
+                    JSONArray cands = new JSONArray();
+                    for (Fallback fb : fbs) {
+                        cands.put(new JSONObject()
+                                .put("strategy", fb.strategy())
+                                .put("value", fb.value()));
+                    }
+                    o.put("candidates", cands);
+                }
                 entries.put(o);
             }
             root.put("entries", entries);
@@ -405,13 +448,35 @@ public class DomainLocatorMemory {
         return p.toLowerCase(Locale.ROOT);
     }
 
+    private static List<Fallback> readFallbacks(JSONArray arr) {
+        if (arr == null || arr.length() == 0) return List.of();
+        List<Fallback> out = new ArrayList<>(arr.length());
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject o = arr.optJSONObject(i);
+            if (o == null) continue;
+            String s = o.optString("strategy", "");
+            String v = o.optString("value", "");
+            if (s.isBlank() || v.isBlank()) continue;
+            out.add(new Fallback(s, v));
+            if (out.size() >= LocatorCandidate.MAX_FALLBACKS) break;
+        }
+        return out;
+    }
+
+    /** Snapshot-time fallback for FirstOf. Stored alongside the proven primary. */
+    public record Fallback(String strategy, String value) {}
+
     private record Slot(
             String host,
             String path,
             String intentKey,
             String strategy,
             String locator,
-            String action
+            String action,
+            List<Fallback> fallbacks
     ) {
+        Slot {
+            fallbacks = fallbacks == null ? List.of() : List.copyOf(fallbacks);
+        }
     }
 }

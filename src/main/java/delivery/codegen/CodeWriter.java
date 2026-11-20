@@ -2,6 +2,7 @@ package delivery.codegen;
 
 import delivery.job.TcOutcome;
 import delivery.job.TcStatus;
+import delivery.store.LocatorOutcomeStore;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateExceptionHandler;
@@ -156,6 +157,7 @@ public class CodeWriter {
         java.util.Set<String> usedPageFiles = new java.util.HashSet<>();
 
         Template pageTpl = cfg.getTemplate("Page.java.ftl");
+        LocatorOutcomeStore.Aggregate locatorOutcomes = LocatorOutcomeStore.read(projectRoot);
         for (Map.Entry<String, PageAccumulator.PageModel> e : pages.pages().entrySet()) {
             PageAccumulator.PageModel page = e.getValue();
             Map<String, Object> model = new HashMapModel();
@@ -165,7 +167,7 @@ public class CodeWriter {
             // Compat aliases for any leftover template references
             model.put("locatorsClassName", page.pageClassName());
             model.put("actionsClassName", page.pageClassName());
-            model.put("fields", page.fields());
+            model.put("fields", reorderFieldsByStore(page.pageClassName(), page.fields(), locatorOutcomes));
             model.put("methods", page.methods());
             model.put("assertions", page.assertions());
             model.put("loadedMarker", page.loadedMarkerRef());
@@ -252,6 +254,67 @@ public class CodeWriter {
         deleteObsoleteJava(pagesDir, keepPages);
         deleteObsoleteJava(generatedDir, keepGenerated);
         deleteObsoleteJava(todoDir, keepTodo);
+    }
+
+    /**
+     * Reorder each field's (primary + bag) by learned win ratio from prior runs' locator-outcomes.jsonl.
+     * Empty store (first run, or no file) returns the fields untouched; a field with no bag is untouched;
+     * identity permutations are untouched so re-emit is diff-free when nothing has changed.
+     */
+    static List<PageAccumulator.FieldModel> reorderFieldsByStore(
+            String pageClass, List<PageAccumulator.FieldModel> fields, LocatorOutcomeStore.Aggregate store) {
+        if (store == null || store.isEmpty() || fields == null || fields.isEmpty()) {
+            return fields;
+        }
+        List<PageAccumulator.FieldModel> out = new ArrayList<>(fields.size());
+        for (PageAccumulator.FieldModel f : fields) {
+            if (!f.hasBag()) {
+                out.add(f);
+                continue;
+            }
+            List<String> sigs = new ArrayList<>();
+            sigs.add(LocatorOutcomeStore.targetSig(f.strategy(), f.value()));
+            for (MultiLocatorBag.Entry e : f.bag()) {
+                sigs.add(LocatorOutcomeStore.targetSig(e.strategy(), e.value()));
+            }
+            List<Integer> order = store.rankedIndices(pageClass, f.name(), sigs);
+            if (isIdentityOrder(order)) {
+                out.add(f);
+                continue;
+            }
+            int firstIdx = order.get(0);
+            String newStrategy;
+            String newValue;
+            if (firstIdx == 0) {
+                newStrategy = f.strategy();
+                newValue = f.value();
+            } else {
+                MultiLocatorBag.Entry e = f.bag().get(firstIdx - 1);
+                newStrategy = e.strategy();
+                newValue = e.value();
+            }
+            List<MultiLocatorBag.Entry> newBag = new ArrayList<>();
+            for (int i = 1; i < order.size(); i++) {
+                int idx = order.get(i);
+                if (idx == 0) {
+                    newBag.add(new MultiLocatorBag.Entry(f.strategy(), f.value()));
+                } else {
+                    newBag.add(f.bag().get(idx - 1));
+                }
+            }
+            out.add(new PageAccumulator.FieldModel(
+                    f.name(), newStrategy, newValue,
+                    f.candidates(), f.smartExpr(), f.parameterized(),
+                    newBag, f.nlPhrase()));
+        }
+        return out;
+    }
+
+    private static boolean isIdentityOrder(List<Integer> order) {
+        for (int i = 0; i < order.size(); i++) {
+            if (order.get(i) != i) return false;
+        }
+        return true;
     }
 
     /**

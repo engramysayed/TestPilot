@@ -14,6 +14,8 @@ import java.util.Map;
 public final class KeelResults {
     public static final String VERDICTS = "verdicts.jsonl";
     public static final String LOCATOR_EVENTS = "locator-events.jsonl";
+    /** Append-only per-slot FirstOf outcomes, read by LocatorOutcomeStore for codegen reorder. */
+    public static final String LOCATOR_OUTCOMES = "locator-outcomes.jsonl";
 
     private KeelResults() {
     }

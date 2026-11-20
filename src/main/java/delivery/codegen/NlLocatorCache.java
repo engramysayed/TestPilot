@@ -24,7 +24,8 @@ public final class NlLocatorCache {
             String nlPhrase,
             String strategy,
             String value,
-            String pageName
+            String pageName,
+            List<MultiLocatorBag.Entry> bag
     ) {
         public CachedBy {
             fieldName = fieldName == null ? "" : fieldName;
@@ -32,6 +33,11 @@ public final class NlLocatorCache {
             strategy = strategy == null ? "" : strategy.trim();
             value = value == null ? "" : value;
             pageName = pageName == null ? "" : pageName.trim();
+            bag = bag == null ? List.of() : List.copyOf(bag);
+        }
+
+        public CachedBy(String fieldName, String nlPhrase, String strategy, String value, String pageName) {
+            this(fieldName, nlPhrase, strategy, value, pageName, List.of());
         }
     }
 
@@ -40,6 +46,17 @@ public final class NlLocatorCache {
             String nlPhrase,
             String strategy,
             String value
+    ) {
+        return resolve(pageName, nlPhrase, strategy, value, List.of());
+    }
+
+    /** Memory-hit emits should pass {@code bag} = top-2 snapshot fallbacks so FirstOf gives a safety net. */
+    public static java.util.Optional<CachedBy> resolve(
+            String pageName,
+            String nlPhrase,
+            String strategy,
+            String value,
+            List<MultiLocatorBag.Entry> bag
     ) {
         if (nlPhrase == null || nlPhrase.isBlank()) {
             return java.util.Optional.empty();
@@ -65,7 +82,8 @@ public final class NlLocatorCache {
             }
         }
         String field = fieldNameFor(nlPhrase);
-        return java.util.Optional.of(new CachedBy(field, nlPhrase.trim(), st, value, pageName));
+        return java.util.Optional.of(new CachedBy(field, nlPhrase.trim(), st, value, pageName,
+                bag == null ? List.of() : bag));
     }
 
     public static String fieldNameFor(String nlPhrase) {
