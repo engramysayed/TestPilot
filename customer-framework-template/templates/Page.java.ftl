@@ -52,15 +52,8 @@ public class ${pageClassName} {
     /** Keel targets (contract v${field.contract}), main first then fallbacks. */
     protected final By ${field.name} = ${field.smartExpr};
 <#elseif field.nlCached>
-    <#if field.bag?has_content>
-    /** NL-cached validated By: ${field.nlPhrase?j_string} (memory pinned at slot 0, snapshot fallbacks after). */
-    protected final By ${field.name} = FirstOf.of("${pageClassName}", "${field.name}",
-            By.${field.strategy}("${field.value?j_string}")<#list field.bag as fb>,
-            By.${fb.strategy}("${fb.value?j_string}")</#list>);
-    <#else>
     /** NL-cached validated By: ${field.nlPhrase?j_string} */
     protected final By ${field.name} = By.${field.strategy}("${field.value?j_string}");
-    </#if>
 <#elseif field.bag?has_content>
     /** Primary first, then verified fallbacks (first locator that matches wins; outcomes logged per slot). */
     protected final By ${field.name} = FirstOf.of("${pageClassName}", "${field.name}",

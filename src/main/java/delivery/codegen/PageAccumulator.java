@@ -78,7 +78,7 @@ public class PageAccumulator {
                 List.of(),
                 "",
                 false,
-                cached.bag(),
+                List.of(),
                 cached.nlPhrase()));
     }
 

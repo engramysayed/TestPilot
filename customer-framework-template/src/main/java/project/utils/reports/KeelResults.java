@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Machine-readable run facts for CI (verdicts.jsonl, locator-events.jsonl), one JSON object per
@@ -17,6 +19,9 @@ public final class KeelResults {
     /** Append-only per-slot FirstOf outcomes, read by LocatorOutcomeStore for codegen reorder. */
     public static final String LOCATOR_OUTCOMES = "locator-outcomes.jsonl";
 
+    /** Per-file locks: writes to different jsonl files do not serialize on one monitor. */
+    private static final ConcurrentHashMap<String, ReentrantLock> FILE_LOCKS = new ConcurrentHashMap<>();
+
     private KeelResults() {
     }
 
@@ -27,7 +32,7 @@ public final class KeelResults {
                 : Path.of(System.getProperty("user.dir"), "test-output", "keel-results");
     }
 
-    public static synchronized void append(String file, Map<String, ?> fields) {
+    public static void append(String file, Map<String, ?> fields) {
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;
         for (Map.Entry<String, ?> e : fields.entrySet()) {
@@ -41,21 +46,29 @@ public final class KeelResults {
         }
         sb.append("}\n");
         String line = Secrets.redact(sb.toString()); // IR secret: true values never reach the jsonl files
+        ReentrantLock lock = FILE_LOCKS.computeIfAbsent(file, f -> new ReentrantLock());
+        lock.lock();
         try {
             Files.createDirectories(dir());
             Files.writeString(dir().resolve(file), line, StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException | RuntimeException ignored) {
             // reporting must never break a test
+        } finally {
+            lock.unlock();
         }
     }
 
-    public static synchronized void reset() {
+    public static void reset() {
         for (String f : new String[]{VERDICTS, LOCATOR_EVENTS}) {
+            ReentrantLock lock = FILE_LOCKS.computeIfAbsent(f, k -> new ReentrantLock());
+            lock.lock();
             try {
                 Files.deleteIfExists(dir().resolve(f));
             } catch (IOException ignored) {
                 // best effort
+            } finally {
+                lock.unlock();
             }
         }
     }

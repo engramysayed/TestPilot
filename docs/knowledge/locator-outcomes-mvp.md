@@ -34,8 +34,8 @@ MVP goal: **learn from every FirstOf resolution and reorder the slots on the nex
   - `reset()` does **not** touch this file — it accumulates across runs on purpose.
 
 - [`Page.java.ftl`](../../customer-framework-template/templates/Page.java.ftl)
-  - Bag path emits the new signature: `FirstOf.of("<PageClass>", "<field>", …)`.
-  - NL-cached path now emits FirstOf **when the bag is non-empty** — memory's locator at slot 0, snapshot fallbacks after. Empty bag falls back to the single-By emit for backward compat.
+  - Bag path emits the new signature: `FirstOf.of("<PageClass>", "<field>", …)`. Memory-hit fields flow through this same branch (their `ProvenStep.locatorCandidates()` is attached by `DomainLocatorMemory.recall`, which `PageAccumulator.allocateField` turns into a bag).
+  - NL-cached path (W3 explicit NL steps) still emits a single `By.…` since `NlLocatorCache.CachedBy` carries no bag.
 
 ### Portal side (Spring, `delivery/*`)
 
@@ -49,11 +49,6 @@ MVP goal: **learn from every FirstOf resolution and reorder the slots on the nex
 - [`CodeWriter.java`](../../src/main/java/delivery/codegen/CodeWriter.java)
   - `reorderFieldsByStore(pageClass, fields, aggregate)` — static helper, called once per emit, right before `pageTpl.process`.
   - Rebuilds each FieldModel with a non-empty bag using the store's ordering; identity permutations return the original FieldModel unchanged (keeps re-emit diffs clean when nothing changed).
-
-- [`NlLocatorCache.java`](../../src/main/java/delivery/codegen/NlLocatorCache.java) + [`PageAccumulator.addNlCachedField`](../../src/main/java/delivery/codegen/PageAccumulator.java)
-  - `CachedBy` record gained a `bag` field (defaults to empty for existing callers).
-  - `resolve(…)` has two forms: the 4-arg legacy (empty bag) and a 5-arg form that accepts a `List<MultiLocatorBag.Entry> bag`.
-  - `addNlCachedField` now passes `cached.bag()` through to `FieldModel`.
 
 - [`DomainLocatorMemory.java`](../../src/main/java/delivery/store/DomainLocatorMemory.java) (memory-side enrichment)
   - Persists snapshot fallbacks alongside the proven primary. A new `candidates: [{strategy, value}]` JSON array per entry carries up to `LocatorCandidate.MAX_FALLBACKS` locators pulled from the proved step's `locatorCandidates()` at `remember()` time (the proven primary is skipped — it already lives in the top-level `strategy` / `locator` fields).
@@ -115,7 +110,6 @@ Tiebreak is the incoming stability-tier order (stable sort).
 
 - Projects generated before this MVP still compile: legacy `FirstOf.of(label, bys…)` signature is intact; slot outcomes from those projects log under `page=""`.
 - `locator-events.jsonl` (per-run, CI-oriented) is unchanged. The new slot-level data lives in a separate file (`locator-outcomes.jsonl`) that `KeelResults.reset()` does not clear.
-- `NlLocatorCache.CachedBy`'s new `bag` field has an all-args + legacy 4-arg constructor; every existing caller (resolve, tests) keeps working with an empty bag.
 - `domain-locator-memory.json`: the new optional `candidates` array per entry is written only when non-empty. Old files (no `candidates` field) load cleanly and recall as single-By until the next successful prove rewrites the entry with fallbacks. No migration script needed.
 - First-run codegen with no prior outcomes = identity reorder = diff-free.
 

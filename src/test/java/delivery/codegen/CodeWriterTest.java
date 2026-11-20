@@ -2,6 +2,7 @@ package delivery.codegen;
 
 import delivery.job.TcOutcome;
 import delivery.job.TcStatus;
+import delivery.store.LocatorOutcomeStore;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -218,6 +219,53 @@ public class CodeWriterTest {
         Assert.assertTrue(bodyCall > test, java);
         Assert.assertTrue(java.contains("Shop"), java);
         Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Shop_Page.java")));
+    }
+
+    @Test
+    public void reorderFieldsByStorePrimaryStaysButBagIsPermuted() throws Exception {
+        // primary wins 10/10, slot 1 misses 5 never wins, slot 2 wins 3 misses 2.
+        // Smoothed ratios: primary=11/12=0.917, slot1=1/7=0.143, slot2=4/7=0.571.
+        // Expected order: [0, 2, 1] — primary stays, slots 1 and 2 swap in the bag.
+        Path tmp = Files.createTempFile("outcomes", ".jsonl");
+        StringBuilder jsonl = new StringBuilder();
+        for (int i = 0; i < 10; i++) {
+            jsonl.append("{\"page\":\"Login_Page\",\"field\":\"loginBtn\",\"slot\":0,\"outcome\":\"WIN\",")
+                    .append("\"target\":\"By.id: login\"}\n");
+        }
+        for (int i = 0; i < 5; i++) {
+            jsonl.append("{\"page\":\"Login_Page\",\"field\":\"loginBtn\",\"slot\":1,\"outcome\":\"MISS\",")
+                    .append("\"target\":\"By.cssSelector: #login\"}\n");
+        }
+        for (int i = 0; i < 3; i++) {
+            jsonl.append("{\"page\":\"Login_Page\",\"field\":\"loginBtn\",\"slot\":2,\"outcome\":\"WIN\",")
+                    .append("\"target\":\"By.xpath: //button\"}\n");
+        }
+        for (int i = 0; i < 2; i++) {
+            jsonl.append("{\"page\":\"Login_Page\",\"field\":\"loginBtn\",\"slot\":2,\"outcome\":\"MISS\",")
+                    .append("\"target\":\"By.xpath: //button\"}\n");
+        }
+        Files.writeString(tmp, jsonl.toString());
+        LocatorOutcomeStore.Aggregate store = LocatorOutcomeStore.readFile(tmp);
+
+        PageAccumulator.FieldModel f = new PageAccumulator.FieldModel(
+                "loginBtn", "id", "login",
+                List.of(), "", false,
+                List.of(new MultiLocatorBag.Entry("cssSelector", "#login"),
+                        new MultiLocatorBag.Entry("xpath", "//button")),
+                "");
+        List<PageAccumulator.FieldModel> out = CodeWriter.reorderFieldsByStore("Login_Page", List.of(f), store);
+
+        Assert.assertEquals(out.size(), 1);
+        PageAccumulator.FieldModel reordered = out.get(0);
+        Assert.assertEquals(reordered.strategy(), "id", "primary strategy must stay");
+        Assert.assertEquals(reordered.value(), "login", "primary value must stay");
+        Assert.assertEquals(reordered.bag().size(), 2);
+        Assert.assertEquals(reordered.bag().get(0).strategy(), "xpath",
+                "slot 2 (xpath) should be first in the bag after reorder");
+        Assert.assertEquals(reordered.bag().get(0).value(), "//button");
+        Assert.assertEquals(reordered.bag().get(1).strategy(), "cssSelector",
+                "slot 1 (css) should fall to the end");
+        Assert.assertEquals(reordered.bag().get(1).value(), "#login");
     }
 
     @Test
