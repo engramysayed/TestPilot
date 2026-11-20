@@ -7,7 +7,7 @@ import delivery.agent.harness.AgentTaskRouter;
 import delivery.agent.harness.SlowFakeAgentRuntime;
 import delivery.agent.harness.convert.AgentHarnessJobBridge;
 import delivery.agent.harness.convert.AgentStageIndexStore;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.portal.jobs.DurableJobClaim;
 import delivery.portal.jobs.LeaseKeeper;
 import delivery.portal.model.JobRecord;

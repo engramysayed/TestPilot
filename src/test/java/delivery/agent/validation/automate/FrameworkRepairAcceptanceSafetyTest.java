@@ -11,7 +11,7 @@ import delivery.agent.validation.contract.FrameworkContractValidator;
 import delivery.codegen.ProvenStep;
 import delivery.job.TcOutcome;
 import delivery.job.TcStatus;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;

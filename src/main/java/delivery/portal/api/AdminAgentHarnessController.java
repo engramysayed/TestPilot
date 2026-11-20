@@ -1,7 +1,7 @@
 package delivery.portal.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.roles.RolesService;
 import delivery.portal.security.CurrentUserService;

@@ -2,7 +2,7 @@ package delivery.portal.api;
 
 import delivery.heal.ApiKeySource;
 import delivery.packager.AllureReportBuilder;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.portal.service.llm.LlmSettingsService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

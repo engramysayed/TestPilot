@@ -4,7 +4,7 @@ import delivery.agent.harness.cursor.CursorSidecarClient;
 import delivery.agent.validation.contract.FrameworkContractValidator;
 import delivery.agent.validation.contract.ValidationReport;
 import delivery.heal.ApiKeySource;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.BeforeClass;

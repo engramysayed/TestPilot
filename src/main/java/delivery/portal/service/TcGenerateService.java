@@ -14,7 +14,7 @@ import delivery.agent.harness.AgentHarnessCoordinator;
 import delivery.agent.validation.contract.TestCaseValidationContext;
 import delivery.agent.validation.generate.GenerateHarnessBridge;
 import delivery.agent.validation.generate.GenerateTcContractValidation;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.ProjectRecord;
 import org.apache.logging.log4j.LogManager;

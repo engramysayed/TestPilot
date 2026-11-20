@@ -17,7 +17,7 @@ import delivery.agent.harness.AgentWorkspacePaths;
 import delivery.agent.harness.NewAgentTaskRequest;
 import delivery.agent.harness.ValidationReportWriter;
 import delivery.job.ArtifactIntegrityException;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

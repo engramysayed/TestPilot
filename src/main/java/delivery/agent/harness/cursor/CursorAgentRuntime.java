@@ -6,7 +6,7 @@ import delivery.agent.harness.AgentRunHandle;
 import delivery.agent.harness.AgentRunResult;
 import delivery.agent.harness.AgentRuntime;
 import delivery.agent.harness.AgentTask;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 
 import java.nio.file.Path;
 import java.time.Instant;

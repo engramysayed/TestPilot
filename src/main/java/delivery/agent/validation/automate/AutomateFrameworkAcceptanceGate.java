@@ -12,7 +12,7 @@ import delivery.agent.validation.contract.ValidationReport;
 import delivery.job.EmitCompileCheck;
 import delivery.job.JobCancelSupport;
 import delivery.job.JobCancelledException;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

@@ -8,7 +8,7 @@ import delivery.agent.harness.AgentRunResult;
 import delivery.agent.harness.AgentRunStore;
 import delivery.agent.harness.AgentTask;
 import delivery.agent.harness.AgentTaskStatus;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.store.ProjectStore;
 import org.testng.Assert;
 import org.testng.annotations.Test;

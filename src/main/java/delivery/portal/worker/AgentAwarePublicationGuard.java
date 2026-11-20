@@ -4,7 +4,7 @@ import delivery.agent.harness.convert.AgentHarnessJobBridge;
 import delivery.identity.TenantId;
 import delivery.job.ArtifactIntegrityException;
 import delivery.job.PublicationGuard;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.portal.jobs.DurableJobClaim;
 import delivery.portal.service.PortalStore;
 

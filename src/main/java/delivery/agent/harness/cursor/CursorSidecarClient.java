@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import delivery.agent.harness.AgentPolicy;
 import delivery.agent.harness.AgentTask;
 import delivery.heal.ApiKeySource;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.privacy.ProviderPolicy;
 import org.json.JSONArray;
 import org.json.JSONObject;

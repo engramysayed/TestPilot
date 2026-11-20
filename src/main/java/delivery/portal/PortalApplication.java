@@ -1,5 +1,6 @@
 package delivery.portal;
 
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.mobile.MobileProperties;
 import delivery.portal.service.credits.DeliveryCreditsProperties;
 import org.slf4j.Logger;

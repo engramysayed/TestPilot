@@ -38,13 +38,13 @@ public class HuntWorker extends AbstractJobWorker {
     private final GeneratedWorkbookService workbooks;
     private final Environment env;
     private final KnowledgePackReader knowledgePackReader;
-    private final delivery.portal.AgentHarnessProperties harnessProps;
+    private final delivery.agent.harness.AgentHarnessProperties harnessProps;
     private final delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy;
 
     public HuntWorker(DeliveryPortalProperties props, PortalStore portalStore,
                       GeneratedWorkbookService workbooks, Environment env,
                       KnowledgePackReader knowledgePackReader,
-                      delivery.portal.AgentHarnessProperties harnessProps,
+                      delivery.agent.harness.AgentHarnessProperties harnessProps,
                       delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy) {
         super(portalStore);
         this.props = props;
