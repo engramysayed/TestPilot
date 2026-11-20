@@ -8,9 +8,13 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.EnumSet;
 
 /**
  * AES-GCM encrypt/decrypt for job target credentials at rest (D12).
@@ -67,17 +71,16 @@ public final class JobSecretCrypto {
             raw = System.getProperty("DELIVERY_SECRET_KEY", "");
         }
         if (raw == null || raw.isBlank()) {
-            Path file = Path.of(System.getProperty("delivery.store-root", "./delivery-store"))
-                    .resolve("delivery.secret");
+            Path file = storeRoot().resolve("delivery.secret");
             if (Files.isRegularFile(file)) {
                 raw = Files.readString(file, StandardCharsets.UTF_8).trim();
                 // Repair perms on an existing file created before the owner-only patch landed.
                 restrictToOwner(file);
             } else {
                 Files.createDirectories(file.getParent());
+                createOwnerOnly(file);
                 raw = Base64.getEncoder().encodeToString(SecureRandom.getInstanceStrong().generateSeed(32));
                 Files.writeString(file, raw, StandardCharsets.UTF_8);
-                restrictToOwner(file);
             }
         }
         byte[] digest = MessageDigest.getInstance("SHA-256")
@@ -85,14 +88,45 @@ public final class JobSecretCrypto {
         return new SecretKeySpec(digest, "AES");
     }
 
-    /** Owner-only perms on the master key file — no-op on Windows / non-POSIX filesystems. */
+    /**
+     * Store root for {@code delivery.secret}. Defaults to {@code ~/.keel/delivery-store} rather than
+     * a CWD-relative path so a different working directory (systemd unit change, {@code cd} then
+     * {@code java -jar}) does not silently point at a new directory, generate a fresh master key,
+     * and leave every previously-encrypted job secret undecryptable.
+     */
+    private static Path storeRoot() {
+        String override = System.getProperty("delivery.store-root", "");
+        if (!override.isBlank()) {
+            return Path.of(override);
+        }
+        String home = System.getProperty("user.home", "");
+        return home.isBlank() ? Path.of(".keel", "delivery-store")
+                : Path.of(home, ".keel", "delivery-store");
+    }
+
+    /**
+     * Create the key file with owner-only perms as an atomic attribute, so there is no
+     * world-readable window between {@link Files#writeString} and a follow-up chmod on POSIX.
+     * No-op semantics on Windows / non-POSIX filesystems (falls back to {@link Files#createFile}).
+     */
+    private static void createOwnerOnly(Path file) throws java.io.IOException {
+        try {
+            FileAttribute<?> perms = PosixFilePermissions.asFileAttribute(
+                    EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+            Files.createFile(file, perms);
+        } catch (UnsupportedOperationException notPosix) {
+            Files.createFile(file);
+        }
+    }
+
+    /** Repair perms on an existing key file created before the owner-only patch landed. */
     private static void restrictToOwner(Path file) {
         try {
-            Files.setPosixFilePermissions(file, java.util.EnumSet.of(
-                    java.nio.file.attribute.PosixFilePermission.OWNER_READ,
-                    java.nio.file.attribute.PosixFilePermission.OWNER_WRITE));
+            Files.setPosixFilePermissions(file, EnumSet.of(
+                    PosixFilePermission.OWNER_READ,
+                    PosixFilePermission.OWNER_WRITE));
         } catch (UnsupportedOperationException | java.io.IOException ignored) {
-            // POSIX perms not supported (Windows dev) or race on first create — accept default perms.
+            // POSIX perms not supported (Windows dev) — accept default perms.
         }
     }
 }

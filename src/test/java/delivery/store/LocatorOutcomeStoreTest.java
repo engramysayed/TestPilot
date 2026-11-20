@@ -78,6 +78,55 @@ public class LocatorOutcomeStoreTest {
     }
 
     @Test
+    public void compactRollsPerEventLinesIntoCountLinesAndShrinksFile() throws Exception {
+        Path tmp = Files.createTempDirectory("locout-compact");
+        Path file = tmp.resolve("locator-outcomes.jsonl");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 100; i++) {
+            sb.append("{\"page\":\"P\",\"field\":\"f\",\"slot\":0,\"outcome\":\"WIN\",\"target\":\"By.id: a\"}\n");
+        }
+        for (int i = 0; i < 40; i++) {
+            sb.append("{\"page\":\"P\",\"field\":\"f\",\"slot\":1,\"outcome\":\"MISS\",\"target\":\"By.cssSelector: b\"}\n");
+        }
+        Files.writeString(file, sb.toString());
+        long sizeBefore = Files.size(file);
+        LocatorOutcomeStore.Stats statsBefore = LocatorOutcomeStore.readFile(file).lookup("P", "f", "By.id: a");
+        Assert.assertEquals(statsBefore.wins(), 100);
+
+        LocatorOutcomeStore.compact(file);
+
+        long sizeAfter = Files.size(file);
+        Assert.assertTrue(sizeAfter < sizeBefore / 10,
+                "compacted file must shrink: " + sizeBefore + " -> " + sizeAfter);
+        LocatorOutcomeStore.Aggregate agg = LocatorOutcomeStore.readFile(file);
+        LocatorOutcomeStore.Stats a = agg.lookup("P", "f", "By.id: a");
+        LocatorOutcomeStore.Stats b = agg.lookup("P", "f", "By.cssSelector: b");
+        Assert.assertEquals(a.wins(), 100);
+        Assert.assertEquals(a.misses(), 0);
+        Assert.assertEquals(b.wins(), 0);
+        Assert.assertEquals(b.misses(), 40);
+    }
+
+    @Test
+    public void compactIsIdempotentAndMergesWithLegacyLinesAppendedAfter() throws Exception {
+        Path tmp = Files.createTempDirectory("locout-idem");
+        Path file = tmp.resolve("locator-outcomes.jsonl");
+        Files.writeString(file,
+                "{\"page\":\"P\",\"field\":\"f\",\"slot\":0,\"outcome\":\"WIN\",\"target\":\"By.id: a\"}\n"
+                        + "{\"page\":\"P\",\"field\":\"f\",\"slot\":0,\"outcome\":\"WIN\",\"target\":\"By.id: a\"}\n"
+                        + "{\"page\":\"P\",\"field\":\"f\",\"slot\":0,\"outcome\":\"MISS\",\"target\":\"By.id: a\"}\n");
+        LocatorOutcomeStore.compact(file);
+        LocatorOutcomeStore.compact(file); // second pass must stay stable
+        // append a fresh per-event line after compaction
+        Files.writeString(file,
+                "{\"page\":\"P\",\"field\":\"f\",\"slot\":0,\"outcome\":\"WIN\",\"target\":\"By.id: a\"}\n",
+                java.nio.file.StandardOpenOption.APPEND);
+        LocatorOutcomeStore.Stats s = LocatorOutcomeStore.readFile(file).lookup("P", "f", "By.id: a");
+        Assert.assertEquals(s.wins(), 3);
+        Assert.assertEquals(s.misses(), 1);
+    }
+
+    @Test
     public void targetSigMatchesSeleniumByToString() {
         Assert.assertEquals(LocatorOutcomeStore.targetSig("id", "foo"), "By.id: foo");
         Assert.assertEquals(LocatorOutcomeStore.targetSig("cssSelector", "div[a=1]"), "By.cssSelector: div[a=1]");

@@ -78,7 +78,13 @@ public class TunnelAgentController {
             return ResponseEntity.status(413).body(new ApiError(
                     "BODY_TOO_LARGE", "Relay body exceeds " + MAX_BODY_BASE64_CHARS + " base64 chars").asMap());
         }
-        byte[] raw = decodeBase64(body.bodyBase64());
+        byte[] raw;
+        try {
+            raw = decodeBase64(body.bodyBase64());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ApiError(
+                    "MALFORMED_BODY", "bodyBase64 is not valid base64").asMap());
+        }
         boolean ok;
         if (body.multiHeaders() != null && !body.multiHeaders().isEmpty()) {
             ok = relay.completeMulti(reqId, status, raw, body.multiHeaders());

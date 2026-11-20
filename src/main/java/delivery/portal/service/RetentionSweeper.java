@@ -4,6 +4,7 @@ package delivery.portal.service;
 
 import delivery.portal.DeliveryPortalProperties;
 
+import delivery.store.LocatorOutcomeStore;
 import delivery.store.ProjectStore;
 
 import org.slf4j.Logger;
@@ -85,6 +86,70 @@ public class RetentionSweeper {
         sweepExecuteRuns(Path.of(props.getStoreRoot()), cutoff);
 
         sweepWorkDirChildren(Path.of(props.getWorkDir()), cutoff);
+
+        sweepLocatorOutcomes(Path.of(props.getWorkDir()));
+
+    }
+
+
+
+    private void sweepLocatorOutcomes(Path workDir) {
+
+        if (!Files.isDirectory(workDir)) {
+
+            return;
+
+        }
+
+        Instant quietBefore = Instant.now().minus(2, ChronoUnit.MINUTES);
+
+        try (var children = Files.list(workDir)) {
+
+            children.filter(Files::isDirectory).forEach(project -> {
+
+                Path file = project.resolve("test-output").resolve("keel-results").resolve("locator-outcomes.jsonl");
+
+                compactIfQuiet(file, quietBefore);
+
+            });
+
+        } catch (IOException e) {
+
+            log.warn("Retention sweep skipped locator-outcomes under {}: {}", workDir, e.toString());
+
+        }
+
+    }
+
+
+
+    private void compactIfQuiet(Path file, Instant quietBefore) {
+
+        try {
+
+            if (!Files.isRegularFile(file)) return;
+
+            Instant mtime = Files.getLastModifiedTime(file).toInstant();
+
+            if (mtime.isAfter(quietBefore)) return; // writer may still be live — skip this round
+
+            long before = Files.size(file);
+
+            LocatorOutcomeStore.compact(file);
+
+            long after = Files.size(file);
+
+            if (after < before) {
+
+                log.info("Compacted {}: {} -> {} bytes", file, before, after);
+
+            }
+
+        } catch (Exception e) {
+
+            log.warn("Compaction skipped {}: {}", file, e.toString());
+
+        }
 
     }
 

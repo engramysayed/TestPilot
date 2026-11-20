@@ -5,8 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -31,7 +34,18 @@ public final class LocatorOutcomeStore {
     }
 
     public static Aggregate read(Path projectRoot) {
-        return readFile(defaultFile(projectRoot));
+        Path file = defaultFile(projectRoot);
+        if (projectRoot != null && !Files.isRegularFile(file)) {
+            // Signal a path mismatch: a project that has run tests already has a test-output
+            // folder, but the outcomes file sits where the WRITER thinks user.dir / keel.results.dir
+            // points — if the writer ran under a different CWD, codegen reorder silently no-ops.
+            Path marker = projectRoot.resolve("test-output");
+            if (Files.isDirectory(marker)) {
+                log.info("locator-outcomes.jsonl missing under {} but test-output exists — "
+                        + "codegen reorder will no-op. Check -Dkeel.results.dir on the test-run JVM.", projectRoot);
+            }
+        }
+        return readFile(file);
     }
 
     public static Aggregate readFile(Path file) {
@@ -55,15 +69,60 @@ public final class LocatorOutcomeStore {
             String page = o.optString("page", "");
             String field = o.optString("field", "");
             String target = o.optString("target", "");
-            String outcome = o.optString("outcome", "");
-            if (field.isEmpty() || target.isEmpty() || outcome.isEmpty()) return;
+            if (field.isEmpty() || target.isEmpty()) return;
             String key = page + '\0' + field;
             Stats s = perField.computeIfAbsent(key, k -> new HashMap<>())
                     .computeIfAbsent(target, t -> new Stats());
+            // Compacted schema: a rolled-up row carries wins/misses counts instead of a single outcome.
+            if (o.has("wins") || o.has("misses")) {
+                s.wins += o.optInt("wins", 0);
+                s.misses += o.optInt("misses", 0);
+                return;
+            }
+            String outcome = o.optString("outcome", "");
+            if (outcome.isEmpty()) return;
             if ("WIN".equals(outcome)) s.wins++;
             else if ("MISS".equals(outcome)) s.misses++;
         } catch (RuntimeException ignored) {
             // malformed line: ignore, never fail codegen on data
+        }
+    }
+
+    /**
+     * Roll per-event WIN/MISS lines into one line per {@code (page, field, target)} carrying
+     * {@code wins} / {@code misses} counts, so the file stops growing with the number of runs
+     * and shrinks to {@code O(unique locators)}. Writes atomically via a sibling temp file.
+     * No-op on an absent or empty file. Safe to re-run; the compacted schema aggregates back
+     * to itself and stays mergeable with legacy per-event lines appended afterwards.
+     */
+    public static void compact(Path file) throws IOException {
+        if (file == null || !Files.isRegularFile(file)) return;
+        Aggregate agg = readFile(file);
+        if (agg.perField.isEmpty()) return;
+        List<String> out = new ArrayList<>();
+        for (Map.Entry<String, Map<String, Stats>> perField : agg.perField.entrySet()) {
+            String key = perField.getKey();
+            int sep = key.indexOf('\0');
+            String page = sep < 0 ? "" : key.substring(0, sep);
+            String field = sep < 0 ? key : key.substring(sep + 1);
+            for (Map.Entry<String, Stats> perTarget : perField.getValue().entrySet()) {
+                Stats s = perTarget.getValue();
+                if (s.wins == 0 && s.misses == 0) continue;
+                JSONObject o = new JSONObject();
+                o.put("page", page);
+                o.put("field", field);
+                o.put("target", perTarget.getKey());
+                o.put("wins", s.wins);
+                o.put("misses", s.misses);
+                out.add(o.toString());
+            }
+        }
+        Path tmp = file.resolveSibling(file.getFileName() + ".compact.tmp");
+        Files.writeString(tmp, String.join("\n", out) + (out.isEmpty() ? "" : "\n"), StandardCharsets.UTF_8);
+        try {
+            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
