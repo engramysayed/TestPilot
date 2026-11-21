@@ -169,20 +169,20 @@ public class PortalUiController {
         return switch (navActive) {
             case "dashboard" -> "Overview";
             case "projects" -> "Projects";
-            case "generate" -> "TCs Generation";
+            case "generate" -> "Write test cases";
             case "generate-compare" -> "Multi-model generate";
             case "generate-from-knowledge" -> "Generate from knowledge";
-            case "record" -> "Playback";
+            case "record" -> "Record a test";
             case "plain-cases" -> "Plain cases";
             case "structured-plans" -> "Test blueprints";
             case "suites" -> "Test suites";
             case "suites-schedule" -> "Scheduling";
-            case "execute" -> "TCs execution";
-            case "automate" -> "TCs automation";
+            case "execute" -> "Run tests";
+            case "automate" -> "Build code";
             case "bug-hunter" -> "Bug Hunter";
             case "run-memory" -> "Flaky locators";
             case "locator-memory" -> "Locator memory";
-            case "runs" -> "History";
+            case "runs" -> "Run history";
             case "packages" -> "Code packages";
             case "guide" -> "Guide";
             case "tc-guide" -> "Guide";
@@ -591,7 +591,7 @@ public class PortalUiController {
 
     @GetMapping("/admin/invites")
     public String adminInvites() {
-        return "redirect:/admin/users/invite";
+        return "redirect:/admin/users";
     }
 
     @GetMapping("/pricing")
