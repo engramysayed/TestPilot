@@ -33,12 +33,29 @@ public class AuthoringReviewService {
     public static final int MAX_CASES = ReviewBatchPolicy.ABSOLUTE_MAX;
 
     private volatile String systemPrompt;
+    private volatile String systemPromptMobile;
 
     private String systemPrompt() {
         String cached = systemPrompt;
         if (cached == null) {
             cached = PromptCatalog.get("authoring/authoring-review");
             systemPrompt = cached;
+        }
+        return cached;
+    }
+
+    private String systemPrompt(ProjectRecord project) {
+        if (project == null || !"ANDROID".equalsIgnoreCase(project.getPlatform())) {
+            return systemPrompt();
+        }
+        String cached = systemPromptMobile;
+        if (cached == null) {
+            try {
+                cached = systemPrompt() + "\n\n---\n\n" + PromptCatalog.get("authoring/mobile-prelude");
+            } catch (RuntimeException missing) {
+                cached = systemPrompt();
+            }
+            systemPromptMobile = cached;
         }
         return cached;
     }
@@ -214,7 +231,7 @@ public class AuthoringReviewService {
 
         String llmProvider = providerNorm.equals("keel") ? "ollama" : providerNorm;
         String userPayload = toSuiteJson(current, stories, requirementsNotes).toString(2);
-        String raw = llm.complete(llmProvider, modelNorm, systemPrompt(), userPayload);
+        String raw = llm.complete(llmProvider, modelNorm, systemPrompt(project), userPayload);
         if (raw == null || raw.isBlank()) {
             throw new IllegalStateException(llmProvider + " returned empty review");
         }

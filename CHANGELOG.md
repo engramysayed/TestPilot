@@ -2,6 +2,13 @@
 
 # Keel changelog
 
+## 2026-11-21 — Mobile parity: platform-aware prompts + MOBILE_FRAMEWORK_RULES
+
+- **Mobile-aware generate**: `TcGenerateService.buildSystemPrompt(project)` appends `prompts/generate/mobile-prelude.md` when the project's platform is `ANDROID`. The prelude rewrites the web phrasing (URLs → "Launch the app", "Click" → "Tap", "page" → "screen"), adds mobile-specific coverage hints (permissions, keyboard dismissal, system back), and bans browser-only concepts (tabs, hover, viewport, CSS).
+- **Mobile-aware authoring review**: `AuthoringReviewService.systemPrompt(project)` appends `prompts/authoring/mobile-prelude.md` for Android projects. The reviewer now rewrites `Open the … page at /path`, `Click the … button`, URL-contains assertions, and viewport language on sight when it's an Android suite.
+- **New `docs/MOBILE_FRAMEWORK_RULES.md`**: canonical mobile emit rules (one screen = one class; Appium imports locked; CSS banned in NATIVE_APP; actions delegate to `SettledMobileActions`), the fixed locator tier list (USER_OVERRIDE → RESOURCE_ID → ACCESSIBILITY → LABEL_SIBLING → TEXT_CLASS → XPATH), the `MobilePrecisionGate` validator rules (secret canary + code rejection + context match + user-override wins), Cursor model precedence on mobile, and an honest "not supported today" section (no Figma Validate per-step on mobile yet, no mobile `FirstOf` fallback bag, no mobile locator-outcomes ledger).
+- **Web doc cross-link**: `docs/FRAMEWORK_RULES.md` now opens with a one-liner pointer to the mobile rules doc.
+
 ## 2026-11-21 — Precision engine tuning + Figma Validate per-step
 
 - **Precision engine cache**: job-scoped ConcurrentHashMap in `PrecisionBindService` keyed by `(intent, shortlist-hash, html-hash)` so retries of the same bind on the same page snapshot reuse the earlier Cursor pick without burning a budget slot. Batch cap raised from 5 → 10 intents per `groundRankBatch` call.

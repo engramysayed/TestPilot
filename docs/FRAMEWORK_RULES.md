@@ -1,6 +1,6 @@
 # Keel Framework Rules
 
-Canonical reference for the test framework Keel emits. The agent and codegen must conform; the FrameworkContractValidator checks user-written tests against the same rules.
+Canonical reference for the **web** test framework Keel emits. The agent and codegen must conform; the FrameworkContractValidator checks user-written tests against the same rules. For Android, see [MOBILE_FRAMEWORK_RULES.md](MOBILE_FRAMEWORK_RULES.md) — it only covers things that differ, so rules below still apply to mobile unless that doc overrides them.
 
 - **Source of truth for emit shape**: `customer-framework-template/templates/*.ftl`
 - **Validator**: [`FrameworkContractValidator.java`](../src/main/java/delivery/agent/validation/contract/FrameworkContractValidator.java)

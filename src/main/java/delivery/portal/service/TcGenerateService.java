@@ -229,7 +229,7 @@ public class TcGenerateService {
             BooleanSupplier cancelCheck
     ) throws Exception {
         String resolvedModel = models.resolve(model);
-        String system = buildSystemPrompt();
+        String system = buildSystemPrompt(project);
         String user = buildUserMessage(project, stories, storyLabel);
         LocalLlmClient.ChatOutcome first = invokeOllamaDetailed(system, user, resolvedModel, cancelCheck);
         String raw = first.contentOrEmpty();
@@ -446,13 +446,23 @@ public class TcGenerateService {
         return rows;
     }
 
-    private String buildSystemPrompt() throws IOException {
+    private String buildSystemPrompt(ProjectRecord project) throws IOException {
         // Prompt catalog (Admin → Prompts, versioned, overridable): prompts/generate/*.md
-        return loadPrompt("generate/stories-to-json")
+        String base = loadPrompt("generate/stories-to-json")
                 + "\n\n---\n\n"
                 + loadPrompt("generate/capability-manifest")
                 + "\n\n---\n\n"
                 + loadPrompt("generate/testing-techniques");
+        if (project != null && "ANDROID".equalsIgnoreCase(project.getPlatform())) {
+            // Appended last so its overrides win over the web-centric base.
+            try {
+                return base + "\n\n---\n\n" + loadPrompt("generate/mobile-prelude");
+            } catch (RuntimeException missing) {
+                // If the prelude is missing in a stripped deploy, fall back to the base prompt.
+                return base;
+            }
+        }
+        return base;
     }
 
     static ParsedLlmOutput parseLlmOutput(String raw) {
