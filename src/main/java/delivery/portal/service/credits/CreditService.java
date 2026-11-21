@@ -86,6 +86,26 @@ public class CreditService {
         return out;
     }
 
+    /** Preflight check for add-on charges: throws 402 when the balance can't cover the configured cost. */
+    @Transactional(readOnly = true)
+    public void preflightAddon(Long userId, String servicePriceCode) {
+        if (userId == null || !costs.enabled()) {
+            return;
+        }
+        String code = servicePriceCode == null ? "" : servicePriceCode.trim().toUpperCase();
+        if (code.isEmpty()) {
+            return;
+        }
+        long cost = costs.costByCode(code);
+        if (cost <= 0L) {
+            return;
+        }
+        long balance = credits.findById(userId).map(UserCredits::getBalance).orElse(0L);
+        if (balance < cost) {
+            throw new InsufficientCreditsException(cost, balance, code);
+        }
+    }
+
     /** Fields to merge onto each /api/admin/users row. */
     @Transactional(readOnly = true)
     public void enrichAdminUserRow(Map<String, Object> row, Long userId) {
