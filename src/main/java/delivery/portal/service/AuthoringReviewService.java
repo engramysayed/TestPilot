@@ -231,8 +231,27 @@ public class AuthoringReviewService {
 
         Map<String, Object> out = new LinkedHashMap<>();
         List<Map<String, Object>> caseRows = new ArrayList<>();
+        Map<String, ManualTestCase> inputByTcId = new HashMap<>();
+        for (ManualTestCase tc : current) {
+            String key = tc.tcId() == null ? "" : tc.tcId().trim();
+            if (!key.isEmpty()) inputByTcId.put(key, tc);
+        }
         for (ManualTestCase tc : repaired) {
-            caseRows.add(GeneratedWorkbookService.toRowMap(tc));
+            Map<String, Object> row = GeneratedWorkbookService.toRowMap(tc);
+            ManualTestCase before = inputByTcId.get(tc.tcId() == null ? "" : tc.tcId().trim());
+            if (before != null) {
+                Map<String, Object> diff = diffFields(before, tc);
+                if (!diff.isEmpty()) {
+                    row.put("edited", true);
+                    row.put("changedFields", diff);
+                } else {
+                    row.put("edited", false);
+                }
+            } else {
+                row.put("edited", true);
+                row.put("changedFields", Map.of("title", "", "steps", "", "expectedResult", "", "testData", ""));
+            }
+            caseRows.add(row);
         }
 
         out.put("provider", providerNorm);
@@ -246,6 +265,26 @@ public class AuthoringReviewService {
         out.put("previewOk", gateErrors.isEmpty());
         return out;
     }
+
+    /** Fields the UI's diff view renders. Returns before text only for the ones the reviewer changed. */
+    private static Map<String, Object> diffFields(ManualTestCase before, ManualTestCase after) {
+        Map<String, Object> changed = new LinkedHashMap<>();
+        if (!safe(before.title()).equals(safe(after.title()))) {
+            changed.put("title", safe(before.title()));
+        }
+        if (!safe(before.steps()).equals(safe(after.steps()))) {
+            changed.put("steps", safe(before.steps()));
+        }
+        if (!safe(before.expectedResult()).equals(safe(after.expectedResult()))) {
+            changed.put("expectedResult", safe(before.expectedResult()));
+        }
+        if (!safe(before.testData()).equals(safe(after.testData()))) {
+            changed.put("testData", safe(before.testData()));
+        }
+        return changed;
+    }
+
+    private static String safe(String value) { return value == null ? "" : value; }
 
     private static void validateReturnedSuite(
             List<ManualTestCase> input,
