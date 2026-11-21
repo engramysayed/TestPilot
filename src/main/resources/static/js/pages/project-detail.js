@@ -680,13 +680,18 @@
         }
         const items = await res.json();
         empty.hidden = items.length > 0;
+        const previous = new Map(figmaStepsByTc);
         figmaStepsByTc.clear();
         items.forEach(it => {
             if (!it || !it.tcId) return;
             const stepSet = new Set((Array.isArray(it.steps) ? it.steps : []).map(n => parseInt(n, 10)).filter(n => n >= 1));
+            // Preserve the per-TC version counter across reloads so cached <img> tags only
+            // refetch when something was actually re-uploaded. Uploaders bump this on success.
+            const prev = previous.get(it.tcId);
             figmaStepsByTc.set(it.tcId, {
                 hasTc: it.hasTcLevel !== false,
-                steps: stepSet
+                steps: stepSet,
+                version: prev && prev.version > 0 ? prev.version : 1
             });
         });
         refreshLibraryFigmaCells();
@@ -706,12 +711,10 @@
             group.appendChild(header);
 
             if (hasTcLevel) {
-                const tcUrl = apiUrl('/design-references/' + encodeURIComponent(tcId));
-                group.appendChild(renderFigmaTile(tcId, 'whole TC', tcUrl));
+                group.appendChild(renderFigmaTile(tcId, 'whole TC', tcFigmaUrl(tcId)));
             }
             steps.forEach(stepIndex => {
-                const stepUrl = apiUrl('/design-references/' + encodeURIComponent(tcId) + '/step/' + encodeURIComponent(stepIndex));
-                group.appendChild(renderFigmaTile(tcId, 'step ' + stepIndex, stepUrl));
+                group.appendChild(renderFigmaTile(tcId, 'step ' + stepIndex, stepFigmaUrl(tcId, stepIndex)));
             });
 
             list.appendChild(group);
@@ -805,6 +808,10 @@
             msg.textContent = stepIndex !== null
                 ? 'Uploaded Figma for ' + (data.tcId || tcId) + ' step ' + stepIndex + '.'
                 : 'Uploaded Figma for ' + (data.tcId || tcId) + '.';
+            // Bump this TC's version so any cached <img> in the library view refetches.
+            const info = figmaInfo(tcId);
+            info.version = (info.version || 0) + 1;
+            figmaStepsByTc.set(tcId, info);
             e.target.reset();
             loadDesignReferences();
         } catch (uploadErr) {
@@ -1500,13 +1507,20 @@
     let libCases = [];
     let libEditingId = null;
     let libHeadRevisionId = '';
-    /** tcId → { hasTc: boolean, steps: Set<number> } — populated by loadDesignReferences. */
+    /** tcId → { hasTc: boolean, steps: Set<number>, version: number } — populated by loadDesignReferences. */
     const figmaStepsByTc = new Map();
     function figmaInfo(tcId) {
-        return figmaStepsByTc.get(tcId) || { hasTc: false, steps: new Set() };
+        return figmaStepsByTc.get(tcId) || { hasTc: false, steps: new Set(), version: 0 };
     }
     function stepFigmaUrl(tcId, stepIndex) {
-        return apiUrl('/design-references/' + encodeURIComponent(tcId) + '/step/' + encodeURIComponent(stepIndex));
+        const v = figmaInfo(tcId).version || 0;
+        const base = apiUrl('/design-references/' + encodeURIComponent(tcId) + '/step/' + encodeURIComponent(stepIndex));
+        return v > 0 ? base + '?v=' + v : base;
+    }
+    function tcFigmaUrl(tcId) {
+        const v = figmaInfo(tcId).version || 0;
+        const base = apiUrl('/design-references/' + encodeURIComponent(tcId));
+        return v > 0 ? base + '?v=' + v : base;
     }
     let libRevisions = [];
     let libSelectedRevisionId = '';
@@ -2532,8 +2546,10 @@
                     alert('Figma upload failed: ' + ((data && data.message) || res.status));
                     return;
                 }
+                // Bump per-TC version so cached <img> tags re-fetch instead of serving stale PNG.
                 const info = figmaInfo(tcId);
                 info.steps.add(stepIndex);
+                info.version = (info.version || 0) + 1;
                 figmaStepsByTc.set(tcId, info);
                 refreshLibraryFigmaCells();
                 loadDesignReferences();
