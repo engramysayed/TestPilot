@@ -35,6 +35,11 @@ public final class Validate {
         v().textContains(locator, expected);
     }
 
+    /** Bodyless textContains: substring match against the full page body text (for asserts with no DOM locator). */
+    public static void bodyTextContains(String expected) {
+        v().textContains(org.openqa.selenium.By.tagName("body"), expected);
+    }
+
     public static void elementTextEquals(By locator, String expected) {
         v().elementTextEquals(locator, expected);
     }

@@ -132,7 +132,11 @@ public class ${pageClassName} {
           try {
 </#if>
 <#if assertion.assertionType == "textContains">
+            <#if assertion.fieldName?has_content>
             Validate.textContains(${assertion.fieldName}, expected);
+            <#else>
+            Validate.bodyTextContains(expected);
+            </#if>
 <#elseif assertion.assertionType == "urlContains">
             Validate.urlContains(expected);
 <#elseif assertion.assertionType == "checked" || assertion.assertionType == "selected">

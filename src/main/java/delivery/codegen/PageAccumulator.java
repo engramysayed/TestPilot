@@ -31,8 +31,9 @@ public class PageAccumulator {
             if (step.assertionType() != null && "urlContains".equalsIgnoreCase(step.assertionType())) {
                 allocateAssertion(pageFor(step), step, null);
             } else if (step.assertionType() != null && "textContains".equalsIgnoreCase(step.assertionType())) {
-                log.warn("Dropping textContains step with no locator (Rule 3c): tc={} page={} expected={}",
-                        step.tcId(), step.pageName(), step.assertionExpected());
+                // Bodyless textContains: no locator means "find this text anywhere in the page body".
+                // Emit the assertion with no field; the template routes it through Validate.bodyTextContains.
+                allocateAssertion(pageFor(step), step, null);
             }
             return;
         }

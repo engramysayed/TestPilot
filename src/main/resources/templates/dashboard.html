@@ -67,7 +67,7 @@
         <section class="panel panel--keel dash-chart-panel">
             <div class="panelhead">
                 <div class="panelhead-title">
-                    <h2>Execution trends</h2>
+                    <h2>Execution outcomes</h2>
                     <th:block th:replace="~{fragments :: featureHelpBtn('dashboard-trends')}"></th:block>
                 </div>
             </div>
@@ -123,10 +123,11 @@
     <section class="panel panel--keel overview-recent">
         <div class="panelhead">
             <div class="panelhead-title">
-                <h2>Recent activity</h2>
+                <h2>Recent runs</h2>
                 <th:block th:replace="~{fragments :: featureHelpBtn('dashboard-recent')}"></th:block>
             </div>
-            <a class="button ghost small" href="/history">View all in History →</a>
+            <a class="button ghost small" href="/runs">View all runs →</a>
+            <a class="button primary small" href="/execute">+ New run</a>
         </div>
         <div class="tablewrap">
             <table class="table table--runs" id="jobsTable">
