@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -53,6 +54,12 @@ public class DesignReferenceController {
                     .map(tcId -> {
                         Map<String, Object> row = new HashMap<>();
                         row.put("tcId", tcId);
+                        row.put("hasTcLevel", references.resolve(root, tcId).isPresent());
+                        try {
+                            row.put("steps", references.listSteps(root, tcId));
+                        } catch (Exception ignored) {
+                            row.put("steps", List.of());
+                        }
                         return row;
                     })
                     .collect(Collectors.toList());
@@ -66,6 +73,7 @@ public class DesignReferenceController {
     public ResponseEntity<?> upload(
             @PathVariable("projectId") String projectId,
             @RequestParam("tcId") String tcId,
+            @RequestParam(value = "stepIndex", required = false) Integer stepIndex,
             @RequestParam("file") MultipartFile file
     ) {
         ResponseEntity<?> denied = ProjectAccess.denyUnlessOperable(
@@ -79,12 +87,20 @@ public class DesignReferenceController {
         }
         try {
             Path root = store.projectDiskRoot(projectId);
-            references.upload(root, tcId, file.getBytes(), file.getContentType());
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                    "projectId", projectId,
-                    "tcId", tcId.trim(),
-                    "storedAs", tcId.trim() + ".png"
-            ));
+            Map<String, Object> body = new HashMap<>();
+            body.put("projectId", projectId);
+            body.put("tcId", tcId.trim());
+            if (stepIndex == null) {
+                references.upload(root, tcId, file.getBytes(), file.getContentType());
+                body.put("storedAs", tcId.trim() + ".png");
+                body.put("scope", "tc");
+            } else {
+                references.uploadStep(root, tcId, stepIndex, file.getBytes(), file.getContentType());
+                body.put("storedAs", String.format(Locale.ROOT, "%s/step-%03d.png", tcId.trim(), stepIndex));
+                body.put("scope", "step");
+                body.put("stepIndex", stepIndex);
+            }
+            return ResponseEntity.status(HttpStatus.CREATED).body(body);
         } catch (DesignReferenceService.BadPathException | DesignReferenceService.BadUploadException e) {
             return ResponseEntity.badRequest()
                     .body(new ApiError("BAD_REQUEST", e.getMessage()).asMap());
@@ -108,6 +124,34 @@ public class DesignReferenceController {
             Resource resource = new FileSystemResource(file);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + tcId + ".png\"")
+                    .contentType(MediaType.IMAGE_PNG)
+                    .contentLength(Files.size(file))
+                    .body(resource);
+        } catch (DesignReferenceService.BadPathException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
+        } catch (Exception e) {
+            return internalError(e);
+        }
+    }
+
+    @GetMapping("/{tcId}/step/{stepIndex}")
+    public ResponseEntity<?> serveStep(
+            @PathVariable("projectId") String projectId,
+            @PathVariable("tcId") String tcId,
+            @PathVariable("stepIndex") int stepIndex
+    ) {
+        if (store.getOwnedProject(projectId, currentUser.requireUserId()).isEmpty()) {
+            return notFound();
+        }
+        try {
+            Path root = store.projectDiskRoot(projectId);
+            Path file = references.resolveStep(root, tcId, stepIndex)
+                    .orElseThrow(() -> new DesignReferenceService.BadPathException("Step reference not found"));
+            String filename = String.format(Locale.ROOT, "%s-step-%03d.png", tcId, stepIndex);
+            Resource resource = new FileSystemResource(file);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
                     .contentType(MediaType.IMAGE_PNG)
                     .contentLength(Files.size(file))
                     .body(resource);

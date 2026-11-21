@@ -549,12 +549,15 @@
 
         <section class="panel">
             <h2>Figma Validate (Execute)</h2>
-            <p class="muted">Upload one PNG per test case; Keel compares the last screen on each run. Click a row to preview the uploaded mockup.</p>
-            <ul id="design-ref-list" class="artifact-list"></ul>
+            <p class="muted">Attach a PNG to a whole test case (compared at the end of the run) or to a specific step (compared right after that step). Click any thumbnail to preview.</p>
+            <ul id="design-ref-list" class="artifact-list figma-validate-list"></ul>
             <p id="design-ref-empty" class="muted" hidden>No Figma validations uploaded yet.</p>
             <form id="design-ref-settings-form" class="design-ref-form">
                 <label>TC ID
                     <input type="text" id="design-ref-settings-tcId" name="tcId" placeholder="TC_001" required/>
+                </label>
+                <label>Step (optional)
+                    <input type="number" id="design-ref-settings-step" name="stepIndex" placeholder="leave blank for whole TC" min="1" max="999"/>
                 </label>
                 <label>Figma PNG
                     <input type="file" id="design-ref-settings-file" name="file" accept="image/png" required/>

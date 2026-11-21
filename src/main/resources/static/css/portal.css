@@ -3676,16 +3676,46 @@ body:not(.app-body) .shell {
 .design-ref-form label {
     margin: 0;
 }
-.figma-validate-row {
+.figma-validate-list {
     display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.figma-validate-group {
+    border: 1px solid var(--border, #d8dee4);
+    border-radius: 0.6rem;
+    padding: 0.65rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.figma-validate-group-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+.figma-validate-count {
+    font-size: 0.78rem;
+}
+.figma-validate-row {
+    display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.35rem 0.5rem;
+    gap: 0.55rem;
+    padding: 0.25rem 0.5rem;
+    margin-right: 0.5rem;
     border-radius: 0.5rem;
     cursor: zoom-in;
+    background: rgba(8, 127, 120, 0.04);
 }
-.figma-validate-row:hover {
-    background: rgba(8, 127, 120, 0.06);
+.figma-validate-row:hover,
+.figma-validate-row:focus-visible {
+    background: rgba(8, 127, 120, 0.12);
+    outline: none;
+}
+.figma-validate-scope {
+    font-size: 0.8rem;
+    color: var(--muted, #57606a);
+    white-space: nowrap;
 }
 .figma-validate-thumb {
     width: 32px;

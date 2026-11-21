@@ -667,31 +667,65 @@
         empty.hidden = items.length > 0;
         items.forEach(item => {
             const tcId = item.tcId;
-            const thumbUrl = apiUrl('/design-references/' + encodeURIComponent(tcId));
-            const li = document.createElement('li');
-            li.className = 'figma-validate-row';
-            li.innerHTML =
-                '<img class="figma-validate-thumb" alt="Figma for ' + escapeHtml(tcId) + '" src="' + escapeHtml(thumbUrl) + '"/>' +
-                ' <code class="mono">' + escapeHtml(tcId) + '</code>';
-            li.addEventListener('click', () => openFigmaPreview(tcId, thumbUrl));
-            list.appendChild(li);
+            const hasTcLevel = item.hasTcLevel !== false; // older servers only returned {tcId}
+            const steps = Array.isArray(item.steps) ? item.steps : [];
+            const group = document.createElement('li');
+            group.className = 'figma-validate-group';
+
+            const header = document.createElement('div');
+            header.className = 'figma-validate-group-head';
+            const label =
+                '<code class="mono">' + escapeHtml(tcId) + '</code>' +
+                ' <span class="muted figma-validate-count">' + (steps.length ? steps.length + ' step' + (steps.length === 1 ? '' : 's') : 'TC only') + '</span>';
+            header.innerHTML = label;
+            group.appendChild(header);
+
+            if (hasTcLevel) {
+                const tcUrl = apiUrl('/design-references/' + encodeURIComponent(tcId));
+                group.appendChild(renderFigmaTile(tcId, 'whole TC', tcUrl));
+            }
+            steps.forEach(stepIndex => {
+                const stepUrl = apiUrl('/design-references/' + encodeURIComponent(tcId) + '/step/' + encodeURIComponent(stepIndex));
+                group.appendChild(renderFigmaTile(tcId, 'step ' + stepIndex, stepUrl));
+            });
+
+            list.appendChild(group);
         });
     }
 
-    function openFigmaPreview(tcId, imgUrl) {
+    function renderFigmaTile(tcId, label, imgUrl) {
+        const tile = document.createElement('div');
+        tile.className = 'figma-validate-row';
+        tile.setAttribute('role', 'button');
+        tile.setAttribute('tabindex', '0');
+        tile.innerHTML =
+            '<img class="figma-validate-thumb" alt="Figma for ' + escapeHtml(tcId) + ' ' + escapeHtml(label) + '" src="' + escapeHtml(imgUrl) + '"/>' +
+            '<span class="figma-validate-scope">' + escapeHtml(label) + '</span>';
+        const open = () => openFigmaPreview(tcId + ' — ' + label, imgUrl);
+        tile.addEventListener('click', open);
+        tile.addEventListener('keydown', ev => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                open();
+            }
+        });
+        return tile;
+    }
+
+    function openFigmaPreview(title, imgUrl) {
         const existing = document.getElementById('figma-validate-preview');
         if (existing) existing.remove();
         const overlay = document.createElement('div');
         overlay.id = 'figma-validate-preview';
         overlay.className = 'figma-validate-overlay';
         overlay.setAttribute('role', 'dialog');
-        overlay.setAttribute('aria-label', 'Figma preview for ' + tcId);
+        overlay.setAttribute('aria-label', 'Figma preview for ' + title);
         overlay.innerHTML =
             '<div class="figma-validate-preview-card">' +
-            '  <header><strong>' + escapeHtml(tcId) + '</strong>' +
+            '  <header><strong>' + escapeHtml(title) + '</strong>' +
             '    <button type="button" class="button ghost small" data-close="1">Close</button>' +
             '  </header>' +
-            '  <img src="' + escapeHtml(imgUrl) + '" alt="Figma preview for ' + escapeHtml(tcId) + '"/>' +
+            '  <img src="' + escapeHtml(imgUrl) + '" alt="Figma preview for ' + escapeHtml(title) + '"/>' +
             '</div>';
         overlay.addEventListener('click', ev => {
             if (ev.target === overlay || (ev.target instanceof Element && ev.target.closest('[data-close]'))) {
@@ -708,14 +742,26 @@
         msg.hidden = true;
         err.hidden = true;
         const tcId = document.getElementById('design-ref-settings-tcId').value.trim();
+        const stepRaw = document.getElementById('design-ref-settings-step').value.trim();
         const fileInput = document.getElementById('design-ref-settings-file');
         if (!tcId || !fileInput.files || !fileInput.files[0]) {
             err.hidden = false;
             err.textContent = 'Enter a TC ID and select a PNG file.';
             return;
         }
+        let stepIndex = null;
+        if (stepRaw) {
+            const parsed = parseInt(stepRaw, 10);
+            if (!Number.isFinite(parsed) || parsed < 1 || parsed > 999) {
+                err.hidden = false;
+                err.textContent = 'Step must be between 1 and 999, or leave it blank for the whole TC.';
+                return;
+            }
+            stepIndex = parsed;
+        }
         const body = new FormData();
         body.append('tcId', tcId);
+        if (stepIndex !== null) body.append('stepIndex', String(stepIndex));
         body.append('file', fileInput.files[0]);
         try {
             const res = await fetch(apiUrl('/design-references'), {
@@ -731,7 +777,9 @@
                 return;
             }
             msg.hidden = false;
-            msg.textContent = 'Uploaded design for ' + (data.tcId || tcId) + '.';
+            msg.textContent = stepIndex !== null
+                ? 'Uploaded Figma for ' + (data.tcId || tcId) + ' step ' + stepIndex + '.'
+                : 'Uploaded Figma for ' + (data.tcId || tcId) + '.';
             e.target.reset();
             loadDesignReferences();
         } catch (uploadErr) {
