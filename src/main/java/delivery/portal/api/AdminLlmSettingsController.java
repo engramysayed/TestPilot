@@ -56,7 +56,8 @@ public class AdminLlmSettingsController {
                         Boolean.TRUE.equals(body.clearOllamaApiKey),
                         body.reviewCasesPerBatch,
                         body.browser,
-                        aliasesFrom(body.authoringVerbAliases));
+                        aliasesFrom(body.authoringVerbAliases),
+                        body.precisionCursorModel);
         return settings.update(req);
     }
 
@@ -98,6 +99,8 @@ public class AdminLlmSettingsController {
         public String ollamaBaseUrl;
         public String ollamaChatModel;
         public String ollamaVisionModel;
+        /** Cursor model id for the Precision engine; "auto" or blank clears the pin. */
+        public String precisionCursorModel;
         public Boolean clearCursorApiKey;
         public Boolean clearAgentrouterApiKey;
         public Boolean clearOllamaApiKey;

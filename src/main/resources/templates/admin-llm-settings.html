@@ -61,6 +61,21 @@
                     <input type="number" id="reviewCasesPerBatch" name="reviewCasesPerBatch" min="1" max="50" value="50">
                     <span class="muted">When more than 5 cases are selected, review splits into batches of this size (1–50). Default 50.</span>
                 </label>
+                <label>Cursor model (Precision engine)
+                    <select id="precisionCursorModel" name="precisionCursorModel">
+                        <option value="auto">Auto (Cursor router — recommended)</option>
+                        <option value="claude-sonnet-4.5">claude-sonnet-4.5</option>
+                        <option value="claude-opus-4.1">claude-opus-4.1</option>
+                        <option value="claude-haiku-4.5">claude-haiku-4.5</option>
+                        <option value="gpt-5">gpt-5</option>
+                        <option value="gpt-5-mini">gpt-5-mini</option>
+                        <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                        <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                        <option value="grok-4">grok-4</option>
+                        <option value="deepseek-v3">deepseek-v3</option>
+                    </select>
+                    <span class="muted">Workspace default for Precision groundRank / solve. Per-project override lives in Project Settings. Keeps Auto unless you pin a specific model.</span>
+                </label>
                 <label>Browser
                     <select id="browser" name="browser">
                         <option value="edge">Edge</option>
@@ -194,6 +209,16 @@
         if (batch) batch.value = current.reviewCasesPerBatch || 50;
         const browser = document.getElementById('browser');
         if (browser) browser.value = current.browser || 'edge';
+        const precisionSel = document.getElementById('precisionCursorModel');
+        if (precisionSel) {
+            const pin = (current.precisionCursorModel || '').trim();
+            const target = pin && pin.toLowerCase() !== 'auto' ? pin : 'auto';
+            const has = Array.from(precisionSel.options).some(o => o.value === target);
+            if (!has && target !== 'auto') {
+                precisionSel.appendChild(new Option(target + ' (saved)', target));
+            }
+            precisionSel.value = target;
+        }
     }
     async function refreshModels(quiet) {
         const hint = document.getElementById('llm-models-hint');
@@ -233,12 +258,14 @@
     }
     async function save() {
         showError('');
+        const precisionSel = document.getElementById('precisionCursorModel');
         const body = {
             ollamaBaseUrl: ollamaUrlFromField(),
             ollamaChatModel: document.getElementById('ollamaChatModel').value,
             ollamaVisionModel: document.getElementById('ollamaVisionModel').value,
             reviewCasesPerBatch: parseInt(document.getElementById('reviewCasesPerBatch').value, 10) || 50,
-            browser: document.getElementById('browser').value
+            browser: document.getElementById('browser').value,
+            precisionCursorModel: precisionSel ? precisionSel.value : 'auto'
         };
         const cursor = document.getElementById('cursorApiKey').value;
         const agent = document.getElementById('agentrouterApiKey').value;
