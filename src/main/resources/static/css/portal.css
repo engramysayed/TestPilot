@@ -3717,6 +3717,51 @@ body:not(.app-body) .shell {
     color: var(--muted, #57606a);
     white-space: nowrap;
 }
+.lib-figma-cell {
+    width: 42px;
+    text-align: center;
+    vertical-align: middle;
+    padding: 0.25rem;
+}
+.lib-figma-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--border, #d8dee4);
+    border-radius: 0.35rem;
+    background: #fff;
+    cursor: zoom-in;
+    overflow: hidden;
+}
+.lib-figma-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.lib-figma-tile:hover,
+.lib-figma-tile:focus-visible {
+    border-color: var(--accent, #087f78);
+    outline: none;
+}
+.lib-figma-tile.lib-figma-empty {
+    cursor: pointer;
+    background: rgba(8, 127, 120, 0.04);
+    color: var(--muted, #57606a);
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1;
+}
+.lib-figma-tile.lib-figma-empty:hover {
+    background: rgba(8, 127, 120, 0.12);
+    color: var(--accent, #087f78);
+}
+.lib-figma-head {
+    width: 48px;
+    text-align: center;
+}
 .figma-validate-thumb {
     width: 32px;
     height: 32px;

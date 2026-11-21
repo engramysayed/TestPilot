@@ -680,6 +680,16 @@
         }
         const items = await res.json();
         empty.hidden = items.length > 0;
+        figmaStepsByTc.clear();
+        items.forEach(it => {
+            if (!it || !it.tcId) return;
+            const stepSet = new Set((Array.isArray(it.steps) ? it.steps : []).map(n => parseInt(n, 10)).filter(n => n >= 1));
+            figmaStepsByTc.set(it.tcId, {
+                hasTc: it.hasTcLevel !== false,
+                steps: stepSet
+            });
+        });
+        refreshLibraryFigmaCells();
         items.forEach(item => {
             const tcId = item.tcId;
             const hasTcLevel = item.hasTcLevel !== false; // older servers only returned {tcId}
@@ -1490,6 +1500,14 @@
     let libCases = [];
     let libEditingId = null;
     let libHeadRevisionId = '';
+    /** tcId → { hasTc: boolean, steps: Set<number> } — populated by loadDesignReferences. */
+    const figmaStepsByTc = new Map();
+    function figmaInfo(tcId) {
+        return figmaStepsByTc.get(tcId) || { hasTc: false, steps: new Set() };
+    }
+    function stepFigmaUrl(tcId, stepIndex) {
+        return apiUrl('/design-references/' + encodeURIComponent(tcId) + '/step/' + encodeURIComponent(stepIndex));
+    }
     let libRevisions = [];
     let libSelectedRevisionId = '';
 
@@ -1700,7 +1718,7 @@
             }).join('<span class="call-before-sep">→</span>') + '</p>';
     }
 
-    function alignedPreview(steps, testData, expectedResult, callBefore) {
+    function alignedPreview(steps, testData, expectedResult, callBefore, tcId) {
         const folded = foldOrphanExpected(
             splitStepLines(steps),
             splitKeptLines(testData),
@@ -1709,13 +1727,16 @@
         if (!folded.steps.length) {
             return callBeforePreviewHtml(callBefore) + '<p class="muted">No steps</p>';
         }
+        const info = tcId ? figmaInfo(tcId) : { hasTc: false, steps: new Set() };
         const rowCount = Math.max(folded.steps.length, 1);
         let rows = '';
         for (let i = 0; i < rowCount; i++) {
+            const stepIndex = i + 1;
             const data = (folded.data[i] || '').trim();
             const expected = (folded.expected[i] || '').trim();
+            const figmaCell = tcId ? figmaCellHtml(tcId, stepIndex, info.steps.has(stepIndex)) : '';
             rows += '<tr>'
-                + '<td class="lib-step-num">' + (i + 1) + '</td>'
+                + '<td class="lib-step-num">' + stepIndex + '</td>'
                 + '<td>' + escapeHtml(folded.steps[i] || '') + '</td>'
                 + '<td class="lib-data-cell">'
                 + (data ? escapeHtml(data) : '<span class="lib-data-empty">blank</span>')
@@ -1723,12 +1744,43 @@
                 + '<td class="lib-expected-cell">'
                 + (expected ? escapeHtml(expected) : '<span class="lib-expected-empty">—</span>')
                 + '</td>'
+                + (tcId ? '<td class="lib-figma-cell">' + figmaCell + '</td>' : '')
                 + '</tr>';
         }
+        const headerFigma = tcId ? '<th class="lib-figma-head" title="Figma Validate for this step">Figma</th>' : '';
         return callBeforePreviewHtml(callBefore)
-            + '<div class="lib-detail-wrap"><table class="lib-step-table">'
-            + '<thead><tr><th>#</th><th>Step</th><th>Test data</th><th>Expected</th></tr></thead>'
+            + '<div class="lib-detail-wrap"><table class="lib-step-table" data-tcid="' + escapeHtml(tcId || '') + '">'
+            + '<thead><tr><th>#</th><th>Step</th><th>Test data</th><th>Expected</th>' + headerFigma + '</tr></thead>'
             + '<tbody>' + rows + '</tbody></table></div>';
+    }
+
+    function figmaCellHtml(tcId, stepIndex, hasFigma) {
+        if (hasFigma) {
+            const url = stepFigmaUrl(tcId, stepIndex);
+            return '<button type="button" class="lib-figma-tile" '
+                + 'data-tcid="' + escapeHtml(tcId) + '" data-step="' + stepIndex + '" '
+                + 'aria-label="Preview Figma for ' + escapeHtml(tcId) + ' step ' + stepIndex + '">'
+                + '<img src="' + escapeHtml(url) + '" alt=""/>'
+                + '</button>';
+        }
+        return '<button type="button" class="lib-figma-tile lib-figma-empty" '
+            + 'data-tcid="' + escapeHtml(tcId) + '" data-step="' + stepIndex + '" '
+            + 'aria-label="Attach Figma for ' + escapeHtml(tcId) + ' step ' + stepIndex + '" '
+            + 'title="Attach Figma for this step">+</button>';
+    }
+
+    function refreshLibraryFigmaCells() {
+        document.querySelectorAll('.lib-step-table[data-tcid]').forEach(function (tbl) {
+            const tcId = tbl.getAttribute('data-tcid') || '';
+            if (!tcId) return;
+            const info = figmaInfo(tcId);
+            tbl.querySelectorAll('tbody tr').forEach(function (tr, idx) {
+                const stepIndex = idx + 1;
+                const cell = tr.querySelector('.lib-figma-cell');
+                if (!cell) return;
+                cell.innerHTML = figmaCellHtml(tcId, stepIndex, info.steps.has(stepIndex));
+            });
+        });
     }
 
     function foldOrphanExpected(steps, data, expected) {
@@ -1859,7 +1911,7 @@
                 '<td class="actions"><button type="button" class="button lib-edit-btn">Edit</button></td>';
             const detail = document.createElement('tr');
             detail.className = 'lib-detail';
-            detail.innerHTML = '<td colspan="8">' + alignedPreview(tc.steps, tc.testData, tc.expectedResult, tc.callBefore) + '</td>';
+            detail.innerHTML = '<td colspan="8">' + alignedPreview(tc.steps, tc.testData, tc.expectedResult, tc.callBefore, tc.tcId) + '</td>';
             tr.querySelector('.lib-check').addEventListener('click', function (e) { e.stopPropagation(); });
             tr.querySelector('.lib-check').addEventListener('change', syncLibDeleteBtn);
             tr.querySelector('.lib-edit-btn').addEventListener('click', function (e) {
@@ -2441,6 +2493,57 @@
         detail.innerHTML = html;
     }
 
+    document.addEventListener('click', function (ev) {
+        const target = ev.target instanceof Element ? ev.target.closest('.lib-figma-tile') : null;
+        if (!target) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const tcId = target.getAttribute('data-tcid') || '';
+        const stepIndex = parseInt(target.getAttribute('data-step') || '0', 10);
+        if (!tcId || !(stepIndex >= 1)) return;
+        if (target.classList.contains('lib-figma-empty')) {
+            uploadStepFigma(tcId, stepIndex);
+        } else {
+            openFigmaPreview(tcId + ' — step ' + stepIndex, stepFigmaUrl(tcId, stepIndex));
+        }
+    });
+
+    function uploadStepFigma(tcId, stepIndex) {
+        const picker = document.createElement('input');
+        picker.type = 'file';
+        picker.accept = 'image/png';
+        picker.addEventListener('change', async function () {
+            const file = picker.files && picker.files[0];
+            if (!file) return;
+            const body = new FormData();
+            body.append('tcId', tcId);
+            body.append('stepIndex', String(stepIndex));
+            body.append('file', file);
+            try {
+                const res = await fetch(apiUrl('/design-references'), {
+                    method: 'POST',
+                    headers: API_HEADERS,
+                    credentials: 'same-origin',
+                    body
+                });
+                if (!res.ok) {
+                    let data = {};
+                    try { data = await res.json(); } catch (ignore) {}
+                    alert('Figma upload failed: ' + ((data && data.message) || res.status));
+                    return;
+                }
+                const info = figmaInfo(tcId);
+                info.steps.add(stepIndex);
+                figmaStepsByTc.set(tcId, info);
+                refreshLibraryFigmaCells();
+                loadDesignReferences();
+            } catch (e) {
+                alert('Network error while uploading Figma.');
+            }
+        });
+        picker.click();
+    }
+
     /* —— Init —— */
     if (activeTab === 'summary') {
         loadSummary();
@@ -2455,6 +2558,7 @@
     } else if (activeTab === 'tcs') {
         loadLibrary();
         loadLibraryHistory();
+        loadDesignReferences();
     }
 
     document.addEventListener('visibilitychange', () => {
