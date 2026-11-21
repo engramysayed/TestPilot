@@ -151,7 +151,7 @@ public class PortalStore {
         boolean reuse = projectRepository.findByProjectId(projectId)
                 .map(e -> Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()))
                 .orElse(false);
-        return new PrecisionJobConfig(enabled, max, reuse);
+        return new PrecisionJobConfig(enabled, max, reuse, portalProperties.getPrecisionMinConfidence());
     }
 
     public PrecisionJobConfig precisionConfigForJob(JobRecord job) {
@@ -165,7 +165,9 @@ public class PortalStore {
                 .map(e -> Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()))
                 .orElse(false);
         return new PrecisionJobConfig(enabled, job.getPrecisionMaxSnapshot() > 0
-                ? job.getPrecisionMaxSnapshot() : portalProperties.getPrecisionMaxCallsPerJob(), reuse);
+                ? job.getPrecisionMaxSnapshot() : portalProperties.getPrecisionMaxCallsPerJob(),
+                reuse,
+                portalProperties.getPrecisionMinConfidence());
     }
 
     public ProjectStore filesystemStore() {

@@ -244,7 +244,8 @@ public class ProvePhase {
             PrecisionCallBudget budget = PrecisionCallBudget.fromProperties(
                     precisionConfig.enabled(), precisionConfig.maxCallsPerJob());
             precisionBindService = new PrecisionBindService(
-                    authoring, new CursorHealClient(), budget, precisionConfig.enabled());
+                    authoring, new CursorHealClient(), budget, precisionConfig.enabled(),
+                    precisionConfig.minConfidence());
             healCascade.attachPrecisionBudget(budget);
         }
         JobLoginService jobLogin = new JobLoginService();

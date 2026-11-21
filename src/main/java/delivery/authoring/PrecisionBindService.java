@@ -25,6 +25,7 @@ public class PrecisionBindService {
     private final FreeInventHealer solveParser;
     private final PrecisionCallBudget budget;
     private final boolean precisionEnabled;
+    private final String minConfidence;
     /** Job-scoped: same intent + same shortlist/HTML on a retry reuses the earlier Cursor pick. */
     private final Map<String, GroundRankResult> groundRankCache = new ConcurrentHashMap<>();
 
@@ -34,11 +35,22 @@ public class PrecisionBindService {
             PrecisionCallBudget budget,
             boolean precisionEnabled
     ) {
+        this(authoring, cursor, budget, precisionEnabled, "medium");
+    }
+
+    public PrecisionBindService(
+            AuthoringService authoring,
+            CursorHealClient cursor,
+            PrecisionCallBudget budget,
+            boolean precisionEnabled,
+            String minConfidence
+    ) {
         this.authoring = authoring;
         this.cursor = cursor == null ? new CursorHealClient() : cursor;
         this.solveParser = new FreeInventHealer(this.cursor, null, new LocatorValidator(), "cursor", true);
         this.budget = budget == null ? new PrecisionCallBudget(0) : budget;
         this.precisionEnabled = precisionEnabled;
+        this.minConfidence = minConfidence == null || minConfidence.isBlank() ? "medium" : minConfidence.trim().toLowerCase();
     }
 
     public PrecisionBindOutcome bindIntent(
@@ -82,7 +94,7 @@ public class PrecisionBindService {
             }
         }
         if (ranked == null) return new PrecisionBindOutcome.FallbackKeel("PROVIDER_ERROR");
-        if (ranked.isAcceptable()
+        if (ranked.isAcceptableAt(minConfidence)
                 && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(ranked.candidateId()))) {
             List<ProvenStep> steps = authoring.stepsPreferringCandidate(
                     tcId, intent, candidates, ranked.candidateId(), false);
@@ -167,7 +179,7 @@ public class PrecisionBindService {
         }
         List<GroundRankBatchResult.Pick> picks = ranked == null
                 ? List.of()
-                : ranked.consecutiveAcceptableFromZero();
+                : ranked.consecutiveAcceptableFromZero(minConfidence);
         if (picks.isEmpty()) {
             LogsManager.info("PRECISION_GROUNDRANK_BATCH: no acceptable consecutive picks for " + tcId
                     + " (intents=" + intents.size() + ", cursorPicks="

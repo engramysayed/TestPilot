@@ -147,11 +147,18 @@ public class DeliveryPortalProperties {
         private boolean enabled = true;
         /** Max Cursor groundRank/solve calls per conversion or execute job. */
         private int maxCallsPerJob = 50;
+        /** Lowest Cursor groundRank confidence accepted without escalating to solve. One of 'medium' or 'high'. */
+        private String minConfidence = "medium";
 
         public boolean isEnabled() { return enabled; }
         public void setEnabled(boolean enabled) { this.enabled = enabled; }
         public int getMaxCallsPerJob() { return maxCallsPerJob; }
         public void setMaxCallsPerJob(int maxCallsPerJob) { this.maxCallsPerJob = maxCallsPerJob; }
+        public String getMinConfidence() { return minConfidence; }
+        public void setMinConfidence(String minConfidence) {
+            String v = minConfidence == null ? "medium" : minConfidence.trim().toLowerCase();
+            this.minConfidence = ("high".equals(v)) ? "high" : "medium";
+        }
     }
 
     public static class ReviewProperties {
@@ -236,6 +243,9 @@ public class DeliveryPortalProperties {
     }
     public int getPrecisionMaxCallsPerJob() {
         return authoring.getPrecision().getMaxCallsPerJob();
+    }
+    public String getPrecisionMinConfidence() {
+        return authoring.getPrecision().getMinConfidence();
     }
     public CreditsProperties getCredits() { return credits; }
     public void setCredits(CreditsProperties credits) {
