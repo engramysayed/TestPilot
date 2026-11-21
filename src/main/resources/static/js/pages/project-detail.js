@@ -660,20 +660,45 @@
         });
         if (!res.ok) {
             err.hidden = false;
-            err.textContent = 'Could not load design mockups.';
+            err.textContent = 'Could not load Figma validations.';
             return;
         }
         const items = await res.json();
         empty.hidden = items.length > 0;
         items.forEach(item => {
             const tcId = item.tcId;
-            const li = document.createElement('li');
             const thumbUrl = apiUrl('/design-references/' + encodeURIComponent(tcId));
+            const li = document.createElement('li');
+            li.className = 'figma-validate-row';
             li.innerHTML =
-                '<code class="mono">' + escapeHtml(tcId) + '</code> ' +
-                '<a href="' + escapeHtml(thumbUrl) + '" target="_blank" rel="noopener">Preview</a>';
+                '<img class="figma-validate-thumb" alt="Figma for ' + escapeHtml(tcId) + '" src="' + escapeHtml(thumbUrl) + '"/>' +
+                ' <code class="mono">' + escapeHtml(tcId) + '</code>';
+            li.addEventListener('click', () => openFigmaPreview(tcId, thumbUrl));
             list.appendChild(li);
         });
+    }
+
+    function openFigmaPreview(tcId, imgUrl) {
+        const existing = document.getElementById('figma-validate-preview');
+        if (existing) existing.remove();
+        const overlay = document.createElement('div');
+        overlay.id = 'figma-validate-preview';
+        overlay.className = 'figma-validate-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-label', 'Figma preview for ' + tcId);
+        overlay.innerHTML =
+            '<div class="figma-validate-preview-card">' +
+            '  <header><strong>' + escapeHtml(tcId) + '</strong>' +
+            '    <button type="button" class="button ghost small" data-close="1">Close</button>' +
+            '  </header>' +
+            '  <img src="' + escapeHtml(imgUrl) + '" alt="Figma preview for ' + escapeHtml(tcId) + '"/>' +
+            '</div>';
+        overlay.addEventListener('click', ev => {
+            if (ev.target === overlay || (ev.target instanceof Element && ev.target.closest('[data-close]'))) {
+                overlay.remove();
+            }
+        });
+        document.body.appendChild(overlay);
     }
 
     document.getElementById('design-ref-settings-form').addEventListener('submit', async (e) => {

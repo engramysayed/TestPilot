@@ -3614,6 +3614,57 @@ body:not(.app-body) .shell {
 .design-ref-form label {
     margin: 0;
 }
+.figma-validate-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.5rem;
+    cursor: zoom-in;
+}
+.figma-validate-row:hover {
+    background: rgba(8, 127, 120, 0.06);
+}
+.figma-validate-thumb {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 0.35rem;
+    border: 1px solid var(--border, #d8dee4);
+    background: #fff;
+}
+.figma-validate-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(12, 18, 28, 0.6);
+    z-index: 1000;
+}
+.figma-validate-preview-card {
+    background: var(--panel-bg, #fff);
+    border-radius: 0.75rem;
+    padding: 0.85rem;
+    max-width: 92vw;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.figma-validate-preview-card header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.figma-validate-preview-card img {
+    max-width: 100%;
+    max-height: calc(92vh - 4rem);
+    object-fit: contain;
+    border-radius: 0.5rem;
+    background: #0e1420;
+}
 .design-compare-panel {
     margin: 0.75rem 0 1rem;
     padding: 0.75rem;

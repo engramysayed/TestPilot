@@ -548,17 +548,18 @@
         </section>
 
         <section class="panel">
-            <h2>Design mockups (Execute)</h2>
+            <h2>Figma Validate (Execute)</h2>
+            <p class="muted">Upload one PNG per test case; Keel compares the last screen on each run. Click a row to preview the uploaded mockup.</p>
             <ul id="design-ref-list" class="artifact-list"></ul>
-            <p id="design-ref-empty" class="muted" hidden>No design mockups uploaded yet.</p>
+            <p id="design-ref-empty" class="muted" hidden>No Figma validations uploaded yet.</p>
             <form id="design-ref-settings-form" class="design-ref-form">
                 <label>TC ID
                     <input type="text" id="design-ref-settings-tcId" name="tcId" placeholder="TC_001" required/>
                 </label>
-                <label>Design PNG
+                <label>Figma PNG
                     <input type="file" id="design-ref-settings-file" name="file" accept="image/png" required/>
                 </label>
-                <button type="submit">Upload design</button>
+                <button type="submit">Upload Figma</button>
             </form>
             <p id="design-ref-settings-msg" class="muted" hidden></p>
             <p id="design-ref-settings-err" class="error" hidden></p>
