@@ -149,6 +149,8 @@ public class DeliveryPortalProperties {
         private int maxCallsPerJob = 50;
         /** Lowest Cursor groundRank confidence accepted without escalating to solve. One of 'medium' or 'high'. */
         private String minConfidence = "medium";
+        /** Cursor chat-completion model id. 'auto' keeps today's router; pin names such as 'claude-sonnet-4.5', 'gpt-5', 'grok-4', 'gemini-2.5-pro'. */
+        private String cursorModel = "auto";
 
         public boolean isEnabled() { return enabled; }
         public void setEnabled(boolean enabled) { this.enabled = enabled; }
@@ -158,6 +160,10 @@ public class DeliveryPortalProperties {
         public void setMinConfidence(String minConfidence) {
             String v = minConfidence == null ? "medium" : minConfidence.trim().toLowerCase();
             this.minConfidence = ("high".equals(v)) ? "high" : "medium";
+        }
+        public String getCursorModel() { return cursorModel; }
+        public void setCursorModel(String cursorModel) {
+            this.cursorModel = cursorModel == null || cursorModel.isBlank() ? "auto" : cursorModel.trim();
         }
     }
 
@@ -246,6 +252,9 @@ public class DeliveryPortalProperties {
     }
     public String getPrecisionMinConfidence() {
         return authoring.getPrecision().getMinConfidence();
+    }
+    public String getPrecisionCursorModel() {
+        return authoring.getPrecision().getCursorModel();
     }
     public CreditsProperties getCredits() { return credits; }
     public void setCredits(CreditsProperties credits) {
