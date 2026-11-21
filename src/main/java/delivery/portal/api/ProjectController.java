@@ -143,6 +143,7 @@ public class ProjectController {
         map.put("authoringEngine", p.getAuthoringEngine().wireValue());
         map.put("precisionMaxCallsPerJob", p.getPrecisionMaxCallsPerJob());
         map.put("precisionReuseLocatorMemory", p.isPrecisionReuseLocatorMemory());
+        map.put("precisionCursorModel", p.getPrecisionCursorModel());
         map.put("testDataEnv", p.getTestDataEnv());
         map.put("archived", p.isArchived());
         map.put("lastModified", p.getLastModified());

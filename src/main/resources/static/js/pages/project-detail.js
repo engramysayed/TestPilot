@@ -71,6 +71,19 @@
         document.querySelectorAll('#settings-form input[name="authoringEngine"]').forEach(radio => {
             radio.checked = radio.value === engineValue;
         });
+        const cursorModelSel = document.getElementById('settings-precision-cursor-model');
+        if (cursorModelSel) {
+            const pin = (p.precisionCursorModel || '').trim();
+            const target = pin && pin.toLowerCase() !== 'auto' ? pin : 'auto';
+            const has = Array.from(cursorModelSel.options).some(o => o.value === target);
+            if (!has && target !== 'auto') {
+                const opt = document.createElement('option');
+                opt.value = target;
+                opt.textContent = target + ' (saved)';
+                cursorModelSel.appendChild(opt);
+            }
+            cursorModelSel.value = target;
+        }
         const maxCalls = document.getElementById('settings-precision-max-calls');
         if (maxCalls) {
             maxCalls.value = p.precisionMaxCallsPerJob > 0 ? String(p.precisionMaxCallsPerJob) : '';
@@ -630,6 +643,8 @@
         }
         const reuseEl = document.getElementById('settings-precision-reuse-locator-memory');
         body.precisionReuseLocatorMemory = !!(reuseEl && reuseEl.checked);
+        const modelSel = document.getElementById('settings-precision-cursor-model');
+        body.precisionCursorModel = modelSel ? modelSel.value : 'auto';
         const res = await fetch(apiUrl(''), {
             method: 'PATCH',
             credentials: 'same-origin',

@@ -19,6 +19,8 @@ public class ProjectRecord {
     /** 0 = use server default from application.properties */
     private int precisionMaxCallsPerJob = 0;
     private boolean precisionReuseLocatorMemory = false;
+    /** Empty or "auto" = use workspace default. Any other string pins that Cursor model id. */
+    private String precisionCursorModel = "";
     private String tenantId = "";
     /** WEB | ANDROID; immutable after create. */
     private String platform = "WEB";
@@ -72,6 +74,12 @@ public class ProjectRecord {
     }
     public void setPrecisionReuseLocatorMemory(boolean precisionReuseLocatorMemory) {
         this.precisionReuseLocatorMemory = precisionReuseLocatorMemory;
+    }
+    public String getPrecisionCursorModel() {
+        return precisionCursorModel == null ? "" : precisionCursorModel;
+    }
+    public void setPrecisionCursorModel(String precisionCursorModel) {
+        this.precisionCursorModel = precisionCursorModel == null ? "" : precisionCursorModel.trim();
     }
     public String getTenantId() { return tenantId == null ? "" : tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId == null ? "" : tenantId; }

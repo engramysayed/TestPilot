@@ -37,6 +37,16 @@ public class CursorHealClient {
         this.cursorModel = resolveCursorModel();
     }
 
+    /** Use defaults for enabled/command/timeout but pin a specific Cursor model id for this instance. */
+    public CursorHealClient(String cursorModel) {
+        ensureDeliveryPropsLoaded();
+        this.enabled = resolveEnabled();
+        this.command = resolveCommand();
+        this.timeoutSec = DEFAULT_TIMEOUT_SEC;
+        String trimmed = cursorModel == null ? "" : cursorModel.trim();
+        this.cursorModel = "auto".equalsIgnoreCase(trimmed) ? resolveCursorModel() : (trimmed.isEmpty() ? resolveCursorModel() : trimmed);
+    }
+
     public CursorHealClient(boolean enabled, String command, long timeoutSec) {
         this(enabled, command, timeoutSec, "");
     }

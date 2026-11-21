@@ -140,18 +140,20 @@ public class PortalStore {
 
     public PrecisionJobConfig precisionConfigForProject(String projectId) {
         AuthoringEngine engine = authoringEngineForProject(projectId);
-        Integer projectMax = projectRepository.findByProjectId(projectId)
-                .map(ProjectEntity::getPrecisionMaxCallsPerJob)
-                .orElse(null);
+        Optional<ProjectEntity> entity = projectRepository.findByProjectId(projectId);
+        Integer projectMax = entity.map(ProjectEntity::getPrecisionMaxCallsPerJob).orElse(null);
         int max = projectMax != null && projectMax > 0
                 ? projectMax
                 : portalProperties.getPrecisionMaxCallsPerJob();
         boolean enabled = portalProperties.isPrecisionAuthoringEnabled()
                 && engine == AuthoringEngine.PRECISION;
-        boolean reuse = projectRepository.findByProjectId(projectId)
-                .map(e -> Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()))
-                .orElse(false);
-        return new PrecisionJobConfig(enabled, max, reuse, portalProperties.getPrecisionMinConfidence());
+        boolean reuse = entity.map(e -> Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory())).orElse(false);
+        String projectModel = entity.map(ProjectEntity::getPrecisionCursorModel).orElse(null);
+        String cursorModel = (projectModel != null && !projectModel.isBlank())
+                ? projectModel
+                : portalProperties.getPrecisionCursorModel();
+        return new PrecisionJobConfig(enabled, max, reuse,
+                portalProperties.getPrecisionMinConfidence(), cursorModel);
     }
 
     public PrecisionJobConfig precisionConfigForJob(JobRecord job) {
@@ -159,15 +161,19 @@ public class PortalStore {
                 ? job.getPrecisionEnabledSnapshot()
                 : portalProperties.isPrecisionAuthoringEnabled()
                   && job.getAuthoringEngine() == AuthoringEngine.PRECISION;
+        Optional<ProjectEntity> entity = projectRepository.findByProjectId(job.getProjectId());
         boolean reuse = job.getPrecisionReuseLocatorMemorySnapshot() != null
                 ? job.getPrecisionReuseLocatorMemorySnapshot()
-                : projectRepository.findByProjectId(job.getProjectId())
-                .map(e -> Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()))
-                .orElse(false);
+                : entity.map(e -> Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory())).orElse(false);
+        String projectModel = entity.map(ProjectEntity::getPrecisionCursorModel).orElse(null);
+        String cursorModel = (projectModel != null && !projectModel.isBlank())
+                ? projectModel
+                : portalProperties.getPrecisionCursorModel();
         return new PrecisionJobConfig(enabled, job.getPrecisionMaxSnapshot() > 0
                 ? job.getPrecisionMaxSnapshot() : portalProperties.getPrecisionMaxCallsPerJob(),
                 reuse,
-                portalProperties.getPrecisionMinConfidence());
+                portalProperties.getPrecisionMinConfidence(),
+                cursorModel);
     }
 
     public ProjectStore filesystemStore() {
@@ -422,6 +428,11 @@ public class PortalStore {
         }
         if (patch.precisionReuseLocatorMemory() != null) {
             entity.setPrecisionReuseLocatorMemory(patch.precisionReuseLocatorMemory());
+        }
+        if (patch.precisionCursorModel() != null) {
+            String raw = patch.precisionCursorModel().trim();
+            // "auto" and blank clear the per-project pin so workspace / env default applies.
+            entity.setPrecisionCursorModel(raw.isEmpty() || "auto".equalsIgnoreCase(raw) ? null : raw);
         }
         if (patch.testDataEnv() != null) {
             String env = patch.testDataEnv().trim().toLowerCase(Locale.ROOT);
@@ -1262,6 +1273,7 @@ public class PortalStore {
                 ? 0
                 : e.getPrecisionMaxCallsPerJob());
         rec.setPrecisionReuseLocatorMemory(Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()));
+        rec.setPrecisionCursorModel(e.getPrecisionCursorModel() == null ? "" : e.getPrecisionCursorModel());
         rec.setTenantId(e.getTenantId() == null ? "" : e.getTenantId());
         rec.setPlatform(ProjectPlatform.parse(e.getPlatform()).name());
         rec.setTestDataEnv(e.getTestDataEnv() == null ? "" : e.getTestDataEnv());
