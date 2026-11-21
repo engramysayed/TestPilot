@@ -133,7 +133,14 @@ public class LlmSettingsService implements ApplicationRunner {
                 }
                 if (req.precisionCursorModel != null) {
                     String raw = req.precisionCursorModel.trim();
-                    precisionModel = raw.isEmpty() || "auto".equalsIgnoreCase(raw) ? "" : raw;
+                    if (raw.isEmpty()) {
+                        // API caller sent blank → treat as "no change". Use the "auto" literal
+                        // to explicitly unpin.
+                    } else if ("auto".equalsIgnoreCase(raw)) {
+                        precisionModel = "auto";
+                    } else {
+                        precisionModel = raw;
+                    }
                 }
                 if (req.reviewCasesPerBatch != null) {
                     batch = delivery.portal.service.ReviewBatchPolicy.clampN(req.reviewCasesPerBatch);
@@ -385,18 +392,22 @@ public class LlmSettingsService implements ApplicationRunner {
                 setSysPropIfEnvBlank("delivery.vision.model", s.ollamaVisionModel);
             }
         }
-        // Precision engine model: PortalStore reads DeliveryPortalProperties; CursorHealClient
-        // falls back to the system property. Mirror both so an admin unpin is seen immediately
-        // by live jobs instead of sticking at the previously pinned model until JVM restart.
-        if (s.precisionCursorModel != null && envBlank("delivery.authoring.precision.cursor-model")) {
+        // Precision engine model. Three cases for the stored value:
+        //   * null / blank : admin never saved via UI → leave YAML-seeded props and sysprop alone.
+        //   * "auto"        : admin explicitly unpinned → mirror auto to props and CLEAR the
+        //                     sysprop so a previously-pinned CursorHealClient.resolveCursorModel
+        //                     does not return a stale pin on the next job.
+        //   * model id      : admin pinned → mirror to both.
+        // Env wins throughout: envBlank(key) == false means the operator pinned via env/-D and
+        // UI changes should not clobber it.
+        if (s.precisionCursorModel != null && !s.precisionCursorModel.isBlank()
+                && envBlank("delivery.authoring.precision.cursor-model")) {
             String raw = s.precisionCursorModel.trim();
-            boolean isAuto = raw.isEmpty() || "auto".equalsIgnoreCase(raw);
-            props.getAuthoring().getPrecision().setCursorModel(isAuto ? "auto" : raw);
-            if (isAuto) {
-                // Clear our stored system prop so CursorHealClient.resolveCursorModel does not
-                // return a stale pin on the next job.
+            if ("auto".equalsIgnoreCase(raw)) {
+                props.getAuthoring().getPrecision().setCursorModel("auto");
                 System.clearProperty("delivery.authoring.precision.cursor-model");
             } else {
+                props.getAuthoring().getPrecision().setCursorModel(raw);
                 setSysPropIfEnvBlank("delivery.authoring.precision.cursor-model", raw);
             }
         }
