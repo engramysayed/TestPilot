@@ -2,6 +2,16 @@
 
 # Keel changelog
 
+## 2026-11-21 — Precision engine tuning + Figma Validate per-step
+
+- **Precision engine cache**: job-scoped ConcurrentHashMap in `PrecisionBindService` keyed by `(intent, shortlist-hash, html-hash)` so retries of the same bind on the same page snapshot reuse the earlier Cursor pick without burning a budget slot. Batch cap raised from 5 → 10 intents per `groundRankBatch` call.
+- **Precision confidence floor**: new workspace property `delivery.authoring.precision.min-confidence` (`medium` default; `high` is the stricter option). `GroundRankResult.isAcceptableAt` routes `medium`-confidence picks to the solve fallback when `high` is set.
+- **Cursor model picker** (Precision engine): new property `delivery.authoring.precision.cursor-model` (default `auto`, also respects `KEEL_CURSOR_MODEL` env). Project Settings grows a **Cursor model** dropdown that overrides the workspace default. Admin → LLM & API keys grows the workspace-wide equivalent. `heal.mjs` accepts `req.model` with a tight family regex (`claude-*`, `gpt-*`, `gemini-*`, `grok-*`, `deepseek-*`); unknown ids fall back to `auto` so a stale pin never fails a run.
+- **"Design mockups" → "Figma Validate" rename + per-step mockups**: upload a PNG per `(tcId, stepIndex)` to `design-references/<tcId>/step-NNN.png`; `DesignComparePhase` now compares each step's screenshot against the matching Figma and writes `design-compare-step-NNN.json` + `design-actual-step-NNN.png` beside the per-TC evidence. Project Settings shows a thumbnail per uploaded step with click-to-preview; the library TC-row step expansion grows a 32×32 Figma tile per step (filled thumbnail / "+" to attach).
+- **Pre-run review ↔ credit ledger**: `/api/projects/{id}/pre-run-authoring-review` now preflights against the `AI_VALIDATION` add-on cost (HTTP 402 when under) and debits once per successful review with a stable id. Admin review batch cap configurable via `delivery.authoring.review.cases-per-batch` (default 10).
+- **Review modal**: edited cases get a left accent border plus an "edited" pill; click toggles a before/after diff (red/green) for the changed field(s).
+- **/account cleanup**: dead Vision model radios removed from the account page — the live vision model is set server-side via Admin → LLM & API keys (`delivery.vision.model` system property).
+
 ## 2026-11-16 — Portal UX Phase 11 (portal accessibility)
 
 - **Skip to main content** link in the sidebar; `main` gets `id="keel-main-content"` on load.

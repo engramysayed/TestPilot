@@ -385,10 +385,20 @@ public class LlmSettingsService implements ApplicationRunner {
                 setSysPropIfEnvBlank("delivery.vision.model", s.ollamaVisionModel);
             }
         }
-        // Precision engine model: feeds delivery.heal.CursorHealClient.resolveCursorModel at next job start.
-        if (s.precisionCursorModel != null && !s.precisionCursorModel.isBlank()
-                && !"auto".equalsIgnoreCase(s.precisionCursorModel.trim())) {
-            setSysPropIfEnvBlank("delivery.authoring.precision.cursor-model", s.precisionCursorModel.trim());
+        // Precision engine model: PortalStore reads DeliveryPortalProperties; CursorHealClient
+        // falls back to the system property. Mirror both so an admin unpin is seen immediately
+        // by live jobs instead of sticking at the previously pinned model until JVM restart.
+        if (s.precisionCursorModel != null && envBlank("delivery.authoring.precision.cursor-model")) {
+            String raw = s.precisionCursorModel.trim();
+            boolean isAuto = raw.isEmpty() || "auto".equalsIgnoreCase(raw);
+            props.getAuthoring().getPrecision().setCursorModel(isAuto ? "auto" : raw);
+            if (isAuto) {
+                // Clear our stored system prop so CursorHealClient.resolveCursorModel does not
+                // return a stale pin on the next job.
+                System.clearProperty("delivery.authoring.precision.cursor-model");
+            } else {
+                setSysPropIfEnvBlank("delivery.authoring.precision.cursor-model", raw);
+            }
         }
         publishBrowser(s.browser);
         AuthoringVerbAliases.publish(s.authoringVerbAliases);

@@ -428,4 +428,37 @@ public class LlmSettingsServiceTest {
             throw new AssertionError(e);
         }
     }
+
+    @Test
+    public void precisionCursorModel_pinAndUnpinMirrorsPropsAndSystemProperty() {
+        String key = "delivery.authoring.precision.cursor-model";
+        String prev = System.getProperty(key);
+        System.clearProperty(key);
+        try {
+            LlmSettingsService svc = new LlmSettingsService(props);
+            // Pin a specific model via the admin UI.
+            svc.update(new UpdateRequest(
+                    null, null, null, null, null, null,
+                    false, false, false,
+                    null, null, null, "claude-sonnet-4.5"));
+            Assert.assertEquals(props.getPrecisionCursorModel(), "claude-sonnet-4.5");
+            Assert.assertEquals(System.getProperty(key), "claude-sonnet-4.5");
+            Assert.assertEquals(svc.maskedView().get("precisionCursorModel"), "claude-sonnet-4.5");
+
+            // Unpin — props mirror and the system property both clear.
+            svc.update(new UpdateRequest(
+                    null, null, null, null, null, null,
+                    false, false, false,
+                    null, null, null, "auto"));
+            Assert.assertEquals(props.getPrecisionCursorModel(), "auto");
+            Assert.assertNull(System.getProperty(key));
+            Assert.assertEquals(svc.maskedView().get("precisionCursorModel"), "");
+        } finally {
+            if (prev == null) {
+                System.clearProperty(key);
+            } else {
+                System.setProperty(key, prev);
+            }
+        }
+    }
 }
