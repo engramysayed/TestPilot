@@ -130,10 +130,15 @@ public class DeliveryPortalProperties {
     }
     public static class AuthoringProperties {
         private PrecisionProperties precision = new PrecisionProperties();
+        private ReviewProperties review = new ReviewProperties();
 
         public PrecisionProperties getPrecision() { return precision; }
         public void setPrecision(PrecisionProperties precision) {
             this.precision = precision == null ? new PrecisionProperties() : precision;
+        }
+        public ReviewProperties getReview() { return review; }
+        public void setReview(ReviewProperties review) {
+            this.review = review == null ? new ReviewProperties() : review;
         }
     }
 
@@ -147,6 +152,14 @@ public class DeliveryPortalProperties {
         public void setEnabled(boolean enabled) { this.enabled = enabled; }
         public int getMaxCallsPerJob() { return maxCallsPerJob; }
         public void setMaxCallsPerJob(int maxCallsPerJob) { this.maxCallsPerJob = maxCallsPerJob; }
+    }
+
+    public static class ReviewProperties {
+        /** Max cases per one Cursor/Ollama authoring-review call. Larger selections are chunked into batches of this size. */
+        private int casesPerBatch = 10;
+
+        public int getCasesPerBatch() { return casesPerBatch; }
+        public void setCasesPerBatch(int casesPerBatch) { this.casesPerBatch = casesPerBatch; }
     }
 
     public boolean isDryRun() { return dryRun; }

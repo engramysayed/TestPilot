@@ -61,7 +61,8 @@ public class AuthoringReviewService {
             GeneratedWorkbookService workbooks,
             LlmSettingsService llmSettings
     ) {
-        this(props, store, workbooks, defaultPort(props), llmSettings, ReviewBatchPolicy.DEFAULT_N);
+        this(props, store, workbooks, defaultPort(props), llmSettings,
+                props.getAuthoring().getReview().getCasesPerBatch());
     }
 
     AuthoringReviewService(
