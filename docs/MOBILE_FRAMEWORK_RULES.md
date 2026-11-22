@@ -145,7 +145,23 @@ Honest list of web features that are **not** yet ported to mobile. Landing these
 
 ---
 
-## 8. Sync with the web rules
+## 8. Validator codes
+
+`MobileFrameworkContractValidator` enforces the subset of rules that have a direct emit analogue. `MobileFrameworkRulesDocSyncTest` fails if a code lives in the validator but is missing here, or vice versa.
+
+| Validator code | Severity | KEEL-M rule | What it catches |
+| --- | --- | --- | --- |
+| `FW_RULE_M_APPIUM_ONLY` | **MANDATORY** | KEEL-M-2 | Screen imports a non-Appium / non-project package (Playwright, Chrome driver, …). |
+| `FW_RULE_M_NO_CSS` | **MANDATORY** | KEEL-M-3, §7 | `By.cssSelector` appears anywhere in a Screen — invalid in NATIVE_APP. |
+| `FW_RULE_M_NO_SLEEP` | **MANDATORY** | KEEL-M-RT-2 | `Thread.sleep` / `TimeUnit.*.sleep` in a Screen or Test. |
+| `FW_RULE_M_SETTLE_DELEGATE` | **MANDATORY** | KEEL-M-4 | Screen action method calls `driver.findElement(…)` directly instead of going through `SettledMobileActions`. |
+| `FW_RULE_M_NO_SYSOUT` | RECOMMENDED | KEEL-M-RT-5 | `System.out` / `System.err` in a Screen or Test. |
+| `FW_RULE_M_TEST_BASE` | **MANDATORY** | KEEL-M-RT-3 | Generated test class does not extend `BaseMobileTest`. |
+| `FW_RULE_M_TEST_NO_BY` | RECOMMENDED | KEEL-M-7 | Test file declares a raw `By` field; that belongs on the Screen. |
+
+Not yet checked by the validator (see §6 for the honest "not supported today" list): page clustering + test ↔ screen import matching, codegen naming conformance, assertion-takes-locator discipline. These fire in the web validator (`FW_RULE_ASSERT_TAKES_LOCATOR` etc.) and are scoped as follow-ups.
+
+## 9. Sync with the web rules
 
 Per-TC rules that apply **identically** on mobile (don't repeat them — just defer):
 
