@@ -11,6 +11,7 @@
     const H = { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Keel-Requested-With': 'Keel' };
     const base = '/api/projects/' + encodeURIComponent(projectId) + '/mobile';
     const sel = document.getElementById('mobile-run-device');
+    const revSel = document.getElementById('mobile-run-revision');
     const msg = document.getElementById('mobile-run-msg');
     const startBtn = document.getElementById('mobile-run-start');
     const cancelBtn = document.getElementById('mobile-run-cancel');
@@ -39,6 +40,40 @@
             sel.appendChild(o);
         });
         if (!sel.options.length) say('No phones yet. Connect one over USB (or start an emulator) and press Find connected phones.');
+    }
+
+    async function loadRevisions() {
+        if (!revSel) return;
+        revSel.innerHTML = '';
+        try {
+            const res = await fetch(base + '/apps/revisions', { credentials: 'same-origin', headers: H });
+            if (!res.ok) throw new Error(res.status);
+            const data = await res.json();
+            const rows = data.revisions || [];
+            if (!rows.length) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = '— No APK uploaded yet —';
+                revSel.appendChild(opt);
+                revSel.disabled = true;
+                return;
+            }
+            revSel.disabled = false;
+            rows.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.appRevisionId;
+                const ver = r.versionName || ('vc ' + (r.versionCode || '?'));
+                opt.textContent = (r.packageName || 'unknown') + ' · ' + ver + (r.active ? ' · active' : '');
+                if (r.active) opt.selected = true;
+                revSel.appendChild(opt);
+            });
+        } catch (e) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '— Could not load APK revisions —';
+            revSel.appendChild(opt);
+            revSel.disabled = true;
+        }
     }
 
     discoverBtn.addEventListener('click', async () => {
@@ -156,9 +191,12 @@
     }
 
     async function startMobileRun(deviceId, tcIds) {
+        const appRevisionId = (revSel && revSel.value) || null;
+        const body = { deviceId: deviceId, tcIds: tcIds };
+        if (appRevisionId) body.appRevisionId = appRevisionId;
         const res = await fetch(base + '/runs', {
             method: 'POST', credentials: 'same-origin', headers: H,
-            body: JSON.stringify({ deviceId: deviceId, tcIds: tcIds })
+            body: JSON.stringify(body)
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) { say(data.message || 'Could not start the run', true); startBtn.disabled = !canEdit; return; }
@@ -243,4 +281,5 @@
     });
 
     loadDevices();
+    loadRevisions();
 })();

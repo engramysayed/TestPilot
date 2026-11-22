@@ -109,6 +109,12 @@ public class MobileRunOrchestrator {
 
     public MobileRun start(String tenantId, String projectId, Long ownerUserId, String deviceId, List<String> tcIds)
             throws Exception {
+        return start(tenantId, projectId, ownerUserId, deviceId, tcIds, null);
+    }
+
+    public MobileRun start(String tenantId, String projectId, Long ownerUserId, String deviceId,
+                           List<String> tcIds, String appRevisionId)
+            throws Exception {
         if (!props.isEnabled()) {
             throw new IllegalStateException("Mobile is disabled (delivery.mobile.enabled=false)");
         }
@@ -141,7 +147,14 @@ public class MobileRunOrchestrator {
         if (cases.isEmpty()) {
             throw new IllegalArgumentException("No runnable test cases selected");
         }
-        var rev = mobileStore.findActiveAppRevision(tenantId, projectId);
+        var rev = (appRevisionId == null || appRevisionId.isBlank())
+                ? mobileStore.findActiveAppRevision(tenantId, projectId)
+                : mobileStore.findAppRevision(tenantId, projectId, appRevisionId);
+        if (appRevisionId != null && !appRevisionId.isBlank() && rev.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "App revision '" + appRevisionId + "' is not uploaded for this project. "
+                            + "Pick one from the dropdown or upload a new APK from Project Settings → Mobile app.");
+        }
         String pkg = rev.map(r -> nz(r.getPackageName())).orElse("");
         String act = rev.map(r -> nz(r.getLaunchActivity())).orElse("");
         MobileRun run = new MobileRun("mrun_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12),

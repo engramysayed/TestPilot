@@ -1,6 +1,8 @@
 package delivery.portal.api;
 
+import delivery.mobile.MobilePortalStore;
 import delivery.mobile.MobileProperties;
+import delivery.mobile.model.MobileAppRevisionRecord;
 import delivery.mobile.run.MobileDeviceRegistration;
 import delivery.mobile.run.MobileRunOrchestrator;
 import delivery.portal.model.ProjectRecord;
@@ -15,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,17 +32,23 @@ public class MobileRunController {
     private final CurrentUserService currentUser;
     private final MobileRunOrchestrator runs;
     private final MobileDeviceRegistration registration;
+    private final MobilePortalStore mobileStore;
 
     public MobileRunController(MobileProperties mobileProps, PortalStore store, CurrentUserService currentUser,
-                               MobileRunOrchestrator runs, MobileDeviceRegistration registration) {
+                               MobileRunOrchestrator runs, MobileDeviceRegistration registration,
+                               MobilePortalStore mobileStore) {
         this.mobileProps = mobileProps;
         this.store = store;
         this.currentUser = currentUser;
         this.runs = runs;
         this.registration = registration;
+        this.mobileStore = mobileStore;
     }
 
-    public record StartBody(String deviceId, List<String> tcIds) {
+    public record StartBody(String deviceId, List<String> tcIds, String appRevisionId) {
+        public StartBody(String deviceId, List<String> tcIds) {
+            this(deviceId, tcIds, null);
+        }
     }
 
     @PostMapping("/devices/discover")
@@ -64,7 +74,7 @@ public class MobileRunController {
         ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
         try {
             var run = runs.start(project.getTenantId(), projectId, currentUser.requireUserId(),
-                    body.deviceId(), body.tcIds());
+                    body.deviceId(), body.tcIds(), body.appRevisionId());
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(run.view().toMap());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ApiError("BAD_REQUEST", e.getMessage()).asMap());
@@ -84,6 +94,29 @@ public class MobileRunController {
                 .filter(v -> projectId.equals(v.optString("projectId")))
                 .<ResponseEntity<?>>map(v -> ResponseEntity.ok(v.toMap()))
                 .orElse(ResponseEntity.status(404).body(new ApiError("NOT_FOUND", "Run not found").asMap()));
+    }
+
+    @GetMapping("/apps/revisions")
+    public ResponseEntity<?> listRevisions(@PathVariable String projectId) {
+        ResponseEntity<?> gate = gate(projectId, false);
+        if (gate != null) return gate;
+        ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
+        List<MobileAppRevisionRecord> all = mobileStore.listAppRevisions(project.getTenantId(), projectId);
+        String activeId = mobileStore.findActiveAppRevision(project.getTenantId(), projectId)
+                .map(MobileAppRevisionRecord::getAppRevisionId)
+                .orElse("");
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (MobileAppRevisionRecord rev : all) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("appRevisionId", rev.getAppRevisionId());
+            row.put("packageName", rev.getPackageName());
+            row.put("versionName", rev.getVersionName());
+            row.put("versionCode", rev.getVersionCode());
+            row.put("verification", rev.getVerification());
+            row.put("active", rev.getAppRevisionId() != null && rev.getAppRevisionId().equals(activeId));
+            rows.add(row);
+        }
+        return ResponseEntity.ok(Map.of("revisions", rows, "activeRevisionId", activeId));
     }
 
     @PostMapping("/runs/{runId}/cancel")

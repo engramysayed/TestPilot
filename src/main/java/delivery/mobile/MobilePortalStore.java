@@ -387,6 +387,25 @@ public class MobilePortalStore {
         return listAppRevisions(tenantId, projectId).stream().findFirst();
     }
 
+    /** Resolve a specific revision + verify it belongs to the given project. */
+    public Optional<MobileAppRevisionRecord> findAppRevision(String tenantId, String projectId, String appRevisionId) {
+        if (appRevisionId == null || appRevisionId.isBlank()) {
+            return Optional.empty();
+        }
+        requireProjectInTenant(projectId, tenantId);
+        return revisionRepository.findByRevisionId(appRevisionId.trim())
+                .filter(r -> tenantId.equals(r.getTenantId()) && projectId.equals(r.getProjectId()))
+                .map(this::toRevisionRecord);
+    }
+
+    /** Is this the project's active revision today? */
+    public boolean isActiveAppRevision(String tenantId, String projectId, String appRevisionId) {
+        if (appRevisionId == null || appRevisionId.isBlank()) return false;
+        return findActiveAppRevision(tenantId, projectId)
+                .map(r -> appRevisionId.equals(r.getAppRevisionId()))
+                .orElse(false);
+    }
+
     /**
      * Editable fields only (launchActivity / waitActivity) on an existing revision.
      * Matches Frontend Assumed PATCH semantics (M1-07 REST).
