@@ -3,6 +3,9 @@ package delivery.mobile.run;
 import delivery.excel.ManualTestCase;
 import delivery.mobile.MobilePortalStore;
 import delivery.mobile.MobileProperties;
+import delivery.mobile.adb.AdbDeviceDiscovery;
+import delivery.mobile.adb.AdbErrorCode;
+import delivery.mobile.adb.AdbInventoryException;
 import delivery.mobile.appium.SupervisedAppiumLifecycle;
 import delivery.mobile.lease.DeviceLeaseGuard;
 import delivery.mobile.lease.LeaseHandle;
@@ -67,6 +70,7 @@ public class MobileRunOrchestrator {
     private final GeneratedWorkbookService workbooks;
     private final MobilePortalStore mobileStore;
     private final PortalStore portalStore;
+    private final AdbDeviceDiscovery adb;
     private final Path runsRoot;
 
     private final Map<String, MobileRun> runs = new ConcurrentHashMap<>();
@@ -89,6 +93,7 @@ public class MobileRunOrchestrator {
                                  GeneratedWorkbookService workbooks,
                                  MobilePortalStore mobileStore,
                                  PortalStore portalStore,
+                                 AdbDeviceDiscovery adb,
                                  DeliveryPortalProperties portalProps) {
         this.props = props;
         this.leases = leases;
@@ -98,6 +103,7 @@ public class MobileRunOrchestrator {
         this.workbooks = workbooks;
         this.mobileStore = mobileStore;
         this.portalStore = portalStore;
+        this.adb = adb;
         this.runsRoot = Path.of(portalProps.getStoreRoot()).resolve("mobile-runs");
         long every = Math.max(1, props.getLeaseHeartbeatSeconds());
         ticker.scheduleAtFixedRate(this::tick, every, every, TimeUnit.SECONDS);
@@ -298,6 +304,9 @@ public class MobileRunOrchestrator {
             String serial = serials.resolve(device.getSerialFingerprint())
                     .orElseThrow(() -> new IllegalStateException(
                             "Device is not connected to this Keel host (adb does not list it). Plug it in or start the emulator."));
+            // Preflight: fail fast with a readable message if the APK isn't on the device yet, rather
+            // than wait ~30 s for Appium to start and then crash on the first launch call.
+            preflightInstalledPackage(serial, run.appPackage);
             // STARTING before leaseId is visible: tick() skips blank lease ids and would otherwise see a
             // QUEUED run with a lease (not alive) and fail it in the middle of the start.
             run.status = MobileRun.Status.STARTING;
@@ -316,6 +325,30 @@ public class MobileRunOrchestrator {
         } catch (Exception e) {
             log.warn("Mobile run {} failed to start: {}", run.runId, e.getMessage());
             finish(run, MobileRun.Status.FAILED, "Could not start the device session", e.getMessage());
+        }
+    }
+
+    /**
+     * Preflight that the chosen APK is installed on the serial before we burn ~30 s on Appium start.
+     * Blank {@code pkg} skips (launcher-only runs). Anything other than {@link AdbErrorCode#PACKAGE_NOT_FOUND}
+     * is swallowed — Appium's own error path keeps ownership of ADB health failures.
+     */
+    private void preflightInstalledPackage(String serial, String pkg) {
+        if (pkg == null || pkg.isBlank()) return;
+        try {
+            adb.resolveInstalledPackage(serial, pkg);
+        } catch (AdbInventoryException e) {
+            if (e.getCode() == AdbErrorCode.PACKAGE_NOT_FOUND) {
+                throw new IllegalStateException(
+                        "The app package '" + pkg + "' is not installed on this phone (serial " + serial + "). "
+                                + "Install it with `adb -s " + serial + " install path\\to.apk`, "
+                                + "or pick a phone that already has it.",
+                        e);
+            }
+            // Other ADB issues (unauthorized, offline, SDK unavailable) surface naturally when
+            // Appium tries to connect — don't double-fail here.
+        } catch (RuntimeException ignored) {
+            // Never block a run on a flaky preflight.
         }
     }
 
