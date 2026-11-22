@@ -203,8 +203,27 @@
         });
     }
 
+    function preflightPhone() {
+        if (!sel.options.length) {
+            say('No phones registered yet. Press "Find connected phones", or plug a device in and register it from Project Settings → Phones.', true);
+            return false;
+        }
+        if (!sel.value) {
+            say('Pick a phone from the dropdown before starting the run.', true);
+            return false;
+        }
+        const picked = sel.options[sel.selectedIndex];
+        const label = (picked && picked.textContent) || '';
+        if (label && !/AVAILABLE/i.test(label)) {
+            say('Phone "' + label.trim() + '" is not available. Wait for the current run to finish, pick another phone, or press Find connected phones.', true);
+            return false;
+        }
+        return true;
+    }
+
     startBtn.disabled = !canEdit;
     startBtn.addEventListener('click', async () => {
+        if (!preflightPhone()) return;
         const tcIds = document.getElementById('mobile-run-tcs').value.split(/[\s,]+/).filter(Boolean);
         if (reviewToggle && reviewToggle.checked) {
             if (!tcIds.length) {

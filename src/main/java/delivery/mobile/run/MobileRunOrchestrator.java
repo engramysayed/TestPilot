@@ -113,9 +113,17 @@ public class MobileRunOrchestrator {
             throw new IllegalStateException("Mobile is disabled (delivery.mobile.enabled=false)");
         }
         MobileDeviceEntity device = devices.findByDeviceId(deviceId)
-                .orElseThrow(() -> new IllegalArgumentException("device not found"));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No phone is registered under id '" + deviceId + "'. "
+                                + "Open Project Settings → Phones and press Find connected phones."));
         if (!tenantId.equals(device.getTenantId())) {
-            throw new IllegalArgumentException("device not found");
+            throw new IllegalArgumentException(
+                    "This phone is not registered to your workspace. Pick one from Project Settings → Phones.");
+        }
+        if (!"AVAILABLE".equalsIgnoreCase(nz(device.getBusy()))) {
+            throw new IllegalStateException(
+                    "Phone '" + nz(device.getDisplayName()) + "' is " + nz(device.getBusy())
+                            + ". Wait for the current run to finish, pick another phone, or press Find connected phones.");
         }
         List<ManualTestCase> all = workbooks.readCases(projectId);
         Set<String> wanted = tcIds == null ? Set.of() : Set.copyOf(tcIds);
