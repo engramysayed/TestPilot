@@ -57,7 +57,7 @@ Mobile has its own fixed tier list in [`RankTier`](../mobile-runner/src/main/jav
 | 5 — `XPATH` | Relative XPath, never absolute | Last resort before failing |
 | 6 — `OTHER` | Reserved for future strategies | Should never appear in generated code today |
 
-**Codegen rule**: when the binder returned more than one validated candidate for a control, the generated screen keeps the **lowest-tier (highest-ranked)** one and drops the rest. No mobile analogue of web's `FirstOf.of(...)` fallback bag — mobile control bind is deterministic per-step at runtime.
+**Codegen rule**: when the binder returned more than one validated candidate for a control, the generated screen wraps them in [`MobileFirstOf.of(...)`](../customer-mobile-framework-template/src/main/java/project/utils/locators/MobileFirstOf.java) — the mobile analogue of web `FirstOf`. The primary (lowest-tier) candidate is tried first; each slot records a WIN / MISS line via [`MobileLocatorOutcomes.append`](../customer-mobile-framework-template/src/main/java/project/utils/locators/MobileLocatorOutcomes.java) so the portal's locator-outcomes ledger can rank them later. Single-candidate locators still emit as plain `AppiumBy.*`.
 
 **User-facing-first** is NOT a project-level choice on mobile. A fixed tier order gives stable Android tests across releases.
 
@@ -133,10 +133,13 @@ The **Figma Validate** comparator does **not** use Cursor at all — it uses the
 
 Honest list of web features that are **not** yet ported to mobile. Landing these is a conscious scope decision, not a bug.
 
-- **Figma Validate per-step comparison on mobile runs**. Three things are in place: the portal already stores `design-references/<tcId>.png` and `design-references/<tcId>/step-NNN.png` for any project; `DesignCompareGate.compare(ref, actual, LocalLlmClient)` + `DesignCompareEvidence.writeStep(...)` are platform-agnostic; and the per-TC / per-step Figma UI (uploads + thumbnail + preview) works for mobile projects. **What's missing**: the mobile runner does not currently save step screenshots to a standard path. `MobileFailureEvidenceCollector` only writes on failure. Until the runner writes per-step PNGs (or persists `MobileStepEvidence.artifactRefs` as files the portal can read), there is no "actual" screenshot to compare against the Figma. **Follow-up PR scope** = runner capture + a tiny `MobileDesignComparePhase` that mirrors `DesignComparePhase.compareStep` against those paths.
-- **Mobile Precision Cursor caller**: see §5 — `MobilePrecisionGate` validates a response; no portal-side code currently *makes* the call. The model-pin plumbing is ready for the day it's added.
-- **Mobile suite scheduling**: `SuitePortalScheduleWorker` does not dispatch mobile runs today. A scheduled mobile suite would need a device-selection policy (per-schedule pinned device, or "any available tenant phone").
+- **Mobile Precision Cursor caller**: see §5 — `MobilePrecisionGate` validates a response; no portal-side code currently *makes* the call. The model-pin plumbing is ready for the day it's added. Paused pending a design decision on the runner↔portal sidecar round-trip (the runner can't own `heal.mjs` without shipping Node + the sidecar jar to every device).
 - **Appium Inspector inside the portal**: no built-in inspector view. Use the standalone Appium Inspector pointing at `http://127.0.0.1:4723` during manual sessions. A portal view would need a long-lived inspector lease + REST proxy — scoped as its own feature.
+
+### Recently landed (what used to live here)
+
+- **Figma Validate per-step on mobile** — shipped 2026-11-22 (phases 4 + 5). The runner captures per-step PNGs when `KEEL_RUNNER_CAPTURE_STEP_PNG=true` (default on), uploads them to the portal, and [`MobileDesignComparePhase`](../src/main/java/delivery/mobile/run/MobileDesignComparePhase.java) runs the comparator on `finish()`.
+- **Mobile suite scheduling (pinned device + APK)** — shipped 2026-11-22 / 2026-11-23 (phases 6 + 6b). `SuiteScheduleDispatchService.dispatchMobile` pins a device + revision on the schedule; `/suites/schedule` grows a Phone + APK picker for Android projects, with a preflight that blocks "turn on" without a pinned device.
 
 ---
 

@@ -2,6 +2,14 @@
 
 # Keel changelog
 
+## 2026-11-23 — Mobile phase 6b: schedule UI picks a phone + APK package
+
+Finishes the backend of phase 6. `/suites/schedule` now renders a Phone + APK package picker when the pinned project's `platform` is `ANDROID` (hidden for web). The two selects reuse the same `/mobile/devices` and `/mobile/apps/revisions` endpoints the Execute page uses. Values prefill from the saved schedule and ride on the existing `PUT /suites/{suiteId}/schedule` as `mobileDeviceId` / `mobileAppRevisionId`. A client-side preflight blocks "turn on automatic runs" without a pinned phone so the dispatcher's `DEVICE_REQUIRED` fault never gets a chance to fire from the UI. `SuiteController.ScheduleRequest` grew two nullable fields with convenience constructors for the 4-arg and 6-arg shapes so no caller breaks; the controller routes to `SuiteService.putMobileSchedule` only when at least one is set.
+
+Docs:
+- `docs/MOBILE_FRAMEWORK_RULES.md` §4 now tells the truth about `MobileFirstOf` (the mobile analogue of web `FirstOf` is wired through the codegen template).
+- `docs/MOBILE_FRAMEWORK_RULES.md` §6 drops "Figma Validate per-step on mobile" and "Mobile suite scheduling" from the not-supported list; moves them under a new "Recently landed" sub-section with commit dates.
+
 ## 2026-11-22 — Mobile roadmap phases 1-9 (minus 7)
 
 Executed the phased plan agreed on with the user. Each phase is a single commit; 7 (Cursor caller on mobile Precision binds) is paused pending a design decision on the runner↔portal round-trip for the sidecar.
