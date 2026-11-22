@@ -69,18 +69,152 @@
         if (res.ok) render(await res.json());
     }
 
-    startBtn.disabled = !canEdit;
-    startBtn.addEventListener('click', async () => {
-        const tcIds = document.getElementById('mobile-run-tcs').value.split(/[\s,]+/).filter(Boolean);
+    const reviewToggle = document.getElementById('mobile-pre-run-review');
+    const reviewPanel = document.getElementById('mobile-pre-run-review-panel');
+    const reviewStatus = document.getElementById('mobile-pre-run-review-status');
+    const reviewFindings = document.getElementById('mobile-pre-run-review-findings');
+    const reviewErrors = document.getElementById('mobile-pre-run-review-errors');
+    const reviewCases = document.getElementById('mobile-pre-run-review-cases');
+    const reviewAcceptBtn = document.getElementById('mobile-pre-run-review-accept');
+    const reviewCancelBtn = document.getElementById('mobile-pre-run-review-cancel');
+    let reviewedCases = [];
+    const reviewProjectBase = '/api/projects/' + encodeURIComponent(projectId);
+
+    function resetReviewPanel() {
+        if (!reviewPanel) return;
+        reviewPanel.hidden = true;
+        reviewStatus.textContent = '';
+        reviewFindings.innerHTML = '';
+        reviewErrors.innerHTML = '';
+        reviewCases.innerHTML = '';
+        reviewAcceptBtn.disabled = true;
+        reviewedCases = [];
+    }
+
+    function renderReviewCases(cases) {
+        reviewCases.innerHTML = '';
+        if (!Array.isArray(cases) || !cases.length) {
+            reviewCases.innerHTML = '<p class="muted">No proposed cases in this review.</p>';
+            return;
+        }
+        cases.forEach(function (tc) {
+            const card = document.createElement('article');
+            card.className = 'review-case' + (tc.edited ? ' review-case-edited' : '');
+            card.innerHTML = '<header class="review-case-head">'
+                + '<span class="mono">' + esc(tc.tcId || '') + '</span>'
+                + '<strong>' + esc(tc.title || '') + '</strong>'
+                + (tc.edited ? '<span class="badge edited-badge">edited</span>' : '')
+                + '</header>';
+            reviewCases.appendChild(card);
+        });
+    }
+
+    async function runPreReview(tcIds) {
+        resetReviewPanel();
+        reviewPanel.hidden = false;
+        reviewStatus.textContent = 'Reviewing cases…';
+        startBtn.disabled = true;
+        const body = new FormData();
+        body.append('useGenerated', 'true');
+        body.append('provider', 'cursor');
+        tcIds.forEach(id => body.append('tcIds', id));
+        try {
+            const res = await fetch(reviewProjectBase + '/pre-run-authoring-review', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'X-Keel-Requested-With': 'Keel' },
+                body
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                reviewStatus.textContent = (data.error || 'REVIEW_FAILED') + ': ' + (data.message || 'Cursor review failed');
+                startBtn.disabled = !canEdit;
+                return;
+            }
+            (data.findings || []).forEach(f => {
+                const li = document.createElement('li');
+                li.textContent = '[' + (f.severity || 'info') + '] ' + (f.tcId ? f.tcId + ': ' : '') + (f.message || '');
+                reviewFindings.appendChild(li);
+            });
+            (data.gateErrors || []).forEach(m => {
+                const li = document.createElement('li');
+                li.textContent = m;
+                reviewErrors.appendChild(li);
+            });
+            reviewedCases = data.cases || [];
+            renderReviewCases(reviewedCases);
+            const ok = !!data.previewOk && reviewedCases.length > 0;
+            reviewStatus.textContent = ok
+                ? 'Review complete. Accept to save the library and start the run.'
+                : 'Review found blocking issues. Fix them before running.';
+            reviewAcceptBtn.disabled = !ok;
+            startBtn.disabled = true; // keep disabled until Accept or Cancel
+        } catch (e) {
+            reviewStatus.textContent = 'Network error while running pre-run review.';
+            startBtn.disabled = !canEdit;
+        }
+    }
+
+    async function startMobileRun(deviceId, tcIds) {
         const res = await fetch(base + '/runs', {
             method: 'POST', credentials: 'same-origin', headers: H,
-            body: JSON.stringify({ deviceId: sel.value, tcIds: tcIds })
+            body: JSON.stringify({ deviceId: deviceId, tcIds: tcIds })
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) { say(data.message || 'Could not start the run', true); return; }
+        if (!res.ok) { say(data.message || 'Could not start the run', true); startBtn.disabled = !canEdit; return; }
         runId = data.runId;
         render(data);
         timer = setInterval(poll, 3000);
+    }
+
+    if (reviewCancelBtn) {
+        reviewCancelBtn.addEventListener('click', () => {
+            resetReviewPanel();
+            if (reviewToggle) reviewToggle.checked = false;
+            startBtn.disabled = !canEdit;
+        });
+    }
+    if (reviewAcceptBtn) {
+        reviewAcceptBtn.addEventListener('click', async () => {
+            if (!reviewedCases.length) return;
+            reviewAcceptBtn.disabled = true;
+            reviewStatus.textContent = 'Saving reviewed cases to the library…';
+            try {
+                const res = await fetch(reviewProjectBase + '/generated-workbook/apply-review', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: H,
+                    body: JSON.stringify({ cases: reviewedCases })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    reviewStatus.textContent = data.message || 'Could not save reviewed cases to the library.';
+                    reviewAcceptBtn.disabled = false;
+                    return;
+                }
+                reviewStatus.textContent = 'Starting phone run…';
+                const tcIds = reviewedCases.map(tc => (tc.tcId || '').trim()).filter(Boolean);
+                await startMobileRun(sel.value, tcIds);
+                resetReviewPanel();
+                if (reviewToggle) reviewToggle.checked = false;
+            } catch (e) {
+                reviewStatus.textContent = 'Network error while saving reviewed cases.';
+                reviewAcceptBtn.disabled = false;
+            }
+        });
+    }
+
+    startBtn.disabled = !canEdit;
+    startBtn.addEventListener('click', async () => {
+        const tcIds = document.getElementById('mobile-run-tcs').value.split(/[\s,]+/).filter(Boolean);
+        if (reviewToggle && reviewToggle.checked) {
+            if (!tcIds.length) {
+                say('Pick at least one TC id to review before running.', true);
+                return;
+            }
+            await runPreReview(tcIds);
+            return;
+        }
+        await startMobileRun(sel.value, tcIds);
     });
 
     cancelBtn.addEventListener('click', async () => {
