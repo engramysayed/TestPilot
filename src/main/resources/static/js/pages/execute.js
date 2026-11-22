@@ -954,6 +954,14 @@
         const baseUrl = (project.baseUrl || '').trim();
         // For ANDROID, website address is optional — base URL missing should not block the form when mobile is on
         const isAndroid = (project.platform || 'WEB').toUpperCase() === 'ANDROID';
+        // Discoverability: if a web project is open on a server that supports mobile, point users
+        // at the create flow so they know mobile is reachable from the same portal.
+        const execRoot = document.getElementById('execute-root');
+        const mobileHint = document.getElementById('web-project-mobile-hint');
+        if (mobileHint) {
+            const serverHasMobile = execRoot && execRoot.dataset.mobileEnabled === 'true';
+            mobileHint.hidden = !(serverHasMobile && !isAndroid);
+        }
         projectHasBaseUrl = baseUrl.length > 0;
         if (projectHasBaseUrl) {
             baseUrlRow.hidden = false;

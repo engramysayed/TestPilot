@@ -2621,6 +2621,17 @@
         if (devicesPanel) devicesPanel.hidden = false;
         if (authPanel) authPanel.hidden = false;
         if (caseReqPanel) caseReqPanel.hidden = false;
+        // Deep-link: /projects/{id}?tab=settings#mobile-devices-panel from the create flow.
+        // The panels start hidden so the browser's native hash scroll missed them; retry here.
+        try {
+            const hash = (window.location.hash || '').replace(/^#/, '');
+            if (hash) {
+                const target = document.getElementById(hash);
+                if (target && !target.hidden) {
+                    setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+                }
+            }
+        } catch (ignored) { /* best-effort scroll */ }
 
         const form = document.getElementById('mobile-app-form');
         const readonlyHint = document.getElementById('mobile-app-readonly');
