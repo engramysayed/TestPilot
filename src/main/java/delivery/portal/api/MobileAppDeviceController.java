@@ -14,6 +14,8 @@ import delivery.mobile.model.ProjectPlatform;
 import delivery.portal.model.ProjectRecord;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.PortalStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +47,8 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/projects")
 public class MobileAppDeviceController {
+    private static final Logger log = LoggerFactory.getLogger(MobileAppDeviceController.class);
+
     private final MobileProperties mobileProperties;
     private final PortalStore store;
     private final MobilePortalStore mobileStore;
@@ -227,17 +231,25 @@ public class MobileAppDeviceController {
                     req);
             return toUploadResponse(result);
         } catch (ApkInspectionException e) {
+            log.warn("APK upload rejected: project={} code={} msg={}", projectId, e.getCode(), e.getMessage());
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                     .body(uploadError(e.getCode(),
                             ApkErrorMessages.plainOrFallback(e.getCode(), e.getMessage()),
                             null, uploadId));
         } catch (IllegalArgumentException e) {
+            log.warn("APK upload rejected: project={} msg={}", projectId, e.getMessage());
             return ResponseEntity.badRequest()
                     .body(uploadError(ApkErrorCode.APK_INVALID, e.getMessage(), null, null));
         } catch (Exception e) {
+            // Previously surfaced a generic "APK_INVALID" message that hid the real cause.
+            // Log the stack trace server-side and send a sanitized message with the actual reason
+            // when available.
+            log.error("APK upload failed unexpectedly: project={}", projectId, e);
+            String detail = e.getMessage() == null || e.getMessage().isBlank()
+                    ? ApkErrorMessages.plain(ApkErrorCode.APK_INVALID)
+                    : e.getMessage();
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                    .body(uploadError(ApkErrorCode.APK_INVALID,
-                            ApkErrorMessages.plain(ApkErrorCode.APK_INVALID), null, null));
+                    .body(uploadError(ApkErrorCode.APK_INVALID, detail, null, null));
         }
     }
 
