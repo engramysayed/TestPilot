@@ -108,9 +108,14 @@ When the step has a `userOverride` candidate and the Cursor response names a dif
 
 ## 5. Cursor model selection on mobile
 
-The admin-level pin (`delivery.authoring.precision.cursor-model`) and the per-project override on **Project Settings → Cursor model** flow into `PrecisionJobConfig.cursorModel`, same as for web. The mobile Precision caller passes the configured model to Cursor's chat endpoint via `heal.mjs`; the `MobilePrecisionGate` only validates the response.
+The admin-level pin (`delivery.authoring.precision.cursor-model`) and the per-project override on **Project Settings → Cursor model** flow into `PrecisionJobConfig.cursorModel`. The **authoring review** path (`AuthoringReviewService`) uses that pin when it calls Cursor for an Android suite — the mobile prelude at `prompts/authoring/mobile-prelude.md` is added on top.
 
-Precedence end-to-end for a mobile job:
+**Honest state of Cursor during a mobile run**: `delivery.mobile.*` has **no** direct `CursorHealClient` or `CursorSidecarClient` caller today. `MobilePrecisionGate` is a pure validator that accepts a response the upstream caller supplies. So the per-project model pin reaches mobile for:
+
+- pre-run **authoring review** (works today — went in with this session's prompt pass).
+- **future** mobile Precision binding, when the mobile pipeline grows a real Cursor caller.
+
+Precedence (admin-pin chain) for the paths where Cursor IS used:
 
 ```
 KEEL_CURSOR_MODEL env / -Ddelivery.authoring.precision.cursor-model
@@ -120,16 +125,18 @@ KEEL_CURSOR_MODEL env / -Ddelivery.authoring.precision.cursor-model
   > Cursor Auto router
 ```
 
+The **Figma Validate** comparator does **not** use Cursor at all — it uses the vision model (`UI-TARS` / `Qwen`) via `LocalLlmClient`, wired by Admin → LLM & API keys (`delivery.vision.model`).
+
 ---
 
 ## 6. Not supported on mobile today
 
 Honest list of web features that are **not** yet ported to mobile. Landing these is a conscious scope decision, not a bug.
 
-- **Figma Validate per-step**: web stores `design-references/<tcId>/step-NNN.png` and compares in `DesignComparePhase`. Mobile evidence writes `step-NNN.png` but no comparator reads it against uploaded mockups.
-- **Pre-run authoring review**: `AuthoringReviewService` runs against any project (now with the mobile prelude), but mobile projects have no separate "Review cases before run" toggle on their Execute page.
-- **`FirstOf` locator fallback bag**: web emits a primary + verified fallbacks per locator; mobile picks one and relies on healing at run time.
-- **`locator-outcomes.jsonl` win-ratio**: web's self-updating locator memory with Laplace-smoothed win ratio is not written during a mobile run.
+- **Figma Validate per-step comparison on mobile runs**. Three things are in place: the portal already stores `design-references/<tcId>.png` and `design-references/<tcId>/step-NNN.png` for any project; `DesignCompareGate.compare(ref, actual, LocalLlmClient)` + `DesignCompareEvidence.writeStep(...)` are platform-agnostic; and the per-TC / per-step Figma UI (uploads + thumbnail + preview) works for mobile projects. **What's missing**: the mobile runner does not currently save step screenshots to a standard path. `MobileFailureEvidenceCollector` only writes on failure. Until the runner writes per-step PNGs (or persists `MobileStepEvidence.artifactRefs` as files the portal can read), there is no "actual" screenshot to compare against the Figma. **Follow-up PR scope** = runner capture + a tiny `MobileDesignComparePhase` that mirrors `DesignComparePhase.compareStep` against those paths.
+- **Mobile Precision Cursor caller**: see §5 — `MobilePrecisionGate` validates a response; no portal-side code currently *makes* the call. The model-pin plumbing is ready for the day it's added.
+- **Mobile suite scheduling**: `SuitePortalScheduleWorker` does not dispatch mobile runs today. A scheduled mobile suite would need a device-selection policy (per-schedule pinned device, or "any available tenant phone").
+- **Appium Inspector inside the portal**: no built-in inspector view. Use the standalone Appium Inspector pointing at `http://127.0.0.1:4723` during manual sessions. A portal view would need a long-lived inspector lease + REST proxy — scoped as its own feature.
 
 ---
 
