@@ -232,7 +232,14 @@ public final class ScreenAccumulator {
         Map<String, String> assertByIdentity() { return assertByIdentity; }
     }
 
-    public record LocatorModel(String fieldName, String byExpression) {}
+    public record LocatorModel(String fieldName, String byExpression, java.util.List<String> fallbacks) {
+        public LocatorModel(String fieldName, String byExpression) {
+            this(fieldName, byExpression, java.util.List.of());
+        }
+        public LocatorModel {
+            fallbacks = fallbacks == null ? java.util.List.of() : java.util.List.copyOf(fallbacks);
+        }
+    }
 
     public record ActionModel(
             String methodName, String utilMethod, String locatorField,
