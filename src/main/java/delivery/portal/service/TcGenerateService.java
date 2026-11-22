@@ -448,21 +448,45 @@ public class TcGenerateService {
 
     private String buildSystemPrompt(ProjectRecord project) throws IOException {
         // Prompt catalog (Admin → Prompts, versioned, overridable): prompts/generate/*.md
-        String base = loadPrompt("generate/stories-to-json")
+        if (project != null && "ANDROID".equalsIgnoreCase(project.getPlatform())) {
+            return buildMobileSystemPrompt();
+        }
+        return loadPrompt("generate/stories-to-json")
                 + "\n\n---\n\n"
                 + loadPrompt("generate/capability-manifest")
                 + "\n\n---\n\n"
                 + loadPrompt("generate/testing-techniques");
-        if (project != null && "ANDROID".equalsIgnoreCase(project.getPlatform())) {
-            // Appended last so its overrides win over the web-centric base.
-            try {
-                return base + "\n\n---\n\n" + loadPrompt("generate/mobile-prelude");
-            } catch (RuntimeException missing) {
-                // If the prelude is missing in a stripped deploy, fall back to the base prompt.
-                return base;
-            }
+    }
+
+    /**
+     * Android system prompt: base web prompt rewritten by the mobile prelude + mobile-specific
+     * capability manifest and testing techniques. Any missing mobile file falls back to the web
+     * sibling so a stripped deploy still boots.
+     */
+    private String buildMobileSystemPrompt() throws IOException {
+        String base = loadPrompt("generate/stories-to-json");
+        String capability = loadPromptOrFallback(
+                "generate/capability-manifest-mobile", "generate/capability-manifest");
+        String techniques = loadPromptOrFallback(
+                "generate/testing-techniques-mobile", "generate/testing-techniques");
+        StringBuilder sb = new StringBuilder(base)
+                .append("\n\n---\n\n").append(capability)
+                .append("\n\n---\n\n").append(techniques);
+        try {
+            sb.append("\n\n---\n\n").append(loadPrompt("generate/mobile-prelude"));
+        } catch (RuntimeException ignored) {
+            // Prelude is defensive — if someone stripped it, the dedicated mobile capability +
+            // techniques prompts above already reshape the output for Android.
         }
-        return base;
+        return sb.toString();
+    }
+
+    private String loadPromptOrFallback(String primary, String fallback) throws IOException {
+        try {
+            return loadPrompt(primary);
+        } catch (RuntimeException notFound) {
+            return loadPrompt(fallback);
+        }
     }
 
     static ParsedLlmOutput parseLlmOutput(String raw) {
