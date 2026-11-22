@@ -2,6 +2,19 @@
 
 # Keel changelog
 
+## 2026-11-22 — Mobile roadmap phases 1-9 (minus 7)
+
+Executed the phased plan agreed on with the user. Each phase is a single commit; 7 (Cursor caller on mobile Precision binds) is paused pending a design decision on the runner↔portal round-trip for the sidecar.
+
+- **Phase 1 — Discoverability**: `/execute` shows a banner on web projects when the server has mobile enabled, pointing at the Android create flow. `/projects` post-create redirects Android straight to `settings#mobile-devices-panel`; `project-detail.js` scrolls the (initially hidden) panel into view after reveal.
+- **Phase 2 — Pre-run guard**: `mobile-run.js` runs `preflightPhone()` before `POST /mobile/runs` with inline alerts for no phones registered / none picked / picked phone not AVAILABLE. `MobileRunOrchestrator.start` throws `IllegalStateException` for busy devices (→ HTTP 409 with a user-friendly message).
+- **Phase 3 — APK revision dropdown**: new `GET /api/projects/{id}/mobile/apps/revisions`; **App package** `<select>` on the mobile run row; `MobileRunOrchestrator.start(..., appRevisionId)` resolves the chosen revision instead of always using `findActiveAppRevision`.
+- **Phase 4 — Runner step-screenshot capture**: `MobileCaseRunner` gains a `StepCapture` callback; `MobileRunnerAgent` uploads each PNG via a new `POST /api/v1/runners/mobile/runs/{runId}/cases/{tcId}/steps/{stepIndex}/image`; orchestrator writes to `<storeRoot>/mobile-runs/<runId>/evidence/<tcId>/step-NNN.png`. Toggle: `KEEL_RUNNER_CAPTURE_STEP_PNG`.
+- **Phase 5 — `MobileDesignComparePhase`**: fires on run finish (COMPLETED / FAILED). Mirrors the web `DesignComparePhase` for whole-TC + per-step compare; same `DesignCompareGate` + `DesignCompareEvidence` used end-to-end.
+- **Phase 6 — Mobile suite scheduling (pinned device)**: `SuiteDiskStore.putMobileSchedule(..., mobileDeviceId, mobileAppRevisionId)` + `SuiteService.putMobileSchedule`. `SuiteScheduleDispatchService.dispatchDue` branches on project platform; Android path calls `MobileRunOrchestrator.start` with the pinned device + revision; records `DEVICE_REQUIRED` / `DEVICE_OFFLINE` / `DISPATCH_ERROR` on the schedule for the UI to surface. UI form is Phase 6b.
+- **Phase 8 — Dedicated mobile prompt stack**: new `generate/capability-manifest-mobile.md` + `generate/testing-techniques-mobile.md`; `TcGenerateService.buildSystemPrompt(project)` builds `stories-to-json + mobile-capability + mobile-techniques + mobile-prelude` for Android projects. Falls back to web prompts if a mobile file is missing.
+- **Phase 9 — APK upload error surfacing**: generic `catch (Exception)` in `MobileAppDeviceController.uploadApk` now logs the stack trace and sends the real cause instead of a canned "APK_INVALID". Rejections also log at WARN with the code + message so repeat submissions are grep-able.
+
 ## 2026-11-21 — Mobile parity: platform-aware prompts + MOBILE_FRAMEWORK_RULES
 
 - **Mobile-aware generate**: `TcGenerateService.buildSystemPrompt(project)` appends `prompts/generate/mobile-prelude.md` when the project's platform is `ANDROID`. The prelude rewrites the web phrasing (URLs → "Launch the app", "Click" → "Tap", "page" → "screen"), adds mobile-specific coverage hints (permissions, keyboard dismissal, system back), and bans browser-only concepts (tabs, hover, viewport, CSS).
