@@ -102,6 +102,27 @@ public class SuiteService {
                 timezone, credentialProfile);
     }
 
+    /**
+     * Android-aware schedule: pins a device + optional APK revision alongside the base fields.
+     * {@code null} on either mobile field leaves the stored value untouched; a blank string clears
+     * it (so the owner can unpin from the UI).
+     */
+    public Map<String, Object> putMobileSchedule(
+            String projectId,
+            String suiteId,
+            boolean enabled,
+            String kind,
+            String cron,
+            Integer intervalMinutes,
+            String timezone,
+            String credentialProfile,
+            String mobileDeviceId,
+            String mobileAppRevisionId
+    ) throws IOException {
+        return disk.putMobileSchedule(projectRoot(projectId), suiteId, enabled, kind, cron, intervalMinutes,
+                timezone, credentialProfile, mobileDeviceId, mobileAppRevisionId);
+    }
+
     /** Final state of a suite run (schedule last result, monitor status). */
     public Map<String, Object> recordRunOutcome(String projectId, String suiteId, String jobId, String jobStatus,
                                                 int passed, int failed, boolean monitorRun) throws IOException {
