@@ -11,6 +11,7 @@ import delivery.mobile.persistence.MobileDeviceEntity;
 import delivery.mobile.persistence.MobileDeviceRepository;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.service.GeneratedWorkbookService;
+import delivery.portal.service.PortalStore;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -65,6 +66,7 @@ public class MobileRunOrchestrator {
     private final DeviceSerialResolver serials;
     private final GeneratedWorkbookService workbooks;
     private final MobilePortalStore mobileStore;
+    private final PortalStore portalStore;
     private final Path runsRoot;
 
     private final Map<String, MobileRun> runs = new ConcurrentHashMap<>();
@@ -86,6 +88,7 @@ public class MobileRunOrchestrator {
                                  DeviceSerialResolver serials,
                                  GeneratedWorkbookService workbooks,
                                  MobilePortalStore mobileStore,
+                                 PortalStore portalStore,
                                  DeliveryPortalProperties portalProps) {
         this.props = props;
         this.leases = leases;
@@ -94,6 +97,7 @@ public class MobileRunOrchestrator {
         this.serials = serials;
         this.workbooks = workbooks;
         this.mobileStore = mobileStore;
+        this.portalStore = portalStore;
         this.runsRoot = Path.of(portalProps.getStoreRoot()).resolve("mobile-runs");
         long every = Math.max(1, props.getLeaseHeartbeatSeconds());
         ticker.scheduleAtFixedRate(this::tick, every, every, TimeUnit.SECONDS);
@@ -371,7 +375,41 @@ public class MobileRunOrchestrator {
                 }
             }
         }
+        if (status == MobileRun.Status.COMPLETED || status == MobileRun.Status.FAILED) {
+            tryRunDesignCompare(run);
+        }
         persist(run);
+    }
+
+    private void tryRunDesignCompare(MobileRun run) {
+        try {
+            if (portalStore == null) return;
+            Path projectRoot = portalStore.projectDiskRoot(run.projectId);
+            if (projectRoot == null) return;
+            Path evidenceRoot = evidenceDir(run.runId);
+            List<String> tcIds = new ArrayList<>();
+            for (MobileRun.CaseInput c : run.cases) {
+                if (c.tcId() != null && !c.tcId().isBlank()) tcIds.add(c.tcId());
+            }
+            if (tcIds.isEmpty()) return;
+            // Vision client may be unavailable in dry-run / unconfigured envs; the comparator
+            // still writes UNCERTAIN evidence per TC so the UI shows the attempt.
+            delivery.authoring.LocalLlmClient client = createVisionClient();
+            new MobileDesignComparePhase(projectRoot, evidenceRoot, client).run(tcIds);
+        } catch (Exception e) {
+            log.warn("Mobile design compare {} failed: {}", run.runId, e.getMessage());
+        }
+    }
+
+    private delivery.authoring.LocalLlmClient createVisionClient() {
+        try {
+            String base = System.getProperty("delivery.llm-base-url");
+            if (base == null || base.isBlank()) base = "http://127.0.0.1:11434";
+            String model = delivery.vision.VisionGroundingConfig.assertModel();
+            return new delivery.authoring.LocalLlmClient(base, model);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void persist(MobileRun run) {
