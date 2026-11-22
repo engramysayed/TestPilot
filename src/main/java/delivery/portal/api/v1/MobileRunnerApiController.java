@@ -51,6 +51,29 @@ public class MobileRunnerApiController {
         }
     }
 
+    @PostMapping(value = "/runs/{runId}/cases/{tcId}/steps/{stepIndex}/image",
+            consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> stepImage(
+            @PathVariable String runId,
+            @PathVariable String tcId,
+            @PathVariable int stepIndex,
+            @RequestBody byte[] body) {
+        PrivateRunnerFilter.RunnerToken token = token();
+        if (token == null) return unauthorized();
+        if (body == null || body.length == 0) {
+            return ResponseEntity.badRequest().body(new ApiError("BAD_REQUEST", "Empty image body").asMap());
+        }
+        try {
+            runs.writeStepImage(runId, token.enrollment().tenant().value(), tcId, stepIndex, body);
+            return ResponseEntity.ok(new JSONObject().put("ok", true).toString());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ApiError("ERROR", e.getMessage()).asMap());
+        }
+    }
+
     @PostMapping(value = "/runs/{runId}/result", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> result(@PathVariable String runId, @RequestBody String body) {
         PrivateRunnerFilter.RunnerToken token = token();

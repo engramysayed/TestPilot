@@ -214,6 +214,38 @@ public class MobileRunOrchestrator {
                 });
     }
 
+    private static final java.util.regex.Pattern TC_ID_PATTERN =
+            java.util.regex.Pattern.compile("^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$");
+    private static final int MAX_STEP_INDEX = 999;
+
+    /**
+     * Runner uploads a step screenshot. Writes to
+     * {@code <storeRoot>/mobile-runs/<runId>/evidence/<tcId>/step-NNN.png}. Tenant and tcId are
+     * validated so a runner can't escape its own run dir.
+     */
+    public void writeStepImage(String runId, String tenantId, String tcId, int stepIndex, byte[] pngBytes)
+            throws java.io.IOException {
+        MobileRun run = requireRunnerRun(runId, tenantId);
+        if (tcId == null || !TC_ID_PATTERN.matcher(tcId.trim()).matches()) {
+            throw new IllegalArgumentException("Invalid tcId");
+        }
+        if (stepIndex < 1 || stepIndex > MAX_STEP_INDEX) {
+            throw new IllegalArgumentException("stepIndex out of range 1.." + MAX_STEP_INDEX);
+        }
+        if (pngBytes == null || pngBytes.length == 0) {
+            throw new IllegalArgumentException("Empty image bytes");
+        }
+        Path dir = runsRoot.resolve(run.runId).resolve("evidence").resolve(tcId.trim());
+        Files.createDirectories(dir);
+        Path out = dir.resolve(String.format(java.util.Locale.ROOT, "step-%03d.png", stepIndex));
+        Files.write(out, pngBytes);
+    }
+
+    /** Evidence root for this run (orchestrator-owned; comparator reads from here). */
+    public Path evidenceDir(String runId) {
+        return runsRoot.resolve(runId).resolve("evidence");
+    }
+
     /** @return {@code cancel=true} when the runner must stop. */
     public JSONObject runnerHeartbeat(String runId, String tenantId, String progress) {
         MobileRun run = requireRunnerRun(runId, tenantId);

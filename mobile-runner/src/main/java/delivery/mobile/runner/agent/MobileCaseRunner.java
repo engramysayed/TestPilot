@@ -42,18 +42,34 @@ public final class MobileCaseRunner {
     public record CaseInput(String tcId, List<String> steps, List<String> expected, List<String> testData) {
     }
 
+    /**
+     * Optional per-step screenshot sink. Invoked after each step's execution (whether it passed or
+     * failed). stepIndex is 1-based so it matches the naming the portal expects (step-NNN.png).
+     * Exceptions are swallowed by the runner so a flaky capture never breaks the run.
+     */
+    @FunctionalInterface
+    public interface StepCapture {
+        void accept(String tcId, int stepIndex, byte[] pngBytes);
+    }
+
     private final MobileDriverPort driver;
     private final MobileActionExecutor actions;
     private final MobileLocatorBinder binder = new MobileLocatorBinder();
     private final MobileAssertionEngine asserts = new MobileAssertionEngine();
     private final String appPackage;
     private final String appActivity;
+    private final StepCapture stepCapture;
 
     public MobileCaseRunner(MobileDriverPort driver, String appPackage, String appActivity) {
+        this(driver, appPackage, appActivity, null);
+    }
+
+    public MobileCaseRunner(MobileDriverPort driver, String appPackage, String appActivity, StepCapture stepCapture) {
         this.driver = driver;
         this.actions = new MobileActionExecutor(driver, new MobileSettleService());
         this.appPackage = appPackage == null ? "" : appPackage;
         this.appActivity = appActivity == null ? "" : appActivity;
+        this.stepCapture = stepCapture;
     }
 
     public Outcome run(CaseInput c) {
@@ -68,6 +84,7 @@ public final class MobileCaseRunner {
                 }
                 String err = execute(step);
                 log.add((err == null ? "ok: " : "FAIL: ") + step.raw() + (err == null ? "" : " — " + err));
+                tryCaptureStep(c.tcId(), i + 1);
                 if (err != null) {
                     return new Outcome(c.tcId(), CaseOutcome.FAILED, code(err), i + 1, err, log);
                 }
@@ -96,6 +113,18 @@ public final class MobileCaseRunner {
     }
 
     /** @return null on success, else a reason. */
+    private void tryCaptureStep(String tcId, int stepIndex) {
+        if (stepCapture == null) return;
+        try {
+            byte[] png = driver.screenshot();
+            if (png != null && png.length > 0) {
+                stepCapture.accept(tcId, stepIndex, png);
+            }
+        } catch (Throwable ignored) {
+            // Capture is best-effort; never break a run on a screenshot miss.
+        }
+    }
+
     String execute(MobileStep step) {
         switch (step.kind()) {
             case BACK:
