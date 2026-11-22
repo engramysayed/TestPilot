@@ -10,6 +10,7 @@ import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.PortalStore;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -97,10 +98,14 @@ public class MobileRunController {
     }
 
     @GetMapping("/apps/revisions")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> listRevisions(@PathVariable String projectId) {
         ResponseEntity<?> gate = gate(projectId, false);
         if (gate != null) return gate;
         ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
+        // readOnly=true wraps both calls in one snapshot so the list and the "active" pointer can't
+        // disagree when an APK upload commits between them (the client would otherwise see an
+        // activeRevisionId that isn't in its rows).
         List<MobileAppRevisionRecord> all = mobileStore.listAppRevisions(project.getTenantId(), projectId);
         String activeId = mobileStore.findActiveAppRevision(project.getTenantId(), projectId)
                 .map(MobileAppRevisionRecord::getAppRevisionId)
