@@ -3762,6 +3762,64 @@ body:not(.app-body) .shell {
     width: 48px;
     text-align: center;
 }
+.locator-tier-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 0.4rem;
+    background: var(--panel-bg, #fff);
+    border: 1px solid var(--border, #d8dee4);
+    border-radius: 0.6rem;
+    overflow: hidden;
+}
+.locator-tier-table thead th {
+    background: rgba(8, 127, 120, 0.06);
+    text-align: left;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted, #57606a);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border, #d8dee4);
+}
+.locator-tier-table tbody td {
+    padding: 0.6rem 0.75rem;
+    vertical-align: top;
+    border-top: 1px solid var(--border, #d8dee4);
+    font-size: 0.86rem;
+}
+.locator-tier-table tbody tr:first-child td {
+    border-top: none;
+}
+.locator-tier-table tbody tr:nth-child(odd) td {
+    background: rgba(8, 127, 120, 0.02);
+}
+.locator-tier-rank {
+    display: inline-flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(8, 127, 120, 0.12);
+    color: var(--accent, #087f78);
+    font-weight: 700;
+    font-size: 0.86rem;
+}
+.locator-tier-table td code {
+    font-size: 0.82rem;
+    background: rgba(8, 127, 120, 0.08);
+    color: var(--accent, #087f78);
+    padding: 0.08rem 0.4rem;
+    border-radius: 0.35rem;
+}
+.locator-tier-table td.mono {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    color: var(--muted, #57606a);
+    word-break: break-word;
+}
 .figma-validate-thumb {
     width: 32px;
     height: 32px;

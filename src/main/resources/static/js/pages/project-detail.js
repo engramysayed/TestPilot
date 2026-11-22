@@ -65,6 +65,20 @@
         if (hooks) hooks.value = p.preferredHooks || '';
         const lmode = document.getElementById('settings-locator-mode');
         if (lmode) lmode.value = p.locatorMode || 'stable-first';
+        // Android projects use a fixed tier list — hide the web dropdown, show the table.
+        const platform = (p.platform || 'WEB').toUpperCase();
+        const lmodeWrap = document.getElementById('settings-locator-mode-wrap');
+        const lmodeNote = document.getElementById('settings-locator-mode-note');
+        const mobileTiers = document.getElementById('settings-mobile-locator-tiers');
+        if (platform === 'ANDROID') {
+            if (lmodeWrap) lmodeWrap.hidden = true;
+            if (lmodeNote) lmodeNote.hidden = true;
+            if (mobileTiers) mobileTiers.hidden = false;
+        } else {
+            if (lmodeWrap) lmodeWrap.hidden = false;
+            if (lmodeNote) lmodeNote.hidden = false;
+            if (mobileTiers) mobileTiers.hidden = true;
+        }
         const enginePanel = document.getElementById('settings-authoring-engine');
         const precisionEnabled = enginePanel && enginePanel.dataset.precisionEnabled === 'true';
         const engineValue = (p.authoringEngine || 'keel').toLowerCase();

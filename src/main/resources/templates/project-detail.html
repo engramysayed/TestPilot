@@ -101,13 +101,64 @@
                            placeholder="data-axis-test-id"/>
                 </label>
                 <p class="muted">Comma-separated attribute names. Always ranked first. Shared with every project on this host.</p>
-                <label>Locator ranking
+                <label id="settings-locator-mode-wrap">Locator ranking
                     <select name="locatorMode" id="settings-locator-mode">
                         <option value="stable-first">Stable first — test id, then unique id / name, then role + label (recommended, survives Arabic/English switch)</option>
                         <option value="user-facing-first">User-facing first — role + label, then test id (reads like the page; breaks if copy is translated)</option>
                     </select>
                 </label>
-                <p class="muted">Applies to step binding, browser proof and the generated framework. Preferred hooks above always win.</p>
+                <p class="muted" id="settings-locator-mode-note">Applies to step binding, browser proof and the generated framework on <strong>web</strong> projects. Preferred hooks above always win.</p>
+                <section id="settings-mobile-locator-tiers" hidden>
+                    <h3 style="margin-top:0.25rem;margin-bottom:0.5rem">Locator ranking (Android)</h3>
+                    <p class="muted" style="margin-top:0">Android projects use a <strong>fixed tier list</strong>. Picking a mode is not available here — this table is the authoritative order the binder walks.</p>
+                    <table class="locator-tier-table">
+                        <thead>
+                            <tr><th>Rank</th><th>Tier</th><th>Example</th><th>Why it's ranked here</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="locator-tier-rank">0</span></td>
+                                <td><code>USER_OVERRIDE</code></td>
+                                <td class="mono">anything you pinned on <em>Add a locator manually</em></td>
+                                <td>Explicit human intent wins over everything else.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="locator-tier-rank">1</span></td>
+                                <td><code>RESOURCE_ID</code></td>
+                                <td class="mono">AppiumBy.id("com.app:id/signin")</td>
+                                <td>Survives copy changes and translations. Preferred first.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="locator-tier-rank">2</span></td>
+                                <td><code>ACCESSIBILITY</code></td>
+                                <td class="mono">AppiumBy.accessibilityId("login_submit")</td>
+                                <td>Compiler-friendly, screen-reader-stable. Common for custom views.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="locator-tier-rank">3</span></td>
+                                <td><code>LABEL_SIBLING</code></td>
+                                <td class="mono">xpath walking a labelled sibling node</td>
+                                <td>For un-ided controls that have a labelled neighbour.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="locator-tier-rank">4</span></td>
+                                <td><code>TEXT_CLASS</code></td>
+                                <td class="mono">androidUIAutomator new UiSelector().text(…)</td>
+                                <td>Visible text + class. Brittle across translations — avoided when a higher tier matches.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="locator-tier-rank">5</span></td>
+                                <td><code>XPATH</code></td>
+                                <td class="mono">relative xpath only</td>
+                                <td>Last resort. Absolute xpath is banned.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="muted" style="margin-top:0.75rem">
+                        <strong>CSS is never valid in NATIVE_APP context</strong> and will fail at bind time. See
+                        <a href="https://github.com/engramysayed/TestPilot/blob/main/docs/MOBILE_FRAMEWORK_RULES.md">MOBILE_FRAMEWORK_RULES</a> for the full discipline.
+                    </p>
+                </section>
                 <fieldset class="authoring-engine" id="settings-authoring-engine"
                           th:attr="data-precision-enabled=${precisionAuthoringEnabled},data-default-max-calls=${defaultPrecisionMaxCalls}">
                     <legend>Authoring engine</legend>
