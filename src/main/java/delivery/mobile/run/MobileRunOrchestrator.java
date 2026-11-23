@@ -19,6 +19,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PreDestroy;
@@ -71,6 +72,9 @@ public class MobileRunOrchestrator {
     private final MobilePortalStore mobileStore;
     private final PortalStore portalStore;
     private final AdbDeviceDiscovery adb;
+    /** {@link ObjectProvider} breaks the orchestrator ↔ precision-service circular dep without
+     *  needing a CGLIB proxy. Resolved on each {@link #finish} call, cached by Spring after that. */
+    private final ObjectProvider<MobilePrecisionBindService> precisionProvider;
     private final Path runsRoot;
 
     private final Map<String, MobileRun> runs = new ConcurrentHashMap<>();
@@ -94,7 +98,8 @@ public class MobileRunOrchestrator {
                                  MobilePortalStore mobileStore,
                                  PortalStore portalStore,
                                  AdbDeviceDiscovery adb,
-                                 DeliveryPortalProperties portalProps) {
+                                 DeliveryPortalProperties portalProps,
+                                 ObjectProvider<MobilePrecisionBindService> precisionProvider) {
         this.props = props;
         this.leases = leases;
         this.appium = appium;
@@ -104,6 +109,7 @@ public class MobileRunOrchestrator {
         this.mobileStore = mobileStore;
         this.portalStore = portalStore;
         this.adb = adb;
+        this.precisionProvider = precisionProvider;
         this.runsRoot = Path.of(portalProps.getStoreRoot()).resolve("mobile-runs");
         long every = Math.max(1, props.getLeaseHeartbeatSeconds());
         ticker.scheduleAtFixedRate(this::tick, every, every, TimeUnit.SECONDS);
@@ -410,6 +416,12 @@ public class MobileRunOrchestrator {
         }
         if (status == MobileRun.Status.COMPLETED || status == MobileRun.Status.FAILED) {
             tryRunDesignCompare(run);
+        }
+        try {
+            MobilePrecisionBindService precision = precisionProvider.getIfAvailable();
+            if (precision != null) precision.clearRun(run.runId);
+        } catch (RuntimeException e) {
+            log.warn("Mobile run {} precision.clearRun: {}", run.runId, e.getMessage());
         }
         persist(run);
     }

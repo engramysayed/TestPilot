@@ -10,6 +10,7 @@ import delivery.mobile.runner.precision.PrecisionOutcome;
 import delivery.portal.service.PortalStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -49,6 +50,7 @@ public class MobilePrecisionBindService {
      */
     private final Map<String, PrecisionCallBudget> budgets = new ConcurrentHashMap<>();
 
+    @Autowired
     public MobilePrecisionBindService(MobileRunOrchestrator runs, PortalStore portalStore,
                                       MobilePrecisionPickLog pickLog) {
         this(runs::get, portalStore::precisionConfigForProject, CursorHealClient::new, pickLog);

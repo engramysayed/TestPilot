@@ -347,6 +347,10 @@
                 <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9l3 3v13H6z"/><path d="M14 4v4h4"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
                 <span th:text="#{nav.prompts}">Prompts</span>
             </a>
+            <a href="/admin/mobile-precision" th:if="${headAdmin}" th:classappend="${navActive == 'mobile-precision'} ? 'active'">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="2"/><line x1="10" y1="18" x2="14" y2="18"/><circle cx="12" cy="10" r="2"/></svg>
+                <span>Mobile Precision</span>
+            </a>
         </th:block>
     </nav>
 

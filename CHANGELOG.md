@@ -2,6 +2,14 @@
 
 # Keel changelog
 
+## 2026-11-23 — Mobile phase 7c follow-up: sidebar + clearRun + Spring wiring
+
+Closes the three "not checked" items the 7c commit left:
+
+- **Sidebar entry.** `fragments.html` now links `/admin/mobile-precision` under the Admin section, gated on `headAdmin` like the other admin links.
+- **`precision.clearRun(runId)` on run finish.** `MobileRunOrchestrator.finish(...)` now releases the per-run budget. To break the orchestrator ↔ precision-service circular dependency, the orchestrator holds an `ObjectProvider<MobilePrecisionBindService>` and resolves the bean on each finish. First attempt used `@Lazy`, which tried to CGLIB-subclass `MobilePrecisionBindService` and failed with `No default constructor found` — surfacing a regression in 7c that broke every Spring Boot test loading the portal context (58 of the 160 TestSuite rows). `ObjectProvider` sidesteps the proxy entirely.
+- **`@Autowired` hint** on `MobilePrecisionBindService(MobileRunOrchestrator, PortalStore, MobilePrecisionPickLog)` so Spring picks it over the package-private test constructor without guessing. The 58 failures in the earlier run were masked by Spring's "context failure threshold" — once the first context load failed, every subsequent test in the JVM also failed with "threshold exceeded". After this fix, the full `-Dtest='*Mobile*,*Precision*'` filter runs 93 tests green.
+
 ## 2026-11-23 — Mobile phase 7c: hardening, module split, dashboard
 
 Finishes the mobile Precision roadmap by picking up every follow-up phases 7a + 7b left on the table — plus two defects that were silently hobbling the build.
