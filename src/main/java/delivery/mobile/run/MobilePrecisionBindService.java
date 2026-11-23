@@ -1,5 +1,6 @@
 package delivery.mobile.run;
 
+import delivery.authoring.PrecisionCallBudget;
 import delivery.authoring.PrecisionJobConfig;
 import delivery.heal.CursorHealClient;
 import delivery.mobile.runner.precision.MobilePrecisionGate;
@@ -13,6 +14,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Phase 7a: portal-side caller for mobile Precision binds. The mobile runner POSTs a bind
@@ -22,31 +25,50 @@ import java.util.List;
  *
  * <p>Design is in {@code docs/MOBILE_FRAMEWORK_RULES.md} §5. The sidecar invocation stays on
  * portal so runners don't need Node / sidecar jars / Cursor API keys.
+ *
+ * <p>Call-budget: each run gets a {@link PrecisionCallBudget} sized from
+ * {@link PrecisionJobConfig#maxCallsPerJob} (default 50). The runner's locator ladder is
+ * narrow, so 50 is comfortably above the normal per-run ambiguity count; a run that blows
+ * the cap falls back to {@code BUDGET_EXHAUSTED} instead of running up a Cursor bill.
  */
 @Service
 public class MobilePrecisionBindService {
 
     private static final Logger log = LoggerFactory.getLogger(MobilePrecisionBindService.class);
 
+    /** Protect the sidecar from pathological shortlists — the picker is less accurate on huge tables. */
+    static final int MAX_CANDIDATES = 25;
+
     private final RunResolver resolver;
     private final JobConfigResolver configResolver;
     private final CursorHealClientFactory cursorFactory;
+    private final MobilePrecisionPickLog pickLog;
 
-    public MobilePrecisionBindService(MobileRunOrchestrator runs, PortalStore portalStore) {
-        this(runs::get, portalStore::precisionConfigForProject, CursorHealClient::new);
+    /** Per-run call budgets. Entries age out when {@link #clearRun(String)} is called; the map
+     * is capped (see {@link #budgetFor}) to keep orphaned entries bounded.
+     */
+    private final Map<String, PrecisionCallBudget> budgets = new ConcurrentHashMap<>();
+
+    public MobilePrecisionBindService(MobileRunOrchestrator runs, PortalStore portalStore,
+                                      MobilePrecisionPickLog pickLog) {
+        this(runs::get, portalStore::precisionConfigForProject, CursorHealClient::new, pickLog);
     }
 
-    /** Package-visible for tests: swap the run lookup, the job config, and the sidecar call. */
+    /** Package-visible for tests: swap the run lookup, the job config, the sidecar call, and the log. */
     MobilePrecisionBindService(RunResolver resolver, JobConfigResolver configResolver,
-                               CursorHealClientFactory cursorFactory) {
+                               CursorHealClientFactory cursorFactory,
+                               MobilePrecisionPickLog pickLog) {
         this.resolver = resolver;
         this.configResolver = configResolver;
         this.cursorFactory = cursorFactory;
+        this.pickLog = pickLog == null ? MobilePrecisionPickLog.inert() : pickLog;
     }
 
     /**
      * Resolve + call + validate. {@code tenantId} comes from the runner's bearer token; a run
      * that lives in another tenant → NOT_FOUND. Blank candidate list → IllegalArgumentException.
+     * Candidate shortlists over {@link #MAX_CANDIDATES} are truncated — the first N candidates
+     * win, the rest are dropped, since the picker is less accurate on huge tables.
      */
     public PrecisionOutcome bind(String runId, String tenantId, BindRequest req) {
         if (req == null) {
@@ -63,14 +85,26 @@ public class MobilePrecisionBindService {
                 .orElseThrow(() -> new IllegalArgumentException("run not found: " + runId));
 
         PrecisionJobConfig cfg = configResolver.find(run.projectId);
+
+        List<Candidate> candidates = req.candidates();
+        if (candidates.size() > MAX_CANDIDATES) {
+            candidates = candidates.subList(0, MAX_CANDIDATES);
+        }
+
+        PrecisionCallBudget budget = budgetFor(runId, cfg);
+        boolean budgetExhausted = false;
+        if (cfg.enabled() && !budget.tryConsume()) {
+            budgetExhausted = true;
+        }
+
         CursorHealClient cursor = cursorFactory.create(cfg.cursorModel());
-        boolean providerAvailable = cursor.isRuntimeReady();
+        boolean providerAvailable = !budgetExhausted && cursor.isRuntimeReady();
 
         String chosenId = "";
         String responseText = "";
         if (providerAvailable) {
             try {
-                String table = formatCandidatesTable(req.candidates());
+                String table = formatCandidatesTable(candidates);
                 String excerpt = req.snapshotExcerpt() == null ? "" : req.snapshotExcerpt();
                 chosenId = cursor.pickCandidateId(
                         req.intent(), "AMBIGUOUS",
@@ -84,8 +118,8 @@ public class MobilePrecisionBindService {
             }
         }
 
-        List<PrecisionCandidate> gateCandidates = new ArrayList<>(req.candidates().size());
-        for (Candidate c : req.candidates()) {
+        List<PrecisionCandidate> gateCandidates = new ArrayList<>(candidates.size());
+        for (Candidate c : candidates) {
             gateCandidates.add(new PrecisionCandidate(c.id(), c.contextKind(), c.userOverride()));
         }
         PrecisionInput input = new PrecisionInput(
@@ -98,11 +132,41 @@ public class MobilePrecisionBindService {
                 "cursor",
                 responseText,
                 false);
-        return MobilePrecisionGate.rank(input);
+        PrecisionOutcome outcome = MobilePrecisionGate.rank(input);
+        if (budgetExhausted) {
+            // Budget-exhausted overrides the gate's generic UNAVAILABLE/DISABLED fallback so the
+            // dashboard can distinguish "we hit our cap" from "sidecar is dead".
+            outcome = new PrecisionOutcome(outcome.code(), outcome.chosenId(),
+                    outcome.usedProvider().isBlank() ? "keel" : outcome.usedProvider(),
+                    "BUDGET_EXHAUSTED",
+                    outcome.countsAsCursor());
+        }
+        pickLog.record(runId, run.projectId, run.tenantId, req.intent(), candidates.size(), outcome);
+        return outcome;
+    }
+
+    /** Release the budget entry for a run that has ended. Called from {@link MobileRunOrchestrator}. */
+    public void clearRun(String runId) {
+        if (runId != null) budgets.remove(runId);
+    }
+
+    private PrecisionCallBudget budgetFor(String runId, PrecisionJobConfig cfg) {
+        PrecisionCallBudget existing = budgets.get(runId);
+        if (existing != null) return existing;
+        // Hard cap on the map so orphaned runs can't leak indefinitely if clearRun never fires.
+        if (budgets.size() > 1024) {
+            budgets.clear();
+        }
+        return budgets.computeIfAbsent(runId,
+                k -> PrecisionCallBudget.fromProperties(cfg.enabled(), cfg.maxCallsPerJob()));
     }
 
     private static String formatCandidatesTable(List<Candidate> candidates) {
-        StringBuilder sb = new StringBuilder(64 + candidates.size() * 64);
+        StringBuilder sb = new StringBuilder(128 + candidates.size() * 64);
+        // Mobile preamble so the sidecar's generic "pick" prompt lands with the right context:
+        // the candidates are native Android UI nodes, not DOM elements.
+        sb.append("# Mobile Android native candidates — pick the native UI node the user's intent refers to.\n");
+        sb.append("# Rows come from a UiAutomator snapshot; id = node index on the snapshot.\n\n");
         sb.append("id\tlabel\tcontext\tuserOverride\n");
         for (Candidate c : candidates) {
             sb.append(c.id()).append('\t')

@@ -94,13 +94,14 @@ public class PrecisionBindService {
             }
         }
         if (ranked == null) return new PrecisionBindOutcome.FallbackKeel("PROVIDER_ERROR");
-        if (ranked.isAcceptableAt(minConfidence)
-                && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(ranked.candidateId()))) {
+        final GroundRankResult picked = ranked;
+        if (picked.isAcceptableAt(minConfidence)
+                && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(picked.candidateId()))) {
             List<ProvenStep> steps = authoring.stepsPreferringCandidate(
-                    tcId, intent, candidates, ranked.candidateId(), false);
+                    tcId, intent, candidates, picked.candidateId(), false);
             if (validSteps(steps)) {
-                LogsManager.info("PRECISION_GROUNDRANK: " + tcId + " candidateId=" + ranked.candidateId()
-                        + " confidence=" + ranked.confidence());
+                LogsManager.info("PRECISION_GROUNDRANK: " + tcId + " candidateId=" + picked.candidateId()
+                        + " confidence=" + picked.confidence());
                 return new PrecisionBindOutcome.Bound(steps, "groundRank");
             }
         }

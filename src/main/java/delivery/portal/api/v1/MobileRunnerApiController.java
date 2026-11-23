@@ -118,8 +118,14 @@ public class MobileRunnerApiController {
                     .put("countsAsCursor", out.countsAsCursor())
                     .toString());
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
+            // "run not found: ..." is the only missing-resource IAE this service throws;
+            // every other IAE is input validation (empty candidates, blank stepContext, …).
+            String msg = e.getMessage() == null ? "" : e.getMessage();
+            if (msg.startsWith("run not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiError("NOT_FOUND", msg).asMap());
+            }
+            return ResponseEntity.badRequest().body(new ApiError("BAD_REQUEST", msg).asMap());
         } catch (Exception e) {
             return ResponseEntity.status(500).body(new ApiError("ERROR", e.getMessage()).asMap());
         }

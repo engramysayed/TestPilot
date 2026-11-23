@@ -135,7 +135,19 @@ anything else (code != "", provider fallback, HTTP error, foreign id) → Option
 and the runner's existing "element not found" path takes over.
 ```
 
-The sidecar invocation stays on portal so runners don't need Node / sidecar jars / Cursor API keys — the round-trip over the bearer-authenticated runner wire is the cost. The runner is best-effort: any error (transport, non-200, invalid id, provider fallback, parse failure) keeps the pre-Precision not-found behavior.
+The sidecar invocation stays on portal so runners don't need Node / sidecar jars / Cursor API keys — the round-trip over the bearer-authenticated runner wire is the cost. The runner is best-effort: any error (transport, non-200, invalid id, provider fallback, parse failure) keeps the pre-Precision not-found behavior, and every error path logs to `System.err` so a dead portal or a bad sidecar leaves a breadcrumb.
+
+**Hardening (shipped 2026-11-23, phase 7c):**
+
+- **Per-run call budget.** `MobilePrecisionBindService` holds a `PrecisionCallBudget` per run (sized from `PrecisionJobConfig.maxCallsPerJob`, default 50). Once exhausted, further binds return `fallbackReason=BUDGET_EXHAUSTED` without reaching Cursor; `clearRun(runId)` releases the entry, and the map is capped at 1024 orphaned entries so a lost run-end callback can't leak unbounded memory.
+- **Shortlist cap.** Both sides cap the candidate list at 25 before building the sidecar prompt — the picker is less accurate on huge tables.
+- **Mobile preamble.** The shortlist table is prepended with `# Mobile Android native candidates — pick the native UI node the user's intent refers to.` so the sidecar's generic `pick` prompt lands with the right context (rows are UiAutomator nodes, not DOM elements).
+- **Real `snapshotExcerpt`.** The runner builds a small XML blob of the candidate nodes (class, bounds, resource-id, content-desc, clickable, text) and ships it with the bind — the gate truncates at 8 KB.
+- **Per-run pick cache.** The client caches `chosenId` keyed on `(intent, sorted candidate indices)`; a retried step on the same screen does not pay a second sidecar call.
+- **Controller split.** `POST /precision/bind` now returns `404` only for `run not found`; empty-candidates / blank stepContext are `400` so the runner can distinguish wire problems from real misses.
+- **Admin dashboard.** `/admin/mobile-precision` renders a live table of the last 500 picks (in-memory ring, cleared on portal restart). JSON feed at `GET /api/admin/mobile-precision/picks`.
+
+**Module boundary (also 2026-11-23, phase 7c):** `PrecisionCandidate`, `PrecisionInput`, `PrecisionOutcome` and `MobilePrecisionGate` moved from `mobile-runner` to `mobile-contracts` so portal (which depends on `mobile-contracts` only) can link against them — phase 7a was quietly breaking the portal reactor build.
 
 Precedence (admin-pin chain):
 

@@ -719,6 +719,13 @@ public class PortalUiController {
         return "admin-prompts";
     }
 
+    @GetMapping("/admin/mobile-precision")
+    public String adminMobilePrecision(Model model) {
+        requireHeadPage();
+        addNav(model, "mobile-precision");
+        return "admin-mobile-precision";
+    }
+
     private static String readFrameworkRulesDoc() {
         java.nio.file.Path doc = java.nio.file.Path.of("docs", "FRAMEWORK_RULES.md");
         if (!java.nio.file.Files.isRegularFile(doc)) {

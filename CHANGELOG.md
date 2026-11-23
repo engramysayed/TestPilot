@@ -2,6 +2,26 @@
 
 # Keel changelog
 
+## 2026-11-23 — Mobile phase 7c: hardening, module split, dashboard
+
+Finishes the mobile Precision roadmap by picking up every follow-up phases 7a + 7b left on the table — plus two defects that were silently hobbling the build.
+
+**Defect: portal reactor was broken.** Phase 7a's `MobilePrecisionBindService` imported `delivery.mobile.runner.precision.*` from the `mobile-runner` jar, but `keel-portal` depends on `mobile-contracts` only (the mobile-runner pom has a MANDATORY ban on the reverse dep). Phase 7a shipped green because I only ran `mvn -f mobile-runner/pom.xml ...`, which never compiles the portal. Full reactor build was failing. Fix: `PrecisionCandidate`, `PrecisionInput`, `PrecisionOutcome` and `MobilePrecisionGate` moved from `mobile-runner/src/main/java/delivery/mobile/runner/precision/` to `mobile-contracts/src/main/java/delivery/mobile/runner/precision/` (same package, zero import churn); `MobilePrecisionGateTest` moved with them.
+
+**Defect: stale lambda capture.** `src/main/java/delivery/authoring/PrecisionBindService.java:98` referenced a reassigned `ranked` variable from a lambda, which the compiler rejects as not effectively final. The file hadn't been touched since commit `991feed`, but no one ever ran `mvn -q -o -pl keel-portal compile` on it. Fixed by pinning to a `final GroundRankResult picked = ranked;` local before the lambda.
+
+**Follow-ups now shipped.**
+- **Per-run call budget.** `MobilePrecisionBindService` now holds a `ConcurrentHashMap<runId, PrecisionCallBudget>`. Each `bind()` consumes one; once drained, further binds return `fallbackReason=BUDGET_EXHAUSTED` without hitting Cursor. `clearRun(runId)` releases the entry; the map is hard-capped at 1024 to bound an orphaned-callback leak.
+- **Shortlist cap of 25** on both client and service. A pathological page wouldn't ship 100 candidates to the sidecar anymore.
+- **Mobile preamble** on the `pick` request table so the sidecar's generic prompt sees "Mobile Android native candidates" instead of inferring a web page.
+- **Real `snapshotExcerpt`.** `MobilePrecisionClient.buildExcerpt(...)` builds a small XML blob of the candidate nodes (class, bounds, resource-id, content-desc, clickable, text), XML-escaped. The gate truncates at 8 KB.
+- **Per-run pick cache.** The client caches the chosen node index keyed on `(intent, sorted candidate indices)` — a retried step on the same screen pays no second sidecar call.
+- **System.err logging** on every `MobilePrecisionClient.pick` failure path (transport, non-200, bad JSON, non-integer id, fallback reason): previously the runner swallowed all failures silently.
+- **Controller 400 vs 404 split.** `POST /precision/bind` returns `404` only when the service says `run not found: …`; every other `IllegalArgumentException` (empty candidates, blank stepContext) now returns `400` with a `BAD_REQUEST` code so the runner can distinguish wire bugs from "not my run."
+- **Admin dashboard.** New page at `/admin/mobile-precision` (served by `PortalUiController.adminMobilePrecision`) renders a live table of the last 500 picks: when, run, project, intent, candidate count, outcome (cursor / keel / rejected), chosen id, fallback reason. In-memory ring in `MobilePrecisionPickLog`, JSON feed at `GET /api/admin/mobile-precision/picks?limit=…`. No persistence — portal restart clears it, by design (operational, not historical).
+
+**Tests.** `MobilePrecisionBindServiceTest` grows coverage for budget exhaustion, `clearRun`, oversized shortlist truncation, mobile-preamble presence and pick-log recording. `MobilePrecisionClientTest` covers the XML excerpt (class + bounds + clickable flag) and attribute escaping. Full `mobile-runner` and `mobile-contracts` suites still pass.
+
 ## 2026-11-23 — Mobile phase 7b: runner-side Precision caller
 
 `mobile-runner/src/main/java/delivery/mobile/runner/precision/MobilePrecisionClient.java` closes the loop on phase 7a. When `MobileCaseRunner.bind()` ends with more than one actionable text-contains hit (the ambiguity branch that previously returned `element not found`), the runner now POSTs the candidates to the portal's `/api/v1/runners/mobile/runs/{runId}/precision/bind` endpoint and asks the gate to pick one. The returned `chosenId` is trusted only when it maps back to one of the hits the runner sent; any other outcome (HTTP error, `code` set, provider fallback, parse failure, foreign id) → `Optional.empty()` and the runner keeps the pre-Precision not-found behavior. `MobileRunnerAgent` wires the client with its existing portal URL / bearer token.
