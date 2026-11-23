@@ -72,6 +72,8 @@ flowchart LR
 
 ## 3. Core flows
 
+The connected picture is [`FLOWS.md`](FLOWS.md). The diagrams below are the same two slices in short form.
+
 ```mermaid
 flowchart TD
     P[Project + base URL + credentials] --> G{Have test cases?}

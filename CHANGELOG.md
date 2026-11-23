@@ -2,6 +2,11 @@
 
 # Keel changelog
 
+## 2026-11-22 — Product flow map
+
+- **Flows** — `docs/knowledge/FLOWS.md` is the one picture of how Generate, Record, the library, Execute, Automate, Bug Hunter, suites, prove/heal, credits, and the tunnel connect.
+- No product behavior changed. Linked from `docs/README.md`, `docs/ENGINEERING_HANDOFF.md`, and `docs/knowledge/CURRENT.md`.
+
 ## 2026-11-16 — Portal UX Phase 11 (portal accessibility)
 
 - **Skip to main content** link in the sidebar; `main` gets `id="keel-main-content"` on load.

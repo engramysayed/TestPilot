@@ -2,7 +2,15 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-16 (Opus 4.7 session, latest at head after Locator memory UI + CI disable).
+**Last updated:** 2026-11-22 (flow map only; no product code).
+
+## Flow map (2026-11-22)
+
+- `docs/knowledge/FLOWS.md` is the connected picture of Generate, Record, library, Execute, Automate, Bug Hunter, suites, prove/heal, credits, and tunnel.
+- Indexed from `docs/README.md`, `docs/ENGINEERING_HANDOFF.md`, and the top of `CURRENT.md` §3.
+- No runtime change. Known defects are unchanged from the 2026-11-16 notes below.
+
+**Previous update:** 2026-11-16 (Opus 4.7 session, latest at head after Locator memory UI + CI disable).
 
 ---
 
