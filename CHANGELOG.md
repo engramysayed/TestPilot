@@ -12,6 +12,120 @@
 - **Flows** — one picture of how Generate, Record, the library, Execute, Automate, Bug Hunter, suites, prove/heal, credits, and the tunnel connect. Moved on 2026-11-23 to `docs/archive/ops/diagrams/keel-product-flows.md`.
 - No product behavior changed. Linked from `docs/README.md`, `docs/ENGINEERING_HANDOFF.md`, and `docs/knowledge/CURRENT.md`.
 
+## 2026-11-23 — Host environment doc
+
+New `docs/ENVIRONMENT.md` — single source of truth for the host binaries + env vars the portal + runner shell out to: JDK 21, Maven 3.9+, Node 18+, adb, apkanalyzer, aapt2, appium + uiautomator2, mobile runner process, `KEEL_PORTAL_URL`, `KEEL_RUNNER_TOKEN`, `CURSOR_API_KEY`. Each row names the role, install command per OS (Scoop on Windows, Homebrew on macOS), override property, and what breaks on the user's screen when it's missing. Section 3 records which pieces are present on the current dev host.
+
+`README.md` Prerequisites expanded with the mobile extras and a pointer to `docs/ENVIRONMENT.md`. `docs/MOBILE_FRAMEWORK_RULES.md` gains the same pointer in its header.
+
+## 2026-11-23 — Mobile default flipped ON
+
+`delivery.mobile.enabled` now defaults to `true` in both the base `application.properties` and `src/test/resources/application.properties`. Every mobile feature shipped over phases 1 → 7c is live on a vanilla portal boot without needing `SPRING_PROFILES_ACTIVE=product` or any system property. `live-tests` stays `false` (it drives a real Appium server; flipping it requires a device on the host). The `*FlagOffApiTest` SpringBootTests still work unchanged — they override `delivery.mobile.enabled=false` via `@SpringBootTest(properties=…)`.
+
+`MobileFeatureFlagDefaultsTest` updated: `applicationPropertiesDefaultMobileDisabled` → `applicationPropertiesDefaultMobileEnabled`; `defaultJvmWithoutOverridesKeepsMobileOff` removed. The dual-opt-in test (`dualOptInStillRequiresBothSystemProperties`) is kept so shell scripts that gate on `delivery.mobile.enabled + keel.mobile.ci-opt-in` keep their contract.
+
+`scripts/ci/check-mobile-flag-off.sh` repurposed: now asserts the flag is explicitly declared (either value), not that it's `false`. Both callers already live in `.github/workflows.disabled/`.
+
+## 2026-11-23 — Mobile phase 7c follow-up: sidebar + clearRun + Spring wiring
+
+Closes the three "not checked" items the 7c commit left:
+
+- **Sidebar entry.** `fragments.html` now links `/admin/mobile-precision` under the Admin section, gated on `headAdmin` like the other admin links.
+- **`precision.clearRun(runId)` on run finish.** `MobileRunOrchestrator.finish(...)` now releases the per-run budget. To break the orchestrator ↔ precision-service circular dependency, the orchestrator holds an `ObjectProvider<MobilePrecisionBindService>` and resolves the bean on each finish. First attempt used `@Lazy`, which tried to CGLIB-subclass `MobilePrecisionBindService` and failed with `No default constructor found` — surfacing a regression in 7c that broke every Spring Boot test loading the portal context (58 of the 160 TestSuite rows). `ObjectProvider` sidesteps the proxy entirely.
+- **`@Autowired` hint** on `MobilePrecisionBindService(MobileRunOrchestrator, PortalStore, MobilePrecisionPickLog)` so Spring picks it over the package-private test constructor without guessing. The 58 failures in the earlier run were masked by Spring's "context failure threshold" — once the first context load failed, every subsequent test in the JVM also failed with "threshold exceeded". After this fix, the full `-Dtest='*Mobile*,*Precision*'` filter runs 93 tests green.
+
+## 2026-11-23 — Mobile phase 7c: hardening, module split, dashboard
+
+Finishes the mobile Precision roadmap by picking up every follow-up phases 7a + 7b left on the table — plus two defects that were silently hobbling the build.
+
+**Defect: portal reactor was broken.** Phase 7a's `MobilePrecisionBindService` imported `delivery.mobile.runner.precision.*` from the `mobile-runner` jar, but `keel-portal` depends on `mobile-contracts` only (the mobile-runner pom has a MANDATORY ban on the reverse dep). Phase 7a shipped green because I only ran `mvn -f mobile-runner/pom.xml ...`, which never compiles the portal. Full reactor build was failing. Fix: `PrecisionCandidate`, `PrecisionInput`, `PrecisionOutcome` and `MobilePrecisionGate` moved from `mobile-runner/src/main/java/delivery/mobile/runner/precision/` to `mobile-contracts/src/main/java/delivery/mobile/runner/precision/` (same package, zero import churn); `MobilePrecisionGateTest` moved with them.
+
+**Defect: stale lambda capture.** `src/main/java/delivery/authoring/PrecisionBindService.java:98` referenced a reassigned `ranked` variable from a lambda, which the compiler rejects as not effectively final. The file hadn't been touched since commit `991feed`, but no one ever ran `mvn -q -o -pl keel-portal compile` on it. Fixed by pinning to a `final GroundRankResult picked = ranked;` local before the lambda.
+
+**Follow-ups now shipped.**
+- **Per-run call budget.** `MobilePrecisionBindService` now holds a `ConcurrentHashMap<runId, PrecisionCallBudget>`. Each `bind()` consumes one; once drained, further binds return `fallbackReason=BUDGET_EXHAUSTED` without hitting Cursor. `clearRun(runId)` releases the entry; the map is hard-capped at 1024 to bound an orphaned-callback leak.
+- **Shortlist cap of 25** on both client and service. A pathological page wouldn't ship 100 candidates to the sidecar anymore.
+- **Mobile preamble** on the `pick` request table so the sidecar's generic prompt sees "Mobile Android native candidates" instead of inferring a web page.
+- **Real `snapshotExcerpt`.** `MobilePrecisionClient.buildExcerpt(...)` builds a small XML blob of the candidate nodes (class, bounds, resource-id, content-desc, clickable, text), XML-escaped. The gate truncates at 8 KB.
+- **Per-run pick cache.** The client caches the chosen node index keyed on `(intent, sorted candidate indices)` — a retried step on the same screen pays no second sidecar call.
+- **System.err logging** on every `MobilePrecisionClient.pick` failure path (transport, non-200, bad JSON, non-integer id, fallback reason): previously the runner swallowed all failures silently.
+- **Controller 400 vs 404 split.** `POST /precision/bind` returns `404` only when the service says `run not found: …`; every other `IllegalArgumentException` (empty candidates, blank stepContext) now returns `400` with a `BAD_REQUEST` code so the runner can distinguish wire bugs from "not my run."
+- **Admin dashboard.** New page at `/admin/mobile-precision` (served by `PortalUiController.adminMobilePrecision`) renders a live table of the last 500 picks: when, run, project, intent, candidate count, outcome (cursor / keel / rejected), chosen id, fallback reason. In-memory ring in `MobilePrecisionPickLog`, JSON feed at `GET /api/admin/mobile-precision/picks?limit=…`. No persistence — portal restart clears it, by design (operational, not historical).
+
+**Tests.** `MobilePrecisionBindServiceTest` grows coverage for budget exhaustion, `clearRun`, oversized shortlist truncation, mobile-preamble presence and pick-log recording. `MobilePrecisionClientTest` covers the XML excerpt (class + bounds + clickable flag) and attribute escaping. Full `mobile-runner` and `mobile-contracts` suites still pass.
+
+## 2026-11-23 — Mobile phase 7b: runner-side Precision caller
+
+`mobile-runner/src/main/java/delivery/mobile/runner/precision/MobilePrecisionClient.java` closes the loop on phase 7a. When `MobileCaseRunner.bind()` ends with more than one actionable text-contains hit (the ambiguity branch that previously returned `element not found`), the runner now POSTs the candidates to the portal's `/api/v1/runners/mobile/runs/{runId}/precision/bind` endpoint and asks the gate to pick one. The returned `chosenId` is trusted only when it maps back to one of the hits the runner sent; any other outcome (HTTP error, `code` set, provider fallback, parse failure, foreign id) → `Optional.empty()` and the runner keeps the pre-Precision not-found behavior. `MobileRunnerAgent` wires the client with its existing portal URL / bearer token.
+
+`MobileCaseRunner` grows a `PrecisionBinder` functional interface + a 5-arg constructor so the hook stays null-safe for unit tests. Five TestNG tests on `MobileCaseRunnerPrecisionTest` cover: ambiguous-with-precision pick, ambiguous-without-precision fallback, out-of-list pick rejected, binder throws → fallback, and single-hit does not call precision.
+
+`docs/MOBILE_FRAMEWORK_RULES.md` §5 now diagrams the full flow (hits → client → portal → gate → trust check) and dates it; §6 moves "runner-side caller" from "not supported today" into "Recently landed".
+
+## 2026-11-23 — Mobile phase 7a: portal-side Cursor caller for mobile Precision
+
+Takes the "Mobile Precision Cursor caller" item off the "not supported today" list on the portal side. The runner side (phase 7b — runner client + `MobileLocatorBinder` integration) still owes a separate commit.
+
+**Why portal, not runner.** The mobile runner is a thin remote agent. Owning `heal.mjs` on the runner would mean shipping Node + the Cursor sidecar jar + a Cursor API key to every runner host. A bearer-authenticated HTTP round-trip over the existing `/api/v1/runners/mobile` wire is cheaper and keeps credentials on portal.
+
+**What landed.**
+- `MobilePrecisionBindService` resolves the project's Cursor model pin via `PortalStore.precisionConfigForProject`, invokes `CursorHealClient.pickCandidateId` with a mobile-shaped candidates table, and feeds the response through `MobilePrecisionGate.rank(...)` with provider state filled in. Returns the gate `PrecisionOutcome` verbatim.
+- `POST /api/v1/runners/mobile/runs/{runId}/precision/bind` on `MobileRunnerApiController`. Body: `{ intent, candidates[{id,label,contextKind,userOverride}], stepContext, snapshotExcerpt }`. Response: `{ code, chosenId, usedProvider, fallbackReason, countsAsCursor }`. Tenant isolation comes from the bearer token's enrollment; a run from another tenant → 404.
+- `MobilePrecisionBindServiceTest` covers: chose-valid-id, invalid-id, cursor-not-ready → UNAVAILABLE fallback, cross-tenant run → 404, empty-candidates → 400, sidecar runtime failure → UNAVAILABLE fallback.
+- Docs: `docs/MOBILE_FRAMEWORK_RULES.md` §5 now diagrams the flow and dates it; §6 shrinks the "not supported today" bullet from "Cursor caller" (full absence) to "phase 7b — runner side" (half-shipped).
+
+**Scope deliberately skipped (lazy).**
+- Credit ledger / `PrecisionCallBudget` integration — mobile cap is a follow-up.
+- Per-intent cache — the runner-side client in 7b can cache locally.
+- Mobile-specific prompt catalog entry — `heal.mjs` `pick` mode accepts an intent + table already.
+- Persistence of accepted picks for telemetry — matches the web caller's current state.
+
+## 2026-11-23 — Mobile phase 9 follow-ups: active-revision snapshot + APK preflight
+
+Picks up the three items the 2026-11-22 phase 9 commit left as follow-ups.
+
+- **9a — Active APK revision + list under one snapshot.** `GET /api/projects/{id}/mobile/apps/revisions` now runs inside `@Transactional(readOnly=true)`, so the `listAppRevisions` call and the `findActiveAppRevision` call come from a single consistent commit point. An APK upload that lands between them can no longer leave the client with an `activeRevisionId` that isn't in its rows. `registerAppRevision` was already `@Transactional` on the write side — no change there.
+- **9b — Preflight that the APK is actually on the phone.** `MobileRunOrchestrator.prepare()` now calls `AdbDeviceDiscovery.resolveInstalledPackage(serial, appPackage)` right after resolving the serial, before burning ~30 s on `SupervisedAppiumLifecycle.start()`. `PACKAGE_NOT_FOUND` → `IllegalStateException` with a message that names the serial and prints the exact `adb -s … install` command. Other ADB errors (unauthorized / offline / missing SDK) are intentionally passed through — Appium's own start path owns those. Blank `appPackage` (launcher-only runs) skips cleanly. This replaces the originally-planned "runner-side aapt verification" because `ApkInspector` already runs `aapt dump badging` server-side at upload time, so the stored `packageName` is the aapt-reported one — the real gap was the phone not having the APK yet.
+- **9c — Post-timeout APK uninstall: NOT SHIPPING.** [`ApkRevisionPolicy.autoUninstallFallbackAllowed()`](src/main/java/delivery/mobile/apk/ApkRevisionPolicy.java) returns `false` by design and the policy class explicitly asserts "this policy never authorizes auto-uninstall". The runner doesn't install APKs itself (only the user / Appium does, and this codebase uses `noReset:true`), so there's also no runner-side install-in-progress that an orchestrator timeout could orphan. The follow-up as framed in the original phase 9 commit was based on a misread of the architecture; the honest fix is to leave the policy alone.
+
+## 2026-11-23 — Mobile phase 6b: schedule UI picks a phone + APK package
+
+Finishes the backend of phase 6. `/suites/schedule` now renders a Phone + APK package picker when the pinned project's `platform` is `ANDROID` (hidden for web). The two selects reuse the same `/mobile/devices` and `/mobile/apps/revisions` endpoints the Execute page uses. Values prefill from the saved schedule and ride on the existing `PUT /suites/{suiteId}/schedule` as `mobileDeviceId` / `mobileAppRevisionId`. A client-side preflight blocks "turn on automatic runs" without a pinned phone so the dispatcher's `DEVICE_REQUIRED` fault never gets a chance to fire from the UI. `SuiteController.ScheduleRequest` grew two nullable fields with convenience constructors for the 4-arg and 6-arg shapes so no caller breaks; the controller routes to `SuiteService.putMobileSchedule` only when at least one is set.
+
+Docs:
+- `docs/MOBILE_FRAMEWORK_RULES.md` §4 now tells the truth about `MobileFirstOf` (the mobile analogue of web `FirstOf` is wired through the codegen template).
+- `docs/MOBILE_FRAMEWORK_RULES.md` §6 drops "Figma Validate per-step on mobile" and "Mobile suite scheduling" from the not-supported list; moves them under a new "Recently landed" sub-section with commit dates.
+
+## 2026-11-22 — Mobile roadmap phases 1-9 (minus 7)
+
+Executed the phased plan agreed on with the user. Each phase is a single commit; 7 (Cursor caller on mobile Precision binds) is paused pending a design decision on the runner↔portal round-trip for the sidecar.
+
+- **Phase 1 — Discoverability**: `/execute` shows a banner on web projects when the server has mobile enabled, pointing at the Android create flow. `/projects` post-create redirects Android straight to `settings#mobile-devices-panel`; `project-detail.js` scrolls the (initially hidden) panel into view after reveal.
+- **Phase 2 — Pre-run guard**: `mobile-run.js` runs `preflightPhone()` before `POST /mobile/runs` with inline alerts for no phones registered / none picked / picked phone not AVAILABLE. `MobileRunOrchestrator.start` throws `IllegalStateException` for busy devices (→ HTTP 409 with a user-friendly message).
+- **Phase 3 — APK revision dropdown**: new `GET /api/projects/{id}/mobile/apps/revisions`; **App package** `<select>` on the mobile run row; `MobileRunOrchestrator.start(..., appRevisionId)` resolves the chosen revision instead of always using `findActiveAppRevision`.
+- **Phase 4 — Runner step-screenshot capture**: `MobileCaseRunner` gains a `StepCapture` callback; `MobileRunnerAgent` uploads each PNG via a new `POST /api/v1/runners/mobile/runs/{runId}/cases/{tcId}/steps/{stepIndex}/image`; orchestrator writes to `<storeRoot>/mobile-runs/<runId>/evidence/<tcId>/step-NNN.png`. Toggle: `KEEL_RUNNER_CAPTURE_STEP_PNG`.
+- **Phase 5 — `MobileDesignComparePhase`**: fires on run finish (COMPLETED / FAILED). Mirrors the web `DesignComparePhase` for whole-TC + per-step compare; same `DesignCompareGate` + `DesignCompareEvidence` used end-to-end.
+- **Phase 6 — Mobile suite scheduling (pinned device)**: `SuiteDiskStore.putMobileSchedule(..., mobileDeviceId, mobileAppRevisionId)` + `SuiteService.putMobileSchedule`. `SuiteScheduleDispatchService.dispatchDue` branches on project platform; Android path calls `MobileRunOrchestrator.start` with the pinned device + revision; records `DEVICE_REQUIRED` / `DEVICE_OFFLINE` / `DISPATCH_ERROR` on the schedule for the UI to surface. UI form is Phase 6b.
+- **Phase 8 — Dedicated mobile prompt stack**: new `generate/capability-manifest-mobile.md` + `generate/testing-techniques-mobile.md`; `TcGenerateService.buildSystemPrompt(project)` builds `stories-to-json + mobile-capability + mobile-techniques + mobile-prelude` for Android projects. Falls back to web prompts if a mobile file is missing.
+- **Phase 9 — APK upload error surfacing**: generic `catch (Exception)` in `MobileAppDeviceController.uploadApk` now logs the stack trace and sends the real cause instead of a canned "APK_INVALID". Rejections also log at WARN with the code + message so repeat submissions are grep-able.
+
+## 2026-11-21 — Mobile parity: platform-aware prompts + MOBILE_FRAMEWORK_RULES
+
+- **Mobile-aware generate**: `TcGenerateService.buildSystemPrompt(project)` appends `prompts/generate/mobile-prelude.md` when the project's platform is `ANDROID`. The prelude rewrites the web phrasing (URLs → "Launch the app", "Click" → "Tap", "page" → "screen"), adds mobile-specific coverage hints (permissions, keyboard dismissal, system back), and bans browser-only concepts (tabs, hover, viewport, CSS).
+- **Mobile-aware authoring review**: `AuthoringReviewService.systemPrompt(project)` appends `prompts/authoring/mobile-prelude.md` for Android projects. The reviewer now rewrites `Open the … page at /path`, `Click the … button`, URL-contains assertions, and viewport language on sight when it's an Android suite.
+- **New `docs/MOBILE_FRAMEWORK_RULES.md`**: canonical mobile emit rules (one screen = one class; Appium imports locked; CSS banned in NATIVE_APP; actions delegate to `SettledMobileActions`), the fixed locator tier list (USER_OVERRIDE → RESOURCE_ID → ACCESSIBILITY → LABEL_SIBLING → TEXT_CLASS → XPATH), the `MobilePrecisionGate` validator rules (secret canary + code rejection + context match + user-override wins), Cursor model precedence on mobile, and an honest "not supported today" section (no Figma Validate per-step on mobile yet, no mobile `FirstOf` fallback bag, no mobile locator-outcomes ledger).
+- **Web doc cross-link**: `docs/FRAMEWORK_RULES.md` now opens with a one-liner pointer to the mobile rules doc.
+
+## 2026-11-21 — Precision engine tuning + Figma Validate per-step
+
+- **Precision engine cache**: job-scoped ConcurrentHashMap in `PrecisionBindService` keyed by `(intent, shortlist-hash, html-hash)` so retries of the same bind on the same page snapshot reuse the earlier Cursor pick without burning a budget slot. Batch cap raised from 5 → 10 intents per `groundRankBatch` call.
+- **Precision confidence floor**: new workspace property `delivery.authoring.precision.min-confidence` (`medium` default; `high` is the stricter option). `GroundRankResult.isAcceptableAt` routes `medium`-confidence picks to the solve fallback when `high` is set.
+- **Cursor model picker** (Precision engine): new property `delivery.authoring.precision.cursor-model` (default `auto`, also respects `KEEL_CURSOR_MODEL` env). Project Settings grows a **Cursor model** dropdown that overrides the workspace default. Admin → LLM & API keys grows the workspace-wide equivalent. `heal.mjs` accepts `req.model` with a tight family regex (`claude-*`, `gpt-*`, `gemini-*`, `grok-*`, `deepseek-*`); unknown ids fall back to `auto` so a stale pin never fails a run.
+- **"Design mockups" → "Figma Validate" rename + per-step mockups**: upload a PNG per `(tcId, stepIndex)` to `design-references/<tcId>/step-NNN.png`; `DesignComparePhase` now compares each step's screenshot against the matching Figma and writes `design-compare-step-NNN.json` + `design-actual-step-NNN.png` beside the per-TC evidence. Project Settings shows a thumbnail per uploaded step with click-to-preview; the library TC-row step expansion grows a 32×32 Figma tile per step (filled thumbnail / "+" to attach).
+- **Pre-run review ↔ credit ledger**: `/api/projects/{id}/pre-run-authoring-review` now preflights against the `AI_VALIDATION` add-on cost (HTTP 402 when under) and debits once per successful review with a stable id. Admin review batch cap configurable via `delivery.authoring.review.cases-per-batch` (default 10).
+- **Review modal**: edited cases get a left accent border plus an "edited" pill; click toggles a before/after diff (red/green) for the changed field(s).
+- **/account cleanup**: dead Vision model radios removed from the account page — the live vision model is set server-side via Admin → LLM & API keys (`delivery.vision.model` system property).
+
 ## 2026-11-16 — Portal UX Phase 11 (portal accessibility)
 
 - **Skip to main content** link in the sidebar; `main` gets `id="keel-main-content"` on load.

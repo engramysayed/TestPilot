@@ -42,18 +42,57 @@ public final class MobileCaseRunner {
     public record CaseInput(String tcId, List<String> steps, List<String> expected, List<String> testData) {
     }
 
+    /**
+     * Optional per-step screenshot sink. Invoked after each step's execution (whether it passed or
+     * failed). stepIndex is 1-based so it matches the naming the portal expects (step-NNN.png).
+     * Exceptions are swallowed by the runner so a flaky capture never breaks the run.
+     */
+    @FunctionalInterface
+    public interface StepCapture {
+        void accept(String tcId, int stepIndex, byte[] pngBytes);
+    }
+
+    /**
+     * Optional ambiguity breaker. When the locator ladder ends with more than one actionable
+     * text-contains hit, {@link #bind} delegates the pick to this binder; a non-empty return
+     * value is the chosen node index. Null → no delegation (ambiguity returns not-found as
+     * before). Returning {@link Optional#empty()} ⇒ keep the not-found behavior (used when the
+     * remote caller fails or falls back).
+     *
+     * <p>Production wiring is
+     * {@code delivery.mobile.runner.precision.MobilePrecisionClient}, which POSTs to the
+     * portal's {@code /api/v1/runners/mobile/runs/{runId}/precision/bind}.
+     */
+    @FunctionalInterface
+    public interface PrecisionBinder {
+        Optional<Integer> pick(String intent, List<MobileSnapshotNode> candidates);
+    }
+
     private final MobileDriverPort driver;
     private final MobileActionExecutor actions;
     private final MobileLocatorBinder binder = new MobileLocatorBinder();
     private final MobileAssertionEngine asserts = new MobileAssertionEngine();
     private final String appPackage;
     private final String appActivity;
+    private final StepCapture stepCapture;
+    private final PrecisionBinder precision;
 
     public MobileCaseRunner(MobileDriverPort driver, String appPackage, String appActivity) {
+        this(driver, appPackage, appActivity, null, null);
+    }
+
+    public MobileCaseRunner(MobileDriverPort driver, String appPackage, String appActivity, StepCapture stepCapture) {
+        this(driver, appPackage, appActivity, stepCapture, null);
+    }
+
+    public MobileCaseRunner(MobileDriverPort driver, String appPackage, String appActivity,
+                            StepCapture stepCapture, PrecisionBinder precision) {
         this.driver = driver;
         this.actions = new MobileActionExecutor(driver, new MobileSettleService());
         this.appPackage = appPackage == null ? "" : appPackage;
         this.appActivity = appActivity == null ? "" : appActivity;
+        this.stepCapture = stepCapture;
+        this.precision = precision;
     }
 
     public Outcome run(CaseInput c) {
@@ -68,6 +107,7 @@ public final class MobileCaseRunner {
                 }
                 String err = execute(step);
                 log.add((err == null ? "ok: " : "FAIL: ") + step.raw() + (err == null ? "" : " — " + err));
+                tryCaptureStep(c.tcId(), i + 1);
                 if (err != null) {
                     return new Outcome(c.tcId(), CaseOutcome.FAILED, code(err), i + 1, err, log);
                 }
@@ -96,6 +136,18 @@ public final class MobileCaseRunner {
     }
 
     /** @return null on success, else a reason. */
+    private void tryCaptureStep(String tcId, int stepIndex) {
+        if (stepCapture == null) return;
+        try {
+            byte[] png = driver.screenshot();
+            if (png != null && png.length > 0) {
+                stepCapture.accept(tcId, stepIndex, png);
+            }
+        } catch (Throwable ignored) {
+            // Capture is best-effort; never break a run on a screenshot miss.
+        }
+    }
+
     String execute(MobileStep step) {
         switch (step.kind()) {
             case BACK:
@@ -173,6 +225,16 @@ public final class MobileCaseRunner {
                 }
             }
             return Optional.of(n.index());
+        }
+        if (hits.size() > 1 && precision != null) {
+            try {
+                Optional<Integer> picked = precision.pick(target, hits);
+                if (picked.isPresent() && hits.stream().anyMatch(n -> n.index() == picked.get())) {
+                    return picked;
+                }
+            } catch (RuntimeException ignored) {
+                // Precision is best-effort: fall through to not-found.
+            }
         }
         return Optional.empty();
     }

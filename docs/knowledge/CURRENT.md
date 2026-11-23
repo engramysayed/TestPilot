@@ -141,6 +141,7 @@ check, LoopGuard budget) → recovery plan (`mode: recovery`). Heal proposals ar
 - A verified test id/hook is **always** promoted to primary, even without preferred hooks.
 - `user-facing-first` (Projects → Settings → Locator ranking) puts role/label before test id (Playwright style).
 - Stored in the site's `preferred-hooks.json` as `locatorMode`.
+- **Bag reorder at codegen** (2026-11-20): [`LocatorOutcomeStore`](../../src/main/java/delivery/store/LocatorOutcomeStore.java) reads per-slot FirstOf wins/misses from `test-output/keel-results/locator-outcomes.jsonl` and `CodeWriter.reorderFieldsByStore` permutes each field's (primary + bag) by Laplace-smoothed win ratio on the next emit; `nlCached` fields emit the same `FirstOf.of(pageClass, field, …)` shape when the memory-hit step carries a bag. Design + follow-ups: [`locator-outcomes-mvp.md`](locator-outcomes-mvp.md). Companion rule: [`KEEL-R-FIRSTOF`](../FRAMEWORK_RULES.md).
 
 ## 4b. Scheduled suites
 

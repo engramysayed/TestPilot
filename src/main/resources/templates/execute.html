@@ -12,6 +12,7 @@
         <div>
             <h1 th:text="#{page.execute.title}">Execute &amp; verify</h1>
         </div>
+        <div th:replace="~{preflight :: preflight-widget}"></div>
     </div>
 
     <section class="panel workspace-launcher" id="workspace-launcher">
@@ -48,6 +49,10 @@
         <p id="no-projects" class="muted" hidden>
             No projects yet —
             <a href="/projects">create one</a> to start executing.
+        </p>
+        <p id="web-project-mobile-hint" class="muted execute-mobile-hint" hidden>
+            Need to run on a phone? This project is a web project (platform is locked after create).
+            Make a new <strong>Android</strong> project on <a href="/projects">/projects</a>, then its Execute page will show the Phones + APK sections.
         </p>
     </section>
 
@@ -122,16 +127,16 @@
             </label>
 
             <details class="execute-optional">
-                <summary>Design mockups <span class="muted">optional — click to add</span></summary>
-                <p class="muted">One PNG of the last screen, named by test ID.</p>
+                <summary>Figma Validate <span class="muted">optional — click to add</span></summary>
+                <p class="muted">One PNG of the last screen per test ID. Keel compares the final screen of each run to it.</p>
                 <div id="design-ref-form" class="design-ref-form">
                     <label>Case ID
                         <input type="text" id="design-ref-tcId" name="tcId" placeholder="TC_001"/>
                     </label>
-                    <label>Design PNG
+                    <label>Figma PNG
                         <input type="file" id="design-ref-file" name="file" accept="image/png"/>
                     </label>
-                    <button type="button" id="design-ref-submit" class="button ghost">Upload design</button>
+                    <button type="button" id="design-ref-submit" class="button ghost">Upload Figma</button>
                 </div>
                 <p id="design-ref-msg" class="muted" hidden></p>
                 <p id="design-ref-err" class="error" hidden></p>

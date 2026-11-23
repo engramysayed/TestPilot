@@ -1,7 +1,7 @@
 package delivery.agent.harness;
 
 import delivery.agent.harness.cursor.CursorAgentRuntime;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 
 import java.io.IOException;
 import java.nio.file.Files;

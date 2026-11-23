@@ -72,9 +72,14 @@ public class SuiteController {
      * @param credentialProfile login profile scheduled runs use (blank = keep / first profile by name)
      */
     public record ScheduleRequest(Boolean enabled, String kind, String cron, Integer intervalMinutes,
-                                  String timezone, String credentialProfile) {
+                                  String timezone, String credentialProfile,
+                                  String mobileDeviceId, String mobileAppRevisionId) {
         public ScheduleRequest(Boolean enabled, String kind, String cron, Integer intervalMinutes) {
-            this(enabled, kind, cron, intervalMinutes, null, null);
+            this(enabled, kind, cron, intervalMinutes, null, null, null, null);
+        }
+        public ScheduleRequest(Boolean enabled, String kind, String cron, Integer intervalMinutes,
+                               String timezone, String credentialProfile) {
+            this(enabled, kind, cron, intervalMinutes, timezone, credentialProfile, null, null);
         }
     }
 
@@ -247,15 +252,32 @@ public class SuiteController {
         try {
             boolean enabled = body != null && body.enabled() != null && body.enabled();
             String kind = body == null ? null : body.kind();
-            Map<String, Object> updated = suites.putSchedule(
-                    projectId,
-                    suiteId,
-                    enabled,
-                    kind,
-                    body == null ? null : body.cron(),
-                    body == null ? null : body.intervalMinutes(),
-                    body == null ? null : body.timezone(),
-                    body == null ? null : body.credentialProfile());
+            String mobileDeviceId = body == null ? null : body.mobileDeviceId();
+            String mobileAppRevisionId = body == null ? null : body.mobileAppRevisionId();
+            Map<String, Object> updated;
+            if (mobileDeviceId != null || mobileAppRevisionId != null) {
+                updated = suites.putMobileSchedule(
+                        projectId,
+                        suiteId,
+                        enabled,
+                        kind,
+                        body.cron(),
+                        body.intervalMinutes(),
+                        body.timezone(),
+                        body.credentialProfile(),
+                        mobileDeviceId,
+                        mobileAppRevisionId);
+            } else {
+                updated = suites.putSchedule(
+                        projectId,
+                        suiteId,
+                        enabled,
+                        kind,
+                        body == null ? null : body.cron(),
+                        body == null ? null : body.intervalMinutes(),
+                        body == null ? null : body.timezone(),
+                        body == null ? null : body.credentialProfile());
+            }
             return ResponseEntity.ok(updated.get("schedule"));
         } catch (SuiteDiskStore.NotFoundException e) {
             return notFound(e);

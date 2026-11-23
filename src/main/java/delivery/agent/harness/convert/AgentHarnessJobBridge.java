@@ -17,7 +17,7 @@ import delivery.agent.harness.AgentWorkspacePaths;
 import delivery.agent.harness.NewAgentTaskRequest;
 import delivery.agent.harness.ValidationReportWriter;
 import delivery.job.ArtifactIntegrityException;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,6 +88,7 @@ public final class AgentHarnessJobBridge {
         } catch (IOException e) {
             throw new ArtifactIntegrityException("zip extract failed: " + e.getMessage());
         }
+        copyFrameworkRulesDoc(projectRoot, workspace);
 
         if (cancelCheck != null && cancelCheck.getAsBoolean()) {
             writeSkippedReport(projectRoot, parentJobId, ctx.taskId(), fingerprint, "JOB_CANCELLED");
@@ -304,5 +305,27 @@ public final class AgentHarnessJobBridge {
             return "SKIPPED";
         }
         return "UNAVAILABLE";
+    }
+
+    /**
+     * Copy docs/FRAMEWORK_RULES.md into the agent's workspace at .keel/FRAMEWORK_RULES.md so the
+     * agent can read the canonical rules without running outside its isolated path. Fail-open:
+     * a missing doc never blocks validation.
+     */
+    private static void copyFrameworkRulesDoc(Path projectRoot, Path workspace) {
+        if (projectRoot == null || workspace == null) {
+            return;
+        }
+        Path source = projectRoot.resolve("docs").resolve("FRAMEWORK_RULES.md");
+        if (!java.nio.file.Files.isRegularFile(source)) {
+            return;
+        }
+        Path target = workspace.resolve(".keel").resolve("FRAMEWORK_RULES.md");
+        try {
+            java.nio.file.Files.createDirectories(target.getParent());
+            java.nio.file.Files.copy(source, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            log.warn("failed to copy FRAMEWORK_RULES.md into agent workspace: {}", e.getMessage());
+        }
     }
 }

@@ -14,7 +14,7 @@ import delivery.agent.harness.FakeAgentRuntime;
 import delivery.agent.harness.SlowFakeAgentRuntime;
 import delivery.agent.validation.contract.FrameworkContractValidator;
 import delivery.job.JobCancelledException;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;

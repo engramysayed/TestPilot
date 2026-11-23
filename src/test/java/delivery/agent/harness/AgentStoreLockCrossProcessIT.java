@@ -1,7 +1,7 @@
 package delivery.agent.harness;
 
 import delivery.agent.harness.cursor.CursorSidecarClient;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

@@ -131,6 +131,20 @@
                     <p class="field-hint muted">Same login profiles as <a href="/execute">TCs execution</a> — configured per project.</p>
                 </div>
 
+                <div class="field-row" id="schedule-mobile-row" hidden>
+                    <label for="schedule-mobile-device">Phone to run on
+                        <select id="schedule-mobile-device">
+                            <option value="">— None pinned —</option>
+                        </select>
+                    </label>
+                    <label for="schedule-mobile-revision">APK package
+                        <select id="schedule-mobile-revision">
+                            <option value="">— Active package —</option>
+                        </select>
+                    </label>
+                    <p class="field-hint muted">Scheduled runs re-use the same phone every time. Leave APK blank to pick the project's active package at run time. Manage phones and packages from the project's <a id="schedule-mobile-project-link" href="#">Phones / APK</a> settings.</p>
+                </div>
+
                 <div class="field-row" id="alerts-inline">
                     <label class="keel-check">
                         <input type="checkbox" id="alert-use-account" checked/>

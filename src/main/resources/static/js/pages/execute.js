@@ -109,15 +109,19 @@
         }
         cases.forEach(function (tc) {
             const card = document.createElement('article');
-            card.className = 'review-case';
+            card.className = 'review-case' + (tc.edited ? ' review-case-edited' : '');
             const steps = String(tc.steps || '').split(/\n+/).filter(Boolean);
             const expected = String(tc.expectedResult || '').split(/\n+/).filter(Boolean);
             const data = String(tc.testData || '').split(/\n+/).filter(Boolean);
+            const editedBadge = tc.edited
+                ? '<button type="button" class="badge edited-badge" data-diff="1" aria-label="Show what the reviewer changed">edited</button>'
+                : '';
             card.innerHTML =
                 '<header class="review-case-head">' +
                     '<span class="mono">' + escapeHtml(tc.tcId || '') + '</span>' +
                     '<strong>' + escapeHtml(tc.title || '') + '</strong>' +
                     (tc.keelPath ? '<span class="badge muted">' + escapeHtml(tc.keelPath) + '</span>' : '') +
+                    editedBadge +
                 '</header>' +
                 '<div class="review-case-grid">' +
                     '<section><h5>Steps</h5><ol>' + steps.map(function (s) {
@@ -132,8 +136,40 @@
                             : '<p class="muted">None</p>') +
                     '</section>' +
                 '</div>';
+            if (tc.edited && tc.changedFields) {
+                const diffBtn = card.querySelector('[data-diff]');
+                if (diffBtn) {
+                    diffBtn.addEventListener('click', function () {
+                        toggleReviewDiff(card, tc);
+                    });
+                }
+            }
             preRunReviewCases.appendChild(card);
         });
+    }
+
+    function toggleReviewDiff(card, tc) {
+        const existing = card.querySelector('.review-case-diff');
+        if (existing) { existing.remove(); return; }
+        const diff = tc.changedFields || {};
+        const labels = { title: 'Title', steps: 'Steps', expectedResult: 'Expected', testData: 'Test data' };
+        const sections = Object.keys(diff).map(function (field) {
+            const beforeText = String(diff[field] || '').trim() || '(empty)';
+            const afterText = String(tc[field] || '').trim() || '(empty)';
+            return (
+                '<div class="review-case-diff-field">' +
+                '  <h6>' + escapeHtml(labels[field] || field) + '</h6>' +
+                '  <div class="review-case-diff-cols">' +
+                '    <div class="review-case-diff-before"><span class="diff-label">before</span><pre>' + escapeHtml(beforeText) + '</pre></div>' +
+                '    <div class="review-case-diff-after"><span class="diff-label">after</span><pre>' + escapeHtml(afterText) + '</pre></div>' +
+                '  </div>' +
+                '</div>'
+            );
+        }).join('');
+        const wrap = document.createElement('div');
+        wrap.className = 'review-case-diff';
+        wrap.innerHTML = sections || '<p class="muted">Case is new in the reviewed set.</p>';
+        card.appendChild(wrap);
     }
 
     function clearPreRunReview() {
@@ -918,6 +954,14 @@
         const baseUrl = (project.baseUrl || '').trim();
         // For ANDROID, website address is optional — base URL missing should not block the form when mobile is on
         const isAndroid = (project.platform || 'WEB').toUpperCase() === 'ANDROID';
+        // Discoverability: if a web project is open on a server that supports mobile, point users
+        // at the create flow so they know mobile is reachable from the same portal.
+        const execRoot = document.getElementById('execute-root');
+        const mobileHint = document.getElementById('web-project-mobile-hint');
+        if (mobileHint) {
+            const serverHasMobile = execRoot && execRoot.dataset.mobileEnabled === 'true';
+            mobileHint.hidden = !(serverHasMobile && !isAndroid);
+        }
         projectHasBaseUrl = baseUrl.length > 0;
         if (projectHasBaseUrl) {
             baseUrlRow.hidden = false;

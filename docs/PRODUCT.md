@@ -66,10 +66,10 @@ A project is one target app.
 
 - Rename the project.
 - Set **base URL** (required before Execute or Automate).
-- **Authoring engine**: **Keel** (default) or **Precision — higher accuracy on complex UIs, Higher Cost**; optional per-project **max Cursor calls per job** (blank = server default).
+- **Authoring engine**: **Keel** (default) or **Precision — higher accuracy on complex UIs, Higher Cost**; optional per-project **max Cursor calls per job** (blank = server default) and **Cursor model** dropdown (default **Auto**; pin a specific Cursor chat-completion id such as `claude-sonnet-4.5`, `gpt-5`, `grok-4`, `gemini-2.5-pro`). Admin → LLM & API keys sets the workspace default; project pin wins, environment `KEEL_CURSOR_MODEL` / `-Ddelivery.authoring.precision.cursor-model` wins over everything.
 - **Credential profiles**: named logins (username + write-only password). Used as `${TARGET_USERNAME}` / `${TARGET_PASSWORD}` at run time.
 - **Test data env** (optional): short tag such as `sit`. When set, Automate maps login placeholders in the ZIP to `{env}_username`, `{env}_password`, and similar in `delivery-testdata.properties`. When blank, those keys are `username`, `password`, `otp` with **no** env prefix.
-- **Design mockups**: optional PNG per `TC_ID` (e.g. Figma export). Execute compares that image to the live last screen. This is **not** a live Figma integration.
+- **Figma Validate** (formerly "Design mockups"): optional PNG per `TC_ID` for whole-TC compare, plus optional PNGs per step (step index 1..999) for mid-run checks. Execute compares the whole-TC mockup to the final screen and each per-step mockup to that step's screenshot. Tiles have thumbnails and open a full-size preview on click. This is **not** a live Figma integration. Mobile projects can upload Figmas the same way and the UI works per-step, but the comparator on a mobile run is not wired yet — see `docs/MOBILE_FRAMEWORK_RULES.md` §6 for the honest state.
 - Archive (hide) or permanently delete the project and its files.
 
 ### Automation tab
@@ -333,7 +333,7 @@ Run cases on the live site **without** building a customer ZIP.
 - Pick a credential profile when the project has them.
 - Source: **project library** (all or selected `TC_ID`s) and/or upload `.xlsx` / `.csv`.
 - Mix: library ∪ upload; **same `TC_ID` → upload wins**.
-- Optional PNG design mockup per TC (collapsed by default; also on project Settings).
+- Optional **Figma Validate** PNG per TC (collapsed by default; also on project Settings). Per-step Figma tiles live inside the library TC row — expand a row to see them.
 - A compact **This run** bar shows how many test cases × the Execute unit, and the total credits. Automate and Bug Hunter use the same bar.
 - Optional **Review cases before run** (Cursor or Keel). When more than 5 cases are selected, review splits into Owner-configured batches (Admin → LLM & API keys, default 50; example 20 with 7 → 7+7+6). Combined proposed cases appear after the last batch; Accept waits until every batch succeeded. Cases go out as JSON plus Keel authoring rules (quotes mean visible text at runtime, `and` splits, masked OTP wording, and similar). After the model, Keel runs a deterministic pass on leftover Expected lines: filler words such as `area`, `list`, and `visible` are stripped and the distinctive name is quoted (for example `the Upload Transactions list area is visible` becomes `'Upload Transactions'`). A quote the model already wrote that still contains a filler, such as `'Upload Transactions list area'`, is replaced the same way. A distinctive quote with no filler, such as `'Bill Payment Settlement'`, stays. Dash bullets stay dash bullets. **OutcomeKind** is unchanged — quoted strings still mean visible text when the run executes. **Accept & run** saves the edited cases into the **library** (version history) and then starts the reviewed `TC_ID`s, even when the source was an uploaded workbook. Uncheck review to run the library as-is. Pre-run review is not charged; the Execute run price still applies when the run starts.
 - **Start execute run**. The run price is charged once for each runnable test case. Cancel while running. (Authoring engine: **project Settings**.)

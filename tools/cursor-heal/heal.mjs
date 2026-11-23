@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
  * Cursor heal sidecar — shortlist pick, free invent, or authoring review.
- * Model is hard-locked to Auto (id: "auto"). Do not pin composer/opus.
+ * Default model is "auto" (Cursor router). Callers may pin a specific
+ * Cursor chat-completion model id by setting req.model; unknown strings
+ * fall back to "auto" so a stale project setting never fails a run.
  *
- * stdin JSON: { mode:"pick"|"invent"|"authoring-review", ... }
+ * stdin JSON: { mode:"pick"|"invent"|"authoring-review", ..., model?:"auto"|"<id>" }
  *
  * Prompt SoT: src/main/resources/prompts/ (ids heal/pick, heal/invent, ...).
  * Override: env KEEL_PROMPTS_DIR (mirrors Spring keel.prompts.dir) — same relative paths.
@@ -59,6 +61,16 @@ function formatPrompt(id, vars) {
     const v = vars[name];
     return v == null ? "" : String(v);
   });
+}
+
+/** Known Cursor chat-completion model families. Keep tight — unknown → auto. */
+const MODEL_PATTERN = /^(auto|claude-[a-z0-9.\-]{2,40}|gpt-[a-z0-9.\-]{1,40}|gemini-[a-z0-9.\-]{2,40}|grok-[a-z0-9.\-]{1,40}|deepseek-[a-z0-9.\-]{1,40})$/i;
+
+function resolveModelId(raw) {
+  if (typeof raw !== "string") return "auto";
+  const id = raw.trim().toLowerCase();
+  if (!id || id === "auto") return "auto";
+  return MODEL_PATTERN.test(id) ? id : "auto";
 }
 
 
@@ -221,11 +233,12 @@ async function main() {
   };
   console.error(`PERF cursor_prepare elapsedMs=${Math.round(performance.now() - prepareStarted)}`);
   const agentStarted = performance.now();
+  const modelId = resolveModelId(req.model);
   let result;
   try {
     result = await Agent.prompt(prompts[mode], {
     apiKey,
-    model: { id: "auto" },
+    model: { id: modelId },
     local: { cwd: process.cwd() },
     });
   } finally {

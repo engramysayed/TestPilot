@@ -85,4 +85,36 @@ public class CursorHealClientTest {
         Assert.assertFalse(req.getString("whyTied").isBlank());
         Assert.assertFalse(req.getString("neighborhood").isBlank());
     }
+
+    @Test
+    public void resolveCursorModel_normalizesAutoAndBlank() {
+        String prevProp = System.getProperty("delivery.authoring.precision.cursor-model");
+        try {
+            System.clearProperty("delivery.authoring.precision.cursor-model");
+            Assert.assertEquals(CursorHealClient.resolveCursorModel(), "");
+            System.setProperty("delivery.authoring.precision.cursor-model", "auto");
+            Assert.assertEquals(CursorHealClient.resolveCursorModel(), "");
+            System.setProperty("delivery.authoring.precision.cursor-model", "  ");
+            Assert.assertEquals(CursorHealClient.resolveCursorModel(), "");
+            System.setProperty("delivery.authoring.precision.cursor-model", "claude-sonnet-4.5");
+            Assert.assertEquals(CursorHealClient.resolveCursorModel(), "claude-sonnet-4.5");
+        } finally {
+            if (prevProp == null) {
+                System.clearProperty("delivery.authoring.precision.cursor-model");
+            } else {
+                System.setProperty("delivery.authoring.precision.cursor-model", prevProp);
+            }
+        }
+    }
+
+    @Test
+    public void sanitizeRequest_preservesModelKey() {
+        JSONObject req = new JSONObject();
+        req.put("mode", "groundRank");
+        req.put("model", "gpt-5");
+        req.put("intent", "click login");
+        CursorHealClient.sanitizeRequest(req);
+        Assert.assertEquals(req.getString("model"), "gpt-5");
+        Assert.assertEquals(req.getString("mode"), "groundRank");
+    }
 }

@@ -1,5 +1,8 @@
 package delivery.codegen;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -9,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class PageAccumulator {
+    private static final Logger log = LoggerFactory.getLogger(PageAccumulator.class);
     private final Map<String, PageModel> pages = new LinkedHashMap<>();
     private final Set<String> usedStems = new LinkedHashSet<>();
 
@@ -23,13 +27,12 @@ public class PageAccumulator {
             return;
         }
         step = EmitStepNormalizer.apply(step);
-        if (isBodyTextAssert(step)) {
-            PageModel page = pageFor(step);
-            allocateAssertion(page, step, null);
-            return;
-        }
         if (step.locatorValue() == null || step.locatorValue().isBlank()) {
             if (step.assertionType() != null && "urlContains".equalsIgnoreCase(step.assertionType())) {
+                allocateAssertion(pageFor(step), step, null);
+            } else if (step.assertionType() != null && "textContains".equalsIgnoreCase(step.assertionType())) {
+                // Bodyless textContains: no locator means "find this text anywhere in the page body".
+                // Emit the assertion with no field; the template routes it through Validate.bodyTextContains.
                 allocateAssertion(pageFor(step), step, null);
             }
             return;
@@ -489,40 +492,6 @@ public class PageAccumulator {
         return step.assertionType() != null && !step.assertionType().isBlank();
     }
 
-    /** textContains without a solid locator — use body text instead of brittle XPath fields. */
-    private static boolean isBodyTextAssert(ProvenStep step) {
-        if (step == null || step.assertionType() == null) {
-            return false;
-        }
-        String type = step.assertionType().trim();
-        if (!"textContains".equalsIgnoreCase(type)) {
-            return false;
-        }
-        String loc = step.locatorValue() == null ? "" : step.locatorValue().trim();
-        if (loc.isBlank()) {
-            return true;
-        }
-        String strat = step.locatorStrategy() == null ? "" : step.locatorStrategy().toLowerCase(Locale.ROOT);
-        if ("xpath".equals(strat)) {
-            String compact = loc.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
-            if ("//body".equals(compact) || "/html/body".equals(compact)) {
-                return false;
-            }
-        }
-        if ("id".equals(strat) || "name".equals(strat)) {
-            return false;
-        }
-        String lower = loc.toLowerCase(Locale.ROOT);
-        if (lower.contains("data-axis-test-id") || lower.contains("data-test") || lower.contains("data-qa")) {
-            return false;
-        }
-        return false;
-    }
-
-    /** Package-visible for unit tests. */
-    static boolean isBodyTextAssertForTest(ProvenStep step) {
-        return isBodyTextAssert(step);
-    }
 
     /** Normalise bag entries to Selenium By factory names; drop non-plain keel targets and the primary twin. */
     static List<MultiLocatorBag.Entry> emittableBag(

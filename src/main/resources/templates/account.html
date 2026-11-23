@@ -59,16 +59,7 @@
     </div>
 
     <section class="panel" id="calm-preferences">
-        <h2>How Keel works</h2>
-        <h3 style="margin-top:1.2rem">Vision model</h3>
-        <p class="muted">This is only the model that looks at the screen. It does not write test cases. Writing uses Gemma (gemma4:e2b), chosen on Generate.</p>
-        <div class="calm-seg" role="radiogroup" aria-label="Vision model" style="margin:0.75rem 0">
-            <label><input type="radio" name="calm-model" value="ui-tars" checked> UI-TARS</label>
-            <label><input type="radio" name="calm-model" value="qwen"> Qwen vision</label>
-        </div>
-        <p class="hint" id="calm-model-hint">UI-TARS is the default vision model. It finds buttons and fields on busy pages.</p>
-
-        <h3 style="margin-top:1.6rem">Alerts</h3>
+        <h2>Alerts</h2>
         <p class="muted">Keel sends a message when a run fails or finishes with a block. Saving a channel that is on also sends a test message.</p>
         <div class="calm-channel">
             <label class="calm-toggle"><input type="checkbox" data-calm-ch="telegram" aria-label="Telegram alerts"><span></span></label>
@@ -147,11 +138,6 @@
 
 <script>
 (function () {
-    var KEY = 'keel.calmPrefs';
-    var hints = {
-        'ui-tars': 'UI-TARS is the default vision model. It finds buttons and fields on busy pages.',
-        'qwen': 'Qwen vision is lighter. Use it for simple pages. This is not the Gemma model that writes test cases.'
-    };
     var accountEmail = '';
     var hintBase = {
         telegram: 'Chat id or @group',
@@ -172,14 +158,6 @@
             hint.textContent = hintBase[k] + extra;
         }
     }
-    function loadVision() {
-        var raw = null;
-        try { raw = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { raw = null; }
-        if (!raw) return;
-        var m = document.querySelector('input[name="calm-model"][value="' + raw.model + '"]');
-        if (m) m.checked = true;
-        document.getElementById('calm-model-hint').textContent = hints[raw.model] || hints['ui-tars'];
-    }
     function loadAlerts() {
         fetch('/api/account/alerts', { credentials: 'same-origin' })
             .then(function (res) { return res.json(); })
@@ -192,11 +170,6 @@
                 msg.textContent = 'Could not load alert settings.';
             });
     }
-    document.querySelectorAll('input[name="calm-model"]').forEach(function (r) {
-        r.addEventListener('change', function () {
-            document.getElementById('calm-model-hint').textContent = hints[r.value] || '';
-        });
-    });
     document.querySelectorAll('[data-calm-ch]').forEach(function (cb) {
         cb.addEventListener('change', function () {
             var key = cb.getAttribute('data-calm-ch');
@@ -210,8 +183,6 @@
         });
     });
     document.getElementById('calm-prefs-save').addEventListener('click', function () {
-        var model = (document.querySelector('input[name="calm-model"]:checked') || {}).value || 'ui-tars';
-        try { localStorage.setItem(KEY, JSON.stringify({ model: model })); } catch (e) { /* ignore */ }
         var body = {};
         ['telegram', 'email'].forEach(function (k) {
             var cb = document.querySelector('[data-calm-ch="' + k + '"]');
@@ -232,7 +203,6 @@
             })
             .catch(function () { msg.textContent = 'Save failed.'; });
     });
-    loadVision();
     loadAlerts();
 })();
 </script>

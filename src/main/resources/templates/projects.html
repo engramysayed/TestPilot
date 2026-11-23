@@ -306,7 +306,10 @@
             msg.textContent = data.message || 'Create failed';
             return;
         }
-        window.location.href = '/projects/' + encodeURIComponent(data.projectId) + '?tab=settings';
+        const chosenPlatform = (mobileOn && platformEl) ? platformEl.value : 'WEB';
+        const dest = '/projects/' + encodeURIComponent(data.projectId) + '?tab=settings'
+                + (chosenPlatform === 'ANDROID' ? '#mobile-devices-panel' : '');
+        window.location.href = dest;
     });
 
     document.getElementById('show-archived').addEventListener('change', loadProjects);

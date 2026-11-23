@@ -2,7 +2,7 @@ package delivery.agent.harness.recovery;
 
 import delivery.authoring.StepIntentBinder;
 import delivery.job.ProvePhase;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 
 /** Escalation policy — distinct from {@link ExecutionFailureClassifier}. */
 public final class ExecutionRecoveryEligibility {

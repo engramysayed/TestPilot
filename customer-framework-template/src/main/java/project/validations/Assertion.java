@@ -80,21 +80,6 @@ public abstract class  Assertion {
         softTrue(ok, "textContains '" + expected + "'");
     }
 
-    public void bodyTextContains(String expected) {
-        boolean ok = false;
-        try {
-            ok = wait.waitUntilBodyTextContains(expected);
-        } catch (WebDriverException e) {
-            LogsManager.error("bodyTextContains query failed: " + e.getMessage());
-            softTrue(false, "bodyTextContains query failed: " + e.getClass().getSimpleName());
-            return;
-        }
-        if (!ok) {
-            LogsManager.error("soft assert bodyTextContains failed. expected contains='" + expected + "'");
-        }
-        softTrue(ok, "textContains '" + expected + "'");
-    }
-
     public void urlContains(String expected) {
         String url = driver.getCurrentUrl();
         boolean ok = url != null && url.contains(expected);

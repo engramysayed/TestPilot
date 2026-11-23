@@ -5,7 +5,7 @@ import delivery.agent.harness.AgentHarnessException;
 import delivery.agent.harness.AgentRunResult;
 import delivery.agent.harness.AgentRunStore;
 import delivery.agent.harness.AgentTaskStatus;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;

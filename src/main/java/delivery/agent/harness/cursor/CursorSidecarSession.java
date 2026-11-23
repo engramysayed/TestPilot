@@ -31,6 +31,8 @@ public final class CursorSidecarSession implements AutoCloseable {
     private volatile String agentId;
     private volatile String runId;
     private final AgentStoreLock storeLock;
+    /** Non-blank → each parsed NDJSON line is also pushed to {@link CursorStreamBus} under this key (usually parentJobId). */
+    private final String streamKey;
 
     public CursorSidecarSession(
             List<String> command,
@@ -41,8 +43,22 @@ public final class CursorSidecarSession implements AutoCloseable {
             Map<String, String> extraEnv,
             ObjectMapper mapper,
             AgentStoreLock storeLock) throws Exception {
+        this(command, stdinJson, repoRoot, deadline, cancel, extraEnv, mapper, storeLock, null);
+    }
+
+    public CursorSidecarSession(
+            List<String> command,
+            String stdinJson,
+            Path repoRoot,
+            Duration deadline,
+            BooleanSupplier cancel,
+            Map<String, String> extraEnv,
+            ObjectMapper mapper,
+            AgentStoreLock storeLock,
+            String streamKey) throws Exception {
         this.storeLock = storeLock;
         this.mapper = mapper == null ? new ObjectMapper() : mapper;
+        this.streamKey = streamKey;
         ProcessBuilder pb = new ProcessBuilder(command);
         if (repoRoot != null) {
             pb.directory(repoRoot.toFile());
@@ -108,6 +124,14 @@ public final class CursorSidecarSession implements AutoCloseable {
                 }
                 synchronized (lines) {
                     lines.add(parsed);
+                }
+                // Fan every parsed NDJSON line to UI subscribers — "reasoning stream".
+                if (streamKey != null && !streamKey.isBlank()) {
+                    try {
+                        CursorStreamBus.push(streamKey, line);
+                    } catch (RuntimeException ignored) {
+                        // publication must never break the sidecar reader thread
+                    }
                 }
                 handle(parsed);
                 if ("result".equals(parsed.type()) || "error".equals(parsed.type())) {

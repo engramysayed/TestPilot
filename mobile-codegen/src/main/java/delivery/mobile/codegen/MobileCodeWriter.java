@@ -194,6 +194,7 @@ public final class MobileCodeWriter {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("fieldName", loc.fieldName());
             m.put("byExpression", loc.byExpression());
+            m.put("fallbacks", loc.fallbacks());
             locs.add(m);
         }
         model.put("locators", locs);

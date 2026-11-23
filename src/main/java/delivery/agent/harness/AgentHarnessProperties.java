@@ -1,4 +1,4 @@
-package delivery.portal;
+package delivery.agent.harness;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

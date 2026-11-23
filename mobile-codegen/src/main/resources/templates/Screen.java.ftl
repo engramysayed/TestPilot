@@ -8,6 +8,9 @@ package ${packageName!"project.screens"};
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.android.AndroidDriver;
 import org.openqa.selenium.By;
+<#if locators![]?filter(l -> l.fallbacks?has_content)?has_content>
+import project.utils.locators.MobileFirstOf;
+</#if>
 import project.runtime.assertions.MobileAssertions;
 import project.runtime.settle.SettledMobileActions;
 
@@ -19,7 +22,14 @@ public class ${screenClassName} {
     protected final AndroidDriver driver;
 
 <#list locators![] as loc>
+<#if loc.fallbacks?has_content>
+    /** Primary first, then verified fallbacks (first locator that matches wins; outcomes logged per slot). */
+    protected final By ${loc.fieldName} = MobileFirstOf.of("${screenClassName}", "${loc.fieldName}",
+            ${loc.byExpression}<#list loc.fallbacks as fb>,
+            ${fb}</#list>);
+<#else>
     protected final By ${loc.fieldName} = ${loc.byExpression};
+</#if>
 </#list>
 
     public ${screenClassName}(AndroidDriver driver) {

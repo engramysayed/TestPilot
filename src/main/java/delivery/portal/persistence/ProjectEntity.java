@@ -46,6 +46,13 @@ public class ProjectEntity {
     /** When Precision: try domain locator memory before Cursor groundRank. */
     private Boolean precisionReuseLocatorMemory;
 
+    /**
+     * Cursor chat-completion model id to pin for this project's Precision calls.
+     * null / blank / "auto" keeps the workspace default (which may itself be the Cursor router).
+     */
+    @Column(name = "precision_cursor_model", length = 64)
+    private String precisionCursorModel;
+
     /** Opaque workspace id; membership is stored separately. */
     @Column(name = "tenant_id", length = 40)
     private String tenantId;
@@ -82,6 +89,15 @@ public class ProjectEntity {
     public Boolean getPrecisionReuseLocatorMemory() { return precisionReuseLocatorMemory; }
     public void setPrecisionReuseLocatorMemory(Boolean precisionReuseLocatorMemory) {
         this.precisionReuseLocatorMemory = precisionReuseLocatorMemory;
+    }
+    public String getPrecisionCursorModel() { return precisionCursorModel; }
+    public void setPrecisionCursorModel(String precisionCursorModel) {
+        if (precisionCursorModel == null) {
+            this.precisionCursorModel = null;
+            return;
+        }
+        String trimmed = precisionCursorModel.trim();
+        this.precisionCursorModel = trimmed.isEmpty() ? null : trimmed;
     }
     public String getTenantId() { return tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId; }

@@ -9,49 +9,34 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 /**
- * M0 / integration 0056: mobile stays off by default so deterministic CI never needs a device.
- * Enabling mobile in CI requires an explicit dual opt-in (property + keel.mobile.ci-opt-in).
+ * Mobile is ON by default (flipped 2026-11-23). The dual-opt-in gate
+ * (delivery.mobile.enabled + keel.mobile.ci-opt-in) still exists for scripts that need a
+ * belt-and-braces check before touching real devices; the SpringBootTest FlagOff variants
+ * override to false via @SpringBootTest(properties=…).
  */
 public class MobileFeatureFlagDefaultsTest {
 
     @Test
-    public void applicationPropertiesDefaultMobileDisabled() throws Exception {
+    public void applicationPropertiesDefaultMobileEnabled() throws Exception {
         Properties p = loadApplicationProperties();
-        Assert.assertEquals(p.getProperty("delivery.mobile.enabled", "missing"), "false",
-                "delivery.mobile.enabled must default to false (no device in default CI)");
+        Assert.assertEquals(p.getProperty("delivery.mobile.enabled", "missing"), "true",
+                "delivery.mobile.enabled defaults ON (2026-11-23)");
     }
 
     @Test
-    public void systemPropertyCannotEnableMobileWithoutCiOptIn() {
+    public void dualOptInStillRequiresBothSystemProperties() {
+        // Guards shell scripts that use the dual-opt-in rule — independent of the file default.
         String previousMobile = System.getProperty("delivery.mobile.enabled");
         String previousOptIn = System.getProperty("keel.mobile.ci-opt-in");
         try {
             System.setProperty("delivery.mobile.enabled", "true");
             System.clearProperty("keel.mobile.ci-opt-in");
             Assert.assertFalse(mobileEffectivelyEnabled(),
-                    "delivery.mobile.enabled=true alone must NOT enable mobile without keel.mobile.ci-opt-in=true");
+                    "dual-opt-in script gate: enabled=true alone must not pass without ci-opt-in");
 
             System.setProperty("keel.mobile.ci-opt-in", "true");
             Assert.assertTrue(mobileEffectivelyEnabled(),
-                    "dual opt-in (enabled + ci-opt-in) is required for mobile CI/device paths");
-        } finally {
-            restore("delivery.mobile.enabled", previousMobile);
-            restore("keel.mobile.ci-opt-in", previousOptIn);
-        }
-    }
-
-    @Test
-    public void defaultJvmWithoutOverridesKeepsMobileOff() throws Exception {
-        // Simulate reading defaults from the packaged properties when sysprops are unset.
-        String previousMobile = System.getProperty("delivery.mobile.enabled");
-        String previousOptIn = System.getProperty("keel.mobile.ci-opt-in");
-        try {
-            System.clearProperty("delivery.mobile.enabled");
-            System.clearProperty("keel.mobile.ci-opt-in");
-            Properties p = loadApplicationProperties();
-            boolean fileSaysOn = "true".equalsIgnoreCase(p.getProperty("delivery.mobile.enabled", "false"));
-            Assert.assertFalse(fileSaysOn);
-            Assert.assertFalse(mobileEffectivelyEnabled());
+                    "dual-opt-in script gate: enabled + ci-opt-in both true → pass");
         } finally {
             restore("delivery.mobile.enabled", previousMobile);
             restore("keel.mobile.ci-opt-in", previousOptIn);

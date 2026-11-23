@@ -9,6 +9,7 @@ import delivery.portal.security.CurrentUserService;
 import delivery.portal.security.JobSecretCrypto;
 import delivery.portal.service.DashboardService;
 import delivery.portal.service.InviteService;
+import delivery.portal.service.JobAgentTasksService;
 import delivery.portal.service.JobLinkEnricher;
 import delivery.portal.service.PortalStore;
 import delivery.portal.service.WorkspacePackageService;
@@ -71,6 +72,7 @@ public class PortalUiController {
     private final RolesService roles;
     private final ServicePriceService prices;
     private final LlmSettingsService llmSettings;
+    private final JobAgentTasksService agentTasks;
 
     public PortalUiController(DashboardService dashboard, CurrentUserService currentUser,
                               PortalStore store, InviteService invites,
@@ -78,7 +80,8 @@ public class PortalUiController {
                               JobLinkEnricher jobLinks, WorkspacePackageService workspacePackages,
                               MobileProperties mobileProperties, CreditService creditService,
                               RolesService roles, ServicePriceService prices,
-                              LlmSettingsService llmSettings) {
+                              LlmSettingsService llmSettings,
+                              JobAgentTasksService agentTasks) {
         this.dashboard = dashboard;
         this.currentUser = currentUser;
         this.store = store;
@@ -91,6 +94,7 @@ public class PortalUiController {
         this.roles = roles;
         this.prices = prices;
         this.llmSettings = llmSettings;
+        this.agentTasks = agentTasks;
     }
 
     private void addNav(Model model, String navActive) {
@@ -165,20 +169,20 @@ public class PortalUiController {
         return switch (navActive) {
             case "dashboard" -> "Overview";
             case "projects" -> "Projects";
-            case "generate" -> "TCs Generation";
+            case "generate" -> "Write test cases";
             case "generate-compare" -> "Multi-model generate";
             case "generate-from-knowledge" -> "Generate from knowledge";
-            case "record" -> "Playback";
+            case "record" -> "Record a test";
             case "plain-cases" -> "Plain cases";
             case "structured-plans" -> "Test blueprints";
             case "suites" -> "Test suites";
             case "suites-schedule" -> "Scheduling";
-            case "execute" -> "TCs execution";
-            case "automate" -> "TCs automation";
+            case "execute" -> "Run tests";
+            case "automate" -> "Build code";
             case "bug-hunter" -> "Bug Hunter";
             case "run-memory" -> "Flaky locators";
             case "locator-memory" -> "Locator memory";
-            case "runs" -> "History";
+            case "runs" -> "Run history";
             case "packages" -> "Code packages";
             case "guide" -> "Guide";
             case "tc-guide" -> "Guide";
@@ -216,7 +220,15 @@ public class PortalUiController {
     }
 
     @GetMapping("/login")
-    public String login() {
+    public String login(
+            @RequestParam(value = "next", required = false) String next,
+            org.springframework.ui.Model model) {
+        // Preserve the page the user was trying to reach when their session expired
+        // (set by preflight.js and other 401 handlers). Validated in SecurityConfig
+        // successHandler before redirect, so a bad value here is harmless.
+        if (next != null && !next.isBlank()) {
+            model.addAttribute("next", next);
+        }
         return "login";
     }
 
@@ -260,6 +272,7 @@ public class PortalUiController {
         model.addAttribute("mobileEnabled", mobileProperties.isEnabled());
         model.addAttribute("projectPlatform", owned.get().getPlatform() == null ? "WEB" : owned.get().getPlatform());
         model.addAttribute("mobileCanEdit", store.canOperate(projectId, ownerUserId));
+        model.addAttribute("latestAgentTask", agentTasks.latestTask(projectId).orElse(null));
         return "project-detail";
     }
 
@@ -578,7 +591,7 @@ public class PortalUiController {
 
     @GetMapping("/admin/invites")
     public String adminInvites() {
-        return "redirect:/admin/users/invite";
+        return "redirect:/admin/users";
     }
 
     @GetMapping("/pricing")
@@ -702,7 +715,27 @@ public class PortalUiController {
     public String adminPrompts(Model model) {
         requireHeadPage();
         addNav(model, "prompts");
+        model.addAttribute("frameworkRulesText", readFrameworkRulesDoc());
         return "admin-prompts";
+    }
+
+    @GetMapping("/admin/mobile-precision")
+    public String adminMobilePrecision(Model model) {
+        requireHeadPage();
+        addNav(model, "mobile-precision");
+        return "admin-mobile-precision";
+    }
+
+    private static String readFrameworkRulesDoc() {
+        java.nio.file.Path doc = java.nio.file.Path.of("docs", "FRAMEWORK_RULES.md");
+        if (!java.nio.file.Files.isRegularFile(doc)) {
+            return "";
+        }
+        try {
+            return java.nio.file.Files.readString(doc, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException e) {
+            return "";
+        }
     }
 
     @GetMapping("/account")

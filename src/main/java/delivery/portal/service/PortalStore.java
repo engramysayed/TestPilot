@@ -140,18 +140,20 @@ public class PortalStore {
 
     public PrecisionJobConfig precisionConfigForProject(String projectId) {
         AuthoringEngine engine = authoringEngineForProject(projectId);
-        Integer projectMax = projectRepository.findByProjectId(projectId)
-                .map(ProjectEntity::getPrecisionMaxCallsPerJob)
-                .orElse(null);
+        Optional<ProjectEntity> entity = projectRepository.findByProjectId(projectId);
+        Integer projectMax = entity.map(ProjectEntity::getPrecisionMaxCallsPerJob).orElse(null);
         int max = projectMax != null && projectMax > 0
                 ? projectMax
                 : portalProperties.getPrecisionMaxCallsPerJob();
         boolean enabled = portalProperties.isPrecisionAuthoringEnabled()
                 && engine == AuthoringEngine.PRECISION;
-        boolean reuse = projectRepository.findByProjectId(projectId)
-                .map(e -> Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()))
-                .orElse(false);
-        return new PrecisionJobConfig(enabled, max, reuse);
+        boolean reuse = entity.map(e -> Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory())).orElse(false);
+        String projectModel = entity.map(ProjectEntity::getPrecisionCursorModel).orElse(null);
+        String cursorModel = (projectModel != null && !projectModel.isBlank())
+                ? projectModel
+                : portalProperties.getPrecisionCursorModel();
+        return new PrecisionJobConfig(enabled, max, reuse,
+                portalProperties.getPrecisionMinConfidence(), cursorModel);
     }
 
     public PrecisionJobConfig precisionConfigForJob(JobRecord job) {
@@ -159,13 +161,19 @@ public class PortalStore {
                 ? job.getPrecisionEnabledSnapshot()
                 : portalProperties.isPrecisionAuthoringEnabled()
                   && job.getAuthoringEngine() == AuthoringEngine.PRECISION;
+        Optional<ProjectEntity> entity = projectRepository.findByProjectId(job.getProjectId());
         boolean reuse = job.getPrecisionReuseLocatorMemorySnapshot() != null
                 ? job.getPrecisionReuseLocatorMemorySnapshot()
-                : projectRepository.findByProjectId(job.getProjectId())
-                .map(e -> Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()))
-                .orElse(false);
+                : entity.map(e -> Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory())).orElse(false);
+        String projectModel = entity.map(ProjectEntity::getPrecisionCursorModel).orElse(null);
+        String cursorModel = (projectModel != null && !projectModel.isBlank())
+                ? projectModel
+                : portalProperties.getPrecisionCursorModel();
         return new PrecisionJobConfig(enabled, job.getPrecisionMaxSnapshot() > 0
-                ? job.getPrecisionMaxSnapshot() : portalProperties.getPrecisionMaxCallsPerJob(), reuse);
+                ? job.getPrecisionMaxSnapshot() : portalProperties.getPrecisionMaxCallsPerJob(),
+                reuse,
+                portalProperties.getPrecisionMinConfidence(),
+                cursorModel);
     }
 
     public ProjectStore filesystemStore() {
@@ -421,6 +429,11 @@ public class PortalStore {
         if (patch.precisionReuseLocatorMemory() != null) {
             entity.setPrecisionReuseLocatorMemory(patch.precisionReuseLocatorMemory());
         }
+        if (patch.precisionCursorModel() != null) {
+            String raw = patch.precisionCursorModel().trim();
+            // "auto" and blank clear the per-project pin so workspace / env default applies.
+            entity.setPrecisionCursorModel(raw.isEmpty() || "auto".equalsIgnoreCase(raw) ? null : raw);
+        }
         if (patch.testDataEnv() != null) {
             String env = patch.testDataEnv().trim().toLowerCase(Locale.ROOT);
             entity.setTestDataEnv(env.isBlank() ? null : env.replaceAll("[^a-z0-9_-]", ""));
@@ -589,6 +602,69 @@ public class PortalStore {
         return n;
     }
 
+    /**
+     * Max entries kept in {@code progress_log} after the job reaches a terminal status (COMPLETED,
+     * COMPLETED_WITH_BLOCK, FAILED, CANCELLED). Live jobs keep the full {@link JobRecord#PROGRESS_LOG_MAX}
+     * window; terminal jobs only need the tail for post-mortem, so we trim to save DB space.
+     */
+    static final int TERMINAL_PROGRESS_LOG_KEEP = 10;
+
+    /** JSON-serialize the live progress-log entries for persistence (null when empty). */
+    static String serializeProgressLog(java.util.List<JobRecord.ProgressEntry> entries) {
+        return serializeProgressLog(entries, false);
+    }
+
+    /** With {@code terminal=true}, keeps only the last {@link #TERMINAL_PROGRESS_LOG_KEEP} entries. */
+    static String serializeProgressLog(java.util.List<JobRecord.ProgressEntry> entries, boolean terminal) {
+        if (entries == null || entries.isEmpty()) {
+            return null;
+        }
+        java.util.List<JobRecord.ProgressEntry> source = entries;
+        if (terminal && entries.size() > TERMINAL_PROGRESS_LOG_KEEP) {
+            source = entries.subList(entries.size() - TERMINAL_PROGRESS_LOG_KEEP, entries.size());
+        }
+        org.json.JSONArray arr = new org.json.JSONArray();
+        for (JobRecord.ProgressEntry entry : source) {
+            if (entry == null) continue;
+            arr.put(new org.json.JSONObject()
+                    .put("ts", entry.ts())
+                    .put("message", entry.message() == null ? "" : entry.message()));
+        }
+        return arr.toString();
+    }
+
+    /** Terminal statuses whose progress log can be trimmed before write. Mirrors JobRecord.Status enum. */
+    private static boolean isTerminalStatus(JobRecord.Status s) {
+        return s == JobRecord.Status.COMPLETED
+                || s == JobRecord.Status.COMPLETED_WITH_BLOCK
+                || s == JobRecord.Status.FAILED
+                || s == JobRecord.Status.CANCELLED;
+    }
+
+    /** Tolerant version for the pre-save DB snapshot string; unknown → null. */
+    private static JobRecord.Status parseStatusSafe(String s) {
+        if (s == null || s.isBlank()) return null;
+        try { return JobRecord.Status.valueOf(s); } catch (IllegalArgumentException e) { return null; }
+    }
+
+    /** Inverse of {@link #serializeProgressLog}; returns an empty list for blank/invalid JSON. */
+    static java.util.List<JobRecord.ProgressEntry> deserializeProgressLog(String json) {
+        if (json == null || json.isBlank()) {
+            return java.util.List.of();
+        }
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray(json);
+            java.util.List<JobRecord.ProgressEntry> out = new java.util.ArrayList<>(arr.length());
+            for (int i = 0; i < arr.length(); i++) {
+                org.json.JSONObject row = arr.getJSONObject(i);
+                out.add(new JobRecord.ProgressEntry(row.optLong("ts", 0L), row.optString("message", "")));
+            }
+            return out;
+        } catch (Exception ignored) {
+            return java.util.List.of();
+        }
+    }
+
     @Transactional
     public synchronized JobRecord saveJob(JobRecord job) {
         boolean creating = job.getStatus() == JobRecord.Status.QUEUED
@@ -652,7 +728,18 @@ public class PortalStore {
         entity.setProgressCurrent(job.getProgressCurrent());
         entity.setProgressTotal(job.getProgressTotal());
         entity.setMessage(job.getMessage());
+        boolean terminal = isTerminalStatus(job.getStatus());
+        entity.setProgressLog(serializeProgressLog(job.getProgressLog(), terminal));
         entity.setError(truncate(job.getError(), 1024));
+        // Close any idle Cursor SSE subscribers + drop the per-job buffer at the moment the job
+        // transitions to a terminal status (first terminal save wins — isTerminalStatus is idempotent).
+        if (terminal && !isTerminalStatus(parseStatusSafe(previousStatus))) {
+            try {
+                delivery.agent.harness.cursor.CursorStreamBus.drop(job.getJobId());
+            } catch (RuntimeException ignored) {
+                // stream cleanup is best-effort; never fail a save over it
+            }
+        }
         if (entity.getCreatedAt() == null) {
             Instant created = job.getCreatedAt() != null ? job.getCreatedAt() : Instant.now();
             entity.setCreatedAt(created);
@@ -1118,6 +1205,10 @@ public class PortalStore {
         if (e.getMessage() != null) {
             job.setMessage(e.getMessage());
         }
+        java.util.List<JobRecord.ProgressEntry> hydratedLog = deserializeProgressLog(e.getProgressLog());
+        if (!hydratedLog.isEmpty()) {
+            job.setProgressLog(hydratedLog);
+        }
         if (e.getError() != null && !e.getError().isBlank()) {
             job.setError(e.getError());
         }
@@ -1182,6 +1273,7 @@ public class PortalStore {
                 ? 0
                 : e.getPrecisionMaxCallsPerJob());
         rec.setPrecisionReuseLocatorMemory(Boolean.TRUE.equals(e.getPrecisionReuseLocatorMemory()));
+        rec.setPrecisionCursorModel(e.getPrecisionCursorModel() == null ? "" : e.getPrecisionCursorModel());
         rec.setTenantId(e.getTenantId() == null ? "" : e.getTenantId());
         rec.setPlatform(ProjectPlatform.parse(e.getPlatform()).name());
         rec.setTestDataEnv(e.getTestDataEnv() == null ? "" : e.getTestDataEnv());

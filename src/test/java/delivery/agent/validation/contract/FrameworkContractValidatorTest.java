@@ -66,4 +66,47 @@ public class FrameworkContractValidatorTest {
         Assert.assertFalse(report.passed());
         Assert.assertTrue(report.findings().stream().anyMatch(f -> "FW_ARCH_PAGE_TEST_PAIR".equals(f.ruleId())));
     }
+
+    @Test
+    public void userRules_flagRawDriverAndHtmlScanAndDupLiteralAndComplexLocator() throws Exception {
+        Path root = Files.createTempDirectory("fw-user-rules-");
+        Path pages = root.resolve("src/main/java/project/pages");
+        Path tests = root.resolve("src/test/java/project/tests/generated");
+        Files.createDirectories(pages);
+        Files.createDirectories(tests);
+        Files.writeString(pages.resolve("Login_Page.java"), """
+                package project.pages;
+                import org.openqa.selenium.By;
+                public class Login_Page {
+                    protected final By good1 = By.id("username");
+                    protected final By good2 = By.cssSelector("[data-axis-test-id=\\"submit\\"]");
+                    protected final By bad1 = By.className("btn");
+                    protected final By bad2 = By.cssSelector(".login .btn > span");
+                }
+                """);
+        Files.writeString(tests.resolve("Login_Test.java"), """
+                package project.tests.generated;
+                import project.tests.BaseTest;
+                import project.pages.Login_Page;
+                import org.openqa.selenium.By;
+                public class Login_Test extends BaseTest {
+                    @org.testng.annotations.Test
+                    void run() {
+                        driver.findElement(By.id("x"));
+                        org.testng.Assert.assertTrue(driver.getPageSource().contains("ok"));
+                        String a = "shared-value-abc";
+                        String b = "shared-value-abc";
+                    }
+                }
+                """);
+        var report = FrameworkContractValidator.validateWorkspace(root, null);
+        Assert.assertTrue(report.findings().stream().anyMatch(f -> "FW_RULE_REUSE_ACTIONS".equals(f.ruleId())),
+                report.findings().toString());
+        Assert.assertTrue(report.findings().stream().anyMatch(f -> "FW_RULE_ASSERT_TAKES_LOCATOR".equals(f.ruleId())),
+                report.findings().toString());
+        Assert.assertTrue(report.findings().stream().anyMatch(f -> "FW_RULE_LOCAL_REUSE".equals(f.ruleId())),
+                report.findings().toString());
+        Assert.assertTrue(report.findings().stream().anyMatch(f -> "FW_RULE_LOCATOR_LADDER".equals(f.ruleId())),
+                report.findings().toString());
+    }
 }

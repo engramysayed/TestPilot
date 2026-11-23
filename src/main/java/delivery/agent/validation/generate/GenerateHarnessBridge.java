@@ -8,7 +8,7 @@ import delivery.agent.harness.AgentRunStore;
 import delivery.agent.harness.AgentTaskType;
 import delivery.agent.validation.contract.ValidationReport;
 import delivery.agent.validation.contract.ContractValidationReportWriter;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.excel.ManualTestCase;
 import delivery.agent.harness.NewAgentTaskRequest;
 import delivery.prompts.PromptCatalog;

@@ -1312,6 +1312,7 @@ code, .mono { font-family: var(--mono); font-size: 0.86em; }
 }
 .pill.bad { color: #9f2f2f; background: rgba(201, 79, 79, 0.14); }
 .pill.good { color: #0a6b75; background: rgba(13, 154, 168, 0.16); }
+.pill.pill-allure { color: #8a5a00; background: #faf3e6; border: 1px solid #e8d4a8; }
 .compare-steps {
     margin: 0;
     padding: 0.9rem 0.95rem 1rem 1.7rem;
@@ -2108,6 +2109,68 @@ button.danger,
     line-height: 1.45;
 }
 .review-case-grid li + li { margin-top: 0.25rem; }
+.review-case-edited {
+    border-left: 3px solid var(--accent, #087f78);
+}
+.edited-badge {
+    background: rgba(8, 127, 120, 0.12);
+    color: var(--accent, #087f78);
+    border: 1px solid rgba(8, 127, 120, 0.3);
+    border-radius: 999px;
+    padding: 0.15rem 0.6rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+}
+.edited-badge:hover { background: rgba(8, 127, 120, 0.2); }
+.review-case-diff {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(8, 127, 120, 0.05);
+    border-radius: 0.5rem;
+    border: 1px dashed rgba(8, 127, 120, 0.3);
+}
+.review-case-diff-field + .review-case-diff-field { margin-top: 0.75rem; }
+.review-case-diff h6 {
+    margin: 0 0 0.35rem;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted, #57606a);
+}
+.review-case-diff-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+.review-case-diff-before,
+.review-case-diff-after {
+    background: #fff;
+    border: 1px solid var(--border, #d8dee4);
+    border-radius: 0.4rem;
+    padding: 0.5rem;
+    overflow-x: auto;
+}
+.review-case-diff-before { border-left: 3px solid #d14343; }
+.review-case-diff-after  { border-left: 3px solid #0c7f55; }
+.review-case-diff pre {
+    margin: 0.25rem 0 0;
+    white-space: pre-wrap;
+    font-family: inherit;
+    font-size: 0.84rem;
+}
+.diff-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted, #57606a);
+    font-weight: 600;
+}
+@media (max-width: 720px) {
+    .review-case-diff-cols { grid-template-columns: 1fr; }
+}
 .review-findings {
     margin: 0.5rem 0 0.75rem;
     padding-left: 1.15rem;
@@ -3612,6 +3675,190 @@ body:not(.app-body) .shell {
 }
 .design-ref-form label {
     margin: 0;
+}
+.figma-validate-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.figma-validate-group {
+    border: 1px solid var(--border, #d8dee4);
+    border-radius: 0.6rem;
+    padding: 0.65rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.figma-validate-group-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+.figma-validate-count {
+    font-size: 0.78rem;
+}
+.figma-validate-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.25rem 0.5rem;
+    margin-right: 0.5rem;
+    border-radius: 0.5rem;
+    cursor: zoom-in;
+    background: rgba(8, 127, 120, 0.04);
+}
+.figma-validate-row:hover,
+.figma-validate-row:focus-visible {
+    background: rgba(8, 127, 120, 0.12);
+    outline: none;
+}
+.figma-validate-scope {
+    font-size: 0.8rem;
+    color: var(--muted, #57606a);
+    white-space: nowrap;
+}
+.lib-figma-cell {
+    width: 42px;
+    text-align: center;
+    vertical-align: middle;
+    padding: 0.25rem;
+}
+.lib-figma-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--border, #d8dee4);
+    border-radius: 0.35rem;
+    background: #fff;
+    cursor: zoom-in;
+    overflow: hidden;
+}
+.lib-figma-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.lib-figma-tile:hover,
+.lib-figma-tile:focus-visible {
+    border-color: var(--accent, #087f78);
+    outline: none;
+}
+.lib-figma-tile.lib-figma-empty {
+    cursor: pointer;
+    background: rgba(8, 127, 120, 0.04);
+    color: var(--muted, #57606a);
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1;
+}
+.lib-figma-tile.lib-figma-empty:hover {
+    background: rgba(8, 127, 120, 0.12);
+    color: var(--accent, #087f78);
+}
+.lib-figma-head {
+    width: 48px;
+    text-align: center;
+}
+.locator-tier-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 0.4rem;
+    background: var(--panel-bg, #fff);
+    border: 1px solid var(--border, #d8dee4);
+    border-radius: 0.6rem;
+    overflow: hidden;
+}
+.locator-tier-table thead th {
+    background: rgba(8, 127, 120, 0.06);
+    text-align: left;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted, #57606a);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border, #d8dee4);
+}
+.locator-tier-table tbody td {
+    padding: 0.6rem 0.75rem;
+    vertical-align: top;
+    border-top: 1px solid var(--border, #d8dee4);
+    font-size: 0.86rem;
+}
+.locator-tier-table tbody tr:first-child td {
+    border-top: none;
+}
+.locator-tier-table tbody tr:nth-child(odd) td {
+    background: rgba(8, 127, 120, 0.02);
+}
+.locator-tier-rank {
+    display: inline-flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(8, 127, 120, 0.12);
+    color: var(--accent, #087f78);
+    font-weight: 700;
+    font-size: 0.86rem;
+}
+.locator-tier-table td code {
+    font-size: 0.82rem;
+    background: rgba(8, 127, 120, 0.08);
+    color: var(--accent, #087f78);
+    padding: 0.08rem 0.4rem;
+    border-radius: 0.35rem;
+}
+.locator-tier-table td.mono {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    color: var(--muted, #57606a);
+    word-break: break-word;
+}
+.figma-validate-thumb {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 0.35rem;
+    border: 1px solid var(--border, #d8dee4);
+    background: #fff;
+}
+.figma-validate-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(12, 18, 28, 0.6);
+    z-index: 1000;
+}
+.figma-validate-preview-card {
+    background: var(--panel-bg, #fff);
+    border-radius: 0.75rem;
+    padding: 0.85rem;
+    max-width: 92vw;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.figma-validate-preview-card header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.figma-validate-preview-card img {
+    max-width: 100%;
+    max-height: calc(92vh - 4rem);
+    object-fit: contain;
+    border-radius: 0.5rem;
+    background: #0e1420;
 }
 .design-compare-panel {
     margin: 0.75rem 0 1rem;

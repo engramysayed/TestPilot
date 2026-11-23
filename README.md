@@ -184,11 +184,16 @@ sequenceDiagram
 
 ### Prerequisites
 
-- JDK 21+
-- Maven 3.9+
-- Chrome or Edge
+- **JDK 21+** · **Maven 3.9+** · **Git** · Chrome or Edge
 - [Ollama](https://ollama.com/) with at least one generate model pulled (see `application.properties`)
-- Node.js 18+ if you enable the Cursor heal sidecar
+- **Node.js 18+** if you enable the Cursor heal sidecar (Precision, mobile Precision, Automate+Cursor Auto)
+- **Mobile extras** (required only for Android features — Mobile Devices panel, APK upload, mobile Automate/Execute, Figma Validate on mobile, `/admin/mobile-precision` dashboard):
+  - `adb` (Android platform-tools)
+  - `apkanalyzer` (primary APK inspector) plus `aapt2` as a fallback — both ship inside the Android `cmdline-tools` / `build-tools`
+  - `appium` (`npm i -g appium`) with the `uiautomator2` driver (`appium driver install uiautomator2`)
+  - A phone with USB debugging on, authorized by the host, and a mobile runner process attached (see below)
+
+Full host matrix, install commands per OS, env vars, and what breaks when each piece is missing: [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md).
 
 ### Run Keel
 

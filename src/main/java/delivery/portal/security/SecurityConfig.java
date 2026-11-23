@@ -82,6 +82,23 @@ public class SecurityConfig {
         return reg;
     }
 
+    /**
+     * Returns {@code next} only when it is a same-origin path we trust — starts with {@code '/'},
+     * is not scheme-relative ({@code //evil.com}), is not the login page itself (would loop), and
+     * does not try to escape via {@code ..} segments. Everything else falls back to {@code /dashboard}.
+     */
+    static String safeNextOrDashboard(String next) {
+        if (next == null || next.isBlank()) return "/dashboard";
+        String trimmed = next.trim();
+        if (!trimmed.startsWith("/") || trimmed.startsWith("//") || trimmed.startsWith("/\\")) {
+            return "/dashboard";
+        }
+        if (trimmed.contains("..") || trimmed.startsWith("/login") || trimmed.startsWith("/logout")) {
+            return "/dashboard";
+        }
+        return trimmed;
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, ApiRequestHeaderFilter apiHeaderFilter,
                                            @Qualifier("loginThrottle") LoginThrottle loginThrottle,
@@ -100,7 +117,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/css/**", "/js/**", "/img/**", "/prompts/**",
+                                "/css/**", "/js/**", "/img/**", "/prompts/**", "/vendor/**",
                                 "/favicon.ico", "/favicon.svg",
                                 "/login", "/request-access", "/invite/**", "/error",
                                 "/api/health", "/api/ready",
@@ -116,7 +133,7 @@ public class SecurityConfig {
                         .successHandler((request, response, authentication) -> {
                             loginThrottle.recordSuccess(LoginThrottle.key(
                                     request.getParameter("username"), request.getRemoteAddr()));
-                            response.sendRedirect("/dashboard");
+                            response.sendRedirect(safeNextOrDashboard(request.getParameter("next")));
                         })
                         .failureHandler((request, response, exception) -> {
                             loginThrottle.recordFailure(LoginThrottle.key(

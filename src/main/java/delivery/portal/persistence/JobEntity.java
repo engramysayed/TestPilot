@@ -47,6 +47,13 @@ public class JobEntity {
     @Column(length = 1024)
     private String message;
 
+    /**
+     * JSON array of {@code {ts,message}} progress entries (bounded, see {@link delivery.portal.model.JobRecord#PROGRESS_LOG_MAX}).
+     * Persisted so the live step history survives a JVM restart; empty for legacy rows.
+     */
+    @Column(name = "progress_log", columnDefinition = "TEXT")
+    private String progressLog;
+
     /** Machine error code / reason (e.g. ALL_CASES_TODO, INTERRUPTED_UNCERTAIN). Was memory-only before. */
     @Column(name = "error_code", length = 1024)
     private String error;
@@ -154,6 +161,8 @@ public class JobEntity {
     public void setProgressCurrent(int progressCurrent) { this.progressCurrent = progressCurrent; }
     public int getProgressTotal() { return progressTotal; }
     public void setProgressTotal(int progressTotal) { this.progressTotal = progressTotal; }
+    public String getProgressLog() { return progressLog; }
+    public void setProgressLog(String progressLog) { this.progressLog = progressLog; }
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
     public String getError() { return error; }

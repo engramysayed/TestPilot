@@ -9,7 +9,7 @@ import java.nio.file.Path;
 
 /**
  * Non-browser release-gate checks for two-phase conversion (T041/T049 prerequisites).
- * Live NEW/UPDATE is site-agnostic — see docs/ops/e2e-conversion-gate.md.
+ * Live NEW/UPDATE is site-agnostic — see docs/archive/ops/e2e-conversion-gate.md.
  */
 public class TwoPhaseConversionGateTest {
 
@@ -24,7 +24,7 @@ public class TwoPhaseConversionGateTest {
 
     @Test
     public void gateRunbookPresent() {
-        Assert.assertTrue(Files.isRegularFile(Path.of("docs/ops/e2e-conversion-gate.md")));
+        Assert.assertTrue(Files.isRegularFile(Path.of("docs/archive/ops/e2e-conversion-gate.md")));
         Assert.assertTrue(Files.isRegularFile(Path.of("scripts/run-conversion-gate.ps1")));
         Assert.assertTrue(Files.isRegularFile(Path.of("specs/003-two-phase-conversion/spec.md")));
     }

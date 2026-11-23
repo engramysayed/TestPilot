@@ -65,12 +65,39 @@
         if (hooks) hooks.value = p.preferredHooks || '';
         const lmode = document.getElementById('settings-locator-mode');
         if (lmode) lmode.value = p.locatorMode || 'stable-first';
+        // Android projects use a fixed tier list — hide the web dropdown, show the table.
+        const platform = (p.platform || 'WEB').toUpperCase();
+        const lmodeWrap = document.getElementById('settings-locator-mode-wrap');
+        const lmodeNote = document.getElementById('settings-locator-mode-note');
+        const mobileTiers = document.getElementById('settings-mobile-locator-tiers');
+        if (platform === 'ANDROID') {
+            if (lmodeWrap) lmodeWrap.hidden = true;
+            if (lmodeNote) lmodeNote.hidden = true;
+            if (mobileTiers) mobileTiers.hidden = false;
+        } else {
+            if (lmodeWrap) lmodeWrap.hidden = false;
+            if (lmodeNote) lmodeNote.hidden = false;
+            if (mobileTiers) mobileTiers.hidden = true;
+        }
         const enginePanel = document.getElementById('settings-authoring-engine');
         const precisionEnabled = enginePanel && enginePanel.dataset.precisionEnabled === 'true';
         const engineValue = (p.authoringEngine || 'keel').toLowerCase();
         document.querySelectorAll('#settings-form input[name="authoringEngine"]').forEach(radio => {
             radio.checked = radio.value === engineValue;
         });
+        const cursorModelSel = document.getElementById('settings-precision-cursor-model');
+        if (cursorModelSel) {
+            const pin = (p.precisionCursorModel || '').trim();
+            const target = pin && pin.toLowerCase() !== 'auto' ? pin : 'auto';
+            const has = Array.from(cursorModelSel.options).some(o => o.value === target);
+            if (!has && target !== 'auto') {
+                const opt = document.createElement('option');
+                opt.value = target;
+                opt.textContent = target + ' (saved)';
+                cursorModelSel.appendChild(opt);
+            }
+            cursorModelSel.value = target;
+        }
         const maxCalls = document.getElementById('settings-precision-max-calls');
         if (maxCalls) {
             maxCalls.value = p.precisionMaxCallsPerJob > 0 ? String(p.precisionMaxCallsPerJob) : '';
@@ -630,6 +657,8 @@
         }
         const reuseEl = document.getElementById('settings-precision-reuse-locator-memory');
         body.precisionReuseLocatorMemory = !!(reuseEl && reuseEl.checked);
+        const modelSel = document.getElementById('settings-precision-cursor-model');
+        body.precisionCursorModel = modelSel ? modelSel.value : 'auto';
         const res = await fetch(apiUrl(''), {
             method: 'PATCH',
             credentials: 'same-origin',
@@ -660,20 +689,92 @@
         });
         if (!res.ok) {
             err.hidden = false;
-            err.textContent = 'Could not load design mockups.';
+            err.textContent = 'Could not load Figma validations.';
             return;
         }
         const items = await res.json();
         empty.hidden = items.length > 0;
+        const previous = new Map(figmaStepsByTc);
+        figmaStepsByTc.clear();
+        items.forEach(it => {
+            if (!it || !it.tcId) return;
+            const stepSet = new Set((Array.isArray(it.steps) ? it.steps : []).map(n => parseInt(n, 10)).filter(n => n >= 1));
+            // Preserve the per-TC version counter across reloads so cached <img> tags only
+            // refetch when something was actually re-uploaded. Uploaders bump this on success.
+            const prev = previous.get(it.tcId);
+            figmaStepsByTc.set(it.tcId, {
+                hasTc: it.hasTcLevel !== false,
+                steps: stepSet,
+                version: prev && prev.version > 0 ? prev.version : 1
+            });
+        });
+        refreshLibraryFigmaCells();
         items.forEach(item => {
             const tcId = item.tcId;
-            const li = document.createElement('li');
-            const thumbUrl = apiUrl('/design-references/' + encodeURIComponent(tcId));
-            li.innerHTML =
-                '<code class="mono">' + escapeHtml(tcId) + '</code> ' +
-                '<a href="' + escapeHtml(thumbUrl) + '" target="_blank" rel="noopener">Preview</a>';
-            list.appendChild(li);
+            const hasTcLevel = item.hasTcLevel !== false; // older servers only returned {tcId}
+            const steps = Array.isArray(item.steps) ? item.steps : [];
+            const group = document.createElement('li');
+            group.className = 'figma-validate-group';
+
+            const header = document.createElement('div');
+            header.className = 'figma-validate-group-head';
+            const label =
+                '<code class="mono">' + escapeHtml(tcId) + '</code>' +
+                ' <span class="muted figma-validate-count">' + (steps.length ? steps.length + ' step' + (steps.length === 1 ? '' : 's') : 'TC only') + '</span>';
+            header.innerHTML = label;
+            group.appendChild(header);
+
+            if (hasTcLevel) {
+                group.appendChild(renderFigmaTile(tcId, 'whole TC', tcFigmaUrl(tcId)));
+            }
+            steps.forEach(stepIndex => {
+                group.appendChild(renderFigmaTile(tcId, 'step ' + stepIndex, stepFigmaUrl(tcId, stepIndex)));
+            });
+
+            list.appendChild(group);
         });
+    }
+
+    function renderFigmaTile(tcId, label, imgUrl) {
+        const tile = document.createElement('div');
+        tile.className = 'figma-validate-row';
+        tile.setAttribute('role', 'button');
+        tile.setAttribute('tabindex', '0');
+        tile.innerHTML =
+            '<img class="figma-validate-thumb" alt="Figma for ' + escapeHtml(tcId) + ' ' + escapeHtml(label) + '" src="' + escapeHtml(imgUrl) + '"/>' +
+            '<span class="figma-validate-scope">' + escapeHtml(label) + '</span>';
+        const open = () => openFigmaPreview(tcId + ' — ' + label, imgUrl);
+        tile.addEventListener('click', open);
+        tile.addEventListener('keydown', ev => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                open();
+            }
+        });
+        return tile;
+    }
+
+    function openFigmaPreview(title, imgUrl) {
+        const existing = document.getElementById('figma-validate-preview');
+        if (existing) existing.remove();
+        const overlay = document.createElement('div');
+        overlay.id = 'figma-validate-preview';
+        overlay.className = 'figma-validate-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-label', 'Figma preview for ' + title);
+        overlay.innerHTML =
+            '<div class="figma-validate-preview-card">' +
+            '  <header><strong>' + escapeHtml(title) + '</strong>' +
+            '    <button type="button" class="button ghost small" data-close="1">Close</button>' +
+            '  </header>' +
+            '  <img src="' + escapeHtml(imgUrl) + '" alt="Figma preview for ' + escapeHtml(title) + '"/>' +
+            '</div>';
+        overlay.addEventListener('click', ev => {
+            if (ev.target === overlay || (ev.target instanceof Element && ev.target.closest('[data-close]'))) {
+                overlay.remove();
+            }
+        });
+        document.body.appendChild(overlay);
     }
 
     document.getElementById('design-ref-settings-form').addEventListener('submit', async (e) => {
@@ -683,14 +784,26 @@
         msg.hidden = true;
         err.hidden = true;
         const tcId = document.getElementById('design-ref-settings-tcId').value.trim();
+        const stepRaw = document.getElementById('design-ref-settings-step').value.trim();
         const fileInput = document.getElementById('design-ref-settings-file');
         if (!tcId || !fileInput.files || !fileInput.files[0]) {
             err.hidden = false;
             err.textContent = 'Enter a TC ID and select a PNG file.';
             return;
         }
+        let stepIndex = null;
+        if (stepRaw) {
+            const parsed = parseInt(stepRaw, 10);
+            if (!Number.isFinite(parsed) || parsed < 1 || parsed > 999) {
+                err.hidden = false;
+                err.textContent = 'Step must be between 1 and 999, or leave it blank for the whole TC.';
+                return;
+            }
+            stepIndex = parsed;
+        }
         const body = new FormData();
         body.append('tcId', tcId);
+        if (stepIndex !== null) body.append('stepIndex', String(stepIndex));
         body.append('file', fileInput.files[0]);
         try {
             const res = await fetch(apiUrl('/design-references'), {
@@ -706,7 +819,13 @@
                 return;
             }
             msg.hidden = false;
-            msg.textContent = 'Uploaded design for ' + (data.tcId || tcId) + '.';
+            msg.textContent = stepIndex !== null
+                ? 'Uploaded Figma for ' + (data.tcId || tcId) + ' step ' + stepIndex + '.'
+                : 'Uploaded Figma for ' + (data.tcId || tcId) + '.';
+            // Bump this TC's version so any cached <img> in the library view refetches.
+            const info = figmaInfo(tcId);
+            info.version = (info.version || 0) + 1;
+            figmaStepsByTc.set(tcId, info);
             e.target.reset();
             loadDesignReferences();
         } catch (uploadErr) {
@@ -1005,6 +1124,8 @@
         updateFrameworkDeleteUi();
     });
 
+    let selectedPreviewPath = null;
+
     function clearPreview() {
         const pathEl = document.getElementById('auto-preview-path');
         const contentEl = document.getElementById('auto-preview-content');
@@ -1012,17 +1133,33 @@
         if (contentEl) {
             contentEl.textContent = 'No file selected.';
             contentEl.className = 'code-preview muted';
+            contentEl.removeAttribute('data-highlighted');
         }
+        selectedPreviewPath = null;
+        document.querySelectorAll('.artifact-item.is-selected-file').forEach(el => el.classList.remove('is-selected-file'));
+    }
+
+    function highlightSelectedArtifactItem(path) {
+        document.querySelectorAll('.artifact-item.is-selected-file').forEach(el => el.classList.remove('is-selected-file'));
+        if (!path) return;
+        document.querySelectorAll('.artifact-item').forEach(li => {
+            const pathEl = li.querySelector('.artifact-path');
+            if (pathEl && pathEl.textContent === path) li.classList.add('is-selected-file');
+        });
     }
 
     function renderArtifactItem(item, opts) {
         const li = document.createElement('li');
         li.className = 'artifact-item';
         const isZip = item.path && item.path.endsWith('.zip');
-        const active = isZip && viewingPackage === item.path;
+        const isAllure = item.kind === 'allure';
+        const active = isZip && !isAllure && viewingPackage === item.path;
         if (active) li.classList.add('is-active');
+        if (isAllure) li.classList.add('is-allure');
+        const labelHtml = escapeHtml(item.label || item.path)
+                + (isAllure ? ' <span class="pill pill-allure">Allure report</span>' : '');
         li.innerHTML =
-            '<span class="artifact-label">' + escapeHtml(item.label || item.path) + '</span>' +
+            '<span class="artifact-label">' + labelHtml + '</span>' +
             '<span class="mono muted artifact-path">' + escapeHtml(item.path) + '</span>' +
             (item.sizeBytes != null ? '<span class="muted artifact-size">' + formatBytes(item.sizeBytes) + '</span>' : '') +
             '<span class="artifact-actions"></span>';
@@ -1036,17 +1173,19 @@
             actions.appendChild(previewBtn);
         }
         if (isZip) {
-            const openBtn = document.createElement('button');
-            openBtn.type = 'button';
-            openBtn.className = 'button ghost';
-            openBtn.textContent = active ? 'Viewing' : 'Open';
-            openBtn.disabled = active;
-            openBtn.addEventListener('click', () => {
-                viewingPackage = item.path;
-                clearPreview();
-                loadArtifacts();
-            });
-            actions.appendChild(openBtn);
+            if (!isAllure) {
+                const openBtn = document.createElement('button');
+                openBtn.type = 'button';
+                openBtn.className = 'button ghost';
+                openBtn.textContent = active ? 'Viewing' : 'Open';
+                openBtn.disabled = active;
+                openBtn.addEventListener('click', () => {
+                    viewingPackage = item.path;
+                    clearPreview();
+                    loadArtifacts();
+                });
+                actions.appendChild(openBtn);
+            }
             const dl = document.createElement('a');
             dl.className = 'button ghost';
             dl.textContent = 'Download';
@@ -1122,6 +1261,9 @@
         pathEl.textContent = pkg ? (pkg + ' → ' + path) : path;
         contentEl.textContent = 'Loading…';
         contentEl.className = 'code-preview';
+        contentEl.removeAttribute('data-highlighted');
+        selectedPreviewPath = path;
+        highlightSelectedArtifactItem(path);
         let url = apiUrl('/artifacts/preview?path=' + encodeURIComponent(path));
         if (pkg) {
             url += '&package=' + encodeURIComponent(pkg);
@@ -1137,8 +1279,25 @@
             contentEl.className = 'code-preview error';
             return;
         }
-        contentEl.textContent = await res.text();
-        contentEl.className = 'code-preview';
+        const body = await res.text();
+        // Replace the plain <pre> with a Prism-shaped <pre><code> so syntax highlighting and
+        // line-numbers kick in. Only wraps when Prism loaded — fail-open to plain text otherwise.
+        const parent = contentEl.parentNode;
+        const isJava = /\.java$/i.test(path);
+        if (window.Prism && parent) {
+            const pre = document.createElement('pre');
+            pre.id = 'auto-preview-content';
+            pre.className = 'line-numbers language-' + (isJava ? 'java' : 'none');
+            const code = document.createElement('code');
+            code.className = pre.className;
+            code.textContent = body;
+            pre.appendChild(code);
+            parent.replaceChild(pre, contentEl);
+            try { window.Prism.highlightElement(code); } catch (e) { /* fail-open */ }
+        } else {
+            contentEl.textContent = body;
+            contentEl.className = 'code-preview';
+        }
     }
 
     function openArtifactDelete(path, label) {
@@ -1186,14 +1345,37 @@
         updateFrameworkDeleteUi();
     }
 
+    let projectProgressMount = null;
     async function pollJobs() {
         const res = await fetch('/api/jobs', { credentials: 'same-origin', headers: API_HEADERS });
         if (!res.ok) return;
         const jobs = await res.json();
-        const running = jobs.some(j =>
+        const runningForProject = jobs.find(j =>
             j.projectId === projectId && (j.status === 'RUNNING' || j.status === 'QUEUED')
         );
-        updateJobRunningState(running);
+        updateJobRunningState(!!runningForProject);
+        syncProjectProgressWidget(runningForProject);
+    }
+
+    function syncProjectProgressWidget(runningJob) {
+        const widget = document.getElementById('project-progress-widget');
+        if (!widget) return;
+        if (runningJob && runningJob.jobId && window.KeelProgressLog) {
+            if (projectProgressMount !== runningJob.jobId) {
+                projectProgressMount = runningJob.jobId;
+                widget.hidden = false;
+                KeelProgressLog.mount({
+                    container: widget,
+                    jobId: runningJob.jobId,
+                    onTerminal: () => { projectProgressMount = null; }
+                });
+            }
+        } else if (projectProgressMount && !runningJob) {
+            // A job finished since last poll — keep its final log visible for ~30s then hide, so users
+            // see the terminal state at least once; next running job replaces the widget.
+            projectProgressMount = null;
+            setTimeout(() => { widget.hidden = true; widget.innerHTML = ''; }, 30000);
+        }
     }
 
     function startJobPoll() {
@@ -1339,6 +1521,21 @@
     let libCases = [];
     let libEditingId = null;
     let libHeadRevisionId = '';
+    /** tcId → { hasTc: boolean, steps: Set<number>, version: number } — populated by loadDesignReferences. */
+    const figmaStepsByTc = new Map();
+    function figmaInfo(tcId) {
+        return figmaStepsByTc.get(tcId) || { hasTc: false, steps: new Set(), version: 0 };
+    }
+    function stepFigmaUrl(tcId, stepIndex) {
+        const v = figmaInfo(tcId).version || 0;
+        const base = apiUrl('/design-references/' + encodeURIComponent(tcId) + '/step/' + encodeURIComponent(stepIndex));
+        return v > 0 ? base + '?v=' + v : base;
+    }
+    function tcFigmaUrl(tcId) {
+        const v = figmaInfo(tcId).version || 0;
+        const base = apiUrl('/design-references/' + encodeURIComponent(tcId));
+        return v > 0 ? base + '?v=' + v : base;
+    }
     let libRevisions = [];
     let libSelectedRevisionId = '';
 
@@ -1549,7 +1746,7 @@
             }).join('<span class="call-before-sep">→</span>') + '</p>';
     }
 
-    function alignedPreview(steps, testData, expectedResult, callBefore) {
+    function alignedPreview(steps, testData, expectedResult, callBefore, tcId) {
         const folded = foldOrphanExpected(
             splitStepLines(steps),
             splitKeptLines(testData),
@@ -1558,13 +1755,16 @@
         if (!folded.steps.length) {
             return callBeforePreviewHtml(callBefore) + '<p class="muted">No steps</p>';
         }
+        const info = tcId ? figmaInfo(tcId) : { hasTc: false, steps: new Set() };
         const rowCount = Math.max(folded.steps.length, 1);
         let rows = '';
         for (let i = 0; i < rowCount; i++) {
+            const stepIndex = i + 1;
             const data = (folded.data[i] || '').trim();
             const expected = (folded.expected[i] || '').trim();
+            const figmaCell = tcId ? figmaCellHtml(tcId, stepIndex, info.steps.has(stepIndex)) : '';
             rows += '<tr>'
-                + '<td class="lib-step-num">' + (i + 1) + '</td>'
+                + '<td class="lib-step-num">' + stepIndex + '</td>'
                 + '<td>' + escapeHtml(folded.steps[i] || '') + '</td>'
                 + '<td class="lib-data-cell">'
                 + (data ? escapeHtml(data) : '<span class="lib-data-empty">blank</span>')
@@ -1572,12 +1772,43 @@
                 + '<td class="lib-expected-cell">'
                 + (expected ? escapeHtml(expected) : '<span class="lib-expected-empty">—</span>')
                 + '</td>'
+                + (tcId ? '<td class="lib-figma-cell">' + figmaCell + '</td>' : '')
                 + '</tr>';
         }
+        const headerFigma = tcId ? '<th class="lib-figma-head" title="Figma Validate for this step">Figma</th>' : '';
         return callBeforePreviewHtml(callBefore)
-            + '<div class="lib-detail-wrap"><table class="lib-step-table">'
-            + '<thead><tr><th>#</th><th>Step</th><th>Test data</th><th>Expected</th></tr></thead>'
+            + '<div class="lib-detail-wrap"><table class="lib-step-table" data-tcid="' + escapeHtml(tcId || '') + '">'
+            + '<thead><tr><th>#</th><th>Step</th><th>Test data</th><th>Expected</th>' + headerFigma + '</tr></thead>'
             + '<tbody>' + rows + '</tbody></table></div>';
+    }
+
+    function figmaCellHtml(tcId, stepIndex, hasFigma) {
+        if (hasFigma) {
+            const url = stepFigmaUrl(tcId, stepIndex);
+            return '<button type="button" class="lib-figma-tile" '
+                + 'data-tcid="' + escapeHtml(tcId) + '" data-step="' + stepIndex + '" '
+                + 'aria-label="Preview Figma for ' + escapeHtml(tcId) + ' step ' + stepIndex + '">'
+                + '<img src="' + escapeHtml(url) + '" alt=""/>'
+                + '</button>';
+        }
+        return '<button type="button" class="lib-figma-tile lib-figma-empty" '
+            + 'data-tcid="' + escapeHtml(tcId) + '" data-step="' + stepIndex + '" '
+            + 'aria-label="Attach Figma for ' + escapeHtml(tcId) + ' step ' + stepIndex + '" '
+            + 'title="Attach Figma for this step">+</button>';
+    }
+
+    function refreshLibraryFigmaCells() {
+        document.querySelectorAll('.lib-step-table[data-tcid]').forEach(function (tbl) {
+            const tcId = tbl.getAttribute('data-tcid') || '';
+            if (!tcId) return;
+            const info = figmaInfo(tcId);
+            tbl.querySelectorAll('tbody tr').forEach(function (tr, idx) {
+                const stepIndex = idx + 1;
+                const cell = tr.querySelector('.lib-figma-cell');
+                if (!cell) return;
+                cell.innerHTML = figmaCellHtml(tcId, stepIndex, info.steps.has(stepIndex));
+            });
+        });
     }
 
     function foldOrphanExpected(steps, data, expected) {
@@ -1708,7 +1939,7 @@
                 '<td class="actions"><button type="button" class="button lib-edit-btn">Edit</button></td>';
             const detail = document.createElement('tr');
             detail.className = 'lib-detail';
-            detail.innerHTML = '<td colspan="8">' + alignedPreview(tc.steps, tc.testData, tc.expectedResult, tc.callBefore) + '</td>';
+            detail.innerHTML = '<td colspan="8">' + alignedPreview(tc.steps, tc.testData, tc.expectedResult, tc.callBefore, tc.tcId) + '</td>';
             tr.querySelector('.lib-check').addEventListener('click', function (e) { e.stopPropagation(); });
             tr.querySelector('.lib-check').addEventListener('change', syncLibDeleteBtn);
             tr.querySelector('.lib-edit-btn').addEventListener('click', function (e) {
@@ -2290,6 +2521,59 @@
         detail.innerHTML = html;
     }
 
+    document.addEventListener('click', function (ev) {
+        const target = ev.target instanceof Element ? ev.target.closest('.lib-figma-tile') : null;
+        if (!target) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const tcId = target.getAttribute('data-tcid') || '';
+        const stepIndex = parseInt(target.getAttribute('data-step') || '0', 10);
+        if (!tcId || !(stepIndex >= 1)) return;
+        if (target.classList.contains('lib-figma-empty')) {
+            uploadStepFigma(tcId, stepIndex);
+        } else {
+            openFigmaPreview(tcId + ' — step ' + stepIndex, stepFigmaUrl(tcId, stepIndex));
+        }
+    });
+
+    function uploadStepFigma(tcId, stepIndex) {
+        const picker = document.createElement('input');
+        picker.type = 'file';
+        picker.accept = 'image/png';
+        picker.addEventListener('change', async function () {
+            const file = picker.files && picker.files[0];
+            if (!file) return;
+            const body = new FormData();
+            body.append('tcId', tcId);
+            body.append('stepIndex', String(stepIndex));
+            body.append('file', file);
+            try {
+                const res = await fetch(apiUrl('/design-references'), {
+                    method: 'POST',
+                    headers: API_HEADERS,
+                    credentials: 'same-origin',
+                    body
+                });
+                if (!res.ok) {
+                    let data = {};
+                    try { data = await res.json(); } catch (ignore) {}
+                    alert('Figma upload failed: ' + ((data && data.message) || res.status));
+                    return;
+                }
+                // Bump per-TC version so cached <img> tags re-fetch instead of serving stale PNG.
+                const info = figmaInfo(tcId);
+                info.steps.add(stepIndex);
+                info.version = (info.version || 0) + 1;
+                figmaStepsByTc.set(tcId, info);
+                refreshLibraryFigmaCells();
+                loadDesignReferences();
+            } catch (e) {
+                alert('Network error while uploading Figma.');
+            }
+        });
+        picker.click();
+    }
+
     /* —— Init —— */
     if (activeTab === 'summary') {
         loadSummary();
@@ -2304,6 +2588,7 @@
     } else if (activeTab === 'tcs') {
         loadLibrary();
         loadLibraryHistory();
+        loadDesignReferences();
     }
 
     document.addEventListener('visibilitychange', () => {
@@ -2336,6 +2621,17 @@
         if (devicesPanel) devicesPanel.hidden = false;
         if (authPanel) authPanel.hidden = false;
         if (caseReqPanel) caseReqPanel.hidden = false;
+        // Deep-link: /projects/{id}?tab=settings#mobile-devices-panel from the create flow.
+        // The panels start hidden so the browser's native hash scroll missed them; retry here.
+        try {
+            const hash = (window.location.hash || '').replace(/^#/, '');
+            if (hash) {
+                const target = document.getElementById(hash);
+                if (target && !target.hidden) {
+                    setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+                }
+            }
+        } catch (ignored) { /* best-effort scroll */ }
 
         const form = document.getElementById('mobile-app-form');
         const readonlyHint = document.getElementById('mobile-app-readonly');

@@ -86,6 +86,7 @@
         <p th:if="${param.error}" class="error">Wrong email or password.</p>
         <form th:action="@{/login}" method="post" class="login-form">
             <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" name="next" th:if="${next}" th:value="${next}"/>
             <label class="field">
                 <span>Email address</span>
                 <input type="email" name="username" required autocomplete="username" placeholder="you@company.com"/>

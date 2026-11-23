@@ -168,7 +168,7 @@ public class CodegenReviewFixesTest {
         String actions = Files.readString(dir.resolve("src/main/java/project/pages/Profile_Page.java"));
         Assert.assertTrue(actions.contains("public void type_Secret(String value)"), actions);
         Assert.assertTrue(actions.contains("AllureSteps.run(\"type_Secret\""), actions);
-        Assert.assertTrue(actions.contains("driver.element().type"), actions);
+        Assert.assertTrue(actions.contains("Act.type"), actions);
         Assert.assertFalse(actions.contains("private void step_type_Secret()"), actions);
         Assert.assertFalse(actions.contains("@Step(\"type_Secret\")"), actions);
         Assert.assertFalse(actions.contains("CANARY_PW_zipreplay_7f2c9a"), actions);
@@ -185,7 +185,7 @@ public class CodegenReviewFixesTest {
                         || actions.contains("(String expected)"),
                 actions);
         Assert.assertTrue(actions.contains("AllureSteps.run("), actions);
-        Assert.assertTrue(actions.contains("driver.validation()"), actions);
+        Assert.assertTrue(actions.contains("Validate."), actions);
         Assert.assertFalse(actions.contains("private void step_"), actions);
         Assert.assertFalse(actions.contains("@Param"), actions);
         String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Home_Test.java"));
@@ -268,17 +268,17 @@ public class CodegenReviewFixesTest {
     }
 
     @Test
-    public void locatorFreeTextContainsEmitsBodyAssertionAndPageClass() throws Exception {
+    public void locatorFreeTextContainsRoutesToTodoWithReason() throws Exception {
         Path dir = Files.createTempDirectory("cg07-body");
         ProvenStep body = new ProvenStep("TC_BODY", "Cart", "elementAction", "assert",
                 "", "", "", "textContains", "Saved", true, "");
         new CodeWriter(TEMPLATES).write(dir, List.of(outcome("TC_BODY", body)));
-        Assert.assertTrue(Files.exists(dir.resolve("src/main/java/project/pages/Cart_Page.java")));
-        String test = Files.readString(dir.resolve("src/test/java/project/tests/generated/Cart_Test.java"));
-        Assert.assertTrue(test.contains("assert_"), test);
-        String actions = Files.readString(dir.resolve("src/main/java/project/pages/Cart_Page.java"));
-        Assert.assertTrue(actions.contains("bodyTextContains"), actions);
-        Assert.assertTrue(test.contains("\"Saved\"") || actions.contains("Saved"), test + "\n" + actions);
+        Assert.assertFalse(Files.exists(dir.resolve("src/test/java/project/tests/generated/Cart_Test.java")));
+        Path todoTest = dir.resolve("src/test/java/project/tests/todo/Cart_TestTodo.java");
+        Assert.assertTrue(Files.exists(todoTest), "expected todo test to exist");
+        String todo = Files.readString(todoTest);
+        Assert.assertTrue(todo.contains("STOPPED HERE"), todo);
+        Assert.assertTrue(todo.contains("textContains step without a locator"), todo);
     }
 
     private static Properties loadProps(Path dir) throws Exception {

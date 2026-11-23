@@ -1,18 +1,16 @@
 package delivery.codegen;
 
-import delivery.authoring.LocalLlmClient;
 import delivery.job.TcOutcome;
 import delivery.job.TcStatus;
+import delivery.store.LocatorOutcomeStore;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateExceptionHandler;
 
 import java.io.IOException;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -24,7 +22,6 @@ import java.util.Set;
 public class CodeWriter {
     private final Path templateDir;
     private final CodegenOptions namingOptions;
-    private final LocalLlmClient namingClient;
 
     public CodeWriter(Path templateDir) {
         this(templateDir, CodegenOptions.DEFAULT);
@@ -33,21 +30,52 @@ public class CodeWriter {
     public CodeWriter(Path templateDir, CodegenOptions namingOptions) {
         this.templateDir = templateDir;
         this.namingOptions = namingOptions == null ? CodegenOptions.DEFAULT : namingOptions;
-        if (this.namingOptions.ollamaNaming()
-                && !this.namingOptions.llmBaseUrl().isBlank()
-                && !this.namingOptions.llmModel().isBlank()) {
-            this.namingClient = new LocalLlmClient(
-                    this.namingOptions.llmBaseUrl(),
-                    this.namingOptions.llmModel(),
-                    Duration.ofSeconds(15),
-                    64);
-        } else {
-            this.namingClient = null;
-        }
     }
 
     public void write(Path projectRoot, List<TcOutcome> outcomes) throws Exception {
         write(projectRoot, outcomes, List.of());
+    }
+
+    /**
+     * Strip Java comments (block, Javadoc, and line) from rendered source so generated pages
+     * and tests ship without any comments, per the framework-rules policy. Respects string and
+     * char literals so URLs like "http://foo" or XPath "//button[@id='x']" stay intact.
+     */
+    static String stripJavaComments(String src) {
+        if (src == null || src.isEmpty()) return src;
+        StringBuilder out = new StringBuilder(src.length());
+        int i = 0, n = src.length();
+        while (i < n) {
+            char c = src.charAt(i);
+            if (c == '"' || c == '\'') {
+                char quote = c;
+                out.append(c); i++;
+                while (i < n) {
+                    char d = src.charAt(i);
+                    out.append(d); i++;
+                    if (d == '\\' && i < n) { out.append(src.charAt(i++)); continue; }
+                    if (d == quote) break;
+                }
+                continue;
+            }
+            if (c == '/' && i + 1 < n) {
+                char next = src.charAt(i + 1);
+                if (next == '*') {
+                    i += 2;
+                    while (i + 1 < n && !(src.charAt(i) == '*' && src.charAt(i + 1) == '/')) i++;
+                    i = Math.min(n, i + 2);
+                    continue;
+                }
+                if (next == '/') {
+                    while (i < n && src.charAt(i) != '\n') i++;
+                    continue;
+                }
+            }
+            out.append(c); i++;
+        }
+        return out.toString()
+                .replaceAll("(?m)^[ \\t]+\\r?\\n", "\n")
+                .replaceAll("\\n{3,}", "\n\n");
     }
 
     /** W3: emit pages/tests and attach NL-cached validated By fields onto existing page classes. */
@@ -129,6 +157,7 @@ public class CodeWriter {
         java.util.Set<String> usedPageFiles = new java.util.HashSet<>();
 
         Template pageTpl = cfg.getTemplate("Page.java.ftl");
+        LocatorOutcomeStore.Aggregate locatorOutcomes = LocatorOutcomeStore.read(projectRoot);
         for (Map.Entry<String, PageAccumulator.PageModel> e : pages.pages().entrySet()) {
             PageAccumulator.PageModel page = e.getValue();
             Map<String, Object> model = new HashMapModel();
@@ -138,7 +167,7 @@ public class CodeWriter {
             // Compat aliases for any leftover template references
             model.put("locatorsClassName", page.pageClassName());
             model.put("actionsClassName", page.pageClassName());
-            model.put("fields", page.fields());
+            model.put("fields", reorderFieldsByStore(page.pageClassName(), page.fields(), locatorOutcomes));
             model.put("methods", page.methods());
             model.put("assertions", page.assertions());
             model.put("loadedMarker", page.loadedMarkerRef());
@@ -150,9 +179,9 @@ public class CodeWriter {
             String pageFile = page.pageClassName() + ".java";
             registerFile(usedPageFiles, pageFile, "page", e.getKey());
             Path pageOut = pagesDir.resolve(pageFile);
-            try (Writer w = Files.newBufferedWriter(pageOut, StandardCharsets.UTF_8)) {
-                pageTpl.process(model, w);
-            }
+            java.io.StringWriter buf = new java.io.StringWriter();
+            pageTpl.process(model, buf);
+            Files.writeString(pageOut, stripJavaComments(buf.toString()), StandardCharsets.UTF_8);
             keepPages.add(pageFile);
         }
 
@@ -211,9 +240,9 @@ public class CodeWriter {
             String testFile = className + ".java";
             Path out = (passed ? generatedDir : todoDir).resolve(testFile);
             Template tpl = passed ? genTpl : todoTpl;
-            try (Writer w = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
-                tpl.process(model, w);
-            }
+            java.io.StringWriter buf = new java.io.StringWriter();
+            tpl.process(model, buf);
+            Files.writeString(out, stripJavaComments(buf.toString()), StandardCharsets.UTF_8);
             if (passed) {
                 keepGenerated.add(testFile);
             } else {
@@ -225,6 +254,67 @@ public class CodeWriter {
         deleteObsoleteJava(pagesDir, keepPages);
         deleteObsoleteJava(generatedDir, keepGenerated);
         deleteObsoleteJava(todoDir, keepTodo);
+    }
+
+    /**
+     * Reorder each field's (primary + bag) by learned win ratio from prior runs' locator-outcomes.jsonl.
+     * Empty store (first run, or no file) returns the fields untouched; a field with no bag is untouched;
+     * identity permutations are untouched so re-emit is diff-free when nothing has changed.
+     */
+    static List<PageAccumulator.FieldModel> reorderFieldsByStore(
+            String pageClass, List<PageAccumulator.FieldModel> fields, LocatorOutcomeStore.Aggregate store) {
+        if (store == null || store.isEmpty() || fields == null || fields.isEmpty()) {
+            return fields;
+        }
+        List<PageAccumulator.FieldModel> out = new ArrayList<>(fields.size());
+        for (PageAccumulator.FieldModel f : fields) {
+            if (!f.hasBag()) {
+                out.add(f);
+                continue;
+            }
+            List<String> sigs = new ArrayList<>();
+            sigs.add(LocatorOutcomeStore.targetSig(f.strategy(), f.value()));
+            for (MultiLocatorBag.Entry e : f.bag()) {
+                sigs.add(LocatorOutcomeStore.targetSig(e.strategy(), e.value()));
+            }
+            List<Integer> order = store.rankedIndices(pageClass, f.name(), sigs);
+            if (isIdentityOrder(order)) {
+                out.add(f);
+                continue;
+            }
+            int firstIdx = order.get(0);
+            String newStrategy;
+            String newValue;
+            if (firstIdx == 0) {
+                newStrategy = f.strategy();
+                newValue = f.value();
+            } else {
+                MultiLocatorBag.Entry e = f.bag().get(firstIdx - 1);
+                newStrategy = e.strategy();
+                newValue = e.value();
+            }
+            List<MultiLocatorBag.Entry> newBag = new ArrayList<>();
+            for (int i = 1; i < order.size(); i++) {
+                int idx = order.get(i);
+                if (idx == 0) {
+                    newBag.add(new MultiLocatorBag.Entry(f.strategy(), f.value()));
+                } else {
+                    newBag.add(f.bag().get(idx - 1));
+                }
+            }
+            out.add(new PageAccumulator.FieldModel(
+                    f.name(), newStrategy, newValue,
+                    f.candidates(), f.smartExpr(), f.parameterized(),
+                    newBag, f.nlPhrase()));
+        }
+        return out;
+    }
+
+    private static boolean isIdentityOrder(List<Integer> order) {
+        for (int i = 0; i < order.size(); i++) {
+            if (order.get(i) != i) return false;
+        }
+        return true;
     }
 
     /**
@@ -258,8 +348,8 @@ public class CodeWriter {
             Set<String> usedMethodNames,
             boolean mergedClass) {
         String primaryPage = PageUnderTest.primaryPageName(outcome);
-        String baseMethod = TestMethodNaming.resolveFromPage(
-                primaryPage, outcome.tcId(), namingClient, namingOptions.ollamaNaming());
+        String baseMethod = TestMethodNaming.shouldFromTitle(
+                outcome.title(), primaryPage, outcome.tcId());
         String stem = mergedClass
                 ? baseMethod + "_" + sanitizeMethod(outcome.tcId())
                 : baseMethod;
@@ -278,6 +368,12 @@ public class CodeWriter {
                 buildChronologicalCalls(outcome.tcId(), outcome.provenSteps(), pages, keys,
                         CodegenDataKeys.PHASE_BODY);
         chronCalls = LoginPageHelper.collapseLeadingLogin(chronCalls, pages);
+        if (outcome.needsLoginBeforeMethod()) {
+            // Prelude already calls login(user, pass) in @BeforeMethod — avoid re-emitting it in the body.
+            chronCalls = chronCalls.stream()
+                    .filter(c -> !Boolean.TRUE.equals(c.get("loginHelper")))
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        }
         List<Map<String, Object>> beforeCalls = new ArrayList<>();
         beforeCalls.addAll(loginChron);
         beforeCalls.addAll(setupChron);

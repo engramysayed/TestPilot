@@ -7,7 +7,7 @@ import delivery.agent.harness.AgentHarnessException;
 import delivery.agent.harness.AgentRunStore;
 import delivery.agent.harness.AgentTaskType;
 import delivery.agent.harness.NewAgentTaskRequest;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.prompts.PromptCatalog;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

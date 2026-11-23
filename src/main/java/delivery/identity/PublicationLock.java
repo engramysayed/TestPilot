@@ -6,15 +6,30 @@ import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Cross-process publication lock (OS file lock) with in-JVM serialization so
  * threads in the same process do not hit {@link OverlappingFileLockException}.
+ *
+ * <p>LOCAL is bounded (access-order LRU, {@value MAX_LOCKS} entries). Evicting a lock
+ * while another thread holds it is safe: the OS file lock still serializes across
+ * JVMs, and the {@code tryLock} loop below absorbs any transient
+ * {@link OverlappingFileLockException} until the previous holder releases.
  */
 public final class PublicationLock {
-    private static final ConcurrentHashMap<String, ReentrantLock> LOCAL = new ConcurrentHashMap<>();
+    static final int MAX_LOCKS = 10_000;
+
+    private static final Map<String, ReentrantLock> LOCAL = Collections.synchronizedMap(
+            new LinkedHashMap<String, ReentrantLock>(256, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, ReentrantLock> eldest) {
+                    return size() > MAX_LOCKS;
+                }
+            });
 
     @FunctionalInterface
     public interface Body<T> {

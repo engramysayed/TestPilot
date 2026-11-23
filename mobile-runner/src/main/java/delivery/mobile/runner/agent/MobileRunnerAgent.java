@@ -4,6 +4,7 @@ import delivery.mobile.runner.execute.CaseOutcome;
 import delivery.mobile.runner.execute.CaseResult;
 import delivery.mobile.runner.execute.MobileExecuteEngine;
 import delivery.mobile.runner.execute.SelectedCase;
+import delivery.mobile.runner.precision.MobilePrecisionClient;
 import org.openqa.selenium.json.Json;
 
 import java.net.URI;
@@ -125,9 +126,15 @@ public final class MobileRunnerAgent {
         String error = "";
         try {
             List<Map<String, Object>> cases = (List<Map<String, Object>>) job.get("cases");
+            final String captureRunId = runId;
+            MobileCaseRunner.StepCapture capture = stepCaptureEnabled()
+                    ? (tcId, stepIndex, png) -> uploadStepImage(captureRunId, tcId, stepIndex, png)
+                    : null;
+            MobilePrecisionClient precision = new MobilePrecisionClient(http, portal, token, runId);
             MobileCaseRunner runner = new MobileCaseRunner(driver,
                     String.valueOf(job.getOrDefault("appPackage", "")),
-                    String.valueOf(job.getOrDefault("appActivity", "")));
+                    String.valueOf(job.getOrDefault("appActivity", "")),
+                    capture, precision);
             Map<String, MobileCaseRunner.CaseInput> byId = new LinkedHashMap<>();
             List<SelectedCase> selected = new ArrayList<>();
             for (Map<String, Object> c : cases) {
@@ -186,6 +193,40 @@ public final class MobileRunnerAgent {
                 .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
                 .build();
         return http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+    }
+
+    /** Env toggle: default on. Set KEEL_RUNNER_CAPTURE_STEP_PNG=false to skip the per-step PNG upload. */
+    static boolean stepCaptureEnabled() {
+        String v = System.getenv("KEEL_RUNNER_CAPTURE_STEP_PNG");
+        return !(v != null && ("false".equalsIgnoreCase(v.trim()) || "0".equals(v.trim())));
+    }
+
+    /**
+     * Fire-and-forget upload of a step screenshot. Portal writes it under the run's evidence dir;
+     * the mobile Figma comparator reads it from there on run finish. Capture failures must never
+     * break the run, so every error is logged and swallowed.
+     */
+    private void uploadStepImage(String runId, String tcId, int stepIndex, byte[] png) {
+        if (runId == null || runId.isBlank() || tcId == null || png == null || png.length == 0) return;
+        String path = "/api/v1/runners/mobile/runs/" + runId
+                + "/cases/" + java.net.URLEncoder.encode(tcId, StandardCharsets.UTF_8)
+                + "/steps/" + stepIndex + "/image";
+        try {
+            HttpRequest req = HttpRequest.newBuilder(URI.create(portal + path))
+                    .timeout(Duration.ofSeconds(30))
+                    .header("Authorization", "Bearer " + token)
+                    .header("X-Keel-Requested-With", "Keel")
+                    .header("Content-Type", "application/octet-stream")
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(png))
+                    .build();
+            HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (res.statusCode() >= 400) {
+                System.err.println("step image upload " + tcId + " step " + stepIndex
+                        + " failed: HTTP " + res.statusCode());
+            }
+        } catch (Exception e) {
+            System.err.println("step image upload " + tcId + " step " + stepIndex + " failed: " + e.getMessage());
+        }
     }
 
     @SuppressWarnings("unchecked")

@@ -33,46 +33,114 @@ public final class DesignComparePhase {
         String model = resolveModel(request);
 
         for (ManualTestCase tc : cases) {
-            Optional<Path> reference = references.designReference(projectRoot, tc.tcId());
-            if (reference.isEmpty()) {
-                continue;
-            }
             Path evidenceDir = evidenceRoot.resolve(tc.tcId());
-            try {
-                Optional<Path> actual = references.pickActualScreenshot(evidenceDir);
-                if (actual.isEmpty()) {
-                    DesignCompareEvidence.write(
-                            evidenceDir,
-                            tc.tcId(),
-                            DesignCompareResult.uncertain("no actual screenshot"),
-                            null,
-                            null,
-                            provider,
-                            model);
-                    continue;
-                }
-                byte[] refBytes = Files.readAllBytes(reference.get());
-                byte[] actBytes = Files.readAllBytes(actual.get());
-                DesignCompareResult result = DesignCompareGate.compare(refBytes, actBytes, client);
-                DesignCompareEvidence.write(
-                        evidenceDir,
-                        tc.tcId(),
-                        result,
-                        actual.get(),
-                        actBytes,
-                        provider,
-                        model);
-            } catch (Exception e) {
-                LogsManager.error("DESIGN_COMPARE: " + tc.tcId() + ": " + e.getMessage());
-                DesignCompareEvidence.write(
-                        evidenceDir,
-                        tc.tcId(),
-                        DesignCompareResult.uncertain(e.getMessage()),
-                        null,
-                        null,
-                        provider,
-                        model);
+            Optional<Path> reference = references.designReference(projectRoot, tc.tcId());
+            if (reference.isPresent()) {
+                compareTcLevel(reference.get(), evidenceDir, tc, client, provider, model);
             }
+            try {
+                for (int stepIndex : references.designReferenceSteps(projectRoot, tc.tcId())) {
+                    compareStep(projectRoot, evidenceDir, tc, stepIndex, client, provider, model);
+                }
+            } catch (Exception e) {
+                LogsManager.error("DESIGN_COMPARE: " + tc.tcId() + " step listing failed: " + e.getMessage());
+            }
+        }
+    }
+
+    private void compareTcLevel(
+            Path reference,
+            Path evidenceDir,
+            ManualTestCase tc,
+            LocalLlmClient client,
+            String provider,
+            String model) {
+        try {
+            Optional<Path> actual = references.pickActualScreenshot(evidenceDir);
+            if (actual.isEmpty()) {
+                DesignCompareEvidence.write(
+                        evidenceDir,
+                        tc.tcId(),
+                        DesignCompareResult.uncertain("no actual screenshot"),
+                        null,
+                        null,
+                        provider,
+                        model);
+                return;
+            }
+            byte[] refBytes = Files.readAllBytes(reference);
+            byte[] actBytes = Files.readAllBytes(actual.get());
+            DesignCompareResult result = DesignCompareGate.compare(refBytes, actBytes, client);
+            DesignCompareEvidence.write(
+                    evidenceDir,
+                    tc.tcId(),
+                    result,
+                    actual.get(),
+                    actBytes,
+                    provider,
+                    model);
+        } catch (Exception e) {
+            LogsManager.error("DESIGN_COMPARE: " + tc.tcId() + ": " + e.getMessage());
+            DesignCompareEvidence.write(
+                    evidenceDir,
+                    tc.tcId(),
+                    DesignCompareResult.uncertain(e.getMessage()),
+                    null,
+                    null,
+                    provider,
+                    model);
+        }
+    }
+
+    private void compareStep(
+            Path projectRoot,
+            Path evidenceDir,
+            ManualTestCase tc,
+            int stepIndex,
+            LocalLlmClient client,
+            String provider,
+            String model) {
+        Optional<Path> reference = references.designReferenceStep(projectRoot, tc.tcId(), stepIndex);
+        if (reference.isEmpty()) {
+            return;
+        }
+        try {
+            Optional<Path> actual = references.stepScreenshot(evidenceDir, stepIndex);
+            if (actual.isEmpty()) {
+                DesignCompareEvidence.writeStep(
+                        evidenceDir,
+                        tc.tcId(),
+                        stepIndex,
+                        DesignCompareResult.uncertain("no screenshot for step " + stepIndex),
+                        null,
+                        null,
+                        provider,
+                        model);
+                return;
+            }
+            byte[] refBytes = Files.readAllBytes(reference.get());
+            byte[] actBytes = Files.readAllBytes(actual.get());
+            DesignCompareResult result = DesignCompareGate.compare(refBytes, actBytes, client);
+            DesignCompareEvidence.writeStep(
+                    evidenceDir,
+                    tc.tcId(),
+                    stepIndex,
+                    result,
+                    actual.get(),
+                    actBytes,
+                    provider,
+                    model);
+        } catch (Exception e) {
+            LogsManager.error("DESIGN_COMPARE: " + tc.tcId() + " step " + stepIndex + ": " + e.getMessage());
+            DesignCompareEvidence.writeStep(
+                    evidenceDir,
+                    tc.tcId(),
+                    stepIndex,
+                    DesignCompareResult.uncertain(e.getMessage()),
+                    null,
+                    null,
+                    provider,
+                    model);
         }
     }
 

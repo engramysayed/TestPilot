@@ -24,7 +24,7 @@ import java.util.Optional;
  * <p>Fixes blocker B1 from the Phase 6.16 production readiness audit (per-tenant/project scoping).
  */
 @Service
-public class WorkspaceAiPolicyService {
+public class WorkspaceAiPolicyService implements delivery.job.port.WorkspaceAiPolicy {
     public static final String FILE_NAME = "ai-policy.json";
 
     private final PortalStore store;

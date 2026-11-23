@@ -137,4 +137,86 @@ public class DesignReferenceApiTest extends AbstractTestNGSpringContextTests {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("NOT_FOUND"));
     }
+
+    @Test
+    public void uploadAndServe_stepReference() throws Exception {
+        String projectId = createProject();
+        MockMultipartFile tcFile = new MockMultipartFile(
+                "file", "tc.png", "image/png", TINY_PNG);
+        MockMultipartFile stepFile = new MockMultipartFile(
+                "file", "step.png", "image/png", TINY_PNG);
+
+        // Upload a TC-level reference and two step-level ones.
+        mockMvc.perform(multipart("/api/projects/" + projectId + "/design-references")
+                        .file(tcFile)
+                        .param("tcId", "TC_010")
+                        .header("X-Keel-Requested-With", "Keel")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.scope").value("tc"));
+        mockMvc.perform(multipart("/api/projects/" + projectId + "/design-references")
+                        .file(stepFile)
+                        .param("tcId", "TC_010")
+                        .param("stepIndex", "1")
+                        .header("X-Keel-Requested-With", "Keel")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.scope").value("step"))
+                .andExpect(jsonPath("$.stepIndex").value(1))
+                .andExpect(jsonPath("$.storedAs").value("TC_010/step-001.png"));
+        mockMvc.perform(multipart("/api/projects/" + projectId + "/design-references")
+                        .file(stepFile)
+                        .param("tcId", "TC_010")
+                        .param("stepIndex", "3")
+                        .header("X-Keel-Requested-With", "Keel")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
+                .andExpect(status().isCreated());
+
+        // list returns the TC with both steps and the TC-level marker.
+        MvcResult listRes = mockMvc.perform(get("/api/projects/" + projectId + "/design-references")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JSONArray list = new JSONArray(listRes.getResponse().getContentAsString());
+        Assert.assertEquals(list.length(), 1);
+        JSONObject row = list.getJSONObject(0);
+        Assert.assertEquals(row.getString("tcId"), "TC_010");
+        Assert.assertTrue(row.getBoolean("hasTcLevel"));
+        JSONArray steps = row.getJSONArray("steps");
+        Assert.assertEquals(steps.length(), 2);
+        Assert.assertEquals(steps.getInt(0), 1);
+        Assert.assertEquals(steps.getInt(1), 3);
+
+        // Step file lives inside the per-TC subdirectory.
+        Path stepOnDisk = store.projectDiskRoot(projectId)
+                .resolve("design-references/TC_010/step-001.png");
+        Assert.assertTrue(Files.isRegularFile(stepOnDisk));
+
+        mockMvc.perform(get("/api/projects/" + projectId + "/design-references/TC_010/step/1")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", MediaType.IMAGE_PNG_VALUE))
+                .andExpect(content().bytes(TINY_PNG));
+        mockMvc.perform(get("/api/projects/" + projectId + "/design-references/TC_010/step/7")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!"))
+                        .header("X-Keel-Requested-With", "Keel"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void upload_rejectsStepIndexOutOfRange() throws Exception {
+        String projectId = createProject();
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "s.png", "image/png", TINY_PNG);
+        mockMvc.perform(multipart("/api/projects/" + projectId + "/design-references")
+                        .file(file)
+                        .param("tcId", "TC_X")
+                        .param("stepIndex", "0")
+                        .header("X-Keel-Requested-With", "Keel")
+                        .with(httpBasic("admin@testpilot.local", "ChangeMeAdmin1!")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("BAD_REQUEST"));
+    }
 }

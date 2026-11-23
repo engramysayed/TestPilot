@@ -78,6 +78,7 @@ public class LlmSettingsService implements ApplicationRunner {
         out.put("ollamaBaseUrl", blankToDefault(s.ollamaBaseUrl, defaultBaseUrl()));
         out.put("ollamaChatModel", nullToEmpty(s.ollamaChatModel));
         out.put("ollamaVisionModel", nullToEmpty(s.ollamaVisionModel));
+        out.put("precisionCursorModel", nullToEmpty(s.precisionCursorModel));
         out.put("reviewCasesPerBatch", s.reviewCasesPerBatch);
         out.put("browser", s.browser);
         out.put("authoringVerbAliases", AuthoringVerbAliases.toMaps(s.authoringVerbAliases));
@@ -113,6 +114,7 @@ public class LlmSettingsService implements ApplicationRunner {
             String baseUrl = cur.ollamaBaseUrl;
             String chat = cur.ollamaChatModel;
             String vision = cur.ollamaVisionModel;
+            String precisionModel = cur.precisionCursorModel;
             int batch = cur.reviewCasesPerBatch;
             String browser = cur.browser;
             List<AuthoringVerbAliases.Alias> aliases = cur.authoringVerbAliases;
@@ -129,6 +131,17 @@ public class LlmSettingsService implements ApplicationRunner {
                 if (req.ollamaVisionModel != null) {
                     vision = req.ollamaVisionModel.trim();
                 }
+                if (req.precisionCursorModel != null) {
+                    String raw = req.precisionCursorModel.trim();
+                    if (raw.isEmpty()) {
+                        // API caller sent blank → treat as "no change". Use the "auto" literal
+                        // to explicitly unpin.
+                    } else if ("auto".equalsIgnoreCase(raw)) {
+                        precisionModel = "auto";
+                    } else {
+                        precisionModel = raw;
+                    }
+                }
                 if (req.reviewCasesPerBatch != null) {
                     batch = delivery.portal.service.ReviewBatchPolicy.clampN(req.reviewCasesPerBatch);
                 }
@@ -141,7 +154,7 @@ public class LlmSettingsService implements ApplicationRunner {
             }
             List<String> cache = cur.cachedOllamaModels == null ? List.of() : cur.cachedOllamaModels;
             StoredSettings next = new StoredSettings(
-                    cursor, agent, ollamaKey, baseUrl, chat, vision, cache, batch, browser, aliases);
+                    cursor, agent, ollamaKey, baseUrl, chat, vision, precisionModel, cache, batch, browser, aliases);
             writeToDisk(next);
             stored = next;
             applyToRuntime();
@@ -330,6 +343,7 @@ public class LlmSettingsService implements ApplicationRunner {
                     cur.ollamaBaseUrl,
                     cur.ollamaChatModel,
                     cur.ollamaVisionModel,
+                    cur.precisionCursorModel,
                     cache,
                     cur.reviewCasesPerBatch,
                     cur.browser,
@@ -378,6 +392,25 @@ public class LlmSettingsService implements ApplicationRunner {
                 setSysPropIfEnvBlank("delivery.vision.model", s.ollamaVisionModel);
             }
         }
+        // Precision engine model. Three cases for the stored value:
+        //   * null / blank : admin never saved via UI → leave YAML-seeded props and sysprop alone.
+        //   * "auto"        : admin explicitly unpinned → mirror auto to props and CLEAR the
+        //                     sysprop so a previously-pinned CursorHealClient.resolveCursorModel
+        //                     does not return a stale pin on the next job.
+        //   * model id      : admin pinned → mirror to both.
+        // Env wins throughout: envBlank(key) == false means the operator pinned via env/-D and
+        // UI changes should not clobber it.
+        if (s.precisionCursorModel != null && !s.precisionCursorModel.isBlank()
+                && envBlank("delivery.authoring.precision.cursor-model")) {
+            String raw = s.precisionCursorModel.trim();
+            if ("auto".equalsIgnoreCase(raw)) {
+                props.getAuthoring().getPrecision().setCursorModel("auto");
+                System.clearProperty("delivery.authoring.precision.cursor-model");
+            } else {
+                props.getAuthoring().getPrecision().setCursorModel(raw);
+                setSysPropIfEnvBlank("delivery.authoring.precision.cursor-model", raw);
+            }
+        }
         publishBrowser(s.browser);
         AuthoringVerbAliases.publish(s.authoringVerbAliases);
     }
@@ -416,6 +449,7 @@ public class LlmSettingsService implements ApplicationRunner {
             raw.put("ollamaBaseUrl", nullToEmpty(s.ollamaBaseUrl));
             raw.put("ollamaChatModel", nullToEmpty(s.ollamaChatModel));
             raw.put("ollamaVisionModel", nullToEmpty(s.ollamaVisionModel));
+            raw.put("precisionCursorModel", nullToEmpty(s.precisionCursorModel));
             raw.put("cachedOllamaModels", s.cachedOllamaModels() == null ? List.of() : s.cachedOllamaModels());
             raw.put("reviewCasesPerBatch", s.reviewCasesPerBatch);
             raw.put("browser", nullToEmpty(s.browser));
@@ -442,6 +476,10 @@ public class LlmSettingsService implements ApplicationRunner {
         String base = str(raw.get("ollamaBaseUrl"));
         String chat = str(raw.get("ollamaChatModel"));
         String vision = str(raw.get("ollamaVisionModel"));
+        String precisionModel = str(raw.get("precisionCursorModel"));
+        if ("auto".equalsIgnoreCase(precisionModel)) {
+            precisionModel = "";
+        }
         if (base.isBlank()) {
             base = defaultBaseUrl();
         }
@@ -449,7 +487,7 @@ public class LlmSettingsService implements ApplicationRunner {
         int batch = parseBatch(raw.get("reviewCasesPerBatch"));
         String browser = normalizeBrowser(str(raw.get("browser")));
         List<AuthoringVerbAliases.Alias> aliases = parseAliases(raw);
-        return new StoredSettings(cursor, agent, ollamaKey, base, chat, vision, cache, batch, browser, aliases);
+        return new StoredSettings(cursor, agent, ollamaKey, base, chat, vision, precisionModel, cache, batch, browser, aliases);
     }
 
     private static List<AuthoringVerbAliases.Alias> parseAliases(Map<String, Object> raw) {
@@ -494,7 +532,11 @@ public class LlmSettingsService implements ApplicationRunner {
         if (chat == null || chat.isBlank()) {
             chat = props.getGenerateModel();
         }
-        return new StoredSettings("", "", "", base, nullToEmpty(chat), "", List.of(),
+        String precisionModel = nullToEmpty(props.getPrecisionCursorModel());
+        if ("auto".equalsIgnoreCase(precisionModel)) {
+            precisionModel = "";
+        }
+        return new StoredSettings("", "", "", base, nullToEmpty(chat), "", precisionModel, List.of(),
                 delivery.portal.service.ReviewBatchPolicy.DEFAULT_N, "edge", AuthoringVerbAliases.seed());
     }
 
@@ -546,10 +588,6 @@ public class LlmSettingsService implements ApplicationRunner {
      * Never logs secret values.
      */
     private static void publishSecretProp(String key, String value) {
-        String env = System.getenv(key);
-        if (env != null && !env.isBlank()) {
-            return;
-        }
         if (value == null || value.isBlank()) {
             System.clearProperty(key);
             return;
@@ -619,7 +657,8 @@ public class LlmSettingsService implements ApplicationRunner {
             boolean clearOllamaApiKey,
             Integer reviewCasesPerBatch,
             String browser,
-            List<AuthoringVerbAliases.Alias> authoringVerbAliases
+            List<AuthoringVerbAliases.Alias> authoringVerbAliases,
+            String precisionCursorModel
     ) {
         public UpdateRequest(
                 String cursorApiKey,
@@ -633,7 +672,7 @@ public class LlmSettingsService implements ApplicationRunner {
                 boolean clearOllamaApiKey) {
             this(cursorApiKey, agentrouterApiKey, ollamaApiKey, ollamaBaseUrl, ollamaChatModel,
                     ollamaVisionModel, clearCursorApiKey, clearAgentrouterApiKey, clearOllamaApiKey,
-                    null, null, null);
+                    null, null, null, null);
         }
 
         public UpdateRequest(
@@ -650,7 +689,25 @@ public class LlmSettingsService implements ApplicationRunner {
                 String browser) {
             this(cursorApiKey, agentrouterApiKey, ollamaApiKey, ollamaBaseUrl, ollamaChatModel,
                     ollamaVisionModel, clearCursorApiKey, clearAgentrouterApiKey, clearOllamaApiKey,
-                    reviewCasesPerBatch, browser, null);
+                    reviewCasesPerBatch, browser, null, null);
+        }
+
+        public UpdateRequest(
+                String cursorApiKey,
+                String agentrouterApiKey,
+                String ollamaApiKey,
+                String ollamaBaseUrl,
+                String ollamaChatModel,
+                String ollamaVisionModel,
+                boolean clearCursorApiKey,
+                boolean clearAgentrouterApiKey,
+                boolean clearOllamaApiKey,
+                Integer reviewCasesPerBatch,
+                String browser,
+                List<AuthoringVerbAliases.Alias> authoringVerbAliases) {
+            this(cursorApiKey, agentrouterApiKey, ollamaApiKey, ollamaBaseUrl, ollamaChatModel,
+                    ollamaVisionModel, clearCursorApiKey, clearAgentrouterApiKey, clearOllamaApiKey,
+                    reviewCasesPerBatch, browser, authoringVerbAliases, null);
         }
     }
 
@@ -671,13 +728,14 @@ public class LlmSettingsService implements ApplicationRunner {
             String ollamaBaseUrl,
             String ollamaChatModel,
             String ollamaVisionModel,
+            String precisionCursorModel,
             List<String> cachedOllamaModels,
             int reviewCasesPerBatch,
             String browser,
             List<AuthoringVerbAliases.Alias> authoringVerbAliases
     ) {
         static StoredSettings empty() {
-            return new StoredSettings("", "", "", DEFAULT_OLLAMA_BASE, "", "", List.of(),
+            return new StoredSettings("", "", "", DEFAULT_OLLAMA_BASE, "", "", "", List.of(),
                     delivery.portal.service.ReviewBatchPolicy.DEFAULT_N, "edge", AuthoringVerbAliases.seed());
         }
     }

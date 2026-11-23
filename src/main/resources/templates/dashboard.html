@@ -11,7 +11,7 @@
 <main class="shell wide overview-page">
     <header class="heading dash-heading">
         <div class="dash-heading__titles">
-            <h1 th:text="#{nav.overview}">Overview</h1>
+            <h1>Dashboard</h1>
             <th:block th:replace="~{fragments :: featureHelpBtn('dashboard-overview')}"></th:block>
             <p class="dash-heading__lede" th:text="#{page.dashboard.lede}">Snapshot of projects, quality, and recent runs.</p>
         </div>
@@ -67,7 +67,7 @@
         <section class="panel panel--keel dash-chart-panel">
             <div class="panelhead">
                 <div class="panelhead-title">
-                    <h2>Execution trends</h2>
+                    <h2>Execution outcomes</h2>
                     <th:block th:replace="~{fragments :: featureHelpBtn('dashboard-trends')}"></th:block>
                 </div>
             </div>
@@ -123,10 +123,11 @@
     <section class="panel panel--keel overview-recent">
         <div class="panelhead">
             <div class="panelhead-title">
-                <h2>Recent activity</h2>
+                <h2>Recent runs</h2>
                 <th:block th:replace="~{fragments :: featureHelpBtn('dashboard-recent')}"></th:block>
             </div>
-            <a class="button ghost small" href="/history">View all in History →</a>
+            <a class="button ghost small" href="/runs">View all runs →</a>
+            <a class="button primary small" href="/execute">+ New run</a>
         </div>
         <div class="tablewrap">
             <table class="table table--runs" id="jobsTable">

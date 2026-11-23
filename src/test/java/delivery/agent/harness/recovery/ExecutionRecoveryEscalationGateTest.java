@@ -11,7 +11,7 @@ import delivery.agent.harness.AgentHarnessException;
 import delivery.authoring.StepIntentBinder;
 import delivery.excel.ManualTestCase;
 import delivery.job.ConversionJobRequest;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;

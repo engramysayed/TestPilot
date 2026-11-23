@@ -3,6 +3,9 @@ package delivery.mobile.run;
 import delivery.excel.ManualTestCase;
 import delivery.mobile.MobilePortalStore;
 import delivery.mobile.MobileProperties;
+import delivery.mobile.adb.AdbDeviceDiscovery;
+import delivery.mobile.adb.AdbErrorCode;
+import delivery.mobile.adb.AdbInventoryException;
 import delivery.mobile.appium.SupervisedAppiumLifecycle;
 import delivery.mobile.lease.DeviceLeaseGuard;
 import delivery.mobile.lease.LeaseHandle;
@@ -11,10 +14,12 @@ import delivery.mobile.persistence.MobileDeviceEntity;
 import delivery.mobile.persistence.MobileDeviceRepository;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.service.GeneratedWorkbookService;
+import delivery.portal.service.PortalStore;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PreDestroy;
@@ -65,6 +70,11 @@ public class MobileRunOrchestrator {
     private final DeviceSerialResolver serials;
     private final GeneratedWorkbookService workbooks;
     private final MobilePortalStore mobileStore;
+    private final PortalStore portalStore;
+    private final AdbDeviceDiscovery adb;
+    /** {@link ObjectProvider} breaks the orchestrator ↔ precision-service circular dep without
+     *  needing a CGLIB proxy. Resolved on each {@link #finish} call, cached by Spring after that. */
+    private final ObjectProvider<MobilePrecisionBindService> precisionProvider;
     private final Path runsRoot;
 
     private final Map<String, MobileRun> runs = new ConcurrentHashMap<>();
@@ -86,7 +96,10 @@ public class MobileRunOrchestrator {
                                  DeviceSerialResolver serials,
                                  GeneratedWorkbookService workbooks,
                                  MobilePortalStore mobileStore,
-                                 DeliveryPortalProperties portalProps) {
+                                 PortalStore portalStore,
+                                 AdbDeviceDiscovery adb,
+                                 DeliveryPortalProperties portalProps,
+                                 ObjectProvider<MobilePrecisionBindService> precisionProvider) {
         this.props = props;
         this.leases = leases;
         this.appium = appium;
@@ -94,6 +107,9 @@ public class MobileRunOrchestrator {
         this.serials = serials;
         this.workbooks = workbooks;
         this.mobileStore = mobileStore;
+        this.portalStore = portalStore;
+        this.adb = adb;
+        this.precisionProvider = precisionProvider;
         this.runsRoot = Path.of(portalProps.getStoreRoot()).resolve("mobile-runs");
         long every = Math.max(1, props.getLeaseHeartbeatSeconds());
         ticker.scheduleAtFixedRate(this::tick, every, every, TimeUnit.SECONDS);
@@ -109,13 +125,27 @@ public class MobileRunOrchestrator {
 
     public MobileRun start(String tenantId, String projectId, Long ownerUserId, String deviceId, List<String> tcIds)
             throws Exception {
+        return start(tenantId, projectId, ownerUserId, deviceId, tcIds, null);
+    }
+
+    public MobileRun start(String tenantId, String projectId, Long ownerUserId, String deviceId,
+                           List<String> tcIds, String appRevisionId)
+            throws Exception {
         if (!props.isEnabled()) {
             throw new IllegalStateException("Mobile is disabled (delivery.mobile.enabled=false)");
         }
         MobileDeviceEntity device = devices.findByDeviceId(deviceId)
-                .orElseThrow(() -> new IllegalArgumentException("device not found"));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No phone is registered under id '" + deviceId + "'. "
+                                + "Open Project Settings → Phones and press Find connected phones."));
         if (!tenantId.equals(device.getTenantId())) {
-            throw new IllegalArgumentException("device not found");
+            throw new IllegalArgumentException(
+                    "This phone is not registered to your workspace. Pick one from Project Settings → Phones.");
+        }
+        if (!"AVAILABLE".equalsIgnoreCase(nz(device.getBusy()))) {
+            throw new IllegalStateException(
+                    "Phone '" + nz(device.getDisplayName()) + "' is " + nz(device.getBusy())
+                            + ". Wait for the current run to finish, pick another phone, or press Find connected phones.");
         }
         List<ManualTestCase> all = workbooks.readCases(projectId);
         Set<String> wanted = tcIds == null ? Set.of() : Set.copyOf(tcIds);
@@ -133,7 +163,14 @@ public class MobileRunOrchestrator {
         if (cases.isEmpty()) {
             throw new IllegalArgumentException("No runnable test cases selected");
         }
-        var rev = mobileStore.findActiveAppRevision(tenantId, projectId);
+        var rev = (appRevisionId == null || appRevisionId.isBlank())
+                ? mobileStore.findActiveAppRevision(tenantId, projectId)
+                : mobileStore.findAppRevision(tenantId, projectId, appRevisionId);
+        if (appRevisionId != null && !appRevisionId.isBlank() && rev.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "App revision '" + appRevisionId + "' is not uploaded for this project. "
+                            + "Pick one from the dropdown or upload a new APK from Project Settings → Mobile app.");
+        }
         String pkg = rev.map(r -> nz(r.getPackageName())).orElse("");
         String act = rev.map(r -> nz(r.getLaunchActivity())).orElse("");
         MobileRun run = new MobileRun("mrun_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12),
@@ -193,6 +230,38 @@ public class MobileRunOrchestrator {
                 });
     }
 
+    private static final java.util.regex.Pattern TC_ID_PATTERN =
+            java.util.regex.Pattern.compile("^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$");
+    private static final int MAX_STEP_INDEX = 999;
+
+    /**
+     * Runner uploads a step screenshot. Writes to
+     * {@code <storeRoot>/mobile-runs/<runId>/evidence/<tcId>/step-NNN.png}. Tenant and tcId are
+     * validated so a runner can't escape its own run dir.
+     */
+    public void writeStepImage(String runId, String tenantId, String tcId, int stepIndex, byte[] pngBytes)
+            throws java.io.IOException {
+        MobileRun run = requireRunnerRun(runId, tenantId);
+        if (tcId == null || !TC_ID_PATTERN.matcher(tcId.trim()).matches()) {
+            throw new IllegalArgumentException("Invalid tcId");
+        }
+        if (stepIndex < 1 || stepIndex > MAX_STEP_INDEX) {
+            throw new IllegalArgumentException("stepIndex out of range 1.." + MAX_STEP_INDEX);
+        }
+        if (pngBytes == null || pngBytes.length == 0) {
+            throw new IllegalArgumentException("Empty image bytes");
+        }
+        Path dir = runsRoot.resolve(run.runId).resolve("evidence").resolve(tcId.trim());
+        Files.createDirectories(dir);
+        Path out = dir.resolve(String.format(java.util.Locale.ROOT, "step-%03d.png", stepIndex));
+        Files.write(out, pngBytes);
+    }
+
+    /** Evidence root for this run (orchestrator-owned; comparator reads from here). */
+    public Path evidenceDir(String runId) {
+        return runsRoot.resolve(runId).resolve("evidence");
+    }
+
     /** @return {@code cancel=true} when the runner must stop. */
     public JSONObject runnerHeartbeat(String runId, String tenantId, String progress) {
         MobileRun run = requireRunnerRun(runId, tenantId);
@@ -241,6 +310,9 @@ public class MobileRunOrchestrator {
             String serial = serials.resolve(device.getSerialFingerprint())
                     .orElseThrow(() -> new IllegalStateException(
                             "Device is not connected to this Keel host (adb does not list it). Plug it in or start the emulator."));
+            // Preflight: fail fast with a readable message if the APK isn't on the device yet, rather
+            // than wait ~30 s for Appium to start and then crash on the first launch call.
+            preflightInstalledPackage(serial, run.appPackage);
             // STARTING before leaseId is visible: tick() skips blank lease ids and would otherwise see a
             // QUEUED run with a lease (not alive) and fail it in the middle of the start.
             run.status = MobileRun.Status.STARTING;
@@ -259,6 +331,30 @@ public class MobileRunOrchestrator {
         } catch (Exception e) {
             log.warn("Mobile run {} failed to start: {}", run.runId, e.getMessage());
             finish(run, MobileRun.Status.FAILED, "Could not start the device session", e.getMessage());
+        }
+    }
+
+    /**
+     * Preflight that the chosen APK is installed on the serial before we burn ~30 s on Appium start.
+     * Blank {@code pkg} skips (launcher-only runs). Anything other than {@link AdbErrorCode#PACKAGE_NOT_FOUND}
+     * is swallowed — Appium's own error path keeps ownership of ADB health failures.
+     */
+    private void preflightInstalledPackage(String serial, String pkg) {
+        if (pkg == null || pkg.isBlank()) return;
+        try {
+            adb.resolveInstalledPackage(serial, pkg);
+        } catch (AdbInventoryException e) {
+            if (e.getCode() == AdbErrorCode.PACKAGE_NOT_FOUND) {
+                throw new IllegalStateException(
+                        "The app package '" + pkg + "' is not installed on this phone (serial " + serial + "). "
+                                + "Install it with `adb -s " + serial + " install path\\to.apk`, "
+                                + "or pick a phone that already has it.",
+                        e);
+            }
+            // Other ADB issues (unauthorized, offline, SDK unavailable) surface naturally when
+            // Appium tries to connect — don't double-fail here.
+        } catch (RuntimeException ignored) {
+            // Never block a run on a flaky preflight.
         }
     }
 
@@ -318,7 +414,47 @@ public class MobileRunOrchestrator {
                 }
             }
         }
+        if (status == MobileRun.Status.COMPLETED || status == MobileRun.Status.FAILED) {
+            tryRunDesignCompare(run);
+        }
+        try {
+            MobilePrecisionBindService precision = precisionProvider.getIfAvailable();
+            if (precision != null) precision.clearRun(run.runId);
+        } catch (RuntimeException e) {
+            log.warn("Mobile run {} precision.clearRun: {}", run.runId, e.getMessage());
+        }
         persist(run);
+    }
+
+    private void tryRunDesignCompare(MobileRun run) {
+        try {
+            if (portalStore == null) return;
+            Path projectRoot = portalStore.projectDiskRoot(run.projectId);
+            if (projectRoot == null) return;
+            Path evidenceRoot = evidenceDir(run.runId);
+            List<String> tcIds = new ArrayList<>();
+            for (MobileRun.CaseInput c : run.cases) {
+                if (c.tcId() != null && !c.tcId().isBlank()) tcIds.add(c.tcId());
+            }
+            if (tcIds.isEmpty()) return;
+            // Vision client may be unavailable in dry-run / unconfigured envs; the comparator
+            // still writes UNCERTAIN evidence per TC so the UI shows the attempt.
+            delivery.authoring.LocalLlmClient client = createVisionClient();
+            new MobileDesignComparePhase(projectRoot, evidenceRoot, client).run(tcIds);
+        } catch (Exception e) {
+            log.warn("Mobile design compare {} failed: {}", run.runId, e.getMessage());
+        }
+    }
+
+    private delivery.authoring.LocalLlmClient createVisionClient() {
+        try {
+            String base = System.getProperty("delivery.llm-base-url");
+            if (base == null || base.isBlank()) base = "http://127.0.0.1:11434";
+            String model = delivery.vision.VisionGroundingConfig.assertModel();
+            return new delivery.authoring.LocalLlmClient(base, model);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void persist(MobileRun run) {

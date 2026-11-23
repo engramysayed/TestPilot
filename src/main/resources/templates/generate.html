@@ -12,11 +12,13 @@ if (location.hash === '#record') location.replace('/record' + location.search);
 <aside th:replace="~{fragments :: sidebar}"></aside>
 <div class="app-main">
 <header th:replace="~{fragments :: topbar}"></header>
-<main class="shell keel-page generate-page">
+<main class="shell keel-page">
+<div class="generate-page">
     <div class="page-title">
         <div>
             <h1 th:text="#{page.generate.title}">Write test cases</h1>
         </div>
+        <div th:replace="~{preflight :: preflight-widget}"></div>
     </div>
     <nav class="tabs" aria-label="TCs Generation sections">
         <a href="/generate" class="active">Write cases</a>
@@ -372,6 +374,7 @@ if (location.hash === '#record') location.replace('/record' + location.search);
         </section>
     </div>
     </div>
+</div>
 </main>
 </div>
 

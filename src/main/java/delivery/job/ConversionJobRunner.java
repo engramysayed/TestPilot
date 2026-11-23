@@ -11,7 +11,8 @@ import delivery.agent.harness.recovery.ExecutionRecoveryEscalationGate;
 import delivery.agent.harness.recovery.ExecutionRecoveryWiring;
 import delivery.agent.validation.automate.AutomateFrameworkAcceptanceGate;
 import delivery.packager.FrameworkPackager;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
+import delivery.job.port.WorkspaceAiPolicy;
 import delivery.store.ProjectStore;
 import org.json.JSONObject;
 
@@ -39,7 +40,7 @@ public class ConversionJobRunner {
     private final JobProgressTracker progress = new JobProgressTracker();
     private final AgentHarnessProperties harnessProps;
     private final Duration investigationBudgetCap;
-    private delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy;
+    private WorkspaceAiPolicy workspaceAiPolicy;
 
     public ConversionJobRunner() {
         this(null, null);
@@ -54,7 +55,7 @@ public class ConversionJobRunner {
         this.investigationBudgetCap = investigationBudgetCap;
     }
 
-    public ConversionJobRunner withWorkspaceAiPolicy(delivery.portal.service.WorkspaceAiPolicyService policy) {
+    public ConversionJobRunner withWorkspaceAiPolicy(WorkspaceAiPolicy policy) {
         this.workspaceAiPolicy = policy;
         return this;
     }
@@ -167,7 +168,7 @@ public class ConversionJobRunner {
         // B5 closed: wrap cancelCheck so an in-flight repair also aborts if the workspace flips the
         // AI-validation toggle off mid-run. The existing JobCancelSupport.awaitOrCancel polls this.
         final BooleanSupplier originalCancel = cancelCheck;
-        final delivery.portal.service.WorkspaceAiPolicyService policyRef = workspaceAiPolicy;
+        final WorkspaceAiPolicy policyRef = workspaceAiPolicy;
         final String projectIdRef = request.projectId();
         BooleanSupplier repairCancel = (policyRef != null && repairAllowedForWorkspace)
                 ? () -> originalCancel.getAsBoolean()

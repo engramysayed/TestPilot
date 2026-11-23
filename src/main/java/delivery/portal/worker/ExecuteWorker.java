@@ -7,7 +7,7 @@ import delivery.job.ExecuteJobResult;
 import delivery.job.ExecuteJobRunner;
 import delivery.job.JobCancelledException;
 import delivery.job.JobProgressTracker;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.jobs.DurableJobClaim;
 import delivery.portal.model.JobRecord;

@@ -1,6 +1,6 @@
 package delivery.portal.worker;
 
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.JobRecord;
 import delivery.portal.service.PortalStore;

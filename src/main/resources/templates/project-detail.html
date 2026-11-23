@@ -49,6 +49,19 @@
                 <span class="summary-strip-label">Last Automate prove</span>
                 <span class="summary-strip-value" id="summary-prove">—</span>
             </div>
+            <div class="summary-strip-item" th:if="${latestAgentTask != null}">
+                <span class="summary-strip-label">Last AI task</span>
+                <span class="summary-strip-value"
+                      th:title="${latestAgentTask.createdAt}">
+                    <span th:text="${#strings.replace(#strings.toLowerCase(latestAgentTask.taskType), '_', ' ')}">task</span>
+                    ·
+                    <span th:text="${#strings.toLowerCase(latestAgentTask.status)}">status</span>
+                    <span class="muted" th:if="${latestAgentTask.completedAt != null}"
+                          th:text="${#strings.substring(latestAgentTask.completedAt, 0, 19)}">time</span>
+                    <span class="muted" th:if="${latestAgentTask.completedAt == null and latestAgentTask.createdAt != null}"
+                          th:text="${#strings.substring(latestAgentTask.createdAt, 0, 19)}">time</span>
+                </span>
+            </div>
         </div>
         <section class="panel">
             <h2>Recent activity</h2>
@@ -83,22 +96,69 @@
                 <label>Base URL
                     <input type="url" name="baseUrl" id="settings-base-url" placeholder="https://app.example.com"/>
                 </label>
-                <label>Test data env <span class="muted">(optional)</span>
-                    <input type="text" name="testDataEnv" id="settings-test-data-env" placeholder="sit" maxlength="32" pattern="[a-z0-9_-]*"/>
-                </label>
-                <p class="muted">When set, generated frameworks use keys like <code>sit_username</code> in <code>delivery-testdata.properties</code>. Leave blank for <code>username</code>, <code>password</code>, <code>otp</code> without a prefix.</p>
                 <label>Preferred test hooks
                     <input type="text" name="preferredHooks" id="settings-preferred-hooks"
                            placeholder="data-axis-test-id"/>
                 </label>
                 <p class="muted">Comma-separated attribute names. Always ranked first. Shared with every project on this host.</p>
-                <label>Locator ranking
+                <label id="settings-locator-mode-wrap">Locator ranking
                     <select name="locatorMode" id="settings-locator-mode">
                         <option value="stable-first">Stable first — test id, then unique id / name, then role + label (recommended, survives Arabic/English switch)</option>
                         <option value="user-facing-first">User-facing first — role + label, then test id (reads like the page; breaks if copy is translated)</option>
                     </select>
                 </label>
-                <p class="muted">Applies to step binding, browser proof and the generated framework. Preferred hooks above always win.</p>
+                <p class="muted" id="settings-locator-mode-note">Applies to step binding, browser proof and the generated framework on <strong>web</strong> projects. Preferred hooks above always win.</p>
+                <section id="settings-mobile-locator-tiers" hidden>
+                    <h3 style="margin-top:0.25rem;margin-bottom:0.5rem">Locator ranking (Android)</h3>
+                    <p class="muted" style="margin-top:0">Android projects use a <strong>fixed tier list</strong>. Picking a mode is not available here — this table is the authoritative order the binder walks.</p>
+                    <table class="locator-tier-table">
+                        <thead>
+                            <tr><th>Rank</th><th>Tier</th><th>Example</th><th>Why it's ranked here</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="locator-tier-rank">0</span></td>
+                                <td><code>USER_OVERRIDE</code></td>
+                                <td class="mono">anything you pinned on <em>Add a locator manually</em></td>
+                                <td>Explicit human intent wins over everything else.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="locator-tier-rank">1</span></td>
+                                <td><code>RESOURCE_ID</code></td>
+                                <td class="mono">AppiumBy.id("com.app:id/signin")</td>
+                                <td>Survives copy changes and translations. Preferred first.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="locator-tier-rank">2</span></td>
+                                <td><code>ACCESSIBILITY</code></td>
+                                <td class="mono">AppiumBy.accessibilityId("login_submit")</td>
+                                <td>Compiler-friendly, screen-reader-stable. Common for custom views.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="locator-tier-rank">3</span></td>
+                                <td><code>LABEL_SIBLING</code></td>
+                                <td class="mono">xpath walking a labelled sibling node</td>
+                                <td>For un-ided controls that have a labelled neighbour.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="locator-tier-rank">4</span></td>
+                                <td><code>TEXT_CLASS</code></td>
+                                <td class="mono">androidUIAutomator new UiSelector().text(…)</td>
+                                <td>Visible text + class. Brittle across translations — avoided when a higher tier matches.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="locator-tier-rank">5</span></td>
+                                <td><code>XPATH</code></td>
+                                <td class="mono">relative xpath only</td>
+                                <td>Last resort. Absolute xpath is banned.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="muted" style="margin-top:0.75rem">
+                        <strong>CSS is never valid in NATIVE_APP context</strong> and will fail at bind time. See
+                        <a href="https://github.com/engramysayed/TestPilot/blob/main/docs/MOBILE_FRAMEWORK_RULES.md">MOBILE_FRAMEWORK_RULES</a> for the full discipline.
+                    </p>
+                </section>
                 <fieldset class="authoring-engine" id="settings-authoring-engine"
                           th:attr="data-precision-enabled=${precisionAuthoringEnabled},data-default-max-calls=${defaultPrecisionMaxCalls}">
                     <legend>Authoring engine</legend>
@@ -115,6 +175,23 @@
                                min="1" max="500" step="1"
                                th:attr="placeholder=${defaultPrecisionMaxCalls}"/>
                     </label>
+                    <label id="settings-precision-model-wrap">Cursor model
+                        <select name="precisionCursorModel" id="settings-precision-cursor-model">
+                            <option value="auto">Auto (Cursor router — recommended)</option>
+                            <option value="claude-sonnet-4.5">claude-sonnet-4.5</option>
+                            <option value="claude-opus-4.1">claude-opus-4.1</option>
+                            <option value="claude-haiku-4.5">claude-haiku-4.5</option>
+                            <option value="gpt-5">gpt-5</option>
+                            <option value="gpt-5-mini">gpt-5-mini</option>
+                            <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                            <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                            <option value="grok-4">grok-4</option>
+                            <option value="deepseek-v3">deepseek-v3</option>
+                        </select>
+                    </label>
+                    <p class="muted">"Auto" lets Cursor pick the cheapest-good model per call (recommended).
+                        Pin a specific model only when this project keeps mis-binding on complex pages
+                        (then choose a stronger model) or when runs are too expensive (choose a cheaper one).</p>
                     <label class="check" id="settings-precision-reuse-memory-wrap" hidden>
                         <input type="checkbox" name="precisionReuseLocatorMemory"
                                id="settings-precision-reuse-locator-memory"/>
@@ -379,12 +456,31 @@
                 <label>Phone
                     <select id="mobile-run-device"></select>
                 </label>
+                <label>App package
+                    <select id="mobile-run-revision">
+                        <option value="">— loading APK revisions —</option>
+                    </select>
+                </label>
                 <label>Test case IDs <span class="muted">(blank = all)</span>
                     <input type="text" id="mobile-run-tcs" placeholder="TC_01, TC_02"/>
                 </label>
                 <button type="button" class="button" id="mobile-run-start">Run on phone</button>
                 <button type="button" class="button ghost" id="mobile-run-cancel" hidden>Cancel run</button>
             </div>
+            <label class="check" id="mobile-pre-run-review-wrap">
+                <input type="checkbox" id="mobile-pre-run-review"/>
+                Review cases before run <span class="muted">(uses the AI reviewer; cost applies when configured)</span>
+            </label>
+            <section id="mobile-pre-run-review-panel" class="pre-run-review-panel" hidden>
+                <p id="mobile-pre-run-review-status" class="muted" aria-live="polite"></p>
+                <ul id="mobile-pre-run-review-findings" class="pre-run-review-findings"></ul>
+                <ul id="mobile-pre-run-review-errors" class="pre-run-review-errors error"></ul>
+                <div id="mobile-pre-run-review-cases" class="pre-run-review-cases"></div>
+                <p>
+                    <button type="button" class="button primary" id="mobile-pre-run-review-accept" disabled>Accept &amp; run</button>
+                    <button type="button" class="button ghost" id="mobile-pre-run-review-cancel">Cancel review</button>
+                </p>
+            </section>
             <p id="mobile-run-msg" class="muted" aria-live="polite"></p>
             <table class="table" id="mobile-run-results" hidden>
                 <thead><tr><th>Case</th><th>Result</th><th>Details</th></tr></thead>
@@ -539,17 +635,21 @@
         </section>
 
         <section class="panel">
-            <h2>Design mockups (Execute)</h2>
-            <ul id="design-ref-list" class="artifact-list"></ul>
-            <p id="design-ref-empty" class="muted" hidden>No design mockups uploaded yet.</p>
+            <h2>Figma Validate (Execute)</h2>
+            <p class="muted">Attach a PNG to a whole test case (compared at the end of the run) or to a specific step (compared right after that step). Click any thumbnail to preview.</p>
+            <ul id="design-ref-list" class="artifact-list figma-validate-list"></ul>
+            <p id="design-ref-empty" class="muted" hidden>No Figma validations uploaded yet.</p>
             <form id="design-ref-settings-form" class="design-ref-form">
                 <label>TC ID
                     <input type="text" id="design-ref-settings-tcId" name="tcId" placeholder="TC_001" required/>
                 </label>
-                <label>Design PNG
+                <label>Step (optional)
+                    <input type="number" id="design-ref-settings-step" name="stepIndex" placeholder="leave blank for whole TC" min="1" max="999"/>
+                </label>
+                <label>Figma PNG
                     <input type="file" id="design-ref-settings-file" name="file" accept="image/png" required/>
                 </label>
-                <button type="submit">Upload design</button>
+                <button type="submit">Upload Figma</button>
             </form>
             <p id="design-ref-settings-msg" class="muted" hidden></p>
             <p id="design-ref-settings-err" class="error" hidden></p>
@@ -568,6 +668,8 @@
     <!-- Automation tab -->
     <section id="tab-automation" class="tab-panel" th:classappend="${activeTab != 'automation'} ? ' hidden' : ''">
         <p id="auto-running-hint" class="hint hidden">A job is running for this project — artifact delete is disabled until it finishes.</p>
+        <!-- Live progress log for the currently-running job on this project; mounted by project-detail.js when pollJobs sees one. -->
+        <section class="panel" id="project-progress-widget" hidden style="margin-bottom:1rem"></section>
         <p id="auto-delete-hint" class="hint hidden">You can delete old <strong>version ZIPs</strong>. Deleting the live <strong>current framework</strong> or individual page/test files requires workspace <strong>Owner</strong> or <strong>Admin</strong>.</p>
         <p id="auto-err" class="error" hidden></p>
         <div id="auto-viewing-banner" class="auto-source-banner" role="status" aria-live="polite">
@@ -902,6 +1004,25 @@
 </div>
 
 <script th:inline="javascript">window.KEEL_PAGE = Object.assign(window.KEEL_PAGE || {}, { activeTab: /*[[${activeTab}]]*/ 'summary' });</script>
+<!-- VS Code-style preview: PrismJS 1.29.0 vendored under /vendor/prism — no CDN dependency. -->
+<link rel="stylesheet" th:href="@{/vendor/prism/prism-tomorrow.min.css}"/>
+<link rel="stylesheet" th:href="@{/vendor/prism/prism-line-numbers.min.css}"/>
+<script defer th:src="@{/vendor/prism/prism.min.js}"></script>
+<script defer th:src="@{/vendor/prism/prism-java.min.js}"></script>
+<script defer th:src="@{/vendor/prism/prism-line-numbers.min.js}"></script>
+<style>
+    .auto-preview-panel { background: #282a36; color: #f8f8f2; border-color: #1f2129; }
+    .auto-preview-panel h2 { color: #f8f8f2; }
+    .auto-preview-panel #auto-preview-path { color: #a4b1cd; background: #1f2129; padding: .4rem .55rem; border-radius: 6px; margin: 0 0 .6rem; font-size: .85rem; word-break: break-all; }
+    .auto-preview-panel pre[class*="language-"] { margin: 0; max-height: 72vh; overflow: auto; font-size: .85rem; line-height: 1.5; border-radius: 6px; }
+    .auto-preview-panel pre.line-numbers { padding-left: 3.5em; }
+    .auto-preview-panel #auto-preview-content:not([class*="language-"]) { background: #1f2129; color: #a4b1cd; padding: 1rem; border-radius: 6px; min-height: 160px; white-space: pre-wrap; font-family: monospace; font-size: .9rem; }
+    .artifact-item.is-selected-file { background: rgba(80, 150, 250, .12); border-left: 3px solid #5096fa; padding-left: calc(0.75rem - 3px); }
+    .artifact-item .artifact-label::before { content: '📄 '; opacity: .7; margin-right: .3rem; }
+    #auto-tests-gen .artifact-item .artifact-label::before,
+    #auto-tests-todo .artifact-item .artifact-label::before { content: '🧪 '; }
+    #auto-packages .artifact-item .artifact-label::before { content: '📦 '; }
+</style>
 <script th:src="@{/js/pages/project-detail.js}"></script>
 <script th:src="@{/js/keel-mobile-auth.js}"></script>
 <script th:src="@{/js/mobile-run.js}" defer></script>

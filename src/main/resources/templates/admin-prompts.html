@@ -22,6 +22,7 @@
         }
         .source-badge--override { background: #e3f3ef; border-color: #9fd5c8; color: #087f78; }
         .source-badge--classpath { background: #eef4f8; border-color: #c5d8e4; color: #4a7088; }
+        .source-badge--file { background: #faf3e6; border-color: #e8d4a8; color: #8a5a00; }
         .prompts-editor label { display: block; font-weight: 600; margin-bottom: 0.35rem; }
         .prompts-editor textarea {
             width: 100%; min-height: 22rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -52,6 +53,19 @@
     <div id="override-banner" class="prompts-empty" hidden></div>
     <p class="ok" id="prompts-saved" hidden>Saved to the override folder.</p>
     <p class="error" id="prompts-error" hidden></p>
+
+    <details class="panel framework-rules-panel" th:if="${frameworkRulesText != null and !frameworkRulesText.isEmpty()}" style="margin-bottom:1rem;">
+        <summary style="cursor:pointer; font-weight:600;">
+            Framework Rules (read-only, synced with <code>docs/FRAMEWORK_RULES.md</code>)
+            <span class="source-badge source-badge--file" style="margin-left:0.5rem;">file</span>
+        </summary>
+        <p class="muted" style="margin:0.5rem 0;">
+            This is the canonical rules reference the agent reads at job start. Edit
+            <code>docs/FRAMEWORK_RULES.md</code> in the repo to change it — the <code>FrameworkRulesDocSyncTest</code>
+            guards the doc ↔ validator mapping.
+        </p>
+        <pre class="prompts-diff" style="max-height:30rem; margin-top:0.5rem;" th:text="${frameworkRulesText}">…</pre>
+    </details>
 
     <div class="prompts-layout">
         <section class="panel">

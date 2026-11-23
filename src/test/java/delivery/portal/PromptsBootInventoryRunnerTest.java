@@ -17,11 +17,14 @@ public class PromptsBootInventoryRunnerTest {
 
     /** Golden fence matching resources/prompts at tip (excl VERSION). */
     private static final Set<String> GOLDEN_IDS = Set.of(
+            "agent-validation/automate",
+            "agent-validation/execute",
+            "agent-validation/generate",
+            "agent-validation/hunt",
             "authoring/authoring-review",
             "authoring/authoring-review-cursor",
             "authoring/authoring-service",
             "authoring/heal-pick-payload",
-            "codegen/test-method-naming",
             "generate/capability-manifest",
             "generate/rewrite-to-csv",
             "generate/stories-to-csv",

@@ -15,7 +15,16 @@ import java.nio.file.Path;
 
 public class WebDriverFactory {
 
-    public final static String browser = PropertyReader.getProperty("BROWSER_TYPE");
+    public final static String browser = resolveBrowser();
+
+    private static String resolveBrowser() {
+        String sp = System.getProperty("browser");
+        if (sp != null && !sp.isBlank()) return sp.trim();
+        String env = System.getenv("BROWSER_TYPE");
+        if (env != null && !env.isBlank()) return env.trim();
+        String prop = PropertyReader.getProperty("BROWSER_TYPE");
+        return prop == null ? "" : prop.trim();
+    }
     private static ThreadLocal<WebDriver> driverThreadLocal = new ThreadLocal<>();
 
     public WebDriverFactory() {
@@ -27,6 +36,10 @@ public class WebDriverFactory {
     }
 
     public WebDriver get() {
+        return driverThreadLocal.get();
+    }
+
+    public static WebDriver getDriver() {
         return driverThreadLocal.get();
     }
 

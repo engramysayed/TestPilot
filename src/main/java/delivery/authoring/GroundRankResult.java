@@ -26,7 +26,16 @@ public record GroundRankResult(
     }
 
     public boolean isAcceptable() {
-        return ("high".equals(confidence) || "medium".equals(confidence))
-                && candidateId != null && !candidateId.isBlank();
+        return isAcceptableAt("medium");
+    }
+
+    /** Admin-configurable floor: 'medium' accepts medium+high, 'high' accepts only high. */
+    public boolean isAcceptableAt(String minConfidence) {
+        if (candidateId == null || candidateId.isBlank()) return false;
+        String floor = minConfidence == null ? "medium" : minConfidence.trim().toLowerCase();
+        if ("high".equals(floor)) {
+            return "high".equals(confidence);
+        }
+        return "high".equals(confidence) || "medium".equals(confidence);
     }
 }

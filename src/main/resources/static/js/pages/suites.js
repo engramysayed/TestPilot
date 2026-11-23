@@ -84,6 +84,12 @@
     const clearScheduleBtn = document.getElementById('clear-schedule');
     const scheduleStatus = document.getElementById('schedule-status');
 
+    const mobileRow = document.getElementById('schedule-mobile-row');
+    const mobileDeviceSel = document.getElementById('schedule-mobile-device');
+    const mobileRevisionSel = document.getElementById('schedule-mobile-revision');
+    const mobileProjectLink = document.getElementById('schedule-mobile-project-link');
+    let mobileEnabledForProject = false;
+
     const alertChannel = document.getElementById('alert-channel');
     const alertSeverity = document.getElementById('alert-severity');
     const saveAlertsBtn = document.getElementById('save-alerts');
@@ -243,6 +249,76 @@
                 }
             }
         } catch (_) { /* ignore */ }
+    }
+
+    async function loadMobileSchedulePickers(projectId) {
+        if (!mobileRow || !projectId) return;
+        mobileEnabledForProject = false;
+        const proj = (projects || []).find(function (p) { return p.projectId === projectId; });
+        const platform = (proj && proj.platform ? String(proj.platform).toUpperCase() : '');
+        if (platform !== 'ANDROID') {
+            mobileRow.hidden = true;
+            return;
+        }
+        mobileRow.hidden = false;
+        mobileEnabledForProject = true;
+        if (mobileProjectLink) {
+            mobileProjectLink.href = '/projects/' + encodeURIComponent(projectId) + '?tab=settings#mobile-devices-panel';
+        }
+        const base = '/api/projects/' + encodeURIComponent(projectId) + '/mobile';
+        // Devices
+        try {
+            if (mobileDeviceSel) {
+                mobileDeviceSel.innerHTML = '<option value="">— None pinned —</option>';
+                const res = await fetch(base + '/devices', { credentials: 'same-origin', headers: API_HEADERS });
+                const data = res.ok ? await res.json() : {};
+                (data.devices || []).forEach(function (d) {
+                    const opt = document.createElement('option');
+                    opt.value = d.deviceId;
+                    opt.textContent = (d.displayName || d.model || d.deviceId)
+                        + (d.serialShort ? ' (' + d.serialShort + ')' : '')
+                        + (d.busy ? ' — ' + d.busy : '');
+                    mobileDeviceSel.appendChild(opt);
+                });
+            }
+        } catch (_) { /* ignore */ }
+        // APK revisions
+        try {
+            if (mobileRevisionSel) {
+                mobileRevisionSel.innerHTML = '<option value="">— Active package —</option>';
+                const res = await fetch(base + '/apps/revisions', { credentials: 'same-origin', headers: API_HEADERS });
+                const data = res.ok ? await res.json() : {};
+                (data.revisions || []).forEach(function (r) {
+                    const opt = document.createElement('option');
+                    opt.value = r.appRevisionId;
+                    const ver = r.versionName || ('vc ' + (r.versionCode || '?'));
+                    opt.textContent = (r.packageName || 'unknown') + ' · ' + ver + (r.active ? ' · active' : '');
+                    mobileRevisionSel.appendChild(opt);
+                });
+            }
+        } catch (_) { /* ignore */ }
+        // If a suite is already selected, re-apply its stored pins.
+        if (selectedSuite && selectedSuite.schedule) applyMobileScheduleValues(selectedSuite.schedule);
+    }
+
+    function applyMobileScheduleValues(sched) {
+        if (!mobileRow || mobileRow.hidden) return;
+        if (mobileDeviceSel) {
+            const v = (sched && sched.mobileDeviceId) || '';
+            if (Array.prototype.some.call(mobileDeviceSel.options, function (o) { return o.value === v; })) {
+                mobileDeviceSel.value = v;
+            } else {
+                mobileDeviceSel.value = '';
+            }
+        }
+        if (mobileRevisionSel) {
+            const v = (sched && sched.mobileAppRevisionId) || '';
+            if (Array.prototype.some.call(mobileRevisionSel.options, function (o) { return o.value === v; })) {
+                mobileRevisionSel.value = v;
+            } else {
+                mobileRevisionSel.value = '';
+            }
+        }
     }
 
     async function loadAccountAlertSummary() {
@@ -613,6 +689,7 @@
         if (schedulePage) {
             loadAccountAlertSummary();
             loadScheduleCredentials(projectId);
+            loadMobileSchedulePickers(projectId);
         } else {
             loadChannels();
         }
@@ -993,6 +1070,7 @@
         if (scheduleTimezone) scheduleTimezone.value = (sched && sched.timezone) || '';
         if (scheduleCredential) scheduleCredential.value = credProfile;
         else if (scheduleProfile) scheduleProfile.value = credProfile;
+        if (mobileEnabledForProject) applyMobileScheduleValues(sched);
         const when = (iso) => { try { return iso ? new Date(iso).toLocaleString() : ''; } catch (e) { return iso; } };
         const metaBits = [];
         if (sched && sched.enabled && sched.nextRunAt) metaBits.push('Next run: ' + when(sched.nextRunAt));
@@ -1325,6 +1403,16 @@
                 const n = parseInt(scheduleInterval.value, 10);
                 body.intervalMinutes = isNaN(n) ? null : n;
             }
+        }
+        if (mobileEnabledForProject) {
+            const dev = mobileDeviceSel ? (mobileDeviceSel.value || '') : '';
+            const rev = mobileRevisionSel ? (mobileRevisionSel.value || '') : '';
+            if (body.enabled && !dev) {
+                if (status) status.textContent = 'Pin a phone before turning on automatic runs. Open the project’s Phones panel to connect one.';
+                return false;
+            }
+            body.mobileDeviceId = dev;
+            body.mobileAppRevisionId = rev;
         }
         if (status && !opts.quiet) status.textContent = 'Saving schedule…';
         try {

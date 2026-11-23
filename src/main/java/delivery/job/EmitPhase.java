@@ -211,6 +211,12 @@ public class EmitPhase {
         bumpProgress("Phase2 emit: packaging ZIP");
         packager.zip(projectDir, zip);
 
+        if (delivery.packager.AllureReportBuilder.isEnabled()) {
+            bumpProgress("Phase2 emit: running Allure report");
+            Path reportZip = workDir.resolve("package-allure-report.zip");
+            delivery.packager.AllureReportBuilder.runAndPackage(projectDir, reportZip);
+        }
+
         TcDiffService diffService = new TcDiffService();
         Path hashFile = stagedState.resolve("tc-hashes.json");
         JSONObject hashes = new JSONObject(diffService.hashesOf(allCases));

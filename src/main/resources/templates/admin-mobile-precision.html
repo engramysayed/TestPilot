@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead(title='Mobile Precision')}"></th:block>
+    <style>
+        .mp-summary { display:flex; flex-wrap:wrap; gap:0.75rem; margin:0 0 1rem; }
+        .mp-tile { padding:0.6rem 0.9rem; border-radius:10px; border:1px solid #c5d8e4; background:#f7fafb; min-width:9rem; }
+        .mp-tile strong { display:block; font-size:1.25rem; line-height:1.2; }
+        .mp-tile span { font-size:0.8rem; color:var(--muted,#656d76); }
+        .mp-table { width:100%; border-collapse:collapse; font-size:0.88rem; }
+        .mp-table th, .mp-table td { padding:0.45rem 0.6rem; border-bottom:1px solid #e3e6ea; text-align:left; vertical-align:top; }
+        .mp-table th { background:#f7fafb; font-weight:600; }
+        .mp-table tr:hover { background:#f9fbfc; }
+        .mp-badge { display:inline-block; padding:0.1rem 0.5rem; border-radius:999px; font-size:0.72rem; font-weight:600; }
+        .mp-badge--cursor { background:#e3f3ef; color:#087f78; border:1px solid #9fd5c8; }
+        .mp-badge--keel { background:#eef4f8; color:#4a7088; border:1px solid #c5d8e4; }
+        .mp-badge--rejected { background:#fde6e6; color:#a2342c; border:1px solid #e8b1ad; }
+        .mp-empty { padding:0.85rem 1rem; border-radius:8px; border:1px solid #e8d4a8; background:#faf3e6; color:#8a5a00; }
+        .mp-controls { display:flex; gap:0.5rem; align-items:center; margin:0 0 0.6rem; }
+        .mp-intent { max-width:22rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    </style>
+</head>
+<body class="app-body">
+<aside th:replace="~{fragments :: sidebar}"></aside>
+<div class="app-main">
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="shell keel-page">
+    <div class="page-title">
+        <div>
+            <h1>Mobile Precision picks</h1>
+            <p class="muted" style="margin:0.25rem 0 0;">
+                In-memory ring of the most recent <code>MobilePrecisionBindService.bind(...)</code> calls on this portal process.
+                A restart clears the buffer.
+            </p>
+        </div>
+    </div>
+
+    <div class="mp-controls">
+        <button id="mp-refresh" class="btn">Refresh</button>
+        <label>Limit:
+            <select id="mp-limit">
+                <option value="50">50</option>
+                <option value="200" selected>200</option>
+                <option value="500">500</option>
+            </select>
+        </label>
+        <span class="muted" id="mp-updated"></span>
+    </div>
+
+    <div class="mp-summary">
+        <div class="mp-tile"><strong id="mp-total">0</strong><span>total</span></div>
+        <div class="mp-tile"><strong id="mp-cursor">0</strong><span>cursor picks</span></div>
+        <div class="mp-tile"><strong id="mp-keel">0</strong><span>keel fallbacks</span></div>
+        <div class="mp-tile"><strong id="mp-rejected">0</strong><span>rejected</span></div>
+    </div>
+
+    <div id="mp-empty" class="mp-empty" hidden>
+        No picks have landed on this portal yet. They show up here after the first ambiguous
+        mobile bind reaches <code>/api/v1/runners/mobile/runs/&lt;runId&gt;/precision/bind</code>.
+    </div>
+
+    <section class="panel" id="mp-table-wrap">
+        <table class="mp-table" aria-label="Recent mobile Precision picks">
+            <thead>
+                <tr>
+                    <th>When</th><th>Run</th><th>Project</th><th>Intent</th><th>N</th>
+                    <th>Outcome</th><th>Chosen</th><th>Reason</th>
+                </tr>
+            </thead>
+            <tbody id="mp-rows"></tbody>
+        </table>
+    </section>
+</main>
+</div>
+<script>
+(function () {
+    const rows = document.getElementById('mp-rows');
+    const empty = document.getElementById('mp-empty');
+    const tableWrap = document.getElementById('mp-table-wrap');
+    const limitSel = document.getElementById('mp-limit');
+    const refresh = document.getElementById('mp-refresh');
+    const updated = document.getElementById('mp-updated');
+    const totalEl = document.getElementById('mp-total');
+    const cursorEl = document.getElementById('mp-cursor');
+    const keelEl = document.getElementById('mp-keel');
+    const rejectedEl = document.getElementById('mp-rejected');
+
+    function esc(s) {
+        if (s == null) return '';
+        return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+    }
+    function badge(pick) {
+        if (pick.code && pick.code !== '') return '<span class="mp-badge mp-badge--rejected">' + esc(pick.code) + '</span>';
+        if (pick.countsAsCursor) return '<span class="mp-badge mp-badge--cursor">cursor</span>';
+        return '<span class="mp-badge mp-badge--keel">keel</span>';
+    }
+    async function load() {
+        const limit = limitSel.value || 200;
+        try {
+            const res = await fetch('/api/admin/mobile-precision/picks?limit=' + encodeURIComponent(limit), {
+                headers: { 'X-Keel-Requested-With': 'Keel' }
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            const picks = data.picks || [];
+            totalEl.textContent = data.totals ? data.totals.total : picks.length;
+            cursorEl.textContent = data.totals ? data.totals.cursorPicks : '0';
+            keelEl.textContent = data.totals ? data.totals.keelFallbacks : '0';
+            rejectedEl.textContent = data.totals ? data.totals.rejected : '0';
+            rows.innerHTML = picks.map(p => (
+                '<tr>' +
+                '<td>' + esc(new Date(p.epochMs).toLocaleString()) + '</td>' +
+                '<td><code>' + esc(p.runId) + '</code></td>' +
+                '<td>' + esc(p.projectId) + '</td>' +
+                '<td class="mp-intent" title="' + esc(p.intent) + '">' + esc(p.intent) + '</td>' +
+                '<td>' + esc(p.candidateCount) + '</td>' +
+                '<td>' + badge(p) + '</td>' +
+                '<td>' + esc(p.chosenId) + '</td>' +
+                '<td>' + esc(p.fallbackReason) + '</td>' +
+                '</tr>'
+            )).join('');
+            empty.hidden = picks.length !== 0;
+            tableWrap.hidden = picks.length === 0;
+            updated.textContent = 'Updated ' + new Date().toLocaleTimeString();
+        } catch (e) {
+            updated.textContent = 'Error: ' + e.message;
+        }
+    }
+    refresh.addEventListener('click', load);
+    limitSel.addEventListener('change', load);
+    load();
+})();
+</script>
+</body>
+</html>

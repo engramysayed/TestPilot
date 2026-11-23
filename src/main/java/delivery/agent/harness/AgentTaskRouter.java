@@ -1,6 +1,6 @@
 package delivery.agent.harness;
 
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 
 import java.nio.file.Path;
 import java.time.Duration;

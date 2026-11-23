@@ -66,7 +66,7 @@ public class ${className} extends BaseTest {
 </#if>
 <#if tm.reviewComments??>
 <#list tm.reviewComments as note>
-        // REVIEW: ${note?j_string}
+        project.utils.Logs.LogsManager.info("REVIEW: ${note?j_string}");
 </#list>
 </#if>
 <#if multi>

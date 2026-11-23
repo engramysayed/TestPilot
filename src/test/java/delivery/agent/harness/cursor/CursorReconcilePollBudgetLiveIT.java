@@ -8,7 +8,7 @@ import delivery.agent.harness.AgentTaskStatus;
 import delivery.agent.harness.AgentWorkspacePreparer;
 import delivery.agent.harness.NewAgentTaskRequest;
 import delivery.heal.ApiKeySource;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;

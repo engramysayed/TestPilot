@@ -26,6 +26,7 @@ public class CursorHealClient {
     private final boolean enabled;
     private final String command;
     private final long timeoutSec;
+    private final String cursorModel;
     private volatile HealSafety pendingSafety;
 
     public CursorHealClient() {
@@ -33,14 +34,30 @@ public class CursorHealClient {
         this.enabled = resolveEnabled();
         this.command = resolveCommand();
         this.timeoutSec = DEFAULT_TIMEOUT_SEC;
+        this.cursorModel = resolveCursorModel();
+    }
+
+    /** Use defaults for enabled/command/timeout but pin a specific Cursor model id for this instance. */
+    public CursorHealClient(String cursorModel) {
+        ensureDeliveryPropsLoaded();
+        this.enabled = resolveEnabled();
+        this.command = resolveCommand();
+        this.timeoutSec = DEFAULT_TIMEOUT_SEC;
+        String trimmed = cursorModel == null ? "" : cursorModel.trim();
+        this.cursorModel = "auto".equalsIgnoreCase(trimmed) ? resolveCursorModel() : (trimmed.isEmpty() ? resolveCursorModel() : trimmed);
     }
 
     public CursorHealClient(boolean enabled, String command, long timeoutSec) {
+        this(enabled, command, timeoutSec, "");
+    }
+
+    public CursorHealClient(boolean enabled, String command, long timeoutSec, String cursorModel) {
         this.enabled = enabled;
         this.command = command == null || command.isBlank()
                 ? "node tools/cursor-heal/heal.mjs"
                 : command.trim();
         this.timeoutSec = timeoutSec <= 0 ? DEFAULT_TIMEOUT_SEC : timeoutSec;
+        this.cursorModel = cursorModel == null ? "" : cursorModel.trim();
     }
 
     private static void ensureDeliveryPropsLoaded() {
@@ -477,6 +494,9 @@ public class CursorHealClient {
             LogsManager.warn("CURSOR_HEAL_SKIPPED: provider_not_allowlisted");
             return "";
         }
+        if (cursorModel != null && !cursorModel.isBlank() && !req.has("model")) {
+            req.put("model", cursorModel);
+        }
         sanitizeRequest(req);
         String apiKey = ApiKeySource.resolve(ApiKeySource.CURSOR_API_KEY);
         if (apiKey == null || apiKey.isBlank()) {
@@ -566,7 +586,7 @@ public class CursorHealClient {
     }
 
     private static final java.util.Set<String> SIDECAR_PASSTHROUGH_KEYS = java.util.Set.of(
-            "mode", "screenshotPath", "excelOpenPath");
+            "mode", "screenshotPath", "excelOpenPath", "model");
 
     static void sanitizeRequest(JSONObject req) {
         if (req == null) {
@@ -658,6 +678,19 @@ public class CursorHealClient {
             return "node tools/cursor-heal/heal.mjs";
         }
         return p.trim();
+    }
+
+    /** Which Cursor chat-completion model id to forward (empty / "auto" keeps today's Auto router). */
+    static String resolveCursorModel() {
+        String p = System.getProperty("delivery.authoring.precision.cursor-model");
+        if (p == null || p.isBlank()) {
+            p = System.getenv("KEEL_CURSOR_MODEL");
+        }
+        if (p == null || p.isBlank()) {
+            return "";
+        }
+        String trimmed = p.trim();
+        return "auto".equalsIgnoreCase(trimmed) ? "" : trimmed;
     }
 
     private static List<String> parseCommand(String command) {

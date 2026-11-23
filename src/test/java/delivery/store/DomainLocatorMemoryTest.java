@@ -222,4 +222,60 @@ public class DomainLocatorMemoryTest {
         Assert.assertEquals(memory.recall("opssit.axispay.app", "/login", otp, "TC1")
                 .orElseThrow().locatorValue(), "basic_otp");
     }
+
+    @Test
+    public void candidatesPersistAndRecallAsFallbacks() throws Exception {
+        DomainLocatorMemory memory = new DomainLocatorMemory();
+        StepIntentBinder.IntentLine intent = new StepIntentBinder.IntentLine(
+                StepIntentBinder.IntentKind.CLICK_LOGIN, "Click the Login button");
+        java.util.List<delivery.codegen.LocatorCandidate> cands = java.util.List.of(
+                delivery.codegen.LocatorCandidate.of("id", "login-button"),
+                delivery.codegen.LocatorCandidate.of("cssSelector", "button[data-test='login-button']"),
+                delivery.codegen.LocatorCandidate.of("xpath", "//button[normalize-space()='Login']"));
+        ProvenStep step = new ProvenStep(
+                "TC1", "Login", "elementAction", "click",
+                "id", "login-button", "", "", "", true, "intent:CLICK_LOGIN", "",
+                cands);
+        memory.remember("example.com", "/login", intent, step);
+        Path file = Files.createTempFile("domain-loc-cand-", ".json");
+        try {
+            memory.save(file);
+            String written = Files.readString(file);
+            Assert.assertTrue(written.contains("\"candidates\""), "candidates key must be persisted: " + written);
+            DomainLocatorMemory loaded = new DomainLocatorMemory();
+            loaded.load(file);
+            ProvenStep hit = loaded.recall("example.com", "/login", intent, "TC2").orElseThrow();
+            Assert.assertEquals(hit.locatorValue(), "login-button");
+            // Proven primary is skipped at remember(); snapshot fallbacks replayed.
+            Assert.assertEquals(hit.locatorCandidates().size(), 2);
+            Assert.assertEquals(hit.locatorCandidates().get(0).strategy(), "cssSelector");
+            Assert.assertEquals(hit.locatorCandidates().get(0).value(), "button[data-test='login-button']");
+            Assert.assertEquals(hit.locatorCandidates().get(1).strategy(), "xpath");
+        } finally {
+            Files.deleteIfExists(file);
+        }
+    }
+
+    @Test
+    public void recallHasEmptyCandidatesWhenMemoryFileHasNoCandidatesField() throws Exception {
+        Path file = Files.createTempFile("domain-loc-legacy-", ".json");
+        try {
+            Files.writeString(file, """
+                    {"entries":[{
+                      "host":"example.com","path":"/login",
+                      "intentKey":"CLICK_LOGIN|click the login button",
+                      "strategy":"id","locator":"login-button","action":"click"
+                    }]}
+                    """);
+            DomainLocatorMemory loaded = new DomainLocatorMemory();
+            loaded.load(file);
+            StepIntentBinder.IntentLine intent = new StepIntentBinder.IntentLine(
+                    StepIntentBinder.IntentKind.CLICK_LOGIN, "Click the Login button");
+            ProvenStep hit = loaded.recall("example.com", "/login", intent, "TC1").orElseThrow();
+            Assert.assertEquals(hit.locatorValue(), "login-button");
+            Assert.assertTrue(hit.locatorCandidates().isEmpty(), "legacy entry with no candidates: empty bag");
+        } finally {
+            Files.deleteIfExists(file);
+        }
+    }
 }

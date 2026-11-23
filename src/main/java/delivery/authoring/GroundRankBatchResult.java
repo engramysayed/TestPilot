@@ -13,8 +13,16 @@ public record GroundRankBatchResult(List<Pick> picks, String rationale) {
 
     public record Pick(int intentIndex, String candidateId, String confidence) {
         public boolean isAcceptable() {
-            return ("high".equalsIgnoreCase(confidence) || "medium".equalsIgnoreCase(confidence))
-                    && candidateId != null && !candidateId.isBlank();
+            return isAcceptableAt("medium");
+        }
+
+        public boolean isAcceptableAt(String minConfidence) {
+            if (candidateId == null || candidateId.isBlank()) return false;
+            String floor = minConfidence == null ? "medium" : minConfidence.trim().toLowerCase();
+            if ("high".equals(floor)) {
+                return "high".equalsIgnoreCase(confidence);
+            }
+            return "high".equalsIgnoreCase(confidence) || "medium".equalsIgnoreCase(confidence);
         }
     }
 
@@ -45,6 +53,10 @@ public record GroundRankBatchResult(List<Pick> picks, String rationale) {
 
     /** First N picks must be consecutive 0..N-1 with acceptable confidence. */
     public List<Pick> consecutiveAcceptableFromZero() {
+        return consecutiveAcceptableFromZero("medium");
+    }
+
+    public List<Pick> consecutiveAcceptableFromZero(String minConfidence) {
         List<Pick> out = new ArrayList<>();
         for (int expected = 0; ; expected++) {
             Pick found = null;
@@ -54,7 +66,7 @@ public record GroundRankBatchResult(List<Pick> picks, String rationale) {
                     break;
                 }
             }
-            if (found == null || !found.isAcceptable()) {
+            if (found == null || !found.isAcceptableAt(minConfidence)) {
                 break;
             }
             out.add(found);

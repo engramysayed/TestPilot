@@ -1,13 +1,16 @@
 package project.pages;
 
+import io.qameta.allure.Step;
 import org.openqa.selenium.By;
 import project.drivers.WebDriverFactory;
+import project.utils.Actions.Act;
 import project.utils.Logs.LogsManager;
 import project.utils.reports.AllureSteps;
+import project.validations.Validate;
 <#if fields?filter(f -> f.smart)?has_content>
 import project.utils.locators.KeelBy;
 </#if>
-<#if fields?filter(f -> !f.smart && !f.parameterized && !f.nlCached && f.bag?has_content)?has_content>
+<#if fields?filter(f -> !f.smart && !f.parameterized && f.bag?has_content)?has_content>
 import project.utils.locators.FirstOf;
 </#if>
 <#assign maxContract = 1>
@@ -52,8 +55,8 @@ public class ${pageClassName} {
     /** NL-cached validated By: ${field.nlPhrase?j_string} */
     protected final By ${field.name} = By.${field.strategy}("${field.value?j_string}");
 <#elseif field.bag?has_content>
-    /** Primary first, then verified fallbacks (first locator that matches wins; fallback wins are logged). */
-    protected final By ${field.name} = FirstOf.of("${field.name}",
+    /** Primary first, then verified fallbacks (first locator that matches wins; outcomes logged per slot). */
+    protected final By ${field.name} = FirstOf.of("${pageClassName}", "${field.name}",
             By.${field.strategy}("${field.value?j_string}")<#list field.bag as fb>,
             By.${fb.strategy}("${fb.value?j_string}")</#list>);
 <#else>
@@ -65,7 +68,7 @@ public class ${pageClassName} {
 <#if method.needsValue>
     public void ${method.name}(String value) {
 <#if method.secret>
-        Secrets.register(value); // IR secret: true - redacted from logs, Allure and keel-results jsonl
+        Secrets.register(value);
 </#if>
 <#if method.smart>
 <#if method.action == "select">
@@ -76,14 +79,16 @@ public class ${pageClassName} {
 <#else>
         AllureSteps.run("${method.name}", () -> {
 <#if method.action == "select">
-            driver.element().selectFromDD(${method.fieldName}, value);
+            Act.selectFromDD(${method.fieldName}, value);
 <#else>
-            driver.element().type(${method.fieldName}, value);
+            Act.type(${method.fieldName}, value);
 </#if>
         });
 </#if>
+        LogsManager.info("Step: ${method.action} on ${method.fieldName}");
     }
 <#else>
+    @Step("${method.name}")
     public void ${method.name}() {
 <#if method.action == "drag">
         SettledActions.drag(driver, ${method.fieldName}, ${method.dropFieldName}, "${method.name}");
@@ -91,9 +96,10 @@ public class ${pageClassName} {
         SettledActions.click(driver, ${method.fieldName}, "click", "${method.name}"<#if method.pointer>, true</#if>);
 <#else>
         AllureSteps.run("${method.name}", () -> {
-            driver.element().click(${method.fieldName});
+            Act.click(${method.fieldName});
         });
 </#if>
+        LogsManager.info("Step: ${method.action} on ${method.fieldName}");
     }
 </#if>
 
@@ -102,7 +108,7 @@ public class ${pageClassName} {
     /** True when a stable page marker is visible (preferred hook / id / test id). */
     public boolean isLoaded() {
         try {
-            return driver.element().findElement(${loadedMarker}).isDisplayed();
+            return Act.findElement(${loadedMarker}).isDisplayed();
         } catch (RuntimeException e) {
             return false;
         }
@@ -110,7 +116,6 @@ public class ${pageClassName} {
 
 </#if>
 <#if loginHelper??>
-    /** Preferred login API: type credentials then submit. */
     public void login(String username, String password) {
         ${loginHelper.userMethod}(username);
         ${loginHelper.passMethod}(password);
@@ -120,74 +125,78 @@ public class ${pageClassName} {
 </#if>
 <#list assertions as assertion>
 <#if assertion.parameterized>
+    @Step("${assertion.name}")
     public void ${assertion.name}(String expected) {
         AllureSteps.run("${assertion.name}", () -> {
 <#if assertion.smart>
           try {
 </#if>
 <#if assertion.assertionType == "textContains">
-<#if assertion.fieldName?has_content>
-            driver.validation().textContains(${assertion.fieldName}, expected);
-<#else>
-            driver.validation().bodyTextContains(expected);
-</#if>
+            <#if assertion.fieldName?has_content>
+            Validate.textContains(${assertion.fieldName}, expected);
+            <#else>
+            Validate.bodyTextContains(expected);
+            </#if>
 <#elseif assertion.assertionType == "urlContains">
-            driver.validation().urlContains(expected);
+            Validate.urlContains(expected);
 <#elseif assertion.assertionType == "checked" || assertion.assertionType == "selected">
-            driver.validation().elementSelected(${assertion.fieldName}, expected);
+            Validate.elementSelected(${assertion.fieldName}, expected);
 <#elseif assertion.assertionType == "value" || assertion.assertionType == "valueEquals">
-            driver.validation().elementValue(${assertion.fieldName}, expected);
+            Validate.elementValue(${assertion.fieldName}, expected);
 <#elseif assertion.assertionType == "textEquals">
-            driver.validation().elementTextEquals(${assertion.fieldName}, expected);
+            Validate.elementTextEquals(${assertion.fieldName}, expected);
 <#elseif assertion.assertionType == "ariaRole">
-            driver.validation().elementAriaRole(${assertion.fieldName}, expected);
+            Validate.elementAriaRole(${assertion.fieldName}, expected);
 <#elseif assertion.assertionType == "ariaLabel">
-            driver.validation().elementAriaLabel(${assertion.fieldName}, expected);
+            Validate.elementAriaLabel(${assertion.fieldName}, expected);
 <#elseif assertion.assertionType == "region">
-            driver.validation().elementRegion(${assertion.fieldName}, expected);
+            Validate.elementRegion(${assertion.fieldName}, expected);
 <#else>
             LogsManager.error("unsupported assertionType: ${assertion.assertionType}");
-            driver.validation().softTrue(false, "unsupported assertionType: ${assertion.assertionType}");
+            Validate.softTrue(false, "unsupported assertionType: ${assertion.assertionType}");
 </#if>
 <#if assertion.smart>
           } finally {
-              KeelLocate.reset(driver.get());
+              KeelLocate.reset(WebDriverFactory.getDriver());
           }
 </#if>
         });
+        LogsManager.info("Step: assert ${assertion.assertionType} on ${assertion.fieldName}");
     }
 <#else>
+    @Step("${assertion.name}")
     public void ${assertion.name}() {
         AllureSteps.run("${assertion.name}", () -> {
 <#if assertion.smart>
           try {
 </#if>
 <#if assertion.assertionType == "visible">
-            driver.validation().elementVisable(${assertion.fieldName});
+            Validate.elementVisable(${assertion.fieldName});
 <#elseif assertion.assertionType == "unchecked">
-            driver.validation().elementUnchecked(${assertion.fieldName});
+            Validate.elementUnchecked(${assertion.fieldName});
 <#elseif assertion.assertionType == "enabled">
-            driver.validation().elementEnabled(${assertion.fieldName});
+            Validate.elementEnabled(${assertion.fieldName});
 <#elseif assertion.assertionType == "disabled">
-            driver.validation().elementDisabled(${assertion.fieldName});
+            Validate.elementDisabled(${assertion.fieldName});
 <#elseif assertion.assertionType == "notVisible">
-            driver.validation().elementNotVisible(${assertion.fieldName});
+            Validate.elementNotVisible(${assertion.fieldName});
 <#elseif assertion.assertionType == "captureText">
-            driver.validation().captureFrom(${assertion.fieldName}, "${assertion.slot?j_string}", "${assertion.expected?j_string}");
+            Validate.captureFrom(${assertion.fieldName}, "${assertion.slot?j_string}", "${assertion.expected?j_string}");
 <#elseif assertion.assertionType == "capturedEquals">
-            driver.validation().compareCapturedExact(${assertion.fieldName}, "${assertion.slot?j_string}");
+            Validate.compareCapturedExact(${assertion.fieldName}, "${assertion.slot?j_string}");
 <#elseif assertion.assertionType == "signedOut">
-            driver.validation().signedOut(${assertion.fieldName}, "${assertion.expected?j_string}");
+            Validate.signedOut(${assertion.fieldName}, "${assertion.expected?j_string}");
 <#else>
             LogsManager.error("unsupported assertionType: ${assertion.assertionType}");
-            driver.validation().softTrue(false, "unsupported assertionType: ${assertion.assertionType}");
+            Validate.softTrue(false, "unsupported assertionType: ${assertion.assertionType}");
 </#if>
 <#if assertion.smart>
           } finally {
-              KeelLocate.reset(driver.get());
+              KeelLocate.reset(WebDriverFactory.getDriver());
           }
 </#if>
         });
+        LogsManager.info("Step: assert ${assertion.assertionType} on ${assertion.fieldName}");
     }
 </#if>
 

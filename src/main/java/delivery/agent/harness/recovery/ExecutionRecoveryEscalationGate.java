@@ -1,7 +1,7 @@
 package delivery.agent.harness.recovery;
 
 import delivery.job.JobCancelledException;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;

@@ -1,7 +1,7 @@
 package delivery.agent.harness.recovery;
 
 import delivery.agent.harness.AgentHarnessCoordinator;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 
 import java.time.Duration;
 import java.util.function.BooleanSupplier;

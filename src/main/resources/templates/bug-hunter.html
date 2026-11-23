@@ -14,6 +14,7 @@
             <h1 th:text="#{page.bug-hunter.title}">Bug Hunter</h1>
             <p class="hint">An AI planner decides what to try next on each round (Ollama or Cursor).</p>
         </div>
+        <div th:replace="~{preflight :: preflight-widget}"></div>
     </div>
 
     <section class="panel">

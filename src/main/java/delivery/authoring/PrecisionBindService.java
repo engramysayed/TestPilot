@@ -11,18 +11,23 @@ import utils.LogsManager;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Precision path: DOM shortlist → groundRank → bind, or one solve on low confidence. */
 public class PrecisionBindService {
 
     /** Max Excel intents per one Cursor groundRankBatch call (same page). */
-    public static final int MAX_INTENTS_PER_GROUNDRANK_BATCH = 5;
+    public static final int MAX_INTENTS_PER_GROUNDRANK_BATCH = 10;
     private final AuthoringService authoring;
     private final CursorHealClient cursor;
     private final FreeInventHealer solveParser;
     private final PrecisionCallBudget budget;
     private final boolean precisionEnabled;
+    private final String minConfidence;
+    /** Job-scoped: same intent + same shortlist/HTML on a retry reuses the earlier Cursor pick. */
+    private final Map<String, GroundRankResult> groundRankCache = new ConcurrentHashMap<>();
 
     public PrecisionBindService(
             AuthoringService authoring,
@@ -30,11 +35,22 @@ public class PrecisionBindService {
             PrecisionCallBudget budget,
             boolean precisionEnabled
     ) {
+        this(authoring, cursor, budget, precisionEnabled, "medium");
+    }
+
+    public PrecisionBindService(
+            AuthoringService authoring,
+            CursorHealClient cursor,
+            PrecisionCallBudget budget,
+            boolean precisionEnabled,
+            String minConfidence
+    ) {
         this.authoring = authoring;
         this.cursor = cursor == null ? new CursorHealClient() : cursor;
         this.solveParser = new FreeInventHealer(this.cursor, null, new LocatorValidator(), "cursor", true);
         this.budget = budget == null ? new PrecisionCallBudget(0) : budget;
         this.precisionEnabled = precisionEnabled;
+        this.minConfidence = minConfidence == null || minConfidence.isBlank() ? "medium" : minConfidence.trim().toLowerCase();
     }
 
     public PrecisionBindOutcome bindIntent(
@@ -60,25 +76,32 @@ public class PrecisionBindService {
             return new PrecisionBindOutcome.NeedsSolve(candidates, shortlist, "",
                     slimHtml.substring(0, Math.min(8000, slimHtml.length())));
         }
-        if (!budget.tryConsume()) {
-            return new PrecisionBindOutcome.FallbackKeel("CAP_EXCEEDED");
-        }
         String table = DomCandidateExtractor.formatTable(shortlist);
         String htmlExcerpt = slimHtml.length() > 8000 ? slimHtml.substring(0, 8000) : slimHtml;
-        GroundRankResult ranked;
-        try {
-            ranked = cursor.groundRankResult(intent.text(), table, htmlExcerpt, screenshotPathOrNull, priorSteps);
-        } catch (RuntimeException unavailable) {
-            return new PrecisionBindOutcome.FallbackKeel("PROVIDER_ERROR");
+        String cacheKey = groundRankKey(intent.text(), table, htmlExcerpt);
+        GroundRankResult ranked = groundRankCache.get(cacheKey);
+        if (ranked == null) {
+            if (!budget.tryConsume()) {
+                return new PrecisionBindOutcome.FallbackKeel("CAP_EXCEEDED");
+            }
+            try {
+                ranked = cursor.groundRankResult(intent.text(), table, htmlExcerpt, screenshotPathOrNull, priorSteps);
+            } catch (RuntimeException unavailable) {
+                return new PrecisionBindOutcome.FallbackKeel("PROVIDER_ERROR");
+            }
+            if (ranked != null) {
+                groundRankCache.put(cacheKey, ranked);
+            }
         }
         if (ranked == null) return new PrecisionBindOutcome.FallbackKeel("PROVIDER_ERROR");
-        if (ranked.isAcceptable()
-                && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(ranked.candidateId()))) {
+        final GroundRankResult picked = ranked;
+        if (picked.isAcceptableAt(minConfidence)
+                && shortlist.stream().anyMatch(c -> c.id().equalsIgnoreCase(picked.candidateId()))) {
             List<ProvenStep> steps = authoring.stepsPreferringCandidate(
-                    tcId, intent, candidates, ranked.candidateId(), false);
+                    tcId, intent, candidates, picked.candidateId(), false);
             if (validSteps(steps)) {
-                LogsManager.info("PRECISION_GROUNDRANK: " + tcId + " candidateId=" + ranked.candidateId()
-                        + " confidence=" + ranked.confidence());
+                LogsManager.info("PRECISION_GROUNDRANK: " + tcId + " candidateId=" + picked.candidateId()
+                        + " confidence=" + picked.confidence());
                 return new PrecisionBindOutcome.Bound(steps, "groundRank");
             }
         }
@@ -157,7 +180,7 @@ public class PrecisionBindService {
         }
         List<GroundRankBatchResult.Pick> picks = ranked == null
                 ? List.of()
-                : ranked.consecutiveAcceptableFromZero();
+                : ranked.consecutiveAcceptableFromZero(minConfidence);
         if (picks.isEmpty()) {
             LogsManager.info("PRECISION_GROUNDRANK_BATCH: no acceptable consecutive picks for " + tcId
                     + " (intents=" + intents.size() + ", cursorPicks="
@@ -317,5 +340,12 @@ public class PrecisionBindService {
             }
         }
         return out;
+    }
+
+    private static String groundRankKey(String intentText, String shortlistTable, String htmlExcerpt) {
+        String intent = intentText == null ? "" : intentText;
+        String table = shortlistTable == null ? "" : shortlistTable;
+        String html = htmlExcerpt == null ? "" : htmlExcerpt;
+        return intent + "|" + Integer.toHexString(table.hashCode()) + "|" + Integer.toHexString(html.hashCode());
     }
 }

@@ -428,4 +428,62 @@ public class LlmSettingsServiceTest {
             throw new AssertionError(e);
         }
     }
+
+    @Test
+    public void precisionCursorModel_pinAndUnpinMirrorsPropsAndSystemProperty() {
+        String key = "delivery.authoring.precision.cursor-model";
+        String prev = System.getProperty(key);
+        System.clearProperty(key);
+        try {
+            LlmSettingsService svc = new LlmSettingsService(props);
+            // Pin a specific model via the admin UI.
+            svc.update(new UpdateRequest(
+                    null, null, null, null, null, null,
+                    false, false, false,
+                    null, null, null, "claude-sonnet-4.5"));
+            Assert.assertEquals(props.getPrecisionCursorModel(), "claude-sonnet-4.5");
+            Assert.assertEquals(System.getProperty(key), "claude-sonnet-4.5");
+            Assert.assertEquals(svc.maskedView().get("precisionCursorModel"), "claude-sonnet-4.5");
+
+            // Unpin with the "auto" literal — props go to auto, system property clears.
+            svc.update(new UpdateRequest(
+                    null, null, null, null, null, null,
+                    false, false, false,
+                    null, null, null, "auto"));
+            Assert.assertEquals(props.getPrecisionCursorModel(), "auto");
+            Assert.assertNull(System.getProperty(key));
+            Assert.assertEquals(svc.maskedView().get("precisionCursorModel"), "auto");
+        } finally {
+            if (prev == null) {
+                System.clearProperty(key);
+            } else {
+                System.setProperty(key, prev);
+            }
+        }
+    }
+
+    @Test
+    public void precisionCursorModel_blankStringLeavesYamlDefaultAlone() {
+        String key = "delivery.authoring.precision.cursor-model";
+        String prev = System.getProperty(key);
+        System.clearProperty(key);
+        try {
+            // Operator YAML pin: starts life in DeliveryPortalProperties.
+            props.getAuthoring().getPrecision().setCursorModel("claude-opus-4.1");
+            LlmSettingsService svc = new LlmSettingsService(props);
+            // Admin saves the form without touching the dropdown; API sends an empty value.
+            svc.update(new UpdateRequest(
+                    null, null, null, null, null, null,
+                    false, false, false,
+                    null, null, null, ""));
+            // YAML pin must survive — UI blank is not an unpin signal.
+            Assert.assertEquals(props.getPrecisionCursorModel(), "claude-opus-4.1");
+        } finally {
+            if (prev == null) {
+                System.clearProperty(key);
+            } else {
+                System.setProperty(key, prev);
+            }
+        }
+    }
 }

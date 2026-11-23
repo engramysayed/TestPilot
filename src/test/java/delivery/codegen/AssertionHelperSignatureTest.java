@@ -16,7 +16,8 @@ public class AssertionHelperSignatureTest {
     public void assertionJavaContainsHelperSignatures() throws Exception {
         String source = Files.readString(ASSERTION_JAVA);
         Assert.assertTrue(source.contains("void textContains"), "missing textContains");
-        Assert.assertTrue(source.contains("void bodyTextContains"), "missing bodyTextContains");
+        Assert.assertFalse(source.contains("void bodyTextContains"),
+                "bodyTextContains is forbidden (Rule 3c): assertions must target a locator");
         Assert.assertTrue(source.contains("void urlContains"), "missing urlContains");
         Assert.assertTrue(source.contains("void elementSelected"), "missing elementSelected");
         Assert.assertTrue(source.contains("void elementUnchecked"), "missing elementUnchecked");

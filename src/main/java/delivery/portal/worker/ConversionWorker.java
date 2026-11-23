@@ -13,7 +13,7 @@ import delivery.agent.harness.AgentRunStore;
 import delivery.agent.harness.convert.AgentHarnessJobBridge;
 import delivery.agent.harness.convert.AgentStageIndexStore;
 import delivery.identity.TenantId;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.jobs.DurableJobClaim;
 import delivery.portal.model.JobRecord;

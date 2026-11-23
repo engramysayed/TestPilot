@@ -6,7 +6,7 @@ import delivery.agent.harness.AgentRunResult;
 import delivery.agent.harness.AgentTaskStatus;
 import delivery.agent.harness.NewAgentTaskRequest;
 import delivery.agent.harness.SdkTouchMarker;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

@@ -303,11 +303,56 @@ public final class SuiteDiskStore {
                     schedule.put("credentialProfile", str(prev.get("credentialProfile")));
                 }
                 schedule.put("lastJobId", lastJob == null || str(lastJob).isBlank() ? null : str(lastJob));
+                // Preserve mobile fields across non-mobile re-saves so a web-form save doesn't wipe them.
+                for (String key : new String[]{"mobileDeviceId", "mobileAppRevisionId"}) {
+                    Object v = prev.get(key);
+                    if (v != null && !str(v).isBlank()) schedule.put(key, str(v));
+                }
                 if (enabled) {
                     schedule.put("nextRunAt", computeNextRunAt(schedule, now).toString());
                 }
             }
             row.put("schedule", schedule);
+        });
+    }
+
+    /**
+     * Android-aware schedule: identical to the base {@link #putSchedule} call but also stamps the
+     * two mobile fields the dispatcher needs — pinned device + optional app revision. Blank values
+     * clear the field (so the owner can unpin).
+     */
+    public Map<String, Object> putMobileSchedule(
+            Path projectRoot,
+            String suiteId,
+            boolean enabled,
+            String kind,
+            String cron,
+            Integer intervalMinutes,
+            String timezone,
+            String credentialProfile,
+            String mobileDeviceId,
+            String mobileAppRevisionId
+    ) throws IOException {
+        Map<String, Object> base = putSchedule(projectRoot, suiteId, enabled, kind, cron,
+                intervalMinutes, timezone, credentialProfile);
+        return mutateSuite(projectRoot, suiteId, row -> {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> schedule = (Map<String, Object>) row.get("schedule");
+            if (schedule == null) return;
+            if (mobileDeviceId == null) {
+                // null = leave untouched (base call already preserved it).
+            } else if (mobileDeviceId.isBlank()) {
+                schedule.remove("mobileDeviceId");
+            } else {
+                schedule.put("mobileDeviceId", mobileDeviceId.trim());
+            }
+            if (mobileAppRevisionId == null) {
+                // leave untouched
+            } else if (mobileAppRevisionId.isBlank()) {
+                schedule.remove("mobileAppRevisionId");
+            } else {
+                schedule.put("mobileAppRevisionId", mobileAppRevisionId.trim());
+            }
         });
     }
 
@@ -803,6 +848,10 @@ public final class SuiteDiskStore {
         s.put("timezone", tz == null || str(tz).isBlank() ? null : str(tz));
         Object profile = raw.get("credentialProfile");
         s.put("credentialProfile", profile == null || str(profile).isBlank() ? null : str(profile));
+        Object mDev = raw.get("mobileDeviceId");
+        s.put("mobileDeviceId", mDev == null || str(mDev).isBlank() ? null : str(mDev));
+        Object mRev = raw.get("mobileAppRevisionId");
+        s.put("mobileAppRevisionId", mRev == null || str(mRev).isBlank() ? null : str(mRev));
         Object jobStatus = raw.get("lastJobStatus");
         s.put("lastJobStatus", jobStatus == null || str(jobStatus).isBlank() ? null : str(jobStatus));
         Object result = raw.get("lastResult");

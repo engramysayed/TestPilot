@@ -14,12 +14,17 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
 public class DesignReferenceService {
 
     private static final Pattern TC_ID = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$");
+    private static final Pattern STEP_FILE = Pattern.compile("^step-(\\d{3})\\.png$");
+    /** Highest step index a user may attach a Figma to. Keeps the file name 3-digit and the UI finite. */
+    public static final int MAX_STEP_INDEX = 999;
 
     public Path referencesDir(Path projectRoot) {
         return projectRoot.resolve("design-references");
@@ -30,26 +35,64 @@ public class DesignReferenceService {
         return referencesDir(projectRoot).resolve(tcId + ".png");
     }
 
+    public Path stepReferenceDir(Path projectRoot, String tcId) {
+        validateTcId(tcId);
+        return referencesDir(projectRoot).resolve(tcId);
+    }
+
+    public Path stepReferenceFile(Path projectRoot, String tcId, int stepIndex) {
+        validateStepIndex(stepIndex);
+        return stepReferenceDir(projectRoot, tcId).resolve(stepFileName(stepIndex));
+    }
+
     public List<String> list(Path projectRoot) throws IOException {
         Path dir = referencesDir(projectRoot);
         if (!Files.isDirectory(dir)) {
             return List.of();
         }
-        List<String> out = new ArrayList<>();
+        TreeSet<String> all = new TreeSet<>();
+        try (var stream = Files.list(dir)) {
+            stream.forEach(p -> {
+                String name = p.getFileName().toString();
+                if (Files.isRegularFile(p) && name.endsWith(".png")) {
+                    all.add(name.substring(0, name.length() - 4));
+                } else if (Files.isDirectory(p) && TC_ID.matcher(name).matches()) {
+                    all.add(name);
+                }
+            });
+        }
+        return List.copyOf(all);
+    }
+
+    /** Step indices the user has uploaded for one TC, ascending. Empty when no step directory exists. */
+    public List<Integer> listSteps(Path projectRoot, String tcId) throws IOException {
+        Path dir = stepReferenceDir(projectRoot, tcId);
+        if (!Files.isDirectory(dir)) {
+            return List.of();
+        }
+        List<Integer> out = new ArrayList<>();
         try (var stream = Files.list(dir)) {
             stream.filter(Files::isRegularFile)
                     .map(p -> p.getFileName().toString())
-                    .filter(name -> name.endsWith(".png"))
-                    .map(name -> name.substring(0, name.length() - 4))
-                    .sorted()
-                    .forEach(out::add);
+                    .forEach(name -> {
+                        Matcher m = STEP_FILE.matcher(name);
+                        if (m.matches()) {
+                            out.add(Integer.parseInt(m.group(1)));
+                        }
+                    });
         }
+        out.sort(Comparator.naturalOrder());
         return List.copyOf(out);
     }
 
     public Optional<Path> resolve(Path projectRoot, String tcId) {
         validateTcId(tcId);
         Path file = referenceFile(projectRoot, tcId);
+        return Files.isRegularFile(file) ? Optional.of(file) : Optional.empty();
+    }
+
+    public Optional<Path> resolveStep(Path projectRoot, String tcId, int stepIndex) {
+        Path file = stepReferenceFile(projectRoot, tcId, stepIndex);
         return Files.isRegularFile(file) ? Optional.of(file) : Optional.empty();
     }
 
@@ -64,9 +107,31 @@ public class DesignReferenceService {
         Files.write(dir.resolve(tcId + ".png"), png);
     }
 
+    public void uploadStep(Path projectRoot, String tcId, int stepIndex, byte[] bytes, String contentType) throws IOException {
+        validateTcId(tcId);
+        validateStepIndex(stepIndex);
+        if (bytes == null || bytes.length == 0) {
+            throw new BadUploadException("File is empty");
+        }
+        byte[] png = toPng(bytes, contentType);
+        Path dir = stepReferenceDir(projectRoot, tcId);
+        Files.createDirectories(dir);
+        Files.write(dir.resolve(stepFileName(stepIndex)), png);
+    }
+
+    private static String stepFileName(int stepIndex) {
+        return String.format(Locale.ROOT, "step-%03d.png", stepIndex);
+    }
+
     static void validateTcId(String tcId) {
         if (tcId == null || tcId.isBlank() || !TC_ID.matcher(tcId.trim()).matches()) {
             throw new BadPathException("Invalid tcId");
+        }
+    }
+
+    static void validateStepIndex(int stepIndex) {
+        if (stepIndex < 1 || stepIndex > MAX_STEP_INDEX) {
+            throw new BadPathException("Invalid stepIndex (must be 1.." + MAX_STEP_INDEX + ")");
         }
     }
 

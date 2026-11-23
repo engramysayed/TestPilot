@@ -1,6 +1,7 @@
 package delivery.agent.validation.contract;
 
 import delivery.codegen.CodegenNaming;
+import delivery.store.PreferredHooksStore;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -58,6 +60,7 @@ public final class FrameworkContractValidator {
     FrameworkTemplateCatalog.Catalog catalog = catalogFor(templateRoot);
     findings.addAll(inventoryArchitectureChecks(workspaceRoot, catalog, inventory, pageFiles, testFiles));
     findings.addAll(inventoryNamingChecks(workspaceRoot, inventory, pageFiles, testFiles));
+    findings.addAll(userRulesChecks(workspaceRoot, pageFiles, testFiles));
     Map<String, String> meta = new LinkedHashMap<>(inventory.toReportMetadata());
     meta.put("contractSemantics", "inventory-v2");
     return ValidationReport.of(
@@ -648,7 +651,403 @@ public final class FrameworkContractValidator {
     for (Path generated : List.copyOf(tests.values())) {
       findings.addAll(helperHeuristics(workspaceRoot, generated, catalog));
     }
+    findings.addAll(userRulesChecks(workspaceRoot, pages, tests));
     return findings;
+  }
+
+  /**
+   * Deterministic checks for the workspace-owner's "framework style" rules (one Test class per TC,
+   * reuse Actions utilities, assertions take locators, strict locator ladder, local reuse of literals).
+   * All findings are RECOMMENDED so they flag without blocking emit; the agent repair phase can
+   * promote them to MANDATORY if the project policy chooses to.
+   */
+  private static List<ValidationFinding> userRulesChecks(
+      Path root, Map<String, Path> pageFiles, Map<String, Path> testFiles) {
+    List<ValidationFinding> out = new ArrayList<>();
+    List<String> userHooks = PreferredHooksStore.current();
+    for (Map.Entry<String, Path> e : testFiles.entrySet()) {
+      String body = readQuiet(e.getValue());
+      out.addAll(ruleRawDriverInTest(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleAssertScansHtml(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleDuplicateLiterals(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleTestNoRawBy(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleTestDescriptionPresent(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleNoSysout(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleTestMethodNaming(root, e.getKey(), e.getValue(), body));
+    }
+    for (Map.Entry<String, Path> e : pageFiles.entrySet()) {
+      String body = readQuiet(e.getValue());
+      out.addAll(ruleComplexLocators(root, e.getKey(), e.getValue(), body, userHooks));
+      out.addAll(ruleNoStepOnValueMethod(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleNoSysout(root, e.getKey(), e.getValue(), body));
+      out.addAll(ruleLocatorFieldVisibility(root, e.getKey(), e.getValue(), body));
+    }
+    return out;
+  }
+
+  /* --- Rule 3a: tests must reuse Actions classes, not raw driver calls --- */
+  private static final Pattern RAW_DRIVER_FIND = Pattern.compile(
+      "\\bdriver\\.(findElement|findElements)\\s*\\(|\\bnew\\s+WebDriverWait\\s*\\(|\\bnew\\s+org\\.openqa\\.selenium\\.interactions\\.Actions\\s*\\(");
+
+  private static List<ValidationFinding> ruleRawDriverInTest(
+      Path root, String cls, Path file, String body) {
+    Matcher m = RAW_DRIVER_FIND.matcher(body);
+    List<ValidationFinding> out = new ArrayList<>();
+    if (m.find()) {
+      out.add(new ValidationFinding(
+          "FW_RULE_REUSE_ACTIONS",
+          "Test '" + cls + "' bypasses the Actions utilities with " + m.group()
+              + " — call ElementsHandler / BrowserHandler / WaitHandler instead",
+          ValidationSeverity.RECOMMENDED,
+          cls,
+          relativize(root, file),
+          lineOf(body, m.start()),
+          "at offset " + m.start(),
+          "Reuse project.utils.Actions.* rather than raw WebDriver calls in tests."));
+    }
+    return out;
+  }
+
+  /* --- Rule 3c: assertions must take a locator, not scan the whole HTML --- */
+  private static final Pattern HTML_SCAN = Pattern.compile(
+      "\\bdriver\\.(getPageSource|getTitle|getCurrentUrl)\\s*\\(\\s*\\)");
+  private static final Pattern BODY_TEXT_ASSERT = Pattern.compile(
+      "\\bbodyTextContains\\s*\\(");
+
+  private static List<ValidationFinding> ruleAssertScansHtml(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = HTML_SCAN.matcher(body);
+    if (m.find()) {
+      out.add(new ValidationFinding(
+          "FW_RULE_ASSERT_TAKES_LOCATOR",
+          "Test '" + cls + "' asserts on " + m.group() + " — assertions must take a locator and compare expected vs actual, not scan the whole page",
+          ValidationSeverity.MANDATORY,
+          cls,
+          relativize(root, file),
+          lineOf(body, m.start()),
+          m.group(),
+          "Add a page element and assert against its text/value/visibility with a By."));
+    }
+    Matcher b = BODY_TEXT_ASSERT.matcher(body);
+    if (b.find()) {
+      out.add(new ValidationFinding(
+          "FW_RULE_ASSERT_TAKES_LOCATOR",
+          "Test '" + cls + "' uses bodyTextContains — assertions must target a specific locator",
+          ValidationSeverity.MANDATORY,
+          cls,
+          relativize(root, file),
+          lineOf(body, b.start()),
+          "bodyTextContains",
+          "Replace with elementTextEquals(By, expected) or textContains(By, expected)."));
+    }
+    return out;
+  }
+
+  /* --- Rule: @Step on a method taking a String arg leaks the arg via Allure's aspect weaver --- */
+  private static final Pattern STEP_ON_VALUE_METHOD = Pattern.compile(
+      "@(?:io\\.qameta\\.allure\\.)?Step\\s*\\([^)]*\\)\\s*(?:public|protected|private)?\\s*\\w[\\w.<>\\[\\]]*\\s+\\w+\\s*\\(\\s*(?:final\\s+)?String\\b");
+
+  private static List<ValidationFinding> ruleNoStepOnValueMethod(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = STEP_ON_VALUE_METHOD.matcher(body);
+    while (m.find()) {
+      out.add(new ValidationFinding(
+          "FW_RULE_NO_STEP_ON_VALUE_METHODS",
+          "@Step on a method taking a String arg — Allure's aspect weaver will log that arg. Remove @Step; keep the body inside AllureSteps.run(name, Runnable) so Secrets.redact applies.",
+          ValidationSeverity.MANDATORY,
+          cls,
+          relativize(root, file),
+          lineOf(body, m.start()),
+          truncate(m.group(), 80),
+          "Delete the @Step annotation on this method."));
+    }
+    return out;
+  }
+
+  /* --- Rule 3a extension: tests must not instantiate raw Selenium By in test bodies --- */
+  private static final Pattern RAW_BY_IN_TEST = Pattern.compile(
+      "\\bBy\\.(cssSelector|xpath|id|name|className|tagName|linkText|partialLinkText)\\s*\\(");
+
+  private static List<ValidationFinding> ruleTestNoRawBy(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = RAW_BY_IN_TEST.matcher(body);
+    if (m.find()) {
+      out.add(new ValidationFinding(
+          "FW_RULE_TEST_NO_RAW_BY",
+          "Test '" + cls + "' instantiates " + m.group() + " directly — tests must call page methods only; locators belong in page classes",
+          ValidationSeverity.RECOMMENDED,
+          cls,
+          relativize(root, file),
+          lineOf(body, m.start()),
+          m.group(),
+          "Move the locator to the page class and call a page method from the test."));
+    }
+    return out;
+  }
+
+  /* --- Rule: every generated @Test must declare a non-blank description --- */
+  private static final Pattern TEST_DESCRIPTION = Pattern.compile(
+      "@Test\\s*\\(([^)]*)\\)");
+
+  private static List<ValidationFinding> ruleTestDescriptionPresent(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = TEST_DESCRIPTION.matcher(body);
+    while (m.find()) {
+      String args = m.group(1);
+      if (args == null || !args.contains("description")) {
+        out.add(new ValidationFinding(
+            "FW_RULE_TEST_DESC_REQUIRED",
+            "@Test in '" + cls + "' has no description — every generated test must carry a non-blank description from the TC",
+            ValidationSeverity.RECOMMENDED,
+            cls,
+            relativize(root, file),
+            lineOf(body, m.start()),
+            truncate(m.group(), 80),
+            "Add description = \"<TC title/summary>\" to the @Test annotation."));
+        continue;
+      }
+      Matcher descMatcher = Pattern.compile("description\\s*=\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").matcher(args);
+      if (descMatcher.find() && descMatcher.group(1).trim().isEmpty()) {
+        out.add(new ValidationFinding(
+            "FW_RULE_TEST_DESC_REQUIRED",
+            "@Test in '" + cls + "' has an empty description",
+            ValidationSeverity.RECOMMENDED,
+            cls,
+            relativize(root, file),
+            lineOf(body, m.start()),
+            truncate(m.group(), 80),
+            "Populate description with the TC's title or summary."));
+      }
+    }
+    return out;
+  }
+
+  /* --- Rule: @Test methods must be named should_<snake_case> mirroring the TC title --- */
+  private static final Pattern TEST_METHOD_NAME = Pattern.compile(
+      "@Test\\s*(?:\\([^)]*\\))?\\s*(?:public|protected|private)?\\s*(?:static\\s+)?\\w[\\w.<>\\[\\]]*\\s+(\\w+)\\s*\\(");
+  private static final Pattern VALID_TEST_METHOD_NAME = Pattern.compile(
+      "^should(?:_[a-z0-9]+)+$");
+
+  private static List<ValidationFinding> ruleTestMethodNaming(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = TEST_METHOD_NAME.matcher(body);
+    while (m.find()) {
+      String name = m.group(1);
+      if (name == null || name.isEmpty()) {
+        continue;
+      }
+      if (VALID_TEST_METHOD_NAME.matcher(name).matches()) {
+        continue;
+      }
+      out.add(new ValidationFinding(
+          "FW_RULE_TEST_METHOD_NAMING",
+          "@Test method '" + name + "' in '" + cls + "' does not follow should_<snake_case> naming from the TC title",
+          ValidationSeverity.RECOMMENDED,
+          cls,
+          relativize(root, file),
+          lineOf(body, m.start()),
+          "method=" + name,
+          "Rename to `should_<tc_title_as_snake_case>`, e.g. should_login_with_valid_credentials."));
+    }
+    return out;
+  }
+
+  /* --- Rule: no System.out / System.err in generated code — use LogsManager --- */
+  private static final Pattern SYSOUT = Pattern.compile(
+      "\\bSystem\\.(out|err)\\.(print|println|printf)\\s*\\(");
+
+  private static List<ValidationFinding> ruleNoSysout(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = SYSOUT.matcher(body);
+    if (m.find()) {
+      out.add(new ValidationFinding(
+          "FW_RULE_NO_SYSOUT",
+          "'" + cls + "' uses " + m.group() + " — generated code must log via LogsManager, not System.out/err",
+          ValidationSeverity.RECOMMENDED,
+          cls,
+          relativize(root, file),
+          lineOf(body, m.start()),
+          m.group(),
+          "Replace with project.utils.Logs.LogsManager.info / warn / error."));
+    }
+    return out;
+  }
+
+  /* --- Rule: page locator By fields must be declared `protected final By` --- */
+  // (?m) + (?:^|[;{]) anchors each match to a statement start — the beginning of a line, OR right
+  // after a semicolon or opening brace. That catches both one-per-line declarations and the
+  // mid-line case `protected final By a = …; public By b = …;` where the second slips past a
+  // plain `^\s*` anchor.
+  private static final Pattern BY_FIELD_DECL = Pattern.compile(
+      "(?m)(?:^|[;{])\\s*((?:public|protected|private)\\s+)?(?:static\\s+)?((?:final\\s+)?)By\\s+(\\w+)\\s*[=;]");
+
+  /**
+   * True when {@code pos} is inside a class body (not a method / constructor body). Walks back
+   * through balanced braces and, at the nearest enclosing unmatched {@code '{'}, checks whether
+   * that brace is preceded by {@code ')'} (method sig) or something else (class / init block).
+   */
+  static boolean isInClassScope(String body, int pos) {
+    int depth = 0;
+    for (int i = pos - 1; i >= 0; i--) {
+      char c = body.charAt(i);
+      if (c == '}') {
+        depth++;
+      } else if (c == '{') {
+        if (depth == 0) {
+          int j = i - 1;
+          while (j >= 0 && Character.isWhitespace(body.charAt(j))) {
+            j--;
+          }
+          return j < 0 || body.charAt(j) != ')';
+        }
+        depth--;
+      }
+    }
+    return true;
+  }
+
+  private static List<ValidationFinding> ruleLocatorFieldVisibility(
+      Path root, String cls, Path file, String body) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = BY_FIELD_DECL.matcher(body);
+    while (m.find()) {
+      // Skip local `By` variables inside method/constructor bodies — rule is for class fields only.
+      if (!isInClassScope(body, m.start())) {
+        continue;
+      }
+      String visibility = m.group(1) == null ? "" : m.group(1).trim();
+      String finality = m.group(2) == null ? "" : m.group(2).trim();
+      String fieldName = m.group(3);
+      if ("protected".equals(visibility) && "final".equals(finality)) {
+        continue;
+      }
+      out.add(new ValidationFinding(
+          "FW_RULE_LOCATOR_FIELD_VISIBILITY",
+          "Page '" + cls + "' declares locator field '" + fieldName + "' as '"
+              + (visibility.isEmpty() ? "<package-private>" : visibility) + " "
+              + (finality.isEmpty() ? "<non-final>" : finality)
+              + "' — By fields must be `protected final By`",
+          ValidationSeverity.RECOMMENDED,
+          cls,
+          relativize(root, file),
+          lineOf(body, m.start()),
+          truncate(m.group().trim(), 80),
+          "Change the declaration to `protected final By " + fieldName + " = …;`."));
+    }
+    return out;
+  }
+
+  /* --- Rule 2: literals that repeat in one test class should become a private field --- */
+  private static final Pattern STRING_LITERAL = Pattern.compile("\"([^\"\\\\\\n]|\\\\.){3,}\"");
+
+  private static List<ValidationFinding> ruleDuplicateLiterals(
+      Path root, String cls, Path file, String body) {
+    Map<String, Integer> counts = new LinkedHashMap<>();
+    Map<String, Integer> firstOffsets = new LinkedHashMap<>();
+    Matcher m = STRING_LITERAL.matcher(body);
+    while (m.find()) {
+      String literal = m.group();
+      if (literal.length() < 5 || literal.length() > 200) continue;
+      counts.merge(literal, 1, Integer::sum);
+      firstOffsets.putIfAbsent(literal, m.start());
+    }
+    List<ValidationFinding> out = new ArrayList<>();
+    for (Map.Entry<String, Integer> e : counts.entrySet()) {
+      if (e.getValue() < 2) continue;
+      String lit = e.getKey();
+      out.add(new ValidationFinding(
+          "FW_RULE_LOCAL_REUSE",
+          "Literal " + lit + " appears " + e.getValue() + "× in '" + cls + "' — extract to a private field",
+          ValidationSeverity.RECOMMENDED,
+          cls,
+          relativize(root, file),
+          lineOf(body, firstOffsets.get(lit)),
+          "occurrences=" + e.getValue(),
+          "Declare `private String <name> = " + lit + ";` and reference it from each call site."));
+    }
+    return out;
+  }
+
+  /* --- Rule 4: strict locator ladder — hook → id → name → simple CSS → indexed XPath --- */
+  private static final Pattern BY_CALL = Pattern.compile(
+      "By\\.(cssSelector|xpath|className|tagName|linkText|partialLinkText)\\s*\\(\\s*\"((?:[^\"\\\\]|\\\\.)*)\"\\s*\\)");
+  private static final Pattern SIMPLE_ATTR_CSS = Pattern.compile(
+      "^\\s*([a-zA-Z][a-zA-Z0-9]*)?\\[([a-zA-Z][a-zA-Z0-9_-]*)\\s*(?:\\^=|\\$=|\\*=|=)\\s*[\"']([^\"']+)[\"']\\]\\s*$");
+  private static final Pattern SIMPLE_XPATH = Pattern.compile(
+      "^\\s*\\(?//([a-zA-Z*][a-zA-Z0-9]*)\\[@([a-zA-Z][a-zA-Z0-9_-]*)\\s*=\\s*[\"']([^\"']+)[\"']\\]\\)?(?:\\[\\d+\\])?\\s*$");
+
+  private static List<ValidationFinding> ruleComplexLocators(
+      Path root, String cls, Path file, String body, List<String> userHooks) {
+    List<ValidationFinding> out = new ArrayList<>();
+    Matcher m = BY_CALL.matcher(body);
+    while (m.find()) {
+      String strategy = m.group(1);
+      String raw = m.group(2);
+      String decoded = raw.replace("\\\"", "\"");
+      if (!isAllowedByShape(strategy, decoded, userHooks)) {
+        out.add(new ValidationFinding(
+            "FW_RULE_LOCATOR_LADDER",
+            "Locator By." + strategy + "(\"" + truncate(decoded, 80) + "\") does not match the allowed ladder "
+                + "(user hook → id → name → simple CSS → indexed XPath)",
+            ValidationSeverity.RECOMMENDED,
+            cls,
+            relativize(root, file),
+            lineOf(body, m.start()),
+            "strategy=" + strategy,
+            "Use a user-preferred hook attribute (" + String.join(", ", userHooks.isEmpty() ? List.of("data-axis-test-id") : userHooks)
+                + "), id, name, or simple attribute CSS; fall back to indexed XPath only when a child index is required."));
+      }
+    }
+    return out;
+  }
+
+  private static boolean isAllowedByShape(String strategy, String value, List<String> userHooks) {
+    return switch (strategy) {
+      case "cssSelector" -> {
+        Matcher sm = SIMPLE_ATTR_CSS.matcher(value);
+        if (!sm.matches()) yield false;
+        String attr = sm.group(2);
+        yield isHookOrPlainAttr(attr, userHooks);
+      }
+      case "xpath" -> {
+        Matcher xm = SIMPLE_XPATH.matcher(value);
+        if (!xm.matches()) yield false;
+        String attr = xm.group(2);
+        yield isHookOrPlainAttr(attr, userHooks);
+      }
+      case "className", "tagName", "linkText", "partialLinkText" -> false;
+      default -> true;
+    };
+  }
+
+  private static boolean isHookOrPlainAttr(String attr, List<String> userHooks) {
+    if (attr == null) return false;
+    String lower = attr.toLowerCase(Locale.ROOT);
+    if ("id".equals(lower) || "name".equals(lower)) return true;
+    for (String hook : userHooks) {
+      if (hook != null && hook.equalsIgnoreCase(attr)) return true;
+    }
+    return lower.startsWith("data-") || lower.equals("aria-label") || lower.startsWith("data-test");
+  }
+
+  private static String truncate(String s, int max) {
+    if (s == null) return "";
+    return s.length() <= max ? s : s.substring(0, max) + "…";
+  }
+
+  private static Integer lineOf(String body, int offset) {
+    if (body == null || offset < 0 || offset > body.length()) return null;
+    int line = 1;
+    for (int i = 0; i < offset; i++) {
+      if (body.charAt(i) == '\n') line++;
+    }
+    return line;
   }
 
   private static List<ValidationFinding> helperHeuristics(

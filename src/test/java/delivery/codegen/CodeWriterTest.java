@@ -2,6 +2,7 @@ package delivery.codegen;
 
 import delivery.job.TcOutcome;
 import delivery.job.TcStatus;
+import delivery.store.LocatorOutcomeStore;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -10,6 +11,30 @@ import java.nio.file.Path;
 import java.util.List;
 
 public class CodeWriterTest {
+    @Test
+    public void stripJavaComments_removesCommentsAndPreservesLiteralsWithSlashes() {
+        String src = """
+                /** page javadoc */
+                public class Demo {
+                    protected String url = "http://example.com/path"; // trailing
+                    protected String xpath = "//button[@id='x']";
+                    /* block
+                       comment */
+                    protected String single = "a // b";
+                    void x() { /* inline */ y(); }
+                }
+                """;
+        String out = CodeWriter.stripJavaComments(src);
+        Assert.assertFalse(out.contains("javadoc"), out);
+        Assert.assertFalse(out.contains("trailing"), out);
+        Assert.assertFalse(out.contains("block"), out);
+        Assert.assertFalse(out.contains("inline"), out);
+        Assert.assertTrue(out.contains("http://example.com/path"), out);
+        Assert.assertTrue(out.contains("//button[@id='x']"), out);
+        Assert.assertTrue(out.contains("a // b"), out);
+        Assert.assertTrue(out.contains("y();"), out);
+    }
+
     @Test
     public void writesPassedAndTodoClasses() throws Exception {
         Path temp = Files.createTempDirectory("codegen");
@@ -32,7 +57,7 @@ public class CodeWriterTest {
         Assert.assertTrue(java.contains("private Login_Page loginPage;"), java);
         Assert.assertTrue(java.contains("loginPage = new Login_Page(driver)"), java);
         Assert.assertTrue(java.contains("@Test(description = \"TC_001 — Valid login\")"), java);
-        Assert.assertTrue(java.contains("public void login()"), java);
+        Assert.assertTrue(java.contains("public void should_valid_login()"), java);
         Assert.assertFalse(java.contains("new project.pages.Login"));
         Assert.assertFalse(java.contains("typeType_"));
         Assert.assertFalse(java.contains("clickClick_"));
@@ -185,7 +210,7 @@ public class CodeWriterTest {
         writer.write(temp, List.of(checkout));
         String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/Cart_Test.java"));
         int prereq = java.indexOf("runPrerequisite_TC_CHECKOUT");
-        int test = java.indexOf("public void cart()");
+        int test = java.indexOf("public void should_checkout_backpack()");
         int setupCall = java.indexOf("click_Add_Backpack");
         int bodyCall = java.indexOf("click_Checkout");
         Assert.assertTrue(prereq >= 0 && test > prereq, java);
@@ -194,6 +219,53 @@ public class CodeWriterTest {
         Assert.assertTrue(bodyCall > test, java);
         Assert.assertTrue(java.contains("Shop"), java);
         Assert.assertTrue(Files.exists(temp.resolve("src/main/java/project/pages/Shop_Page.java")));
+    }
+
+    @Test
+    public void reorderFieldsByStorePrimaryStaysButBagIsPermuted() throws Exception {
+        // primary wins 10/10, slot 1 misses 5 never wins, slot 2 wins 3 misses 2.
+        // Smoothed ratios: primary=11/12=0.917, slot1=1/7=0.143, slot2=4/7=0.571.
+        // Expected order: [0, 2, 1] — primary stays, slots 1 and 2 swap in the bag.
+        Path tmp = Files.createTempFile("outcomes", ".jsonl");
+        StringBuilder jsonl = new StringBuilder();
+        for (int i = 0; i < 10; i++) {
+            jsonl.append("{\"page\":\"Login_Page\",\"field\":\"loginBtn\",\"slot\":0,\"outcome\":\"WIN\",")
+                    .append("\"target\":\"By.id: login\"}\n");
+        }
+        for (int i = 0; i < 5; i++) {
+            jsonl.append("{\"page\":\"Login_Page\",\"field\":\"loginBtn\",\"slot\":1,\"outcome\":\"MISS\",")
+                    .append("\"target\":\"By.cssSelector: #login\"}\n");
+        }
+        for (int i = 0; i < 3; i++) {
+            jsonl.append("{\"page\":\"Login_Page\",\"field\":\"loginBtn\",\"slot\":2,\"outcome\":\"WIN\",")
+                    .append("\"target\":\"By.xpath: //button\"}\n");
+        }
+        for (int i = 0; i < 2; i++) {
+            jsonl.append("{\"page\":\"Login_Page\",\"field\":\"loginBtn\",\"slot\":2,\"outcome\":\"MISS\",")
+                    .append("\"target\":\"By.xpath: //button\"}\n");
+        }
+        Files.writeString(tmp, jsonl.toString());
+        LocatorOutcomeStore.Aggregate store = LocatorOutcomeStore.readFile(tmp);
+
+        PageAccumulator.FieldModel f = new PageAccumulator.FieldModel(
+                "loginBtn", "id", "login",
+                List.of(), "", false,
+                List.of(new MultiLocatorBag.Entry("cssSelector", "#login"),
+                        new MultiLocatorBag.Entry("xpath", "//button")),
+                "");
+        List<PageAccumulator.FieldModel> out = CodeWriter.reorderFieldsByStore("Login_Page", List.of(f), store);
+
+        Assert.assertEquals(out.size(), 1);
+        PageAccumulator.FieldModel reordered = out.get(0);
+        Assert.assertEquals(reordered.strategy(), "id", "primary strategy must stay");
+        Assert.assertEquals(reordered.value(), "login", "primary value must stay");
+        Assert.assertEquals(reordered.bag().size(), 2);
+        Assert.assertEquals(reordered.bag().get(0).strategy(), "xpath",
+                "slot 2 (xpath) should be first in the bag after reorder");
+        Assert.assertEquals(reordered.bag().get(0).value(), "//button");
+        Assert.assertEquals(reordered.bag().get(1).strategy(), "cssSelector",
+                "slot 1 (css) should fall to the end");
+        Assert.assertEquals(reordered.bag().get(1).value(), "#login");
     }
 
     @Test
@@ -214,7 +286,7 @@ public class CodeWriterTest {
 
         String java = Files.readString(temp.resolve("src/test/java/project/tests/generated/Cart_Test.java"));
         int prereq = java.indexOf("runPrerequisite_TC_CHECKOUT");
-        int test = java.indexOf("public void cart()");
+        int test = java.indexOf("public void should_checkout_backpack()");
         int typeCall = java.indexOf("type_Qty");
         int assertCall = java.indexOf("assert_Cart_Badge_Is_Visible");
         Assert.assertTrue(prereq >= 0 && typeCall > prereq && typeCall < test, java);

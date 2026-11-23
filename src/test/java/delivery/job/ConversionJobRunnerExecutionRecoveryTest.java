@@ -15,7 +15,7 @@ import delivery.agent.harness.recovery.ExecutionRecoveryWiring;
 import delivery.authoring.StepIntentBinder;
 import delivery.excel.ManualTestCase;
 import delivery.identity.TenantId;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;

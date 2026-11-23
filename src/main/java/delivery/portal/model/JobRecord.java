@@ -34,6 +34,11 @@ public class JobRecord {
     private final AtomicInteger progressCurrent = new AtomicInteger(0);
     private final AtomicInteger progressTotal = new AtomicInteger(0);
     private final AtomicReference<String> message = new AtomicReference<>("");
+    private final java.util.List<ProgressEntry> progressLog = new java.util.concurrent.CopyOnWriteArrayList<>();
+    public static final int PROGRESS_LOG_MAX = 50;
+
+    /** Timestamped progress entry — appended every time {@link #setMessage(String)} receives a NEW non-blank message. */
+    public record ProgressEntry(long ts, String message) {}
     private final AtomicReference<Path> zipPath = new AtomicReference<>();
     private final AtomicReference<String> error = new AtomicReference<>();
     private volatile String tenantId = "";
@@ -199,7 +204,26 @@ public class JobRecord {
     public void setProgressTotal(int v) { progressTotal.set(v); }
     public String getMessage() { return message.get(); }
     public void setMessage(String m) {
-        message.set(clampMessage(m));
+        String cleaned = clampMessage(m);
+        String prev = message.getAndSet(cleaned);
+        if (!cleaned.isEmpty() && !cleaned.equals(prev)) {
+            progressLog.add(new ProgressEntry(System.currentTimeMillis(), cleaned));
+            while (progressLog.size() > PROGRESS_LOG_MAX) {
+                progressLog.remove(0);
+            }
+        }
+    }
+    public java.util.List<ProgressEntry> getProgressLog() {
+        return java.util.List.copyOf(progressLog);
+    }
+    /** Replace the in-memory log (used by PortalStore.hydrate after JVM restart). Trims to {@link #PROGRESS_LOG_MAX}. */
+    public void setProgressLog(java.util.List<ProgressEntry> entries) {
+        progressLog.clear();
+        if (entries == null || entries.isEmpty()) {
+            return;
+        }
+        int fromIdx = Math.max(0, entries.size() - PROGRESS_LOG_MAX);
+        progressLog.addAll(entries.subList(fromIdx, entries.size()));
     }
     public Path getZipPath() { return zipPath.get(); }
     public void setZipPath(Path p) { zipPath.set(p); }

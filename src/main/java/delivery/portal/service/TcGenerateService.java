@@ -14,7 +14,7 @@ import delivery.agent.harness.AgentHarnessCoordinator;
 import delivery.agent.validation.contract.TestCaseValidationContext;
 import delivery.agent.validation.generate.GenerateHarnessBridge;
 import delivery.agent.validation.generate.GenerateTcContractValidation;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.ProjectRecord;
 import org.apache.logging.log4j.LogManager;
@@ -229,7 +229,7 @@ public class TcGenerateService {
             BooleanSupplier cancelCheck
     ) throws Exception {
         String resolvedModel = models.resolve(model);
-        String system = buildSystemPrompt();
+        String system = buildSystemPrompt(project);
         String user = buildUserMessage(project, stories, storyLabel);
         LocalLlmClient.ChatOutcome first = invokeOllamaDetailed(system, user, resolvedModel, cancelCheck);
         String raw = first.contentOrEmpty();
@@ -446,13 +446,47 @@ public class TcGenerateService {
         return rows;
     }
 
-    private String buildSystemPrompt() throws IOException {
+    private String buildSystemPrompt(ProjectRecord project) throws IOException {
         // Prompt catalog (Admin → Prompts, versioned, overridable): prompts/generate/*.md
+        if (project != null && "ANDROID".equalsIgnoreCase(project.getPlatform())) {
+            return buildMobileSystemPrompt();
+        }
         return loadPrompt("generate/stories-to-json")
                 + "\n\n---\n\n"
                 + loadPrompt("generate/capability-manifest")
                 + "\n\n---\n\n"
                 + loadPrompt("generate/testing-techniques");
+    }
+
+    /**
+     * Android system prompt: base web prompt rewritten by the mobile prelude + mobile-specific
+     * capability manifest and testing techniques. Any missing mobile file falls back to the web
+     * sibling so a stripped deploy still boots.
+     */
+    private String buildMobileSystemPrompt() throws IOException {
+        String base = loadPrompt("generate/stories-to-json");
+        String capability = loadPromptOrFallback(
+                "generate/capability-manifest-mobile", "generate/capability-manifest");
+        String techniques = loadPromptOrFallback(
+                "generate/testing-techniques-mobile", "generate/testing-techniques");
+        StringBuilder sb = new StringBuilder(base)
+                .append("\n\n---\n\n").append(capability)
+                .append("\n\n---\n\n").append(techniques);
+        try {
+            sb.append("\n\n---\n\n").append(loadPrompt("generate/mobile-prelude"));
+        } catch (RuntimeException ignored) {
+            // Prelude is defensive — if someone stripped it, the dedicated mobile capability +
+            // techniques prompts above already reshape the output for Android.
+        }
+        return sb.toString();
+    }
+
+    private String loadPromptOrFallback(String primary, String fallback) throws IOException {
+        try {
+            return loadPrompt(primary);
+        } catch (RuntimeException notFound) {
+            return loadPrompt(fallback);
+        }
     }
 
     static ParsedLlmOutput parseLlmOutput(String raw) {

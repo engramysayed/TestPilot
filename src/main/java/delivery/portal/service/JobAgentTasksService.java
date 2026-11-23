@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -91,6 +92,8 @@ public class JobAgentTasksService {
             row.put("status", String.valueOf(raw.getOrDefault("taskStatus", "PENDING")));
             Object createdAt = raw.get("createdAt");
             if (createdAt != null) row.put("createdAt", String.valueOf(createdAt));
+            Object completedAt = raw.get("completedAt");
+            if (completedAt != null) row.put("completedAt", String.valueOf(completedAt));
             return row;
         } catch (Exception e) {
             return null;
@@ -126,6 +129,48 @@ public class JobAgentTasksService {
         }
         runningCache.put(projectRoot, new RunningCount(now + COUNT_CACHE_TTL_MS, running));
         return running;
+    }
+
+    /**
+     * Most recent agent task on the project across all parent jobs, by task.json mtime.
+     * Returns empty when no agent-runs/ directory exists yet.
+     */
+    public Optional<Map<String, Object>> latestTask(String projectId) {
+        if (projectId == null || projectId.isBlank()) return Optional.empty();
+        Path projectRoot;
+        try {
+            projectRoot = store.filesystemStoreFor(projectId).projectRoot(projectId);
+        } catch (RuntimeException e) {
+            return Optional.empty();
+        }
+        Path agentRuns = projectRoot.resolve(AgentRunStore.ROOT_DIR);
+        if (!Files.isDirectory(agentRuns)) return Optional.empty();
+
+        Path bestDir = null;
+        long bestMtime = Long.MIN_VALUE;
+        try (Stream<Path> jobs = Files.list(agentRuns)) {
+            for (Path job : (Iterable<Path>) jobs::iterator) {
+                if (!Files.isDirectory(job)) continue;
+                try (Stream<Path> tasks = Files.list(job)) {
+                    for (Path t : (Iterable<Path>) tasks::iterator) {
+                        if (!Files.isDirectory(t)) continue;
+                        Path tj = t.resolve("task.json");
+                        if (!Files.isRegularFile(tj)) continue;
+                        long m = Files.getLastModifiedTime(tj).toMillis();
+                        if (m > bestMtime) {
+                            bestMtime = m;
+                            bestDir = t;
+                        }
+                    }
+                } catch (IOException ignored) {
+                }
+            }
+        } catch (IOException e) {
+            return Optional.empty();
+        }
+        if (bestDir == null) return Optional.empty();
+        Map<String, Object> row = readTask(bestDir);
+        return row == null ? Optional.empty() : Optional.of(row);
     }
 
     private int countRunningIn(Path jobDir) {

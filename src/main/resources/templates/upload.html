@@ -12,7 +12,10 @@
         <div>
             <h1 th:text="#{page.upload.title}">Automate</h1>
         </div>
+        <div th:replace="~{preflight :: preflight-widget}"></div>
     </div>
+    <!-- Mounted by inline script below after a job is kicked off; hidden until then. -->
+    <section class="panel" id="automate-progress-widget" hidden></section>
 
     <section class="panel workspace-launcher" id="workspace-launcher"
              th:hidden="${projectId != null and !projectId.isEmpty()}">
@@ -922,7 +925,17 @@
             err.textContent = gate || ((data.error || 'ERROR') + ': ' + (data.message || 'failed'));
             return;
         }
-        window.location.href = '/status?jobId=' + encodeURIComponent(data.jobId);
+        // Replace redirect with inline live progress; the "Open full status" link in the widget
+        // lets the user jump to the dedicated /status page if they want the full detail view.
+        const widget = document.getElementById('automate-progress-widget');
+        if (widget && window.KeelProgressLog) {
+            widget.hidden = false;
+            // Also give the user a one-click escape to the full status page right at the top.
+            widget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            KeelProgressLog.mount({ container: widget, jobId: data.jobId });
+        } else {
+            window.location.href = '/status?jobId=' + encodeURIComponent(data.jobId);
+        }
     });
 })();
 </script>

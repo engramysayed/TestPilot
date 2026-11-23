@@ -36,6 +36,72 @@
             .replace(/"/g, '&quot;');
     }
 
+    function formatLocalTime(ms) {
+        if (!ms || typeof ms !== 'number') return '';
+        const d = new Date(ms);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    }
+
+    // Cursor sidecar NDJSON event stream — SSE via /api/jobs/{jobId}/cursor-stream.
+    // Handles are closed automatically when the EventSource errors or the window unloads.
+    let cursorSource = null;
+    let cursorCount = 0;
+    function openCursorStream() {
+        if (!jobId || cursorSource) return;
+        const list = document.getElementById('cursor-stream');
+        const countEl = document.getElementById('cursor-stream-count');
+        try {
+            cursorSource = new EventSource('/api/jobs/' + encodeURIComponent(jobId) + '/cursor-stream');
+        } catch (e) { return; }
+        cursorSource.addEventListener('cursor', function (ev) {
+            if (!list) return;
+            if (cursorCount === 0 && list.firstChild) list.innerHTML = '';
+            cursorCount += 1;
+            let text = ev.data;
+            try {
+                const obj = JSON.parse(ev.data);
+                if (obj && typeof obj.type === 'string') {
+                    text = '[' + obj.type + '] ' + (obj.text || obj.message || JSON.stringify(obj).slice(0, 180));
+                }
+            } catch (e) { /* non-JSON — leave as-is */ }
+            const li = document.createElement('li');
+            li.className = 'progress-log__row';
+            li.innerHTML = '<span class="progress-log__ts mono">' + escapeHtml(formatLocalTime(Date.now())) + '</span>'
+                + '<span class="progress-log__msg">' + escapeHtml(text) + '</span>';
+            list.appendChild(li);
+            list.scrollTop = list.scrollHeight;
+            if (countEl) countEl.textContent = '(' + cursorCount + ')';
+        });
+        cursorSource.addEventListener('ready', function () { /* backlog replayed */ });
+        cursorSource.onerror = function () {
+            if (cursorSource) { try { cursorSource.close(); } catch (e) {} }
+            cursorSource = null;
+        };
+        window.addEventListener('beforeunload', function () {
+            if (cursorSource) { try { cursorSource.close(); } catch (e) {} cursorSource = null; }
+        });
+    }
+    openCursorStream();
+
+    function renderProgressLog(entries) {
+        const list = document.getElementById('progress-log');
+        if (!list) return;
+        if (!Array.isArray(entries) || entries.length === 0) {
+            list.innerHTML = '<li class="progress-log__empty muted">Live steps will appear here as the job runs.</li>';
+            return;
+        }
+        // Newest first so the latest step is immediately visible without scrolling.
+        const rows = entries.slice().reverse().map(function (e) {
+            const t = formatLocalTime(e && e.ts);
+            const msg = escapeHtml(e && e.message ? e.message : '');
+            return '<li class="progress-log__row">'
+                + '<span class="progress-log__ts mono">' + escapeHtml(t) + '</span>'
+                + '<span class="progress-log__msg">' + msg + '</span>'
+                + '</li>';
+        }).join('');
+        list.innerHTML = rows;
+    }
+
     function isActiveStatus(status) {
         return status === 'QUEUED' || status === 'RUNNING' || status === 'CANCELLING';
     }
@@ -177,6 +243,7 @@
         const tot = data.progressTotal || 0;
         document.getElementById('progress').textContent = cur + ' / ' + tot;
         document.getElementById('message').textContent = data.message || '—';
+        renderProgressLog(data.progressLog);
         const precisionBanner = document.getElementById('precision-fallback-banner');
         if (precisionBanner) {
             const msgText = String(data.message || '');

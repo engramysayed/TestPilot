@@ -8,7 +8,8 @@ import delivery.ir.TcDraftStore;
 import delivery.ir.TcIdentity;
 import delivery.agent.harness.recovery.ExecutionRecoveryEscalationGate;
 import delivery.agent.harness.recovery.ExecutionRecoveryWiring;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
+import delivery.job.port.WorkspaceAiPolicy;
 import delivery.store.ProjectStore;
 
 import java.nio.file.Files;
@@ -23,7 +24,7 @@ import java.util.function.BooleanSupplier;
 public class ExecuteJobRunner {
     private final JobProgressTracker progress = new JobProgressTracker();
     private final AgentHarnessProperties harnessProps;
-    private delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy;
+    private WorkspaceAiPolicy workspaceAiPolicy;
 
     public ExecuteJobRunner() {
         this(null);
@@ -33,7 +34,7 @@ public class ExecuteJobRunner {
         this.harnessProps = harnessProps;
     }
 
-    public ExecuteJobRunner withWorkspaceAiPolicy(delivery.portal.service.WorkspaceAiPolicyService policy) {
+    public ExecuteJobRunner withWorkspaceAiPolicy(WorkspaceAiPolicy policy) {
         this.workspaceAiPolicy = policy;
         return this;
     }

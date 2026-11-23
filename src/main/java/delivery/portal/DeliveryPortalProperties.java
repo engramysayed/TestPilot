@@ -130,10 +130,15 @@ public class DeliveryPortalProperties {
     }
     public static class AuthoringProperties {
         private PrecisionProperties precision = new PrecisionProperties();
+        private ReviewProperties review = new ReviewProperties();
 
         public PrecisionProperties getPrecision() { return precision; }
         public void setPrecision(PrecisionProperties precision) {
             this.precision = precision == null ? new PrecisionProperties() : precision;
+        }
+        public ReviewProperties getReview() { return review; }
+        public void setReview(ReviewProperties review) {
+            this.review = review == null ? new ReviewProperties() : review;
         }
     }
 
@@ -142,11 +147,32 @@ public class DeliveryPortalProperties {
         private boolean enabled = true;
         /** Max Cursor groundRank/solve calls per conversion or execute job. */
         private int maxCallsPerJob = 50;
+        /** Lowest Cursor groundRank confidence accepted without escalating to solve. One of 'medium' or 'high'. */
+        private String minConfidence = "medium";
+        /** Cursor chat-completion model id. 'auto' keeps today's router; pin names such as 'claude-sonnet-4.5', 'gpt-5', 'grok-4', 'gemini-2.5-pro'. */
+        private String cursorModel = "auto";
 
         public boolean isEnabled() { return enabled; }
         public void setEnabled(boolean enabled) { this.enabled = enabled; }
         public int getMaxCallsPerJob() { return maxCallsPerJob; }
         public void setMaxCallsPerJob(int maxCallsPerJob) { this.maxCallsPerJob = maxCallsPerJob; }
+        public String getMinConfidence() { return minConfidence; }
+        public void setMinConfidence(String minConfidence) {
+            String v = minConfidence == null ? "medium" : minConfidence.trim().toLowerCase();
+            this.minConfidence = ("high".equals(v)) ? "high" : "medium";
+        }
+        public String getCursorModel() { return cursorModel; }
+        public void setCursorModel(String cursorModel) {
+            this.cursorModel = cursorModel == null || cursorModel.isBlank() ? "auto" : cursorModel.trim();
+        }
+    }
+
+    public static class ReviewProperties {
+        /** Max cases per one Cursor/Ollama authoring-review call. Larger selections are chunked into batches of this size. */
+        private int casesPerBatch = 10;
+
+        public int getCasesPerBatch() { return casesPerBatch; }
+        public void setCasesPerBatch(int casesPerBatch) { this.casesPerBatch = casesPerBatch; }
     }
 
     public boolean isDryRun() { return dryRun; }
@@ -223,6 +249,12 @@ public class DeliveryPortalProperties {
     }
     public int getPrecisionMaxCallsPerJob() {
         return authoring.getPrecision().getMaxCallsPerJob();
+    }
+    public String getPrecisionMinConfidence() {
+        return authoring.getPrecision().getMinConfidence();
+    }
+    public String getPrecisionCursorModel() {
+        return authoring.getPrecision().getCursorModel();
     }
     public CreditsProperties getCredits() { return credits; }
     public void setCredits(CreditsProperties credits) {

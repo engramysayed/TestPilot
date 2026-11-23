@@ -5,11 +5,12 @@ import java.nio.file.Path;
 /**
  * Resolves heal/LLM API keys for Automation Engine readers.
  *
- * <p>Order (env wins, matching Backend LLM Settings publish semantics):
+ * <p>Order (portal save wins, so saving in LLM Settings takes effect even when a shell env
+ * var is already set):
  * <ol>
- *   <li>Environment variable</li>
  *   <li>System property — portal LLM Settings publish layer ({@code CURSOR_API_KEY},
  *       {@code AGENTROUTER_API_KEY}, {@code OLLAMA_API_KEY})</li>
+ *   <li>Environment variable</li>
  *   <li>DEV-only {@link LocalApiKeyLoader} last resort (api-keys.local.*); loader itself
  *       never overwrites env/prop and skips placeholders</li>
  * </ol>
@@ -42,13 +43,13 @@ public final class ApiKeySource {
         if (keyName == null || keyName.isBlank()) {
             return "";
         }
-        String env = System.getenv(keyName);
-        if (env != null && !env.isBlank()) {
-            return env.trim();
-        }
         String prop = System.getProperty(keyName);
         if (prop != null && !prop.isBlank()) {
             return prop.trim();
+        }
+        String env = System.getenv(keyName);
+        if (env != null && !env.isBlank()) {
+            return env.trim();
         }
         if (localDevProjectRoot != null) {
             LocalApiKeyLoader.loadIntoSystemProperties(localDevProjectRoot);

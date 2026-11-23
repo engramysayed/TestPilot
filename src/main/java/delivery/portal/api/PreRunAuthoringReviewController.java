@@ -9,6 +9,7 @@ import delivery.portal.service.AuthoringReviewService;
 import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.JobWorkbookResolver;
 import delivery.portal.service.PortalStore;
+import delivery.portal.service.credits.CreditService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
@@ -40,19 +41,22 @@ public class PreRunAuthoringReviewController {
     private final AuthoringReviewService reviews;
     private final CurrentUserService currentUser;
     private final DeliveryPortalProperties props;
+    private final CreditService credits;
 
     public PreRunAuthoringReviewController(
             PortalStore store,
             GeneratedWorkbookService workbooks,
             AuthoringReviewService reviews,
             CurrentUserService currentUser,
-            DeliveryPortalProperties props
+            DeliveryPortalProperties props,
+            CreditService credits
     ) {
         this.store = store;
         this.workbooks = workbooks;
         this.reviews = reviews;
         this.currentUser = currentUser;
         this.props = props;
+        this.credits = credits;
     }
 
     @PostMapping(
@@ -77,6 +81,7 @@ public class PreRunAuthoringReviewController {
                     .body(new ApiError("NOT_FOUND", "Unknown project").asMap());
         }
 
+        credits.preflightAddon(ownerId, "AI_VALIDATION");
         Path materialized = null;
         try {
             boolean useLibrary = isTruthy(useGenerated);
@@ -95,6 +100,8 @@ public class PreRunAuthoringReviewController {
                     projectId, providerNorm, cases.size());
             Map<String, Object> result = reviews.reviewCases(
                     projectId, ownerId, cases, providerNorm, modelNorm, "", "");
+            String stableId = "prerun:" + projectId + ":" + java.time.Instant.now().toEpochMilli();
+            credits.tryDebitForAddon(ownerId, "AI_VALIDATION", stableId);
             log.info("PRE_RUN_REVIEW_COMPLETE project={} cases={} previewOk={} findings={}",
                     projectId,
                     result.get("tcCount"),

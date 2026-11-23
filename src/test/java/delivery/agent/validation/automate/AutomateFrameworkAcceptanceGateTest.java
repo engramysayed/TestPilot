@@ -14,7 +14,7 @@ import delivery.codegen.CodegenEmitGate;
 import delivery.codegen.ProvenStep;
 import delivery.job.TcOutcome;
 import delivery.job.TcStatus;
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -147,7 +147,8 @@ public class AutomateFrameworkAcceptanceGateTest {
                     import project.pages.Login_Page;
                     public class Login_Test extends BaseTest {
                         private Login_Page login_Page;
-                        @Test public void loginFlow() {}
+                        @Test(description = "login flow")
+                        public void should_login_flow() {}
                     }
                     """);
         }
@@ -247,7 +248,8 @@ public class AutomateFrameworkAcceptanceGateTest {
                         import project.tests.BaseTest;
                         import project.pages.Login_Page;
                         public class Login_Test extends BaseTest {
-                            @Test public void loginFlow() {}
+                            @Test(description = "login flow")
+                            public void should_login_flow() {}
                         }
                         """);
             } catch (Exception ignored) {

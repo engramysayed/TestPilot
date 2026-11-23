@@ -1,6 +1,6 @@
 package delivery.agent.harness.recovery;
 
-import delivery.portal.AgentHarnessProperties;
+import delivery.agent.harness.AgentHarnessProperties;
 
 import java.time.Duration;
 
