@@ -72,7 +72,7 @@ flowchart LR
 
 ## 3. Core flows
 
-The connected picture is [`FLOWS.md`](FLOWS.md). The diagrams below are the same two slices in short form.
+The connected picture is [`keel-product-flows.md`](../archive/ops/diagrams/keel-product-flows.md). The diagrams below are the same two slices in short form.
 
 ```mermaid
 flowchart TD

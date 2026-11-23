@@ -1,6 +1,6 @@
 # Keel flows
 
-What is true now, drawn as one map. Behavior detail stays in [`CURRENT.md`](CURRENT.md) and [`PRODUCT.md`](../PRODUCT.md). This page is the picture of how those flows connect.
+What is true now, drawn as one map. Behavior detail stays in [`CURRENT.md`](../../../knowledge/CURRENT.md) and [`PRODUCT.md`](../../../PRODUCT.md). This page is the picture of how those flows connect.
 
 Read the product map first. The later sections are the same paths, opened up.
 

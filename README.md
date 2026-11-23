@@ -323,7 +323,7 @@ docs/                       Specs (superpowers/), ops guides, reviews
 | Read | For |
 |------|-----|
 | [`docs/knowledge/CURRENT.md`](docs/knowledge/CURRENT.md) | What is true now — architecture, flows, locator policy, jobs, refunds, tunnel, config |
-| [`docs/knowledge/FLOWS.md`](docs/knowledge/FLOWS.md) | How those flows connect, in one set of diagrams |
+| [`docs/archive/ops/diagrams/keel-product-flows.md`](docs/archive/ops/diagrams/keel-product-flows.md) | How those flows connect, in one set of diagrams |
 | [`docs/ENGINEERING_HANDOFF.md`](docs/ENGINEERING_HANDOFF.md) | Feature → code / spec index |
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | Every user-facing feature |
 | [`docs/history/HISTORY.md`](docs/history/HISTORY.md) | Every past session, newest first |

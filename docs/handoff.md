@@ -2,11 +2,11 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-22 (flow map only; no product code).
+**Last updated:** 2026-11-23 (flow map moved into the diagrams folder; no product code).
 
-## Flow map (2026-11-22)
+## Flow map (2026-11-23)
 
-- `docs/knowledge/FLOWS.md` is the connected picture of Generate, Record, library, Execute, Automate, Bug Hunter, suites, prove/heal, credits, and tunnel.
+- `docs/archive/ops/diagrams/keel-product-flows.md` is the connected picture of Generate, Record, library, Execute, Automate, Bug Hunter, suites, prove/heal, credits, and tunnel.
 - Indexed from `docs/README.md`, `docs/ENGINEERING_HANDOFF.md`, and the top of `CURRENT.md` §3.
 - No runtime change. Known defects are unchanged from the 2026-11-16 notes below.
 

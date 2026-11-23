@@ -2,9 +2,14 @@
 
 # Keel changelog
 
+## 2026-11-23 — Flow map lives with the diagrams
+
+- The product flow map is `docs/archive/ops/diagrams/keel-product-flows.md`, next to the older flow images.
+- No product behavior changed.
+
 ## 2026-11-22 — Product flow map
 
-- **Flows** — `docs/knowledge/FLOWS.md` is the one picture of how Generate, Record, the library, Execute, Automate, Bug Hunter, suites, prove/heal, credits, and the tunnel connect.
+- **Flows** — one picture of how Generate, Record, the library, Execute, Automate, Bug Hunter, suites, prove/heal, credits, and the tunnel connect. Moved on 2026-11-23 to `docs/archive/ops/diagrams/keel-product-flows.md`.
 - No product behavior changed. Linked from `docs/README.md`, `docs/ENGINEERING_HANDOFF.md`, and `docs/knowledge/CURRENT.md`.
 
 ## 2026-11-16 — Portal UX Phase 11 (portal accessibility)

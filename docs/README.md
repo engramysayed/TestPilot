@@ -9,13 +9,13 @@ flowchart TB
     D --> P["PRODUCT.md<br/>every user-facing feature"]
     D --> A["archive/<br/>HISTORICAL — read-only"]
     K --> K1[CURRENT.md]
-    K --> K2[FLOWS.md]
     K --> K3[REVIEW-2026-11-07.md]
     K --> K4[contracts/]
     A --> A1[HISTORY.md timeline]
     A --> A2["handoffs/ · history-handoffs/"]
     A --> A3["plans/ · specs/"]
     A --> A4["ops/ · reviews/ · design/ · qa/ · legacy-grok/"]
+    A4 --> A5["ops/diagrams/<br/>keel-product-flows.md"]
     C["/CHANGELOG.md<br/>dated releases"] -.-> A
 ```
 
@@ -23,7 +23,7 @@ flowchart TB
 |-----------|------|
 | What Keel does and how to run it | [`/README.md`](/README.md) |
 | **What is true now** (architecture, flows, locator policy, config, status) | [`knowledge/CURRENT.md`](knowledge/CURRENT.md) |
-| How the product flows connect | [`knowledge/FLOWS.md`](knowledge/FLOWS.md) |
+| How the product flows connect | [`archive/ops/diagrams/keel-product-flows.md`](archive/ops/diagrams/keel-product-flows.md) |
 | Open risks and recommended next work | [`knowledge/REVIEW-2026-11-07.md`](knowledge/REVIEW-2026-11-07.md) |
 | Where code and specs live for a given feature | [`ENGINEERING_HANDOFF.md`](ENGINEERING_HANDOFF.md) |
 | Every user-facing feature | [`PRODUCT.md`](PRODUCT.md) |

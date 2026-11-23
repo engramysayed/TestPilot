@@ -11,7 +11,7 @@ This document points engineers at deeper material already in the tree.
 | Need | Go to |
 |------|-------|
 | Current architecture, flows, config, status | [`knowledge/CURRENT.md`](knowledge/CURRENT.md) |
-| How the product flows connect | [`knowledge/FLOWS.md`](knowledge/FLOWS.md) |
+| How the product flows connect | [`archive/ops/diagrams/keel-product-flows.md`](archive/ops/diagrams/keel-product-flows.md) |
 | Open risks / next work | [`knowledge/REVIEW-2026-11-07.md`](knowledge/REVIEW-2026-11-07.md) |
 | Session history (newest first) | [`archive/HISTORY.md`](archive/HISTORY.md) |
 | Docs map and rules | [`README.md`](README.md) |
