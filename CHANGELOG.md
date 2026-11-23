@@ -2,6 +2,14 @@
 
 # Keel changelog
 
+## 2026-11-23 — Mobile default flipped ON
+
+`delivery.mobile.enabled` now defaults to `true` in both the base `application.properties` and `src/test/resources/application.properties`. Every mobile feature shipped over phases 1 → 7c is live on a vanilla portal boot without needing `SPRING_PROFILES_ACTIVE=product` or any system property. `live-tests` stays `false` (it drives a real Appium server; flipping it requires a device on the host). The `*FlagOffApiTest` SpringBootTests still work unchanged — they override `delivery.mobile.enabled=false` via `@SpringBootTest(properties=…)`.
+
+`MobileFeatureFlagDefaultsTest` updated: `applicationPropertiesDefaultMobileDisabled` → `applicationPropertiesDefaultMobileEnabled`; `defaultJvmWithoutOverridesKeepsMobileOff` removed. The dual-opt-in test (`dualOptInStillRequiresBothSystemProperties`) is kept so shell scripts that gate on `delivery.mobile.enabled + keel.mobile.ci-opt-in` keep their contract.
+
+`scripts/ci/check-mobile-flag-off.sh` repurposed: now asserts the flag is explicitly declared (either value), not that it's `false`. Both callers already live in `.github/workflows.disabled/`.
+
 ## 2026-11-23 — Mobile phase 7c follow-up: sidebar + clearRun + Spring wiring
 
 Closes the three "not checked" items the 7c commit left:
