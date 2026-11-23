@@ -2,6 +2,12 @@
 
 # Keel changelog
 
+## 2026-11-23 — Host environment doc
+
+New `docs/ENVIRONMENT.md` — single source of truth for the host binaries + env vars the portal + runner shell out to: JDK 21, Maven 3.9+, Node 18+, adb, apkanalyzer, aapt2, appium + uiautomator2, mobile runner process, `KEEL_PORTAL_URL`, `KEEL_RUNNER_TOKEN`, `CURSOR_API_KEY`. Each row names the role, install command per OS (Scoop on Windows, Homebrew on macOS), override property, and what breaks on the user's screen when it's missing. Section 3 records which pieces are present on the current dev host.
+
+`README.md` Prerequisites expanded with the mobile extras and a pointer to `docs/ENVIRONMENT.md`. `docs/MOBILE_FRAMEWORK_RULES.md` gains the same pointer in its header.
+
 ## 2026-11-23 — Mobile default flipped ON
 
 `delivery.mobile.enabled` now defaults to `true` in both the base `application.properties` and `src/test/resources/application.properties`. Every mobile feature shipped over phases 1 → 7c is live on a vanilla portal boot without needing `SPRING_PROFILES_ACTIVE=product` or any system property. `live-tests` stays `false` (it drives a real Appium server; flipping it requires a device on the host). The `*FlagOffApiTest` SpringBootTests still work unchanged — they override `delivery.mobile.enabled=false` via `@SpringBootTest(properties=…)`.

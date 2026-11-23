@@ -5,6 +5,7 @@ Canonical reference for the **Android** test framework Keel emits via `customer-
 - **Source of truth for emit shape**: [`customer-mobile-framework-template/templates/*.ftl`](../customer-mobile-framework-template/templates/)
 - **Runtime helpers that every emit calls**: [`customer-mobile-framework-template/src/main/java/project/runtime/`](../customer-mobile-framework-template/src/main/java/project/runtime/)
 - **Mobile runner** (settle, bind, precision, evidence): [`mobile-runner/src/main/java/delivery/mobile/runner/`](../mobile-runner/src/main/java/delivery/mobile/runner/)
+- **Host prerequisites** (adb / appium / apkanalyzer / aapt2 / runner process / env vars) are documented once in [`ENVIRONMENT.md`](ENVIRONMENT.md).
 - **Keep this doc in sync**: any change to mobile codegen emit, template contracts, runtime classes, locator tiers, or precision gate rules MUST update this file in the same commit.
 
 ---
