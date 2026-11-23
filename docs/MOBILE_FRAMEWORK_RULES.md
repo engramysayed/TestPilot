@@ -110,12 +110,26 @@ When the step has a `userOverride` candidate and the Cursor response names a dif
 
 The admin-level pin (`delivery.authoring.precision.cursor-model`) and the per-project override on **Project Settings → Cursor model** flow into `PrecisionJobConfig.cursorModel`. The **authoring review** path (`AuthoringReviewService`) uses that pin when it calls Cursor for an Android suite — the mobile prelude at `prompts/authoring/mobile-prelude.md` is added on top.
 
-**Honest state of Cursor during a mobile run**: `delivery.mobile.*` has **no** direct `CursorHealClient` or `CursorSidecarClient` caller today. `MobilePrecisionGate` is a pure validator that accepts a response the upstream caller supplies. So the per-project model pin reaches mobile for:
+**Mobile Precision bind path (shipped 2026-11-23, phase 7a — portal slice):**
 
-- pre-run **authoring review** (works today — went in with this session's prompt pass).
-- **future** mobile Precision binding, when the mobile pipeline grows a real Cursor caller.
+```
+runner (locator bind returns AMBIGUOUS or USER_REJECTED on N candidates)
+  │
+  │ POST /api/v1/runners/mobile/runs/{runId}/precision/bind
+  │   { intent, candidates[{id,label,contextKind,userOverride}],
+  │     stepContext, snapshotExcerpt }
+  ▼
+portal — MobilePrecisionBindService
+  ├── resolve the project's Cursor model pin via PortalStore.precisionConfigForProject
+  ├── call CursorHealClient("pick") with a mobile-shaped table
+  ├── feed response + provider state into MobilePrecisionGate.rank(...)
+  └── return the gate outcome
+     { code, chosenId, usedProvider, fallbackReason, countsAsCursor }
+```
 
-Precedence (admin-pin chain) for the paths where Cursor IS used:
+The sidecar invocation stays on portal so runners don't need Node / sidecar jars / Cursor API keys — the round-trip over the bearer-authenticated runner wire is the cost. **Not yet shipped** (phase 7b): the runner-side client + the `MobileLocatorBinder` integration that fires this endpoint on AMBIGUOUS. The endpoint is wire-compatible with the runner's existing bearer-token auth, so no auth changes land with 7b.
+
+Precedence (admin-pin chain):
 
 ```
 KEEL_CURSOR_MODEL env / -Ddelivery.authoring.precision.cursor-model
@@ -133,7 +147,7 @@ The **Figma Validate** comparator does **not** use Cursor at all — it uses the
 
 Honest list of web features that are **not** yet ported to mobile. Landing these is a conscious scope decision, not a bug.
 
-- **Mobile Precision Cursor caller**: see §5 — `MobilePrecisionGate` validates a response; no portal-side code currently *makes* the call. The model-pin plumbing is ready for the day it's added. Paused pending a design decision on the runner↔portal sidecar round-trip (the runner can't own `heal.mjs` without shipping Node + the sidecar jar to every device).
+- **Mobile Precision Cursor caller — runner side (phase 7b)**: the portal endpoint exists (see §5), but the runner-side `MobilePrecisionClient` + `MobileLocatorBinder` integration that fires it on AMBIGUOUS is not shipped yet. Until 7b lands, AMBIGUOUS binds still fall back to Keel-side disambiguation on the runner.
 - **Appium Inspector inside the portal**: no built-in inspector view. Use the standalone Appium Inspector pointing at `http://127.0.0.1:4723` during manual sessions. A portal view would need a long-lived inspector lease + REST proxy — scoped as its own feature.
 
 ### Recently landed (what used to live here)

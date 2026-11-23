@@ -2,6 +2,24 @@
 
 # Keel changelog
 
+## 2026-11-23 — Mobile phase 7a: portal-side Cursor caller for mobile Precision
+
+Takes the "Mobile Precision Cursor caller" item off the "not supported today" list on the portal side. The runner side (phase 7b — runner client + `MobileLocatorBinder` integration) still owes a separate commit.
+
+**Why portal, not runner.** The mobile runner is a thin remote agent. Owning `heal.mjs` on the runner would mean shipping Node + the Cursor sidecar jar + a Cursor API key to every runner host. A bearer-authenticated HTTP round-trip over the existing `/api/v1/runners/mobile` wire is cheaper and keeps credentials on portal.
+
+**What landed.**
+- `MobilePrecisionBindService` resolves the project's Cursor model pin via `PortalStore.precisionConfigForProject`, invokes `CursorHealClient.pickCandidateId` with a mobile-shaped candidates table, and feeds the response through `MobilePrecisionGate.rank(...)` with provider state filled in. Returns the gate `PrecisionOutcome` verbatim.
+- `POST /api/v1/runners/mobile/runs/{runId}/precision/bind` on `MobileRunnerApiController`. Body: `{ intent, candidates[{id,label,contextKind,userOverride}], stepContext, snapshotExcerpt }`. Response: `{ code, chosenId, usedProvider, fallbackReason, countsAsCursor }`. Tenant isolation comes from the bearer token's enrollment; a run from another tenant → 404.
+- `MobilePrecisionBindServiceTest` covers: chose-valid-id, invalid-id, cursor-not-ready → UNAVAILABLE fallback, cross-tenant run → 404, empty-candidates → 400, sidecar runtime failure → UNAVAILABLE fallback.
+- Docs: `docs/MOBILE_FRAMEWORK_RULES.md` §5 now diagrams the flow and dates it; §6 shrinks the "not supported today" bullet from "Cursor caller" (full absence) to "phase 7b — runner side" (half-shipped).
+
+**Scope deliberately skipped (lazy).**
+- Credit ledger / `PrecisionCallBudget` integration — mobile cap is a follow-up.
+- Per-intent cache — the runner-side client in 7b can cache locally.
+- Mobile-specific prompt catalog entry — `heal.mjs` `pick` mode accepts an intent + table already.
+- Persistence of accepted picks for telemetry — matches the web caller's current state.
+
 ## 2026-11-23 — Mobile phase 9 follow-ups: active-revision snapshot + APK preflight
 
 Picks up the three items the 2026-11-22 phase 9 commit left as follow-ups.
