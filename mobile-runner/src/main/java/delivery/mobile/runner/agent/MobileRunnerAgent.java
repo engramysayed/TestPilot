@@ -4,6 +4,7 @@ import delivery.mobile.runner.execute.CaseOutcome;
 import delivery.mobile.runner.execute.CaseResult;
 import delivery.mobile.runner.execute.MobileExecuteEngine;
 import delivery.mobile.runner.execute.SelectedCase;
+import delivery.mobile.runner.precision.MobilePrecisionClient;
 import org.openqa.selenium.json.Json;
 
 import java.net.URI;
@@ -129,10 +130,11 @@ public final class MobileRunnerAgent {
             MobileCaseRunner.StepCapture capture = stepCaptureEnabled()
                     ? (tcId, stepIndex, png) -> uploadStepImage(captureRunId, tcId, stepIndex, png)
                     : null;
+            MobilePrecisionClient precision = new MobilePrecisionClient(http, portal, token, runId);
             MobileCaseRunner runner = new MobileCaseRunner(driver,
                     String.valueOf(job.getOrDefault("appPackage", "")),
                     String.valueOf(job.getOrDefault("appActivity", "")),
-                    capture);
+                    capture, precision);
             Map<String, MobileCaseRunner.CaseInput> byId = new LinkedHashMap<>();
             List<SelectedCase> selected = new ArrayList<>();
             for (Map<String, Object> c : cases) {

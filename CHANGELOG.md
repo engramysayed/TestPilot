@@ -2,6 +2,14 @@
 
 # Keel changelog
 
+## 2026-11-23 — Mobile phase 7b: runner-side Precision caller
+
+`mobile-runner/src/main/java/delivery/mobile/runner/precision/MobilePrecisionClient.java` closes the loop on phase 7a. When `MobileCaseRunner.bind()` ends with more than one actionable text-contains hit (the ambiguity branch that previously returned `element not found`), the runner now POSTs the candidates to the portal's `/api/v1/runners/mobile/runs/{runId}/precision/bind` endpoint and asks the gate to pick one. The returned `chosenId` is trusted only when it maps back to one of the hits the runner sent; any other outcome (HTTP error, `code` set, provider fallback, parse failure, foreign id) → `Optional.empty()` and the runner keeps the pre-Precision not-found behavior. `MobileRunnerAgent` wires the client with its existing portal URL / bearer token.
+
+`MobileCaseRunner` grows a `PrecisionBinder` functional interface + a 5-arg constructor so the hook stays null-safe for unit tests. Five TestNG tests on `MobileCaseRunnerPrecisionTest` cover: ambiguous-with-precision pick, ambiguous-without-precision fallback, out-of-list pick rejected, binder throws → fallback, and single-hit does not call precision.
+
+`docs/MOBILE_FRAMEWORK_RULES.md` §5 now diagrams the full flow (hits → client → portal → gate → trust check) and dates it; §6 moves "runner-side caller" from "not supported today" into "Recently landed".
+
 ## 2026-11-23 — Mobile phase 7a: portal-side Cursor caller for mobile Precision
 
 Takes the "Mobile Precision Cursor caller" item off the "not supported today" list on the portal side. The runner side (phase 7b — runner client + `MobileLocatorBinder` integration) still owes a separate commit.

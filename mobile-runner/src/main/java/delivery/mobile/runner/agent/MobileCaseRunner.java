@@ -52,6 +52,22 @@ public final class MobileCaseRunner {
         void accept(String tcId, int stepIndex, byte[] pngBytes);
     }
 
+    /**
+     * Optional ambiguity breaker. When the locator ladder ends with more than one actionable
+     * text-contains hit, {@link #bind} delegates the pick to this binder; a non-empty return
+     * value is the chosen node index. Null → no delegation (ambiguity returns not-found as
+     * before). Returning {@link Optional#empty()} ⇒ keep the not-found behavior (used when the
+     * remote caller fails or falls back).
+     *
+     * <p>Production wiring is
+     * {@code delivery.mobile.runner.precision.MobilePrecisionClient}, which POSTs to the
+     * portal's {@code /api/v1/runners/mobile/runs/{runId}/precision/bind}.
+     */
+    @FunctionalInterface
+    public interface PrecisionBinder {
+        Optional<Integer> pick(String intent, List<MobileSnapshotNode> candidates);
+    }
+
     private final MobileDriverPort driver;
     private final MobileActionExecutor actions;
     private final MobileLocatorBinder binder = new MobileLocatorBinder();
@@ -59,17 +75,24 @@ public final class MobileCaseRunner {
     private final String appPackage;
     private final String appActivity;
     private final StepCapture stepCapture;
+    private final PrecisionBinder precision;
 
     public MobileCaseRunner(MobileDriverPort driver, String appPackage, String appActivity) {
-        this(driver, appPackage, appActivity, null);
+        this(driver, appPackage, appActivity, null, null);
     }
 
     public MobileCaseRunner(MobileDriverPort driver, String appPackage, String appActivity, StepCapture stepCapture) {
+        this(driver, appPackage, appActivity, stepCapture, null);
+    }
+
+    public MobileCaseRunner(MobileDriverPort driver, String appPackage, String appActivity,
+                            StepCapture stepCapture, PrecisionBinder precision) {
         this.driver = driver;
         this.actions = new MobileActionExecutor(driver, new MobileSettleService());
         this.appPackage = appPackage == null ? "" : appPackage;
         this.appActivity = appActivity == null ? "" : appActivity;
         this.stepCapture = stepCapture;
+        this.precision = precision;
     }
 
     public Outcome run(CaseInput c) {
@@ -202,6 +225,16 @@ public final class MobileCaseRunner {
                 }
             }
             return Optional.of(n.index());
+        }
+        if (hits.size() > 1 && precision != null) {
+            try {
+                Optional<Integer> picked = precision.pick(target, hits);
+                if (picked.isPresent() && hits.stream().anyMatch(n -> n.index() == picked.get())) {
+                    return picked;
+                }
+            } catch (RuntimeException ignored) {
+                // Precision is best-effort: fall through to not-found.
+            }
         }
         return Optional.empty();
     }

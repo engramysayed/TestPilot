@@ -110,10 +110,14 @@ When the step has a `userOverride` candidate and the Cursor response names a dif
 
 The admin-level pin (`delivery.authoring.precision.cursor-model`) and the per-project override on **Project Settings → Cursor model** flow into `PrecisionJobConfig.cursorModel`. The **authoring review** path (`AuthoringReviewService`) uses that pin when it calls Cursor for an Android suite — the mobile prelude at `prompts/authoring/mobile-prelude.md` is added on top.
 
-**Mobile Precision bind path (shipped 2026-11-23, phase 7a — portal slice):**
+**Mobile Precision bind path (shipped 2026-11-23, phases 7a + 7b):**
 
 ```
-runner (locator bind returns AMBIGUOUS or USER_REJECTED on N candidates)
+runner — MobileCaseRunner.bind()
+  (ladder: RESOURCE_ID → ACCESSIBILITY_ID → TEXT → LABEL_SIBLING → text-contains)
+  ends with > 1 actionable text-contains hit
+  │
+  │ MobilePrecisionClient.pick(target, hits)
   │
   │ POST /api/v1/runners/mobile/runs/{runId}/precision/bind
   │   { intent, candidates[{id,label,contextKind,userOverride}],
@@ -125,9 +129,13 @@ portal — MobilePrecisionBindService
   ├── feed response + provider state into MobilePrecisionGate.rank(...)
   └── return the gate outcome
      { code, chosenId, usedProvider, fallbackReason, countsAsCursor }
+  ▼
+runner trusts chosenId only when it maps back to one of the hits it sent;
+anything else (code != "", provider fallback, HTTP error, foreign id) → Optional.empty()
+and the runner's existing "element not found" path takes over.
 ```
 
-The sidecar invocation stays on portal so runners don't need Node / sidecar jars / Cursor API keys — the round-trip over the bearer-authenticated runner wire is the cost. **Not yet shipped** (phase 7b): the runner-side client + the `MobileLocatorBinder` integration that fires this endpoint on AMBIGUOUS. The endpoint is wire-compatible with the runner's existing bearer-token auth, so no auth changes land with 7b.
+The sidecar invocation stays on portal so runners don't need Node / sidecar jars / Cursor API keys — the round-trip over the bearer-authenticated runner wire is the cost. The runner is best-effort: any error (transport, non-200, invalid id, provider fallback, parse failure) keeps the pre-Precision not-found behavior.
 
 Precedence (admin-pin chain):
 
@@ -147,11 +155,11 @@ The **Figma Validate** comparator does **not** use Cursor at all — it uses the
 
 Honest list of web features that are **not** yet ported to mobile. Landing these is a conscious scope decision, not a bug.
 
-- **Mobile Precision Cursor caller — runner side (phase 7b)**: the portal endpoint exists (see §5), but the runner-side `MobilePrecisionClient` + `MobileLocatorBinder` integration that fires it on AMBIGUOUS is not shipped yet. Until 7b lands, AMBIGUOUS binds still fall back to Keel-side disambiguation on the runner.
 - **Appium Inspector inside the portal**: no built-in inspector view. Use the standalone Appium Inspector pointing at `http://127.0.0.1:4723` during manual sessions. A portal view would need a long-lived inspector lease + REST proxy — scoped as its own feature.
 
 ### Recently landed (what used to live here)
 
+- **Mobile Precision — runner side** — shipped 2026-11-23 (phase 7b). [`MobilePrecisionClient`](../mobile-runner/src/main/java/delivery/mobile/runner/precision/MobilePrecisionClient.java) posts to the portal's `/precision/bind` endpoint when `MobileCaseRunner.bind()` ends with more than one actionable text-contains hit; the runner trusts the picked id only when it maps back to one of the hits sent, and treats every error as a best-effort fallback to the existing not-found path.
 - **Figma Validate per-step on mobile** — shipped 2026-11-22 (phases 4 + 5). The runner captures per-step PNGs when `KEEL_RUNNER_CAPTURE_STEP_PNG=true` (default on), uploads them to the portal, and [`MobileDesignComparePhase`](../src/main/java/delivery/mobile/run/MobileDesignComparePhase.java) runs the comparator on `finish()`.
 - **Mobile suite scheduling (pinned device + APK)** — shipped 2026-11-22 / 2026-11-23 (phases 6 + 6b). `SuiteScheduleDispatchService.dispatchMobile` pins a device + revision on the schedule; `/suites/schedule` grows a Phone + APK picker for Android projects, with a preflight that blocks "turn on" without a pinned device.
 
