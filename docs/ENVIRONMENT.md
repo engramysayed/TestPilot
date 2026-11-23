@@ -62,8 +62,8 @@ Everything in section 1 plus the four tools below. The portal warns at run time 
 
 **Role**: Safety net when apkanalyzer fails on a quirky APK. Not strictly required if apkanalyzer works on your APKs.
 
-- **Install (any OS)**: `sdkmanager "build-tools;34.0.0"` (or any 33+ version). The binary lands at `$ANDROID_HOME/build-tools/<ver>/aapt2[.exe]`. Add that directory to PATH, or point `delivery.mobile.aapt2-path` at it.
-- **Verify**: `aapt2 version` prints `Android Asset Packaging Tool (aapt) 2:…`.
+- **Install (any OS)**: `sdkmanager "build-tools;34.0.0"` (or any 33+ version). The binary lands at `$ANDROID_HOME/build-tools/<ver>/aapt2[.exe]`. Add that directory to PATH, or point `delivery.mobile.aapt2-path` at it (see §3.1 below for the recommended per-host override).
+- **Verify**: `aapt2 version` prints `Android Asset Packaging Tool (aapt) 2.19-…` or newer.
 - **If missing**: APK uploads still work when `apkanalyzer` succeeds. If both are missing, every APK upload fails with `INSPECTION_FAILED`.
 
 ### 2.4 Appium server + uiautomator2 driver
@@ -108,22 +108,29 @@ Captured from `Get-Command` on this machine; re-run the probe after any install 
 | `node` + `npm` | ✅ | `C:\Program Files\nodejs\` | `tools/cursor-heal/node_modules/` already installed |
 | `adb` | ✅ | `%USERPROFILE%\scoop\apps\android-clt\current\platform-tools\adb.exe` | |
 | `apkanalyzer` | ✅ | `%USERPROFILE%\scoop\apps\android-clt\current\cmdline-tools\latest\bin\apkanalyzer.bat` | |
-| `aapt2` | ⚠️ **missing** | — | Install with `sdkmanager "build-tools;34.0.0"` and add the folder to PATH. Only a fallback — apkanalyzer carries the happy path. |
+| `aapt2` | ✅ | `%USERPROFILE%\scoop\apps\android-clt\current\build-tools\35.0.0\aapt2.exe` | `keel-env.local.bat` adds that folder to PATH *and* passes `--delivery.mobile.aapt2-path=<absolute path>` via `KEEL_EXTRA_ARGS` as a belt-and-braces override. Version `2.19-11948202`. |
 | `appium` | ✅ | `%APPDATA%\npm\appium.ps1` | |
 | Appium `uiautomator2` driver | ✅ | installed (`8.7.2`) | |
 | `cursor-agent` (Cursor CLI) | — | not needed; `tools/cursor-heal/heal.mjs` is the sidecar | |
 | `ANDROID_HOME` | ✅ | `C:\Users\PC\scoop\apps\android-clt\current` | Picked up by apkanalyzer / sdkmanager |
 
-**Only gap on this host**: `aapt2`. Fix:
+Everything needed to run mobile features end-to-end is in place.
 
-```powershell
-sdkmanager "build-tools;34.0.0"
-# accept the license when prompted, then add
-#   %USERPROFILE%\scoop\apps\android-clt\current\build-tools\34.0.0
-# to your user PATH (or set delivery.mobile.aapt2-path to the aapt2.exe absolute path).
+### 3.1 How to pin `delivery.mobile.aapt2-path` without committing a user-specific absolute path
+
+Preferred pattern (matches the existing `KEEL_EXTRA_ARGS` convention in `keel-env.local.bat`, which is gitignored):
+
+```bat
+set "KEEL_EXTRA_ARGS=%KEEL_EXTRA_ARGS% --delivery.mobile.aapt2-path=C:\Users\You\scoop\apps\android-clt\current\build-tools\35.0.0\aapt2.exe"
 ```
 
-Everything else needed to run mobile features end-to-end is already in place.
+`start-portal.cmd` sources `keel-env.local.bat` and appends `KEEL_EXTRA_ARGS` to the JVM args, so the override only applies to **this host**. Never commit an absolute path to `application.properties` — it will break every other dev's build.
+
+Equivalent env-var form (relaxed binding; Spring Boot translates automatically):
+
+```bat
+set "DELIVERY_MOBILE_AAPT2_PATH=C:\Users\You\scoop\apps\android-clt\current\build-tools\35.0.0\aapt2.exe"
+```
 
 ---
 
