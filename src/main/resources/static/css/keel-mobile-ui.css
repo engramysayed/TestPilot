@@ -80,6 +80,67 @@ html[data-theme="dark"] .platform-segment-option input:checked + span {
   margin: 0.5rem 0 1rem;
 }
 
+/* Card-style radio tiles for App source — pure CSS, no JS behavior change. */
+.mobile-source-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  border: 0;
+  padding: 0;
+  margin: 0.5rem 0 1rem;
+}
+@media (max-width: 720px) {
+  .mobile-source-cards { grid-template-columns: 1fr; }
+}
+.mobile-source-cards legend {
+  padding: 0 0 0.35rem;
+  font-weight: 600;
+}
+.mobile-source-cards .source-card {
+  display: block;
+  position: relative;
+  padding: 0.85rem 1rem;
+  border: 2px solid var(--keel-border, #d0d7de);
+  border-radius: 10px;
+  background: var(--keel-surface-2, #f6f8fa);
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.mobile-source-cards .source-card:hover {
+  border-color: var(--teal, #087f78);
+}
+.mobile-source-cards .source-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+.mobile-source-cards .source-card:has(input:checked) {
+  border-color: var(--teal, #087f78);
+  background: var(--mint, #e3f3ef);
+  box-shadow: 0 0 0 1px var(--teal, #087f78) inset;
+}
+.mobile-source-cards .source-card:focus-within {
+  outline: 2px solid var(--teal, #087f78);
+  outline-offset: 2px;
+}
+.mobile-source-cards .source-card-body strong {
+  display: block;
+  font-size: 0.98rem;
+  margin: 0 0 0.3rem;
+}
+.mobile-source-cards .source-card-body .muted {
+  display: block;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+html[data-theme="dark"] .mobile-source-cards .source-card:has(input:checked) {
+  background: var(--calm-accent-soft, #1a3330);
+  border-color: var(--calm-accent, #7ecfc5);
+  box-shadow: 0 0 0 1px var(--calm-accent, #7ecfc5) inset;
+}
+
 .mobile-chip-row {
   display: flex;
   flex-wrap: wrap;

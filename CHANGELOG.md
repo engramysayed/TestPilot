@@ -2,6 +2,10 @@
 
 # Keel changelog
 
+## 2026-11-24 — App source: tile-style radios
+
+Two small plain-text radios ("App file (APK)" / "Already installed on the phone") replaced with proper card tiles — grid of two, each with a bold title and a one-line explanation. Selected tile gets a teal border + mint background (dark theme: teal border + accent-soft fill). CSS-only (`:has(input:checked)`); no JS change, same input `name="source"` / values so the existing `syncSourceUi()` toggle keeps working.
+
 ## 2026-11-24 — Mobile picker: busy-aware device labels
 
 Device dropdown in the pick-from-phone modal now shows which phones are busy and ranks them so free phones come first. Each row is `name · short-serial · <state>` with the state in plain English (`available`, `reserved for setup`, `running a test`, `releasing`, `quarantined`) instead of the raw enum. Available phones sort first; quarantined last. When the selected phone isn't available, the status line under the list explains why picking is still fine: "this phone is running a test; picking is read-only." (The package list fetch is pure adb and doesn't touch the Appium session.)

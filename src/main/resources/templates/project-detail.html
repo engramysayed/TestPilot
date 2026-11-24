@@ -386,15 +386,21 @@
             <p id="mobile-app-err" class="error" hidden></p>
             <p id="mobile-app-msg" class="muted" hidden></p>
             <form id="mobile-app-form" class="settings-form">
-                <fieldset class="mobile-source-options">
+                <fieldset class="mobile-source-options mobile-source-cards">
                     <legend>App source</legend>
-                    <label class="check">
+                    <label class="source-card">
                         <input type="radio" name="source" value="APK" checked/>
-                        App file (APK)
+                        <span class="source-card-body">
+                            <strong>Upload an APK file</strong>
+                            <span class="muted">Drag in a <code>.apk</code>. The portal reads the package, version, and launch activity automatically.</span>
+                        </span>
                     </label>
-                    <label class="check">
+                    <label class="source-card">
                         <input type="radio" name="source" value="INSTALLED"/>
-                        Already installed on the phone
+                        <span class="source-card-body">
+                            <strong>Already installed on the phone</strong>
+                            <span class="muted">Point at an app already on the phone. Use <em>Pick from connected phone</em> below to list them.</span>
+                        </span>
                     </label>
                 </fieldset>
                 <div id="mobile-apk-upload-wrap" class="mobile-apk-upload">
