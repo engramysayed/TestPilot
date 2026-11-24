@@ -845,6 +845,7 @@
     document.querySelector('main.shell')?.appendChild(runDetailHost);
 
     let projectHasBaseUrl = false;
+    let projectIsAndroid = false;
     let credentialsRequired = false;
     let activeJobId = null;
     let pollTimer = null;
@@ -954,6 +955,7 @@
         const baseUrl = (project.baseUrl || '').trim();
         // For ANDROID, website address is optional — base URL missing should not block the form when mobile is on
         const isAndroid = (project.platform || 'WEB').toUpperCase() === 'ANDROID';
+        projectIsAndroid = isAndroid;
         // Discoverability: if a web project is open on a server that supports mobile, point users
         // at the create flow so they know mobile is reachable from the same portal.
         const execRoot = document.getElementById('execute-root');
@@ -1335,6 +1337,14 @@
     async function requestForceStop(jobId, sourceBtn) {
         const id = jobId || activeJobId;
         if (!id) return;
+        if (String(id).indexOf('mrun_') === 0) {
+            const projectId = projectSel.value;
+            await fetch('/api/projects/' + encodeURIComponent(projectId) + '/mobile/runs/' + encodeURIComponent(id) + '/cancel', {
+                method: 'POST', credentials: 'same-origin', headers: API_HEADERS
+            });
+            if (jobMessageEl) jobMessageEl.textContent = 'Stopping the phone run…';
+            return;
+        }
         const buttons = [];
         if (cancelBtn) buttons.push(cancelBtn);
         if (sourceBtn) buttons.push(sourceBtn);
@@ -1773,6 +1783,75 @@
         }
     });
 
+    async function startAndroidExecute(projectId, plan, excelInput, useGenerated, reviewedTcIds) {
+        let res;
+        if (!useGenerated && excelInput.files && excelInput.files[0]) {
+            const body = new FormData();
+            body.append('deviceId', plan.deviceId);
+            body.append('excel', excelInput.files[0]);
+            res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/mobile/runs', {
+                method: 'POST', credentials: 'same-origin', headers: API_HEADERS, body
+            });
+        } else {
+            const ids = (reviewedTcIds && reviewedTcIds.length) ? reviewedTcIds : selectedLibraryTcIds();
+            res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/mobile/runs', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, API_HEADERS),
+                body: JSON.stringify({
+                    deviceId: plan.deviceId,
+                    tcIds: ids,
+                    appRevisionId: plan.appRevisionId || null
+                })
+            });
+        }
+        const data = await res.json().catch(function () { return {}; });
+        if (!res.ok) {
+            throw new Error(data.message || 'Could not start the phone run');
+        }
+        clearPreRunReview();
+        watchMobileRun(projectId, data.runId);
+    }
+
+    function watchMobileRun(projectId, runId) {
+        if (!runId) return;
+        activeJobId = runId;
+        jobPanel.hidden = false;
+        jobIdDisplay.textContent = runId;
+        if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.textContent = 'Force stop'; }
+        if (cancelWrap) cancelWrap.hidden = false;
+        resultsPanel.hidden = false;
+        jobErrorEl.hidden = true;
+        async function tick() {
+            if (activeJobId !== runId) return;
+            try {
+                const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/mobile/runs/' + encodeURIComponent(runId), {
+                    credentials: 'same-origin', headers: API_HEADERS
+                });
+                const data = await res.json().catch(function () { return {}; });
+                if (jobMessageEl) jobMessageEl.textContent = data.message || data.status || '';
+                resultsBody.innerHTML = '';
+                (data.results || []).forEach(function (row) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = '<td class="mono">' + escapeHtml(row.tcId || '') + '</td><td></td><td></td><td>'
+                        + escapeHtml(row.outcome || '') + '</td><td>—</td>';
+                    resultsBody.appendChild(tr);
+                });
+                const status = data.status || '';
+                if (status === 'COMPLETED' || status === 'FAILED' || status === 'CANCELLED') {
+                    if (cancelWrap) cancelWrap.hidden = true;
+                    if (status === 'COMPLETED' && jobMessageEl) {
+                        jobMessageEl.textContent = (data.message || 'Run finished')
+                            + ' Uploaded Figma images are compared to the phone screenshots from this run.';
+                    }
+                    return;
+                }
+            } catch (e) { /* keep polling */ }
+            setTimeout(tick, 2000);
+        }
+        tick();
+    }
+
     executeForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         formError.hidden = true;
@@ -1782,12 +1861,12 @@
             formError.textContent = 'Select a project';
             return;
         }
-        if (!projectHasBaseUrl) {
+        if (!projectIsAndroid && !projectHasBaseUrl) {
             formError.hidden = false;
             formError.textContent = 'Configure a base URL in project Settings before executing.';
             return;
         }
-        if (credentialsRequired && !credSel.value) {
+        if (!projectIsAndroid && credentialsRequired && !credSel.value) {
             formError.hidden = false;
             formError.textContent = 'Select a credential profile';
             return;
@@ -1822,6 +1901,19 @@
             return;
         }
         if (window.KeelCredits && KeelCredits.blockIfNotApproved(formError)) {
+            return;
+        }
+        if (projectIsAndroid) {
+            const plan = await window.keelConfirmMobileWalk(projectId, 'execute');
+            if (!plan) return;
+            submitBtn.disabled = true;
+            try {
+                await startAndroidExecute(projectId, plan, excelInput, useGenerated, reviewedTcIds);
+            } catch (err) {
+                formError.hidden = false;
+                formError.textContent = err && err.message ? err.message : 'Could not start the phone run';
+            }
+            submitBtn.disabled = false;
             return;
         }
         submitBtn.disabled = true;

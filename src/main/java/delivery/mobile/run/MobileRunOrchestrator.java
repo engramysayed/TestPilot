@@ -163,6 +163,46 @@ public class MobileRunOrchestrator {
         if (cases.isEmpty()) {
             throw new IllegalArgumentException("No runnable test cases selected");
         }
+        return launch(tenantId, projectId, ownerUserId, deviceId, cases, appRevisionId);
+    }
+
+    /** Run exactly these workbook rows (an upload), not the rest of the library. */
+    public MobileRun startProvided(String tenantId, String projectId, Long ownerUserId, String deviceId,
+                                   List<ManualTestCase> provided, String appRevisionId) throws Exception {
+        if (!props.isEnabled()) {
+            throw new IllegalStateException("Mobile is disabled (delivery.mobile.enabled=false)");
+        }
+        MobileDeviceEntity device = devices.findByDeviceId(deviceId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No phone is registered under id '" + deviceId + "'. "
+                                + "Open Project Settings → Phones and press Find connected phones."));
+        if (!tenantId.equals(device.getTenantId())) {
+            throw new IllegalArgumentException(
+                    "This phone is not registered to your workspace. Pick one from Project Settings → Phones.");
+        }
+        if (!"AVAILABLE".equalsIgnoreCase(nz(device.getBusy()))) {
+            throw new IllegalStateException(
+                    "Phone '" + nz(device.getDisplayName()) + "' is " + nz(device.getBusy())
+                            + ". Wait for the current run to finish, or pick another phone.");
+        }
+        List<MobileRun.CaseInput> cases = new ArrayList<>();
+        if (provided != null) {
+            for (ManualTestCase tc : provided) {
+                if (tc == null || "MANUAL".equalsIgnoreCase(tc.keelPath())) {
+                    continue;
+                }
+                cases.add(new MobileRun.CaseInput(tc.tcId(), nz(tc.title()),
+                        lines(tc.steps()), lines(tc.expectedResult()), lines(tc.testData())));
+            }
+        }
+        if (cases.isEmpty()) {
+            throw new IllegalArgumentException("No runnable test cases in the uploaded workbook");
+        }
+        return launch(tenantId, projectId, ownerUserId, deviceId, cases, appRevisionId);
+    }
+
+    private MobileRun launch(String tenantId, String projectId, Long ownerUserId, String deviceId,
+                             List<MobileRun.CaseInput> cases, String appRevisionId) {
         var rev = (appRevisionId == null || appRevisionId.isBlank())
                 ? mobileStore.findActiveAppRevision(tenantId, projectId)
                 : mobileStore.findAppRevision(tenantId, projectId, appRevisionId);

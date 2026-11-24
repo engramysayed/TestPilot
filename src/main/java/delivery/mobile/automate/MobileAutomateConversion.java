@@ -77,6 +77,55 @@ public class MobileAutomateConversion {
         this.orchestrator = orchestrator;
     }
 
+    /**
+     * What Automate or Execute would use right now.
+     * {@code blocked} is true when a saved phone is busy or unplugged — the run must not start.
+     * {@code phoneState=NONE} is not blocked: Automate can still build text shells after the user confirms.
+     */
+    public Map<String, Object> plan(String tenantId, String projectId) {
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        Optional<MobileAppRevisionRecord> rev = mobileStore.findActiveAppRevision(tenantId, projectId);
+        String pkg = rev.map(r -> r.getPackageName() == null ? "" : r.getPackageName()).orElse("");
+        String version = rev.map(r -> r.getVersionName() == null ? "" : r.getVersionName()).orElse("");
+        String deviceId = latestDeviceId(tenantId, projectId);
+        out.put("deviceId", deviceId);
+        out.put("appPackage", pkg);
+        out.put("appVersion", version);
+        out.put("appRevisionId", rev.map(MobileAppRevisionRecord::getAppRevisionId).orElse(""));
+        String appLabel = pkg.isBlank() ? "No app saved" : (pkg + (version.isBlank() ? "" : " " + version));
+        out.put("appLabel", appLabel);
+        if (!mobileProps.isEnabled()) {
+            out.put("phoneName", "");
+            out.put("phoneState", "NONE");
+            out.put("blocked", false);
+            out.put("message", "Mobile is turned off on this server. No phone will open.");
+            return out;
+        }
+        if (deviceId.isBlank()) {
+            out.put("phoneName", "");
+            out.put("phoneState", "NONE");
+            out.put("blocked", false);
+            out.put("message", "No phone is connected. App: " + appLabel + ".");
+            return out;
+        }
+        MobileDeviceEntity device = devices.findByDeviceId(deviceId).orElse(null);
+        String name = device == null || device.getDisplayName() == null || device.getDisplayName().isBlank()
+                ? "Selected phone" : device.getDisplayName();
+        out.put("phoneName", name);
+        String blocked = phoneBlocked(deviceId);
+        if (blocked != null) {
+            boolean busy = device != null && !"AVAILABLE".equalsIgnoreCase(device.getBusy() == null ? "" : device.getBusy());
+            out.put("phoneState", busy ? "BUSY" : "OFFLINE");
+            out.put("blocked", true);
+            out.put("message", blocked);
+            return out;
+        }
+        out.put("phoneState", "READY");
+        out.put("blocked", false);
+        out.put("message", "Phone: " + name + ". App: " + appLabel + ".");
+        return out;
+    }
+
     /** Empty when the project is not Android — the caller keeps the web conversion path. */
     public Optional<ConversionJobResult> tryConvert(JobRecord job, ConversionJobRequest request, BooleanSupplier cancel)
             throws Exception {
@@ -93,30 +142,26 @@ public class MobileAutomateConversion {
         cases = SuiteCaseFilter.requireFiltered(cases, projectRoot, "No test cases match the suite filter");
 
         String tenant = job.getTenantId() == null ? "" : job.getTenantId();
-        Optional<MobileAppRevisionRecord> rev = mobileStore.findActiveAppRevision(tenant, job.getProjectId());
-        String pkg = rev.map(r -> r.getPackageName() == null ? "" : r.getPackageName()).orElse("");
-        String deviceId = latestDeviceId(tenant, job.getProjectId());
+        Map<String, Object> plan = plan(tenant, job.getProjectId());
+        String pkg = String.valueOf(plan.getOrDefault("appPackage", ""));
+        String deviceId = String.valueOf(plan.getOrDefault("deviceId", ""));
+        boolean blocked = Boolean.TRUE.equals(plan.get("blocked"));
 
         Map<String, List<MobileAutomateIr.Locator>> walked = Map.of();
         String how;
-        if (!mobileProps.isEnabled()) {
-            how = "Mobile is turned off — wrote text shells and did not open a phone.";
-        } else if (deviceId.isBlank()) {
-            how = "No phone is selected on this project — wrote text shells.";
-        } else if (pkg.isBlank()) {
-            how = "No Android package is saved on this project — wrote text shells.";
+        if (blocked) {
+            throw new IllegalStateException(String.valueOf(plan.get("message")));
+        } else if (!mobileProps.isEnabled() || "NONE".equals(plan.get("phoneState")) || pkg.isBlank()) {
+            how = String.valueOf(plan.get("message")) + " Wrote text shells from the Excel labels.";
         } else {
-            String blocked = phoneBlocked(deviceId);
-            if (blocked != null) {
-                how = blocked + " Wrote text shells.";
-            } else {
-                job.setMessage("Opening the phone and walking the workbook steps");
-                portalStore.syncJobPersistence(job);
-                walked = walk(job, tenant, deviceId, rev.map(MobileAppRevisionRecord::getAppRevisionId).orElse(null), cases, cancel);
-                how = walked.isEmpty()
-                        ? "The phone walk did not finish — wrote text shells."
-                        : "Walked the phone and wrote the locators it found. Misses stayed as text shells.";
-            }
+            job.setMessage("Opening the phone and walking the workbook steps");
+            portalStore.syncJobPersistence(job);
+            walked = walk(job, tenant, deviceId,
+                    plan.get("appRevisionId") == null ? null : String.valueOf(plan.get("appRevisionId")),
+                    cases, cancel);
+            how = walked.isEmpty()
+                    ? "The phone walk did not finish — wrote text shells."
+                    : "Walked the phone and wrote the locators it found. A step that could not be tapped stayed as the Excel wording.";
         }
 
         List<MobileCaseIr> ir = new ArrayList<>();

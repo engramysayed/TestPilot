@@ -180,6 +180,7 @@
 (function () {
     const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
     let projectHasBaseUrl = false;
+    let projectIsAndroid = false;
     let credentialsRequired = false;
 
     const formElInit = document.getElementById('job-form');
@@ -769,8 +770,13 @@
         }
         const project = await projRes.json();
         const baseUrl = (project.baseUrl || '').trim();
-        projectHasBaseUrl = baseUrl.length > 0;
-        if (projectHasBaseUrl) {
+        projectIsAndroid = (project.platform || 'WEB').toUpperCase() === 'ANDROID';
+        projectHasBaseUrl = baseUrl.length > 0 || projectIsAndroid;
+        if (projectIsAndroid) {
+            baseUrlRow.hidden = true;
+            baseUrlMissing.hidden = true;
+            submitBtn.disabled = false;
+        } else if (projectHasBaseUrl) {
             baseUrlRow.hidden = false;
             baseUrlDisplay.textContent = baseUrl;
             baseUrlMissing.hidden = true;
@@ -856,10 +862,14 @@
             err.textContent = 'Select a project';
             return;
         }
-        if (!projectHasBaseUrl) {
+        if (!projectIsAndroid && !projectHasBaseUrl) {
             err.hidden = false;
             err.textContent = 'Configure a base URL in project Settings before uploading.';
             return;
+        }
+        if (projectIsAndroid) {
+            const plan = await window.keelConfirmMobileWalk(projectId, 'automate');
+            if (!plan) return;
         }
         if (credentialsRequired && !form.credentialProfile.value) {
             err.hidden = false;

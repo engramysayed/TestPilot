@@ -34,16 +34,19 @@ public class MobileRunController {
     private final MobileRunOrchestrator runs;
     private final MobileDeviceRegistration registration;
     private final MobilePortalStore mobileStore;
+    private final delivery.mobile.automate.MobileAutomateConversion walkPlans;
 
     public MobileRunController(MobileProperties mobileProps, PortalStore store, CurrentUserService currentUser,
                                MobileRunOrchestrator runs, MobileDeviceRegistration registration,
-                               MobilePortalStore mobileStore) {
+                               MobilePortalStore mobileStore,
+                               delivery.mobile.automate.MobileAutomateConversion walkPlans) {
         this.mobileProps = mobileProps;
         this.store = store;
         this.currentUser = currentUser;
         this.runs = runs;
         this.registration = registration;
         this.mobileStore = mobileStore;
+        this.walkPlans = walkPlans;
     }
 
     public record StartBody(String deviceId, List<String> tcIds, String appRevisionId) {
@@ -65,7 +68,20 @@ public class MobileRunController {
         }
     }
 
-    @PostMapping("/runs")
+    @GetMapping("/walk-plan")
+    public ResponseEntity<?> walkPlan(@PathVariable String projectId) {
+        ResponseEntity<?> gate = gate(projectId, false);
+        if (gate != null) return gate;
+        ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
+        if (!"ANDROID".equalsIgnoreCase(project.getPlatform())) {
+            return ResponseEntity.ok(Map.of(
+                    "phoneState", "NONE", "blocked", false, "phoneName", "",
+                    "appLabel", "", "message", "This project is not an Android app."));
+        }
+        return ResponseEntity.ok(walkPlans.plan(project.getTenantId(), projectId));
+    }
+
+    @PostMapping(value = "/runs", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> start(@PathVariable String projectId, @RequestBody StartBody body) {
         ResponseEntity<?> gate = gate(projectId, true);
         if (gate != null) return gate;
@@ -84,6 +100,45 @@ public class MobileRunController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiError("ERROR", e.getMessage()).asMap());
+        }
+    }
+
+    /** Execute the uploaded workbook only — cases that are not in the file are not run. */
+    @PostMapping(value = "/runs", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> startUpload(@PathVariable String projectId,
+                                         @org.springframework.web.bind.annotation.RequestParam("deviceId") String deviceId,
+                                         @org.springframework.web.bind.annotation.RequestParam("excel")
+                                         org.springframework.web.multipart.MultipartFile excel) {
+        ResponseEntity<?> gate = gate(projectId, true);
+        if (gate != null) return gate;
+        if (deviceId == null || deviceId.isBlank()) {
+            return ResponseEntity.badRequest().body(new ApiError("DEVICE_REQUIRED", "Pick a device").asMap());
+        }
+        if (excel == null || excel.isEmpty()) {
+            return ResponseEntity.badRequest().body(new ApiError("BAD_REQUEST", "Upload a workbook").asMap());
+        }
+        ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
+        java.nio.file.Path tmp = null;
+        try {
+            tmp = java.nio.file.Files.createTempFile("keel-mobile-", ".xlsx");
+            try (var in = excel.getInputStream()) {
+                java.nio.file.Files.copy(in, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            var cases = new delivery.excel.ExcelTcReader(true).read(tmp);
+            var run = runs.startProvided(project.getTenantId(), projectId, currentUser.requireUserId(),
+                    deviceId, cases, null);
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(run.view().toMap());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ApiError("BAD_REQUEST", e.getMessage()).asMap());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError("CONFLICT", e.getMessage()).asMap());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiError("ERROR", e.getMessage()).asMap());
+        } finally {
+            if (tmp != null) {
+                try { java.nio.file.Files.deleteIfExists(tmp); } catch (Exception ignored) { }
+            }
         }
     }
 

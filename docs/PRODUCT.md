@@ -389,7 +389,7 @@ Turn the workbook into a **downloadable Java Selenium TestNG** package.
 
 ### Android projects
 
-Automate does not open Chrome. If the project has a saved phone that is plugged in and free, and an app package, Keel opens the app and writes the locators the phone walk found. If the phone or the mobile runner is not available, the zip is still built and each control is a text shell from the Excel label. The job message says which one happened.
+Automate does not open Chrome and does not ask for a website address. Before it starts, a dialog names the phone, or says none is connected, and names the app. A busy or unplugged phone stops the run with "This run cannot start". A free phone is walked and its locators are written. No phone, after you confirm, still builds the zip from the Excel wording. Execute uses the same dialog, then runs the uploaded workbook or the library cases you checked. Uploaded Figma images are compared to that run's screenshots.
 
 ### Jobs & status
 

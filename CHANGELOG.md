@@ -2,6 +2,11 @@
 
 # Keel changelog
 
+## 2026-11-24 — Android start names the phone, and a busy phone does not start
+
+- Automate and Execute ask before starting an Android run. The dialog names the connected phone, or says none is connected, and names the app package. A busy or unplugged phone shows "This run cannot start" and nothing is built.
+- Execute on an Android project no longer asks for a website address. A workbook upload runs only those rows. The library runs the cases you checked, including ones accepted in pre-run review. Figma comparison still runs when the phone run finishes.
+
 ## 2026-11-24 — Android Automate walks the phone, or writes text shells
 
 Automate on an Android project no longer opens Chrome. When the project has a saved phone that is connected and free, and an app package, conversion starts a mobile run. The runner follows each workbook line and records the locator it actually bound (resource id, then content description, then visible text). Those locators are written into the Android framework zip.
