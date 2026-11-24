@@ -41,10 +41,23 @@
             <a id="settings-link" href="#">Open project Settings</a>
         </p>
         <p class="muted" id="android-hunt-note" hidden>
-            Keel opens the saved app and taps controls it has not tried. It does not type.
+            The cases you check are run on the phone, including steps that type.
+            If you check none, Keel taps controls it has not tried, up to the tap limit.
             A crash or “keeps stopping” dialog is saved in the hunt pack.
         </p>
+        <p class="muted" id="runner-status" hidden></p>
+        <label id="hunt-phone-label" hidden>Phone
+            <select id="hunt-device-select">
+                <option value="">— Select phone —</option>
+            </select>
+        </label>
+        <label id="android-tap-label" hidden>Max taps
+            <input type="text" inputmode="numeric" pattern="[0-9]*" lang="en" id="android-tap-cap" value="12"/>
+            <span class="field-hint">Used only when no library case is checked. 1 to 80 taps.</span>
+        </label>
+        <video id="phone-live-video" class="phone-live" autoplay muted playsinline hidden></video>
         <img id="phone-live" class="phone-live" alt="Live phone screen" hidden>
+        <p class="muted" id="phone-live-note" hidden></p>
 
         <label id="cred-label" class="hunt-cred" hidden>Sign-in profile
             <select id="credential-profile"></select>
@@ -141,7 +154,7 @@
 
         <div class="hunt-library tc-multiselect" id="hunt-library-panel">
             <span class="tc-ms-label">Library cases</span>
-            <p class="field-hint">These are the hunter's <strong>coverage map</strong> — its view of what your library already covers. It will skip ideas that overlap them and only write <em>new</em> scenario suggestions for the rest. Pick cases that cover the feature you want explored.</p>
+            <p class="field-hint" id="hunt-library-hint">These are the hunter's <strong>coverage map</strong> — its view of what your library already covers. It will skip ideas that overlap them and only write <em>new</em> scenario suggestions for the rest. Pick cases that cover the feature you want explored.</p>
             <p id="lib-empty" class="muted" hidden>No test cases yet — generate or upload some on Generate first.</p>
             <div class="tc-ms" id="hunt-tc-ms" hidden>
                 <button type="button" class="tc-ms-trigger" id="hunt-tc-ms-trigger"

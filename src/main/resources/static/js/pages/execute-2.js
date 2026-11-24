@@ -42,6 +42,12 @@
             const platform = (proj.platform || 'WEB').toUpperCase();
             if (!projRes.ok || platform !== 'ANDROID' || proj.mobileEnabled === false) {
                 panel.hidden = true;
+                if (window.keelWatchRunner) {
+                    window.keelWatchRunner(document.getElementById('runner-status'), '');
+                }
+                if (window.keelAttachPhoneLive) {
+                    window.keelAttachPhoneLive(document.getElementById('phone-live'), projectId, '');
+                }
                 return;
             }
             panel.hidden = false;
@@ -106,6 +112,9 @@
                 if (window.keelAttachPhoneLive) {
                     window.keelAttachPhoneLive(document.getElementById('phone-live'), projectId, select.value);
                 }
+            }
+            if (window.keelWatchRunner) {
+                window.keelWatchRunner(document.getElementById('runner-status'), projectId);
             }
         } catch (e) {
             panel.hidden = true;

@@ -73,38 +73,89 @@
     return 'Not connected';
   }
 
-  /** Show the phone's screen in an img. The stream lasts a few minutes, then this reconnects. */
+  /** Video when the phone is free. Stills if video cannot start. A sentence when it stops. */
   global.keelAttachPhoneLive = function (img, projectId, deviceId) {
     if (!img) return;
+    const video = document.getElementById(img.id + '-video');
+    const note = document.getElementById(img.id + '-note');
     if (img._keelLiveTimer) {
       clearInterval(img._keelLiveTimer);
       img._keelLiveTimer = null;
     }
+    function showNote(text) {
+      if (!note) return;
+      note.hidden = !text;
+      note.textContent = text || '';
+    }
     if (!projectId || !deviceId) {
       img.hidden = true;
       img.removeAttribute('src');
+      if (video) {
+        video.hidden = true;
+        video.removeAttribute('src');
+      }
+      showNote('');
       return;
     }
-    let tries = 0;
-    function url() {
-      return '/api/projects/' + encodeURIComponent(projectId)
-        + '/mobile/devices/' + encodeURIComponent(deviceId)
-        + '/live?t=' + Date.now();
+    const base = '/api/projects/' + encodeURIComponent(projectId)
+      + '/mobile/devices/' + encodeURIComponent(deviceId);
+    function stillUrl() {
+      return base + '/live?t=' + Date.now();
     }
-    img.hidden = false;
-    img.alt = 'Live phone screen';
-    img.src = url();
-    img.onerror = function () {
-      tries += 1;
-      if (tries > 3) {
-        img.hidden = true;
-        return;
+    async function explain() {
+      try {
+        const res = await fetch(base + '/live-note', { credentials: 'same-origin', headers: headers() });
+        const data = await res.json().catch(function () { return {}; });
+        showNote(data.message || 'The live picture stopped.');
+      } catch (e) {
+        showNote('The live picture stopped.');
       }
-      setTimeout(function () { img.src = url(); }, 1500);
-    };
-    img._keelLiveTimer = setInterval(function () {
-      tries = 0;
-      img.src = url();
-    }, 150000);
+    }
+    function startStills() {
+      let tries = 0;
+      img.hidden = false;
+      img.alt = 'Live phone screen';
+      img.src = stillUrl();
+      img.onerror = function () {
+        tries += 1;
+        if (tries > 2) {
+          img.hidden = true;
+          explain();
+          return;
+        }
+        setTimeout(function () { img.src = stillUrl(); }, 1500);
+      };
+    }
+    showNote('');
+    if (video) {
+      video.hidden = false;
+      img.hidden = true;
+      video.src = base + '/live.mp4?t=' + Date.now();
+      video.onerror = function () {
+        video.hidden = true;
+        video.removeAttribute('src');
+        startStills();
+      };
+    } else {
+      startStills();
+    }
+  };
+
+  global.keelWatchRunner = function (el, projectId) {
+    if (!el) return;
+    if (el._keelRunnerTimer) clearInterval(el._keelRunnerTimer);
+    if (!projectId) {
+      el.hidden = true;
+      return;
+    }
+    async function tick() {
+      const plan = await global.keelMobileWalkPlan(projectId);
+      el.hidden = false;
+      el.textContent = plan.runnerOnline
+        ? 'Mobile runner: running'
+        : 'Mobile runner: not running. Start the mobile runner before you press Start.';
+    }
+    tick();
+    el._keelRunnerTimer = setInterval(tick, 10000);
   };
 })(window);

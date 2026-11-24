@@ -106,6 +106,7 @@ public class MobileAutomateConversion {
         out.put("appRevisionId", rev.map(MobileAppRevisionRecord::getAppRevisionId).orElse(""));
         String appLabel = pkg.isBlank() ? "No app saved" : (pkg + (version.isBlank() ? "" : " " + version));
         out.put("appLabel", appLabel);
+        out.put("runnerOnline", orchestrator.runnerOnline());
         if (!mobileProps.isEnabled()) {
             out.put("phoneName", "");
             out.put("phoneState", "NONE");
@@ -329,7 +330,8 @@ public class MobileAutomateConversion {
             out.add(new MobileAutomateIr.Locator(
                     o.optString("strategy", "text"),
                     o.optString("value", ""),
-                    o.optBoolean("shell", true)));
+                    o.optBoolean("shell", true),
+                    o.optString("screenKey", "")));
         }
         return out;
     }

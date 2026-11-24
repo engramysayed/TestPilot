@@ -149,6 +149,33 @@ public class MobileRunController {
         }
     }
 
+    @GetMapping("/devices/{deviceId}/live-note")
+    public ResponseEntity<?> liveNote(@PathVariable String projectId, @PathVariable String deviceId) {
+        ResponseEntity<?> gate = gate(projectId, false);
+        if (gate != null) return gate;
+        ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
+        String note = screens.note(project.getTenantId(), deviceId);
+        return ResponseEntity.ok(Map.of("message", note));
+    }
+
+    @GetMapping(value = "/devices/{deviceId}/live.mp4", produces = "video/mp4")
+    public ResponseEntity<?> liveVideo(@PathVariable String projectId, @PathVariable String deviceId) {
+        ResponseEntity<?> gate = gate(projectId, false);
+        if (gate != null) return gate;
+        ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
+        String note = screens.note(project.getTenantId(), deviceId);
+        if (!note.isBlank()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiError("PHONE_BUSY", note).asMap());
+        }
+        org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody body = out ->
+                screens.writeVideo(project.getTenantId(), deviceId, out);
+        return ResponseEntity.ok()
+                .header("Cache-Control", "no-store")
+                .contentType(org.springframework.http.MediaType.parseMediaType("video/mp4"))
+                .body(body);
+    }
+
     @GetMapping(value = "/devices/{deviceId}/live", produces = "multipart/x-mixed-replace;boundary=keelframe")
     public ResponseEntity<?> live(@PathVariable String projectId, @PathVariable String deviceId) {
         ResponseEntity<?> gate = gate(projectId, false);

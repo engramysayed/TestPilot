@@ -36,6 +36,22 @@ public class MobileAutomateIrTest {
     }
 
     @Test
+    public void aNewScreenBecomesItsOwnClass() throws Exception {
+        MobileCaseIr ir = MobileAutomateIr.build(
+                "TC_01", "com.app",
+                List.of("Tap the \"Login\" button", "Tap the \"Pay\" button"),
+                List.of(), List.of(),
+                List.of(
+                        new MobileAutomateIr.Locator("id", "com.app:id/login", false, "SignInab"),
+                        new MobileAutomateIr.Locator("id", "com.app:id/pay", false, "Checkoutcd")));
+        Path dir = Files.createTempDirectory("mobile-automate-screens");
+        new MobileCodeWriter().writeVerified(dir, List.of(ir), NamingMap.empty());
+        Path screens = dir.resolve("src/test/java/project/screens");
+        assertTrue(Files.isRegularFile(screens.resolve("SignInabScreen.java")));
+        assertTrue(Files.isRegularFile(screens.resolve("CheckoutcdScreen.java")));
+    }
+
+    @Test
     public void swipeUsesTheScrolledControl() throws Exception {
         MobileCaseIr ir = MobileAutomateIr.build(
                 "TC_02", "com.app",

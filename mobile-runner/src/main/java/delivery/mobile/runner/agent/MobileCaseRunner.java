@@ -201,7 +201,8 @@ public final class MobileCaseRunner {
                 if (appPackage.isBlank()) return "no app package configured for the project";
                 return status(actions.launch(appPackage, appActivity, true));
             case SWIPE:
-                captured.add(WalkedLocator.fromScrollable(driver.pageSource().nodes()));
+                MobileSnapshot swipeSnap = driver.pageSource();
+                remember(WalkedLocator.fromScrollable(swipeSnap.nodes()), swipeSnap);
                 return status(actions.swipe(NormalizedSwipe.forDirection(ScrollDirection.parse(step.direction()), 0.6),
                         null, true));
             default:
@@ -210,9 +211,9 @@ public final class MobileCaseRunner {
         MobileSnapshot snap = driver.pageSource();
         if (step.kind() == MobileStep.Kind.ASSERT_VISIBLE || step.kind() == MobileStep.Kind.ASSERT_NOT_VISIBLE) {
             List<MobileSnapshotNode> matches = textMatches(snap, step.target());
-            captured.add(matches.isEmpty()
+            remember(matches.isEmpty()
                     ? WalkedLocator.shell(step.target())
-                    : WalkedLocator.fromNode(matches.get(0), step.target()));
+                    : WalkedLocator.fromNode(matches.get(0), step.target()), snap);
             AssertResult r = asserts.assertVisible(snap, matches, step.kind() == MobileStep.Kind.ASSERT_VISIBLE);
             return r.passed() ? null : (r.detail() + ": \"" + step.target() + "\"");
         }
@@ -222,9 +223,9 @@ public final class MobileCaseRunner {
             default -> ActionKind.TAP;
         };
         Optional<Integer> node = bind(snap, step.target(), kind);
-        captured.add(node.isEmpty()
+        remember(node.isEmpty()
                 ? WalkedLocator.shell(step.target())
-                : WalkedLocator.fromNode(snap.node(node.get()), step.target()));
+                : WalkedLocator.fromNode(snap.node(node.get()), step.target()), snap);
         if (node.isEmpty()) {
             return "element not found: \"" + step.target() + "\"";
         }
@@ -233,6 +234,10 @@ public final class MobileCaseRunner {
             case CLEAR -> status(actions.clear(node.get(), true));
             default -> status(actions.tap(node.get(), false, false, true));
         };
+    }
+
+    private void remember(WalkedLocator loc, MobileSnapshot snap) {
+        captured.add(loc.withScreen(ScreenSignature.of(snap, appPackage)));
     }
 
     Optional<Integer> bind(MobileSnapshot snap, String target, ActionKind kind) {

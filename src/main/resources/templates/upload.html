@@ -62,7 +62,10 @@
                         <option value="">None connected</option>
                     </select>
                 </label>
+                <p class="muted" id="runner-status" hidden></p>
+                <video id="automate-phone-live-video" class="phone-live" autoplay muted playsinline hidden></video>
                 <img id="automate-phone-live" class="phone-live" alt="Live phone screen" hidden>
+                <p class="muted" id="automate-phone-live-note" hidden></p>
                 <label id="credential-label" hidden>Credential profile
                     <select name="credentialProfile" id="credentialProfile">
                         <option value="">— Select profile —</option>
@@ -787,6 +790,9 @@
         }
         select.onchange = showLive;
         showLive();
+        if (window.keelWatchRunner) {
+            window.keelWatchRunner(document.getElementById('runner-status'), projectId);
+        }
     }
 
     async function loadProjectConfig(projectId) {

@@ -22,10 +22,15 @@ import java.util.Locale;
 public final class MobileAutomateIr {
 
     /** One locator from a phone walk, or a shell standing in for a missed bind. */
-    public record Locator(String strategy, String value, boolean shell) {
+    public record Locator(String strategy, String value, boolean shell, String screenKey) {
+        public Locator(String strategy, String value, boolean shell) {
+            this(strategy, value, shell, "");
+        }
+
         public Locator {
             strategy = strategy == null || strategy.isBlank() ? "text" : strategy;
             value = value == null ? "" : value;
+            screenKey = screenKey == null ? "" : screenKey;
         }
 
         public static Locator shell(String label) {
@@ -62,7 +67,7 @@ public final class MobileAutomateIr {
                 loc = cursor < locs.size() ? locs.get(cursor) : fallback;
                 cursor++;
             }
-            MobileStep step = toStep("s" + (out.size() + 1), screenKey(tcId), pkg, intent, loc);
+            MobileStep step = toStep("s" + (out.size() + 1), screenOf(tcId, loc), pkg, intent, loc);
             if (step != null) {
                 out.add(step);
             }
@@ -77,7 +82,7 @@ public final class MobileAutomateIr {
                         MobileLineIntent.Kind.ASSERT_VISIBLE, q.get(0), "", "", exp == null ? "" : exp);
                 Locator loc = cursor < locs.size() ? locs.get(cursor) : Locator.shell(q.get(0));
                 cursor++;
-                MobileStep step = toStep("s" + (out.size() + 1), screenKey(tcId), pkg, intent, loc);
+                MobileStep step = toStep("s" + (out.size() + 1), screenOf(tcId, loc), pkg, intent, loc);
                 if (step != null) {
                     out.add(step);
                 }
@@ -102,7 +107,15 @@ public final class MobileAutomateIr {
                 out);
     }
 
-    /** One screen class per case, so Login and Checkout are not both MainScreen. */
+    /** The screen the phone was on for this step, or the case name when the walk did not say. */
+    static String screenOf(String tcId, Locator loc) {
+        if (loc != null && loc.screenKey() != null && !loc.screenKey().isBlank()) {
+            return loc.screenKey();
+        }
+        return screenKey(tcId);
+    }
+
+    /** One screen class per case when the walk did not record a screen change. */
     static String screenKey(String tcId) {
         String cleaned = (tcId == null ? "" : tcId).replaceAll("[^A-Za-z0-9]", "");
         if (cleaned.isEmpty()) {

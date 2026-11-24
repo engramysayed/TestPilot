@@ -13,6 +13,7 @@ import delivery.mobile.lease.MobileLeaseRecord;
 import delivery.mobile.persistence.MobileDeviceEntity;
 import delivery.mobile.persistence.MobileDeviceRepository;
 import delivery.portal.DeliveryPortalProperties;
+import delivery.portal.model.JobRecord;
 import delivery.portal.service.GeneratedWorkbookService;
 import delivery.portal.service.PortalStore;
 import org.json.JSONArray;
@@ -257,6 +258,7 @@ public class MobileRunOrchestrator {
         run.mode = mode == null || mode.isBlank() ? "EXECUTE" : mode;
         run.actionCap = actionCap;
         runs.put(run.runId, run);
+        trackJob(run, "Phone run starting");
         starter.submit(() -> prepare(run));
         return run;
     }
@@ -535,6 +537,11 @@ public class MobileRunOrchestrator {
         run.message = message;
         run.error = error == null ? "" : error;
         run.finishedAt = Instant.now();
+        String review = MobileBatchReview.of(run);
+        if (!review.isBlank()) {
+            run.message = (run.message == null || run.message.isBlank() ? "" : run.message + " ") + review;
+        }
+        trackJob(run, run.message);
         if (!run.leaseId.isBlank()) {
             try {
                 appium.teardown(run.leaseId, run.fenceToken);
@@ -587,6 +594,34 @@ public class MobileRunOrchestrator {
             return new delivery.authoring.LocalLlmClient(base, model);
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    private void trackJob(MobileRun run, String message) {
+        if (portalStore == null || run.ownerUserId == null) {
+            return;
+        }
+        try {
+            JobRecord job = portalStore.getJob(run.runId).orElse(null);
+            if (job == null) {
+                job = new JobRecord(run.runId, run.projectId, run.ownerUserId, "phone",
+                        runsRoot.resolve(run.runId + ".json"), "", "", "", false, JobRecord.JobKind.EXECUTE);
+                job.setTenantId(run.tenantId);
+            }
+            job.setClaimStage(delivery.portal.jobs.DurableJobClaim.Stage.MOBILE_EXECUTING.name());
+            if (!run.status.terminal()) {
+                job.setLeaseUntil(Instant.now().plus(Duration.ofHours(6)));
+            }
+            job.setStatus(switch (run.status) {
+                case COMPLETED -> JobRecord.Status.COMPLETED;
+                case FAILED -> JobRecord.Status.FAILED;
+                case CANCELLED -> JobRecord.Status.CANCELLED;
+                default -> JobRecord.Status.RUNNING;
+            });
+            job.setMessage(message == null ? "" : message);
+            portalStore.saveJob(job);
+        } catch (RuntimeException e) {
+            log.warn("Mobile run {} was not added to the run list: {}", run.runId, e.getMessage());
         }
     }
 

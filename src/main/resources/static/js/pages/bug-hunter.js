@@ -96,20 +96,29 @@
         document.getElementById('base-url-display').textContent = base;
         const note = document.getElementById('android-hunt-note');
         if (note) note.hidden = !projectIsAndroid;
+        const libHint = document.getElementById('hunt-library-hint');
+        if (libHint) {
+            libHint.innerHTML = projectIsAndroid
+                ? 'The cases you check are what the phone runs, including steps that type. Check none and Keel only taps, up to Max taps.'
+                : 'These are the hunter\'s <strong>coverage map</strong> — its view of what your library already covers. It will skip ideas that overlap them and only write <em>new</em> scenario suggestions for the rest. Pick cases that cover the feature you want explored.';
+        }
         const planner = document.querySelector('.hunt-planner');
         if (planner) planner.hidden = projectIsAndroid;
         const domLabel = document.getElementById('dom-mode') && document.getElementById('dom-mode').closest('label');
         if (domLabel) domLabel.hidden = projectIsAndroid;
         const strategies = document.querySelector('.hunt-strategy-block');
         if (strategies) strategies.hidden = projectIsAndroid;
-        if (projectIsAndroid && window.keelMobileWalkPlan) {
-            const plan = await window.keelMobileWalkPlan(projectId);
-            if (window.keelAttachPhoneLive) {
-                window.keelAttachPhoneLive(
-                    document.getElementById('phone-live'),
-                    projectId,
-                    plan && plan.phoneState === 'READY' ? plan.deviceId : '');
-            }
+        const depth = document.querySelector('.hunt-depth');
+        if (depth) depth.hidden = projectIsAndroid;
+        const tapLabel = document.getElementById('android-tap-label');
+        if (tapLabel) tapLabel.hidden = !projectIsAndroid;
+        const phoneLabel = document.getElementById('hunt-phone-label');
+        if (phoneLabel) phoneLabel.hidden = !projectIsAndroid;
+        if (window.keelWatchRunner) {
+            window.keelWatchRunner(document.getElementById('runner-status'), projectIsAndroid ? projectId : '');
+        }
+        if (projectIsAndroid) {
+            await loadHuntPhones(projectId);
         } else if (window.keelAttachPhoneLive) {
             window.keelAttachPhoneLive(document.getElementById('phone-live'), projectId, '');
         }
@@ -117,6 +126,34 @@
         await loadLibrary(projectId);
         document.getElementById('hunt-promote-panel').hidden = true;
         updateStartEnabled();
+    }
+
+    async function loadHuntPhones(projectId) {
+        const select = document.getElementById('hunt-device-select');
+        if (!select) return;
+        select.innerHTML = '<option value="">— Select phone —</option>';
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/mobile/devices', {
+                credentials: 'same-origin', headers: API_HEADERS
+            });
+            const data = res.ok ? await res.json() : {};
+            (data.devices || []).forEach(function (d) {
+                const opt = document.createElement('option');
+                opt.value = d.deviceId || '';
+                opt.textContent = (d.displayName || 'Phone') + (d.serialShort ? (' (' + d.serialShort + ')') : '');
+                opt.disabled = (d.readiness || '').toUpperCase() !== 'READY';
+                select.appendChild(opt);
+            });
+            const ready = Array.from(select.options).find(function (o) { return o.value && !o.disabled; });
+            if (ready) select.value = ready.value;
+        } catch (e) { /* confirm dialog still names the phone */ }
+        function showLive() {
+            if (window.keelAttachPhoneLive) {
+                window.keelAttachPhoneLive(document.getElementById('phone-live'), projectId, select.value);
+            }
+        }
+        select.onchange = showLive;
+        showLive();
     }
 
     async function loadCredentials(projectId) {
@@ -298,13 +335,19 @@
             body.otp = otpVal;
         }
         if (projectIsAndroid) {
-            const plan = await window.keelConfirmMobileWalk(projectId, 'execute');
+            const pickedEl = document.getElementById('hunt-device-select');
+            const picked = pickedEl && pickedEl.value
+                ? { deviceId: pickedEl.value, phoneName: pickedEl.selectedOptions[0].textContent }
+                : null;
+            const plan = await window.keelConfirmMobileWalk(projectId, 'execute', picked);
             if (!plan) {
                 setStarting(false);
                 updateStartEnabled();
                 return;
             }
             body.deviceId = plan.deviceId;
+            const taps = Number((document.getElementById('android-tap-cap') || {}).value);
+            if (taps) body.tapCap = taps;
         }
         try {
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/hunt-runs', {

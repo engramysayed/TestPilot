@@ -17,6 +17,9 @@ public class JobLinkEnricher {
 
     public void enrich(Map<String, Object> row, String jobId, JobRecord.JobKind kind, String status) {
         row.put("statusUrl", "/status?jobId=" + jobId);
+        if (jobId != null && jobId.startsWith("mrun_")) {
+            return;
+        }
         if (kind != JobRecord.JobKind.EXECUTE) {
             return;
         }

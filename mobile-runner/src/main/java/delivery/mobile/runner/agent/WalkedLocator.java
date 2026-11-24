@@ -9,11 +9,20 @@ import java.util.Map;
  * Locator taken from the node a step actually bound on the phone.
  * A shell is the Excel label only — used when the bind missed or no phone was walked.
  */
-public record WalkedLocator(String strategy, String value, boolean shell) {
+public record WalkedLocator(String strategy, String value, boolean shell, String screenKey) {
+
+    public WalkedLocator(String strategy, String value, boolean shell) {
+        this(strategy, value, shell, "");
+    }
 
     public WalkedLocator {
         strategy = strategy == null || strategy.isBlank() ? "text" : strategy;
         value = value == null ? "" : value;
+        screenKey = screenKey == null ? "" : screenKey;
+    }
+
+    public WalkedLocator withScreen(String key) {
+        return new WalkedLocator(strategy, value, shell, key == null ? "" : key);
     }
 
     public static WalkedLocator shell(String label) {
@@ -61,6 +70,7 @@ public record WalkedLocator(String strategy, String value, boolean shell) {
         m.put("strategy", strategy);
         m.put("value", value);
         m.put("shell", shell);
+        m.put("screenKey", screenKey == null ? "" : screenKey);
         return m;
     }
 }

@@ -76,7 +76,8 @@ public class HuntController {
             String domMode,
             Boolean strategiesEnabled,
             List<String> knowledgePackIds,
-            String deviceId
+            String deviceId,
+            Integer tapCap
     ) {
     }
 
@@ -109,7 +110,7 @@ public class HuntController {
                             "No generated workbook for this project — generate or upload TCs first").asMap());
         }
         StartHuntBody req = body == null
-                ? new StartHuntBody(List.of(), "", "ollama", null, null, null, null, null, null, null, null, null, null)
+                ? new StartHuntBody(List.of(), "", "ollama", null, null, null, null, null, null, null, null, null, null, null)
                 : body;
         List<String> tcIds = req.tcIds() == null ? List.of() : req.tcIds();
         if (!android && tcIds.isEmpty()) {
@@ -186,9 +187,14 @@ public class HuntController {
                 return ResponseEntity.badRequest()
                         .body(new ApiError("APP_REQUIRED", "Save an Android app on this project before hunting.").asMap());
             }
-            int cap = Math.min(40, Math.max(1, hunt.getActionCapPerCycle()) * Math.max(1, hunt.getCycleCeiling()));
+            int cap = req.tapCap() == null ? 12 : req.tapCap();
+            if (cap < 1) cap = 12;
+            if (cap > 80) cap = 80;
             try {
-                var run = mobileRuns.startExplore(project.getTenantId(), projectId, ownerId, deviceId, cap);
+                var run = selected.isEmpty()
+                        ? mobileRuns.startExplore(project.getTenantId(), projectId, ownerId, deviceId, cap)
+                        : mobileRuns.start(project.getTenantId(), projectId, ownerId, deviceId,
+                        selected.stream().map(ManualTestCase::tcId).toList());
                 hunt.setPlatform("ANDROID");
                 hunt.setDeviceId(deviceId);
                 hunt.setMobileRunId(run.runId());

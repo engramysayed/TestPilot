@@ -2,6 +2,14 @@
 
 # Keel changelog
 
+## 2026-11-24 — Phone runs follow the cases, split screens, and show up in the run list
+
+- Android Bug Hunter runs the library cases you check, including steps that type. With none checked, it taps up to the number in Max taps (1–80), and that number is what the page shows.
+- Bug Hunter has the same phone list as Execute. The page says whether the mobile runner is running before you press Start.
+- A phone walk names each screen from what is on it, so a new page becomes its own screen class.
+- A phone execute or hunt is a row in Recent runs and on the runs page. When it finishes, the row includes a short review of what passed and what failed.
+- The live picture tries a video stream while the phone is free. If video cannot start, it shows stills. If the phone is in a run, or the picture fails, the page says why and stops grabbing the screen.
+
 ## 2026-11-24 — Start dialog says if the phone is free
 
 - Automate, Execute, and Bug Hunter use the same dialog. It names the phone, says Available, Busy, Not connected, or that the mobile runner is not running, and names the app. A run that cannot start stops on that dialog.

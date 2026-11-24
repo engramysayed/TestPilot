@@ -59,11 +59,23 @@ public final class AndroidHuntPack {
                     continue;
                 }
                 JSONArray nested = row.optJSONArray("findings");
-                if (nested == null) {
+                if (nested != null && nested.length() > 0) {
+                    for (int j = 0; j < nested.length(); j++) {
+                        findings.put(nested.get(j));
+                    }
                     continue;
                 }
-                for (int j = 0; j < nested.length(); j++) {
-                    findings.put(nested.get(j));
+                String tc = row.optString("tcId", "");
+                String outcome = row.optString("outcome", "");
+                String detail = row.optString("detail", "");
+                if ("FAILED".equals(outcome)) {
+                    findings.put(new JSONObject()
+                            .put("kind", "BUG")
+                            .put("detail", (tc + " " + detail).trim()));
+                } else if ("PASSED".equals(outcome)) {
+                    findings.put(new JSONObject()
+                            .put("kind", "PASS")
+                            .put("detail", tc + " passed, including any text the case types"));
                 }
             }
         }

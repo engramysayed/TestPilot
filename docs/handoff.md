@@ -2,7 +2,15 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-24 (start dialog shows phone status).
+**Last updated:** 2026-11-24 (phone cases, screens, run list, live video).
+
+## Phone cases and the run list (2026-11-24)
+
+- Checked Bug Hunter cases call `MobileRunOrchestrator.start` (the runner types). No cases calls `startExplore` with the Max taps value, capped at 80.
+- `ScreenSignature` is stored on each walked locator and becomes the screen class.
+- `trackJob` writes the mobile run into the normal job list as an Execute row. Open Status to read the review. It does not open the website results page. The row keeps a long lease so the job reconciler does not requeue it.
+- `GET .../live.mp4` is `adb screenrecord` wrapped by `H264Fmp4`. Stills remain the fallback. A busy phone returns a note and is not captured.
+- The runner is still a separate process. The page shows running or not before Start. It is not started by the portal.
 
 ## Start dialog (2026-11-24)
 
