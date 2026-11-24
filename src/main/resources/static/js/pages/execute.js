@@ -1904,7 +1904,11 @@
             return;
         }
         if (projectIsAndroid) {
-            const plan = await window.keelConfirmMobileWalk(projectId, 'execute');
+            const pickedEl = document.getElementById('mobile-device-select');
+            const picked = pickedEl && pickedEl.value
+                ? { deviceId: pickedEl.value, phoneName: pickedEl.selectedOptions[0].textContent }
+                : null;
+            const plan = await window.keelConfirmMobileWalk(projectId, 'execute', picked);
             if (!plan) return;
             submitBtn.disabled = true;
             try {

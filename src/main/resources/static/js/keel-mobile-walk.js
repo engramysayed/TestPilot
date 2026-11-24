@@ -30,8 +30,14 @@
    * @param mode 'automate' allows continuing with no phone (text shells). 'execute' does not.
    * @returns the plan when the user confirmed, or null when they cancelled or the phone blocked the start.
    */
-  global.keelConfirmMobileWalk = async function (projectId, mode) {
+  global.keelConfirmMobileWalk = async function (projectId, mode, picked) {
     const plan = await global.keelMobileWalkPlan(projectId);
+    if (picked && picked.deviceId) {
+      plan.deviceId = picked.deviceId;
+      plan.phoneName = picked.phoneName || plan.phoneName;
+      plan.phoneState = 'READY';
+      plan.blocked = false;
+    }
     const phone = plan.phoneName ? plan.phoneName : 'None connected';
     const app = plan.appLabel ? plan.appLabel : 'No app saved';
     if (plan.blocked) {
