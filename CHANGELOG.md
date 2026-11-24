@@ -2,6 +2,14 @@
 
 # Keel changelog
 
+## 2026-11-24 — Android Automate walks the phone, or writes text shells
+
+Automate on an Android project no longer opens Chrome. When the project has a saved phone that is connected and free, and an app package, conversion starts a mobile run. The runner follows each workbook line and records the locator it actually bound (resource id, then content description, then visible text). Those locators are written into the Android framework zip.
+
+If mobile is off, no phone is saved, the phone is busy or unplugged, no package is set, or no runner claims the session within 45 seconds, the same zip is still produced. Each control is a text shell (`UiSelector().text("…")` from the Excel label) instead of a phone locator. The job message says which path ran and how many of each locator it wrote.
+
+Known limits: the phone is the latest saved device profile, not a picker on the Automate page. The zip is packed without a Maven compile. Every case lands on one `MainScreen`. A missed bind, and every step after a failed step, stays a text shell. Swipe steps do not get a real locator.
+
 ## 2026-11-24 — Case sign-in panel: real dropdown, collapsed by default, Call-before removed
 
 - **TC selectors are real `<select>` dropdowns now.** `Test case ID` and `Start-state test case ID` were text inputs with a datalist (still looked like inputs). Switched both to `<select>` populated from the project's mobile library via `ensureLibCases()`. Picking a TC from the dropdown now **auto-loads** its saved requirements — the `Load requirements` button is kept as a secondary trigger but is no longer necessary.

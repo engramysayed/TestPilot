@@ -162,6 +162,8 @@ public final class MobileRunnerAgent {
                     m.put("failedStep", d.failedStep());
                     m.put("detail", d.detail());
                     m.put("log", d.log());
+                    m.put("locators", d.locators() == null ? List.of()
+                            : d.locators().stream().map(WalkedLocator::toMap).toList());
                 }
                 results.add(m);
             }

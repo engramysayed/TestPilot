@@ -8,7 +8,13 @@ package ${packageName!"project.screens"};
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.android.AndroidDriver;
 import org.openqa.selenium.By;
-<#if locators![]?filter(l -> l.fallbacks?has_content)?has_content>
+<#assign needsFirstOf = false>
+<#list locators![] as loc>
+<#if loc.fallbacks?has_content>
+<#assign needsFirstOf = true>
+</#if>
+</#list>
+<#if needsFirstOf>
 import project.utils.locators.MobileFirstOf;
 </#if>
 import project.runtime.assertions.MobileAssertions;

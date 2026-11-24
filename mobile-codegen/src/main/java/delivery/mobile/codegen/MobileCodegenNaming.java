@@ -230,6 +230,9 @@ public final class MobileCodegenNaming {
                     "AppiumBy.className(" + lit + ")";
             case "androiduiautomator", "uiautomator" ->
                     "AppiumBy.androidUIAutomator(" + lit + ")";
+            case "text", "text_class" ->
+                    "AppiumBy.androidUIAutomator(" + javaStringLiteral(
+                            "new UiSelector().text(\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\")") + ")";
             default ->
                     "AppiumBy.accessibilityId(" + lit + ")";
         };

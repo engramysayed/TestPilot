@@ -2,7 +2,15 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-23 (flow map moved into the diagrams folder; no product code).
+**Last updated:** 2026-11-24 (Android Automate device walk).
+
+## Android Automate (2026-11-24)
+
+- CONVERT on an ANDROID project walks the latest saved phone and writes real locators, or text shells when the phone or runner is not available. Chrome stays closed.
+- Code: `MobileAutomateConversion`, `WalkedLocator`, `MobileAutomateIr`.
+- Defects: no phone picker on the Automate page; zip is not Maven-compiled; one `MainScreen`; swipes are not located; a failed step shells the rest of that case.
+
+**Previous update:** 2026-11-23 (flow map moved into the diagrams folder; no product code).
 
 ## Flow map (2026-11-23)
 

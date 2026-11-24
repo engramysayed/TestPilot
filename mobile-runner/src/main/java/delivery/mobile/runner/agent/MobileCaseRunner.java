@@ -32,10 +32,22 @@ public final class MobileCaseRunner {
 
     /** Result of one case, serialisable for the portal. */
     public record Outcome(String tcId, CaseOutcome outcome, String failureCode, int failedStep, String detail,
-                          List<String> log) {
+                          List<String> log, List<WalkedLocator> locators) {
+        public Outcome(String tcId, CaseOutcome outcome, String failureCode, int failedStep, String detail,
+                       List<String> log) {
+            this(tcId, outcome, failureCode, failedStep, detail, log, List.of());
+        }
+
         public Map<String, Object> toMap() {
-            return Map.of("tcId", tcId, "outcome", outcome.name(), "failureCode", failureCode,
-                    "failedStep", failedStep, "detail", detail, "log", log);
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("tcId", tcId);
+            m.put("outcome", outcome.name());
+            m.put("failureCode", failureCode);
+            m.put("failedStep", failedStep);
+            m.put("detail", detail);
+            m.put("log", log);
+            m.put("locators", locators == null ? List.of() : locators.stream().map(WalkedLocator::toMap).toList());
+            return m;
         }
     }
 
@@ -76,6 +88,7 @@ public final class MobileCaseRunner {
     private final String appActivity;
     private final StepCapture stepCapture;
     private final PrecisionBinder precision;
+    private final List<WalkedLocator> captured = new ArrayList<>();
 
     public MobileCaseRunner(MobileDriverPort driver, String appPackage, String appActivity) {
         this(driver, appPackage, appActivity, null, null);
@@ -97,6 +110,7 @@ public final class MobileCaseRunner {
 
     public Outcome run(CaseInput c) {
         List<String> log = new ArrayList<>();
+        captured.clear();
         try {
             for (int i = 0; i < c.steps().size(); i++) {
                 String data = i < c.testData().size() ? c.testData().get(i) : "";
@@ -109,7 +123,7 @@ public final class MobileCaseRunner {
                 log.add((err == null ? "ok: " : "FAIL: ") + step.raw() + (err == null ? "" : " — " + err));
                 tryCaptureStep(c.tcId(), i + 1);
                 if (err != null) {
-                    return new Outcome(c.tcId(), CaseOutcome.FAILED, code(err), i + 1, err, log);
+                    return finish(c.tcId(), CaseOutcome.FAILED, code(err), i + 1, err, log);
                 }
             }
             for (String exp : c.expected()) {
@@ -121,18 +135,22 @@ public final class MobileCaseRunner {
                 String err = execute(check);
                 log.add((err == null ? "ok: " : "FAIL: ") + "expected " + exp + (err == null ? "" : " — " + err));
                 if (err != null) {
-                    return new Outcome(c.tcId(), CaseOutcome.FAILED, "ASSERTION_FAILED", -1, err, log);
+                    return finish(c.tcId(), CaseOutcome.FAILED, "ASSERTION_FAILED", -1, err, log);
                 }
             }
-            return new Outcome(c.tcId(), CaseOutcome.PASSED, "", -1, "", log);
+            return finish(c.tcId(), CaseOutcome.PASSED, "", -1, "", log);
         } catch (MobileExecuteEngine.DeviceLostException e) {
             throw e;
         } catch (RuntimeException e) {
             if (isTransport(e)) {
                 throw new MobileExecuteEngine.DeviceLostException(e.getMessage());
             }
-            return new Outcome(c.tcId(), CaseOutcome.FAILED, "RUNNER_ERROR", -1, String.valueOf(e.getMessage()), log);
+            return finish(c.tcId(), CaseOutcome.FAILED, "RUNNER_ERROR", -1, String.valueOf(e.getMessage()), log);
         }
+    }
+
+    private Outcome finish(String tcId, CaseOutcome outcome, String code, int failedStep, String detail, List<String> log) {
+        return new Outcome(tcId, outcome, code, failedStep, detail, log, List.copyOf(captured));
     }
 
     /** @return null on success, else a reason. */
@@ -164,6 +182,9 @@ public final class MobileCaseRunner {
         MobileSnapshot snap = driver.pageSource();
         if (step.kind() == MobileStep.Kind.ASSERT_VISIBLE || step.kind() == MobileStep.Kind.ASSERT_NOT_VISIBLE) {
             List<MobileSnapshotNode> matches = textMatches(snap, step.target());
+            captured.add(matches.isEmpty()
+                    ? WalkedLocator.shell(step.target())
+                    : WalkedLocator.fromNode(matches.get(0), step.target()));
             AssertResult r = asserts.assertVisible(snap, matches, step.kind() == MobileStep.Kind.ASSERT_VISIBLE);
             return r.passed() ? null : (r.detail() + ": \"" + step.target() + "\"");
         }
@@ -173,6 +194,9 @@ public final class MobileCaseRunner {
             default -> ActionKind.TAP;
         };
         Optional<Integer> node = bind(snap, step.target(), kind);
+        captured.add(node.isEmpty()
+                ? WalkedLocator.shell(step.target())
+                : WalkedLocator.fromNode(snap.node(node.get()), step.target()));
         if (node.isEmpty()) {
             return "element not found: \"" + step.target() + "\"";
         }

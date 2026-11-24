@@ -387,6 +387,10 @@ Turn the workbook into a **downloadable Java Selenium TestNG** package.
 4. **IR** (proven drafts) → optional revise → **Emit** page objects + tests (page-under-test names: `/login` → `Login_Page` + `Login_Test`; several Excel cases on the same screen merge into one test class with multiple `@Test` methods; filtered echo/html noise, collapsed login helpers, semantic login keys only for TARGET placeholders).
 5. Package the **customer-framework-template** into a ZIP.
 
+### Android projects
+
+Automate does not open Chrome. If the project has a saved phone that is plugged in and free, and an app package, Keel opens the app and writes the locators the phone walk found. If the phone or the mobile runner is not available, the zip is still built and each control is a text shell from the Excel label. The job message says which one happened.
+
 ### Jobs & status
 
 - `/jobs` — Automate history, status, download.

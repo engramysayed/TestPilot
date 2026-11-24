@@ -38,6 +38,7 @@ public class ConversionWorker extends AbstractJobWorker {
     private final Environment env;
     private final AgentHarnessProperties harnessProps;
     private final delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy;
+    private delivery.mobile.automate.MobileAutomateConversion mobileAutomate;
 
     public ConversionWorker(
             DeliveryPortalProperties props,
@@ -50,6 +51,11 @@ public class ConversionWorker extends AbstractJobWorker {
         this.env = env;
         this.harnessProps = harnessProps == null ? new AgentHarnessProperties() : harnessProps;
         this.workspaceAiPolicy = workspaceAiPolicy;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setMobileAutomate(delivery.mobile.automate.MobileAutomateConversion mobileAutomate) {
+        this.mobileAutomate = mobileAutomate;
     }
 
     @Override
@@ -119,9 +125,12 @@ public class ConversionWorker extends AbstractJobWorker {
                     delivery.job.TenantScope.HOSTED
             );
 
-            ConversionJobResult result;
             BooleanSupplier cancelCheck = () -> !portalStore.ownsAttempt(
                     portalStore.getJob(jobId).orElse(null), lease);
+            ConversionJobResult result = mobileAutomate == null
+                    ? null
+                    : mobileAutomate.tryConvert(job, request, cancelCheck).orElse(null);
+            if (result == null) {
             java.time.Duration harnessBudget = harnessBudget(job, lease);
             delivery.job.PublicationGuard guard = buildPublicationGuard(
                     job, lease, cancelCheck, harnessBudget, request);
@@ -138,6 +147,7 @@ public class ConversionWorker extends AbstractJobWorker {
                 ConversionJobRunner runner = conversionRunner(job, lease);
                 result = runWithProgressMirror(job, runner.progress(), lease,
                         () -> runner.run(request, cancelCheck, guard));
+            }
             }
 
             job.setPassedCount(result.passed());

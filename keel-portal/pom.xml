@@ -43,6 +43,11 @@
                 <artifactId>mobile-contracts</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.example</groupId>
+                <artifactId>mobile-codegen</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>org.testng</groupId>
