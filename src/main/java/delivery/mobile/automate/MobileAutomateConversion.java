@@ -21,6 +21,7 @@ import delivery.mobile.persistence.MobileDeviceRepository;
 import delivery.mobile.run.DeviceSerialResolver;
 import delivery.mobile.run.MobileRun;
 import delivery.mobile.run.MobileRunOrchestrator;
+import delivery.mobile.run.MobileRunnerSupervisor;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.JobRecord;
 import delivery.portal.service.PortalStore;
@@ -59,6 +60,7 @@ public class MobileAutomateConversion {
     private final MobileDeviceProfileRepository profiles;
     private final DeviceSerialResolver serials;
     private final MobileRunOrchestrator orchestrator;
+    private final MobileRunnerSupervisor runners;
     private final ConcurrentHashMap<String, String> deviceByJob = new ConcurrentHashMap<>();
 
     public MobileAutomateConversion(PortalStore portalStore,
@@ -68,7 +70,8 @@ public class MobileAutomateConversion {
                                     MobileDeviceRepository devices,
                                     MobileDeviceProfileRepository profiles,
                                     DeviceSerialResolver serials,
-                                    MobileRunOrchestrator orchestrator) {
+                                    MobileRunOrchestrator orchestrator,
+                                    MobileRunnerSupervisor runners) {
         this.portalStore = portalStore;
         this.portalProps = portalProps;
         this.mobileProps = mobileProps;
@@ -77,6 +80,7 @@ public class MobileAutomateConversion {
         this.profiles = profiles;
         this.serials = serials;
         this.orchestrator = orchestrator;
+        this.runners = runners;
     }
 
     /** Remember the phone chosen on the Automate page. Blank means the user chose none. */
@@ -106,7 +110,9 @@ public class MobileAutomateConversion {
         out.put("appRevisionId", rev.map(MobileAppRevisionRecord::getAppRevisionId).orElse(""));
         String appLabel = pkg.isBlank() ? "No app saved" : (pkg + (version.isBlank() ? "" : " " + version));
         out.put("appLabel", appLabel);
+        runners.ensureStarted();
         out.put("runnerOnline", orchestrator.runnerOnline());
+        out.put("runnerMessage", runners.line());
         if (!mobileProps.isEnabled()) {
             out.put("phoneName", "");
             out.put("phoneState", "NONE");
@@ -136,7 +142,8 @@ public class MobileAutomateConversion {
         if (!orchestrator.runnerOnline()) {
             out.put("phoneState", "READY");
             out.put("blocked", true);
-            out.put("message", "The mobile runner is not running. Start it, then try again.");
+            out.put("runnerOnline", false);
+            out.put("message", runners.line());
             return out;
         }
         out.put("phoneState", "READY");
@@ -213,8 +220,8 @@ public class MobileAutomateConversion {
     private Map<String, List<MobileAutomateIr.Locator>> walk(
             JobRecord job, String tenant, String deviceId, String revisionId,
             List<ManualTestCase> cases, BooleanSupplier cancel) throws Exception {
-        List<String> ids = cases.stream().map(ManualTestCase::tcId).toList();
-        MobileRun run = orchestrator.startWalk(tenant, job.getProjectId(), job.getOwnerUserId(), deviceId, ids, revisionId);
+        MobileRun run = orchestrator.startWalkProvided(
+                tenant, job.getProjectId(), job.getOwnerUserId(), deviceId, cases, revisionId);
         try {
             await(run, cancel);
         } catch (JobCancelledException e) {

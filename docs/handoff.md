@@ -2,7 +2,17 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-24 (phone cases, screens, run list, live video).
+**Last updated:** 2026-11-24 (uploaded walk, runner start, video, batch review).
+
+## Uploaded walk (2026-11-24)
+
+- `MobileAutomateConversion.walk` calls `startWalkProvided` with the uploaded rows. It does not re-read the library.
+- After the first miss, `MobileCaseRunner` locates later steps and does not tap, type, or swipe them.
+- `ScreenSignature` prefixes the Android activity, so a new activity is a new screen class.
+- Phone rows link to `/execute?projectId=&jobId=mrun_…`. `openExecuteRun` loads the saved mobile run. Download is hidden when `mode` is `phone`.
+- `MobileBatchReview` runs after design compare. It names the failed step and the design status.
+- `MobileRunnerSupervisor` starts `mobile-runner` with Maven when `delivery.mobile.runner.autostart` is true and `KEEL_RUNNER_TOKEN` is set. The page shows that sentence before Start. Tests set autostart false.
+- Live video is fragmented MP4 from `adb screenrecord`, played with Media Source. Stills remain the fallback. Not verified on a phone. The portal already on port 8080 was not restarted.
 
 ## Phone cases and the run list (2026-11-24)
 
@@ -10,7 +20,7 @@ Volatile state. Edit this every session. Companion to [`engineering.md`](enginee
 - `ScreenSignature` is stored on each walked locator and becomes the screen class.
 - `trackJob` writes the mobile run into the normal job list as an Execute row. Open Status to read the review. It does not open the website results page. The row keeps a long lease so the job reconciler does not requeue it.
 - `GET .../live.mp4` is `adb screenrecord` wrapped by `H264Fmp4`. Stills remain the fallback. A busy phone returns a note and is not captured.
-- The runner is still a separate process. The page shows running or not before Start. It is not started by the portal.
+- The runner is still a separate process. With `KEEL_RUNNER_TOKEN` set, the portal starts it. The page shows that before Start.
 
 ## Start dialog (2026-11-24)
 

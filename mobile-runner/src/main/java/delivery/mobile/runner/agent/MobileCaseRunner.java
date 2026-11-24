@@ -113,8 +113,8 @@ public final class MobileCaseRunner {
     }
 
     /**
-     * @param keepGoing when true, a missed step is recorded and the later steps are still located.
-     *                  Execute passes false and stops at the first failure.
+     * @param keepGoing when true, a missed step is recorded and later steps are located only.
+     *                  They are not tapped, typed, or swiped. Execute passes false and stops.
      */
     public Outcome run(CaseInput c, boolean keepGoing) {
         List<String> log = new ArrayList<>();
@@ -130,10 +130,16 @@ public final class MobileCaseRunner {
                     if (!step.raw().isBlank()) log.add("skip: " + step.raw());
                     continue;
                 }
-                String err = execute(step);
-                log.add((err == null ? "ok: " : "FAIL: ") + step.raw() + (err == null ? "" : " — " + err));
+                boolean watchOnly = keepGoing && firstErr != null;
+                String err = watchOnly ? locate(step) : execute(step);
+                if (watchOnly) {
+                    log.add((err == null ? "located: " : "not on this screen: ") + step.raw()
+                            + (err == null ? "" : " — " + err));
+                } else {
+                    log.add((err == null ? "ok: " : "FAIL: ") + step.raw() + (err == null ? "" : " — " + err));
+                }
                 tryCaptureStep(c.tcId(), i + 1);
-                if (err != null) {
+                if (err != null && !watchOnly) {
                     if (firstErr == null) {
                         firstErr = err;
                         firstStep = i + 1;
@@ -150,9 +156,10 @@ public final class MobileCaseRunner {
                     continue; // only quoted UI text is asserted automatically
                 }
                 MobileStep check = new MobileStep(MobileStep.Kind.ASSERT_VISIBLE, q.get(0), "", "", exp);
-                String err = execute(check);
+                boolean watchOnly = keepGoing && firstErr != null;
+                String err = watchOnly ? locate(check) : execute(check);
                 log.add((err == null ? "ok: " : "FAIL: ") + "expected " + exp + (err == null ? "" : " — " + err));
-                if (err != null) {
+                if (err != null && !watchOnly) {
                     if (firstErr == null) {
                         firstErr = err;
                         firstCode = "ASSERTION_FAILED";
@@ -194,15 +201,26 @@ public final class MobileCaseRunner {
     }
 
     String execute(MobileStep step) {
+        return perform(step, true);
+    }
+
+    /** Record the locator on the current screen. Do not tap, type, swipe, or press back. */
+    private String locate(MobileStep step) {
+        return perform(step, false);
+    }
+
+    private String perform(MobileStep step, boolean act) {
         switch (step.kind()) {
             case BACK:
-                return status(actions.pressBack(true));
+                return act ? status(actions.pressBack(true)) : null;
             case LAUNCH:
+                if (!act) return null;
                 if (appPackage.isBlank()) return "no app package configured for the project";
                 return status(actions.launch(appPackage, appActivity, true));
             case SWIPE:
                 MobileSnapshot swipeSnap = driver.pageSource();
                 remember(WalkedLocator.fromScrollable(swipeSnap.nodes()), swipeSnap);
+                if (!act) return null;
                 return status(actions.swipe(NormalizedSwipe.forDirection(ScrollDirection.parse(step.direction()), 0.6),
                         null, true));
             default:
@@ -214,6 +232,11 @@ public final class MobileCaseRunner {
             remember(matches.isEmpty()
                     ? WalkedLocator.shell(step.target())
                     : WalkedLocator.fromNode(matches.get(0), step.target()), snap);
+            if (!act) {
+                boolean wantVisible = step.kind() == MobileStep.Kind.ASSERT_VISIBLE;
+                boolean seen = !matches.isEmpty();
+                return seen == wantVisible ? null : "not on this screen: \"" + step.target() + "\"";
+            }
             AssertResult r = asserts.assertVisible(snap, matches, step.kind() == MobileStep.Kind.ASSERT_VISIBLE);
             return r.passed() ? null : (r.detail() + ": \"" + step.target() + "\"");
         }
@@ -228,6 +251,9 @@ public final class MobileCaseRunner {
                 : WalkedLocator.fromNode(snap.node(node.get()), step.target()), snap);
         if (node.isEmpty()) {
             return "element not found: \"" + step.target() + "\"";
+        }
+        if (!act) {
+            return null;
         }
         return switch (step.kind()) {
             case TYPE -> status(actions.type(node.get(), step.value(), false, true));

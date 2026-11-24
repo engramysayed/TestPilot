@@ -62,7 +62,10 @@
 
   function phoneStatus(plan) {
     const msg = String(plan.message || '');
-    if (/runner is not running/i.test(msg)) {
+    if (/starting/i.test(msg)) {
+      return 'Mobile runner is starting';
+    }
+    if (/runner is not running/i.test(msg) || /KEEL_RUNNER_TOKEN/i.test(msg)) {
       return 'Phone is free, but the mobile runner is not running';
     }
     if (plan.phoneState === 'BUSY') return 'Busy — another run is using this phone';
@@ -91,6 +94,9 @@
       img.hidden = true;
       img.removeAttribute('src');
       if (video) {
+        if (video._keelAbort) {
+          try { video._keelAbort.abort(); } catch (e) { /* ignore */ }
+        }
         video.hidden = true;
         video.removeAttribute('src');
       }
@@ -127,19 +133,120 @@
       };
     }
     showNote('');
-    if (video) {
-      video.hidden = false;
-      img.hidden = true;
-      video.src = base + '/live.mp4?t=' + Date.now();
-      video.onerror = function () {
-        video.hidden = true;
-        video.removeAttribute('src');
-        startStills();
-      };
+    if (video && window.MediaSource) {
+      playStream(video, img, base + '/live.mp4?t=' + Date.now(), startStills);
     } else {
       startStills();
     }
   };
+
+  function playStream(video, img, url, onFail) {
+    if (video._keelAbort) {
+      try { video._keelAbort.abort(); } catch (e) { /* ignore */ }
+    }
+    const ctrl = new AbortController();
+    video._keelAbort = ctrl;
+    const ms = new MediaSource();
+    video.hidden = false;
+    img.hidden = true;
+    video.src = URL.createObjectURL(ms);
+    let failed = false;
+    function fail() {
+      if (failed || ctrl.signal.aborted) return;
+      failed = true;
+      clearTimeout(timer);
+      video.hidden = true;
+      try { video.removeAttribute('src'); } catch (e) { /* ignore */ }
+      onFail();
+    }
+    const timer = setTimeout(fail, 8000);
+    ms.addEventListener('sourceopen', async function () {
+      try {
+        const res = await fetch(url, { credentials: 'same-origin', signal: ctrl.signal });
+        if (!res.ok || !res.body) throw new Error('no video');
+        const reader = res.body.getReader();
+        const chunks = [];
+        let sb = null;
+        while (true) {
+          const part = await reader.read();
+          if (part.done) break;
+          if (!sb) {
+            chunks.push(part.value);
+            const blob = concatBytes(chunks);
+            const codec = codecFrom(blob);
+            if (!codec) {
+              if (blob.length > 200000) throw new Error('no init');
+              continue;
+            }
+            clearTimeout(timer);
+            sb = ms.addSourceBuffer('video/mp4; codecs="' + codec + '"');
+            sb.mode = 'sequence';
+            await appendBuffer(sb, blob);
+            chunks.length = 0;
+            video.play().catch(function () { /* autoplay is best-effort */ });
+          } else {
+            await appendBuffer(sb, part.value);
+          }
+        }
+        if (!sb) {
+          fail();
+        } else if (!ctrl.signal.aborted) {
+          playStream(video, img, url.replace(/t=\d+/, 't=' + Date.now()), onFail);
+        }
+      } catch (e) {
+        fail();
+      }
+    });
+  }
+
+  function concatBytes(parts) {
+    let n = 0;
+    parts.forEach(function (p) { n += p.length; });
+    const out = new Uint8Array(n);
+    let at = 0;
+    parts.forEach(function (p) {
+      out.set(p, at);
+      at += p.length;
+    });
+    return out;
+  }
+
+  function codecFrom(bytes) {
+    for (let i = 0; i + 8 < bytes.length; i++) {
+      if (bytes[i] === 0x61 && bytes[i + 1] === 0x76 && bytes[i + 2] === 0x63 && bytes[i + 3] === 0x43) {
+        const hex = function (n) { return ('0' + (n & 255).toString(16)).slice(-2); };
+        return 'avc1.' + hex(bytes[i + 5]) + hex(bytes[i + 6]) + hex(bytes[i + 7]);
+      }
+    }
+    return '';
+  }
+
+  function appendBuffer(sb, data) {
+    return new Promise(function (resolve, reject) {
+      function go() {
+        const done = function () {
+          sb.removeEventListener('updateend', done);
+          resolve();
+        };
+        sb.addEventListener('updateend', done);
+        try {
+          sb.appendBuffer(data);
+        } catch (e) {
+          sb.removeEventListener('updateend', done);
+          reject(e);
+        }
+      }
+      if (sb.updating) {
+        const once = function () {
+          sb.removeEventListener('updateend', once);
+          go();
+        };
+        sb.addEventListener('updateend', once);
+      } else {
+        go();
+      }
+    });
+  }
 
   global.keelWatchRunner = function (el, projectId) {
     if (!el) return;
@@ -151,9 +258,8 @@
     async function tick() {
       const plan = await global.keelMobileWalkPlan(projectId);
       el.hidden = false;
-      el.textContent = plan.runnerOnline
-        ? 'Mobile runner: running'
-        : 'Mobile runner: not running. Start the mobile runner before you press Start.';
+      el.textContent = plan.runnerMessage
+        || (plan.runnerOnline ? 'Mobile runner is running.' : 'Mobile runner is not running.');
     }
     tick();
     el._keelRunnerTimer = setInterval(tick, 10000);

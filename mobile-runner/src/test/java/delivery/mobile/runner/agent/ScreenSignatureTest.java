@@ -18,19 +18,32 @@ public class ScreenSignatureTest {
     public void aDifferentControlSetIsADifferentScreen() {
         String login = ScreenSignature.of(snap("Sign in", "com.app:id/login"), "com.app");
         String pay = ScreenSignature.of(snap("Checkout", "com.app:id/pay"), "com.app");
-        assertTrue(login.startsWith("SignIn"), login);
-        assertTrue(pay.startsWith("Checkout"), pay);
+        assertTrue(login.contains("SignIn"), login);
+        assertTrue(pay.contains("Checkout"), pay);
+        assertNotEquals(login, pay);
+    }
+
+    @Test
+    public void aNewActivityIsANewScreenEvenWhenTheTitleMatches() {
+        String login = ScreenSignature.of(snap(".LoginActivity", "Welcome", "com.app:id/title"), "com.app");
+        String pay = ScreenSignature.of(snap(".CheckoutActivity", "Welcome", "com.app:id/title"), "com.app");
+        assertTrue(login.contains("LoginActivity"), login);
+        assertTrue(pay.contains("CheckoutActivity"), pay);
         assertNotEquals(login, pay);
     }
 
     private static MobileSnapshot snap(String title, String id) {
+        return snap(".Main", title, id);
+    }
+
+    private static MobileSnapshot snap(String activity, String title, String id) {
         MobileSnapshotNode heading = new MobileSnapshotNode(0, null, "android.widget.TextView", "com.app",
                 "", "", title, "", new MobileBounds(0, 0, 100, 40),
                 true, true, false, false, false, false, false, false, false, false, "0", List.of());
         MobileSnapshotNode button = new MobileSnapshotNode(1, 0, "android.widget.Button", "com.app",
                 id, "", "Go", "", new MobileBounds(0, 50, 100, 90),
                 true, true, true, false, false, false, false, false, false, false, "0", List.of());
-        return new MobileSnapshot(new MobileSnapshotMeta(1, 1L, "com.app", ".Main",
+        return new MobileSnapshot(new MobileSnapshotMeta(1, 1L, "com.app", activity,
                 "NATIVE", 0, 720, 1280, "en", MobileSnapshotInvalidation.NONE),
                 List.of(heading, button), 0, "", 0);
     }

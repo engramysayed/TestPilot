@@ -1255,6 +1255,13 @@
     }
 
     async function openExecuteRun(jobId) {
+        if (jobId && String(jobId).indexOf('mrun_') === 0) {
+            const projectId = (projectSel && projectSel.value) || deepLinkProjectId;
+            if (projectId) {
+                watchMobileRun(projectId, jobId);
+            }
+            return;
+        }
         try {
             sessionStorage.setItem(LAST_JOB_KEY, jobId);
         } catch (e) { /* ignore */ }

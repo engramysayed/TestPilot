@@ -58,7 +58,7 @@
                     <td class="actions">
                         <a class="button ghost small" th:href="${j['statusUrl']}">Status</a>
                         <a class="button small" th:if="${j['resultsUrl'] != null}" th:href="${j['resultsUrl']}">Results</a>
-                        <a th:if="${j.status == 'COMPLETED' or j.status == 'COMPLETED_WITH_BLOCK' or (j.jobKind == 'HUNT' and j.status == 'FAILED')}" class="button"
+                        <a th:if="${j.mode != 'phone' and (j.status == 'COMPLETED' or j.status == 'COMPLETED_WITH_BLOCK' or (j.jobKind == 'HUNT' and j.status == 'FAILED'))}" class="button"
                            th:href="@{/api/jobs/{id}/download(id=${j.jobId})}">Download</a>
                         <button type="button" class="button small danger run-delete"
                                 th:attr="data-job-id=${j.jobId},data-job-kind=${j.jobKind}"

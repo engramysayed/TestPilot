@@ -200,20 +200,54 @@ public class MobileRunOrchestrator {
                     "Phone '" + nz(device.getDisplayName()) + "' is " + nz(device.getBusy())
                             + ". Wait for the current run to finish, or pick another phone.");
         }
-        List<MobileRun.CaseInput> cases = new ArrayList<>();
-        if (provided != null) {
-            for (ManualTestCase tc : provided) {
-                if (tc == null || "MANUAL".equalsIgnoreCase(tc.keelPath())) {
-                    continue;
-                }
-                cases.add(new MobileRun.CaseInput(tc.tcId(), nz(tc.title()),
-                        lines(tc.steps()), lines(tc.expectedResult()), lines(tc.testData())));
-            }
-        }
+        List<MobileRun.CaseInput> cases = casesFrom(provided);
         if (cases.isEmpty()) {
             throw new IllegalArgumentException("No runnable test cases in the uploaded workbook");
         }
         return launch(tenantId, projectId, ownerUserId, deviceId, cases, appRevisionId, "EXECUTE", 0);
+    }
+
+    /** Walk exactly these workbook rows. A missed step locates the rest and does not tap them. */
+    public MobileRun startWalkProvided(String tenantId, String projectId, Long ownerUserId, String deviceId,
+                                       List<ManualTestCase> provided, String appRevisionId) throws Exception {
+        if (!props.isEnabled()) {
+            throw new IllegalStateException("Mobile is disabled (delivery.mobile.enabled=false)");
+        }
+        requireRunner();
+        MobileDeviceEntity device = devices.findByDeviceId(deviceId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No phone is registered under id '" + deviceId + "'. "
+                                + "Open Project Settings → Phones and press Find connected phones."));
+        if (!tenantId.equals(device.getTenantId())) {
+            throw new IllegalArgumentException(
+                    "This phone is not registered to your workspace. Pick one from Project Settings → Phones.");
+        }
+        if (!"AVAILABLE".equalsIgnoreCase(nz(device.getBusy()))) {
+            throw new IllegalStateException(
+                    "Phone '" + nz(device.getDisplayName()) + "' is " + nz(device.getBusy())
+                            + ". Wait for the current run to finish, or pick another phone.");
+        }
+        List<MobileRun.CaseInput> cases = casesFrom(provided);
+        if (cases.isEmpty()) {
+            throw new IllegalArgumentException("No runnable test cases in the uploaded workbook");
+        }
+        return launch(tenantId, projectId, ownerUserId, deviceId, cases, appRevisionId, "WALK", 0);
+    }
+
+    /** The rows Automate and an uploaded Execute run hand the phone. Manual rows are skipped. */
+    static List<MobileRun.CaseInput> casesFrom(List<ManualTestCase> provided) {
+        List<MobileRun.CaseInput> cases = new ArrayList<>();
+        if (provided == null) {
+            return cases;
+        }
+        for (ManualTestCase tc : provided) {
+            if (tc == null || "MANUAL".equalsIgnoreCase(tc.keelPath())) {
+                continue;
+            }
+            cases.add(new MobileRun.CaseInput(tc.tcId(), nz(tc.title()),
+                    lines(tc.steps()), lines(tc.expectedResult()), lines(tc.testData())));
+        }
+        return cases;
     }
 
     /** Open the app and tap controls the runner has not tried. Does not follow a workbook. */
@@ -537,10 +571,6 @@ public class MobileRunOrchestrator {
         run.message = message;
         run.error = error == null ? "" : error;
         run.finishedAt = Instant.now();
-        String review = MobileBatchReview.of(run);
-        if (!review.isBlank()) {
-            run.message = (run.message == null || run.message.isBlank() ? "" : run.message + " ") + review;
-        }
         trackJob(run, run.message);
         if (!run.leaseId.isBlank()) {
             try {
@@ -556,6 +586,11 @@ public class MobileRunOrchestrator {
         }
         if (status == MobileRun.Status.COMPLETED || status == MobileRun.Status.FAILED) {
             tryRunDesignCompare(run);
+        }
+        String review = MobileBatchReview.of(run, evidenceDir(run.runId));
+        if (!review.isBlank()) {
+            run.message = review;
+            trackJob(run, run.message);
         }
         try {
             MobilePrecisionBindService precision = precisionProvider.getIfAvailable();
@@ -618,6 +653,13 @@ public class MobileRunOrchestrator {
                 case CANCELLED -> JobRecord.Status.CANCELLED;
                 default -> JobRecord.Status.RUNNING;
             });
+            JSONObject view = run.view();
+            int passed = view.optInt("passed");
+            int failed = view.optInt("failed");
+            job.setPassedCount(passed);
+            job.setTodoCount(failed);
+            job.setProgressTotal(Math.max(run.cases.size(), passed + failed));
+            job.setProgressCurrent(passed + failed);
             job.setMessage(message == null ? "" : message);
             portalStore.saveJob(job);
         } catch (RuntimeException e) {
@@ -631,6 +673,27 @@ public class MobileRunOrchestrator {
             Files.writeString(runsRoot.resolve(run.runId + ".json"), run.view().toString(2), StandardCharsets.UTF_8);
         } catch (Exception e) {
             log.warn("Could not persist mobile run {}: {}", run.runId, e.getMessage());
+        }
+    }
+
+    /** Remove a finished phone run from the list and delete its saved result. */
+    public void discard(String runId) {
+        if (runId == null || !runId.startsWith("mrun_")) {
+            return;
+        }
+        MobileRun live = runs.get(runId);
+        if (live != null && !live.status.terminal()) {
+            return;
+        }
+        runs.remove(runId);
+        try {
+            Files.deleteIfExists(runsRoot.resolve(runId + ".json"));
+            Path dir = runsRoot.resolve(runId);
+            if (Files.isDirectory(dir)) {
+                delivery.store.ProjectStore.deleteRecursive(dir);
+            }
+        } catch (Exception e) {
+            log.warn("Could not remove phone run {}: {}", runId, e.getMessage());
         }
     }
 

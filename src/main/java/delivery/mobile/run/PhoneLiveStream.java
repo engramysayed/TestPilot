@@ -108,7 +108,7 @@ public class PhoneLiveStream {
             }
             writeFrame(out, png);
             try {
-                Thread.sleep(500);
+                Thread.sleep(120);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;

@@ -1,5 +1,6 @@
 package delivery.portal.api;
 
+import delivery.mobile.run.MobileRunOrchestrator;
 import delivery.portal.model.JobRecord;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.PortalStore;
@@ -28,10 +29,12 @@ public class JobDeletionController {
 
     private final PortalStore store;
     private final CurrentUserService currentUser;
+    private final MobileRunOrchestrator mobileRuns;
 
-    public JobDeletionController(PortalStore store, CurrentUserService currentUser) {
+    public JobDeletionController(PortalStore store, CurrentUserService currentUser, MobileRunOrchestrator mobileRuns) {
         this.store = store;
         this.currentUser = currentUser;
+        this.mobileRuns = mobileRuns;
     }
 
     @DeleteMapping("/api/runs/{jobId}")
@@ -59,6 +62,9 @@ public class JobDeletionController {
         if (!store.deleteOwnedJobRecord(jobId, ownerId)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiError("NOT_FOUND", "Unknown run").asMap());
+        }
+        if ("phone".equals(job.getMode())) {
+            mobileRuns.discard(jobId);
         }
         return ResponseEntity.ok(Map.of("deleted", true, "jobId", jobId, "kind", job.getJobKind().name()));
     }

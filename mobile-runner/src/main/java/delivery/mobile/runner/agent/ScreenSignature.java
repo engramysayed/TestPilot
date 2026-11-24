@@ -8,13 +8,55 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
-/** Names the screen from what is visible, so a new page becomes a new screen class. */
+/**
+ * Names the screen from the Android activity, then from what is visible.
+ * A new activity is a new screen class even when the titles look alike.
+ */
 public final class ScreenSignature {
 
     private ScreenSignature() {
     }
 
     public static String of(MobileSnapshot snap, String appPackage) {
+        String activity = activityStem(snap);
+        String visible = visibleKey(snap, appPackage);
+        if (activity.isBlank()) {
+            return visible;
+        }
+        if (visible.isBlank()) {
+            return activity;
+        }
+        return activity + visible;
+    }
+
+    /** The activity class, such as LoginActivity. Blank when the phone did not report one. */
+    static String activityStem(MobileSnapshot snap) {
+        if (snap == null || snap.meta() == null || snap.meta().activity() == null) {
+            return "";
+        }
+        String act = snap.meta().activity().trim();
+        if (act.isEmpty()) {
+            return "";
+        }
+        int slash = act.lastIndexOf('/');
+        if (slash >= 0 && slash + 1 < act.length()) {
+            act = act.substring(slash + 1);
+        }
+        int dot = act.lastIndexOf('.');
+        if (dot >= 0 && dot + 1 < act.length()) {
+            act = act.substring(dot + 1);
+        }
+        String cleaned = act.replaceAll("[^A-Za-z0-9]", "");
+        if (cleaned.isEmpty() || "Screen".equalsIgnoreCase(cleaned) || "Page".equalsIgnoreCase(cleaned)) {
+            return "";
+        }
+        if (Character.isDigit(cleaned.charAt(0))) {
+            cleaned = "A" + cleaned;
+        }
+        return cleaned;
+    }
+
+    private static String visibleKey(MobileSnapshot snap, String appPackage) {
         if (snap == null || snap.nodes() == null || snap.nodes().isEmpty()) {
             return "";
         }

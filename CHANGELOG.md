@@ -2,6 +2,16 @@
 
 # Keel changelog
 
+## 2026-11-24 — The phone walks the uploaded rows
+
+- Automate walks the rows in the file you uploaded. After the first step that cannot be found, later steps are located and are not tapped.
+- A new Android activity becomes its own screen class.
+- A finished phone run stays on the runs page. Results opens that phone table again, with a review of what passed, which step failed, and the design compare. That row has no download.
+- When `KEEL_RUNNER_TOKEN` is set, the portal starts the mobile runner. The phone pages say whether it is running, starting, or still needs that token, before you press Start.
+- The live picture plays the phone's H.264 recording. If the phone cannot record, the page shows stills.
+
+Known: this was not clicked in the browser, and no phone was attached. The review is a written summary of the run, not a second model review. The runner starts only when the token is in the environment and Maven is on PATH.
+
 ## 2026-11-24 — Phone runs follow the cases, split screens, and show up in the run list
 
 - Android Bug Hunter runs the library cases you check, including steps that type. With none checked, it taps up to the number in Max taps (1–80), and that number is what the page shows.

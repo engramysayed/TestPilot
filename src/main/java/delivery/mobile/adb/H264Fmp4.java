@@ -70,7 +70,7 @@ public final class H264Fmp4 {
         sequence++;
         byte[] moof = moof(0, sample.length);
         moof = moof(moof.length + 8, sample.length);
-        decodeTime += 3000;
+        decodeTime += 1000;
         return concat(moof, box("mdat", sample));
     }
 
@@ -78,10 +78,10 @@ public final class H264Fmp4 {
         return box("moof", concat(
                 full("mfhd", 0, u32(sequence)),
                 box("traf", concat(
-                        full("tfhd", 0, u32(1)),
+                        full("tfhd", 0x020000, u32(1)),
                         full("tfdt", 0, u32((int) decodeTime)),
-                        full("trun", 0x000001 | 0x000200 | 0x000400,
-                                concat(u32(1), u32(dataOffset), u32(3000), u32(sampleLength)))
+                        full("trun", 0x000001 | 0x000100 | 0x000200 | 0x000400,
+                                concat(u32(1), u32(dataOffset), u32(1000), u32(sampleLength), u32(0x02000000)))
                 ))));
     }
 
