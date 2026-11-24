@@ -2,7 +2,12 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-24 (Automate phone picker, compile gate, walk continues).
+**Last updated:** 2026-11-24 (start dialog shows phone status).
+
+## Start dialog (2026-11-24)
+
+- `keelConfirmMobileWalk` lists Phone, Status, and App. Status is Available, Busy, Not connected, or runner-not-running. Same dialog on Automate, Execute, and Bug Hunter.
+- `runnerOnline` also moves on runner heartbeat, so a runner inside a case is not reported as stopped.
 
 ## Android Automate limits closed (2026-11-24)
 

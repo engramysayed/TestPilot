@@ -387,7 +387,9 @@ public class MobileRunOrchestrator {
     /** @return {@code cancel=true} when the runner must stop. */
     public JSONObject runnerHeartbeat(String runId, String tenantId, String progress) {
         MobileRun run = requireRunnerRun(runId, tenantId);
-        run.lastRunnerHeartbeat = Instant.now();
+        Instant now = Instant.now();
+        run.lastRunnerHeartbeat = now;
+        lastRunnerPoll = now;
         if (progress != null && !progress.isBlank()) {
             run.message = progress.length() > 200 ? progress.substring(0, 200) : progress;
         }

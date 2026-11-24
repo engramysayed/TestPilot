@@ -20,7 +20,7 @@
         + 'border-radius:12px;border:1px solid var(--calm-line,var(--border,#d0d7de));'
         + 'padding:1.1rem 1.25rem;box-shadow:0 12px 40px rgba(0,0,0,.18);color:var(--calm-ink,inherit)}'
         + '#' + ROOT_ID + ' .keel-modal h3{margin:0 0 .35rem;font-size:1.05rem}'
-        + '#' + ROOT_ID + ' .keel-modal .lede{margin:0 0 .9rem;color:var(--muted,#656d76);font-size:.9rem;line-height:1.45}'
+        + '#' + ROOT_ID + ' .keel-modal .lede{margin:0 0 .9rem;color:var(--muted,#656d76);font-size:.9rem;line-height:1.45;white-space:pre-line}'
         + '#' + ROOT_ID + ' .keel-modal-actions{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem}'
         + '#' + ROOT_ID + ' .keel-modal-actions .danger{background:var(--calm-bad,#b23b3b);border-color:var(--calm-bad,#b23b3b);color:#fff}';
       document.head.appendChild(s);

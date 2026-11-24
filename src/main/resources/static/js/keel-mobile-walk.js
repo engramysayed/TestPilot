@@ -42,29 +42,36 @@
     }
     const phone = plan.phoneName ? plan.phoneName : 'None connected';
     const app = plan.appLabel ? plan.appLabel : 'No app saved';
-    if (plan.blocked) {
+    const status = phoneStatus(plan);
+    const lines = 'Phone: ' + phone + '\nStatus: ' + status + '\nApp: ' + app;
+    if (plan.blocked || (mode === 'execute' && plan.phoneState !== 'READY')) {
       await global.keelAlert({
         title: 'This run cannot start',
-        message: plan.message || ('Phone ' + phone + ' is not free.')
-      });
-      return null;
-    }
-    if (mode === 'execute' && plan.phoneState !== 'READY') {
-      await global.keelAlert({
-        title: 'This run cannot start',
-        message: 'No phone is connected. Plug one in, then open Project Settings and press Find connected phones.'
+        message: lines + (plan.message ? '\n' + plan.message : '')
       });
       return null;
     }
     const shells = mode === 'automate' && plan.phoneState !== 'READY';
     const ok = await global.keelConfirm({
       title: shells ? 'Build without a phone?' : 'Start on this phone?',
-      message: 'Phone: ' + phone + '. App: ' + app + '.'
-        + (shells ? ' No phone is connected, so locators will be the words from the Excel file.' : ''),
+      message: lines + (shells ? '\nNo phone is connected, so locators will be the words from the Excel file.' : ''),
       confirmLabel: shells ? 'Build anyway' : 'Start'
     });
     return ok ? plan : null;
   };
+
+  function phoneStatus(plan) {
+    const msg = String(plan.message || '');
+    if (/runner is not running/i.test(msg)) {
+      return 'Phone is free, but the mobile runner is not running';
+    }
+    if (plan.phoneState === 'BUSY') return 'Busy — another run is using this phone';
+    if (plan.phoneState === 'OFFLINE') return 'Not connected';
+    if (plan.phoneState === 'NONE') return 'None connected';
+    if (plan.phoneState === 'READY' && plan.blocked) return 'Not ready';
+    if (plan.phoneState === 'READY') return 'Available';
+    return 'Not connected';
+  }
 
   /** Show the phone's screen in an img. The stream lasts a few minutes, then this reconnects. */
   global.keelAttachPhoneLive = function (img, projectId, deviceId) {
