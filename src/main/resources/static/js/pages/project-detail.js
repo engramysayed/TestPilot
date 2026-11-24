@@ -3061,30 +3061,58 @@
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(data.message || 'HTTP ' + res.status);
                 pickerAllPackages = data.packages || [];
-                showPickerStatus(pickerAllPackages.length
+                let msg = pickerAllPackages.length
                     ? pickerAllPackages.length + ' installed third-party apps'
-                    : (data.message || 'No third-party apps on this phone.'));
+                    : (data.message || 'No third-party apps on this phone.');
+                // Surface busy state inline — picking a package only reads adb, so it's fine
+                // even on a phone that's mid-test; but the user should know.
+                if (selectedDeviceIsBusy()) {
+                    msg += ' — this phone is ' + selectedDeviceBusyLabel() + '; picking is read-only.';
+                }
+                showPickerStatus(msg);
                 renderPickerList(pickerSearch ? pickerSearch.value : '');
             } catch (e) {
                 showPickerStatus('Could not read packages: ' + (e.message || e), true);
             }
         }
 
+        // AVAILABLE first (0), RESERVED/ACTIVE/RELEASING next (1), QUARANTINED last (2); unknown=1.
+        function busyRank(busy) {
+            const b = (busy || '').toUpperCase();
+            if (b === 'AVAILABLE') return 0;
+            if (b === 'QUARANTINED') return 2;
+            return 1;
+        }
+        function busyText(busy) {
+            const map = {
+                AVAILABLE: 'available',
+                RESERVED: 'reserved for setup',
+                ACTIVE: 'running a test',
+                RELEASING: 'releasing',
+                QUARANTINED: 'quarantined'
+            };
+            return map[(busy || '').toUpperCase()] || (busy || '').toLowerCase();
+        }
+        let pickerDeviceMap = {};
         async function populatePickerDevices() {
             if (!pickerDevice) return [];
             pickerDevice.innerHTML = '';
+            pickerDeviceMap = {};
             try {
                 const res = await fetch(apiUrl('/mobile/devices'), { credentials: 'same-origin', headers: API_HEADERS });
                 const data = await res.json().catch(() => ({}));
-                const devices = (data.devices || []).filter(d =>
-                    (d.authorizedState || '').toUpperCase() === 'AUTHORIZED');
+                const devices = (data.devices || [])
+                    .filter(d => (d.authorizedState || '').toUpperCase() === 'AUTHORIZED')
+                    .slice()
+                    .sort((a, b) => busyRank(a.busy) - busyRank(b.busy));
                 devices.forEach(d => {
+                    pickerDeviceMap[d.deviceId] = d;
                     const opt = document.createElement('option');
                     opt.value = d.deviceId;
                     const name = d.displayName || d.model || d.deviceId;
                     const bits = [name];
                     if (d.serialShort) bits.push(d.serialShort);
-                    if (d.busy) bits.push(d.busy);
+                    bits.push(busyText(d.busy));
                     opt.textContent = bits.join(' · ');
                     pickerDevice.appendChild(opt);
                 });
@@ -3094,6 +3122,16 @@
                 if (pickerDeviceWrap) pickerDeviceWrap.hidden = true;
                 return [];
             }
+        }
+        function selectedDeviceIsBusy() {
+            const id = selectedDeviceId();
+            if (!id || !pickerDeviceMap[id]) return false;
+            return busyRank(pickerDeviceMap[id].busy) !== 0;
+        }
+        function selectedDeviceBusyLabel() {
+            const id = selectedDeviceId();
+            if (!id || !pickerDeviceMap[id]) return '';
+            return busyText(pickerDeviceMap[id].busy);
         }
 
         async function pickPackage(pkg) {

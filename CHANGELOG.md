@@ -2,6 +2,10 @@
 
 # Keel changelog
 
+## 2026-11-24 — Mobile picker: busy-aware device labels
+
+Device dropdown in the pick-from-phone modal now shows which phones are busy and ranks them so free phones come first. Each row is `name · short-serial · <state>` with the state in plain English (`available`, `reserved for setup`, `running a test`, `releasing`, `quarantined`) instead of the raw enum. Available phones sort first; quarantined last. When the selected phone isn't available, the status line under the list explains why picking is still fine: "this phone is running a test; picking is read-only." (The package list fetch is pure adb and doesn't touch the Appium session.)
+
 ## 2026-11-24 — Mobile picker: per-device selection when host has >1 phone
 
 Both installed-packages endpoints now accept an optional `?deviceId=…` to target a specific phone instead of always the first AUTHORIZED one. The modal gains a **Phone** `<select>` at the top (hidden when there's only one authorized device on the host — the common case stays single-click). Changing the dropdown re-fetches the package list for that phone; picking a row then uses the same deviceId for the details fetch so Version + Launch screen come from the right device.
