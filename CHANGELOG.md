@@ -2,6 +2,10 @@
 
 # Keel changelog
 
+## 2026-11-24 — Mobile picker: per-device selection when host has >1 phone
+
+Both installed-packages endpoints now accept an optional `?deviceId=…` to target a specific phone instead of always the first AUTHORIZED one. The modal gains a **Phone** `<select>` at the top (hidden when there's only one authorized device on the host — the common case stays single-click). Changing the dropdown re-fetches the package list for that phone; picking a row then uses the same deviceId for the details fetch so Version + Launch screen come from the right device.
+
 ## 2026-11-24 — Mobile Project Settings polish: modal picker, auto-fill, hide web-only fields
 
 Follow-ups on today's "Load packages from connected phone" button.

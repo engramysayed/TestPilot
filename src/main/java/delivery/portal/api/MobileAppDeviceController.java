@@ -267,23 +267,27 @@ public class MobileAppDeviceController {
     }
 
     /**
-     * Enumerate third-party packages installed on the first AUTHORIZED+AVAILABLE device on this
-     * host for this project's tenant. Powers the "pick from phone" datalist under Package name.
-     * Live adb call — do not poll; call on user action (focus / button click).
+     * Enumerate third-party packages installed on an AUTHORIZED device on this host for this
+     * project's tenant. {@code deviceId} picks a specific phone when the host has more than
+     * one; omit it to fall back to the first AUTHORIZED device. Live adb call — do not poll;
+     * call on user action (modal open / device change).
      */
     @GetMapping("/{projectId}/mobile/apps/installed-packages")
-    public ResponseEntity<?> listInstalledPackages(@PathVariable String projectId) {
+    public ResponseEntity<?> listInstalledPackages(@PathVariable String projectId,
+                                                   @RequestParam(name = "deviceId", required = false) String deviceId) {
         ResponseEntity<?> gate = gate(projectId, false);
         if (gate != null) {
             return gate;
         }
         ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
-        Optional<MobileDeviceEntity> pick = firstAuthorizedOnThisHost(project.getTenantId());
+        Optional<MobileDeviceEntity> pick = pickDevice(project.getTenantId(), deviceId);
         if (pick.isEmpty()) {
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("packages", List.of());
             out.put("source", "");
-            out.put("message", "No authorized phone on this host to query.");
+            out.put("message", deviceId == null || deviceId.isBlank()
+                    ? "No authorized phone on this host to query."
+                    : "Phone not found or not authorized on this host.");
             return ResponseEntity.ok(out);
         }
         MobileDeviceEntity dev = pick.get();
@@ -318,7 +322,8 @@ public class MobileAppDeviceController {
      */
     @GetMapping("/{projectId}/mobile/apps/installed-packages/{pkg}/details")
     public ResponseEntity<?> installedPackageDetails(@PathVariable String projectId,
-                                                     @PathVariable String pkg) {
+                                                     @PathVariable String pkg,
+                                                     @RequestParam(name = "deviceId", required = false) String deviceId) {
         ResponseEntity<?> gate = gate(projectId, false);
         if (gate != null) {
             return gate;
@@ -329,7 +334,7 @@ public class MobileAppDeviceController {
         out.put("versionName", "");
         out.put("versionCode", null);
         out.put("launchActivity", "");
-        Optional<MobileDeviceEntity> pick = firstAuthorizedOnThisHost(project.getTenantId());
+        Optional<MobileDeviceEntity> pick = pickDevice(project.getTenantId(), deviceId);
         if (pick.isEmpty()) {
             out.put("message", "No authorized phone on this host.");
             return ResponseEntity.ok(out);
@@ -363,6 +368,19 @@ public class MobileAppDeviceController {
                 .filter(e -> "AUTHORIZED".equalsIgnoreCase(e.getAuthorizedState()))
                 .filter(e -> e.getSerialFingerprint() != null && !e.getSerialFingerprint().isBlank())
                 .findFirst();
+    }
+
+    /** Pick a specific authorized device by id when given; else the first authorized on this host. */
+    private Optional<MobileDeviceEntity> pickDevice(String tenantId, String deviceId) {
+        if (deviceId == null || deviceId.isBlank()) {
+            return firstAuthorizedOnThisHost(tenantId);
+        }
+        String hostId = serials.hostId();
+        return deviceRepo.findByDeviceId(deviceId)
+                .filter(e -> tenantId.equals(e.getTenantId()))
+                .filter(e -> hostId.equals(e.getHostId()))
+                .filter(e -> "AUTHORIZED".equalsIgnoreCase(e.getAuthorizedState()))
+                .filter(e -> e.getSerialFingerprint() != null && !e.getSerialFingerprint().isBlank());
     }
 
     @GetMapping("/{projectId}/mobile/devices")

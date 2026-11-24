@@ -889,9 +889,10 @@
      aria-labelledby="mobile-package-picker-title">
     <div class="modal-card" style="max-width:28rem;">
         <h3 id="mobile-package-picker-title">Pick an installed app</h3>
-        <p class="muted" style="margin:-0.3rem 0 0.5rem;">
-            Source: <span id="mobile-package-picker-source">—</span>
-        </p>
+        <label id="mobile-package-picker-device-wrap" style="display:block;margin:-0.2rem 0 0.4rem;">
+            Phone
+            <select id="mobile-package-picker-device"></select>
+        </label>
         <input type="text" id="mobile-package-picker-search" placeholder="Filter by package name…" autocomplete="off"/>
         <ul id="mobile-package-picker-list" class="mobile-package-picker-list" role="listbox"
             style="list-style:none;margin:0.6rem 0 0;padding:0;max-height:22rem;overflow:auto;border:1px solid #c5d8e4;border-radius:8px;"></ul>

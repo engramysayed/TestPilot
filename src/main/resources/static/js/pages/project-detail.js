@@ -2996,7 +2996,8 @@
         const packageNameInput = document.getElementById('mobile-package-name');
         const pickerModal = document.getElementById('mobilePackagePickerModal');
         const pickerList = document.getElementById('mobile-package-picker-list');
-        const pickerSource = document.getElementById('mobile-package-picker-source');
+        const pickerDeviceWrap = document.getElementById('mobile-package-picker-device-wrap');
+        const pickerDevice = document.getElementById('mobile-package-picker-device');
         const pickerSearch = document.getElementById('mobile-package-picker-search');
         const pickerStatus = document.getElementById('mobile-package-picker-status');
         const pickerCancel = document.getElementById('mobilePackagePickerCancel');
@@ -3038,13 +3039,70 @@
         function closePicker() { if (pickerModal) pickerModal.classList.add('hidden'); }
         function openPicker() { if (pickerModal) pickerModal.classList.remove('hidden'); }
 
+        function selectedDeviceId() {
+            return pickerDevice && pickerDevice.value ? pickerDevice.value : '';
+        }
+        function packagesUrl() {
+            const id = selectedDeviceId();
+            return apiUrl('/mobile/apps/installed-packages' + (id ? '?deviceId=' + encodeURIComponent(id) : ''));
+        }
+        function detailsUrl(pkg) {
+            const id = selectedDeviceId();
+            return apiUrl('/mobile/apps/installed-packages/' + encodeURIComponent(pkg) + '/details'
+                + (id ? '?deviceId=' + encodeURIComponent(id) : ''));
+        }
+
+        async function loadPackagesForSelectedDevice() {
+            pickerAllPackages = [];
+            if (pickerList) pickerList.innerHTML = '';
+            showPickerStatus('Reading packages from the phone…');
+            try {
+                const res = await fetch(packagesUrl(), { credentials: 'same-origin', headers: API_HEADERS });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.message || 'HTTP ' + res.status);
+                pickerAllPackages = data.packages || [];
+                showPickerStatus(pickerAllPackages.length
+                    ? pickerAllPackages.length + ' installed third-party apps'
+                    : (data.message || 'No third-party apps on this phone.'));
+                renderPickerList(pickerSearch ? pickerSearch.value : '');
+            } catch (e) {
+                showPickerStatus('Could not read packages: ' + (e.message || e), true);
+            }
+        }
+
+        async function populatePickerDevices() {
+            if (!pickerDevice) return [];
+            pickerDevice.innerHTML = '';
+            try {
+                const res = await fetch(apiUrl('/mobile/devices'), { credentials: 'same-origin', headers: API_HEADERS });
+                const data = await res.json().catch(() => ({}));
+                const devices = (data.devices || []).filter(d =>
+                    (d.authorizedState || '').toUpperCase() === 'AUTHORIZED');
+                devices.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.deviceId;
+                    const name = d.displayName || d.model || d.deviceId;
+                    const bits = [name];
+                    if (d.serialShort) bits.push(d.serialShort);
+                    if (d.busy) bits.push(d.busy);
+                    opt.textContent = bits.join(' · ');
+                    pickerDevice.appendChild(opt);
+                });
+                if (pickerDeviceWrap) pickerDeviceWrap.hidden = devices.length < 2;
+                return devices;
+            } catch (e) {
+                if (pickerDeviceWrap) pickerDeviceWrap.hidden = true;
+                return [];
+            }
+        }
+
         async function pickPackage(pkg) {
             if (packageNameInput) packageNameInput.value = pkg;
             closePicker();
             // Auto-fill version + launch activity from the same phone.
             if (pickStatus) { pickStatus.hidden = false; pickStatus.textContent = 'Reading app details from the phone…'; }
             try {
-                const res = await fetch(apiUrl('/mobile/apps/installed-packages/' + encodeURIComponent(pkg) + '/details'),
+                const res = await fetch(detailsUrl(pkg),
                         { credentials: 'same-origin', headers: API_HEADERS });
                 const data = await res.json().catch(() => ({}));
                 if (res.ok) {
@@ -3074,28 +3132,16 @@
 
         if (pickBtn && pickerModal) {
             pickBtn.addEventListener('click', async () => {
-                pickerAllPackages = [];
-                if (pickerList) pickerList.innerHTML = '';
-                if (pickerSource) pickerSource.textContent = '—';
                 if (pickerSearch) pickerSearch.value = '';
                 showPickerStatus('Reading packages from the phone…');
                 openPicker();
                 if (pickerSearch) setTimeout(() => pickerSearch.focus(), 10);
-                try {
-                    const res = await fetch(apiUrl('/mobile/apps/installed-packages'),
-                            { credentials: 'same-origin', headers: API_HEADERS });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok) throw new Error(data.message || 'HTTP ' + res.status);
-                    pickerAllPackages = data.packages || [];
-                    if (pickerSource) pickerSource.textContent = data.source || 'connected phone';
-                    showPickerStatus(pickerAllPackages.length
-                        ? pickerAllPackages.length + ' installed third-party apps'
-                        : (data.message || 'No third-party apps on this phone.'));
-                    renderPickerList('');
-                } catch (e) {
-                    showPickerStatus('Could not read packages: ' + (e.message || e), true);
-                }
+                await populatePickerDevices();
+                await loadPackagesForSelectedDevice();
             });
+        }
+        if (pickerDevice) {
+            pickerDevice.addEventListener('change', () => { loadPackagesForSelectedDevice(); });
         }
         if (pickerSearch) {
             pickerSearch.addEventListener('input', (e) => renderPickerList(e.target.value));
