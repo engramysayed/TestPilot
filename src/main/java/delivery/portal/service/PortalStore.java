@@ -688,8 +688,8 @@ public class PortalStore {
                 }
             } else {
                 freezeQueuedInputs(job);
-                if (dispatchPolicy != null && dispatchPolicy.remote(job.getJobKind())) {
-                    job.setRequirePrivateRunner(true); // B08: the engine claims it over Runner API v2
+                if (dispatchPolicy != null && dispatchPolicy.remote(job.getJobKind()) && !staysWithPortal(job)) {
+                    job.setRequirePrivateRunner(true); // engine claims it over Runner API v2 on this portal port
                 }
                 delivery.job.JobAdmission.require(
                         countActiveJobsForTenant(job.getTenantId()),
@@ -834,6 +834,19 @@ public class PortalStore {
 
     public void syncJobPersistence(JobRecord job) {
         saveJob(job);
+    }
+
+    /** Phone runs and Android projects stay in this portal. The website engine does not drive a phone. */
+    private boolean staysWithPortal(JobRecord job) {
+        if (job.getMode() != null && job.getMode().equalsIgnoreCase("phone")) {
+            return true;
+        }
+        if (job.getProjectId() == null || job.getProjectId().isBlank()) {
+            return false;
+        }
+        return projectRepository.findByProjectId(job.getProjectId())
+                .map(p -> "ANDROID".equalsIgnoreCase(p.getPlatform()))
+                .orElse(false);
     }
 
     public synchronized Optional<delivery.portal.jobs.DurableJobClaim.Lease> beginWork(String jobId) {

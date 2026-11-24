@@ -8,7 +8,7 @@ What's actually built and running today. Companion to [`engineering.md`](enginee
 
 Keel/TestPilot is a test-automation portal. Users describe what their web (or Android) app should do; Keel generates test cases with an LLM, converts them to Selenium/Appium code, runs them in a real browser with vision + healing, and reports results. The portal is a Spring Boot web app; the automation engine is a Java library (`delivery.*`) the workers call into. Customer-visible artifacts (Excel workbooks, framework zips) are stored per tenant/project under `delivery-store/`.
 
-An Android run starts only after you choose a phone that is connected. Generate, when a case check fails and Cursor returns no cases, asks the local model to repair them and checks those cases. If the Android Cursor pass does not finish, the zip is still published and the run says why. The key is read from `api-keys.local.bat` when it is present.
+An Android run starts only after you choose a phone that is connected. The app is the package saved on the project, and it must already be installed. Generate, when a case check fails and Cursor returns no cases, asks the local model to repair them and checks those cases. If the Android Cursor pass does not finish, the zip is still published and the run says why. The key is read from `api-keys.local.bat` when it is present. Website Execute and Automate go to the engine when `keel.runner.connector.enabled` is true. Final revise is off.
 
 ## 2. The six UX rules (portal)
 

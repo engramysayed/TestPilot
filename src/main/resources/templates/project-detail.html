@@ -387,40 +387,8 @@
             <p id="mobile-app-err" class="error" hidden></p>
             <p id="mobile-app-msg" class="muted" hidden></p>
             <form id="mobile-app-form" class="settings-form">
-                <fieldset class="mobile-source-options mobile-source-cards">
-                    <legend>App source</legend>
-                    <label class="source-card">
-                        <input type="radio" name="source" value="APK" checked/>
-                        <span class="source-card-body">
-                            <strong>Upload an APK file</strong>
-                            <span class="muted">Drag in a <code>.apk</code>. The portal reads the package, version, and launch activity automatically.</span>
-                        </span>
-                    </label>
-                    <label class="source-card">
-                        <input type="radio" name="source" value="INSTALLED"/>
-                        <span class="source-card-body">
-                            <strong>Already installed on the phone</strong>
-                            <span class="muted">Point at an app already on the phone. Use <em>Pick from connected phone</em> below to list them.</span>
-                        </span>
-                    </label>
-                </fieldset>
-                <div id="mobile-apk-upload-wrap" class="mobile-apk-upload">
-                    <label>Upload APK
-                        <input type="file" id="mobile-apk-file" name="apkFile" accept=".apk,application/vnd.android.package-archive"/>
-                    </label>
-                    <p class="muted">Keel checks the package on upload. Max size follows server setting (default 500&nbsp;MiB).</p>
-                    <button type="button" class="button" id="mobile-apk-upload-btn">Upload and inspect</button>
-                    <p id="mobile-apk-upload-status" class="muted" hidden></p>
-                </div>
-                <div id="mobile-launcher-pick" class="mobile-launcher-pick" hidden>
-                    <h3>Choose the launch screen</h3>
-                    <input type="hidden" id="mobile-pending-upload-id" value=""/>
-                    <fieldset id="mobile-launcher-candidates" class="mobile-source-options"></fieldset>
-                    <label>Wait for this screen <span class="muted">(optional — defaults to launch screen)</span>
-                        <input type="text" id="mobile-confirm-wait-activity" placeholder="Same as launch screen"/>
-                    </label>
-                    <button type="button" class="button" id="mobile-launcher-confirm-btn">Confirm launch screen</button>
-                </div>
+                <input type="hidden" name="source" value="INSTALLED"/>
+                <p class="muted">The app has to already be on the phone. Pick it below, or type the package name. An uploaded APK is not installed on the phone, so that upload is not on this page.</p>
                 <p id="mobile-apk-fingerprints" class="muted" hidden></p>
                 <label>Package name
                     <input type="text" name="packageName" id="mobile-package-name"

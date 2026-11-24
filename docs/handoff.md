@@ -2,7 +2,14 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-24 (each run chooses a phone, local Generate repair, Cursor miss still publishes).
+**Last updated:** 2026-11-24 (APK upload hidden, connector sends website jobs to the engine, final revise off).
+
+## App, connector, final revise (2026-11-24)
+
+- Project settings save an installed package. The APK upload controls are gone from `project-detail.html`. A schedule's App dropdown pins `mobileAppRevisionId`; blank uses the active revision.
+- `JobDispatchPolicy` reads `keel.runner.connector.enabled`. True marks Execute and Convert remote unless that kind is explicitly `inprocess`. `PortalStore.staysWithPortal` keeps Android and phone jobs in the portal.
+- `delivery.final-revise.enabled=false`. Agent harness flags stay on.
+- Invite mail still needs `KEEL_MAIL_HOST` in `keel-env.local.bat`. The tunnel still needs its own public host.
 
 ## Each run chooses a phone (2026-11-24)
 

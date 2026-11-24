@@ -2965,7 +2965,7 @@
                 const msg = document.getElementById('mobile-app-msg');
                 const sourceEl = form.querySelector('input[name="source"]:checked');
                 const payload = {
-                    source: sourceEl ? sourceEl.value : 'APK',
+                    source: sourceEl ? sourceEl.value : 'INSTALLED',
                     packageName: form.packageName.value.trim(),
                     versionName: form.versionName.value.trim() || null,
                     versionCode: form.versionCode.value ? Number(form.versionCode.value) : null,

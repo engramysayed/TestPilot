@@ -742,15 +742,14 @@
                     </div>
                 </header>
                 <figure class="product-guide-figure">
-                    <img src="/img/guide/flow-mobile-connect.svg" alt="Mobile connect: Appium, emulator or USB, APK or installed app"/>
-                    <figcaption>Appium prerequisite → emulator or USB/UDID phone → APK upload or installed package → run</figcaption>
+                    <img src="/img/guide/flow-mobile-connect.svg" alt="Mobile connect: Appium, emulator or USB, app already installed"/>
+                    <figcaption>Appium prerequisite → emulator or USB phone → app already installed → run</figcaption>
                 </figure>
                 <ul class="guide-points">
                     <li><strong>Appium</strong> — required. Without a working Appium server, mobile Execute/Hunt cannot drive the device.</li>
                     <li><strong>Emulator</strong> — Android virtual device registered with Keel.</li>
                     <li><strong>USB / UDID</strong> — real phone with USB debugging authorized; unlock debugging when the device shows “not authorized”.</li>
-                    <li><strong>App file (APK)</strong> — upload and inspect; pick the launcher activity when the APK exposes more than one.</li>
-                    <li><strong>Already installed</strong> — use the package already on the phone instead of uploading an APK.</li>
+                    <li><strong>App already on the phone</strong> — Project settings saves the package name and launch screen. Keel does not install an APK onto the phone.</li>
                 </ul>
                 <h3>Run on a phone</h3>
                 <ol class="guide-howto">

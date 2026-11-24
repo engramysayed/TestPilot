@@ -57,8 +57,8 @@ public class FinalReviseDefaultsTest extends AbstractTestNGSpringContextTests {
             main = Path.of("../src/main/resources/application.properties");
         }
         String text = Files.readString(main);
-        Assert.assertTrue(text.contains("delivery.final-revise.enabled=true"),
-                "the portal config must turn final revise on");
+        Assert.assertTrue(text.contains("delivery.final-revise.enabled=false"),
+                "the portal config leaves final revise off; agent validation is the review");
     }
 
     @Test

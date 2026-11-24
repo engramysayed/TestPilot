@@ -2,6 +2,15 @@
 
 # Keel changelog
 
+## 2026-11-24 — Hide APK upload, wire the connector, leave final revise off
+
+- The project page no longer asks for an APK. The app is the package already on the phone. A schedule can pin that app, or another saved revision.
+- `keel.runner.connector.enabled=true` sends website Execute and Automate to the engine on this portal port. Android jobs stay in the portal. Start the engine with `start-engine.cmd` and a `KEEL_RUNNER_TOKEN` before those website jobs.
+- Final revise is off. Agent validation still reviews cases and the generated framework.
+- Mail still sends only when `KEEL_MAIL_HOST`, `KEEL_MAIL_USERNAME`, and `KEEL_MAIL_PASSWORD` are set in `keel-env.local.bat`.
+
+Known: the portal on port 8080 was not restarted. No phone was attached.
+
 ## 2026-11-24 — Every phone run asks, and a missed Cursor pass still publishes
 
 - Automate, Execute, and Bug Hunter each start only after you choose a phone that is connected now. The page lists those phones and does not pick one for you. A blank choice, a busy phone, or an unplugged phone stops the run. Keel does not reuse the last phone after a restart.

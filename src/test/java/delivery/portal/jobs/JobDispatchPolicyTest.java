@@ -25,6 +25,21 @@ public class JobDispatchPolicyTest {
     }
 
     @Test
+    public void connectorSendsWebsiteExecuteAndConvertToTheEngine() {
+        JobDispatchPolicy d = policy(Map.of(
+                "keel.runner.connector.enabled", "true",
+                "keel.jobs.dispatch.default", "inprocess"));
+        assertTrue(d.remote(JobRecord.JobKind.EXECUTE));
+        assertTrue(d.remote(JobRecord.JobKind.CONVERT));
+        assertFalse(d.remote(JobRecord.JobKind.HUNT));
+        JobDispatchPolicy pinned = policy(Map.of(
+                "keel.runner.connector.enabled", "true",
+                "keel.jobs.dispatch.execute", "inprocess"));
+        assertFalse(pinned.remote(JobRecord.JobKind.EXECUTE));
+        assertTrue(pinned.remote(JobRecord.JobKind.CONVERT));
+    }
+
+    @Test
     public void perKindOverridesAndDefaultRemoteOnlyHitsCapableKinds() {
         JobDispatchPolicy d = policy(Map.of("keel.jobs.dispatch.execute", "remote"));
         assertTrue(d.remote(JobRecord.JobKind.EXECUTE));

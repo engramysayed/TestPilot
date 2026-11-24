@@ -24,6 +24,11 @@ That's the whole web-only install. Mobile features need the next section.
 | `KEEL_RUNNER_TOKEN` | `api-keys.local.bat` (portal) + runner env | Bearer token for `/api/v1/runners/...`. Enroll a runner on `/projects/{id}/runners` to mint one. |
 | `KEEL_PORTAL_URL` | runner env | URL the runner posts back to. Default `http://127.0.0.1:8080`. HTTPS required when off-loopback (runner refuses plain-http off-host). |
 | `CURSOR_API_KEY` | `api-keys.local.bat` | Required ONLY if Precision is enabled for a project or the mobile Precision bind endpoint is in use. Portal falls back to Keel if missing. |
+| `KEEL_MAIL_HOST` | `keel-env.local.bat` | SMTP host. Leave empty and invites stay links. Example: `smtp.gmail.com`. |
+| `KEEL_MAIL_PORT` | `keel-env.local.bat` | SMTP port. `587` with STARTTLS. |
+| `KEEL_MAIL_USERNAME` | `keel-env.local.bat` | Mailbox address. |
+| `KEEL_MAIL_PASSWORD` | `keel-env.local.bat` | Mailbox password or app password. Do not commit it. |
+| `KEEL_MAIL_FROM` | `keel-env.local.bat` | From address on the invite. |
 
 ### 1.2 Optional but recommended
 

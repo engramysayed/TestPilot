@@ -13,8 +13,9 @@ import java.util.Set;
 /**
  * B08: where each job kind runs. {@code keel.jobs.dispatch.<kind>=inprocess|remote} (kind = execute, convert,
  * generate-batch, generate-compare, hunt), falling back to {@code keel.jobs.dispatch.default} (default
- * {@code inprocess}). {@code remote} jobs are flagged for the engine (Runner API v2 on 8080) and in-process
- * workers skip them; {@code inprocess} is the migration fallback and goes away in 0b. Fail-closed: asking for
+ * {@code inprocess}). {@code keel.runner.connector.enabled=true} sends Execute and Convert to the engine
+ * unless that kind is set to {@code inprocess}. Android jobs stay in the portal. {@code remote} jobs are
+ * flagged for the engine (Runner API v2 on 8080) and in-process workers skip them. Fail-closed: asking for
  * {@code remote} on a kind the 0a engine can't run refuses startup.
  */
 @Component
@@ -32,12 +33,15 @@ public class JobDispatchPolicy {
     }
 
     public JobDispatchPolicy(java.util.function.Function<String, String> props) {
+        boolean connector = isTrue(props.apply("keel.runner.connector.enabled"));
         Mode fallback = parse("keel.jobs.dispatch.default", props.apply("keel.jobs.dispatch.default"), Mode.INPROCESS);
         StringBuilder refused = new StringBuilder();
         for (JobRecord.JobKind kind : JobRecord.JobKind.values()) {
             String key = "keel.jobs.dispatch." + key(kind);
             String raw = props.apply(key);
-            Mode m = parse(key, raw, fallback);
+            Mode m = (raw == null || raw.isBlank()) && connector && REMOTE_CAPABLE.contains(kind)
+                    ? Mode.REMOTE
+                    : parse(key, raw, fallback);
             if (m == Mode.REMOTE && !REMOTE_CAPABLE.contains(kind)) {
                 if (raw != null && !raw.isBlank()) {
                     refused.append(key).append("=remote ");
@@ -53,6 +57,14 @@ public class JobDispatchPolicy {
 
     public static String key(JobRecord.JobKind kind) {
         return kind.name().toLowerCase(Locale.ROOT).replace('_', '-');
+    }
+
+    private static boolean isTrue(String raw) {
+        if (raw == null) {
+            return false;
+        }
+        String v = raw.trim();
+        return "true".equalsIgnoreCase(v) || "1".equals(v) || "yes".equalsIgnoreCase(v);
     }
 
     private static Mode parse(String key, String raw, Mode fallback) {
