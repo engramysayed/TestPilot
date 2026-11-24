@@ -43,6 +43,7 @@ public class HuntController {
     private final DeliveryPortalProperties props;
     private final delivery.mobile.run.MobileRunOrchestrator mobileRuns;
     private final delivery.mobile.automate.MobileAutomateConversion walkPlans;
+    private final delivery.mobile.run.MobileRunnerSupervisor runners;
 
     public HuntController(PortalStore store, CurrentUserService currentUser,
                           GeneratedWorkbookService workbooks,
@@ -51,7 +52,8 @@ public class HuntController {
                           DeliveryPortalProperties props,
                           PermissionEnforcer permissionEnforcer,
                           delivery.mobile.run.MobileRunOrchestrator mobileRuns,
-                          delivery.mobile.automate.MobileAutomateConversion walkPlans) {
+                          delivery.mobile.automate.MobileAutomateConversion walkPlans,
+                          delivery.mobile.run.MobileRunnerSupervisor runners) {
         this.store = store;
         this.currentUser = currentUser;
         this.workbooks = workbooks;
@@ -61,6 +63,7 @@ public class HuntController {
         this.permissionEnforcer = permissionEnforcer;
         this.mobileRuns = mobileRuns;
         this.walkPlans = walkPlans;
+        this.runners = runners;
     }
 
     public record StartHuntBody(
@@ -187,14 +190,16 @@ public class HuntController {
                 return ResponseEntity.badRequest()
                         .body(new ApiError("APP_REQUIRED", "Save an Android app on this project before hunting.").asMap());
             }
-            int cap = req.tapCap() == null ? 12 : req.tapCap();
-            if (cap < 1) cap = 12;
-            if (cap > 80) cap = 80;
+            int budget = hunt.getIterationCeiling() * hunt.getCycleCeiling() * hunt.getActionCapPerCycle();
+            if (budget < 1) {
+                budget = 1;
+            }
             try {
+                runners.startForRun();
                 var run = selected.isEmpty()
-                        ? mobileRuns.startExplore(project.getTenantId(), projectId, ownerId, deviceId, cap)
+                        ? mobileRuns.startExplore(project.getTenantId(), projectId, ownerId, deviceId, budget)
                         : mobileRuns.start(project.getTenantId(), projectId, ownerId, deviceId,
-                        selected.stream().map(ManualTestCase::tcId).toList());
+                        selected.stream().map(ManualTestCase::tcId).toList(), budget);
                 hunt.setPlatform("ANDROID");
                 hunt.setDeviceId(deviceId);
                 hunt.setMobileRunId(run.runId());

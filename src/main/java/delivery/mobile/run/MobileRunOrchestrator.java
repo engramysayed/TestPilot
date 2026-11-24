@@ -21,6 +21,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PreDestroy;
@@ -76,6 +77,9 @@ public class MobileRunOrchestrator {
     /** {@link ObjectProvider} breaks the orchestrator ↔ precision-service circular dep without
      *  needing a CGLIB proxy. Resolved on each {@link #finish} call, cached by Spring after that. */
     private final ObjectProvider<MobilePrecisionBindService> precisionProvider;
+    private final ObjectProvider<MobileCursorPass> cursorPass;
+    private final String llmBase;
+    private final String llmModel;
     private final Path runsRoot;
 
     private final Map<String, MobileRun> runs = new ConcurrentHashMap<>();
@@ -86,6 +90,11 @@ public class MobileRunOrchestrator {
     });
     private final ScheduledExecutorService ticker = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "mobile-run-ticker");
+        t.setDaemon(true);
+        return t;
+    });
+    private final ExecutorService cursorPool = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "mobile-cursor-pass");
         t.setDaemon(true);
         return t;
     });
@@ -100,7 +109,10 @@ public class MobileRunOrchestrator {
                                  PortalStore portalStore,
                                  AdbDeviceDiscovery adb,
                                  DeliveryPortalProperties portalProps,
-                                 ObjectProvider<MobilePrecisionBindService> precisionProvider) {
+                                 ObjectProvider<MobilePrecisionBindService> precisionProvider,
+                                 ObjectProvider<MobileCursorPass> cursorPass,
+                                 @Value("${delivery.llm-base-url:http://127.0.0.1:11434}") String llmBase,
+                                 @Value("${delivery.llm-model:}") String llmModel) {
         this.props = props;
         this.leases = leases;
         this.appium = appium;
@@ -111,6 +123,9 @@ public class MobileRunOrchestrator {
         this.portalStore = portalStore;
         this.adb = adb;
         this.precisionProvider = precisionProvider;
+        this.cursorPass = cursorPass;
+        this.llmBase = llmBase;
+        this.llmModel = llmModel;
         this.runsRoot = Path.of(portalProps.getStoreRoot()).resolve("mobile-runs");
         long every = Math.max(1, props.getLeaseHeartbeatSeconds());
         ticker.scheduleAtFixedRate(this::tick, every, every, TimeUnit.SECONDS);
@@ -120,6 +135,7 @@ public class MobileRunOrchestrator {
     void shutdown() {
         ticker.shutdownNow();
         starter.shutdownNow();
+        cursorPool.shutdownNow();
     }
 
     // ------------------------------------------------------------------ user API
@@ -143,6 +159,18 @@ public class MobileRunOrchestrator {
 
     private MobileRun start(String tenantId, String projectId, Long ownerUserId, String deviceId,
                             List<String> tcIds, String appRevisionId, String mode)
+            throws Exception {
+        return start(tenantId, projectId, ownerUserId, deviceId, tcIds, appRevisionId, mode, 0);
+    }
+
+    /** Hunt budget. Each tap, type, or check uses one action, including when library cases are checked. */
+    public MobileRun start(String tenantId, String projectId, Long ownerUserId, String deviceId,
+                           List<String> tcIds, int actionCap) throws Exception {
+        return start(tenantId, projectId, ownerUserId, deviceId, tcIds, null, "EXECUTE", actionCap);
+    }
+
+    private MobileRun start(String tenantId, String projectId, Long ownerUserId, String deviceId,
+                            List<String> tcIds, String appRevisionId, String mode, int actionCap)
             throws Exception {
         if (!props.isEnabled()) {
             throw new IllegalStateException("Mobile is disabled (delivery.mobile.enabled=false)");
@@ -177,7 +205,7 @@ public class MobileRunOrchestrator {
         if (cases.isEmpty()) {
             throw new IllegalArgumentException("No runnable test cases selected");
         }
-        return launch(tenantId, projectId, ownerUserId, deviceId, cases, appRevisionId, mode, 0);
+        return launch(tenantId, projectId, ownerUserId, deviceId, cases, appRevisionId, mode, Math.max(0, actionCap));
     }
 
     /** Run exactly these workbook rows (an upload), not the rest of the library. */
@@ -269,7 +297,7 @@ public class MobileRunOrchestrator {
                     "Phone '" + nz(device.getDisplayName()) + "' is " + nz(device.getBusy())
                             + ". Wait for the current run to finish, or pick another phone.");
         }
-        int cap = Math.max(1, Math.min(actionCap, 40));
+        int cap = Math.max(1, actionCap);
         List<MobileRun.CaseInput> cases = List.of(new MobileRun.CaseInput(
                 "HUNT", "Explore the app", List.of(), List.of(), List.of()));
         return launch(tenantId, projectId, ownerUserId, deviceId, cases, null, "HUNT", cap);
@@ -312,7 +340,9 @@ public class MobileRunOrchestrator {
         Path f = runsRoot.resolve(runId + ".json");
         try {
             if (Files.isRegularFile(f)) {
-                return Optional.of(new JSONObject(Files.readString(f, StandardCharsets.UTF_8)));
+                JSONObject saved = new JSONObject(Files.readString(f, StandardCharsets.UTF_8));
+                attachDesign(runId, saved);
+                return Optional.of(saved);
             }
         } catch (Exception ignored) {
         }
@@ -320,6 +350,10 @@ public class MobileRunOrchestrator {
     }
 
     private void attachDesign(MobileRun run, JSONObject view) {
+        attachDesign(run.runId, view);
+    }
+
+    private void attachDesign(String runId, JSONObject view) {
         JSONArray results = view.optJSONArray("results");
         if (results == null) {
             return;
@@ -330,7 +364,7 @@ public class MobileRunOrchestrator {
                 continue;
             }
             String tcId = row.optString("tcId", "");
-            Path json = evidenceDir(run.runId).resolve(tcId).resolve("design-compare.json");
+            Path json = evidenceDir(runId).resolve(tcId).resolve("design-compare.json");
             if (!Files.isRegularFile(json)) {
                 continue;
             }
@@ -587,7 +621,8 @@ public class MobileRunOrchestrator {
         if (status == MobileRun.Status.COMPLETED || status == MobileRun.Status.FAILED) {
             tryRunDesignCompare(run);
         }
-        String review = MobileBatchReview.of(run, evidenceDir(run.runId));
+        String review = MobileBatchModelNote.append(
+                MobileBatchReview.of(run, evidenceDir(run.runId)), llmBase, llmModel);
         if (!review.isBlank()) {
             run.message = review;
             trackJob(run, run.message);
@@ -599,6 +634,61 @@ public class MobileRunOrchestrator {
             log.warn("Mobile run {} precision.clearRun: {}", run.runId, e.getMessage());
         }
         persist(run);
+        scheduleCursor(run);
+    }
+
+    private void scheduleCursor(MobileRun run) {
+        if (cursorPass == null || portalStore == null || run.projectId == null) {
+            return;
+        }
+        String text = failureText(run);
+        if (text.isBlank()) {
+            return;
+        }
+        String projectId = run.projectId;
+        String runId = run.runId;
+        cursorPool.submit(() -> {
+            try {
+                MobileCursorPass pass = cursorPass.getIfAvailable();
+                if (pass == null) {
+                    return;
+                }
+                String note = pass.investigate(portalStore.projectDiskRoot(projectId), runId, projectId, text);
+                if (note == null || note.isBlank()) {
+                    return;
+                }
+                JobRecord job = portalStore.getJob(runId).orElse(null);
+                if (job == null) {
+                    return;
+                }
+                String prev = job.getMessage() == null ? "" : job.getMessage();
+                job.setMessage(prev.isBlank() ? note : prev + " " + note);
+                portalStore.saveJob(job);
+            } catch (RuntimeException e) {
+                log.warn("Mobile run {} cursor pass: {}", runId, e.getMessage());
+            }
+        });
+    }
+
+    private static String failureText(MobileRun run) {
+        JSONArray results = run.view().optJSONArray("results");
+        if (results == null) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < results.length(); i++) {
+            JSONObject row = results.optJSONObject(i);
+            if (row == null) {
+                continue;
+            }
+            String outcome = row.optString("outcome", "");
+            if (!"FAILED".equals(outcome) && !"BLOCKED".equals(outcome)) {
+                continue;
+            }
+            out.append(row.optString("tcId", "")).append(": ")
+                    .append(row.optString("detail", row.optString("failureCode", ""))).append(". ");
+        }
+        return out.toString().trim();
     }
 
     private void tryRunDesignCompare(MobileRun run) {

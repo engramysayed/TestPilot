@@ -99,7 +99,7 @@
         const libHint = document.getElementById('hunt-library-hint');
         if (libHint) {
             libHint.innerHTML = projectIsAndroid
-                ? 'The cases you check are what the phone runs, including steps that type. Check none and Keel only taps, up to Max taps.'
+                ? 'The cases you check are what the phone runs, including steps that type. How deep still stops the phone. A step past that budget is not run, and later cases are not started.'
                 : 'These are the hunter\'s <strong>coverage map</strong> — its view of what your library already covers. It will skip ideas that overlap them and only write <em>new</em> scenario suggestions for the rest. Pick cases that cover the feature you want explored.';
         }
         const planner = document.querySelector('.hunt-planner');
@@ -108,10 +108,8 @@
         if (domLabel) domLabel.hidden = projectIsAndroid;
         const strategies = document.querySelector('.hunt-strategy-block');
         if (strategies) strategies.hidden = projectIsAndroid;
-        const depth = document.querySelector('.hunt-depth');
-        if (depth) depth.hidden = projectIsAndroid;
         const tapLabel = document.getElementById('android-tap-label');
-        if (tapLabel) tapLabel.hidden = !projectIsAndroid;
+        if (tapLabel) tapLabel.hidden = true;
         const phoneLabel = document.getElementById('hunt-phone-label');
         if (phoneLabel) phoneLabel.hidden = !projectIsAndroid;
         if (window.keelWatchRunner) {
@@ -346,8 +344,6 @@
                 return;
             }
             body.deviceId = plan.deviceId;
-            const taps = Number((document.getElementById('android-tap-cap') || {}).value);
-            if (taps) body.tapCap = taps;
         }
         try {
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/hunt-runs', {

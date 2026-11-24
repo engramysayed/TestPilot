@@ -36,12 +36,14 @@ public class MobileRunController {
     private final MobilePortalStore mobileStore;
     private final delivery.mobile.automate.MobileAutomateConversion walkPlans;
     private final delivery.mobile.run.PhoneLiveStream screens;
+    private final delivery.mobile.run.MobileRunnerSupervisor runners;
 
     public MobileRunController(MobileProperties mobileProps, PortalStore store, CurrentUserService currentUser,
                                MobileRunOrchestrator runs, MobileDeviceRegistration registration,
                                MobilePortalStore mobileStore,
                                delivery.mobile.automate.MobileAutomateConversion walkPlans,
-                               delivery.mobile.run.PhoneLiveStream screens) {
+                               delivery.mobile.run.PhoneLiveStream screens,
+                               delivery.mobile.run.MobileRunnerSupervisor runners) {
         this.mobileProps = mobileProps;
         this.store = store;
         this.currentUser = currentUser;
@@ -50,6 +52,7 @@ public class MobileRunController {
         this.mobileStore = mobileStore;
         this.walkPlans = walkPlans;
         this.screens = screens;
+        this.runners = runners;
     }
 
     public record StartBody(String deviceId, List<String> tcIds, String appRevisionId) {
@@ -97,6 +100,7 @@ public class MobileRunController {
         }
         ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
         try {
+            runners.startForRun();
             var run = runs.start(project.getTenantId(), projectId, currentUser.requireUserId(),
                     body.deviceId(), body.tcIds(), body.appRevisionId());
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(run.view().toMap());
@@ -132,6 +136,7 @@ public class MobileRunController {
                 java.nio.file.Files.copy(in, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
             var cases = new delivery.excel.ExcelTcReader(true).read(tmp);
+            runners.startForRun();
             var run = runs.startProvided(project.getTenantId(), projectId, currentUser.requireUserId(),
                     deviceId, cases, null);
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(run.view().toMap());

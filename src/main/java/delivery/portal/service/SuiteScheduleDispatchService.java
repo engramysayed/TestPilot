@@ -2,6 +2,7 @@ package delivery.portal.service;
 
 import delivery.job.SuiteRunContext;
 import delivery.mobile.run.MobileRunOrchestrator;
+import delivery.mobile.run.MobileRunnerSupervisor;
 import delivery.portal.model.ProjectRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,7 @@ public class SuiteScheduleDispatchService {
     private final ProjectCredentialService credentials;
     private final PortalStore portalStore;
     private final MobileRunOrchestrator mobileRuns;
+    private final MobileRunnerSupervisor runners;
 
     @Autowired
     public SuiteScheduleDispatchService(
@@ -32,13 +34,15 @@ public class SuiteScheduleDispatchService {
             SuiteRunService suiteRuns,
             ProjectCredentialService credentials,
             PortalStore portalStore,
-            MobileRunOrchestrator mobileRuns
+            MobileRunOrchestrator mobileRuns,
+            MobileRunnerSupervisor runners
     ) {
         this.suites = suites;
         this.suiteRuns = suiteRuns;
         this.credentials = credentials;
         this.portalStore = portalStore;
         this.mobileRuns = mobileRuns;
+        this.runners = runners;
     }
 
     /** Legacy 3-arg ctor kept for existing test wiring that constructed the service manually. */
@@ -47,7 +51,7 @@ public class SuiteScheduleDispatchService {
             SuiteRunService suiteRuns,
             ProjectCredentialService credentials
     ) {
-        this(suites, suiteRuns, credentials, null, null);
+        this(suites, suiteRuns, credentials, null, null, null);
     }
 
     public int dispatchDue(int withinSeconds) {
@@ -133,6 +137,9 @@ public class SuiteScheduleDispatchService {
             }
             // tcIds = all cases registered against the suite (same shape SuiteRunService builds).
             List<String> tcIds = extractTcIds(suites.get(projectId, suiteId));
+            if (runners != null) {
+                runners.startForRun();
+            }
             mobileRuns.start(project.getTenantId(), projectId, ownerId, deviceId, tcIds, revisionId);
             log.info("SCHEDULE_DISPATCH: queued mobile suite {} project {} on {}", suiteId, projectId, deviceId);
             return true;

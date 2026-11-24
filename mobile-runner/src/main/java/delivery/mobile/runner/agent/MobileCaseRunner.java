@@ -117,6 +117,10 @@ public final class MobileCaseRunner {
      *                  They are not tapped, typed, or swiped. Execute passes false and stops.
      */
     public Outcome run(CaseInput c, boolean keepGoing) {
+        return run(c, keepGoing, null);
+    }
+
+    public Outcome run(CaseInput c, boolean keepGoing, ActionBudget budget) {
         List<String> log = new ArrayList<>();
         captured.clear();
         String firstErr = null;
@@ -129,6 +133,11 @@ public final class MobileCaseRunner {
                 if (step.kind() == MobileStep.Kind.SKIP) {
                     if (!step.raw().isBlank()) log.add("skip: " + step.raw());
                     continue;
+                }
+                if (budget != null && !budget.take()) {
+                    log.add("stopped: step budget used");
+                    return finish(c.tcId(), CaseOutcome.FAILED, "STEP_BUDGET", i + 1,
+                            "Stopped at the step budget.", log);
                 }
                 boolean watchOnly = keepGoing && firstErr != null;
                 String err = watchOnly ? locate(step) : execute(step);
@@ -156,6 +165,11 @@ public final class MobileCaseRunner {
                     continue; // only quoted UI text is asserted automatically
                 }
                 MobileStep check = new MobileStep(MobileStep.Kind.ASSERT_VISIBLE, q.get(0), "", "", exp);
+                if (budget != null && !budget.take()) {
+                    log.add("stopped: step budget used");
+                    return finish(c.tcId(), CaseOutcome.FAILED, "STEP_BUDGET", -1,
+                            "Stopped at the step budget.", log);
+                }
                 boolean watchOnly = keepGoing && firstErr != null;
                 String err = watchOnly ? locate(check) : execute(check);
                 log.add((err == null ? "ok: " : "FAIL: ") + "expected " + exp + (err == null ? "" : " — " + err));

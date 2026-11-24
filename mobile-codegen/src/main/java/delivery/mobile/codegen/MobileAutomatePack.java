@@ -11,7 +11,17 @@ public final class MobileAutomatePack {
 
     private MobileAutomatePack() {}
 
+    @FunctionalInterface
+    public interface BeforeZip {
+        void check(Path projectDir) throws Exception;
+    }
+
     public static Path zip(Path templateRoot, Path workDir, List<MobileCaseIr> cases) throws Exception {
+        return zip(templateRoot, workDir, cases, null);
+    }
+
+    public static Path zip(Path templateRoot, Path workDir, List<MobileCaseIr> cases, BeforeZip beforeZip)
+            throws Exception {
         if (templateRoot == null || !Files.isDirectory(templateRoot)) {
             throw new IllegalStateException("Android framework template is missing: " + templateRoot);
         }
@@ -26,6 +36,9 @@ public final class MobileAutomatePack {
         if (!gate.ok()) {
             throw new IllegalStateException(
                     "The generated Android project did not compile. " + gate.message());
+        }
+        if (beforeZip != null) {
+            beforeZip.check(project);
         }
         packager.zip(project, zip);
         return zip;

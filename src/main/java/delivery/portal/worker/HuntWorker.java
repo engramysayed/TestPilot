@@ -42,13 +42,15 @@ public class HuntWorker extends AbstractJobWorker {
     private final delivery.agent.harness.AgentHarnessProperties harnessProps;
     private final delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy;
     private final delivery.mobile.run.MobileRunOrchestrator mobileRuns;
+    private final delivery.mobile.run.MobileCursorPass mobileCursor;
 
     public HuntWorker(DeliveryPortalProperties props, PortalStore portalStore,
                       GeneratedWorkbookService workbooks, Environment env,
                       KnowledgePackReader knowledgePackReader,
                       delivery.agent.harness.AgentHarnessProperties harnessProps,
                       delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy,
-                      delivery.mobile.run.MobileRunOrchestrator mobileRuns) {
+                      delivery.mobile.run.MobileRunOrchestrator mobileRuns,
+                      delivery.mobile.run.MobileCursorPass mobileCursor) {
         super(portalStore);
         this.props = props;
         this.workbooks = workbooks;
@@ -57,6 +59,7 @@ public class HuntWorker extends AbstractJobWorker {
         this.harnessProps = harnessProps;
         this.workspaceAiPolicy = workspaceAiPolicy;
         this.mobileRuns = mobileRuns;
+        this.mobileCursor = mobileCursor;
     }
 
     @Override
@@ -174,6 +177,26 @@ public class HuntWorker extends AbstractJobWorker {
             boolean triageAllowed = workspaceAiPolicy == null
                     || workspaceAiPolicy.isHuntValidationEnabled(job.getProjectId());
             if (triageAllowed
+                    && harnessProps != null
+                    && harnessProps.isEnabled()
+                    && harnessProps.isCursorEnabled()
+                    && (result.bugCount() > 0 || result.scenarioCount() > 0)
+                    && "ANDROID".equalsIgnoreCase(request.getPlatform())) {
+                try {
+                    String note = mobileCursor.triage(
+                            portalStore.projectDiskRoot(job.getProjectId()),
+                            jobId,
+                            job.getProjectId(),
+                            result.message());
+                    if (note != null && !note.isBlank()) {
+                        job.setMessage(result.message() + " " + note);
+                        portalStore.syncJobPersistence(job);
+                    }
+                    log.info("Phone hunt triage {}", note);
+                } catch (Exception triageErr) {
+                    log.warn("Phone hunt triage threw, continuing: {}", triageErr.getMessage());
+                }
+            } else if (triageAllowed
                     && harnessProps != null
                     && harnessProps.isEnabled()
                     && harnessProps.isCursorEnabled()

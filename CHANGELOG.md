@@ -2,6 +2,15 @@
 
 # Keel changelog
 
+## 2026-11-24 — Phone hunts use How deep, and Start launches the runner
+
+- Android Bug Hunter shows the same How deep controls as a website hunt. Standard is 2 × 8 × 5 = 80 actions. That budget always stops the phone, including when library cases are checked. The step that would pass the budget is marked stopped, and later cases are not started. The hidden stop at 40 is gone.
+- Pressing Start on Automate, Execute, or Bug Hunter starts the mobile runner when `KEEL_RUNNER_TOKEN` is set, waits until it answers, then starts the run. The portal still does not load Appium.
+- Before an Android Automate zip is published, `MobileFrameworkContractValidator` blocks Appium-illegal code. A Cursor pass then reads the screens. If Cursor fails, the zip is still published and the run says why.
+- A failed phone step and an Android hunt that found a problem each get their own Cursor pass. Those prompts talk about a phone, not a website.
+
+Known: the browser and a phone were not used. The Cursor pass was not run against a live Cursor. The runner start needs Maven on PATH and `KEEL_RUNNER_TOKEN`.
+
 ## 2026-11-24 — The phone walks the uploaded rows
 
 - Automate walks the rows in the file you uploaded. After the first step that cannot be found, later steps are located and are not tapped.

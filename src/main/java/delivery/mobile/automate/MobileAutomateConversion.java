@@ -21,6 +21,8 @@ import delivery.mobile.persistence.MobileDeviceRepository;
 import delivery.mobile.run.DeviceSerialResolver;
 import delivery.mobile.run.MobileRun;
 import delivery.mobile.run.MobileRunOrchestrator;
+import delivery.agent.validation.contract.MobileFrameworkContractValidator;
+import delivery.mobile.run.MobileCursorPass;
 import delivery.mobile.run.MobileRunnerSupervisor;
 import delivery.portal.DeliveryPortalProperties;
 import delivery.portal.model.JobRecord;
@@ -61,7 +63,11 @@ public class MobileAutomateConversion {
     private final DeviceSerialResolver serials;
     private final MobileRunOrchestrator orchestrator;
     private final MobileRunnerSupervisor runners;
+    private final MobileCursorPass cursorPass;
     private final ConcurrentHashMap<String, String> deviceByJob = new ConcurrentHashMap<>();
+    private static final java.util.Set<String> BLOCKING_RULES = java.util.Set.of(
+            "FW_RULE_M_APPIUM_ONLY", "FW_RULE_M_NO_CSS", "FW_RULE_M_NO_SLEEP",
+            "FW_RULE_M_SETTLE_DELEGATE", "FW_RULE_M_TEST_BASE");
 
     public MobileAutomateConversion(PortalStore portalStore,
                                     DeliveryPortalProperties portalProps,
@@ -71,7 +77,8 @@ public class MobileAutomateConversion {
                                     MobileDeviceProfileRepository profiles,
                                     DeviceSerialResolver serials,
                                     MobileRunOrchestrator orchestrator,
-                                    MobileRunnerSupervisor runners) {
+                                    MobileRunnerSupervisor runners,
+                                    MobileCursorPass cursorPass) {
         this.portalStore = portalStore;
         this.portalProps = portalProps;
         this.mobileProps = mobileProps;
@@ -81,6 +88,7 @@ public class MobileAutomateConversion {
         this.serials = serials;
         this.orchestrator = orchestrator;
         this.runners = runners;
+        this.cursorPass = cursorPass;
     }
 
     /** Remember the phone chosen on the Automate page. Blank means the user chose none. */
@@ -93,6 +101,20 @@ public class MobileAutomateConversion {
 
     public Map<String, Object> plan(String tenantId, String projectId) {
         return plan(tenantId, projectId, null);
+    }
+
+    /** Enroll and start the local runner before the page asks whether it is up. */
+    private void ensureRunner(String tenantId, String projectId) {
+        try {
+            portalStore.getProject(projectId).ifPresent(project -> {
+                Long owner = project.getOwnerUserId();
+                if (owner != null && owner > 0) {
+                    runners.ensureForProject(projectId, owner, tenantId == null ? "" : tenantId);
+                }
+            });
+        } catch (RuntimeException ignored) {
+            // The status line reports a missing runner. The page stays usable.
+        }
     }
 
     /**
@@ -110,6 +132,7 @@ public class MobileAutomateConversion {
         out.put("appRevisionId", rev.map(MobileAppRevisionRecord::getAppRevisionId).orElse(""));
         String appLabel = pkg.isBlank() ? "No app saved" : (pkg + (version.isBlank() ? "" : " " + version));
         out.put("appLabel", appLabel);
+        ensureRunner(tenantId, projectId);
         runners.ensureStarted();
         out.put("runnerOnline", orchestrator.runnerOnline());
         out.put("runnerMessage", runners.line());
@@ -185,6 +208,7 @@ public class MobileAutomateConversion {
         } else {
             job.setMessage("Opening the phone and walking the workbook steps");
             portalStore.syncJobPersistence(job);
+            runners.startForRun();
             walked = walk(job, tenant, deviceId,
                     plan.get("appRevisionId") == null ? null : String.valueOf(plan.get("appRevisionId")),
                     cases, cancel);
@@ -211,8 +235,28 @@ public class MobileAutomateConversion {
             }
         }
         Path work = JobWorkLayout.create(request);
-        Path zip = MobileAutomatePack.zip(templateRoot(), work, ir);
+        String[] cursorNote = {""};
+        Path zip = MobileAutomatePack.zip(templateRoot(), work, ir, projectDir -> {
+            var findings = MobileFrameworkContractValidator.validate(projectDir);
+            StringBuilder blocking = new StringBuilder();
+            StringBuilder notes = new StringBuilder();
+            for (var finding : findings) {
+                if (BLOCKING_RULES.contains(finding.code)) {
+                    blocking.append(finding).append(' ');
+                } else {
+                    notes.append(finding).append(' ');
+                }
+            }
+            if (!blocking.isEmpty()) {
+                throw new IllegalStateException("Android rules failed. " + blocking.toString().trim());
+            }
+            cursorNote[0] = cursorPass.reviewFramework(
+                    projectDir, job.getJobId(), job.getProjectId(), notes.toString().trim());
+        });
         String message = how + " " + cases.size() + " case(s), " + real + " phone locator(s), " + shells + " text shell(s).";
+        if (!cursorNote[0].isBlank()) {
+            message = message + " " + cursorNote[0];
+        }
         job.setMessage(message);
         return Optional.of(new ConversionJobResult(zip, cases.size(), 0, null, message));
     }

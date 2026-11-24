@@ -2,7 +2,14 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-24 (uploaded walk, runner start, video, batch review).
+**Last updated:** 2026-11-24 (How deep budget, Start launches the runner, mobile Cursor passes).
+
+## How deep and the mobile Cursor passes (2026-11-24)
+
+- Android Bug Hunter keeps the website How deep controls. The budget is `iterationCeiling * cycleCeiling * actionCapPerCycle` after `HuntRequest.normalize()`. `start` and `startExplore` both receive it. `ActionBudget` stops the current step and leaves later cases unstarted.
+- `MobileRunnerSupervisor.startForRun` runs on Start even when `delivery.mobile.runner.autostart` is false. It compiles `mobile-runner` and launches `MobileRunnerAgent`. It waits up to three minutes.
+- `MobileAutomatePack` calls `MobileFrameworkContractValidator` before the zip. Mandatory mobile rules fail the job. `MobileCursorPass` records a Cursor sentence and does not block the zip.
+- A failed phone run schedules `MobileCursorPass.investigate`. An Android hunt with a bug calls `MobileCursorPass.triage` instead of the website hunt prompt.
 
 ## Uploaded walk (2026-11-24)
 
@@ -16,7 +23,7 @@ Volatile state. Edit this every session. Companion to [`engineering.md`](enginee
 
 ## Phone cases and the run list (2026-11-24)
 
-- Checked Bug Hunter cases call `MobileRunOrchestrator.start` (the runner types). No cases calls `startExplore` with the Max taps value, capped at 80.
+- Checked Bug Hunter cases call `MobileRunOrchestrator.start` with the How deep budget (the runner types until that budget). No cases calls `startExplore` with the same budget. There is no hidden stop at 40.
 - `ScreenSignature` is stored on each walked locator and becomes the screen class.
 - `trackJob` writes the mobile run into the normal job list as an Execute row. Open Status to read the review. It does not open the website results page. The row keeps a long lease so the job reconciler does not requeue it.
 - `GET .../live.mp4` is `adb screenrecord` wrapped by `H264Fmp4`. Stills remain the fallback. A busy phone returns a note and is not captured.

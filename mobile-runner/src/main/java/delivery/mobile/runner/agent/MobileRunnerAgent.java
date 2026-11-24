@@ -170,10 +170,23 @@ public final class MobileRunnerAgent {
                 selected.add(new SelectedCase(tcId, false));
             }
             Map<String, MobileCaseRunner.Outcome> details = new LinkedHashMap<>();
+            int caseCap = 0;
+            Object caseRaw = job.get("actionCap");
+            if (caseRaw instanceof Number n) {
+                caseCap = n.intValue();
+            }
+            ActionBudget budget = caseCap > 0 ? new ActionBudget(caseCap) : null;
             MobileExecuteEngine.ExecuteReport report = new MobileExecuteEngine().run(selected, false, sc -> {
                 progress.set("running " + sc.tcId());
+                if (budget != null && budget.exhausted()) {
+                    MobileCaseRunner.Outcome stopped = new MobileCaseRunner.Outcome(
+                            sc.tcId(), CaseOutcome.FAILED, "STEP_BUDGET", -1,
+                            "Not started. The step budget was already used.", List.of(), List.of());
+                    details.put(sc.tcId(), stopped);
+                    return CaseResult.failed(sc.tcId(), "STEP_BUDGET", null);
+                }
                 boolean keepGoing = "WALK".equalsIgnoreCase(String.valueOf(job.getOrDefault("mode", "")));
-                MobileCaseRunner.Outcome o = runner.run(byId.get(sc.tcId()), keepGoing);
+                MobileCaseRunner.Outcome o = runner.run(byId.get(sc.tcId()), keepGoing, budget);
                 details.put(sc.tcId(), o);
                 return o.outcome() == CaseOutcome.PASSED
                         ? CaseResult.passed(sc.tcId())
