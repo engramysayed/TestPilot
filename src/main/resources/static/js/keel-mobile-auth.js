@@ -499,6 +499,21 @@
         });
     }
 
+    async function populateTcDatalist() {
+        var dl = document.getElementById('mobile-case-req-tc-list');
+        if (!dl) return;
+        var cases = await ensureLibCases();
+        dl.innerHTML = '';
+        cases.forEach(function (tc) {
+            if (!tc || !tc.tcId) return;
+            var opt = document.createElement('option');
+            opt.value = tc.tcId;
+            if (tc.title) opt.label = tc.title;
+            dl.appendChild(opt);
+        });
+    }
+
     loadProfiles();
     loadCaseReqList();
+    populateTcDatalist();
 })();

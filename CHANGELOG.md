@@ -2,6 +2,11 @@
 
 # Keel changelog
 
+## 2026-11-24 — Mobile settings polish: hide web fields server-side, TC dropdown
+
+- Base URL / Preferred test hooks / the muted "Comma-separated attribute names…" help line now carry `th:if="${projectPlatform != 'ANDROID'}"` on their `<label>`s so Thymeleaf drops them from the HTML entirely on Android projects. Earlier JS-only hiding worked but was defeated by stale browser JS cache; the server-side gate makes a hard refresh unnecessary.
+- Case sign-in requirements panel: `Test case ID` and `Start-state test case ID` inputs now use a shared `<datalist id="mobile-case-req-tc-list">` populated from `/api/projects/{id}/generated-workbook/cases`. Typing or arrow-down shows the project's actual mobile cases; still accepts manual input for cases that don't exist yet. Zero new endpoints — reuses the same `ensureLibCases()` cache already used by the Call-before search.
+
 ## 2026-11-24 — App source: tile-style radios
 
 Two small plain-text radios ("App file (APK)" / "Already installed on the phone") replaced with proper card tiles — grid of two, each with a bold title and a one-line explanation. Selected tile gets a teal border + mint background (dark theme: teal border + accent-soft fill). CSS-only (`:has(input:checked)`); no JS change, same input `name="source"` / values so the existing `syncSourceUi()` toggle keeps working.

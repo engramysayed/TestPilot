@@ -93,14 +93,14 @@
                 <label>Project name
                     <input type="text" name="name" required id="settings-name"/>
                 </label>
-                <label>Base URL
+                <label th:if="${projectPlatform != 'ANDROID'}">Base URL
                     <input type="url" name="baseUrl" id="settings-base-url" placeholder="https://app.example.com"/>
                 </label>
-                <label>Preferred test hooks
+                <label th:if="${projectPlatform != 'ANDROID'}">Preferred test hooks
                     <input type="text" name="preferredHooks" id="settings-preferred-hooks"
                            placeholder="data-axis-test-id"/>
                 </label>
-                <p class="muted">Comma-separated attribute names. Always ranked first. Shared with every project on this host.</p>
+                <p th:if="${projectPlatform != 'ANDROID'}" class="muted">Comma-separated attribute names. Always ranked first. Shared with every project on this host.</p>
                 <label id="settings-locator-mode-wrap">Locator ranking
                     <select name="locatorMode" id="settings-locator-mode">
                         <option value="stable-first">Stable first — test id, then unique id / name, then role + label (recommended, survives Arabic/English switch)</option>
@@ -532,7 +532,9 @@
             <h2>Case sign-in requirements</h2>
             <p id="mobile-case-req-err" class="error" hidden></p>
             <label>Test case ID
-                <input type="text" id="mobile-case-req-tc" placeholder="e.g. TC-001" autocomplete="off"/>
+                <input type="text" id="mobile-case-req-tc" placeholder="e.g. TC-001" autocomplete="off"
+                       list="mobile-case-req-tc-list"/>
+                <datalist id="mobile-case-req-tc-list"></datalist>
             </label>
             <button type="button" class="button ghost" id="mobile-case-req-load">Load requirements</button>
             <form id="mobile-case-req-form" hidden>
@@ -553,7 +555,8 @@
                     <datalist id="mobile-auth-rev-datalist"></datalist>
                 </label>
                 <label>Start-state test case ID (optional)
-                    <input type="text" id="mobile-case-req-start" placeholder="TC-…" autocomplete="off"/>
+                    <input type="text" id="mobile-case-req-start" placeholder="TC-…" autocomplete="off"
+                           list="mobile-case-req-tc-list"/>
                 </label>
                 <label class="call-before-field">Call before (prerequisites)
                     <input type="hidden" id="mobile-case-req-call-before" value=""/>
