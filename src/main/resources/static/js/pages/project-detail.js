@@ -79,6 +79,18 @@
             if (lmodeNote) lmodeNote.hidden = false;
             if (mobileTiers) mobileTiers.hidden = true;
         }
+        // Base URL + Preferred test hooks are web-only — hide their <label>s on Android.
+        const baseUrlEl = document.getElementById('settings-base-url');
+        const hooksEl = document.getElementById('settings-preferred-hooks');
+        if (baseUrlEl && baseUrlEl.parentElement) {
+            baseUrlEl.parentElement.hidden = (platform === 'ANDROID');
+        }
+        if (hooksEl && hooksEl.parentElement) {
+            hooksEl.parentElement.hidden = (platform === 'ANDROID');
+            // The muted help line immediately follows the <label> — hide it in step.
+            const help = hooksEl.parentElement.nextElementSibling;
+            if (help && help.classList.contains('muted')) help.hidden = (platform === 'ANDROID');
+        }
         const enginePanel = document.getElementById('settings-authoring-engine');
         const precisionEnabled = enginePanel && enginePanel.dataset.precisionEnabled === 'true';
         const engineValue = (p.authoringEngine || 'keel').toLowerCase();
@@ -2981,34 +2993,122 @@
 
         const pickBtn = document.getElementById('mobile-package-pick');
         const pickStatus = document.getElementById('mobile-package-pick-status');
-        const packageList = document.getElementById('mobile-package-list');
-        if (pickBtn) {
-            pickBtn.addEventListener('click', async () => {
-                try {
-                    if (pickStatus) { pickStatus.hidden = false; pickStatus.textContent = 'Reading packages from the phone…'; }
-                    const res = await fetch(apiUrl('/mobile/apps/installed-packages'), { credentials: 'same-origin', headers: API_HEADERS });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok) throw new Error(data.message || 'HTTP ' + res.status);
-                    const pkgs = data.packages || [];
-                    if (packageList) {
-                        packageList.innerHTML = '';
-                        pkgs.forEach(p => {
-                            const opt = document.createElement('option');
-                            opt.value = p;
-                            packageList.appendChild(opt);
-                        });
-                    }
+        const packageNameInput = document.getElementById('mobile-package-name');
+        const pickerModal = document.getElementById('mobilePackagePickerModal');
+        const pickerList = document.getElementById('mobile-package-picker-list');
+        const pickerSource = document.getElementById('mobile-package-picker-source');
+        const pickerSearch = document.getElementById('mobile-package-picker-search');
+        const pickerStatus = document.getElementById('mobile-package-picker-status');
+        const pickerCancel = document.getElementById('mobilePackagePickerCancel');
+        let pickerAllPackages = [];
+
+        function showPickerStatus(text, isError) {
+            if (!pickerStatus) return;
+            if (!text) { pickerStatus.hidden = true; pickerStatus.textContent = ''; return; }
+            pickerStatus.hidden = false;
+            pickerStatus.textContent = text;
+            pickerStatus.className = isError ? 'error' : 'muted';
+        }
+        function renderPickerList(filter) {
+            if (!pickerList) return;
+            const q = (filter || '').trim().toLowerCase();
+            const rows = q ? pickerAllPackages.filter(p => p.toLowerCase().includes(q)) : pickerAllPackages;
+            pickerList.innerHTML = '';
+            rows.slice(0, 500).forEach(p => {
+                const li = document.createElement('li');
+                li.setAttribute('role', 'option');
+                li.textContent = p;
+                li.tabIndex = 0;
+                li.style.cssText = 'padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #eef2f5;';
+                li.addEventListener('mouseenter', () => { li.style.background = 'var(--mint,#e3f3ef)'; });
+                li.addEventListener('mouseleave', () => { li.style.background = ''; });
+                li.addEventListener('click', () => pickPackage(p));
+                li.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') pickPackage(p); });
+                pickerList.appendChild(li);
+            });
+            if (rows.length === 0) {
+                const li = document.createElement('li');
+                li.className = 'muted';
+                li.style.padding = '0.75rem';
+                li.textContent = pickerAllPackages.length ? 'No packages match.' : 'No packages.';
+                pickerList.appendChild(li);
+            }
+        }
+        // openModal / closeModal from the outer IIFE aren't in this scope — inline the class flip.
+        function closePicker() { if (pickerModal) pickerModal.classList.add('hidden'); }
+        function openPicker() { if (pickerModal) pickerModal.classList.remove('hidden'); }
+
+        async function pickPackage(pkg) {
+            if (packageNameInput) packageNameInput.value = pkg;
+            closePicker();
+            // Auto-fill version + launch activity from the same phone.
+            if (pickStatus) { pickStatus.hidden = false; pickStatus.textContent = 'Reading app details from the phone…'; }
+            try {
+                const res = await fetch(apiUrl('/mobile/apps/installed-packages/' + encodeURIComponent(pkg) + '/details'),
+                        { credentials: 'same-origin', headers: API_HEADERS });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    const verName = document.getElementById('mobile-version-name');
+                    const verCode = document.getElementById('mobile-version-code');
+                    const launch = document.getElementById('mobile-launch-activity');
+                    if (verName && data.versionName) verName.value = data.versionName;
+                    if (verCode && data.versionCode != null) verCode.value = data.versionCode;
+                    if (launch && data.launchActivity) launch.value = data.launchActivity;
+                    const filled = [];
+                    if (data.versionName) filled.push('version ' + data.versionName);
+                    if (data.launchActivity) filled.push('launch ' + data.launchActivity);
                     if (pickStatus) {
                         pickStatus.hidden = false;
-                        pickStatus.textContent = pkgs.length
-                            ? pkgs.length + ' packages from ' + (data.source || 'phone') + ' — start typing in Package name to filter.'
-                            : (data.message || 'No packages found on the phone.');
+                        pickStatus.textContent = filled.length
+                            ? 'Picked ' + pkg + ' (' + filled.join(', ') + ').'
+                            : 'Picked ' + pkg + (data.message ? ' — ' + data.message : '.');
                     }
+                } else if (pickStatus) {
+                    pickStatus.hidden = false;
+                    pickStatus.textContent = 'Picked ' + pkg + ' — could not auto-fill details.';
+                }
+            } catch (e) {
+                if (pickStatus) { pickStatus.hidden = false; pickStatus.textContent = 'Picked ' + pkg + ' — details fetch failed.'; }
+            }
+        }
+
+        if (pickBtn && pickerModal) {
+            pickBtn.addEventListener('click', async () => {
+                pickerAllPackages = [];
+                if (pickerList) pickerList.innerHTML = '';
+                if (pickerSource) pickerSource.textContent = '—';
+                if (pickerSearch) pickerSearch.value = '';
+                showPickerStatus('Reading packages from the phone…');
+                openPicker();
+                if (pickerSearch) setTimeout(() => pickerSearch.focus(), 10);
+                try {
+                    const res = await fetch(apiUrl('/mobile/apps/installed-packages'),
+                            { credentials: 'same-origin', headers: API_HEADERS });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.message || 'HTTP ' + res.status);
+                    pickerAllPackages = data.packages || [];
+                    if (pickerSource) pickerSource.textContent = data.source || 'connected phone';
+                    showPickerStatus(pickerAllPackages.length
+                        ? pickerAllPackages.length + ' installed third-party apps'
+                        : (data.message || 'No third-party apps on this phone.'));
+                    renderPickerList('');
                 } catch (e) {
-                    if (pickStatus) { pickStatus.hidden = false; pickStatus.textContent = 'Could not read packages: ' + (e.message || e); }
+                    showPickerStatus('Could not read packages: ' + (e.message || e), true);
                 }
             });
         }
+        if (pickerSearch) {
+            pickerSearch.addEventListener('input', (e) => renderPickerList(e.target.value));
+        }
+        if (pickerCancel) {
+            pickerCancel.addEventListener('click', () => closePicker());
+        }
+        if (pickerModal) {
+            pickerModal.addEventListener('click', (e) => { if (e.target === pickerModal) closePicker(); });
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && pickerModal && !pickerModal.classList.contains('hidden')) closePicker();
+        });
 
         loadMobileApp();
         loadMobileDevices();

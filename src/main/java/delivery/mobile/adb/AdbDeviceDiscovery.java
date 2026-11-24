@@ -116,6 +116,41 @@ public class AdbDeviceDiscovery {
     }
 
     /**
+     * Return the fully-qualified launcher activity for {@code packageName} on {@code serial},
+     * or {@link java.util.Optional#empty()} when the resolver has no answer (not installed,
+     * exports no launcher, adb permission denied, etc.). Backs the "auto-fill launch screen on
+     * package pick" flow on Project Settings.
+     */
+    public java.util.Optional<String> resolveLauncherActivity(String serial, String packageName)
+            throws AdbInventoryException {
+        String exactSerial = AdbInputGuard.requireSerial(serial);
+        String pkg = AdbInputGuard.requirePackageName(packageName);
+        requireOnlineAuthorized(exactSerial);
+        String raw;
+        try {
+            raw = backend.execute(List.of("-s", exactSerial, "shell", "cmd", "package",
+                    "resolve-activity", "--brief", pkg));
+        } catch (AdbInventoryException e) {
+            if (e.getCode() == AdbErrorCode.SDK_UNAVAILABLE) throw e;
+            return java.util.Optional.empty();
+        }
+        if (raw == null) return java.util.Optional.empty();
+        String picked = "";
+        for (String line : raw.split("\\r?\\n")) {
+            String s = line.trim();
+            if (s.isEmpty()) continue;
+            int slash = s.indexOf('/');
+            if (slash > 0 && s.substring(0, slash).equals(pkg)) {
+                String act = s.substring(slash + 1).trim();
+                // relative-activity notation: ".MainActivity" → "com.example.app.MainActivity"
+                if (act.startsWith(".")) act = pkg + act;
+                if (!act.isEmpty()) picked = act;
+            }
+        }
+        return picked.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(picked);
+    }
+
+    /**
      * Observe package identity on the selected serial only ({@code verification=OBSERVED}).
      */
     public InstalledPackageMetadata resolveInstalledPackage(String serial, String packageName)

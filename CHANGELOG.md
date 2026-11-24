@@ -2,6 +2,14 @@
 
 # Keel changelog
 
+## 2026-11-24 — Mobile Project Settings polish: modal picker, auto-fill, hide web-only fields
+
+Follow-ups on today's "Load packages from connected phone" button.
+
+- **Modal picker replaces the `<datalist>`.** Clicking **Pick from connected phone…** now opens a proper modal with a filter box and a scrollable list — consistent across browsers, searchable, and accessible (Esc / backdrop click closes). Capped at 500 rendered rows to stay snappy on devices with a lot of installed apps.
+- **Auto-fill on pick.** When you click a row in the modal, the portal also pulls the current **Version name**, **Version code** and **Launch screen** for that package off the phone and fills them in. Backed by a new `GET /api/projects/{id}/mobile/apps/installed-packages/{pkg}/details` plus [`AdbDeviceDiscovery.resolveLauncherActivity(serial, pkg)`](src/main/java/delivery/mobile/adb/AdbDeviceDiscovery.java) (shells `adb shell cmd package resolve-activity --brief <pkg>`, handles the `.ShortName` fully-qualifier case). Endpoint always returns 200 so a missing field is a silent fallback, not a red banner.
+- **Hide web-only fields on Android projects.** `Base URL` and `Preferred test hooks` (both DOM/web concepts) now hide when `platform = ANDROID` — same pattern the existing Locator ranking swap uses to show the Android tier table instead of the web dropdown.
+
 ## 2026-11-24 — Project settings: fix mobile panels, pick package from phone, drop "Run on a phone"
 
 Bug fix (the real one the user hit). The mobile IIFE in [`project-detail.js`](src/main/resources/static/js/pages/project-detail.js) lives OUTSIDE the outer project-detail IIFE, so `apiUrl` and `API_HEADERS` (declared inside the outer IIFE) were not in scope. Every `loadMobileApp()` / `loadMobileDevices()` call threw `ReferenceError: apiUrl is not defined`, caught by the try/catch, and surfaced as the generic red banners "Could not load app settings" / "Could not load phones" even though the backend returned 200 with the device + revisions. Fix: redeclare `projectId`, `API_HEADERS` and `apiUrl` inside the mobile IIFE (6 lines).

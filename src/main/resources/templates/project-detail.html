@@ -417,11 +417,10 @@
                 <p id="mobile-apk-fingerprints" class="muted" hidden></p>
                 <label>Package name
                     <input type="text" name="packageName" id="mobile-package-name"
-                           list="mobile-package-list" placeholder="com.example.app" autocomplete="off"/>
-                    <datalist id="mobile-package-list"></datalist>
+                           placeholder="com.example.app" autocomplete="off"/>
                 </label>
                 <div class="mobile-run-row" style="margin:-0.3rem 0 0.6rem;">
-                    <button type="button" class="button ghost" id="mobile-package-pick">Load packages from connected phone</button>
+                    <button type="button" class="button ghost" id="mobile-package-pick">Pick from connected phone…</button>
                     <span id="mobile-package-pick-status" class="muted" hidden></span>
                 </div>
                 <label>Version name <span class="muted">(optional)</span>
@@ -881,6 +880,24 @@
         <div class="modal-actions">
             <button type="button" class="button ghost" id="credDeleteCancel">Cancel</button>
             <button type="button" class="button danger" id="credDeleteConfirm">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Pick an installed app from the connected phone -->
+<div id="mobilePackagePickerModal" class="modal-backdrop hidden" role="dialog" aria-modal="true"
+     aria-labelledby="mobile-package-picker-title">
+    <div class="modal-card" style="max-width:28rem;">
+        <h3 id="mobile-package-picker-title">Pick an installed app</h3>
+        <p class="muted" style="margin:-0.3rem 0 0.5rem;">
+            Source: <span id="mobile-package-picker-source">—</span>
+        </p>
+        <input type="text" id="mobile-package-picker-search" placeholder="Filter by package name…" autocomplete="off"/>
+        <ul id="mobile-package-picker-list" class="mobile-package-picker-list" role="listbox"
+            style="list-style:none;margin:0.6rem 0 0;padding:0;max-height:22rem;overflow:auto;border:1px solid #c5d8e4;border-radius:8px;"></ul>
+        <p id="mobile-package-picker-status" class="muted" style="margin:0.5rem 0 0;" hidden></p>
+        <div class="modal-actions">
+            <button type="button" class="button ghost" id="mobilePackagePickerCancel">Close</button>
         </div>
     </div>
 </div>

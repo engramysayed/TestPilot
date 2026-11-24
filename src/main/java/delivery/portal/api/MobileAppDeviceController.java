@@ -278,15 +278,7 @@ public class MobileAppDeviceController {
             return gate;
         }
         ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
-        String tenantId = project.getTenantId();
-        String hostId = serials.hostId();
-        // Prefer a device that's live on *this* host, authorized, and not busy.
-        Optional<MobileDeviceEntity> pick = deviceRepo.findAll().stream()
-                .filter(e -> tenantId.equals(e.getTenantId()))
-                .filter(e -> hostId.equals(e.getHostId()))
-                .filter(e -> "AUTHORIZED".equalsIgnoreCase(e.getAuthorizedState()))
-                .filter(e -> e.getSerialFingerprint() != null && !e.getSerialFingerprint().isBlank())
-                .findFirst();
+        Optional<MobileDeviceEntity> pick = firstAuthorizedOnThisHost(project.getTenantId());
         if (pick.isEmpty()) {
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("packages", List.of());
@@ -316,6 +308,61 @@ public class MobileAppDeviceController {
             out.put("message", "adb: " + e.getMessage());
             return ResponseEntity.ok(out);
         }
+    }
+
+    /**
+     * One-package detail probe used after the user picks a row in the "Pick from phone"
+     * modal — returns the current versionName / versionCode / launchActivity for {@code pkg}
+     * on the same first-authorized-device the picker list came from. Everything is optional;
+     * when adb can't tell us a field, it's blank. Always 200 so the UI auto-fills silently.
+     */
+    @GetMapping("/{projectId}/mobile/apps/installed-packages/{pkg}/details")
+    public ResponseEntity<?> installedPackageDetails(@PathVariable String projectId,
+                                                     @PathVariable String pkg) {
+        ResponseEntity<?> gate = gate(projectId, false);
+        if (gate != null) {
+            return gate;
+        }
+        ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("packageName", pkg);
+        out.put("versionName", "");
+        out.put("versionCode", null);
+        out.put("launchActivity", "");
+        Optional<MobileDeviceEntity> pick = firstAuthorizedOnThisHost(project.getTenantId());
+        if (pick.isEmpty()) {
+            out.put("message", "No authorized phone on this host.");
+            return ResponseEntity.ok(out);
+        }
+        Optional<String> serialOpt = serials.resolve(pick.get().getSerialFingerprint());
+        if (serialOpt.isEmpty()) {
+            out.put("message", "Phone registered but not currently connected over ADB.");
+            return ResponseEntity.ok(out);
+        }
+        String serial = serialOpt.get();
+        try {
+            delivery.mobile.adb.InstalledPackageMetadata meta = adb.resolveInstalledPackage(serial, pkg);
+            if (meta.getVersionName() != null) out.put("versionName", meta.getVersionName());
+            if (meta.getVersionCode() != null) out.put("versionCode", meta.getVersionCode());
+        } catch (AdbInventoryException e) {
+            out.put("message", "version: " + e.getMessage());
+        }
+        try {
+            adb.resolveLauncherActivity(serial, pkg).ifPresent(a -> out.put("launchActivity", a));
+        } catch (AdbInventoryException e) {
+            out.putIfAbsent("message", "activity: " + e.getMessage());
+        }
+        return ResponseEntity.ok(out);
+    }
+
+    private Optional<MobileDeviceEntity> firstAuthorizedOnThisHost(String tenantId) {
+        String hostId = serials.hostId();
+        return deviceRepo.findAll().stream()
+                .filter(e -> tenantId.equals(e.getTenantId()))
+                .filter(e -> hostId.equals(e.getHostId()))
+                .filter(e -> "AUTHORIZED".equalsIgnoreCase(e.getAuthorizedState()))
+                .filter(e -> e.getSerialFingerprint() != null && !e.getSerialFingerprint().isBlank())
+                .findFirst();
     }
 
     @GetMapping("/{projectId}/mobile/devices")
