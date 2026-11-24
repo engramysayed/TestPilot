@@ -125,6 +125,32 @@ public final class MobileRunnerAgent {
         List<Map<String, Object>> results = new ArrayList<>();
         String error = "";
         try {
+            if ("HUNT".equalsIgnoreCase(String.valueOf(job.getOrDefault("mode", "")))) {
+                progress.set("exploring the app");
+                int cap = 12;
+                Object rawCap = job.get("actionCap");
+                if (rawCap instanceof Number n) {
+                    cap = n.intValue();
+                }
+                List<MobileAppExplorer.Finding> findings = new MobileAppExplorer().explore(
+                        driver,
+                        String.valueOf(job.getOrDefault("appPackage", "")),
+                        String.valueOf(job.getOrDefault("appActivity", "")),
+                        cap,
+                        driver::isActionCancelled);
+                Map<String, Object> row = new LinkedHashMap<>();
+                boolean bug = findings.stream().anyMatch(f -> "BUG".equals(f.kind()));
+                row.put("tcId", "HUNT");
+                row.put("outcome", bug ? "FAILED" : "PASSED");
+                row.put("detail", findings.size() + " notes");
+                row.put("log", findings.stream().map(f -> f.kind() + ": " + f.detail()).toList());
+                List<Map<String, String>> packed = new ArrayList<>();
+                for (MobileAppExplorer.Finding f : findings) {
+                    packed.add(Map.of("kind", f.kind(), "detail", f.detail()));
+                }
+                row.put("findings", packed);
+                results.add(row);
+            } else {
             List<Map<String, Object>> cases = (List<Map<String, Object>>) job.get("cases");
             final String captureRunId = runId;
             MobileCaseRunner.StepCapture capture = stepCaptureEnabled()
@@ -169,6 +195,7 @@ public final class MobileRunnerAgent {
             }
             if (report.deviceLost()) {
                 error = "DEVICE_LOST";
+            }
             }
         } catch (RuntimeException e) {
             error = "RUNNER_ERROR: " + e.getMessage();

@@ -41,13 +41,17 @@ public class HuntController {
     private final ProjectCredentialService credentials;
     private final HuntWorker worker;
     private final DeliveryPortalProperties props;
+    private final delivery.mobile.run.MobileRunOrchestrator mobileRuns;
+    private final delivery.mobile.automate.MobileAutomateConversion walkPlans;
 
     public HuntController(PortalStore store, CurrentUserService currentUser,
                           GeneratedWorkbookService workbooks,
                           ProjectCredentialService credentials,
                           HuntWorker worker,
                           DeliveryPortalProperties props,
-                          PermissionEnforcer permissionEnforcer) {
+                          PermissionEnforcer permissionEnforcer,
+                          delivery.mobile.run.MobileRunOrchestrator mobileRuns,
+                          delivery.mobile.automate.MobileAutomateConversion walkPlans) {
         this.store = store;
         this.currentUser = currentUser;
         this.workbooks = workbooks;
@@ -55,6 +59,8 @@ public class HuntController {
         this.worker = worker;
         this.props = props;
         this.permissionEnforcer = permissionEnforcer;
+        this.mobileRuns = mobileRuns;
+        this.walkPlans = walkPlans;
     }
 
     public record StartHuntBody(
@@ -69,7 +75,8 @@ public class HuntController {
             String otp,
             String domMode,
             Boolean strategiesEnabled,
-            List<String> knowledgePackIds
+            List<String> knowledgePackIds,
+            String deviceId
     ) {
     }
 
@@ -90,27 +97,30 @@ public class HuntController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiError("PROJECT_ARCHIVED", "Cannot start Bug Hunter on archived project").asMap());
         }
-        String baseUrl = project.getBaseUrl();
-        if (baseUrl == null || baseUrl.isBlank()) {
+        boolean android = "ANDROID".equalsIgnoreCase(project.getPlatform());
+        String baseUrl = project.getBaseUrl() == null ? "" : project.getBaseUrl();
+        if (!android && baseUrl.isBlank()) {
             return ResponseEntity.badRequest()
                     .body(new ApiError("MISSING_BASE_URL", "Project baseUrl is required").asMap());
         }
-        if (!workbooks.hasWorkbook(projectId)) {
+        if (!android && !workbooks.hasWorkbook(projectId)) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiError("NO_GENERATED_WORKBOOK",
                             "No generated workbook for this project — generate or upload TCs first").asMap());
         }
         StartHuntBody req = body == null
-                ? new StartHuntBody(List.of(), "", "ollama", null, null, null, null, null, null, null, null, null)
+                ? new StartHuntBody(List.of(), "", "ollama", null, null, null, null, null, null, null, null, null, null)
                 : body;
         List<String> tcIds = req.tcIds() == null ? List.of() : req.tcIds();
-        if (tcIds.isEmpty()) {
+        if (!android && tcIds.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(new ApiError("TC_IDS_REQUIRED", "Select at least one library test case").asMap());
         }
-        List<ManualTestCase> all = workbooks.readCases(projectId);
-        List<ManualTestCase> selected = HuntBriefBuilder.filterSelected(all, tcIds);
-        if (selected.isEmpty()) {
+        List<ManualTestCase> selected = List.of();
+        if (!tcIds.isEmpty() && workbooks.hasWorkbook(projectId)) {
+            selected = HuntBriefBuilder.filterSelected(workbooks.readCases(projectId), tcIds);
+        }
+        if (!android && selected.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(new ApiError("TC_IDS_UNKNOWN", "None of the selected TC IDs exist in the library").asMap());
         }
@@ -162,6 +172,33 @@ public class HuntController {
             hunt.setKnowledgePackIds(req.knowledgePackIds());
         }
         hunt.normalize();
+        if (android) {
+            java.util.Map<String, Object> plan = walkPlans.plan(project.getTenantId(), projectId);
+            String deviceId = req.deviceId() == null ? "" : req.deviceId().trim();
+            if (deviceId.isBlank()) {
+                if (Boolean.TRUE.equals(plan.get("blocked")) || !"READY".equals(String.valueOf(plan.get("phoneState")))) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT)
+                            .body(new ApiError("PHONE_UNAVAILABLE", String.valueOf(plan.get("message"))).asMap());
+                }
+                deviceId = String.valueOf(plan.getOrDefault("deviceId", ""));
+            }
+            if (String.valueOf(plan.getOrDefault("appPackage", "")).isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiError("APP_REQUIRED", "Save an Android app on this project before hunting.").asMap());
+            }
+            int cap = Math.min(40, Math.max(1, hunt.getActionCapPerCycle()) * Math.max(1, hunt.getCycleCeiling()));
+            try {
+                var run = mobileRuns.startExplore(project.getTenantId(), projectId, ownerId, deviceId, cap);
+                hunt.setPlatform("ANDROID");
+                hunt.setDeviceId(deviceId);
+                hunt.setMobileRunId(run.runId());
+                hunt.setBaseUrl("");
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(new ApiError("BAD_REQUEST", e.getMessage()).asMap());
+            } catch (IllegalStateException e) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError("CONFLICT", e.getMessage()).asMap());
+            }
+        }
 
         Path huntDir = store.projectDiskRoot(projectId).resolve("hunt-runs").resolve(jobId);
         Files.createDirectories(huntDir);

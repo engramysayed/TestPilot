@@ -239,7 +239,7 @@ Exploratory live hunting from the project library. Goal: **break features** and 
 
 ### Start a hunt (`/bug-hunter`)
 
-- Pick project (needs base URL when not dry-run).
+- Pick a project. A website project needs a base URL. An Android project does not: Keel asks which phone and which app, opens the app, and taps controls it has not tried. It does not type. A crash or “keeps stopping” dialog is written into the hunt pack. The phone’s screen plays on this page and on Execute while a phone is selected.
 - **Credential profile** — hunter receives `$TARGET_USERNAME` / `$TARGET_PASSWORD` / `$TARGET_OTP` **tokens only** (never plaintext password in planner prompts or pack text). Choose **Open site only** for hunts without credentials.
 - Multi-select library TCs; optional free-text user story (OTP hints can be parsed from story text).
 - Planner: **Ollama** or **Cursor**.

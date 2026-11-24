@@ -63,4 +63,39 @@
     });
     return ok ? plan : null;
   };
+
+  /** Show the phone's screen in an img. The stream lasts a few minutes, then this reconnects. */
+  global.keelAttachPhoneLive = function (img, projectId, deviceId) {
+    if (!img) return;
+    if (img._keelLiveTimer) {
+      clearInterval(img._keelLiveTimer);
+      img._keelLiveTimer = null;
+    }
+    if (!projectId || !deviceId) {
+      img.hidden = true;
+      img.removeAttribute('src');
+      return;
+    }
+    let tries = 0;
+    function url() {
+      return '/api/projects/' + encodeURIComponent(projectId)
+        + '/mobile/devices/' + encodeURIComponent(deviceId)
+        + '/live?t=' + Date.now();
+    }
+    img.hidden = false;
+    img.alt = 'Live phone screen';
+    img.src = url();
+    img.onerror = function () {
+      tries += 1;
+      if (tries > 3) {
+        img.hidden = true;
+        return;
+      }
+      setTimeout(function () { img.src = url(); }, 1500);
+    };
+    img._keelLiveTimer = setInterval(function () {
+      tries = 0;
+      img.src = url();
+    }, 150000);
+  };
 })(window);

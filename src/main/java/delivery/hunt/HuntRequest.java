@@ -31,6 +31,10 @@ public final class HuntRequest {
     private List<String> knowledgePackIds = new ArrayList<>();
     /** Optional static OTP for hunt credential tokens — blank means no ${TARGET_OTP}. */
     private String otp = "";
+    /** ANDROID hunts a phone. Blank means the website hunter. */
+    private String platform = "";
+    private String deviceId = "";
+    private String mobileRunId = "";
 
     public String getProjectId() { return projectId; }
     public void setProjectId(String projectId) { this.projectId = projectId; }
@@ -68,6 +72,12 @@ public final class HuntRequest {
     public void setStrategiesEnabled(boolean strategiesEnabled) {
         this.strategiesEnabled = strategiesEnabled;
     }
+    public String getPlatform() { return platform == null ? "" : platform; }
+    public void setPlatform(String platform) { this.platform = platform == null ? "" : platform; }
+    public String getDeviceId() { return deviceId == null ? "" : deviceId; }
+    public void setDeviceId(String deviceId) { this.deviceId = deviceId == null ? "" : deviceId; }
+    public String getMobileRunId() { return mobileRunId == null ? "" : mobileRunId; }
+    public void setMobileRunId(String mobileRunId) { this.mobileRunId = mobileRunId == null ? "" : mobileRunId; }
 
     public void normalize() {
         setPlanner(planner);

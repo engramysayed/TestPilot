@@ -12,4 +12,10 @@ public class MobileAdbConfiguration {
     public AdbCommandBackend adbCommandBackend(MobileProperties props) {
         return new ProcessAdbCommandBackend(props);
     }
+
+    @Bean
+    @ConditionalOnMissingBean(AdbScreenGrab.class)
+    public AdbScreenGrab adbScreenGrab(MobileProperties props) {
+        return new AdbScreenGrab(props);
+    }
 }

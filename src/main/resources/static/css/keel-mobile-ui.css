@@ -2,6 +2,17 @@
 .mobile-panel[hidden],
 .mobile-only[hidden] { display: none !important; }
 
+.phone-live {
+  display: block;
+  max-width: 240px;
+  max-height: 480px;
+  margin-top: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #111;
+}
+.phone-live[hidden] { display: none !important; }
+
 /* Project type — segmented control (Website / Android). Radios stay for the create payload. */
 .platform-segment {
   border: 0;

@@ -35,11 +35,13 @@ public class MobileRunController {
     private final MobileDeviceRegistration registration;
     private final MobilePortalStore mobileStore;
     private final delivery.mobile.automate.MobileAutomateConversion walkPlans;
+    private final delivery.mobile.run.PhoneLiveStream screens;
 
     public MobileRunController(MobileProperties mobileProps, PortalStore store, CurrentUserService currentUser,
                                MobileRunOrchestrator runs, MobileDeviceRegistration registration,
                                MobilePortalStore mobileStore,
-                               delivery.mobile.automate.MobileAutomateConversion walkPlans) {
+                               delivery.mobile.automate.MobileAutomateConversion walkPlans,
+                               delivery.mobile.run.PhoneLiveStream screens) {
         this.mobileProps = mobileProps;
         this.store = store;
         this.currentUser = currentUser;
@@ -47,6 +49,7 @@ public class MobileRunController {
         this.registration = registration;
         this.mobileStore = mobileStore;
         this.walkPlans = walkPlans;
+        this.screens = screens;
     }
 
     public record StartBody(String deviceId, List<String> tcIds, String appRevisionId) {
@@ -139,6 +142,31 @@ public class MobileRunController {
             if (tmp != null) {
                 try { java.nio.file.Files.deleteIfExists(tmp); } catch (Exception ignored) { }
             }
+        }
+    }
+
+    @GetMapping(value = "/devices/{deviceId}/live", produces = "multipart/x-mixed-replace;boundary=keelframe")
+    public ResponseEntity<?> live(@PathVariable String projectId, @PathVariable String deviceId) {
+        ResponseEntity<?> gate = gate(projectId, false);
+        if (gate != null) return gate;
+        ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
+        try {
+            byte[] first = screens.one(project.getTenantId(), deviceId);
+            org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody body = out -> {
+                delivery.mobile.run.PhoneLiveStream.writeFrame(out, first);
+                screens.writeMjpeg(project.getTenantId(), deviceId, out);
+            };
+            return ResponseEntity.ok()
+                    .header("Cache-Control", "no-store")
+                    .contentType(org.springframework.http.MediaType.parseMediaType(
+                            "multipart/x-mixed-replace;boundary=keelframe"))
+                    .body(body);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("NOT_FOUND", e.getMessage()).asMap());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiError("PHONE_OFFLINE", e.getMessage()).asMap());
         }
     }
 

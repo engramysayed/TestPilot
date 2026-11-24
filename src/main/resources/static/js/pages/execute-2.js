@@ -90,6 +90,23 @@
                     select.appendChild(opt);
                 }
             });
+            if (select) {
+                const ready = Array.from(select.options).find(o => o.value && !o.disabled);
+                if (ready && !select.value) select.value = ready.value;
+                select.dataset.projectId = projectId;
+                if (!select.dataset.liveBound) {
+                    select.dataset.liveBound = '1';
+                    select.addEventListener('change', () => {
+                        if (window.keelAttachPhoneLive) {
+                            window.keelAttachPhoneLive(
+                                document.getElementById('phone-live'), select.dataset.projectId, select.value);
+                        }
+                    });
+                }
+                if (window.keelAttachPhoneLive) {
+                    window.keelAttachPhoneLive(document.getElementById('phone-live'), projectId, select.value);
+                }
+            }
         } catch (e) {
             panel.hidden = true;
         }

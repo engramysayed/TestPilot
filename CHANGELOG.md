@@ -2,6 +2,11 @@
 
 # Keel changelog
 
+## 2026-11-24 — Android Bug Hunter taps the app, and the phone screen plays in the page
+
+- On an Android project, Bug Hunter opens the saved app and taps controls it has not tried. It does not type. A crash or “keeps stopping” dialog is saved in the hunt pack you download from the job.
+- Execute and Bug Hunter show the phone’s screen while a phone is connected. The picture is a live capture from the device, refreshed about twice a second for a few minutes, then the page reconnects.
+
 ## 2026-11-24 — Android start names the phone, and a busy phone does not start
 
 - Automate and Execute ask before starting an Android run. The dialog names the connected phone, or says none is connected, and names the app package. A busy or unplugged phone shows "This run cannot start" and nothing is built.

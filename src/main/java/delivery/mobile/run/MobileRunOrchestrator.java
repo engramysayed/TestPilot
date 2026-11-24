@@ -163,7 +163,7 @@ public class MobileRunOrchestrator {
         if (cases.isEmpty()) {
             throw new IllegalArgumentException("No runnable test cases selected");
         }
-        return launch(tenantId, projectId, ownerUserId, deviceId, cases, appRevisionId);
+        return launch(tenantId, projectId, ownerUserId, deviceId, cases, appRevisionId, "EXECUTE", 0);
     }
 
     /** Run exactly these workbook rows (an upload), not the rest of the library. */
@@ -198,11 +198,35 @@ public class MobileRunOrchestrator {
         if (cases.isEmpty()) {
             throw new IllegalArgumentException("No runnable test cases in the uploaded workbook");
         }
-        return launch(tenantId, projectId, ownerUserId, deviceId, cases, appRevisionId);
+        return launch(tenantId, projectId, ownerUserId, deviceId, cases, appRevisionId, "EXECUTE", 0);
+    }
+
+    /** Open the app and tap controls the runner has not tried. Does not follow a workbook. */
+    public MobileRun startExplore(String tenantId, String projectId, Long ownerUserId, String deviceId, int actionCap) {
+        if (!props.isEnabled()) {
+            throw new IllegalStateException("Mobile is disabled (delivery.mobile.enabled=false)");
+        }
+        MobileDeviceEntity device = devices.findByDeviceId(deviceId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No phone is registered under id '" + deviceId + "'. "
+                                + "Open Project Settings → Phones and press Find connected phones."));
+        if (!tenantId.equals(device.getTenantId())) {
+            throw new IllegalArgumentException(
+                    "This phone is not registered to your workspace. Pick one from Project Settings → Phones.");
+        }
+        if (!"AVAILABLE".equalsIgnoreCase(nz(device.getBusy()))) {
+            throw new IllegalStateException(
+                    "Phone '" + nz(device.getDisplayName()) + "' is " + nz(device.getBusy())
+                            + ". Wait for the current run to finish, or pick another phone.");
+        }
+        int cap = Math.max(1, Math.min(actionCap, 40));
+        List<MobileRun.CaseInput> cases = List.of(new MobileRun.CaseInput(
+                "HUNT", "Explore the app", List.of(), List.of(), List.of()));
+        return launch(tenantId, projectId, ownerUserId, deviceId, cases, null, "HUNT", cap);
     }
 
     private MobileRun launch(String tenantId, String projectId, Long ownerUserId, String deviceId,
-                             List<MobileRun.CaseInput> cases, String appRevisionId) {
+                             List<MobileRun.CaseInput> cases, String appRevisionId, String mode, int actionCap) {
         var rev = (appRevisionId == null || appRevisionId.isBlank())
                 ? mobileStore.findActiveAppRevision(tenantId, projectId)
                 : mobileStore.findAppRevision(tenantId, projectId, appRevisionId);
@@ -215,6 +239,8 @@ public class MobileRunOrchestrator {
         String act = rev.map(r -> nz(r.getLaunchActivity())).orElse("");
         MobileRun run = new MobileRun("mrun_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12),
                 tenantId, projectId, ownerUserId, deviceId, cases, pkg, act);
+        run.mode = mode == null || mode.isBlank() ? "EXECUTE" : mode;
+        run.actionCap = actionCap;
         runs.put(run.runId, run);
         starter.submit(() -> prepare(run));
         return run;

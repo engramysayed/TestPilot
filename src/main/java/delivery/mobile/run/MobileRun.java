@@ -50,6 +50,8 @@ public final class MobileRun {
     volatile Instant lastRunnerHeartbeat;
     volatile Instant finishedAt;
     volatile boolean cancelRequested;
+    volatile String mode = "EXECUTE";
+    volatile int actionCap;
     final List<JSONObject> results = new ArrayList<>();
 
     MobileRun(String runId, String tenantId, String projectId, Long ownerUserId, String deviceId,
@@ -116,6 +118,8 @@ public final class MobileRun {
         o.put("sessionId", sessionId);
         o.put("appPackage", appPackage);
         o.put("appActivity", appActivity);
+        o.put("mode", mode == null ? "EXECUTE" : mode);
+        o.put("actionCap", actionCap);
         JSONArray cs = new JSONArray();
         for (CaseInput c : cases) {
             cs.put(new JSONObject()

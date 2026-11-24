@@ -2,6 +2,7 @@ package delivery.portal.worker;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import delivery.excel.ManualTestCase;
+import delivery.hunt.AndroidHuntPack;
 import delivery.hunt.DryRunHuntService;
 import delivery.hunt.HuntBriefBuilder;
 import delivery.hunt.HuntJobResult;
@@ -40,12 +41,14 @@ public class HuntWorker extends AbstractJobWorker {
     private final KnowledgePackReader knowledgePackReader;
     private final delivery.agent.harness.AgentHarnessProperties harnessProps;
     private final delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy;
+    private final delivery.mobile.run.MobileRunOrchestrator mobileRuns;
 
     public HuntWorker(DeliveryPortalProperties props, PortalStore portalStore,
                       GeneratedWorkbookService workbooks, Environment env,
                       KnowledgePackReader knowledgePackReader,
                       delivery.agent.harness.AgentHarnessProperties harnessProps,
-                      delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy) {
+                      delivery.portal.service.WorkspaceAiPolicyService workspaceAiPolicy,
+                      delivery.mobile.run.MobileRunOrchestrator mobileRuns) {
         super(portalStore);
         this.props = props;
         this.workbooks = workbooks;
@@ -53,6 +56,7 @@ public class HuntWorker extends AbstractJobWorker {
         this.knowledgePackReader = knowledgePackReader;
         this.harnessProps = harnessProps;
         this.workspaceAiPolicy = workspaceAiPolicy;
+        this.mobileRuns = mobileRuns;
     }
 
     @Override
@@ -89,6 +93,16 @@ public class HuntWorker extends AbstractJobWorker {
             }
             request.normalize();
 
+            HuntJobResult result;
+            if ("ANDROID".equalsIgnoreCase(request.getPlatform())) {
+                Path huntRoot = portalStore.projectDiskRoot(job.getProjectId())
+                        .resolve("hunt-runs").resolve(jobId);
+                Files.createDirectories(huntRoot);
+                BooleanSupplier cancelCheck = () -> portalStore.isCancelRequested(jobId);
+                job.setMessage("Exploring the app on the phone");
+                portalStore.syncJobPersistence(job);
+                result = AndroidHuntPack.pack(mobileRuns, request.getMobileRunId(), huntRoot, cancelCheck);
+            } else {
             List<ManualTestCase> all = workbooks.hasWorkbook(job.getProjectId())
                     ? workbooks.readCases(job.getProjectId())
                     : List.of();
@@ -119,7 +133,7 @@ public class HuntWorker extends AbstractJobWorker {
 
             BooleanSupplier cancelCheck = () -> portalStore.isCancelRequested(jobId);
             JobProgressTracker tracker = new JobProgressTracker();
-            HuntJobResult result = runWithProgressMirror(job, tracker, () -> {
+            result = runWithProgressMirror(job, tracker, () -> {
                 if (props.isDryRun()) {
                     return new DryRunHuntService().run(request, selected, huntRoot, tracker, cancelCheck, knowledgeGuidance);
                 }
@@ -136,6 +150,7 @@ public class HuntWorker extends AbstractJobWorker {
                         knowledgeGuidance
                 );
             });
+            }
 
             if (!DurableJobClaim.sameAttempt(job, lease)) {
                 log.info("Hunt job {} fenced; skipping publish", jobId);

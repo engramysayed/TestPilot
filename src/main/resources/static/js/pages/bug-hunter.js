@@ -10,6 +10,7 @@
     const strategiesCb = document.getElementById('strategies-enabled');
     const strategyExplain = document.getElementById('strategy-explain');
     let projects = [];
+    let projectIsAndroid = false;
     let huntWorkspaceRole = '';
     let huntPromoteJobId = '';
 
@@ -88,10 +89,30 @@
             '/projects/' + encodeURIComponent(projectId) + '?tab=settings';
         const proj = projects.find(p => p.projectId === projectId) || {};
         huntWorkspaceRole = proj.workspaceRole || '';
+        projectIsAndroid = (proj.platform || 'WEB').toUpperCase() === 'ANDROID';
         const base = proj.baseUrl || '';
-        document.getElementById('base-url-row').hidden = !base;
-        document.getElementById('base-url-missing').hidden = !!base;
+        document.getElementById('base-url-row').hidden = projectIsAndroid || !base;
+        document.getElementById('base-url-missing').hidden = projectIsAndroid || !!base;
         document.getElementById('base-url-display').textContent = base;
+        const note = document.getElementById('android-hunt-note');
+        if (note) note.hidden = !projectIsAndroid;
+        const planner = document.querySelector('.hunt-planner');
+        if (planner) planner.hidden = projectIsAndroid;
+        const domLabel = document.getElementById('dom-mode') && document.getElementById('dom-mode').closest('label');
+        if (domLabel) domLabel.hidden = projectIsAndroid;
+        const strategies = document.querySelector('.hunt-strategy-block');
+        if (strategies) strategies.hidden = projectIsAndroid;
+        if (projectIsAndroid && window.keelMobileWalkPlan) {
+            const plan = await window.keelMobileWalkPlan(projectId);
+            if (window.keelAttachPhoneLive) {
+                window.keelAttachPhoneLive(
+                    document.getElementById('phone-live'),
+                    projectId,
+                    plan && plan.phoneState === 'READY' ? plan.deviceId : '');
+            }
+        } else if (window.keelAttachPhoneLive) {
+            window.keelAttachPhoneLive(document.getElementById('phone-live'), projectId, '');
+        }
         await loadCredentials(projectId);
         await loadLibrary(projectId);
         document.getElementById('hunt-promote-panel').hidden = true;
@@ -245,7 +266,7 @@
             return;
         }
         const hasBase = !document.getElementById('base-url-row').hidden;
-        startBtn.disabled = !(hasBase && selectedTcIds().length > 0);
+        startBtn.disabled = projectIsAndroid ? false : !(hasBase && selectedTcIds().length > 0);
     }
 
 
@@ -275,6 +296,15 @@
         const otpVal = (document.getElementById('hunt-otp').value || '').trim();
         if (otpVal) {
             body.otp = otpVal;
+        }
+        if (projectIsAndroid) {
+            const plan = await window.keelConfirmMobileWalk(projectId, 'execute');
+            if (!plan) {
+                setStarting(false);
+                updateStartEnabled();
+                return;
+            }
+            body.deviceId = plan.deviceId;
         }
         try {
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/hunt-runs', {
