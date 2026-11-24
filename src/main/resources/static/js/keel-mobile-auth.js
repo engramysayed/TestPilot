@@ -499,21 +499,39 @@
         });
     }
 
-    async function populateTcDatalist() {
-        var dl = document.getElementById('mobile-case-req-tc-list');
-        if (!dl) return;
-        var cases = await ensureLibCases();
-        dl.innerHTML = '';
+    function appendTcOptions(sel, cases, placeholder) {
+        if (!sel) return;
+        var prev = sel.value;
+        sel.innerHTML = '';
+        var head = document.createElement('option');
+        head.value = '';
+        head.textContent = placeholder;
+        sel.appendChild(head);
         cases.forEach(function (tc) {
             if (!tc || !tc.tcId) return;
             var opt = document.createElement('option');
             opt.value = tc.tcId;
-            if (tc.title) opt.label = tc.title;
-            dl.appendChild(opt);
+            opt.textContent = tc.tcId + (tc.title ? ' — ' + tc.title : '');
+            sel.appendChild(opt);
+        });
+        if (prev) sel.value = prev; // round-trip pre-filled value
+    }
+
+    async function populateTcSelects() {
+        var cases = await ensureLibCases();
+        appendTcOptions(document.getElementById('mobile-case-req-tc'), cases, '— pick a test case —');
+        appendTcOptions(document.getElementById('mobile-case-req-start'), cases, '— none —');
+    }
+
+    // Auto-load the selected case's requirements the moment the user picks one.
+    var tcSel = document.getElementById('mobile-case-req-tc');
+    if (tcSel && tcSel.tagName === 'SELECT') {
+        tcSel.addEventListener('change', function () {
+            if (tcSel.value) loadCaseReq();
         });
     }
 
     loadProfiles();
     loadCaseReqList();
-    populateTcDatalist();
+    populateTcSelects();
 })();

@@ -101,14 +101,14 @@
                            placeholder="data-axis-test-id"/>
                 </label>
                 <p th:if="${projectPlatform != 'ANDROID'}" class="muted">Comma-separated attribute names. Always ranked first. Shared with every project on this host.</p>
-                <label id="settings-locator-mode-wrap">Locator ranking
+                <label id="settings-locator-mode-wrap" th:if="${projectPlatform != 'ANDROID'}">Locator ranking
                     <select name="locatorMode" id="settings-locator-mode">
                         <option value="stable-first">Stable first — test id, then unique id / name, then role + label (recommended, survives Arabic/English switch)</option>
                         <option value="user-facing-first">User-facing first — role + label, then test id (reads like the page; breaks if copy is translated)</option>
                     </select>
                 </label>
-                <p class="muted" id="settings-locator-mode-note">Applies to step binding, browser proof and the generated framework on <strong>web</strong> projects. Preferred hooks above always win.</p>
-                <section id="settings-mobile-locator-tiers" hidden>
+                <p class="muted" id="settings-locator-mode-note" th:if="${projectPlatform != 'ANDROID'}">Applies to step binding, browser proof and the generated framework on <strong>web</strong> projects. Preferred hooks above always win.</p>
+                <section id="settings-mobile-locator-tiers" th:if="${projectPlatform == 'ANDROID'}">
                     <h3 style="margin-top:0.25rem;margin-bottom:0.5rem">Locator ranking (Android)</h3>
                     <p class="muted" style="margin-top:0">Android projects use a <strong>fixed tier list</strong>. Picking a mode is not available here — this table is the authoritative order the binder walks.</p>
                     <table class="locator-tier-table">
@@ -529,56 +529,60 @@
         </section>
 
         <section class="panel mobile-panel" id="mobile-case-req-panel" hidden data-api="/mobile/cases/{tcId}/requirements">
-            <h2>Case sign-in requirements</h2>
-            <p id="mobile-case-req-err" class="error" hidden></p>
-            <label>Test case ID
-                <input type="text" id="mobile-case-req-tc" placeholder="e.g. TC-001" autocomplete="off"
-                       list="mobile-case-req-tc-list"/>
-                <datalist id="mobile-case-req-tc-list"></datalist>
-            </label>
-            <button type="button" class="button ghost" id="mobile-case-req-load">Load requirements</button>
-            <form id="mobile-case-req-form" hidden>
-                <label>Sign-in mode
-                    <select id="mobile-case-req-mode">
-                        <option value="">(use profile default)</option>
-                        <option value="ENSURE_LOGGED_IN">Ensure logged in — stay signed in; log in only if needed</option>
-                        <option value="FRESH_LOGIN">Fresh login — end the prior session and sign in again (does not clear app data)</option>
-                        <option value="LOGGED_OUT">Logged out — leave the app signed out</option>
-                        <option value="LOGIN_UNDER_TEST">Login under test — the case’s own steps handle sign-in</option>
+            <details>
+                <summary style="cursor:pointer;">
+                    <strong>Case sign-in requirements</strong>
+                    <span class="muted"> — only needed if you use Sign-in profiles above. Skip this if your tests handle their own login or don't need auth.</span>
+                </summary>
+                <p id="mobile-case-req-err" class="error" hidden></p>
+                <label>Test case ID
+                    <select id="mobile-case-req-tc">
+                        <option value="">— pick a test case —</option>
                     </select>
                 </label>
-                <p class="hint" id="mobile-case-req-mode-help">
-                    Fresh login ends the session and signs in again. Clearing app data is a separate explicit action.
-                </p>
-                <label>Pinned auth profile revision ID
-                    <input type="text" id="mobile-case-req-rev" placeholder="arev_…" list="mobile-auth-rev-datalist" autocomplete="off"/>
-                    <datalist id="mobile-auth-rev-datalist"></datalist>
-                </label>
-                <label>Start-state test case ID (optional)
-                    <input type="text" id="mobile-case-req-start" placeholder="TC-…" autocomplete="off"
-                           list="mobile-case-req-tc-list"/>
-                </label>
-                <label class="call-before-field">Call before (prerequisites)
+                <button type="button" class="button ghost" id="mobile-case-req-load">Load requirements</button>
+                <form id="mobile-case-req-form" hidden>
+                    <label>Sign-in mode
+                        <select id="mobile-case-req-mode">
+                            <option value="">(use profile default)</option>
+                            <option value="ENSURE_LOGGED_IN">Ensure logged in — stay signed in; log in only if needed</option>
+                            <option value="FRESH_LOGIN">Fresh login — end the prior session and sign in again (does not clear app data)</option>
+                            <option value="LOGGED_OUT">Logged out — leave the app signed out</option>
+                            <option value="LOGIN_UNDER_TEST">Login under test — the case’s own steps handle sign-in</option>
+                        </select>
+                    </label>
+                    <p class="hint" id="mobile-case-req-mode-help">
+                        Fresh login ends the session and signs in again. Clearing app data is a separate explicit action.
+                    </p>
+                    <label>Pinned auth profile revision ID
+                        <input type="text" id="mobile-case-req-rev" placeholder="arev_…" list="mobile-auth-rev-datalist" autocomplete="off"/>
+                        <datalist id="mobile-auth-rev-datalist"></datalist>
+                    </label>
+                    <label>Start-state test case ID (optional)
+                        <select id="mobile-case-req-start">
+                            <option value="">— none —</option>
+                        </select>
+                    </label>
+                    <!-- Call before is already on the workbook TC row (callBefore column); the mobile
+                         JSON still round-trips any pre-existing value via the hidden input, but the
+                         chips/search UI was duplicated and removed to avoid two places to maintain. -->
                     <input type="hidden" id="mobile-case-req-call-before" value=""/>
-                    <div class="call-before-chips" id="mobile-case-req-chips"></div>
-                    <input type="search" id="mobile-case-req-search" placeholder="Search cases by ID or title…" autocomplete="off" aria-label="Search prerequisite cases"/>
-                    <ul class="call-before-results" id="mobile-case-req-results" hidden></ul>
-                </label>
-                <label class="mobile-check">
-                    <input type="checkbox" id="mobile-case-req-negative"/> This is a negative-login case
-                </label>
-                <p id="mobile-case-req-negative-msg" class="error" hidden>
-                    A negative-login case cannot be used as setup for other cases.
-                </p>
-                <p id="mobile-case-req-form-err" class="error" hidden></p>
-                <div class="modal-actions">
-                    <button type="submit" id="mobile-case-req-save">Save requirements</button>
+                    <label class="mobile-check">
+                        <input type="checkbox" id="mobile-case-req-negative"/> This is a negative-login case
+                    </label>
+                    <p id="mobile-case-req-negative-msg" class="error" hidden>
+                        A negative-login case cannot be used as setup for other cases.
+                    </p>
+                    <p id="mobile-case-req-form-err" class="error" hidden></p>
+                    <div class="modal-actions">
+                        <button type="submit" id="mobile-case-req-save">Save requirements</button>
+                    </div>
+                </form>
+                <div id="mobile-case-req-list-wrap">
+                    <h3 class="settings-advanced-heading">Saved requirements</h3>
+                    <div id="mobile-case-req-list" class="mobile-case-req-list" aria-live="polite"></div>
                 </div>
-            </form>
-            <div id="mobile-case-req-list-wrap">
-                <h3 class="settings-advanced-heading">Saved requirements</h3>
-                <div id="mobile-case-req-list" class="mobile-case-req-list" aria-live="polite"></div>
-            </div>
+            </details>
             <p class="muted mobile-readonly-hint" id="mobile-case-req-readonly" hidden>
                 You can view requirements. Only an owner or admin can change them.
             </p>

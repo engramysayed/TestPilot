@@ -2,6 +2,13 @@
 
 # Keel changelog
 
+## 2026-11-24 — Case sign-in panel: real dropdown, collapsed by default, Call-before removed
+
+- **TC selectors are real `<select>` dropdowns now.** `Test case ID` and `Start-state test case ID` were text inputs with a datalist (still looked like inputs). Switched both to `<select>` populated from the project's mobile library via `ensureLibCases()`. Picking a TC from the dropdown now **auto-loads** its saved requirements — the `Load requirements` button is kept as a secondary trigger but is no longer necessary.
+- **Panel collapses into a `<details>` block** with a one-liner summary ("only needed if you use Sign-in profiles above"), so users who aren't doing sign-in orchestration don't see the whole form open by default.
+- **Call before (prerequisites) field removed from the UI.** It duplicated the workbook's `callBefore` column. The hidden input `#mobile-case-req-call-before` is kept so any pre-existing value round-trips on save, but the chips / search / results UI (~15 lines of HTML) is gone.
+- **Locator ranking also now Thymeleaf-gated**: `th:if="${projectPlatform != 'ANDROID'}"` on the web dropdown + help; `th:if="${projectPlatform == 'ANDROID'}"` on the Android tier table (dropping the `hidden` attr that JS used to toggle). Same cache-proof pattern as Base URL / Preferred hooks.
+
 ## 2026-11-24 — Mobile settings polish: hide web fields server-side, TC dropdown
 
 - Base URL / Preferred test hooks / the muted "Comma-separated attribute names…" help line now carry `th:if="${projectPlatform != 'ANDROID'}"` on their `<label>`s so Thymeleaf drops them from the HTML entirely on Android projects. Earlier JS-only hiding worked but was defeated by stale browser JS cache; the server-side gate makes a hard refresh unnecessary.
