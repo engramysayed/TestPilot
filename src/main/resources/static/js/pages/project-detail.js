@@ -2606,6 +2606,14 @@
         const mobileEnabled = root.dataset.mobileEnabled === 'true';
         const platform = (root.dataset.projectPlatform || 'WEB').toUpperCase();
         const canEdit = root.dataset.mobileCanEdit === 'true';
+        // This IIFE sits outside the outer project-detail IIFE, so apiUrl / API_HEADERS
+        // aren't in scope here — redeclare them (every loadMobileApp/loadMobileDevices call
+        // was throwing ReferenceError and surfacing as "Could not load app settings/phones").
+        const projectId = root.getAttribute('data-project-id');
+        const API_HEADERS = { 'X-Keel-Requested-With': 'Keel' };
+        function apiUrl(path) {
+            return '/api/projects/' + encodeURIComponent(projectId) + path;
+        }
         const appPanel = document.getElementById('mobile-app-panel');
         const devicesPanel = document.getElementById('mobile-devices-panel');
         const authPanel = document.getElementById('mobile-auth-profiles-panel');
@@ -2968,6 +2976,37 @@
                     err.textContent = res.ok ? '' : (data.message || 'Could not save app settings');
                 }
                 if (res.ok) loadMobileApp();
+            });
+        }
+
+        const pickBtn = document.getElementById('mobile-package-pick');
+        const pickStatus = document.getElementById('mobile-package-pick-status');
+        const packageList = document.getElementById('mobile-package-list');
+        if (pickBtn) {
+            pickBtn.addEventListener('click', async () => {
+                try {
+                    if (pickStatus) { pickStatus.hidden = false; pickStatus.textContent = 'Reading packages from the phone…'; }
+                    const res = await fetch(apiUrl('/mobile/apps/installed-packages'), { credentials: 'same-origin', headers: API_HEADERS });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.message || 'HTTP ' + res.status);
+                    const pkgs = data.packages || [];
+                    if (packageList) {
+                        packageList.innerHTML = '';
+                        pkgs.forEach(p => {
+                            const opt = document.createElement('option');
+                            opt.value = p;
+                            packageList.appendChild(opt);
+                        });
+                    }
+                    if (pickStatus) {
+                        pickStatus.hidden = false;
+                        pickStatus.textContent = pkgs.length
+                            ? pkgs.length + ' packages from ' + (data.source || 'phone') + ' — start typing in Package name to filter.'
+                            : (data.message || 'No packages found on the phone.');
+                    }
+                } catch (e) {
+                    if (pickStatus) { pickStatus.hidden = false; pickStatus.textContent = 'Could not read packages: ' + (e.message || e); }
+                }
             });
         }
 

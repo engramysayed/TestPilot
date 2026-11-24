@@ -2,6 +2,8 @@ package delivery.portal.api;
 
 import delivery.mobile.MobilePortalStore;
 import delivery.mobile.MobileProperties;
+import delivery.mobile.adb.AdbDeviceDiscovery;
+import delivery.mobile.adb.AdbInventoryException;
 import delivery.mobile.apk.ApkErrorCode;
 import delivery.mobile.apk.ApkErrorMessages;
 import delivery.mobile.apk.ApkInspectionException;
@@ -11,6 +13,9 @@ import delivery.mobile.model.MobileAppRevisionRecord;
 import delivery.mobile.model.MobileAppSource;
 import delivery.mobile.model.MobileDeviceRecord;
 import delivery.mobile.model.ProjectPlatform;
+import delivery.mobile.persistence.MobileDeviceEntity;
+import delivery.mobile.persistence.MobileDeviceRepository;
+import delivery.mobile.run.DeviceSerialResolver;
 import delivery.portal.model.ProjectRecord;
 import delivery.portal.security.CurrentUserService;
 import delivery.portal.service.PortalStore;
@@ -53,13 +58,21 @@ public class MobileAppDeviceController {
     private final PortalStore store;
     private final MobilePortalStore mobileStore;
     private final CurrentUserService currentUser;
+    private final MobileDeviceRepository deviceRepo;
+    private final DeviceSerialResolver serials;
+    private final AdbDeviceDiscovery adb;
 
     public MobileAppDeviceController(MobileProperties mobileProperties, PortalStore store,
-                                     MobilePortalStore mobileStore, CurrentUserService currentUser) {
+                                     MobilePortalStore mobileStore, CurrentUserService currentUser,
+                                     MobileDeviceRepository deviceRepo, DeviceSerialResolver serials,
+                                     AdbDeviceDiscovery adb) {
         this.mobileProperties = mobileProperties;
         this.store = store;
         this.mobileStore = mobileStore;
         this.currentUser = currentUser;
+        this.deviceRepo = deviceRepo;
+        this.serials = serials;
+        this.adb = adb;
     }
 
     public record AppSaveBody(
@@ -250,6 +263,58 @@ public class MobileAppDeviceController {
                     : e.getMessage();
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                     .body(uploadError(ApkErrorCode.APK_INVALID, detail, null, null));
+        }
+    }
+
+    /**
+     * Enumerate third-party packages installed on the first AUTHORIZED+AVAILABLE device on this
+     * host for this project's tenant. Powers the "pick from phone" datalist under Package name.
+     * Live adb call — do not poll; call on user action (focus / button click).
+     */
+    @GetMapping("/{projectId}/mobile/apps/installed-packages")
+    public ResponseEntity<?> listInstalledPackages(@PathVariable String projectId) {
+        ResponseEntity<?> gate = gate(projectId, false);
+        if (gate != null) {
+            return gate;
+        }
+        ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
+        String tenantId = project.getTenantId();
+        String hostId = serials.hostId();
+        // Prefer a device that's live on *this* host, authorized, and not busy.
+        Optional<MobileDeviceEntity> pick = deviceRepo.findAll().stream()
+                .filter(e -> tenantId.equals(e.getTenantId()))
+                .filter(e -> hostId.equals(e.getHostId()))
+                .filter(e -> "AUTHORIZED".equalsIgnoreCase(e.getAuthorizedState()))
+                .filter(e -> e.getSerialFingerprint() != null && !e.getSerialFingerprint().isBlank())
+                .findFirst();
+        if (pick.isEmpty()) {
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("packages", List.of());
+            out.put("source", "");
+            out.put("message", "No authorized phone on this host to query.");
+            return ResponseEntity.ok(out);
+        }
+        MobileDeviceEntity dev = pick.get();
+        Optional<String> serialOpt = serials.resolve(dev.getSerialFingerprint());
+        if (serialOpt.isEmpty()) {
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("packages", List.of());
+            out.put("source", dev.getDisplayName() == null ? "" : dev.getDisplayName());
+            out.put("message", "Phone registered but not currently connected over ADB.");
+            return ResponseEntity.ok(out);
+        }
+        try {
+            List<String> pkgs = adb.listInstalledThirdPartyPackages(serialOpt.get());
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("packages", pkgs);
+            out.put("source", dev.getDisplayName() == null ? "" : dev.getDisplayName());
+            return ResponseEntity.ok(out);
+        } catch (AdbInventoryException e) {
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("packages", List.of());
+            out.put("source", dev.getDisplayName() == null ? "" : dev.getDisplayName());
+            out.put("message", "adb: " + e.getMessage());
+            return ResponseEntity.ok(out);
         }
     }
 

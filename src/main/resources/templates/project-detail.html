@@ -416,8 +416,14 @@
                 </div>
                 <p id="mobile-apk-fingerprints" class="muted" hidden></p>
                 <label>Package name
-                    <input type="text" name="packageName" id="mobile-package-name" placeholder="com.example.app"/>
+                    <input type="text" name="packageName" id="mobile-package-name"
+                           list="mobile-package-list" placeholder="com.example.app" autocomplete="off"/>
+                    <datalist id="mobile-package-list"></datalist>
                 </label>
+                <div class="mobile-run-row" style="margin:-0.3rem 0 0.6rem;">
+                    <button type="button" class="button ghost" id="mobile-package-pick">Load packages from connected phone</button>
+                    <span id="mobile-package-pick-status" class="muted" hidden></span>
+                </div>
                 <label>Version name <span class="muted">(optional)</span>
                     <input type="text" name="versionName" id="mobile-version-name" placeholder="1.2.0"/>
                 </label>
@@ -446,47 +452,6 @@
             <p id="mobile-devices-err" class="error" hidden></p>
             <p id="mobile-devices-empty" class="muted" hidden>No phones registered yet.</p>
             <div id="mobile-devices-list" class="mobile-devices-list" aria-live="polite"></div>
-        </section>
-
-        <section class="panel mobile-panel" id="mobile-run-panel" hidden
-                 th:attr="data-mobile-enabled=${mobileEnabled},data-platform=${projectPlatform},data-can-edit=${mobileCanEdit}">
-            <h2>Run on a phone</h2>
-            <div class="mobile-run-row">
-                <button type="button" class="button ghost" id="mobile-discover-btn">Find connected phones</button>
-                <label>Phone
-                    <select id="mobile-run-device"></select>
-                </label>
-                <label>App package
-                    <select id="mobile-run-revision">
-                        <option value="">— loading APK revisions —</option>
-                    </select>
-                </label>
-                <label>Test case IDs <span class="muted">(blank = all)</span>
-                    <input type="text" id="mobile-run-tcs" placeholder="TC_01, TC_02"/>
-                </label>
-                <button type="button" class="button" id="mobile-run-start">Run on phone</button>
-                <button type="button" class="button ghost" id="mobile-run-cancel" hidden>Cancel run</button>
-            </div>
-            <label class="check" id="mobile-pre-run-review-wrap">
-                <input type="checkbox" id="mobile-pre-run-review"/>
-                Review cases before run <span class="muted">(uses the AI reviewer; cost applies when configured)</span>
-            </label>
-            <section id="mobile-pre-run-review-panel" class="pre-run-review-panel" hidden>
-                <p id="mobile-pre-run-review-status" class="muted" aria-live="polite"></p>
-                <ul id="mobile-pre-run-review-findings" class="pre-run-review-findings"></ul>
-                <ul id="mobile-pre-run-review-errors" class="pre-run-review-errors error"></ul>
-                <div id="mobile-pre-run-review-cases" class="pre-run-review-cases"></div>
-                <p>
-                    <button type="button" class="button primary" id="mobile-pre-run-review-accept" disabled>Accept &amp; run</button>
-                    <button type="button" class="button ghost" id="mobile-pre-run-review-cancel">Cancel review</button>
-                </p>
-            </section>
-            <p id="mobile-run-msg" class="muted" aria-live="polite"></p>
-            <table class="table" id="mobile-run-results" hidden>
-                <thead><tr><th>Case</th><th>Result</th><th>Details</th></tr></thead>
-                <tbody></tbody>
-            </table>
-            <p class="muted">Needs a mobile runner on the computer the phone is plugged into: set <code>KEEL_RUNNER_TOKEN</code> (Settings → Private runners → Enroll runner) and run <code>scripts\mobile-runner.cmd</code>.</p>
         </section>
 
         <section class="panel mobile-panel" id="mobile-auth-profiles-panel" hidden
@@ -1025,6 +990,5 @@
 </style>
 <script th:src="@{/js/pages/project-detail.js}"></script>
 <script th:src="@{/js/keel-mobile-auth.js}"></script>
-<script th:src="@{/js/mobile-run.js}" defer></script>
 </body>
 </html>

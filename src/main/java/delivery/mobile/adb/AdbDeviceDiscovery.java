@@ -91,6 +91,31 @@ public class AdbDeviceDiscovery {
     }
 
     /**
+     * List the third-party package names currently installed on {@code serial}, sorted and
+     * deduplicated. Backs the "pick from phone" dropdown on the Android app settings panel.
+     * Scope is deliberately third-party only — system packages are noise for test authoring.
+     */
+    public List<String> listInstalledThirdPartyPackages(String serial) throws AdbInventoryException {
+        String exactSerial = AdbInputGuard.requireSerial(serial);
+        requireOnlineAuthorized(exactSerial);
+        String raw = backend.execute(List.of("-s", exactSerial, "shell", "pm", "list", "packages", "-3"));
+        List<String> out = new ArrayList<>();
+        if (raw == null || raw.isBlank()) return out;
+        java.util.Set<String> seen = new java.util.TreeSet<>();
+        for (String line : raw.split("\\r?\\n")) {
+            String s = line.trim();
+            if (s.startsWith("package:")) {
+                s = s.substring("package:".length()).trim();
+            }
+            if (!s.isEmpty() && s.indexOf('/') < 0 && s.indexOf(' ') < 0) {
+                seen.add(s);
+            }
+        }
+        out.addAll(seen);
+        return out;
+    }
+
+    /**
      * Observe package identity on the selected serial only ({@code verification=OBSERVED}).
      */
     public InstalledPackageMetadata resolveInstalledPackage(String serial, String packageName)

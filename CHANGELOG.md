@@ -2,6 +2,20 @@
 
 # Keel changelog
 
+## 2026-11-24 — Project settings: fix mobile panels, pick package from phone, drop "Run on a phone"
+
+Bug fix (the real one the user hit). The mobile IIFE in [`project-detail.js`](src/main/resources/static/js/pages/project-detail.js) lives OUTSIDE the outer project-detail IIFE, so `apiUrl` and `API_HEADERS` (declared inside the outer IIFE) were not in scope. Every `loadMobileApp()` / `loadMobileDevices()` call threw `ReferenceError: apiUrl is not defined`, caught by the try/catch, and surfaced as the generic red banners "Could not load app settings" / "Could not load phones" even though the backend returned 200 with the device + revisions. Fix: redeclare `projectId`, `API_HEADERS` and `apiUrl` inside the mobile IIFE (6 lines).
+
+New: **"Load packages from connected phone"** button under Package name. Reads third-party packages from the first AUTHORIZED device on this host via `adb -s <serial> shell pm list packages -3`, dedup-sorts them into a `<datalist>` so typing in Package name filters by them. Minimal UI — no modal, no device picker; picks the first eligible phone automatically (the common case).
+
+Backend wiring:
+- [`AdbDeviceDiscovery.listInstalledThirdPartyPackages(serial)`](src/main/java/delivery/mobile/adb/AdbDeviceDiscovery.java) — shells out, parses `package:` lines, returns sorted + deduped names.
+- `GET /api/projects/{projectId}/mobile/apps/installed-packages` on [`MobileAppDeviceController`](src/main/java/delivery/portal/api/MobileAppDeviceController.java) — resolves fingerprint → live serial via `DeviceSerialResolver`, calls the helper, returns `{packages, source, message?}`. Always 200 so the UI never shows a red banner on a missing/offline phone — just a muted note.
+
+Removed: the "Run on a phone" panel on Project Settings. It mirrored the Execute page and confused the settings-vs-run distinction (user noted: "here i only save mobile and apk — then in execute it uses this settings only"). Deleted the panel from [`project-detail.html`](src/main/resources/templates/project-detail.html) and the now-dead [`mobile-run.js`](src/main/resources/static/js/mobile-run.js) (~290 lines gone; no test or template still references it).
+
+`mvn -pl keel-portal test -Dtest='*Mobile*,*Precision*'` → 92 tests green.
+
 ## 2026-11-23 — Flow map lives with the diagrams
 
 - The product flow map is `docs/archive/ops/diagrams/keel-product-flows.md`, next to the older flow images.
