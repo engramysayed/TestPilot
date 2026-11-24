@@ -2,7 +2,14 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-24 (Start enrolls the runner, device choice on disk, Generate write-back, Cursor blocks the zip).
+**Last updated:** 2026-11-24 (each run chooses a phone, local Generate repair, Cursor miss still publishes).
+
+## Each run chooses a phone (2026-11-24)
+
+- `keelFillReadyPhones` lists only READY phones and leaves "Choose a phone" selected. `keelConfirmMobileWalk` refuses a blank choice and a phone that is not READY. Automate no longer offers text shells.
+- `MobileAutomateConversion.plan` does not fall back to the newest profile. `tryConvert` throws "Choose a connected phone." when this job has no in-memory choice. `HuntController` requires the posted phone to be READY.
+- `TcGenerateService` calls `repairCasesLocally` when the contract still fails after Cursor. That asks Ollama, then `GenerateAuthoringRepair`, then validates again.
+- `MobileCursorPass` loads `CURSOR_API_KEY` through `ApiKeySource` and returns a sentence when the key is missing or the pass throws. `MobileAutomateConversion` no longer throws on that sentence, so the zip is written.
 
 ## Start enrolls the runner (2026-11-24)
 

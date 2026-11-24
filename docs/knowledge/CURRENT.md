@@ -1,6 +1,8 @@
 # Keel — current project knowledge
 
-> **What is true now.** Updated 2026-11-12. When something changes, edit this page in the same commit.
+> **What is true now.** Updated 2026-11-24. When something changes, edit this page in the same commit.
+>
+> Android Automate, Execute, and Bug Hunter each ask for a phone that is connected now. Generate repairs a failed case check with the local model when Cursor returns no cases. A Cursor miss on an Android zip is written on the run, and the zip is still published.
 > History (what was true on a given day) is in [`../archive/HISTORY.md`](../archive/HISTORY.md).
 > Engineer entry point: [`../ENGINEERING_HANDOFF.md`](../ENGINEERING_HANDOFF.md). User-facing features: [`../PRODUCT.md`](../PRODUCT.md).
 

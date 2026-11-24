@@ -2,6 +2,14 @@
 
 # Keel changelog
 
+## 2026-11-24 — Every phone run asks, and a missed Cursor pass still publishes
+
+- Automate, Execute, and Bug Hunter each start only after you choose a phone that is connected now. The page lists those phones and does not pick one for you. A blank choice, a busy phone, or an unplugged phone stops the run. Keel does not reuse the last phone after a restart.
+- When Generate's Cursor review returns no cases, Keel asks the local model to repair the failing checks, then checks those cases. Generate fails only when that check still fails.
+- If the Android Cursor pass does not finish, including a missing `CURSOR_API_KEY`, the zip is still published and the run says why. The key is read from `api-keys.local.bat` when that file is present. A failed phone step keeps its written sentence when Cursor does not review it.
+
+Known: this was not clicked in the browser, and no phone was attached. The portal on port 8080 was not restarted, so it is still running the previous build.
+
 ## 2026-11-24 — Start enrolls the runner, and the remaining phone gaps are closed
 
 - Pressing Start enrolls the mobile runner on this computer. You do not set `KEEL_RUNNER_TOKEN`. If the runner was already built, Start launches it with Java and does not need Maven on PATH.

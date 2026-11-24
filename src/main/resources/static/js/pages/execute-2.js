@@ -67,8 +67,10 @@
             }
             if (err) err.hidden = true;
             list.innerHTML = '';
-            if (select) {
-                select.innerHTML = '<option value="">— Select phone —</option>';
+            if (select && window.keelFillReadyPhones) {
+                window.keelFillReadyPhones(select, []);
+            } else if (select) {
+                select.innerHTML = '<option value="">Choose a phone</option>';
             }
             const devices = data.devices || [];
             if (empty) empty.hidden = devices.length > 0;
@@ -88,17 +90,9 @@
                 row.appendChild(chip(readinessLabel(d.readiness)));
                 card.appendChild(row);
                 list.appendChild(card);
-                if (select) {
-                    const opt = document.createElement('option');
-                    opt.value = d.deviceId || '';
-                    opt.textContent = (d.displayName || 'Phone') + (d.serialShort ? (' (' + d.serialShort + ')') : '');
-                    opt.disabled = (d.readiness || '').toUpperCase() !== 'READY';
-                    select.appendChild(opt);
-                }
             });
-            if (select) {
-                const ready = Array.from(select.options).find(o => o.value && !o.disabled);
-                if (ready && !select.value) select.value = ready.value;
+            if (select && window.keelFillReadyPhones) {
+                window.keelFillReadyPhones(select, devices);
                 select.dataset.projectId = projectId;
                 if (!select.dataset.liveBound) {
                     select.dataset.liveBound = '1';

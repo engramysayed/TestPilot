@@ -15,8 +15,6 @@ import delivery.mobile.codegen.MobileAutomatePack;
 import delivery.mobile.ir.MobileCaseIr;
 import delivery.mobile.model.MobileAppRevisionRecord;
 import delivery.mobile.persistence.MobileDeviceEntity;
-import delivery.mobile.persistence.MobileDeviceProfileEntity;
-import delivery.mobile.persistence.MobileDeviceProfileRepository;
 import delivery.mobile.persistence.MobileDeviceRepository;
 import delivery.mobile.run.DeviceSerialResolver;
 import delivery.mobile.run.MobileRun;
@@ -46,7 +44,7 @@ import java.util.function.BooleanSupplier;
 
 /**
  * Android Automate: open the selected phone, follow the workbook, write the locators it bound.
- * No selected or connected phone → the same framework with text shells, and Chrome stays closed.
+ * The job must name a connected phone. Chrome stays closed.
  */
 @Service
 public class MobileAutomateConversion {
@@ -59,7 +57,6 @@ public class MobileAutomateConversion {
     private final MobileProperties mobileProps;
     private final MobilePortalStore mobileStore;
     private final MobileDeviceRepository devices;
-    private final MobileDeviceProfileRepository profiles;
     private final DeviceSerialResolver serials;
     private final MobileRunOrchestrator orchestrator;
     private final MobileRunnerSupervisor runners;
@@ -74,7 +71,6 @@ public class MobileAutomateConversion {
                                     MobileProperties mobileProps,
                                     MobilePortalStore mobileStore,
                                     MobileDeviceRepository devices,
-                                    MobileDeviceProfileRepository profiles,
                                     DeviceSerialResolver serials,
                                     MobileRunOrchestrator orchestrator,
                                     MobileRunnerSupervisor runners,
@@ -84,7 +80,6 @@ public class MobileAutomateConversion {
         this.mobileProps = mobileProps;
         this.mobileStore = mobileStore;
         this.devices = devices;
-        this.profiles = profiles;
         this.serials = serials;
         this.orchestrator = orchestrator;
         this.runners = runners;
@@ -96,21 +91,7 @@ public class MobileAutomateConversion {
         if (jobId == null || jobId.isBlank()) {
             return;
         }
-        String chosen = deviceId == null ? "" : deviceId.trim();
-        deviceByJob.put(jobId, chosen);
-        MobileDeviceChoice.save(Path.of(portalProps.getStoreRoot()), jobId, chosen);
-    }
-
-    private String rememberedDevice(String jobId) {
-        String mem = deviceByJob.get(jobId);
-        if (mem != null) {
-            return mem;
-        }
-        String saved = MobileDeviceChoice.load(Path.of(portalProps.getStoreRoot()), jobId);
-        if (saved != null) {
-            deviceByJob.put(jobId, saved);
-        }
-        return saved;
+        deviceByJob.put(jobId, deviceId == null ? "" : deviceId.trim());
     }
 
     public Map<String, Object> plan(String tenantId, String projectId) {
@@ -132,14 +113,14 @@ public class MobileAutomateConversion {
     }
 
     /**
-     * @param preferred null uses the latest saved phone. Blank means the user chose no phone.
+     * @param preferred the phone chosen for this run. Blank or null means none was chosen.
      */
     public Map<String, Object> plan(String tenantId, String projectId, String preferred) {
         Map<String, Object> out = new java.util.LinkedHashMap<>();
         Optional<MobileAppRevisionRecord> rev = mobileStore.findActiveAppRevision(tenantId, projectId);
         String pkg = rev.map(r -> r.getPackageName() == null ? "" : r.getPackageName()).orElse("");
         String version = rev.map(r -> r.getVersionName() == null ? "" : r.getVersionName()).orElse("");
-        String deviceId = preferred == null ? latestDeviceId(tenantId, projectId) : preferred.trim();
+        String deviceId = preferred == null ? "" : preferred.trim();
         out.put("deviceId", deviceId);
         out.put("appPackage", pkg);
         out.put("appVersion", version);
@@ -205,21 +186,25 @@ public class MobileAutomateConversion {
         cases = SuiteCaseFilter.requireFiltered(cases, projectRoot, "No test cases match the suite filter");
 
         String tenant = job.getTenantId() == null ? "" : job.getTenantId();
-        String chosen = rememberedDevice(job.getJobId());
-        Map<String, Object> plan = chosen == null
-                ? plan(tenant, job.getProjectId())
-                : plan(tenant, job.getProjectId(), chosen);
+        String chosen = deviceByJob.get(job.getJobId());
+        if (chosen == null || chosen.isBlank()) {
+            throw new IllegalStateException("Choose a connected phone.");
+        }
+        Map<String, Object> plan = plan(tenant, job.getProjectId(), chosen);
         String pkg = String.valueOf(plan.getOrDefault("appPackage", ""));
         String deviceId = String.valueOf(plan.getOrDefault("deviceId", ""));
         boolean blocked = Boolean.TRUE.equals(plan.get("blocked"));
+        if (blocked || !"READY".equals(String.valueOf(plan.get("phoneState")))) {
+            String why = String.valueOf(plan.getOrDefault("message", "Choose a connected phone."));
+            throw new IllegalStateException(why);
+        }
+        if (pkg.isBlank()) {
+            throw new IllegalStateException("Save an Android app on this project before Automate.");
+        }
 
         Map<String, List<MobileAutomateIr.Locator>> walked = Map.of();
         String how;
-        if (blocked) {
-            throw new IllegalStateException(String.valueOf(plan.get("message")));
-        } else if (!mobileProps.isEnabled() || "NONE".equals(plan.get("phoneState")) || pkg.isBlank()) {
-            how = String.valueOf(plan.get("message")) + " Wrote text shells from the Excel labels.";
-        } else {
+        {
             job.setMessage("Opening the phone and walking the workbook steps");
             portalStore.syncJobPersistence(job);
             runners.startForRun();
@@ -266,9 +251,6 @@ public class MobileAutomateConversion {
             }
             cursorNote[0] = cursorPass.reviewFramework(
                     projectDir, job.getJobId(), job.getProjectId(), notes.toString().trim());
-            if (cursorNote[0].startsWith("Cursor pass did not finish")) {
-                throw new IllegalStateException(cursorNote[0]);
-            }
         });
         String message = how + " " + cases.size() + " case(s), " + real + " phone locator(s), " + shells + " text shell(s).";
         if (!cursorNote[0].isBlank()) {
@@ -357,20 +339,6 @@ public class MobileAutomateConversion {
             return "The selected phone is not connected to this computer.";
         }
         return null;
-    }
-
-    private String latestDeviceId(String tenant, String projectId) {
-        MobileDeviceProfileEntity latest = null;
-        for (MobileDeviceProfileEntity profile : profiles.findByTenantIdAndProjectId(tenant, projectId)) {
-            if (profile.getDeviceId() == null || profile.getDeviceId().isBlank()) {
-                continue;
-            }
-            if (latest == null || (profile.getCreatedAt() != null && latest.getCreatedAt() != null
-                    && profile.getCreatedAt().isAfter(latest.getCreatedAt()))) {
-                latest = profile;
-            }
-        }
-        return latest == null ? "" : latest.getDeviceId();
     }
 
     private Path templateRoot() {

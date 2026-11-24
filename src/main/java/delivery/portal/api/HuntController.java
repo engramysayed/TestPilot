@@ -177,14 +177,15 @@ public class HuntController {
         }
         hunt.normalize();
         if (android) {
-            java.util.Map<String, Object> plan = walkPlans.plan(project.getTenantId(), projectId);
             String deviceId = req.deviceId() == null ? "" : req.deviceId().trim();
             if (deviceId.isBlank()) {
-                if (Boolean.TRUE.equals(plan.get("blocked")) || !"READY".equals(String.valueOf(plan.get("phoneState")))) {
-                    return ResponseEntity.status(HttpStatus.CONFLICT)
-                            .body(new ApiError("PHONE_UNAVAILABLE", String.valueOf(plan.get("message"))).asMap());
-                }
-                deviceId = String.valueOf(plan.getOrDefault("deviceId", ""));
+                return ResponseEntity.badRequest()
+                        .body(new ApiError("DEVICE_REQUIRED", "Choose a connected phone.").asMap());
+            }
+            java.util.Map<String, Object> plan = walkPlans.plan(project.getTenantId(), projectId, deviceId);
+            if (Boolean.TRUE.equals(plan.get("blocked")) || !"READY".equals(String.valueOf(plan.get("phoneState")))) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ApiError("PHONE_UNAVAILABLE", String.valueOf(plan.get("message"))).asMap());
             }
             if (String.valueOf(plan.getOrDefault("appPackage", "")).isBlank()) {
                 return ResponseEntity.badRequest()

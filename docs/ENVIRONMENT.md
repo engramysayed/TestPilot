@@ -78,7 +78,7 @@ Everything in section 1 plus the four tools below. The portal warns at run time 
 
 ### 2.5 Mobile runner process (the worker)
 
-This is NOT a system binary — it's a JVM you build from this repo. One per attached device, started where the phone is plugged in. Opening the Android project enrolls the token into `delivery-store/mobile-runner.token`. Start launches that process. `KEEL_PORTAL_URL` defaults to this portal. `KEEL_RUNNER_TOKEN` is only needed when you set it yourself.
+This is NOT a system binary — it's a JVM you build from this repo. One per attached device, started where the phone is plugged in. Opening the Android project enrolls the token into `delivery-store/mobile-runner.token`. Start launches that process. `KEEL_PORTAL_URL` defaults to this portal. `KEEL_RUNNER_TOKEN` is only needed when you set it yourself. Each Automate, Execute, and Bug Hunter run asks you to choose a phone that is connected now. `CURSOR_API_KEY` is read from `api-keys.local.bat` when that file is present. A missing key does not block the Android zip.
 
 ```bat
 mvn -f mobile-runner/pom.xml -q package -DskipTests

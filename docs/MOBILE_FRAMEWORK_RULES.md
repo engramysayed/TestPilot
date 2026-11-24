@@ -7,6 +7,7 @@ Canonical reference for the **Android** test framework Keel emits via `customer-
 - **Mobile runner** (settle, bind, precision, evidence): [`mobile-runner/src/main/java/delivery/mobile/runner/`](../mobile-runner/src/main/java/delivery/mobile/runner/)
 - **Host prerequisites** (adb / appium / apkanalyzer / aapt2 / runner process / env vars) are documented once in [`ENVIRONMENT.md`](ENVIRONMENT.md).
 - **Keep this doc in sync**: any change to mobile codegen emit, template contracts, runtime classes, locator tiers, or precision gate rules MUST update this file in the same commit.
+- **Each run chooses a phone** that is connected now. Keel does not reuse the previous phone. If the Cursor pass on the generated screens does not finish, the zip is still published and the run says why.
 
 ---
 

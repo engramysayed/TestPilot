@@ -34,28 +34,48 @@
    * @param mode 'automate' allows continuing with no phone (text shells). 'execute' does not.
    * @returns the plan when the user confirmed, or null when they cancelled or the phone blocked the start.
    */
+  global.keelFillReadyPhones = function (select, devices) {
+    if (!select) return;
+    select.innerHTML = '<option value="">Choose a phone</option>';
+    (devices || []).forEach(function (d) {
+      if (String(d.readiness || '').toUpperCase() !== 'READY') return;
+      if (!d.deviceId) return;
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = (d.displayName || 'Phone') + (d.serialShort ? (' (' + d.serialShort + ')') : '');
+      select.appendChild(opt);
+    });
+    select.value = '';
+  };
+
   global.keelConfirmMobileWalk = async function (projectId, mode, picked) {
-    const explicit = picked && Object.prototype.hasOwnProperty.call(picked, 'deviceId');
-    const plan = await global.keelMobileWalkPlan(projectId, explicit ? picked.deviceId : undefined);
-    if (explicit && picked.phoneName && plan.phoneState === 'READY') {
+    const deviceId = picked && picked.deviceId ? String(picked.deviceId) : '';
+    if (!deviceId) {
+      await global.keelAlert({
+        title: 'Choose a phone',
+        message: 'Pick a phone that is connected now. Keel does not reuse the last one.'
+      });
+      return null;
+    }
+    const plan = await global.keelMobileWalkPlan(projectId, deviceId);
+    if (picked.phoneName && plan.phoneState === 'READY') {
       plan.phoneName = picked.phoneName;
     }
     const phone = plan.phoneName ? plan.phoneName : 'None connected';
     const app = plan.appLabel ? plan.appLabel : 'No app saved';
     const status = phoneStatus(plan);
     const lines = 'Phone: ' + phone + '\nStatus: ' + status + '\nApp: ' + app;
-    if (plan.blocked || (mode === 'execute' && plan.phoneState !== 'READY')) {
+    if (plan.blocked || plan.phoneState !== 'READY') {
       await global.keelAlert({
         title: 'This run cannot start',
         message: lines + (plan.message ? '\n' + plan.message : '')
       });
       return null;
     }
-    const shells = mode === 'automate' && plan.phoneState !== 'READY';
     const ok = await global.keelConfirm({
-      title: shells ? 'Build without a phone?' : 'Start on this phone?',
-      message: lines + (shells ? '\nNo phone is connected, so locators will be the words from the Excel file.' : ''),
-      confirmLabel: shells ? 'Build anyway' : 'Start'
+      title: 'Start on this phone?',
+      message: lines,
+      confirmLabel: 'Start'
     });
     return ok ? plan : null;
   };

@@ -143,7 +143,15 @@ public final class GenerateHarnessBridge {
         }
     }
 
-    static List<ManualTestCase> casesFromAgentText(String summary, Map<String, Object> payload) {
+    public static String localRepairUser(String findings, String casesJson) {
+        String checks = findings == null ? "" : findings.trim();
+        String body = casesJson == null ? "" : casesJson.trim();
+        return "Repair these test cases so the checks pass. Reply with one JSON object only. "
+                + "It must contain a testCases array. Keep every case id. Do not invent a requirement.\n\n"
+                + "Checks:\n" + checks + "\n\nCases:\n" + body;
+    }
+
+    public static List<ManualTestCase> casesFromAgentText(String summary, Map<String, Object> payload) {
         try {
             if (payload != null && (payload.containsKey("testCases") || payload.containsKey("cases"))) {
                 return delivery.excel.GeneratedTcJsonParser.parse(JSON.writeValueAsString(payload)).cases();

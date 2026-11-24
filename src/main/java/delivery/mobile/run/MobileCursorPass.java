@@ -1,7 +1,6 @@
 package delivery.mobile.run;
 
 import delivery.agent.harness.AgentHarnessCoordinator;
-import delivery.agent.harness.AgentHarnessException;
 import delivery.agent.harness.AgentHarnessProperties;
 import delivery.agent.harness.AgentTaskType;
 import delivery.agent.harness.NewAgentTaskRequest;
@@ -52,7 +51,10 @@ public class MobileCursorPass {
             return "";
         }
         if (!properties.isEnabled() || !properties.isCursorEnabled()) {
-            return "Cursor pass skipped.";
+            return noteWithoutCursor(type, vars);
+        }
+        if (delivery.heal.ApiKeySource.resolve(delivery.heal.ApiKeySource.CURSOR_API_KEY).isBlank()) {
+            return noteWithoutCursor(type, vars);
         }
         try {
             String objective = PromptCatalog.format(promptId, vars);
@@ -62,7 +64,13 @@ public class MobileCursorPass {
             coordinator.execute(root, created.parentJobId(), created.taskId());
             return ok;
         } catch (Exception e) {
-            return "Cursor pass did not finish. " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+            String why = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            return noteWithoutCursor(type, vars) + " Cursor did not finish (" + why + ").";
         }
+    }
+
+    /** A sentence the run can keep when Cursor is not available. The zip and the phone result still stand. */
+    private static String noteWithoutCursor(AgentTaskType type, Map<String, String> vars) {
+        return "Cursor did not review this. The result above stands.";
     }
 }

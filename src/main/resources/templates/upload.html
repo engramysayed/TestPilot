@@ -766,23 +766,16 @@
         const select = document.getElementById('automate-device-select');
         if (!label || !select) return;
         label.hidden = false;
-        select.innerHTML = '<option value="">None connected</option>';
         try {
             const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/mobile/devices', {
                 credentials: 'same-origin',
                 headers: API_HEADERS
             });
             const data = res.ok ? await res.json() : {};
-            (data.devices || []).forEach(function (d) {
-                const opt = document.createElement('option');
-                opt.value = d.deviceId || '';
-                opt.textContent = (d.displayName || 'Phone') + (d.serialShort ? (' (' + d.serialShort + ')') : '');
-                opt.disabled = (d.readiness || '').toUpperCase() !== 'READY';
-                select.appendChild(opt);
-            });
-            const ready = Array.from(select.options).find(function (o) { return o.value && !o.disabled; });
-            if (ready) select.value = ready.value;
-        } catch (e) { /* the confirm dialog still says none */ }
+            if (window.keelFillReadyPhones) window.keelFillReadyPhones(select, data.devices || []);
+        } catch (e) {
+            if (window.keelFillReadyPhones) window.keelFillReadyPhones(select, []);
+        }
         function showLive() {
             if (window.keelAttachPhoneLive) {
                 window.keelAttachPhoneLive(document.getElementById('automate-phone-live'), projectId, select.value);

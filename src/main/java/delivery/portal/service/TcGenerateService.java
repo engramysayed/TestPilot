@@ -305,6 +305,7 @@ public class TcGenerateService {
                             cases = repaired;
                         }
                     }
+                    contractReport = GenerateTcContractValidation.validate(cases, contractCtx);
                     // Charge the project owner once per successful escalation (slice 3).
                     if (workspaceAiPolicy != null
                             && esc.detail() != null
@@ -315,6 +316,11 @@ public class TcGenerateService {
                     }
                     contractReport = GenerateTcContractValidation.validate(cases, contractCtx);
                 }
+                if (!contractReport.passed()) {
+                    cases = repairCasesLocally(cases, contractReport, resolvedModel, cancelCheck);
+                    cases = applyAuthoringRepair(cases, project.getBaseUrl(), storyLabel);
+                    contractReport = GenerateTcContractValidation.validate(cases, contractCtx);
+                }
                 var contractErrors = GenerateTcContractValidation.toLegacyGateErrors(contractReport);
                 if (!contractErrors.isEmpty()) {
                     throw GenerateQualityGate.failureException(contractErrors);
@@ -323,6 +329,45 @@ public class TcGenerateService {
         }
         cases = KeelPathSuggester.applyToBlank(cases);
         return new StoryGenerateResult(cases, parsed.coverageNotes(), resolvedModel);
+    }
+
+    private List<ManualTestCase> repairCasesLocally(
+            List<ManualTestCase> cases,
+            delivery.agent.validation.contract.ValidationReport report,
+            String model,
+            BooleanSupplier cancelCheck) {
+        StringBuilder findings = new StringBuilder();
+        if (report != null && report.findings() != null) {
+            for (var finding : report.findings()) {
+                if (!finding.blocksAcceptance()) {
+                    continue;
+                }
+                findings.append(finding.description());
+                if (finding.suggestedCorrection() != null && !finding.suggestedCorrection().isBlank()) {
+                    findings.append(" Fix: ").append(finding.suggestedCorrection());
+                }
+                findings.append('\n');
+            }
+        }
+        String casesJson;
+        try {
+            casesJson = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(Map.of("testCases", cases == null ? List.of() : cases));
+        } catch (Exception e) {
+            return cases;
+        }
+        try {
+            String raw = invokeOllama(
+                    "You repair test cases. Reply with one JSON object only.",
+                    GenerateHarnessBridge.localRepairUser(findings.toString(), casesJson),
+                    model,
+                    cancelCheck);
+            List<ManualTestCase> repaired = GenerateHarnessBridge.casesFromAgentText(raw, Map.of());
+            return repaired.isEmpty() ? cases : repaired;
+        } catch (Exception e) {
+            log.warn("Local case repair did not return cases: {}", e.getMessage());
+            return cases;
+        }
     }
 
     static boolean looksLikeEmptyOrBrokenBatch(String raw) {

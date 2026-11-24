@@ -20,6 +20,15 @@ public class GenerateRepairWriteBackTest {
     }
 
     @Test
+    public void localRepairAsksForTheFailingChecks() {
+        String user = GenerateHarnessBridge.localRepairUser(
+                "tcId 'TC_01': title is blank. Fix: Add a short title.",
+                "{\"testCases\":[]}");
+        assertTrue(user.contains("title is blank"), user);
+        assertTrue(user.contains("testCases"), user);
+    }
+
+    @Test
     public void emptyAgentTextLeavesNothingToApply() {
         assertTrue(GenerateHarnessBridge.casesFromAgentText("no json here", Map.of()).isEmpty());
     }

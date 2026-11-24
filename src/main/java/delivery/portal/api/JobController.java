@@ -109,6 +109,10 @@ public class JobController {
             return ResponseEntity.badRequest()
                     .body(new ApiError("MISSING_BASE_URL", "Project baseUrl is required").asMap());
         }
+        if (android && (deviceId == null || deviceId.isBlank())) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiError("DEVICE_REQUIRED", "Choose a connected phone.").asMap());
+        }
         String username = "";
         String password = "";
         if (!android && !credentials.list(projectId).isEmpty()) {
