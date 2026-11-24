@@ -44,6 +44,18 @@ public record WalkedLocator(String strategy, String value, boolean shell) {
         return shell(fallback);
     }
 
+    /** The first visible scrollable control, or a text shell when the screen does not scroll. */
+    public static WalkedLocator fromScrollable(java.util.List<MobileSnapshotNode> nodes) {
+        if (nodes != null) {
+            for (MobileSnapshotNode node : nodes) {
+                if (node != null && node.displayed() && node.scrollable()) {
+                    return fromNode(node, "screen");
+                }
+            }
+        }
+        return shell("screen");
+    }
+
     public Map<String, Object> toMap() {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("strategy", strategy);

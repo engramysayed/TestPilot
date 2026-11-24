@@ -109,8 +109,19 @@ public final class MobileCaseRunner {
     }
 
     public Outcome run(CaseInput c) {
+        return run(c, false);
+    }
+
+    /**
+     * @param keepGoing when true, a missed step is recorded and the later steps are still located.
+     *                  Execute passes false and stops at the first failure.
+     */
+    public Outcome run(CaseInput c, boolean keepGoing) {
         List<String> log = new ArrayList<>();
         captured.clear();
+        String firstErr = null;
+        int firstStep = -1;
+        String firstCode = "STEP_FAILED";
         try {
             for (int i = 0; i < c.steps().size(); i++) {
                 String data = i < c.testData().size() ? c.testData().get(i) : "";
@@ -123,7 +134,14 @@ public final class MobileCaseRunner {
                 log.add((err == null ? "ok: " : "FAIL: ") + step.raw() + (err == null ? "" : " — " + err));
                 tryCaptureStep(c.tcId(), i + 1);
                 if (err != null) {
-                    return finish(c.tcId(), CaseOutcome.FAILED, code(err), i + 1, err, log);
+                    if (firstErr == null) {
+                        firstErr = err;
+                        firstStep = i + 1;
+                        firstCode = code(err);
+                    }
+                    if (!keepGoing) {
+                        return finish(c.tcId(), CaseOutcome.FAILED, firstCode, firstStep, firstErr, log);
+                    }
                 }
             }
             for (String exp : c.expected()) {
@@ -135,8 +153,17 @@ public final class MobileCaseRunner {
                 String err = execute(check);
                 log.add((err == null ? "ok: " : "FAIL: ") + "expected " + exp + (err == null ? "" : " — " + err));
                 if (err != null) {
-                    return finish(c.tcId(), CaseOutcome.FAILED, "ASSERTION_FAILED", -1, err, log);
+                    if (firstErr == null) {
+                        firstErr = err;
+                        firstCode = "ASSERTION_FAILED";
+                    }
+                    if (!keepGoing) {
+                        return finish(c.tcId(), CaseOutcome.FAILED, "ASSERTION_FAILED", -1, err, log);
+                    }
                 }
+            }
+            if (firstErr != null) {
+                return finish(c.tcId(), CaseOutcome.FAILED, firstCode, firstStep, firstErr, log);
             }
             return finish(c.tcId(), CaseOutcome.PASSED, "", -1, "", log);
         } catch (MobileExecuteEngine.DeviceLostException e) {
@@ -174,6 +201,7 @@ public final class MobileCaseRunner {
                 if (appPackage.isBlank()) return "no app package configured for the project";
                 return status(actions.launch(appPackage, appActivity, true));
             case SWIPE:
+                captured.add(WalkedLocator.fromScrollable(driver.pageSource().nodes()));
                 return status(actions.swipe(NormalizedSwipe.forDirection(ScrollDirection.parse(step.direction()), 0.6),
                         null, true));
             default:

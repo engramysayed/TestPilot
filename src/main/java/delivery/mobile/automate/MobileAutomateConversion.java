@@ -38,6 +38,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -58,6 +59,7 @@ public class MobileAutomateConversion {
     private final MobileDeviceProfileRepository profiles;
     private final DeviceSerialResolver serials;
     private final MobileRunOrchestrator orchestrator;
+    private final ConcurrentHashMap<String, String> deviceByJob = new ConcurrentHashMap<>();
 
     public MobileAutomateConversion(PortalStore portalStore,
                                     DeliveryPortalProperties portalProps,
@@ -77,17 +79,27 @@ public class MobileAutomateConversion {
         this.orchestrator = orchestrator;
     }
 
-    /**
-     * What Automate or Execute would use right now.
-     * {@code blocked} is true when a saved phone is busy or unplugged — the run must not start.
-     * {@code phoneState=NONE} is not blocked: Automate can still build text shells after the user confirms.
-     */
+    /** Remember the phone chosen on the Automate page. Blank means the user chose none. */
+    public void rememberDevice(String jobId, String deviceId) {
+        if (jobId == null || jobId.isBlank()) {
+            return;
+        }
+        deviceByJob.put(jobId, deviceId == null ? "" : deviceId.trim());
+    }
+
     public Map<String, Object> plan(String tenantId, String projectId) {
+        return plan(tenantId, projectId, null);
+    }
+
+    /**
+     * @param preferred null uses the latest saved phone. Blank means the user chose no phone.
+     */
+    public Map<String, Object> plan(String tenantId, String projectId, String preferred) {
         Map<String, Object> out = new java.util.LinkedHashMap<>();
         Optional<MobileAppRevisionRecord> rev = mobileStore.findActiveAppRevision(tenantId, projectId);
         String pkg = rev.map(r -> r.getPackageName() == null ? "" : r.getPackageName()).orElse("");
         String version = rev.map(r -> r.getVersionName() == null ? "" : r.getVersionName()).orElse("");
-        String deviceId = latestDeviceId(tenantId, projectId);
+        String deviceId = preferred == null ? latestDeviceId(tenantId, projectId) : preferred.trim();
         out.put("deviceId", deviceId);
         out.put("appPackage", pkg);
         out.put("appVersion", version);
@@ -120,6 +132,12 @@ public class MobileAutomateConversion {
             out.put("message", blocked);
             return out;
         }
+        if (!orchestrator.runnerOnline()) {
+            out.put("phoneState", "READY");
+            out.put("blocked", true);
+            out.put("message", "The mobile runner is not running. Start it, then try again.");
+            return out;
+        }
         out.put("phoneState", "READY");
         out.put("blocked", false);
         out.put("message", "Phone: " + name + ". App: " + appLabel + ".");
@@ -142,7 +160,10 @@ public class MobileAutomateConversion {
         cases = SuiteCaseFilter.requireFiltered(cases, projectRoot, "No test cases match the suite filter");
 
         String tenant = job.getTenantId() == null ? "" : job.getTenantId();
-        Map<String, Object> plan = plan(tenant, job.getProjectId());
+        String chosen = deviceByJob.get(job.getJobId());
+        Map<String, Object> plan = chosen == null
+                ? plan(tenant, job.getProjectId())
+                : plan(tenant, job.getProjectId(), chosen);
         String pkg = String.valueOf(plan.getOrDefault("appPackage", ""));
         String deviceId = String.valueOf(plan.getOrDefault("deviceId", ""));
         boolean blocked = Boolean.TRUE.equals(plan.get("blocked"));
@@ -159,9 +180,7 @@ public class MobileAutomateConversion {
             walked = walk(job, tenant, deviceId,
                     plan.get("appRevisionId") == null ? null : String.valueOf(plan.get("appRevisionId")),
                     cases, cancel);
-            how = walked.isEmpty()
-                    ? "The phone walk did not finish — wrote text shells."
-                    : "Walked the phone and wrote the locators it found. A step that could not be tapped stayed as the Excel wording.";
+            how = "Walked the phone and wrote the locators it found. A control that was not on screen stayed as the Excel wording.";
         }
 
         List<MobileCaseIr> ir = new ArrayList<>();
@@ -192,14 +211,9 @@ public class MobileAutomateConversion {
 
     private Map<String, List<MobileAutomateIr.Locator>> walk(
             JobRecord job, String tenant, String deviceId, String revisionId,
-            List<ManualTestCase> cases, BooleanSupplier cancel) {
+            List<ManualTestCase> cases, BooleanSupplier cancel) throws Exception {
         List<String> ids = cases.stream().map(ManualTestCase::tcId).toList();
-        MobileRun run;
-        try {
-            run = orchestrator.start(tenant, job.getProjectId(), job.getOwnerUserId(), deviceId, ids, revisionId);
-        } catch (Exception e) {
-            return Map.of();
-        }
+        MobileRun run = orchestrator.startWalk(tenant, job.getProjectId(), job.getOwnerUserId(), deviceId, ids, revisionId);
         try {
             await(run, cancel);
         } catch (JobCancelledException e) {
@@ -207,10 +221,16 @@ public class MobileAutomateConversion {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             orchestrator.cancel(run.runId());
-            return Map.of();
+            throw new IllegalStateException("The phone walk was interrupted.");
         }
         if (!run.status().terminal()) {
-            return Map.of();
+            throw new IllegalStateException("The phone walk did not finish.");
+        }
+        if (run.status() == MobileRun.Status.FAILED || run.status() == MobileRun.Status.CANCELLED) {
+            JSONObject view = run.view();
+            String why = view.optString("message", "The phone walk failed");
+            String err = view.optString("error", "");
+            throw new IllegalStateException(err.isBlank() ? why : why + " " + err);
         }
         Map<String, List<MobileAutomateIr.Locator>> out = new LinkedHashMap<>();
         JSONArray results = run.view().optJSONArray("results");
@@ -244,12 +264,13 @@ public class MobileAutomateConversion {
                     waitingSince = Instant.now();
                 } else if (Instant.now().isAfter(waitingSince.plus(RUNNER_CLAIM_WAIT))) {
                     orchestrator.cancel(run.runId());
-                    return;
+                    throw new IllegalStateException(
+                            "The mobile runner did not take the phone within 45 seconds. Start it, then try again.");
                 }
             }
             if (Instant.now().isAfter(walkDeadline)) {
                 orchestrator.cancel(run.runId());
-                return;
+                throw new IllegalStateException("The phone walk took longer than 3 minutes and was stopped.");
             }
             Thread.sleep(500);
         }

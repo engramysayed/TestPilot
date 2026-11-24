@@ -72,7 +72,9 @@ public class MobileRunController {
     }
 
     @GetMapping("/walk-plan")
-    public ResponseEntity<?> walkPlan(@PathVariable String projectId) {
+    public ResponseEntity<?> walkPlan(@PathVariable String projectId,
+                                      @org.springframework.web.bind.annotation.RequestParam(value = "deviceId", required = false)
+                                      String deviceId) {
         ResponseEntity<?> gate = gate(projectId, false);
         if (gate != null) return gate;
         ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
@@ -81,7 +83,9 @@ public class MobileRunController {
                     "phoneState", "NONE", "blocked", false, "phoneName", "",
                     "appLabel", "", "message", "This project is not an Android app."));
         }
-        return ResponseEntity.ok(walkPlans.plan(project.getTenantId(), projectId));
+        return ResponseEntity.ok(deviceId == null
+                ? walkPlans.plan(project.getTenantId(), projectId)
+                : walkPlans.plan(project.getTenantId(), projectId, deviceId));
     }
 
     @PostMapping(value = "/runs", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)

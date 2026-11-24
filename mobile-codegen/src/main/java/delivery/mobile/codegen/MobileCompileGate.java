@@ -29,11 +29,32 @@ public final class MobileCompileGate {
             return new Result(false, "missing pom.xml — compile skipped/failed", priorPublishedZip);
         }
         // Prefer a dry structural check when Maven may be heavy; still invoke mvn when available.
+        return runMaven(projectDir, priorPublishedZip, mavenBinary(), "compile");
+    }
+
+    /** Compiles generated test sources (screens live under src/test/java). */
+    public static Result compileTests(Path projectDir) throws Exception {
+        if (projectDir == null || !Files.isDirectory(projectDir)) {
+            throw new IllegalArgumentException("projectDir required");
+        }
+        return runMaven(projectDir, null, mavenBinary(), "test-compile");
+    }
+
+    private static Result runMaven(Path projectDir, Path priorPublishedZip, String binary, String goal) throws Exception {
+        Path pom = projectDir.resolve("pom.xml");
+        if (!Files.isRegularFile(pom)) {
+            return new Result(false, "missing pom.xml — compile skipped/failed", priorPublishedZip);
+        }
         ProcessBuilder pb = new ProcessBuilder(
-                "mvn", "-q", "-f", pom.toAbsolutePath().toString(), "-DskipTests", "compile");
+                binary, "-q", "-f", pom.toAbsolutePath().toString(), "-DskipTests", goal);
         pb.directory(projectDir.toFile());
         pb.redirectErrorStream(true);
-        Process p = pb.start();
+        Process p;
+        try {
+            p = pb.start();
+        } catch (java.io.IOException e) {
+            return new Result(false, "Maven is not on PATH (" + binary + "). " + e.getMessage(), priorPublishedZip);
+        }
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         p.getInputStream().transferTo(buf);
         boolean finished = p.waitFor(3, TimeUnit.MINUTES);
@@ -54,6 +75,11 @@ public final class MobileCompileGate {
             return new Result(false, msg, priorPublishedZip);
         }
         return new Result(true, "compile ok", priorPublishedZip);
+    }
+
+    private static String mavenBinary() {
+        String os = System.getProperty("os.name", "");
+        return os.toLowerCase(java.util.Locale.ROOT).contains("win") ? "mvn.cmd" : "mvn";
     }
 
     /**

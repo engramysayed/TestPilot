@@ -72,7 +72,7 @@ public record MobileLineIntent(Kind kind, String target, String value, String di
     /** True when the phone walk records a locator for this kind. */
     public boolean takesLocator() {
         return switch (kind) {
-            case TAP, TYPE, CLEAR, ASSERT_VISIBLE, ASSERT_NOT_VISIBLE -> true;
+            case TAP, TYPE, CLEAR, ASSERT_VISIBLE, ASSERT_NOT_VISIBLE, SWIPE -> true;
             default -> false;
         };
     }

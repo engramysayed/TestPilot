@@ -172,7 +172,8 @@ public final class MobileRunnerAgent {
             Map<String, MobileCaseRunner.Outcome> details = new LinkedHashMap<>();
             MobileExecuteEngine.ExecuteReport report = new MobileExecuteEngine().run(selected, false, sc -> {
                 progress.set("running " + sc.tcId());
-                MobileCaseRunner.Outcome o = runner.run(byId.get(sc.tcId()));
+                boolean keepGoing = "WALK".equalsIgnoreCase(String.valueOf(job.getOrDefault("mode", "")));
+                MobileCaseRunner.Outcome o = runner.run(byId.get(sc.tcId()), keepGoing);
                 details.put(sc.tcId(), o);
                 return o.outcome() == CaseOutcome.PASSED
                         ? CaseResult.passed(sc.tcId())

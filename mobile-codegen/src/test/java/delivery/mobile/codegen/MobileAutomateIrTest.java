@@ -32,13 +32,30 @@ public class MobileAutomateIrTest {
         String java = emit(ir);
         assertTrue(java.contains("AppiumBy.id(\"com.app:id/login\")"), java);
         assertTrue(ir.steps().get(0).target().origin().equals("HIERARCHY"));
+        assertTrue("TC01".equals(ir.steps().get(0).screenKey()));
+    }
+
+    @Test
+    public void swipeUsesTheScrolledControl() throws Exception {
+        MobileCaseIr ir = MobileAutomateIr.build(
+                "TC_02", "com.app",
+                List.of("Swipe up"),
+                List.of(), List.of(),
+                List.of(new MobileAutomateIr.Locator("id", "com.app:id/list", false)));
+        String java = emit(ir, "TC02Screen.java");
+        assertTrue(java.contains("AppiumBy.id(\"com.app:id/list\")"), java);
+        assertTrue("HIERARCHY".equals(ir.steps().get(0).target().origin()));
     }
 
     private static String emit(MobileCaseIr ir) throws Exception {
+        return emit(ir, "TC01Screen.java");
+    }
+
+    private static String emit(MobileCaseIr ir, String fileName) throws Exception {
         Path dir = Files.createTempDirectory("mobile-automate-ir");
         new MobileCodeWriter().writeVerified(dir, List.of(ir), NamingMap.empty());
-        Path screen = dir.resolve("src/test/java/project/screens/MainScreen.java");
-        assertTrue(Files.isRegularFile(screen), "screen written");
+        Path screen = dir.resolve("src/test/java/project/screens").resolve(fileName);
+        assertTrue(Files.isRegularFile(screen), "screen written: " + fileName);
         return Files.readString(screen);
     }
 }

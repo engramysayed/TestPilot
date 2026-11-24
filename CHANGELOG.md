@@ -2,6 +2,13 @@
 
 # Keel changelog
 
+## 2026-11-24 — Android Automate picks a phone, compiles, and does not shell a missed walk
+
+- Automate has a phone list. The dialog names the phone you picked, or says none is connected, and names the app. A busy phone, an unplugged phone, or a mobile runner that is not running stops the job. It does not build a zip of text shells.
+- Each case is its own screen class. A swipe records the scrolling control on that screen. If one step cannot be tapped, the walk still locates the later steps.
+- The zip is published only after Maven compiles the generated screens.
+- Execute results show the case title, pass or fail, the result, and the Figma compare status for that case.
+
 ## 2026-11-24 — Android Bug Hunter taps the app, and the phone screen plays in the page
 
 - On an Android project, Bug Hunter opens the saved app and taps controls it has not tried. It does not type. A crash or “keeps stopping” dialog is saved in the hunt pack you download from the job.

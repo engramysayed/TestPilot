@@ -1833,8 +1833,12 @@
                 resultsBody.innerHTML = '';
                 (data.results || []).forEach(function (row) {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = '<td class="mono">' + escapeHtml(row.tcId || '') + '</td><td></td><td></td><td>'
-                        + escapeHtml(row.outcome || '') + '</td><td>—</td>';
+                    const qa = row.qaStatus || (row.outcome === 'PASSED' ? 'PASS' : (row.outcome ? 'FAIL' : ''));
+                    tr.innerHTML = '<td class="mono">' + escapeHtml(row.tcId || '') + '</td>'
+                        + '<td>' + escapeHtml(row.title || '') + '</td>'
+                        + '<td>' + (qa ? '<span class="' + qaBadgeClass(qa) + '">' + escapeHtml(qa) + '</span>' : '') + '</td>'
+                        + '<td>' + escapeHtml(row.outcome || '') + '</td>'
+                        + '<td>' + renderDesignBadge(row.designCompareStatus) + '</td>';
                     resultsBody.appendChild(tr);
                 });
                 const status = data.status || '';

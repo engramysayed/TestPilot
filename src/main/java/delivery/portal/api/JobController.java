@@ -59,12 +59,14 @@ public class JobController {
     private final JobLinkEnricher jobLinks;
     private final JobVisionSummaryService visionSummary;
     private final JobAgentTasksService agentTasks;
+    private final delivery.mobile.automate.MobileAutomateConversion mobileAutomate;
 
     public JobController(PortalStore store, ConversionWorker worker, CurrentUserService currentUser,
                          ProjectCredentialService credentials, GeneratedWorkbookService workbooks,
                          DeliveryPortalProperties portalProperties, JobLinkEnricher jobLinks,
                          PermissionEnforcer permissionEnforcer, JobVisionSummaryService visionSummary,
-                         JobAgentTasksService agentTasks) {
+                         JobAgentTasksService agentTasks,
+                         delivery.mobile.automate.MobileAutomateConversion mobileAutomate) {
         this.store = store;
         this.worker = worker;
         this.currentUser = currentUser;
@@ -75,6 +77,7 @@ public class JobController {
         this.permissionEnforcer = permissionEnforcer;
         this.visionSummary = visionSummary;
         this.agentTasks = agentTasks;
+        this.mobileAutomate = mobileAutomate;
     }
 
     @PostMapping("/projects/{projectId}/jobs")
@@ -85,7 +88,8 @@ public class JobController {
             @RequestParam(value = "tcIds", required = false) List<String> tcIds,
             @RequestParam(value = "credentialProfile", required = false) String credentialProfile,
             @RequestParam(value = "mode", defaultValue = "NEW") String mode,
-            @RequestParam(value = "finalRevise", required = false, defaultValue = "false") String finalRevise
+            @RequestParam(value = "finalRevise", required = false, defaultValue = "false") String finalRevise,
+            @RequestParam(value = "deviceId", required = false) String deviceId
     ) throws Exception {
         Long ownerId = currentUser.requireUserId();
         permissionEnforcer.requireFeatureJob(currentUser.requireUser(), "AUTOMATE");
@@ -99,14 +103,15 @@ public class JobController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiError("PROJECT_ARCHIVED", "Cannot start jobs on archived project").asMap());
         }
-        String baseUrl = project.getBaseUrl();
-        if (baseUrl == null || baseUrl.isBlank()) {
+        boolean android = "ANDROID".equalsIgnoreCase(project.getPlatform());
+        String baseUrl = project.getBaseUrl() == null ? "" : project.getBaseUrl();
+        if (!android && baseUrl.isBlank()) {
             return ResponseEntity.badRequest()
                     .body(new ApiError("MISSING_BASE_URL", "Project baseUrl is required").asMap());
         }
         String username = "";
         String password = "";
-        if (!credentials.list(projectId).isEmpty()) {
+        if (!android && !credentials.list(projectId).isEmpty()) {
             if (credentialProfile == null || credentialProfile.isBlank()) {
                 return ResponseEntity.badRequest()
                         .body(new ApiError("CREDENTIAL_PROFILE_REQUIRED", "credentialProfile is required").asMap());
@@ -152,12 +157,14 @@ public class JobController {
                 return ResponseEntity.badRequest()
                         .body(new ApiError("SURFACE_MISMATCH", block.get()).asMap());
             }
-            List<String> gateErrors = GenerateQualityGate.validate(
-                    TcImportRepair.repairCases(cases), baseUrl);
-            if (!gateErrors.isEmpty()) {
-                Files.deleteIfExists(excelPath);
-                return ResponseEntity.badRequest()
-                        .body(QualityGateResponses.fromErrors(gateErrors));
+            if (!android) {
+                List<String> gateErrors = GenerateQualityGate.validate(
+                        TcImportRepair.repairCases(cases), baseUrl);
+                if (!gateErrors.isEmpty()) {
+                    Files.deleteIfExists(excelPath);
+                    return ResponseEntity.badRequest()
+                            .body(QualityGateResponses.fromErrors(gateErrors));
+                }
             }
         } catch (InvalidExcelTemplateException e) {
             Files.deleteIfExists(excelPath);
@@ -183,6 +190,9 @@ public class JobController {
                 JobRecord.JobKind.CONVERT
         );
         job.setAuthoringEngine(engine);
+        if (android && deviceId != null && mobileAutomate != null) {
+            mobileAutomate.rememberDevice(jobId, deviceId);
+        }
         if (useStoredWorkbook) {
             workbooks.headRevisionId(projectId).ifPresent(job::setLibraryRevisionId);
         }

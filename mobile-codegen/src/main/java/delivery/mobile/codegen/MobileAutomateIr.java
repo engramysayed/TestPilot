@@ -57,10 +57,12 @@ public final class MobileAutomateIr {
             }
             Locator loc = null;
             if (intent.takesLocator()) {
-                loc = cursor < locs.size() ? locs.get(cursor) : Locator.shell(intent.target());
+                Locator fallback = intent.kind() == MobileLineIntent.Kind.SWIPE
+                        ? Locator.shell("screen") : Locator.shell(intent.target());
+                loc = cursor < locs.size() ? locs.get(cursor) : fallback;
                 cursor++;
             }
-            MobileStep step = toStep("s" + (out.size() + 1), pkg, intent, loc);
+            MobileStep step = toStep("s" + (out.size() + 1), screenKey(tcId), pkg, intent, loc);
             if (step != null) {
                 out.add(step);
             }
@@ -75,14 +77,14 @@ public final class MobileAutomateIr {
                         MobileLineIntent.Kind.ASSERT_VISIBLE, q.get(0), "", "", exp == null ? "" : exp);
                 Locator loc = cursor < locs.size() ? locs.get(cursor) : Locator.shell(q.get(0));
                 cursor++;
-                MobileStep step = toStep("s" + (out.size() + 1), pkg, intent, loc);
+                MobileStep step = toStep("s" + (out.size() + 1), screenKey(tcId), pkg, intent, loc);
                 if (step != null) {
                     out.add(step);
                 }
             }
         }
         if (out.isEmpty()) {
-            out.add(toStep("s1", pkg,
+            out.add(toStep("s1", screenKey(tcId), pkg,
                     new MobileLineIntent(MobileLineIntent.Kind.ASSERT_VISIBLE, "screen", "", "", "screen"),
                     Locator.shell("screen")));
         }
@@ -100,25 +102,37 @@ public final class MobileAutomateIr {
                 out);
     }
 
-    private static MobileStep toStep(String stepId, String pkg, MobileLineIntent intent, Locator loc) {
+    /** One screen class per case, so Login and Checkout are not both MainScreen. */
+    static String screenKey(String tcId) {
+        String cleaned = (tcId == null ? "" : tcId).replaceAll("[^A-Za-z0-9]", "");
+        if (cleaned.isEmpty()) {
+            return "Case";
+        }
+        if (Character.isDigit(cleaned.charAt(0))) {
+            cleaned = "Tc" + cleaned;
+        }
+        return cleaned;
+    }
+
+    private static MobileStep toStep(String stepId, String screen, String pkg, MobileLineIntent intent, Locator loc) {
         MobileContext ctx = new MobileContext("NATIVE", pkg, null, null);
         return switch (intent.kind()) {
-            case BACK -> new MobileStep(stepId, "main", MobileOperation.PRESS_BACK, ctx, null, null,
+            case BACK -> new MobileStep(stepId, screen, MobileOperation.PRESS_BACK, ctx, null, null,
                     null, null, false, null, null, null, null, null, null, null);
-            case SWIPE -> new MobileStep(stepId, "main", MobileOperation.SWIPE, ctx,
-                    target(Locator.shell("screen")), null,
+            case SWIPE -> new MobileStep(stepId, screen, MobileOperation.SWIPE, ctx,
+                    target(loc == null ? Locator.shell("screen") : loc), null,
                     null, null, false, null, null, null, null,
                     intent.direction() == null || intent.direction().isBlank() ? "DOWN" : intent.direction(),
                     null, null);
-            case TAP, CLEAR -> new MobileStep(stepId, "main",
+            case TAP, CLEAR -> new MobileStep(stepId, screen,
                     intent.kind() == MobileLineIntent.Kind.CLEAR ? MobileOperation.CLEAR : MobileOperation.TAP,
                     ctx, target(loc == null ? Locator.shell(intent.target()) : loc), null,
                     null, null, false, null, null, null, null, null, null, null);
-            case TYPE -> new MobileStep(stepId, "main", MobileOperation.TYPE, ctx,
+            case TYPE -> new MobileStep(stepId, screen, MobileOperation.TYPE, ctx,
                     target(loc == null ? Locator.shell(intent.target()) : loc),
                     input(intent),
                     null, null, false, null, null, null, null, null, null, null);
-            case ASSERT_VISIBLE, ASSERT_NOT_VISIBLE -> new MobileStep(stepId, "main", MobileOperation.ASSERT, ctx,
+            case ASSERT_VISIBLE, ASSERT_NOT_VISIBLE -> new MobileStep(stepId, screen, MobileOperation.ASSERT, ctx,
                     target(loc == null ? Locator.shell(intent.target()) : loc), null,
                     null, null, false, null, "visible", null, null, null, null, null);
             default -> null;

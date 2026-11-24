@@ -57,6 +57,12 @@
                     No base URL configured.
                     <a id="settings-link" href="#">Open project Settings</a>
                 </p>
+                <label id="automate-phone-label" hidden>Phone
+                    <select id="automate-device-select">
+                        <option value="">None connected</option>
+                    </select>
+                </label>
+                <img id="automate-phone-live" class="phone-live" alt="Live phone screen" hidden>
                 <label id="credential-label" hidden>Credential profile
                     <select name="credentialProfile" id="credentialProfile">
                         <option value="">— Select profile —</option>
@@ -752,6 +758,37 @@
         syncWorkbookSourceUi();
     }
 
+    async function loadAutomatePhones(projectId) {
+        const label = document.getElementById('automate-phone-label');
+        const select = document.getElementById('automate-device-select');
+        if (!label || !select) return;
+        label.hidden = false;
+        select.innerHTML = '<option value="">None connected</option>';
+        try {
+            const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/mobile/devices', {
+                credentials: 'same-origin',
+                headers: API_HEADERS
+            });
+            const data = res.ok ? await res.json() : {};
+            (data.devices || []).forEach(function (d) {
+                const opt = document.createElement('option');
+                opt.value = d.deviceId || '';
+                opt.textContent = (d.displayName || 'Phone') + (d.serialShort ? (' (' + d.serialShort + ')') : '');
+                opt.disabled = (d.readiness || '').toUpperCase() !== 'READY';
+                select.appendChild(opt);
+            });
+            const ready = Array.from(select.options).find(function (o) { return o.value && !o.disabled; });
+            if (ready) select.value = ready.value;
+        } catch (e) { /* the confirm dialog still says none */ }
+        function showLive() {
+            if (window.keelAttachPhoneLive) {
+                window.keelAttachPhoneLive(document.getElementById('automate-phone-live'), projectId, select.value);
+            }
+        }
+        select.onchange = showLive;
+        showLive();
+    }
+
     async function loadProjectConfig(projectId) {
         resetProjectConfig();
         if (!projectId) return;
@@ -776,6 +813,7 @@
             baseUrlRow.hidden = true;
             baseUrlMissing.hidden = true;
             submitBtn.disabled = false;
+            await loadAutomatePhones(projectId);
         } else if (projectHasBaseUrl) {
             baseUrlRow.hidden = false;
             baseUrlDisplay.textContent = baseUrl;
@@ -784,6 +822,11 @@
             baseUrlRow.hidden = true;
             baseUrlMissing.hidden = false;
             submitBtn.disabled = true;
+            const phoneLabel = document.getElementById('automate-phone-label');
+            if (phoneLabel) phoneLabel.hidden = true;
+            if (window.keelAttachPhoneLive) {
+                window.keelAttachPhoneLive(document.getElementById('automate-phone-live'), projectId, '');
+            }
         }
 
         const credRes = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/credentials', {
@@ -799,7 +842,7 @@
             opt.textContent = c.profileName + ' (' + c.username + ')';
             credSel.appendChild(opt);
         });
-        credentialsRequired = profiles.length > 0;
+        credentialsRequired = !projectIsAndroid && profiles.length > 0;
         if (credentialsRequired) {
             credLabel.hidden = false;
             credSel.required = true;
@@ -868,7 +911,11 @@
             return;
         }
         if (projectIsAndroid) {
-            const plan = await window.keelConfirmMobileWalk(projectId, 'automate');
+            const phoneSel = document.getElementById('automate-device-select');
+            const picked = phoneSel
+                ? { deviceId: phoneSel.value, phoneName: phoneSel.selectedOptions[0] ? phoneSel.selectedOptions[0].textContent : '' }
+                : { deviceId: '' };
+            const plan = await window.keelConfirmMobileWalk(projectId, 'automate', picked);
             if (!plan) return;
         }
         if (credentialsRequired && !form.credentialProfile.value) {
@@ -920,6 +967,10 @@
         }
         if (form.credentialProfile.value) {
             body.append('credentialProfile', form.credentialProfile.value);
+        }
+        if (projectIsAndroid) {
+            const phoneSel = document.getElementById('automate-device-select');
+            body.append('deviceId', phoneSel ? phoneSel.value : '');
         }
         body.append('mode', form.mode.value);
         body.append('finalRevise', form.finalRevise && form.finalRevise.checked ? 'true' : 'false');

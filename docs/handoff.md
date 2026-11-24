@@ -2,22 +2,26 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-24 (Android Bug Hunter taps; live phone screen).
+**Last updated:** 2026-11-24 (Automate phone picker, compile gate, walk continues).
+
+## Android Automate limits closed (2026-11-24)
+
+- Automate phone list posts `deviceId`. Blank means text shells, after confirm.
+- A busy phone, an unplugged phone, or a runner that has not polled in 20 seconds refuses the start. A 45 second claim miss fails the job.
+- Walk mode keeps locating later steps. Swipes record the scrollable control. Each case is its own screen class. The zip waits on `mvn test-compile`.
+- Execute rows show title, QA, and Figma status.
+- Not verified on a phone this session: `adb devices` was empty, and the portal already on port 8080 was not restarted.
 
 ## Android Bug Hunter and live screen (2026-11-24)
 
 - Android Bug Hunter starts a mobile run with mode HUNT. The runner (`MobileAppExplorer`) launches the app and taps unseen controls. Findings land in the usual hunt zip.
-- `GET /api/projects/{id}/mobile/devices/{deviceId}/live` is a multipart PNG stream from `adb exec-out screencap`. Shown on Execute and Bug Hunter.
-- Limits: the hunter does not type; the stream is screencap frames, not an scrcpy H.264 socket; one `MainScreen` and the other Automate limits are unchanged.
+- `GET /api/projects/{id}/mobile/devices/{deviceId}/live` is a multipart PNG stream from `adb exec-out screencap`. Shown on Automate, Execute, and Bug Hunter.
+- The hunter does not type. The stream is screencap frames, not an scrcpy H.264 socket.
 
 ## Android start dialog (2026-11-24)
 
-## Android start dialog (2026-11-24)
-
-- Automate and Execute call `GET /api/projects/{id}/mobile/walk-plan` and show the phone and app before starting. Busy or unplugged fails the job; no phone on Automate still shells after confirm.
+- Automate and Execute call `GET /api/projects/{id}/mobile/walk-plan` and show the phone and app before starting.
 - Execute on Android posts `/mobile/runs`: multipart workbook runs only those rows; JSON runs the checked library ids, including pre-run review.
-- Android Bug Hunter and the live screen are in the section above. The live picture is adb screencap, not an scrcpy H.264 socket.
-- Defects: Automate still uses the latest saved phone, not a picker; zip is not Maven-compiled; one `MainScreen`.
 
 ## Android Automate (2026-11-24)
 

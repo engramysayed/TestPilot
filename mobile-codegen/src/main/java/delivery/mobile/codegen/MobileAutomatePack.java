@@ -6,7 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-/** Copies the Android customer template, writes screens from IR, and zips without invoking Maven. */
+/** Copies the Android customer template, writes screens from IR, compiles them, then zips. */
 public final class MobileAutomatePack {
 
     private MobileAutomatePack() {}
@@ -22,7 +22,12 @@ public final class MobileAutomatePack {
         new MobileCodeWriter().writeVerified(project, cases, NamingMap.empty());
         int generated = cases == null ? 0 : cases.size();
         packager.writeCoverageReport(project, generated, 0);
-        packager.compileAndZip(project, zip, null, false);
+        MobileCompileGate.Result gate = MobileCompileGate.compileTests(project);
+        if (!gate.ok()) {
+            throw new IllegalStateException(
+                    "The generated Android project did not compile. " + gate.message());
+        }
+        packager.zip(project, zip);
         return zip;
     }
 }

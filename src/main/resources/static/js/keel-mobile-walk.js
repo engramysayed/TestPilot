@@ -9,8 +9,12 @@
     return { 'X-Keel-Requested-With': 'Keel' };
   }
 
-  global.keelMobileWalkPlan = async function (projectId) {
-    const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/mobile/walk-plan', {
+  global.keelMobileWalkPlan = async function (projectId, deviceId) {
+    let url = '/api/projects/' + encodeURIComponent(projectId) + '/mobile/walk-plan';
+    if (deviceId !== undefined && deviceId !== null) {
+      url += '?deviceId=' + encodeURIComponent(deviceId);
+    }
+    const res = await fetch(url, {
       credentials: 'same-origin',
       headers: headers()
     });
@@ -31,12 +35,10 @@
    * @returns the plan when the user confirmed, or null when they cancelled or the phone blocked the start.
    */
   global.keelConfirmMobileWalk = async function (projectId, mode, picked) {
-    const plan = await global.keelMobileWalkPlan(projectId);
-    if (picked && picked.deviceId) {
-      plan.deviceId = picked.deviceId;
-      plan.phoneName = picked.phoneName || plan.phoneName;
-      plan.phoneState = 'READY';
-      plan.blocked = false;
+    const explicit = picked && Object.prototype.hasOwnProperty.call(picked, 'deviceId');
+    const plan = await global.keelMobileWalkPlan(projectId, explicit ? picked.deviceId : undefined);
+    if (explicit && picked.phoneName && plan.phoneState === 'READY') {
+      plan.phoneName = picked.phoneName;
     }
     const phone = plan.phoneName ? plan.phoneName : 'None connected';
     const app = plan.appLabel ? plan.appLabel : 'No app saved';

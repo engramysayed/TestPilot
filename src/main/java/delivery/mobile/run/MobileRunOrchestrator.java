@@ -131,9 +131,22 @@ public class MobileRunOrchestrator {
     public MobileRun start(String tenantId, String projectId, Long ownerUserId, String deviceId,
                            List<String> tcIds, String appRevisionId)
             throws Exception {
+        return start(tenantId, projectId, ownerUserId, deviceId, tcIds, appRevisionId, "EXECUTE");
+    }
+
+    /** Same as {@link #start} but a missed step does not skip locating the later steps. */
+    public MobileRun startWalk(String tenantId, String projectId, Long ownerUserId, String deviceId,
+                               List<String> tcIds, String appRevisionId) throws Exception {
+        return start(tenantId, projectId, ownerUserId, deviceId, tcIds, appRevisionId, "WALK");
+    }
+
+    private MobileRun start(String tenantId, String projectId, Long ownerUserId, String deviceId,
+                            List<String> tcIds, String appRevisionId, String mode)
+            throws Exception {
         if (!props.isEnabled()) {
             throw new IllegalStateException("Mobile is disabled (delivery.mobile.enabled=false)");
         }
+        requireRunner();
         MobileDeviceEntity device = devices.findByDeviceId(deviceId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No phone is registered under id '" + deviceId + "'. "
@@ -163,15 +176,16 @@ public class MobileRunOrchestrator {
         if (cases.isEmpty()) {
             throw new IllegalArgumentException("No runnable test cases selected");
         }
-        return launch(tenantId, projectId, ownerUserId, deviceId, cases, appRevisionId, "EXECUTE", 0);
+        return launch(tenantId, projectId, ownerUserId, deviceId, cases, appRevisionId, mode, 0);
     }
 
     /** Run exactly these workbook rows (an upload), not the rest of the library. */
     public MobileRun startProvided(String tenantId, String projectId, Long ownerUserId, String deviceId,
-                                   List<ManualTestCase> provided, String appRevisionId) throws Exception {
+                                   List<ManualTestCase> provided,                                    String appRevisionId) throws Exception {
         if (!props.isEnabled()) {
             throw new IllegalStateException("Mobile is disabled (delivery.mobile.enabled=false)");
         }
+        requireRunner();
         MobileDeviceEntity device = devices.findByDeviceId(deviceId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No phone is registered under id '" + deviceId + "'. "
@@ -206,6 +220,7 @@ public class MobileRunOrchestrator {
         if (!props.isEnabled()) {
             throw new IllegalStateException("Mobile is disabled (delivery.mobile.enabled=false)");
         }
+        requireRunner();
         MobileDeviceEntity device = devices.findByDeviceId(deviceId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No phone is registered under id '" + deviceId + "'. "
@@ -254,7 +269,9 @@ public class MobileRunOrchestrator {
     public Optional<JSONObject> view(String runId) {
         MobileRun live = runs.get(runId);
         if (live != null) {
-            return Optional.of(live.view());
+            JSONObject view = live.view();
+            attachDesign(live, view);
+            return Optional.of(view);
         }
         Path f = runsRoot.resolve(runId + ".json");
         try {
@@ -264,6 +281,29 @@ public class MobileRunOrchestrator {
         } catch (Exception ignored) {
         }
         return Optional.empty();
+    }
+
+    private void attachDesign(MobileRun run, JSONObject view) {
+        JSONArray results = view.optJSONArray("results");
+        if (results == null) {
+            return;
+        }
+        for (int i = 0; i < results.length(); i++) {
+            JSONObject row = results.optJSONObject(i);
+            if (row == null) {
+                continue;
+            }
+            String tcId = row.optString("tcId", "");
+            Path json = evidenceDir(run.runId).resolve(tcId).resolve("design-compare.json");
+            if (!Files.isRegularFile(json)) {
+                continue;
+            }
+            try {
+                row.put("designCompareStatus", new JSONObject(Files.readString(json)).optString("status", ""));
+            } catch (Exception ignored) {
+                // A missing compare file just leaves the Design cell empty.
+            }
+        }
     }
 
     public void cancel(String runId) {
@@ -281,7 +321,23 @@ public class MobileRunOrchestrator {
     // ------------------------------------------------------------------ runner API
 
     /** First run waiting for a runner in this tenant (oldest first). */
+    private volatile Instant lastRunnerPoll;
+
+    /** True when a mobile runner has polled in the last 20 seconds. */
+    public boolean runnerOnline() {
+        Instant seen = lastRunnerPoll;
+        return seen != null && Instant.now().isBefore(seen.plusSeconds(20));
+    }
+
+    private void requireRunner() {
+        if (!runnerOnline()) {
+            throw new IllegalStateException(
+                    "The mobile runner is not running. Start it, then try again.");
+        }
+    }
+
     public synchronized Optional<JSONObject> claim(String tenantId, String runnerId) {
+        lastRunnerPoll = Instant.now();
         return runs.values().stream()
                 .filter(r -> r.status == MobileRun.Status.WAITING_FOR_RUNNER)
                 .filter(r -> tenantId == null || tenantId.equals(r.tenantId))
@@ -346,6 +402,15 @@ public class MobileRunOrchestrator {
                 for (int i = 0; i < results.length(); i++) {
                     JSONObject r = results.optJSONObject(i);
                     if (r != null) {
+                        String tcId = r.optString("tcId", "");
+                        for (MobileRun.CaseInput c : run.cases) {
+                            if (tcId.equals(c.tcId())) {
+                                r.put("title", c.title() == null ? "" : c.title());
+                                break;
+                            }
+                        }
+                        String outcome = r.optString("outcome", "");
+                        r.put("qaStatus", "PASSED".equals(outcome) ? "PASS" : (outcome.isBlank() ? "" : "FAIL"));
                         run.results.add(r);
                     }
                 }
