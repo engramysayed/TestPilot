@@ -296,6 +296,15 @@ public class TcGenerateService {
                             contractReport,
                             stories);
                     log.info("TC contract Cursor escalation status={} detail={}", esc.status(), esc.detail());
+                    if ("COMPLETED".equalsIgnoreCase(String.valueOf(esc.status()))) {
+                        List<ManualTestCase> repaired = bridge.takeRepairedCases(
+                                store.projectDiskRoot(project.getProjectId()),
+                                "generate_" + project.getProjectId(),
+                                esc.taskId());
+                        if (!repaired.isEmpty()) {
+                            cases = repaired;
+                        }
+                    }
                     // Charge the project owner once per successful escalation (slice 3).
                     if (workspaceAiPolicy != null
                             && esc.detail() != null

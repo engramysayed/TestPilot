@@ -96,7 +96,21 @@ public class MobileAutomateConversion {
         if (jobId == null || jobId.isBlank()) {
             return;
         }
-        deviceByJob.put(jobId, deviceId == null ? "" : deviceId.trim());
+        String chosen = deviceId == null ? "" : deviceId.trim();
+        deviceByJob.put(jobId, chosen);
+        MobileDeviceChoice.save(Path.of(portalProps.getStoreRoot()), jobId, chosen);
+    }
+
+    private String rememberedDevice(String jobId) {
+        String mem = deviceByJob.get(jobId);
+        if (mem != null) {
+            return mem;
+        }
+        String saved = MobileDeviceChoice.load(Path.of(portalProps.getStoreRoot()), jobId);
+        if (saved != null) {
+            deviceByJob.put(jobId, saved);
+        }
+        return saved;
     }
 
     public Map<String, Object> plan(String tenantId, String projectId) {
@@ -191,7 +205,7 @@ public class MobileAutomateConversion {
         cases = SuiteCaseFilter.requireFiltered(cases, projectRoot, "No test cases match the suite filter");
 
         String tenant = job.getTenantId() == null ? "" : job.getTenantId();
-        String chosen = deviceByJob.get(job.getJobId());
+        String chosen = rememberedDevice(job.getJobId());
         Map<String, Object> plan = chosen == null
                 ? plan(tenant, job.getProjectId())
                 : plan(tenant, job.getProjectId(), chosen);
@@ -252,6 +266,9 @@ public class MobileAutomateConversion {
             }
             cursorNote[0] = cursorPass.reviewFramework(
                     projectDir, job.getJobId(), job.getProjectId(), notes.toString().trim());
+            if (cursorNote[0].startsWith("Cursor pass did not finish")) {
+                throw new IllegalStateException(cursorNote[0]);
+            }
         });
         String message = how + " " + cases.size() + " case(s), " + real + " phone locator(s), " + shells + " text shell(s).";
         if (!cursorNote[0].isBlank()) {

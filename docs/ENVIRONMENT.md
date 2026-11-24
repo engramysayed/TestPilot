@@ -78,7 +78,7 @@ Everything in section 1 plus the four tools below. The portal warns at run time 
 
 ### 2.5 Mobile runner process (the worker)
 
-This is NOT a system binary — it's a JVM you build from this repo. One per attached device, started where the phone is plugged in. Env vars `KEEL_RUNNER_TOKEN` and `KEEL_PORTAL_URL` are required.
+This is NOT a system binary — it's a JVM you build from this repo. One per attached device, started where the phone is plugged in. Opening the Android project enrolls the token into `delivery-store/mobile-runner.token`. Start launches that process. `KEEL_PORTAL_URL` defaults to this portal. `KEEL_RUNNER_TOKEN` is only needed when you set it yourself.
 
 ```bat
 mvn -f mobile-runner/pom.xml -q package -DskipTests
@@ -166,7 +166,7 @@ If any of them fails, go back to the matching section and fix that tool before s
 | uiautomator2 driver | Appium starts but refuses the capability set | run status |
 | Mobile runner process | Runs stay stuck in `QUEUED` because nothing claims them | `/mobile/runs/{runId}` status |
 | `CURSOR_API_KEY` | Precision calls return `providerAvailable=false`; `/admin/mobile-precision` dashboard shows `keel` picks everywhere | `/admin/mobile-precision` |
-| `KEEL_RUNNER_TOKEN` | Runner exits at start with "KEEL_RUNNER_TOKEN is required" | runner stdout |
+| Phone runner token | Start says Keel could not enroll a runner. Open the project as an owner or admin. | the phone dialog |
 
 ---
 

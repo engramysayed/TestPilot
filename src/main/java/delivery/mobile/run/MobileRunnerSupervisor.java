@@ -49,7 +49,7 @@ public class MobileRunnerSupervisor {
      */
     public synchronized void ensureForProject(String projectId, long actorUserId, String tenantId) {
         String env = envToken();
-        if (env.isBlank() && autostart && projectId != null && !projectId.isBlank() && actorUserId > 0) {
+        if (env.isBlank() && projectId != null && !projectId.isBlank() && actorUserId > 0) {
             Saved saved = readSaved(tokenFile);
             if (needsEnrollment(saved.token(), saved.tenant(), tenantId)) {
                 enroll(projectId, actorUserId, tenantId == null ? "" : tenantId);
@@ -141,14 +141,8 @@ public class MobileRunnerSupervisor {
             Path logFile = Path.of("delivery-store", "mobile-runner.log");
             Files.createDirectories(logFile.getParent());
             boolean win = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
-            String maven = win ? "mvn.cmd" : "mvn";
             String sep = win ? ";" : ":";
-            String command = maven + " -pl mobile-runner -am -DskipTests -q test-compile"
-                    + " dependency:build-classpath -DincludeScope=runtime"
-                    + " -Dmdep.outputFile=mobile-runner/target/runner.classpath"
-                    + " && java -cp \"mobile-runner/target/classes" + sep
-                    + "mobile-runner/target/runner.classpath\""
-                    + " delivery.mobile.runner.agent.MobileRunnerAgent";
+            String command = launchCommand(root, win, sep);
             ProcessBuilder pb = win
                     ? new ProcessBuilder("cmd.exe", "/c", command)
                     : new ProcessBuilder("sh", "-c", command);
@@ -231,6 +225,59 @@ public class MobileRunnerSupervisor {
             return new Saved("", "");
         }
         return new Saved(token, tenant);
+    }
+
+    static String launchCommand(Path root, boolean win, String sep) throws java.io.IOException {
+        Path classes = root.resolve("mobile-runner").resolve("target").resolve("classes");
+        Path cpFile = root.resolve("mobile-runner").resolve("target").resolve("runner.classpath");
+        Path agent = classes.resolve("delivery").resolve("mobile").resolve("runner")
+                .resolve("agent").resolve("MobileRunnerAgent.class");
+        if (Files.isRegularFile(agent) && Files.isRegularFile(cpFile)) {
+            String cp = Files.readString(cpFile, StandardCharsets.UTF_8).trim();
+            if (!cp.isBlank()) {
+                return "java -cp \"" + classes.toAbsolutePath() + sep + cp
+                        + "\" delivery.mobile.runner.agent.MobileRunnerAgent";
+            }
+        }
+        String maven = mavenExecutable(win);
+        return maven + " -pl mobile-runner -am -DskipTests -q test-compile"
+                + " dependency:build-classpath -DincludeScope=runtime"
+                + " -Dmdep.outputFile=mobile-runner/target/runner.classpath"
+                + " && java -cp \"mobile-runner/target/classes" + sep
+                + "mobile-runner/target/runner.classpath\""
+                + " delivery.mobile.runner.agent.MobileRunnerAgent";
+    }
+
+    static String mavenExecutable(boolean win) {
+        String name = win ? "mvn.cmd" : "mvn";
+        for (String homeName : new String[]{"MAVEN_HOME", "M2_HOME"}) {
+            String home = System.getenv(homeName);
+            if (home == null || home.isBlank()) {
+                continue;
+            }
+            Path exe = Path.of(home.trim(), "bin", name);
+            if (Files.isRegularFile(exe)) {
+                return quote(exe);
+            }
+        }
+        String path = System.getenv("PATH");
+        if (path != null) {
+            for (String dir : path.split(win ? ";" : ":")) {
+                if (dir.isBlank()) {
+                    continue;
+                }
+                Path exe = Path.of(dir.trim(), name);
+                if (Files.isRegularFile(exe)) {
+                    return quote(exe);
+                }
+            }
+        }
+        return name;
+    }
+
+    private static String quote(Path exe) {
+        String text = exe.toString();
+        return text.contains(" ") ? "\"" + text + "\"" : text;
     }
 
     static boolean needsEnrollment(String savedToken, String savedTenant, String wantedTenant) {

@@ -39,7 +39,8 @@ public class InviteMailService {
         }
         JavaMailSender sender = mailSender.getIfAvailable();
         if (sender == null) {
-            throw new IllegalStateException("delivery.mail-enabled=true but Spring Mail is not configured (spring.mail.host)");
+            log.info("Mail is on but spring.mail.host is empty — invite for {} stays a link: {}", invite.getEmail(), acceptUrl);
+            return false;
         }
         try {
             MimeMessage message = sender.createMimeMessage();

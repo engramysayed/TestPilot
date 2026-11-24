@@ -2,15 +2,23 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-24 (AI policy forced on, runner token file, local batch sentence).
+**Last updated:** 2026-11-24 (Start enrolls the runner, device choice on disk, Generate write-back, Cursor blocks the zip).
+
+## Start enrolls the runner (2026-11-24)
+
+- `ensureForProject` enrolls even when autostart is false. `launchCommand` uses `mobile-runner/target` when `MobileRunnerAgent.class` and `runner.classpath` exist, otherwise Maven from `MAVEN_HOME` or PATH.
+- `MobileDeviceChoice` stores the Automate phone under `delivery-store/mobile-device-choices/{jobId}`.
+- `GenerateHarnessBridge.takeRepairedCases` reads `testCases` from the Cursor result or `repaired-cases.json` and `TcGenerateService` validates that list.
+- `MobileAutomateConversion` throws when `MobileCursorPass.reviewFramework` returns "Cursor pass did not finish", so the zip is not written.
+- `delivery.final-revise.enabled`, `delivery.mail-enabled`, `delivery.tunnel.enabled`, and `keel.runner.connector.enabled` are true in the portal config. Tests keep final revise, mail, and the tunnel off. Invite mail returns without sending when `spring.mail.host` is empty. The connector flag does not open a second port.
 
 ## AI on, local runner token (2026-11-24)
 
 - `delivery.agent-harness.workspace-default-on` and `workspace-force-on` are true in the portal config. A missing `ai-policy.json` is all toggles on. A file with no `forcedOnAt` is rewritten on. After that stamp, a saved off stays off. Tests set both properties false.
-- Generate still re-validates the same cases after Cursor. The escalation does not write a repaired workbook.
+- Generate applies `testCases` from the Cursor result before it validates again.
 - `MobileAutomateConversion.plan` calls `ensureForProject` with the project owner. The token file is `delivery-store/mobile-runner.token` (token, then tenant). The environment variable wins. A different tenant replaces the file and restarts the process.
 - `MobileBatchModelNote` appends one Ollama sentence in `finish`. Failure or a 25 second timeout leaves `MobileBatchReview` text. A failed run still schedules `MobileCursorPass.investigate`.
-- Reopening a saved phone run fills Design from `design-compare.json`. The Automate phone choice is still only in memory.
+- Reopening a saved phone run fills Design from `design-compare.json`. The Automate phone is in `MobileDeviceChoice`, not only memory.
 
 ## How deep and the mobile Cursor passes (2026-11-24)
 

@@ -2,6 +2,16 @@
 
 # Keel changelog
 
+## 2026-11-24 — Start enrolls the runner, and the remaining phone gaps are closed
+
+- Pressing Start enrolls the mobile runner on this computer. You do not set `KEEL_RUNNER_TOKEN`. If the runner was already built, Start launches it with Java and does not need Maven on PATH.
+- The phone you pick for an Automate job is saved. A portal restart still uses that phone.
+- When Cursor reviews generated cases, Keel writes the repaired cases back and checks those. A repair that does not come back as cases leaves the original cases, and a failed check still fails Generate.
+- If the Android Cursor pass does not finish, the Automate zip is not published.
+- Final revise, mail, and the tunnel switch are on. Mail sends only when `spring.mail.host` is set. The tunnel relay still needs its own public host. The runner API on this portal port is the connector. A second runner port is not opened.
+
+Known: this was not clicked in the browser, and no phone was attached. Cursor was not called live. A missing `CURSOR_API_KEY` now stops the Android zip.
+
 ## 2026-11-24 — AI checks are on, and the phone runner enrolls itself
 
 - A project with no AI panel, and a project that was saved off before today, runs TC review, framework repair, failure investigation, and Bug Hunter triage. Saving the project panel off after this stays off. Each of those tasks charges the AI validation price and needs `CURSOR_API_KEY`.

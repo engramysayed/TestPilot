@@ -3,7 +3,6 @@ package delivery.portal;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.testng.AbstractTestNGSpringContextTests;
@@ -12,11 +11,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.regex.Pattern;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -38,9 +34,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 public class FinalReviseDefaultsTest extends AbstractTestNGSpringContextTests {
 
-    private static final Pattern ENABLED_FALSE = Pattern.compile(
-            "^delivery\\.final-revise\\.enabled=false\\s*$", Pattern.MULTILINE);
-
     @Autowired
     private DeliveryPortalProperties props;
 
@@ -58,12 +51,14 @@ public class FinalReviseDefaultsTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
-    public void applicationProperties_fileHasFinalReviseDisabled() throws Exception {
-        try (InputStream in = new ClassPathResource("application.properties").getInputStream()) {
-            String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            Assert.assertTrue(ENABLED_FALSE.matcher(text).find(),
-                    "application.properties must set delivery.final-revise.enabled=false");
+    public void applicationProperties_fileHasFinalReviseEnabled() throws Exception {
+        Path main = Path.of("src/main/resources/application.properties");
+        if (!Files.isRegularFile(main)) {
+            main = Path.of("../src/main/resources/application.properties");
         }
+        String text = Files.readString(main);
+        Assert.assertTrue(text.contains("delivery.final-revise.enabled=true"),
+                "the portal config must turn final revise on");
     }
 
     @Test

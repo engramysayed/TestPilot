@@ -754,7 +754,7 @@
                 </ul>
                 <h3>Run on a phone</h3>
                 <ol class="guide-howto">
-                    <li>On the computer the phone is plugged into, enroll a runner (Project → Settings → <em>Private runners</em>), set <code>KEEL_RUNNER_TOKEN</code>, and start <code>scripts\mobile-runner.cmd</code>.</li>
+                    <li>On the computer the phone is plugged into, open the Android project and press Start. Keel enrolls the runner and starts it. You do not set <code>KEEL_RUNNER_TOKEN</code>.</li>
                     <li>Project → Mobile → <strong>Find connected phones</strong>, pick the phone, optionally list test case IDs, then <strong>Run on phone</strong>.</li>
                     <li>Keel reserves the phone, starts Appium, and waits for the runner. Results appear in the table case by case.</li>
                     <li>When the run ends — or if the runner stops responding for about 45 seconds, or nobody picks the run up in 5 minutes — Keel stops Appium and frees the phone. A phone that was left stuck is freed within a couple of minutes.</li>

@@ -108,6 +108,7 @@ public final class GenerateHarnessBridge {
                                     .resolve("contract-validation-report-" + parentJobId + ".json"))
                             .toString().replace('\\', '/'));
             body.put("generatedCaseCount", cases == null ? 0 : cases.size());
+            body.put("testCases", cases == null ? List.of() : cases);
             body.put("findingsCount", report.findings().size());
             if (userStoryText != null && !userStoryText.isBlank()) {
                 body.put("userStory", userStoryText.trim());
@@ -116,6 +117,48 @@ public final class GenerateHarnessBridge {
         } catch (Exception e) {
             log.warn("generate-context write failed for {}: {}", taskId, e.getMessage());
         }
+    }
+
+    /** Cases Cursor returned. Empty when the result has no usable testCases array. */
+    public List<ManualTestCase> takeRepairedCases(Path projectRoot, String parentJobId, String taskId) {
+        if (projectRoot == null || parentJobId == null || taskId == null || taskId.isBlank()) {
+            return List.of();
+        }
+        try {
+            Path repairedFile = store.taskDir(projectRoot, parentJobId, taskId).resolve("repaired-cases.json");
+            if (Files.isRegularFile(repairedFile)) {
+                List<ManualTestCase> fromFile = casesFromAgentText(Files.readString(repairedFile), Map.of());
+                if (!fromFile.isEmpty()) {
+                    return fromFile;
+                }
+            }
+            var result = store.loadResult(projectRoot, parentJobId, taskId);
+            if (result.isEmpty()) {
+                return List.of();
+            }
+            return casesFromAgentText(result.get().summary(), result.get().payload());
+        } catch (Exception e) {
+            log.warn("Could not read repaired cases for {}: {}", taskId, e.getMessage());
+            return List.of();
+        }
+    }
+
+    static List<ManualTestCase> casesFromAgentText(String summary, Map<String, Object> payload) {
+        try {
+            if (payload != null && (payload.containsKey("testCases") || payload.containsKey("cases"))) {
+                return delivery.excel.GeneratedTcJsonParser.parse(JSON.writeValueAsString(payload)).cases();
+            }
+        } catch (Exception ignored) {
+            // A bad payload leaves the original cases in place.
+        }
+        try {
+            if (summary != null && summary.contains("testCases")) {
+                return delivery.excel.GeneratedTcJsonParser.parse(summary).cases();
+            }
+        } catch (Exception ignored) {
+            return List.of();
+        }
+        return List.of();
     }
 
     public record EscalationResult(String status, String detail, String taskId) {
