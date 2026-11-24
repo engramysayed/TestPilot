@@ -2,7 +2,15 @@
 
 Volatile state. Edit this every session. Companion to [`engineering.md`](engineering.md) (stable) and [`implementation.md`](implementation.md) (feature inventory).
 
-**Last updated:** 2026-11-24 (How deep budget, Start launches the runner, mobile Cursor passes).
+**Last updated:** 2026-11-24 (AI policy forced on, runner token file, local batch sentence).
+
+## AI on, local runner token (2026-11-24)
+
+- `delivery.agent-harness.workspace-default-on` and `workspace-force-on` are true in the portal config. A missing `ai-policy.json` is all toggles on. A file with no `forcedOnAt` is rewritten on. After that stamp, a saved off stays off. Tests set both properties false.
+- Generate still re-validates the same cases after Cursor. The escalation does not write a repaired workbook.
+- `MobileAutomateConversion.plan` calls `ensureForProject` with the project owner. The token file is `delivery-store/mobile-runner.token` (token, then tenant). The environment variable wins. A different tenant replaces the file and restarts the process.
+- `MobileBatchModelNote` appends one Ollama sentence in `finish`. Failure or a 25 second timeout leaves `MobileBatchReview` text. A failed run still schedules `MobileCursorPass.investigate`.
+- Reopening a saved phone run fills Design from `design-compare.json`. The Automate phone choice is still only in memory.
 
 ## How deep and the mobile Cursor passes (2026-11-24)
 
@@ -18,7 +26,7 @@ Volatile state. Edit this every session. Companion to [`engineering.md`](enginee
 - `ScreenSignature` prefixes the Android activity, so a new activity is a new screen class.
 - Phone rows link to `/execute?projectId=&jobId=mrun_…`. `openExecuteRun` loads the saved mobile run. Download is hidden when `mode` is `phone`.
 - `MobileBatchReview` runs after design compare. It names the failed step and the design status.
-- `MobileRunnerSupervisor` starts `mobile-runner` with Maven when `delivery.mobile.runner.autostart` is true and `KEEL_RUNNER_TOKEN` is set. The page shows that sentence before Start. Tests set autostart false.
+- `MobileRunnerSupervisor` enrolls a token into `delivery-store/mobile-runner.token` when the environment variable is empty, then starts `mobile-runner` with Maven. Tests set autostart false.
 - Live video is fragmented MP4 from `adb screenrecord`, played with Media Source. Stills remain the fallback. Not verified on a phone. The portal already on port 8080 was not restarted.
 
 ## Phone cases and the run list (2026-11-24)

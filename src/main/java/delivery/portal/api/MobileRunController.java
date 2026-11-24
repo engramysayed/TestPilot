@@ -55,6 +55,14 @@ public class MobileRunController {
         this.runners = runners;
     }
 
+    private void enrollRunner(ProjectRecord project) {
+        Long owner = project.getOwnerUserId();
+        if (owner != null && owner > 0) {
+            runners.ensureForProject(project.getProjectId(), owner,
+                    project.getTenantId() == null ? "" : project.getTenantId());
+        }
+    }
+
     public record StartBody(String deviceId, List<String> tcIds, String appRevisionId) {
         public StartBody(String deviceId, List<String> tcIds) {
             this(deviceId, tcIds, null);
@@ -100,6 +108,7 @@ public class MobileRunController {
         }
         ProjectRecord project = store.getOwnedProject(projectId, currentUser.requireUserId()).orElseThrow();
         try {
+            enrollRunner(project);
             runners.startForRun();
             var run = runs.start(project.getTenantId(), projectId, currentUser.requireUserId(),
                     body.deviceId(), body.tcIds(), body.appRevisionId());
@@ -136,6 +145,7 @@ public class MobileRunController {
                 java.nio.file.Files.copy(in, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
             var cases = new delivery.excel.ExcelTcReader(true).read(tmp);
+            enrollRunner(project);
             runners.startForRun();
             var run = runs.startProvided(project.getTenantId(), projectId, currentUser.requireUserId(),
                     deviceId, cases, null);

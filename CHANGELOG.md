@@ -2,6 +2,15 @@
 
 # Keel changelog
 
+## 2026-11-24 — AI checks are on, and the phone runner enrolls itself
+
+- A project with no AI panel, and a project that was saved off before today, runs TC review, framework repair, failure investigation, and Bug Hunter triage. Saving the project panel off after this stays off. Each of those tasks charges the AI validation price and needs `CURSOR_API_KEY`.
+- Automate may ask Cursor to repair the generated framework and publish it. A repair that does not pass the contract, the architecture gate, or compile fails the job instead of publishing the unrepaired zip.
+- Opening an Android project enrolls a mobile runner and saves the token under `delivery-store` on this computer. Keel starts the runner from that file. `KEEL_RUNNER_TOKEN` still wins when it is already set. One saved token belongs to one tenant.
+- After a phone batch, the written review stays. When the local model answers, one sentence is added. If the model is down or slow, the written sentence is the whole review.
+
+Known: this was not clicked in the browser, and no phone was attached. Restart the portal to load it. Maven must be on PATH. Cursor's Generate review still does not write its fix back into the cases. The phone chosen on Automate is forgotten if the portal restarts before the job runs.
+
 ## 2026-11-24 — Phone hunts use How deep, and Start launches the runner
 
 - Android Bug Hunter shows the same How deep controls as a website hunt. Standard is 2 × 8 × 5 = 80 actions. That budget always stops the phone, including when library cases are checked. The step that would pass the budget is marked stopped, and later cases are not started. The hidden stop at 40 is gone.

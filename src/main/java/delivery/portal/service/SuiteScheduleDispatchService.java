@@ -138,6 +138,11 @@ public class SuiteScheduleDispatchService {
             // tcIds = all cases registered against the suite (same shape SuiteRunService builds).
             List<String> tcIds = extractTcIds(suites.get(projectId, suiteId));
             if (runners != null) {
+                Long owner = project.getOwnerUserId();
+                if (owner != null && owner > 0) {
+                    runners.ensureForProject(projectId, owner,
+                            project.getTenantId() == null ? "" : project.getTenantId());
+                }
                 runners.startForRun();
             }
             mobileRuns.start(project.getTenantId(), projectId, ownerId, deviceId, tcIds, revisionId);

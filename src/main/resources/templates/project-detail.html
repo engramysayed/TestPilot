@@ -217,8 +217,9 @@
         <section class="panel" id="ai-policy-panel">
             <h2>AI validation</h2>
             <p class="muted" style="max-width:52rem">
-                Opt-in layer where Cursor reviews what Keel produces (TC coverage, framework repair after a bad build,
-                failure investigation after a red run, Bug Hunter triage). <strong>Off by default per workspace.</strong>
+                Cursor reviews what Keel produces (TC coverage, framework repair after a bad build,
+                failure investigation after a red run, Bug Hunter triage). <strong>On for every project.</strong>
+                A project you had turned off is turned back on once. After that, saving this panel off stays off.
                 When on, each AI task is charged at the <strong>AI validation</strong> price the account owner sets on
                 <a href="/admin/pricing">Admin → Prices</a>. If you turn it off, every workflow still runs — it just
                 skips the AI layer and uses deterministic checks only.

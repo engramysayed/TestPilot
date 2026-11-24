@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import delivery.portal.persistence.ProjectRepository;
 import delivery.portal.service.credits.CreditService;
 import delivery.portal.service.credits.InsufficientCreditsException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -17,9 +18,8 @@ import java.util.Optional;
 
 /**
  * Per-workspace opt-in gate for the unified agent harness + validation (Slice 1 of the Nov-17 plan).
- * Stored at {@code {projectRoot}/ai-policy.json}. Default = disabled. A bridge consults this BEFORE
- * the global {@code delivery.agent-harness.*} flags; if the workspace has not opted in, no AI task
- * is dispatched and no credits are charged.
+ * Stored at {@code {projectRoot}/ai-policy.json}. When no file exists, the default follows
+ * {@code delivery.agent-harness.workspace-default-on}. A saved file always wins.
  *
  * <p>Fixes blocker B1 from the Phase 6.16 production readiness audit (per-tenant/project scoping).
  */
@@ -30,12 +30,19 @@ public class WorkspaceAiPolicyService implements delivery.job.port.WorkspaceAiPo
     private final PortalStore store;
     private final ProjectRepository projects;
     private final CreditService credits;
+    private final boolean defaultOn;
+    private final boolean forceOn;
     private final ObjectMapper mapper = new ObjectMapper();
+    static final String FORCED_ON_AT = "forcedOnAt";
 
-    public WorkspaceAiPolicyService(PortalStore store, ProjectRepository projects, CreditService credits) {
+    public WorkspaceAiPolicyService(PortalStore store, ProjectRepository projects, CreditService credits,
+                                    @Value("${delivery.agent-harness.workspace-default-on:false}") boolean defaultOn,
+                                    @Value("${delivery.agent-harness.workspace-force-on:false}") boolean forceOn) {
         this.store = store;
         this.projects = projects;
         this.credits = credits;
+        this.defaultOn = defaultOn;
+        this.forceOn = forceOn;
     }
 
     /**
@@ -66,6 +73,10 @@ public class WorkspaceAiPolicyService implements delivery.job.port.WorkspaceAiPo
             return new Policy(false, false, false, false, false);
         }
 
+        public static Policy enabled() {
+            return new Policy(true, true, true, true, true);
+        }
+
         public Policy withAiValidation(boolean v) {
             return new Policy(v, tcValidationEnabled, frameworkRepairEnabled,
                     failureInvestigationEnabled, huntValidationEnabled);
@@ -73,12 +84,21 @@ public class WorkspaceAiPolicyService implements delivery.job.port.WorkspaceAiPo
     }
 
     public Policy load(String projectId) {
-        if (projectId == null || projectId.isBlank()) return Policy.disabled();
+        if (projectId == null || projectId.isBlank()) return missing();
         Path file = fileFor(projectId).orElse(null);
-        if (file == null || !Files.isRegularFile(file)) return Policy.disabled();
+        if (file == null || !Files.isRegularFile(file)) return missing();
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> doc = mapper.readValue(file.toFile(), Map.class);
+            if (forceOn && !doc.containsKey(FORCED_ON_AT)) {
+                Policy on = Policy.enabled();
+                try {
+                    save(projectId, on);
+                } catch (Exception ignored) {
+                    // The gates still see every toggle on. The next read tries the stamp again.
+                }
+                return on;
+            }
             return new Policy(
                     bool(doc, "aiValidationEnabled"),
                     bool(doc, "tcValidationEnabled"),
@@ -86,8 +106,12 @@ public class WorkspaceAiPolicyService implements delivery.job.port.WorkspaceAiPo
                     bool(doc, "failureInvestigationEnabled"),
                     bool(doc, "huntValidationEnabled"));
         } catch (Exception e) {
-            return Policy.disabled();
+            return missing();
         }
+    }
+
+    private Policy missing() {
+        return defaultOn ? Policy.enabled() : Policy.disabled();
     }
 
     public void save(String projectId, Policy policy) throws IOException {
@@ -102,6 +126,9 @@ public class WorkspaceAiPolicyService implements delivery.job.port.WorkspaceAiPo
         doc.put("frameworkRepairEnabled", policy.frameworkRepairEnabled());
         doc.put("failureInvestigationEnabled", policy.failureInvestigationEnabled());
         doc.put("huntValidationEnabled", policy.huntValidationEnabled());
+        if (forceOn) {
+            doc.put(FORCED_ON_AT, "2026-11-24");
+        }
         if (file.getParent() != null) Files.createDirectories(file.getParent());
         Path tmp = Files.createTempFile(file.getParent(), "ai-policy-", ".tmp");
         try {

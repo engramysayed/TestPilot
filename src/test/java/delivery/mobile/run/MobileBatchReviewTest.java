@@ -44,4 +44,12 @@ public class MobileBatchReviewTest {
         assertTrue(text.contains("TC1 failed at step 2"), text);
         assertTrue(text.contains("TC1 MISMATCH"), text);
     }
+
+    @Test
+    public void modelNoteKeepsTheWrittenSentenceWhenTheModelIsBlank() {
+        String written = "After this batch: 1 passed, 0 failed.";
+        assertEquals(written, MobileBatchModelNote.join(written, "  \n"));
+        assertEquals(written + " Model: The pay step was the only failure.",
+                MobileBatchModelNote.join(written, "The pay step was the only failure.\nMore"));
+    }
 }
